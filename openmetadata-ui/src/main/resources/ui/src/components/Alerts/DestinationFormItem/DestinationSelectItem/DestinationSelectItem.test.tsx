@@ -21,6 +21,7 @@ import {
 import { forwardRef, ReactNode } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import {
+  HTTPMethod,
   Status,
   SubscriptionCategory,
   SubscriptionType,
@@ -700,7 +701,7 @@ describe('DestinationSelectItem', () => {
         category: SubscriptionCategory.External,
         config: {
           endpoint: 'https://chat.googleapis.com',
-          httpMethod: 'POST',
+          httpMethod: HTTPMethod.Post,
         },
         statusDetails: {
           status: Status.Failed,
@@ -723,7 +724,7 @@ describe('DestinationSelectItem', () => {
             config: {
               endpoint: 'https://chat.googleapis.com',
               headers: [],
-              httpMethod: 'POST',
+              httpMethod: HTTPMethod.Post,
               queryParams: [],
             },
           },

@@ -529,6 +529,14 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
         "Getting non-existent entity by name should fail");
   }
 
+  /** A name that cannot be parsed as an FQN (here an unbalanced quote) is a client error. */
+  @Test
+  void get_entityByMalformedName_400() {
+    ApiAssertions.assertBadRequest(
+        () -> getEntityByName("\""),
+        "Getting " + getEntityType() + " by a malformed name should be a bad request");
+  }
+
   /**
    * Test: Update entity description
    * Equivalent to: patch_entityAttributes_200_OK in EntityResourceTest
@@ -2611,6 +2619,49 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
 
     T fetched2 = getEntityWithFields(updated2.getId().toString(), "lifeCycle");
     assertNotNull(fetched2.getLifeCycle().getCreated(), "Lifecycle should have created info");
+  }
+
+  /**
+   * Test: a life cycle timestamp before the Unix epoch is the year-0001 placeholder older ingestion
+   * clients send; it is dropped on write while the real aspects next to it are kept.
+   */
+  @Test
+  void patch_entityLifeCyclePlaceholderTimestampIsDropped(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+
+    T entity = createEntity(createMinimalRequest(ns));
+    org.openmetadata.schema.type.AccessDetails placeholderCreated =
+        new org.openmetadata.schema.type.AccessDetails().withTimestamp(-62135596800000L);
+
+    entity.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle().withCreated(placeholderCreated));
+    T placeholderOnly = patchEntity(entity.getId().toString(), entity);
+    T fetched = getEntityWithFields(placeholderOnly.getId().toString(), "lifeCycle");
+    assertTrue(
+        fetched.getLifeCycle() == null || fetched.getLifeCycle().getCreated() == null,
+        "A placeholder created timestamp must not be stored");
+    assertEquals(entity.getVersion(), fetched.getVersion());
+
+    org.openmetadata.schema.type.AccessDetails accessed =
+        new org.openmetadata.schema.type.AccessDetails().withTimestamp(1695059900000L);
+    fetched.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(placeholderCreated)
+            .withAccessed(accessed));
+    patchEntity(fetched.getId().toString(), fetched);
+    T mixed = getEntityWithFields(fetched.getId().toString(), "lifeCycle");
+    assertNull(mixed.getLifeCycle().getCreated(), "The placeholder aspect is dropped");
+    assertEquals(1695059900000L, mixed.getLifeCycle().getAccessed().getTimestamp());
+
+    mixed.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle().withCreated(placeholderCreated));
+    patchEntity(mixed.getId().toString(), mixed);
+    T kept = getEntityWithFields(mixed.getId().toString(), "lifeCycle");
+    assertNull(kept.getLifeCycle().getCreated(), "The placeholder is not stored");
+    assertEquals(
+        1695059900000L,
+        kept.getLifeCycle().getAccessed().getTimestamp(),
+        "A placeholder-only life cycle leaves the recorded times in place");
   }
 
   /**

@@ -13,22 +13,26 @@ This script generates the Python models from the JSON Schemas definition. Additi
 pydantic class used for the password fields with the `CustomSecretStr` pydantic class which retrieves the secrets
 from a configured secrets' manager.
 """
-import glob
+
 import os
 import re
+import sys
 import warnings
+from pathlib import Path
 
+from datamodel_code_generator import DataModelType, InputFileType, generate
+from datamodel_code_generator.format import Formatter
 from datamodel_code_generator.imports import Import
+
 # `model.pydantic` held the Pydantic v1 models and was removed in datamodel-code-generator 0.60+.
 # We generate with `--output-model-type pydantic_v2.BaseModel`, so patch the v2 type map.
 from datamodel_code_generator.model import pydantic_v2 as pydantic_model
-from datamodel_code_generator.__main__ import main
 
 pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
     "metadata.ingestion.models.custom_pydantic.CustomSecretStr"
 )
 
-current_directory = os.getcwd()
+current_directory = str(Path.cwd())
 ingestion_path = "./" if current_directory.endswith("/ingestion") else "ingestion/"
 directory_root = "../" if current_directory.endswith("/ingestion") else "./"
 
@@ -65,29 +69,48 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
-# `--formatters` is passed explicitly because the external formatters (black, isort) are about to
-# become opt-in upstream. Naming them keeps today's output shape, which the post-processing below
-# depends on: SOURCE_CONFIG_BLOCK matches black's parenthesised-annotation layout.
-args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member --formatters black isort".split(" ")
-
-main(args)
+schema_root = Path(f"{directory_root}openmetadata-spec/src/main/resources/json/schema").resolve()
+output_root = Path(f"{ingestion_path}src/metadata/generated/schema").resolve()
+# The directory reader sorts only basenames; duplicate names need a stable path tie-breaker.
+schema_files = sorted(
+    (path for path in schema_root.rglob("*") if path.is_file()),
+    key=lambda path: (path.name, path.relative_to(schema_root).as_posix()),
+)
+os.chdir(schema_root)
+try:
+    generate(
+        schema_files,
+        input_file_type=InputFileType.JsonSchema,
+        output_model_type=DataModelType.PydanticV2BaseModel,
+        output=output_root,
+        use_annotated=True,
+        field_constraints=True,
+        base_class="metadata.ingestion.models.custom_pydantic.BaseModel",
+        set_default_enum_member=True,
+        disable_timestamp=True,
+        formatters=[Formatter.BLACK, Formatter.ISORT],
+    )
+finally:
+    os.chdir(current_directory)
 
 # Replace Unicode regex flags
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
+    with Path(file_path).open("r", encoding=UTF_8) as file_:
         content = file_.read()
         content = content.replace("(?U)", "(?u)")
-    with open(file_path, "w", encoding=UTF_8) as file_:
+    with Path(file_path).open("w", encoding=UTF_8) as file_:
         file_.write(content)
 
 # Add missing Union import
-MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",]
+MISSING_IMPORTS = [
+    f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",
+]
 WRITE_AFTER = "from __future__ import annotations"
 
 for file_path in MISSING_IMPORTS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
+    with Path(file_path).open("r", encoding=UTF_8) as file_:
         lines = file_.readlines()
-    with open(file_path, "w", encoding=UTF_8) as file_:
+    with Path(file_path).open("w", encoding=UTF_8) as file_:
         for line in lines:
             file_.write(line)
             if line.strip() == WRITE_AFTER:
@@ -109,7 +132,7 @@ for file_path in MISSING_IMPORTS:
 # construction time -- that would make it impossible to ever construct the
 # raw-named object that transform_entity_names is meant to encode, breaking
 # tests in tests/unit/models/test_custom_basemodel_validation.py.
-generated_files = glob.glob(f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True)
+generated_files = Path(f"{ingestion_path}src/metadata/generated/schema").rglob("*.py")
 
 patterns_to_remove = [
     "pattern='^((?!::).)*$',",
@@ -121,11 +144,11 @@ patterns_to_remove = [
 ]
 
 for file_path in generated_files:
-    with open(file_path, "r", encoding=UTF_8) as f:
+    with Path(file_path).open("r", encoding=UTF_8) as f:
         content = f.read()
     for pat in patterns_to_remove:
         content = content.replace(pat, "")
-    with open(file_path, "w", encoding=UTF_8) as f:
+    with Path(file_path).open("w", encoding=UTF_8) as f:
         f.write(content)
 
 
@@ -137,15 +160,15 @@ DATETIME_AWARE_FILE_PATHS = [
 ]
 
 for file_path in DATETIME_AWARE_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as f:
+    with Path(file_path).open("r", encoding=UTF_8) as f:
         content = f.read()
         content = content.replace(
             "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
-            "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel"
+            "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel",
         )
         content = content.replace("from datetime import date, time", "from datetime import date, time, datetime")
         content = content.replace("AwareDatetime", "datetime")
-    with open(file_path, "w", encoding=UTF_8) as f:
+    with Path(file_path).open("w", encoding=UTF_8) as f:
         f.write(content)
 
 
@@ -173,14 +196,12 @@ SOURCE_CONFIG_BLOCKS = (
     re.compile(r"(class SourceConfig\(BaseModel\):.*?\| None )= \(\s*None\s*\)\n", re.DOTALL),
 )
 
-with open(UNION_MODE_FILE, "r", encoding=UTF_8) as f:
+with Path(UNION_MODE_FILE).open("r", encoding=UTF_8) as f:
     content = f.read()
 
 applied = 0
 for source_config_block in SOURCE_CONFIG_BLOCKS:
-    content, applied = source_config_block.subn(
-        r'\1= Field(None, union_mode="left_to_right")\n', content, count=1
-    )
+    content, applied = source_config_block.subn(r'\1= Field(None, union_mode="left_to_right")\n', content, count=1)
     if applied == 1:
         break
 if applied != 1:
@@ -191,7 +212,7 @@ if applied != 1:
         "The generated layout changed -- update SOURCE_CONFIG_BLOCK."
     )
 
-with open(UNION_MODE_FILE, "w", encoding=UTF_8) as f:
+with Path(UNION_MODE_FILE).open("w", encoding=UTF_8) as f:
     f.write(content)
 
-print("Model generation and post-processing completed successfully.")
+sys.stdout.write("Model generation and post-processing completed successfully.\n")

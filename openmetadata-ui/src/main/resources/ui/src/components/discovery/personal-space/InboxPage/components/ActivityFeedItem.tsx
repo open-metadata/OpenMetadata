@@ -179,14 +179,17 @@ const getEntityPath = (entity: EntityReference | undefined) =>
     ? entityUtilClassBase.getEntityLink(entity.type, entity.fullyQualifiedName)
     : undefined;
 
-// "Hide replies" while open; otherwise how many there are, or "Reply" while
-// there are none.
+const isReplyCountKnown = (hasLoaded: boolean, feed?: Conversation) =>
+  hasLoaded || feed?.replyCount !== undefined;
+
+// "Reply" with no replies; else "Hide replies" while open, or the count.
 const getThreadButtonLabel = (
   isOpen: boolean,
   count: number,
+  isCountKnown: boolean,
   t: TFunction
 ): string => {
-  if (isOpen) {
+  if (isOpen && (count || !isCountKnown)) {
     return t('label.hide-reply-plural');
   }
   if (!count) {
@@ -263,6 +266,7 @@ const getThreadChevron = (isOpen: boolean) =>
 interface ThreadButtonProps {
   isOpen: boolean;
   count: number;
+  isCountKnown: boolean;
   // Loaded only once the thread has been opened; until then no faces show.
   replies: ConversationReply[];
   onToggle: () => void;
@@ -271,12 +275,12 @@ interface ThreadButtonProps {
 /**
  * The card's one button for its thread: "Reply" while the thread is closed and
  * has no replies, how many replied (and who, once they are loaded) when it has
- * some, and "Hide replies" while it is open — so it can close even once its
- * last reply is deleted.
+ * some, and "Hide replies" while it is open with replies.
  */
 const ThreadButton = ({
   isOpen,
   count,
+  isCountKnown,
   replies,
   onToggle,
 }: ThreadButtonProps) => {
@@ -316,7 +320,7 @@ const ThreadButton = ({
       iconTrailing={isReply ? undefined : getThreadChevron(isOpen)}
       size="sm"
       onPress={onToggle}>
-      {getThreadButtonLabel(isOpen, count, t)}
+      {getThreadButtonLabel(isOpen, count, isCountKnown, t)}
     </Button>
   );
 };
@@ -636,6 +640,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           />
           <ThreadButton
             count={replyCount}
+            isCountKnown={isReplyCountKnown(hasLoaded, feed)}
             isOpen={isThreadOpen}
             replies={replies}
             // Nothing to read yet: open straight into the composer.

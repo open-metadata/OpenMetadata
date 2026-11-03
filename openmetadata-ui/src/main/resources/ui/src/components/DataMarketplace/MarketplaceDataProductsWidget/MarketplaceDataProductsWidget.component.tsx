@@ -206,7 +206,8 @@ const MarketplaceDataProductsWidget = ({
     return (
       <div
         className="marketplace-widget-section tw:bg-surface"
-        data-testid="marketplace-dp-widget">
+        data-testid="marketplace-dp-widget"
+        data-tour-step="data-marketplace">
         <Loader size="small" />
       </div>
     );
@@ -215,7 +216,8 @@ const MarketplaceDataProductsWidget = ({
   return (
     <div
       className="marketplace-widget-section tw:bg-surface"
-      data-testid="marketplace-dp-widget">
+      data-testid="marketplace-dp-widget"
+      data-tour-step="data-marketplace">
       <div className="marketplace-widget-header">
         <div>
           <Typography

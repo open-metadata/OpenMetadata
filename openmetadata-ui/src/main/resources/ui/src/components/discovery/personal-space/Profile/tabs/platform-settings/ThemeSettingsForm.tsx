@@ -129,6 +129,7 @@ const ThemeSettingsForm = ({
 
   return (
     <SettingsFormLayout
+      centered
       form={form}
       isSaving={isSaving}
       showHint={showHint}

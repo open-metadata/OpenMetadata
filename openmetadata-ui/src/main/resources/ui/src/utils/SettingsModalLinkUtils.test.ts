@@ -12,10 +12,6 @@
  */
 
 import {
-  parseCustomPropertiesHash,
-  viewToSubPath as customPropsViewToSubPath,
-} from '../components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
-import {
   hashSubPathToView as accessHashToView,
   viewToSubPath as accessViewToSubPath,
 } from '../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.utils';
@@ -23,6 +19,10 @@ import {
   hashSubPathToView as appsHashToView,
   viewToSubPath as appsViewToSubPath,
 } from '../components/discovery/personal-space/Profile/tabs/applications/Applications.utils';
+import {
+  parseCustomPropertiesHash,
+  viewToSubPath as customPropsViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesPanel.utils';
 import {
   hashSubPathToView as governanceHashToView,
   viewToSubPath as governanceViewToSubPath,

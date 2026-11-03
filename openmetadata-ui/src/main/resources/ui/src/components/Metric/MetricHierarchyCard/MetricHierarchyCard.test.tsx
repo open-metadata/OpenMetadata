@@ -201,7 +201,7 @@ describe('MetricHierarchyCard', () => {
     expect(screen.getByRole('img', { name: 'Alex Brown' })).toBeInTheDocument();
     expect(
       screen.getByTestId('metric-tree-owner-child-id-child-owner-id')
-    ).toHaveTextContent('JL');
+    ).toHaveTextContent(/^J$/);
     expect(screen.getByLabelText('4 label.metric-plural')).toBeInTheDocument();
 
     // Graduated indent by hierarchy depth: group(0) > ancestor(1) > peer/current(2) > child(3).
@@ -282,5 +282,48 @@ describe('MetricHierarchyCard', () => {
     expect(
       screen.getByRole('status', { name: 'label.loading' })
     ).toBeInTheDocument();
+  });
+
+  it('keeps the current metric ahead of its siblings so loading more does not move it', () => {
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue({
+      ...hierarchy,
+      siblings: [
+        { id: 'peer-a', name: 'peer_a', fullyQualifiedName: 'peer_a' },
+        { id: 'peer-b', name: 'peer_b', fullyQualifiedName: 'peer_b' },
+      ],
+      hasMoreSiblings: true,
+    });
+    renderCard();
+
+    const current = screen.getByTestId('metric-tree-current');
+    const firstPeer = screen.getByTestId('metric-tree-peer-peer-a');
+    const showMore = screen.getByTestId('metric-tree-more-peers');
+
+    expect(
+      current.compareDocumentPosition(firstPeer) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      current.compareDocumentPosition(showMore) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('shows only the current metric for a deleted metric instead of a fetch error', () => {
+    (useMetricHierarchyCard as jest.Mock).mockReturnValue({
+      ...hierarchy,
+      error: new Error('not found'),
+    });
+    render(
+      <MemoryRouter>
+        <MetricHierarchyCard metric={{ ...metric, deleted: true }} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('metric-tree-current')).toBeInTheDocument();
+    expect(screen.queryByText('label.try-again')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.add-child-metric' })
+    ).not.toBeInTheDocument();
   });
 });

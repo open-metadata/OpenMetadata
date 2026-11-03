@@ -645,17 +645,17 @@ export const connectEdgeBetweenNodes = async (
 
 export const connectEntityEdgeBetweenNodesViaAPI = (
   apiContext: APIRequestContext,
-  fromNode: EntityClass,
-  toNode: EntityClass
+  fromNode: EntityClass & { entityResponseData: Pick<ResponseDataType, 'id'> },
+  toNode: EntityClass & { entityResponseData: Pick<ResponseDataType, 'id'> }
 ) => {
   return connectEdgeBetweenNodesViaAPI(
     apiContext,
     {
-      id: get(fromNode, 'entityResponseData.id'),
+      id: fromNode.entityResponseData.id,
       type: getEntityTypeSearchIndexMapping(fromNode.type),
     },
     {
-      id: get(toNode, 'entityResponseData.id'),
+      id: toNode.entityResponseData.id,
       type: getEntityTypeSearchIndexMapping(toNode.type),
     }
   );
@@ -1484,14 +1484,15 @@ export const connectEdgeBetweenNodesViaAPI = (
   apiContext: APIRequestContext,
   fromEntity: { id: string; type: string },
   toEntity: { id: string; type: string },
-  columnsLineage?: Array<{ fromColumns: string[]; toColumn: string }>
+  columnsLineage?: Array<{ fromColumns: string[]; toColumn: string }>,
+  lineageDetails: Record<string, unknown> = {}
 ) => {
   return apiContext.put('/api/v1/lineage/', {
     data: {
       edge: {
         fromEntity,
         toEntity,
-        lineageDetails: { columnsLineage, description: '' },
+        lineageDetails: { columnsLineage, description: '', ...lineageDetails },
       },
     },
     headers: {

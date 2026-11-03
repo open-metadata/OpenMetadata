@@ -87,6 +87,8 @@ import {
   DIMENSION_FAILURE_POLICY_PARAM,
   getThresholdPreviewTarget,
   MIN_ROWS_PER_DIMENSION_PARAM,
+  THRESHOLD_PARAM,
+  THRESHOLD_UNIT_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
@@ -189,43 +191,28 @@ const getIsDimensionalTest = (
     ? !isEmpty(unwrapSelectValues(dimensionColumns))
     : testLevel === TestLevel.COLUMN_DIMENSION;
 
-// A dynamic assertion learns the bounds, which hides the parameter inputs, but
-// the dimension roll-up still applies to the learned bounds.
-const getShowDimensionPolicyOnly = (
-  showParameterFields: boolean,
-  isDimensionalTest: boolean,
-  definition: TestDefinition | undefined
-): boolean =>
-  !showParameterFields &&
-  isDimensionalTest &&
-  Boolean(
-    definition?.parameterDefinition?.some(
-      (param) => param.name === DIMENSION_FAILURE_POLICY_PARAM
-    )
-  );
+/**
+ * Parameters that still apply to a learned bound. Ingestion widens bounds by
+ * the failure threshold downstream of bound resolution (`thresholds.py`: the
+ * widening "has to hold in both cases" — static or dynamic), and the dimension
+ * roll-up acts on the learned bounds the same way it acts on static ones. So a
+ * dynamic assertion hides only the static-bound inputs; these stay editable.
+ */
+const DYNAMIC_ASSERTION_PARAMS = [
+  THRESHOLD_PARAM,
+  THRESHOLD_UNIT_PARAM,
+  ...DIMENSION_ROLL_UP_PARAMS,
+];
+
+// Dynamic-assertion mode renders only `DYNAMIC_ASSERTION_PARAMS`, which
+// `ParameterFields` intersects with the definition's declared parameters — the
+// result is empty for a definition that declares none of them.
+const getShowDynamicParams = (
+  hasParameterDefinition: boolean,
+  useDynamicAssertionValue: unknown
+): boolean => hasParameterDefinition && useDynamicAssertionValue === true;
 
 // ─── Sub-sections (kept in-file: JSX helpers for the large form body) ─────────
-
-const DimensionPolicyOnlyField: FC<{
-  show: boolean;
-  definition?: TestDefinition;
-  form: UseFormReturn<FormValues>;
-  table?: Table;
-  fieldDocs: Record<string, string>;
-}> = ({ show, definition, form, table, fieldDocs }) =>
-  show && definition ? (
-    <ParameterFields
-      isDimensionalTest
-      definition={definition}
-      form={form}
-      onlyParams={DIMENSION_ROLL_UP_PARAMS}
-      table={table}
-      testDefinitionDoc={getFieldDoc(
-        fieldDocs[definition.name ?? ''],
-        definition.description
-      )}
-    />
-  ) : null;
 
 const TestLevelAndTableCard: FC<{
   isEditMode: boolean;
@@ -340,7 +327,7 @@ const TestTypeCard: FC<{
   dataQualityDimensionField: FieldProp;
   thresholdPreview: ReactNode;
   isDimensionalTest: boolean;
-  showDimensionPolicyOnly: boolean;
+  showDynamicParams: boolean;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -361,7 +348,7 @@ const TestTypeCard: FC<{
   dataQualityDimensionField,
   thresholdPreview,
   isDimensionalTest,
-  showDimensionPolicyOnly,
+  showDynamicParams,
 }) => (
   <Card
     className="form-card-section test-type-card test-type-section"
@@ -381,7 +368,10 @@ const TestTypeCard: FC<{
         <div key={field.name}>{getField(field)}</div>
       ))}
 
-      {showParameterFields && selectedTestDefinition && (
+      {/* In dynamic-assertion mode the definition is still rendered, but
+        ParameterFields filters it down to DYNAMIC_ASSERTION_PARAMS — only the
+        threshold and the dimension roll-up, which survive bound learning. */}
+      {(showParameterFields || showDynamicParams) && selectedTestDefinition && (
         <div
           className="parameter-fields-wrapper"
           onFocusCapture={() =>
@@ -395,6 +385,9 @@ const TestTypeCard: FC<{
             definition={selectedTestDefinition}
             form={form}
             isDimensionalTest={isDimensionalTest}
+            onlyParams={
+              showParameterFields ? undefined : DYNAMIC_ASSERTION_PARAMS
+            }
             table={selectedTableData}
             testDefinitionDoc={getFieldDoc(
               fieldDocs[selectedTestDefinition.name ?? ''],
@@ -404,14 +397,6 @@ const TestTypeCard: FC<{
           {thresholdPreview}
         </div>
       )}
-
-      <DimensionPolicyOnlyField
-        definition={selectedTestDefinition}
-        fieldDocs={fieldDocs}
-        form={form}
-        show={showDimensionPolicyOnly}
-        table={selectedTableData}
-      />
 
       {isComputeRowCountFieldVisible && getField(computeRowCountField)}
 
@@ -570,8 +555,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   // Dimensions are entities managed in Settings > Preferences > Data Quality; the shared hook
   // owns the fetch so this form, the test definition form and the test case filters all list the
   // same set and degrade the same way.
-  const { dimensions: dataQualityDimensions, isLoading: isDimensionsLoading } =
-    useDataQualityDimensions();
+  const { dimensions: dataQualityDimensions } = useDataQualityDimensions();
 
   const testLevelFieldValue = useWatch({
     control: form.control,
@@ -959,25 +943,27 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   useEffect(() => {
     if (selectedTestLevel) {
       fetchTestDefinitions();
-      // Edit mode prefills testTypeId (and selectedColumn) via
-      // form.reset(buildEditDefaults(...)); testLevel is disabled there, so
-      // this effect only fires from that prefill and must not wipe it.
-      // Clearing the derived definition/type here also unmounts the params
-      // section whenever fetchTestDefinitions' identity changes (it depends on
-      // selectedTableData, which loads async on edit open) — making the params
-      // flicker. In edit mode these stay as prefilled and are re-derived by the
-      // [selectedTestTypeFqn, testDefinitions] effect.
-      if (!isEditMode) {
-        form.setValue('testTypeId', undefined as never);
-        if (selectedTestLevel === TestLevel.TABLE) {
-          form.setValue('selectedColumn', undefined as never);
-        }
-        setSelectedTestDefinition(undefined);
-        setSelectedTestType(undefined);
-        setIsCustomQuery(false);
-      }
     }
-  }, [selectedTestLevel, fetchTestDefinitions, form, isEditMode]);
+  }, [selectedTestLevel, fetchTestDefinitions]);
+
+  // Reset the picked type only when the level or the table changes. Keying it
+  // on fetchTestDefinitions' identity wiped a type picked before the selected
+  // table's details finished loading, unmounting its params mid-fill. Edit
+  // mode prefills testTypeId (and selectedColumn) via
+  // form.reset(buildEditDefaults(...)) with level and table disabled, so this
+  // only fires from that prefill and must not wipe it.
+  useEffect(() => {
+    if (!selectedTestLevel || isEditMode) {
+      return;
+    }
+    form.setValue('testTypeId', undefined as never);
+    if (selectedTestLevel === TestLevel.TABLE) {
+      form.setValue('selectedColumn', undefined as never);
+    }
+    setSelectedTestDefinition(undefined);
+    setSelectedTestType(undefined);
+    setIsCustomQuery(false);
+  }, [selectedTestLevel, selectedTableFqn, form, isEditMode]);
 
   useEffect(() => {
     if (
@@ -1120,16 +1106,16 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const isComputeRowCountFieldVisible = Boolean(
     selectedTestDefinition?.supportsRowLevelPassedFailed
   );
+  const hasParameterDefinition = Boolean(
+    selectedTestDefinition?.parameterDefinition
+  );
   const showParameterFields = getShowParameterFields(
-    Boolean(selectedTestDefinition?.parameterDefinition),
+    hasParameterDefinition,
     useDynamicAssertionValue
   );
-  // A dynamic assertion learns the bounds, which hides the parameter inputs,
-  // but the dimension roll-up still applies to the learned bounds.
-  const showDimensionPolicyOnly = getShowDimensionPolicyOnly(
-    showParameterFields,
-    isDimensionalTest,
-    selectedTestDefinition
+  const showDynamicParams = getShowDynamicParams(
+    hasParameterDefinition,
+    useDynamicAssertionValue
   );
 
   useEffect(() => {
@@ -1376,7 +1362,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'data-quality-dimension',
-      isLoading: isDimensionsLoading,
       options: dataQualityDimensionOptions,
       onItemInserted: () => setIsDimensionManuallyEdited(true),
       onItemCleared: () => setIsDimensionManuallyEdited(true),
@@ -1580,7 +1565,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         selectedTestDefinition={selectedTestDefinition}
         selectedTestLevel={selectedTestLevel}
         selectedTestType={selectedTestType}
-        showDimensionPolicyOnly={showDimensionPolicyOnly}
+        showDynamicParams={showDynamicParams}
         showParameterFields={showParameterFields}
         t={t}
         testTypeField={testTypeField}

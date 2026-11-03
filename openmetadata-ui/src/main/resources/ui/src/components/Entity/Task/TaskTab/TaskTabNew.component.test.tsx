@@ -956,8 +956,8 @@ describe('TaskTabNew Component', () => {
     });
 
     const commentInput = screen.getByTestId('comments-input-field');
-    await act(async () => {
-      fireEvent.click(commentInput);
+    act(() => {
+      commentInput.focus();
     });
 
     expect(screen.getByText('ActivityFeedEditorNew')).toBeInTheDocument();

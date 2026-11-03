@@ -26,23 +26,21 @@ import {
 
 describe('DestinationFormItem utilities', () => {
   it('recognizes only supported external destination types', () => {
-    const destinations = [
+    const destinations: Destination[] = [
       {
         category: SubscriptionCategory.External,
-        destinationType: SubscriptionType.Slack,
         type: SubscriptionType.Slack,
       },
-    ] as Destination[];
+    ];
 
     expect(hasExternalDestination(destinations)).toBe(true);
     expect(
       hasExternalDestination([
         {
           category: SubscriptionCategory.Owners,
-          destinationType: SubscriptionCategory.Owners,
           type: SubscriptionType.Email,
         },
-      ] as Destination[])
+      ])
     ).toBe(false);
   });
 

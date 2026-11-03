@@ -89,7 +89,7 @@ jest.mock('components/common/DomainLabel/DomainLabel.component', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const React = require('react');
+  const React = jest.requireActual<typeof import('react')>('react');
   const TabsCtx = React.createContext<((key: string) => void) | undefined>(
     undefined
   );

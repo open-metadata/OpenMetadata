@@ -538,12 +538,21 @@ jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ visible, onCancel, afterDeleteAction, allowSoftDelete }) =>
+      ({
+        visible,
+        onCancel,
+        afterDeleteAction,
+        allowSoftDelete,
+        isRecursiveDelete,
+      }) =>
         visible ? (
           <div>
             <p>DeleteEntityModal</p>
             <span data-testid="allow-soft-delete">
               {String(Boolean(allowSoftDelete))}
+            </span>
+            <span data-testid="recursive-delete">
+              {String(Boolean(isRecursiveDelete))}
             </span>
             <button
               data-testid="soft-delete-confirm"
@@ -1840,6 +1849,7 @@ describe('DataQualityTab test', () => {
 
       expect(await screen.findByText('DeleteEntityModal')).toBeInTheDocument();
       expect(screen.getByTestId('allow-soft-delete')).toHaveTextContent('true');
+      expect(screen.getByTestId('recursive-delete')).toHaveTextContent('true');
       expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument();
     });
 

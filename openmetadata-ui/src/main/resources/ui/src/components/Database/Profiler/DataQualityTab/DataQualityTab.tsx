@@ -679,7 +679,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       restore: testCaseRestorePermission,
     } = getRowActionPermissions(
       testCasePermission,
-      isEditAllowed,
+      isEditAllowed ?? false,
       removeFromTestSuite?.isAllowed
     );
     const isRestoreMode =
@@ -1089,6 +1089,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         deletionMode === TEST_CASE_DELETION_MODE.SOFT && (
           <DeleteEntityModal
             allowSoftDelete
+            isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             entityId={selectedTestCase?.data.id ?? ''}
             entityName={getEntityName(selectedTestCase?.data)}

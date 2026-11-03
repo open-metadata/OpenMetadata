@@ -551,6 +551,58 @@ describe('getThresholdPreviewData', () => {
     ).toBeUndefined();
   });
 
+  describe('a dynamic assertion, whose bounds are learned at run time', () => {
+    // The static-bound inputs are hidden in dynamic mode, but the form still
+    // holds values prefilled from a saved test case — the preview must not
+    // quote them as the pass/fail range.
+    const definition = definitionOf('tableRowCountToBeBetween', [
+      { name: 'minValue' },
+      { name: 'maxValue' },
+    ]);
+
+    it('quotes no static bounds the form still holds', () => {
+      const data = getThresholdPreviewData({
+        definition,
+        params: { minValue: 100, maxValue: 200, threshold: 10 },
+        useDynamicAssertion: true,
+      });
+
+      expect(data).toMatchObject({
+        semantic: ThresholdTestSemantic.Statistical,
+        isBoundLearned: true,
+      });
+      expect(data?.bound).toBeUndefined();
+      expect(data?.effectiveRange).toBeUndefined();
+    });
+
+    it('still previews with no static bounds at all', () => {
+      const data = getThresholdPreviewData({
+        definition,
+        params: { threshold: 5 },
+        useDynamicAssertion: true,
+      });
+
+      expect(data).toMatchObject({
+        semantic: ThresholdTestSemantic.Statistical,
+        isBoundLearned: true,
+        threshold: 5,
+      });
+    });
+
+    it('keeps the row-countable tolerance unchanged', () => {
+      const data = getThresholdPreviewData({
+        definition: definitionOf('columnValuesToBeNotNull'),
+        params: { threshold: 10 },
+        useDynamicAssertion: true,
+      });
+
+      expect(data).toMatchObject({
+        semantic: ThresholdTestSemantic.RowCountable,
+        isBoundLearned: false,
+      });
+    });
+  });
+
   it('reads the custom SQL query through its operator and strategy', () => {
     const data = getThresholdPreviewData({
       definition: definitionOf('tableCustomSQLQuery', [
