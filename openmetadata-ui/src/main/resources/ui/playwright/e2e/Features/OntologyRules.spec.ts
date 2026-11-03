@@ -150,16 +150,20 @@ const openNewRule = async (page: Page) => {
   return editor;
 };
 
-/** Types into a label picker and takes the option whose label starts with `label`. */
-const pickByLabel = async (picker: Locator, label: string) => {
+/**
+ * Types into a label picker and takes the option whose label starts with `label`.
+ * A picker that spans ontologies can list the same label twice; `iri` picks the one
+ * that belongs to the ontology under test.
+ */
+const pickByLabel = async (picker: Locator, label: string, iri?: string) => {
   const input = picker.getByRole('combobox');
   await scrollIntoViewAndSettle(input);
   await input.fill(label);
   await input.press('ArrowDown');
-  await picker
+  const option = picker
     .page()
-    .getByRole('option', { name: new RegExp(`^${label}`) })
-    .click();
+    .getByRole('option', { name: new RegExp(`^${label}`) });
+  await (iri ? option.filter({ hasText: iri }) : option).click();
   await expect(input).toHaveValue(label);
 };
 
@@ -914,7 +918,8 @@ test.describe(
           editor
             .getByRole('group', { name: 'Mapping 1' })
             .getByTestId('ontology-mapping-concept'),
-          'Party'
+          'Party',
+          party.iri
         );
         await editor.getByRole('button', { name: 'Add Mapping' }).click();
         const otherPicker = editor

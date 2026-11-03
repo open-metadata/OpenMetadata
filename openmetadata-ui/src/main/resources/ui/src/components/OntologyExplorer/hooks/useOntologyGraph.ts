@@ -2274,6 +2274,11 @@ export function useOntologyGraph({
     let previousSize = containerViewportSize(container);
     const resizeObserver = new ResizeObserver(() => {
       if (containerRef.current && graphRef.current) {
+        // A hidden canvas reports no size; fitting to it would shrink the
+        // graph to the minimum zoom and keep that when the canvas returns.
+        if (!container.offsetWidth || !container.offsetHeight) {
+          return;
+        }
         const wasWhole = studioMode && graphFitsViewport(graph, previousSize);
         graphRef.current.resize(
           containerRef.current.offsetWidth,
