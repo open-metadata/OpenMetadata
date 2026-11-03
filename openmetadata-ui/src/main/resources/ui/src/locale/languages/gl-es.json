@@ -5895,6 +5895,7 @@
     "ontology-review-created-by-you": "Creaches esta tarefa. Agardando polos revisores.",
     "ontology-review-event-window": "Amósase unha páxina dos eventos da versión, cos comentarios da tarefa e os votos rexistrados.",
     "ontology-review-lock-unavailable": "O bloqueo de revisión non está dispoñible. Actualice antes de editar.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

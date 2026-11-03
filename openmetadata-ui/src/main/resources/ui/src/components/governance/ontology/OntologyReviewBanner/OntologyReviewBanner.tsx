@@ -88,7 +88,10 @@ const PendingBanner = ({
   onOpenTask,
 }: Pick<Props, 'review' | 'release' | 'viewerName' | 'onOpenTask'>) => {
   const { t } = useTranslation();
-  const status = getReviewStatusMessage(review);
+  const status = getReviewStatusMessage(
+    review,
+    Boolean(release.reviewers?.length)
+  );
 
   return (
     <Alert

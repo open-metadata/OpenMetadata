@@ -5895,6 +5895,7 @@
     "ontology-review-created-by-you": "U hebt deze taak gemaakt. Wachten op beoordelaars.",
     "ontology-review-event-window": "Er wordt één pagina met releasegebeurtenissen getoond, inclusief taakopmerkingen en vastgelegde stemmen.",
     "ontology-review-lock-unavailable": "De beoordelingsvergrendeling is niet beschikbaar. Vernieuw voordat u bewerkt.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

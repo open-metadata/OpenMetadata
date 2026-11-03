@@ -5895,6 +5895,7 @@
     "ontology-review-created-by-you": "Sie haben diese Aufgabe erstellt. Warten auf Prüfer.",
     "ontology-review-event-window": "Eine Seite der Versionsereignisse wird angezeigt, einschließlich Aufgabenkommentaren und erfassten Stimmen.",
     "ontology-review-lock-unavailable": "Die Prüfsperre ist nicht verfügbar. Aktualisieren Sie vor dem Bearbeiten.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

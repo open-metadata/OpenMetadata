@@ -585,6 +585,49 @@ test.describe(
       }
     });
 
+    test('lane 9b: a review whose only reviewer was deleted reads "no reviewer assigned", not "ready to publish"', async ({
+      isolatedUserPage: author,
+      isolatedUser,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      await setMode(api, isolatedUser.responseData.id, 'ai');
+      const reviewerName = `pw_g7_gone_${uuid()}`;
+      const reviewer = await okJson<{ id: string }>(
+        await api.post('/api/v1/users', {
+          data: {
+            name: reviewerName,
+            email: `${reviewerName}@example.org`,
+          },
+        }),
+        'Create reviewer'
+      );
+      // The requester is left off the task's reviewers, so listing them on the
+      // ontology keeps it reviewer-bearing after the task's only reviewer goes.
+      const ontology = await createOntology(api, 'pw_g7_orphan', [
+        reviewer.id,
+        isolatedUser.responseData.id,
+      ]);
+      const tasks: string[] = [];
+      try {
+        await addConcept(api, ontology, 'Customer');
+        const task = await requestReview(author, ontology);
+        tasks.push(task.id);
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/users/${reviewer.id}?hardDelete=true&recursive=true`
+        );
+
+        await author.goto(`/governance/ontology?ontology=${ontology.id}`);
+        const banner = author.getByTestId('ontology-review-banner');
+        await expect(banner).toContainText('In review · no reviewer assigned');
+        await expect(banner).toContainText(ontology.name);
+        await expect(banner).not.toContainText('ready to publish');
+      } finally {
+        await cleanUp(api, [ontology], tasks);
+      }
+    });
+
     test('lane 10: a new ontology with one concept shows Draft once, a count of 1 and "1 concept"', async ({
       isolatedUserPage: author,
       isolatedUser,

@@ -5895,6 +5895,7 @@
     "ontology-review-created-by-you": "तुम्ही हे कार्य तयार केले आहे. पुनरावलोककांची प्रतीक्षा आहे.",
     "ontology-review-event-window": "प्रकाशन घटनांचे एक पृष्ठ दाखवले आहे. कार्याच्या टिप्पण्या आणि नोंदवलेली मते समाविष्ट आहेत.",
     "ontology-review-lock-unavailable": "पुनरावलोकन लॉक उपलब्ध नाही. संपादनापूर्वी रीफ्रेश करा.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

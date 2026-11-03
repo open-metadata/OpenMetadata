@@ -28,10 +28,15 @@ const namesWithStatus = (
 
 /**
  * What a review is waiting on: the reviewers who have not voted, else who
- * approved it, else that it can be published. An empty reviewer list must
- * never leave the sentence dangling after "waiting on".
+ * approved it. With no reviewer entry left, nothing approved the review, so it
+ * is only "ready to publish" when the ontology lists no reviewers at all;
+ * otherwise (a reviewer was deleted or removed) it needs someone assigned.
+ * The sentence never dangles after "waiting on".
  */
-export const getReviewStatusMessage = (review: OntologyReleaseReview) => {
+export const getReviewStatusMessage = (
+  review: OntologyReleaseReview,
+  ontologyHasReviewers = true
+) => {
   const pending = namesWithStatus(review, AssigneeStatus.Pending);
   if (pending) {
     return {
@@ -46,5 +51,10 @@ export const getReviewStatusMessage = (review: OntologyReleaseReview) => {
         key: 'message.ontology-review-approved-by',
         values: { names: approved },
       }
-    : { key: 'message.ontology-review-ready-to-publish', values: {} };
+    : {
+        key: ontologyHasReviewers
+          ? 'message.ontology-review-no-reviewer-assigned'
+          : 'message.ontology-review-ready-to-publish',
+        values: {},
+      };
 };

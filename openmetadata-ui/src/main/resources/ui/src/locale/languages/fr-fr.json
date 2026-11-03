@@ -5895,6 +5895,7 @@
     "ontology-review-created-by-you": "Vous avez créé cette tâche. En attente des réviseurs.",
     "ontology-review-event-window": "Une page des événements de la version est affichée, avec les commentaires de la tâche et les votes enregistrés.",
     "ontology-review-lock-unavailable": "Le verrou de révision est indisponible. Actualisez avant de modifier.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

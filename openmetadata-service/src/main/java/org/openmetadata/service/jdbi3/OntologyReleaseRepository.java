@@ -301,11 +301,12 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
   public ResultList<OntologyReleaseReview> listReviews(
       final OntologyReleaseReviewReader.View view,
       final String caller,
+      final UUID ontologyId,
       final int limit,
       final String after,
       final Predicate<OntologyRelease> canView) {
     final int offset = offset(after);
-    final List<OpenReview> reviews = openReviews(view, caller, canView);
+    final List<OpenReview> reviews = openReviews(view, caller, ontologyId, canView);
     final int from = Math.min(offset, reviews.size());
     final int to = Math.min(reviews.size(), from + limit);
     return page(
@@ -318,9 +319,11 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
   private List<OpenReview> openReviews(
       final OntologyReleaseReviewReader.View view,
       final String caller,
+      final UUID ontologyId,
       final Predicate<OntologyRelease> canView) {
     final TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    final ListFilter filter = reviewTaskFilter(view, SubjectContext.getSubjectContext(caller));
+    final ListFilter filter =
+        reviewTaskFilter(view, SubjectContext.getSubjectContext(caller), ontologyId);
     final List<Task> reviewTasks =
         tasks.listAll(tasks.getFields(LISTED_REVIEW_TASK_FIELDS), filter);
     final Map<UUID, OntologyRelease> releases = releasesById(reviewTasks);
@@ -364,8 +367,13 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
 
   /** The database-side narrowing to the approval tasks that {@code view} can match for the caller. */
   static ListFilter reviewTaskFilter(
-      final OntologyReleaseReviewReader.View view, final SubjectContext subject) {
+      final OntologyReleaseReviewReader.View view,
+      final SubjectContext subject,
+      final UUID ontologyId) {
     final ListFilter filter = new ListFilter(Include.NON_DELETED);
+    if (ontologyId != null) {
+      filter.addQueryParam("ontologyReviewOntologyId", ontologyId.toString());
+    }
     filter.addQueryParam("taskType", TaskEntityType.RequestApproval.value());
     filter.addQueryParam("aboutEntityType", Entity.ONTOLOGY_RELEASE);
     filter.addQueryParam(

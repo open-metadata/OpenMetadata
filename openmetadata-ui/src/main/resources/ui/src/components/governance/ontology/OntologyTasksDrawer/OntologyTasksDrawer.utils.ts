@@ -15,18 +15,15 @@ import type { OntologyReleaseReview } from '../../../../generated/api/data/ontol
 
 /**
  * The open reviews the Studio banner may announce: those the caller votes on,
- * then those the caller requested, once each. With an ontology in view only
- * its own reviews count, because the reviews endpoint lists every ontology.
+ * then those the caller requested, once each.
  */
 export const getOpenReviews = (
-  ontologyId: string | undefined,
   ...lists: (OntologyReleaseReview[] | undefined)[]
 ) => {
   const seen = new Set<string>();
 
   return lists
     .flatMap((list) => list ?? [])
-    .filter((review) => !ontologyId || review.ontology.id === ontologyId)
     .filter((review) => {
       const duplicate = seen.has(review.task.id);
       seen.add(review.task.id);

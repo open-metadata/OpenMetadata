@@ -139,6 +139,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getTaskReviewerOrAssigneeCondition());
+    conditions.add(getTaskOntologyReviewCondition(tableName));
     conditions.add(getCreatedByCondition());
     conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
@@ -430,6 +431,19 @@ public class ListFilter extends Filter<ListFilter> {
         buildIndexedBindParams("reviewerOrAssigneeId", ids),
         Relationship.ASSIGNED_TO.ordinal(),
         Relationship.REVIEWS.ordinal());
+  }
+
+  private String getTaskOntologyReviewCondition(String tableName) {
+    String ontologyId = queryParams.get("ontologyReviewOntologyId");
+    if (nullOrEmpty(ontologyId)) {
+      return "";
+    }
+    String json = qualifyColumn(tableName, "json");
+    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+        ? String.format(
+            "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.ontologyReview.ontologyId')) = :ontologyReviewOntologyId",
+            json)
+        : String.format("%s->'ontologyReview'->>'ontologyId' = :ontologyReviewOntologyId", json);
   }
 
   /**

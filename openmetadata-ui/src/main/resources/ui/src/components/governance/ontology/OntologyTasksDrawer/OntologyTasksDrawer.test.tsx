@@ -774,10 +774,16 @@ describe('the Studio review banner scope', () => {
     const read = get.getMockImplementation();
     get.mockImplementation(async (url: string, config) => {
       if (url === '/ontologies/reviews') {
+        const scoped = reviews.filter(
+          (item) =>
+            !config.params.ontologyId ||
+            item.ontology.id === config.params.ontologyId
+        );
+
         return {
           data: {
-            data: config.params.view === 'created' ? reviews : [],
-            paging: { total: reviews.length },
+            data: config.params.view === 'created' ? scoped : [],
+            paging: { total: scoped.length },
           },
         };
       }
@@ -827,6 +833,32 @@ describe('the Studio review banner scope', () => {
       screen.queryByTestId('ontology-review-banner')
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Sales/)).not.toBeInTheDocument();
+  });
+
+  it('asks the server for the ontology in view, so a review past the first 100 is still found', async () => {
+    const crowd = Array.from({ length: 150 }, (_, index) =>
+      reviewOf('Crowd' + index, 'TASK-C' + index)
+    );
+    serveOpenReviews([...crowd, reviewOf('Finance', 'TASK-LAST')]);
+    renderWithQueryClient(<Harness ontologyId="Finance" />);
+
+    expect(
+      await screen.findByTestId('ontology-review-banner')
+    ).toHaveTextContent('Finance · v0.1.0 · ');
+    expect(screen.getByTestId('ontology-review-banner')).toHaveTextContent(
+      'TASK-LAST'
+    );
+
+    const reviewReads = get.mock.calls
+      .filter(([url]) => url === '/ontologies/reviews')
+      .map(([, config]) => config.params);
+
+    expect(reviewReads).toEqual(
+      expect.arrayContaining([
+        { view: 'pending', ontologyId: 'Finance', limit: 100 },
+        { view: 'created', ontologyId: 'Finance', limit: 100 },
+      ])
+    );
   });
 
   it('lists one line per open review, naming its ontology, in All ontologies', async () => {

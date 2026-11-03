@@ -5895,6 +5895,7 @@
     "ontology-review-created-by-you": "لقد أنشأت هذه المهمة. في انتظار المراجعين.",
     "ontology-review-event-window": "تُعرض صفحة واحدة من أحداث الإصدار مع تعليقات المهمة والأصوات المسجلة.",
     "ontology-review-lock-unavailable": "قفل المراجعة غير متاح. حدّث قبل التحرير.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",
