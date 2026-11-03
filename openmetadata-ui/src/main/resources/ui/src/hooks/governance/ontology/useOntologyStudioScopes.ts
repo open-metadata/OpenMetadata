@@ -18,6 +18,7 @@ import { getGlossariesList } from '../../../rest/glossaryAPI';
 import {
   listOntologies,
   listOntologyConcepts,
+  listOntologyProperties,
 } from '../../../rest/ontologyAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { listAllPages } from '../../../utils/governance/ontology/OntologyPaging.utils';
@@ -121,6 +122,39 @@ export const useOntologyConceptCounts = (
       queryKey: ['ontology-studio-concept-count', ontology.id],
       queryFn: ({ signal }: { signal: AbortSignal }) =>
         listOntologyConcepts(
+          { limit: 1, ontology: ontology.fullyQualifiedName },
+          signal
+        ).then((page) => page.paging.total),
+      retry: false,
+      gcTime: 30_000,
+      staleTime: 30_000,
+    })),
+  });
+
+  return useMemo(
+    () =>
+      Object.fromEntries(
+        ontologies.flatMap((ontology, index) => {
+          const total = counts[index]?.data;
+
+          return total === undefined ? [] : [[ontology.id, total]];
+        })
+      ),
+    [counts, ontologies]
+  );
+};
+
+/** Property totals per ontology id, fetched one request each; an ontology whose count fails is left out. */
+export const useOntologyPropertyCounts = (
+  ontologies: Ontology[],
+  isEnabled: boolean
+): Record<string, number> => {
+  const counts = useQueries({
+    queries: ontologies.map((ontology) => ({
+      enabled: isEnabled,
+      queryKey: ['ontology-studio-property-count', ontology.id],
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        listOntologyProperties(
           { limit: 1, ontology: ontology.fullyQualifiedName },
           signal
         ).then((page) => page.paging.total),
