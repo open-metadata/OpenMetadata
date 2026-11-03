@@ -1139,6 +1139,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return "domains";
   }
 
+  /** Whether an entity of this type with no owners of its own takes its parent's. */
+  public final boolean inheritsOwners() {
+    String inheritableFields = getInheritableFields();
+    return inheritableFields != null
+        && List.of(inheritableFields.split(",")).contains(FIELD_OWNERS);
+  }
+
   /**
    * Fields to load on a parent of the given type. Entities whose parent may be one of several types
    * override this when a field is only valid on some of them; requesting a field a parent type does
