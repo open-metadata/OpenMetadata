@@ -111,6 +111,31 @@ describe('useUncontrolledNodeDrag', () => {
     expect(result.current.flow.nodes).toBe(NODES);
   });
 
+  it('forgets a drag that was cancelled without a drop once another drag starts', () => {
+    const nodes: Node[] = [
+      ...NODES,
+      { id: 'b', position: { x: 100, y: 0 }, data: {} },
+    ];
+    const { result, rerender } = renderHook(
+      () => useUncontrolledNodeDrag(nodes, jest.fn()),
+      { wrapper }
+    );
+
+    act(() => {
+      result.current.onNodesChange([
+        { id: 'a', type: 'position', dragging: true, position: { x: 5, y: 5 } },
+      ]);
+      // No drop for `a`: a second touch aborted the drag.
+      result.current.onNodesChange([
+        { id: 'b', type: 'position', dragging: true, position: { x: 9, y: 9 } },
+        { id: 'b', type: 'position', dragging: false },
+      ]);
+    });
+    rerender();
+
+    expect(result.current.nodes).toBe(nodes);
+  });
+
   it('passes non-drag changes through unchanged', () => {
     const { onNodesChange, result } = setup();
     const changes = [

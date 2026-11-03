@@ -56,6 +56,9 @@ export const useUncontrolledNodeDrag = <T extends Node>(
     (changes) => {
       const dragFrames = changes.filter(isDragFrame);
       if (dragFrames.length) {
+        // Each frame carries every node being dragged, so rebuilding drops
+        // entries a cancelled drag (a second touch) never ended.
+        dragPositions.current = new Map();
         for (const change of dragFrames) {
           if (change.type === 'position' && change.position) {
             dragPositions.current.set(change.id, {
