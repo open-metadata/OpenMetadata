@@ -64,7 +64,7 @@ const renderSchemasTabLabel = (props: DatabaseDetailPageTabProps) => {
 describe('getDatabasePageBaseTabs', () => {
   it('names the schemas tab in the plural when no persona renamed it', () => {
     expect(renderSchemasTabLabel(mockProps)).toHaveTextContent(
-      'label.database-schema-plural'
+      'label.schema-plural'
     );
   });
 
