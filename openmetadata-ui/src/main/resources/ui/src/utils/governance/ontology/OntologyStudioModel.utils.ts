@@ -416,11 +416,17 @@ export const getConceptPropertyRows = (
   concept: OntologyConcept
 ): OntologyConceptPropertyRow[] => {
   const dataProperties = model.properties.filter(
-    (property) => property.kind === Kind.Data && !property.deleted
+    (property) =>
+      (property.kind === Kind.Data || property.kind === Kind.Annotation) &&
+      !property.deleted
   );
+  const rowDatatype = (property: OntologyProperty) =>
+    property.kind === Kind.Annotation
+      ? 'annotation'
+      : getDatatypeLabel(property);
   const own = dataProperties
     .filter((property) => property.domain?.includes(concept.iri))
-    .map((property) => ({ datatype: getDatatypeLabel(property), property }));
+    .map((property) => ({ datatype: rowDatatype(property), property }));
   const listed = new Set(own.map((row) => row.property.id));
   const inherited = getConceptAncestors(relations, concept.id).flatMap(
     (ancestor) =>
@@ -433,7 +439,7 @@ export const getConceptPropertyRows = (
           listed.add(property.id);
 
           return {
-            datatype: getDatatypeLabel(property),
+            datatype: rowDatatype(property),
             inheritedFrom: ancestor,
             property,
           };

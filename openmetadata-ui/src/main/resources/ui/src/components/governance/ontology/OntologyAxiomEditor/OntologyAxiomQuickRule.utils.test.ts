@@ -138,6 +138,28 @@ describe('quick rule conversion', () => {
   });
 });
 
+describe('a rule as the server returns it', () => {
+  it('reads empty operand and individual lists as absent', () => {
+    const conversion = formToQuickRule({
+      ...EMPTY_AXIOM_FORM,
+      axiomType: AxiomType.SubclassOf,
+      expressions: [
+        {
+          cardinality: 2,
+          individualIris: [],
+          kind: ExpressionKind.Restriction,
+          operands: [],
+          propertyIri: 'urn:p',
+          restrictionKind: RestrictionKind.Min,
+        },
+      ],
+      subjectIri: 'urn:S',
+    });
+
+    expect(conversion).toEqual({ rule: mustHave });
+  });
+});
+
 describe('default rule name', () => {
   it('slugs the sentence and appends the unique suffix', () => {
     expect(

@@ -89,9 +89,16 @@ const isQuickQuantifier = (
 
 const lossy = (reason: string): QuickRuleConversion => ({ reason });
 
+const isEmptyValue = (value: unknown) =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) && value.length === 0);
+
+// The server returns every expression field, empty ones included (`operands: []`).
 const hasOnlyKeys = (expression: OntologyExpression, allowed: string[]) =>
   Object.entries(expression)
-    .filter(([, value]) => value !== undefined && value !== '')
+    .filter(([, value]) => !isEmptyValue(value))
     .every(([key]) => allowed.includes(key));
 
 export const quickRuleToForm = (

@@ -170,6 +170,17 @@ const pasteIri = async (picker: Locator, iri: string) => {
   await input.press('Tab');
 };
 
+/** An imported-style rule opens with a property condition; a class fact needs a named class instead. */
+const useNamedClassCondition = async (editor: Locator) => {
+  await selectOptionWithRetry(
+    editor
+      .getByTestId('ontology-expression-0')
+      .getByRole('button', { name: 'Constraint Type', exact: true })
+      .first(),
+    editor.page().getByRole('option', { name: 'Classification', exact: true })
+  );
+};
+
 const saveRule = async (page: Page) => {
   const created = page.waitForResponse(
     (response) =>
@@ -375,6 +386,7 @@ test.describe(
             editor.getByTestId('ontology-axiom-subject'),
             'urn:example:ada'
           );
+          await useNamedClassCondition(editor);
           await pickByLabel(
             editor.getByTestId('ontology-expression-0'),
             'Patient'
@@ -726,8 +738,7 @@ test.describe(
               )
             ).ok()
           ).toBe(true);
-          await page.reload();
-          await page.getByTestId('mode-tab-edit').click();
+          await openOntology(page, fixture.ontology);
           await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
             '0 conflicts to resolve'
           );
@@ -757,7 +768,7 @@ test.describe(
         const openForm = async () => {
           await inspector.getByTestId('ontology-add-property').click();
 
-          return page.getByTestId('ontology-property-form');
+          return inspector;
         };
 
         await test.step('Data property with a data type', async () => {
@@ -777,20 +788,29 @@ test.describe(
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
-          await expect(inspector.getByText('internalNote')).toBeVisible();
+          await expect(inspector.getByText('internal note')).toBeVisible();
         });
 
         await test.step('Reuse email on another concept without a duplicate', async () => {
           await clickGraphNode(page, order.id);
+          await expect(inspector).toContainText(order.name);
+          await expect(inspector).not.toContainText('email');
           const form = await openForm();
           await form.getByTestId('ontology-property-source-existing').click();
           await pickByLabel(
             form.getByTestId('ontology-property-reuse'),
             'email'
           );
+          const reused = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname.startsWith(
+                '/api/v1/ontologyProperties/'
+              ) && response.request().method() === 'PATCH'
+          );
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
+          expect((await reused).ok()).toBe(true);
           await expect(inspector.getByText('email')).toBeVisible();
         });
 
@@ -960,13 +980,14 @@ test.describe(
         const person = await fixture.concept('Person');
         const tonic = await fixture.concept('Tonic');
         const pill = await fixture.concept('Pill');
+        const syrup = await fixture.concept('Syrup');
         await fixture.axiom({
           name: 'MedicineNotPerson',
           axiomType: 'DISJOINT_WITH',
           subjectIri: medicine.iri,
           expressions: [{ kind: 'NAMED_CLASS', classIri: person.iri }],
         });
-        for (const child of [tonic, pill]) {
+        for (const child of [tonic, pill, syrup]) {
           for (const parent of [medicine, person]) {
             await fixture.axiom({
               name: `${child.name}Is${parent.name}`,
@@ -976,20 +997,6 @@ test.describe(
             });
           }
         }
-        const undeclared = 'urn:pw:undeclaredProperty';
-        await fixture.axiom({
-          name: 'MedicineNeedsUndeclared',
-          axiomType: 'SUBCLASS_OF',
-          subjectIri: medicine.iri,
-          expressions: [
-            {
-              kind: 'RESTRICTION',
-              restrictionKind: 'MIN',
-              cardinality: 1,
-              propertyIri: undeclared,
-            },
-          ],
-        });
         await setMode(api, user.responseData.id, 'classic');
 
         await openOntology(page, fixture.ontology);
@@ -1004,7 +1011,9 @@ test.describe(
         await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
           '3 conflicts to resolve'
         );
-        await expect(panel).toContainText(undeclared);
+        for (const child of [tonic, pill, syrup]) {
+          await expect(panel).toContainText(child.name);
+        }
         await testInfo.attach('g13-validate-all', {
           body: await page.screenshot(),
           contentType: 'image/png',

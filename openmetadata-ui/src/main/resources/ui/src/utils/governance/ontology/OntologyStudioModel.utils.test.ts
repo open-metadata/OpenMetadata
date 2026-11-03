@@ -364,6 +364,30 @@ describe('OntologyStudioModel utils', () => {
     ]);
   });
 
+  it('lists an annotation property on its concept, labelled annotation', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+    const rows = getConceptPropertyRows(
+      { ...model, properties: [...model.properties, note] },
+      getModelRelations(model),
+      premiumCustomer
+    );
+
+    expect(
+      rows.map((row) => [
+        row.property.name,
+        row.datatype,
+        row.inheritedFrom?.name,
+      ])
+    ).toContainEqual(['internalNote', 'annotation', undefined]);
+  });
+
   it('labels data types by their XSD local name, and enumerations as enum', () => {
     expect(getDatatypeLabel(orderTotal)).toBe('decimal');
     expect(
