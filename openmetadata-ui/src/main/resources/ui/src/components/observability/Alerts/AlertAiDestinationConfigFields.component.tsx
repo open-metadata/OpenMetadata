@@ -46,7 +46,6 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedWebhookConfig } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
   ALERT_AI_FORM_CLASS_NAMES,
   ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER,
@@ -504,7 +503,7 @@ interface KeyValueListProps {
   isViewOnly?: boolean;
   name: number;
   onChange: (entries: { key: string; value: string }[]) => void;
-  type: keyof Pick<ModifiedWebhookConfig, 'headers' | 'queryParams'>;
+  type: 'headers' | 'queryParams';
   value: { key: string; value: string }[];
 }
 

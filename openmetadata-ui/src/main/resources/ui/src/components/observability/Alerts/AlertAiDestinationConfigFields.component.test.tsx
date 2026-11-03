@@ -13,11 +13,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AlertType } from '../../../generated/events/api/createEventSubscription';
 import { SubscriptionCategory } from '../../../generated/events/eventSubscription';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
+import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
 
 jest.mock('./AlertAiFormFieldsSearchUtils', () => ({
   getAlertAiTeamOptions: jest
@@ -33,9 +30,9 @@ jest.mock('react-i18next', () => ({
 const destination = {
   config: { receivers: [] },
   destinationType: SubscriptionCategory.Teams,
-} as unknown as ModifiedDestination;
+} as unknown as AlertAiDestinationItemProps['destination'];
 
-const value: ModifiedCreateEventSubscription = {
+const value: AlertAiDestinationItemProps['value'] = {
   alertType: AlertType.Observability,
   destinations: [destination],
   input: {},
