@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
@@ -834,6 +835,8 @@ class PIIMaskerTest {
         new TestCase()
             .withName("ssn_format")
             .withDescription("Sensitive description")
+            .withIncidentStatus(
+                new TestCaseResolutionStatus().withFailureSummary("Incident details"))
             .withEntityLink("<#E::table::" + tableFqn + "::columns::" + linkedColumn + ">")
             .withParameterValues(
                 List.of(new TestCaseParameterValue().withName("regex").withValue("^078-")))
@@ -860,6 +863,7 @@ class PIIMaskerTest {
       assertNull(masked.getDescription());
       assertNull(masked.getParameterValues());
       assertNull(masked.getTestCaseResult());
+      assertNull(masked.getIncidentStatus());
       assertEquals(testCase.getEntityLink(), masked.getEntityLink());
     }
   }

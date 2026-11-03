@@ -67,6 +67,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -3141,6 +3142,44 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .untilAsserted(
             () ->
                 assertAll(
+                    () -> {
+                      TestCase complete =
+                          admin.testCases().get(testCase.getId().toString(), "incidentStatus");
+                      assertNotNull(complete.getIncidentStatus());
+                      assertTrue(
+                          complete
+                              .getIncidentStatus()
+                              .getFailureSummary()
+                              .contains("Sensitive failure"));
+                      TestCase projected =
+                          readerClient
+                              .testCases()
+                              .get(testCase.getId().toString(), "incidentStatus");
+                      assertNull(projected.getIncidentStatus());
+                      assertFalse(JsonUtils.pojoToJson(projected).contains("Sensitive failure"));
+                    },
+                    () -> {
+                      for (HttpMethod method : List.of(HttpMethod.GET, HttpMethod.POST)) {
+                        assertThrows(
+                            InvalidRequestException.class,
+                            () ->
+                                aggregateTestCase(
+                                    readerClient,
+                                    "test_case_search_index",
+                                    testCase.getId(),
+                                    "testCaseResult.testResultValue.value.keyword",
+                                    method));
+                        String visible =
+                            aggregateTestCase(
+                                readerClient,
+                                "test_case_search_index",
+                                testCase.getId(),
+                                "name.keyword",
+                                method);
+                        assertTrue(visible.contains(testCase.getName()));
+                        assertFalse(visible.contains("Sensitive description"));
+                      }
+                    },
                     () ->
                         assertFalse(
                             searchTestHit(
@@ -3238,10 +3277,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient ownerClient =
         SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
     for (OpenMetadataClient privileged : List.of(admin, ownerClient, SdkClients.botClient())) {
-      TestCase visible = privileged.testCases().get(testCase.getId().toString(), "testCaseResult");
+      TestCase visible =
+          privileged.testCases().get(testCase.getId().toString(), "testCaseResult,incidentStatus");
       assertEquals("Sensitive description", visible.getDescription());
       assertEquals(testCase.getParameterValues(), visible.getParameterValues());
       assertEquals("Sensitive failure", visible.getTestCaseResult().getResult());
+      assertTrue(visible.getIncidentStatus().getFailureSummary().contains("Sensitive failure"));
+      for (HttpMethod method : List.of(HttpMethod.GET, HttpMethod.POST)) {
+        assertTrue(
+            aggregateTestCase(
+                    privileged,
+                    "test_case_search_index",
+                    testCase.getId(),
+                    "testCaseResult.testResultValue.value.keyword",
+                    method)
+                .contains("Sensitive measure"));
+      }
       assertTrue(
           searchTestHit(privileged, "test_case_search_index", testCase.getId(), "_score", true)
               .path("_explanation")
@@ -3279,6 +3330,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertNull(masked.getDescription());
     assertTrue(nullOrEmpty(masked.getParameterValues()));
     assertNull(masked.getTestCaseResult());
+    assertNull(masked.getIncidentStatus());
   }
 
   private static void assertPiiColumnTag(TestCase testCase) {
@@ -3298,7 +3350,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 RequestOptions.builder()
                     .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
                     .queryParam("includeAllTests", "true")
-                    .queryParam("fields", "tags,testCaseResult")
+                    .queryParam("fields", "tags,testCaseResult,incidentStatus")
                     .build());
     List<TestCase> tests = JsonUtils.readValue(json, TestCaseResource.TestCaseList.class).getData();
     assertEquals(1, tests.size());
@@ -3307,6 +3359,36 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private static JsonNode searchTestHit(OpenMetadataClient client, String index, UUID id) {
     return searchTestHit(client, index, id, "_score");
+  }
+
+  private static String aggregateTestCase(
+      OpenMetadataClient client, String index, UUID id, String field, HttpMethod method) {
+    if (method == HttpMethod.POST) {
+      return client
+          .getHttpClient()
+          .executeForString(
+              method,
+              "/v1/search/aggregate",
+              new AggregationRequest()
+                  .withIndex(index)
+                  .withQuery("id:" + id)
+                  .withFieldName(field)
+                  .withFieldValue(".*")
+                  .withSourceFields(List.of("name", "description", "entityLink")));
+    }
+    return client
+        .getHttpClient()
+        .executeForString(
+            method,
+            "/v1/search/aggregate",
+            null,
+            RequestOptions.builder()
+                .queryParam("index", index)
+                .queryParam("q", "id:" + id)
+                .queryParam("field", field)
+                .queryParam("value", ".*")
+                .queryParam("sourceFields", "name,description,entityLink")
+                .build());
   }
 
   private static JsonNode searchTestHit(

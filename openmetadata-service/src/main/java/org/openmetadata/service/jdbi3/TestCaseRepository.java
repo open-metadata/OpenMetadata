@@ -671,7 +671,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           Optional.ofNullable(
                   ColumnUtil.resolveColumnByPath(
                       table.getColumns(), entityLink.getArrayFieldName()))
-              .ifPresent(column -> tags.addAll(listOrEmpty(column.getTags())));
+              .ifPresent(column -> tags.addAll(column.getTags()));
         }
 
         testCase.setTags(tags);

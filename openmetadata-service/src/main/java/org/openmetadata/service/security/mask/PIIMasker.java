@@ -346,7 +346,13 @@ public class PIIMasker {
     return new TestCaseMasker(authorizer, securityContext).mask(testCase);
   }
 
+  public static boolean shouldMaskTestCase(
+      TestCase testCase, Authorizer authorizer, SecurityContext securityContext) {
+    return new TestCaseMasker(authorizer, securityContext).shouldMask(testCase);
+  }
+
   private static TestCase maskTestCase(TestCase testCase) {
+    testCase.setIncidentStatus(null);
     testCase.setTestCaseResult(null);
     testCase.setParameterValues(null);
     testCase.setDescription(null);
@@ -399,6 +405,7 @@ public class PIIMasker {
     private static final int MAX_LINKED_ENTITIES = 1000;
     private final Authorizer authorizer;
     private final SecurityContext securityContext;
+    private final boolean unrestricted;
     private final Cache<String, Optional<Table>> tables =
         Caffeine.newBuilder().maximumSize(MAX_LINKED_ENTITIES).build();
     private final Cache<String, Optional<TestCase>> testCases =
@@ -407,6 +414,11 @@ public class PIIMasker {
     TestCaseMasker(Authorizer authorizer, SecurityContext securityContext) {
       this.authorizer = authorizer;
       this.securityContext = securityContext;
+      this.unrestricted = authorizer.authorizePII(securityContext, null);
+    }
+
+    boolean isUnrestricted() {
+      return unrestricted;
     }
 
     TestCase mask(TestCase testCase) {
@@ -414,8 +426,11 @@ public class PIIMasker {
     }
 
     boolean shouldMask(TestCase testCase) {
+      if (unrestricted) {
+        return false;
+      }
       if (testCase == null) {
-        return !authorizer.authorizePII(securityContext, null);
+        return true;
       }
       final MessageParser.EntityLink link =
           MessageParser.EntityLink.parse(testCase.getEntityLink());
@@ -437,6 +452,9 @@ public class PIIMasker {
     }
 
     TestCaseResult maskResult(TestCaseResult result) {
+      if (unrestricted) {
+        return result;
+      }
       return shouldMask(findTestCase(result.getTestCaseFQN()))
           ? new TestCaseResult()
               .withId(result.getId())

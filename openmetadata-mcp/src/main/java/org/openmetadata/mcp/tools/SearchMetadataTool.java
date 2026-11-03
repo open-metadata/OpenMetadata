@@ -293,12 +293,8 @@ public class SearchMetadataTool implements McpTool {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);
     response =
-        TestCaseSearchMasker.mask(
-            response,
-            authorizer,
-            securityContext,
-            Entity.getSearchRepository(),
-            searchRequest.getSortFieldParam());
+        TestCaseSearchMasker.maskSearch(
+            response, authorizer, securityContext, Entity.getSearchRepository(), searchRequest);
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {

@@ -386,6 +386,9 @@ public class GetEntityTool implements McpTool {
             ctx.securityContext(),
             new OperationContext(ctx.entityType(), VIEW_ALL),
             new ResourceContext<>(ctx.entityType(), null, ctx.fqn()));
+    if (masksTestCaseContent(ctx)) {
+      return renderText(ctx, "");
+    }
     AIContext context =
         new AIContextBuilder(ctx.entityType(), ctx.fqn())
             .withQuery(ctx.options().query())
@@ -417,6 +420,9 @@ public class GetEntityTool implements McpTool {
   }
 
   private static Object knowledgeContent(IncludeContext ctx) {
+    if (masksTestCaseContent(ctx)) {
+      return renderText(ctx, "");
+    }
     String query = ctx.options().query();
     List<String> found =
         query != null && !query.isBlank() && vectorSearchEnabled()
@@ -433,6 +439,11 @@ public class GetEntityTool implements McpTool {
               : renderText(ctx, String.join("\n\n---\n\n", found));
     }
     return rendered;
+  }
+
+  private static boolean masksTestCaseContent(IncludeContext ctx) {
+    return ctx.entity() instanceof TestCase testCase
+        && PIIMasker.shouldMaskTestCase(testCase, ctx.authorizer(), ctx.securityContext());
   }
 
   /**

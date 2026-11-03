@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -138,7 +139,8 @@ class SearchMetadataToolTest {
         .thenReturn("test_case_result_search_index");
     when(searchRepository.search(any(), any(SubjectContext.class)))
         .thenReturn(Response.ok(objectResponse ? body : JsonUtils.pojoToJson(body)).build());
-    when(authorizer.authorizePII(securityContext, List.of())).thenReturn(authorized);
+    doReturn(false).when(authorizer).authorizePII(securityContext, null);
+    doReturn(authorized).when(authorizer).authorizePII(securityContext, List.of());
     try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class);
         MockedStatic<Entity> entities = mockStatic(Entity.class)) {
       subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);

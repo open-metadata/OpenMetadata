@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.Include;
@@ -16,16 +19,33 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class TestCaseSearchMasker {
+  enum Projection {
+    TEST_CASES,
+    RESULTS,
+    MIXED;
+
+    static Projection forTypes(List<String> types) {
+      if (types.size() == 1 && types.contains(Entity.TEST_CASE_RESULT)) {
+        return RESULTS;
+      }
+      return !types.isEmpty() && !types.contains(Entity.TEST_CASE_RESULT) ? TEST_CASES : MIXED;
+    }
+  }
+
+  public record AggregationContext(SearchRepository repository, SubjectContext subject) {}
+
   private static final Logger LOG = LoggerFactory.getLogger(TestCaseSearchMasker.class);
   private static final List<String> SENSITIVE_FIELDS =
       List.of(
           "description",
           "parameterValues",
           "testCaseResult",
+          "incidentStatus",
           "textToEmbed",
           "textToLLMContext",
           "changeDescription",
@@ -68,6 +88,71 @@ public final class TestCaseSearchMasker {
         .maskResponse(response);
   }
 
+  public static Response maskSearch(
+      Response response,
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      SearchRepository repository,
+      SearchRequest request) {
+    if (authorizer.authorizePII(securityContext, null)
+        || !mayContainTestCases(repository, request.getIndex())) {
+      return response;
+    }
+    return new TestCaseSearchMasker(
+            authorizer,
+            securityContext,
+            repository.getIndexOrAliasName(Entity.TEST_CASE),
+            repository.getIndexOrAliasName(Entity.TEST_CASE_RESULT),
+            request.getSortFieldParam())
+        .maskResponse(response, true, projectionFor(repository, request.getIndex()));
+  }
+
+  public static Response maskAggregation(
+      AggregationRequest request,
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      AggregationContext context)
+      throws IOException {
+    if (authorizer.authorizePII(securityContext, null)
+        || !mayContainTestCases(context.repository(), request.getIndex())) {
+      return context.repository().aggregate(request, context.subject());
+    }
+    final TestCaseSearchMasker responseMasker =
+        new TestCaseSearchMasker(
+            authorizer,
+            securityContext,
+            context.repository().getIndexOrAliasName(Entity.TEST_CASE),
+            context.repository().getIndexOrAliasName(Entity.TEST_CASE_RESULT),
+            request.getTopHits() == null ? null : request.getTopHits().getSortField());
+    final AggregationRequest authorized =
+        new TestCaseAggregationMasker(context, responseMasker::containsMaskedHits).prepare(request);
+    return responseMasker.maskResponse(
+        context.repository().aggregate(authorized, context.subject()), false);
+  }
+
+  private static boolean mayContainTestCases(SearchRepository repository, String index) {
+    if (hasIndexPattern(index)) {
+      return true;
+    }
+    final List<String> entityTypes = repository.getEntityTypesForIndex(index);
+    return entityTypes.isEmpty()
+        || entityTypes.contains(Entity.TEST_CASE)
+        || entityTypes.contains(Entity.TEST_CASE_RESULT);
+  }
+
+  static Projection projectionFor(SearchRepository repository, String index) {
+    return hasIndexPattern(index)
+        ? Projection.MIXED
+        : Projection.forTypes(repository.getEntityTypesForIndex(index));
+  }
+
+  private static boolean hasIndexPattern(String index) {
+    return index == null
+        || index.indexOf(',') >= 0
+        || index.indexOf('*') >= 0
+        || index.indexOf('?') >= 0;
+  }
+
   public static Response mask(
       Response response,
       Authorizer authorizer,
@@ -84,17 +169,61 @@ public final class TestCaseSearchMasker {
   }
 
   private Response maskResponse(Response response) {
+    return maskResponse(response, true);
+  }
+
+  private Response maskResponse(Response response, boolean automaticAggregations) {
+    return maskResponse(response, automaticAggregations, Projection.MIXED);
+  }
+
+  private Response maskResponse(
+      Response response, boolean automaticAggregations, Projection projection) {
     final Object body = response.getEntity();
-    if (response.getStatus() != Response.Status.OK.getStatusCode() || body == null) {
+    if (masker.isUnrestricted()
+        || response.getStatus() != Response.Status.OK.getStatusCode()
+        || body == null) {
       return response;
     }
     final JsonNode root =
         body instanceof String json ? JsonUtils.readTree(json) : JsonUtils.valueToTree(body);
-    return maskHits(root.path("hits").path("hits"))
+    boolean changed = maskHits(root.path("hits").path("hits"));
+    if (root.path("aggregations") instanceof ObjectNode aggregations) {
+      changed |=
+          automaticAggregations
+              && TestCaseAggregationMasker.filterAutomatic(aggregations, projection);
+      changed |= maskAggregationHits(aggregations);
+    }
+    return changed
         ? Response.fromResponse(response)
             .entity(body instanceof String ? root.toString() : root)
             .build()
         : response;
+  }
+
+  private boolean maskAggregationHits(JsonNode node) {
+    boolean changed = maskHits(node.path("hits").path("hits"));
+    if (node.isContainerNode()) {
+      for (JsonNode child : node) {
+        changed |= maskAggregationHits(child);
+      }
+    }
+    return changed;
+  }
+
+  private boolean containsMaskedHits(JsonNode node) {
+    for (JsonNode hit : node.path("hits").path("hits")) {
+      final boolean isResult = matchesIndex(hit, resultIndex);
+      if ((isResult || matchesIndex(hit, testCaseIndex))
+          && masker.shouldMask(resolveTestCase(hit, isResult))) {
+        return true;
+      }
+    }
+    for (JsonNode child : node) {
+      if (child.isContainerNode() && containsMaskedHits(child)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean maskHits(JsonNode hits) {
@@ -128,14 +257,19 @@ public final class TestCaseSearchMasker {
   private void validateSort(boolean isResult) {
     if (sortField != null) {
       // Sort values are returned in cursors, so filtering _source alone cannot hide them.
-      final String rootField = sortField.split("\\.", 2)[0];
-      final boolean unavailable =
-          isResult ? !RESULT_SORT_FIELDS.contains(rootField) : SENSITIVE_FIELDS.contains(rootField);
+      final boolean unavailable = isFilteredField(sortField, isResult);
       if (unavailable) {
         throw new BadRequestException(
             "Sorting by the requested field is unavailable for these results.");
       }
     }
+  }
+
+  static boolean isFilteredField(String field, boolean isResult) {
+    final String rootField = field.split("\\.", 2)[0];
+    return isResult
+        ? !RESULT_SORT_FIELDS.contains(rootField)
+        : SENSITIVE_FIELDS.contains(rootField);
   }
 
   private void maskSource(ObjectNode source, boolean isResult) {

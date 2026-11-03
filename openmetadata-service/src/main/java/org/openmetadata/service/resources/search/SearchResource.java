@@ -275,14 +275,13 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
-    return filterTestCaseResponses(
-        cachedSearch(request, subjectContext), securityContext, sortFieldParam);
+    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
   }
 
   private Response filterTestCaseResponses(
-      Response response, SecurityContext securityContext, String sortField) {
-    return TestCaseSearchMasker.mask(
-        response, authorizer, securityContext, searchRepository, sortField);
+      Response response, SecurityContext securityContext, SearchRequest request) {
+    return TestCaseSearchMasker.maskSearch(
+        response, authorizer, securityContext, searchRepository, request);
   }
 
   private Response cachedSearch(SearchRequest request, SubjectContext subjectContext)
@@ -706,7 +705,7 @@ public class SearchResource {
             .withExplain(explain);
 
     return filterTestCaseResponses(
-        searchRepository.searchWithNLQ(request, subjectContext), securityContext, sortFieldParam);
+        searchRepository.searchWithNLQ(request, subjectContext), securityContext, request);
   }
 
   @GET
@@ -779,7 +778,7 @@ public class SearchResource {
         searchRepository.searchByField(
             fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext)),
         securityContext,
-        null);
+        new SearchRequest().withIndex(index));
   }
 
   @GET
@@ -805,7 +804,7 @@ public class SearchResource {
     return filterTestCaseResponses(
         searchRepository.searchBySourceUrl(sourceUrl, getSubjectContext(securityContext)),
         securityContext,
-        null);
+        new SearchRequest().withIndex("all"));
   }
 
   @GET
@@ -874,7 +873,11 @@ public class SearchResource {
             .withQueryText(queryText);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return searchRepository.aggregate(aggregationRequest, subjectContext);
+    return TestCaseSearchMasker.maskAggregation(
+        aggregationRequest,
+        authorizer,
+        securityContext,
+        new TestCaseSearchMasker.AggregationContext(searchRepository, subjectContext));
   }
 
   @POST
@@ -898,7 +901,11 @@ public class SearchResource {
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return searchRepository.aggregate(aggregationRequest, subjectContext);
+    return TestCaseSearchMasker.maskAggregation(
+        aggregationRequest,
+        authorizer,
+        securityContext,
+        new TestCaseSearchMasker.AggregationContext(searchRepository, subjectContext));
   }
 
   @GET
