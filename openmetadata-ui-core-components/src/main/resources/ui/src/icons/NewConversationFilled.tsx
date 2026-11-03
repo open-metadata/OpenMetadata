@@ -38,6 +38,7 @@ export const NewConversationFilled: FC<Props> = ({
         fill="currentColor"
       />
       <path
+        className="tw:stroke-bg-primary"
         d="M10 6.11v3.888m0 0v3.89m0-3.89H6.111m3.89 0h3.888"
         stroke="#fff"
         strokeWidth={1.111}
