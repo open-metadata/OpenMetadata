@@ -21,7 +21,7 @@ const AGENT_ICONS = { xxs: SmallAgentIcon, xs: AgentIcon };
 /** An AI agent's avatar, where a person's picture would go. */
 const AgentAvatar = ({ size }: { size: keyof typeof AGENT_ICONS }) => (
   <Avatar
-    className="tw:bg-primary"
+    colorVariant="plain"
     data-testid="agent-avatar"
     placeholderIcon={AGENT_ICONS[size]}
     size={size}
