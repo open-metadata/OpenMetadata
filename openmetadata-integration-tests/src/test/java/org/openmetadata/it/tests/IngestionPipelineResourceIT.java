@@ -1937,6 +1937,32 @@ public class IngestionPipelineResourceIT
     assertEquals(history, storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()));
   }
 
+  @Test
+  void storageManifestCredentialsAreEncryptedAndMasked(TestNamespace ns) {
+    String secret = "storage-manifest-secret-" + UUID.randomUUID();
+    StorageMetadataS3Config manifest =
+        new StorageMetadataS3Config()
+            .withPrefixConfig(new StorageMetadataBucketDetails().withContainerName("bucket"))
+            .withSecurityConfig(
+                new AWSCredentials().withAwsAccessKeyId("key").withAwsSecretAccessKey(secret));
+    IngestionPipeline pipeline =
+        createEntity(
+            createMinimalRequest(ns)
+                .withService(StorageServiceTestFactory.createS3(ns).getEntityReference())
+                .withPipelineType(PipelineType.METADATA)
+                .withSourceConfig(
+                    new SourceConfig()
+                        .withConfig(
+                            new StorageServiceMetadataPipeline()
+                                .withStorageMetadataConfigSource(manifest))));
+
+    assertDbtSecretEncrypted(storedPipelineJson(pipeline.getId()), secret);
+    String response =
+        JsonUtils.pojoToJson(
+            SdkClients.testUserClient().ingestionPipelines().get(pipeline.getId()));
+    assertDbtSecretMasked(response, secret);
+  }
+
   private IngestionPipeline createDbtPipelineWithSecret(TestNamespace ns, String secret) {
     assertTrue(Fernet.getInstance().isKeyDefined(), "The test server must encrypt secrets at rest");
     AWSCredentials credentials =

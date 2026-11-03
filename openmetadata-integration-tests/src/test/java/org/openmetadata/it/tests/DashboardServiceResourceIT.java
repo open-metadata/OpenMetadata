@@ -11,19 +11,27 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.security.credentials.GCPValues;
+import org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
+import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
  * Integration tests for DashboardService entity operations.
@@ -306,5 +314,41 @@ public class DashboardServiceResourceIT
     ListResponse<DashboardService> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() >= 3);
+  }
+
+  @Test
+  void powerBiGcsPrivateKeyIsEncryptedAndMasked(TestNamespace ns) {
+    String secret = "powerbi-gcs-secret-" + UUID.randomUUID();
+    GCSConfig filesSource =
+        new GCSConfig()
+            .withSecurityConfig(
+                new GCPCredentials().withGcpConfig(new GCPValues().withPrivateKey(secret)));
+    PowerBIConnection connection =
+        new PowerBIConnection()
+            .withClientId("client")
+            .withClientSecret("client-secret")
+            .withTenantId("tenant")
+            .withPbitFilesSource(filesSource);
+    DashboardService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withServiceType(DashboardServiceType.PowerBI)
+                .withConnection(new DashboardConnection().withConfig(connection)));
+
+    String stored =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT json FROM dashboard_service_entity WHERE id = :id")
+                        .bind("id", service.getId().toString())
+                        .mapTo(String.class)
+                        .one());
+    assertFalse(stored.contains(secret));
+    assertTrue(stored.contains(Fernet.FERNET_PREFIX));
+
+    String response = JsonUtils.pojoToJson(getEntity(service.getId().toString()));
+    assertFalse(response.contains(secret));
+    assertTrue(response.contains(PasswordEntityMasker.PASSWORD_MASK));
   }
 }
