@@ -247,7 +247,7 @@ export const OntologyNodeRelationsContent: React.FC<
             {String(count).padStart(2, '0')}
           </Badge>
         </div>
-        <Card className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:p-4">
+        <Card className="tw:overflow-hidden tw:rounded-lg tw:p-4">
           <ul className="tw:m-0 tw:list-none tw:p-0">
             {rows.map((rel, rowIndex) => {
               const labelText = relatedDisplayName(rel);
@@ -367,7 +367,7 @@ export const OntologyNodeRelationsContent: React.FC<
     }
 
     return (
-      <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-dashed tw:border-primary tw:p-3 tw:shadow-sm">
+      <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border-dashed tw:p-3 tw:shadow-sm">
         <Select
           aria-label={t('label.mapping-type')}
           items={Object.values(ConceptMappingType).map((type) => ({
@@ -438,7 +438,7 @@ export const OntologyNodeRelationsContent: React.FC<
         <div className="tw:flex tw:items-center tw:gap-2">
           <Typography
             as="h3"
-            className="not-prose tw:m-0 tw:text-primary"
+            className="not-prose tw:m-0"
             size="text-sm"
             weight="semibold">
             {t('label.mapping-plural')}
@@ -449,7 +449,7 @@ export const OntologyNodeRelationsContent: React.FC<
         </div>
         {conceptMappings.map((mapping) => (
           <Card
-            className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:p-3 tw:shadow-sm"
+            className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:p-3 tw:shadow-sm"
             key={`${mapping.mappingType}-${mapping.conceptIri}`}>
             <div className="tw:flex tw:min-w-0 tw:max-w-[40%] tw:shrink-0">
               <Badge
