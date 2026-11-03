@@ -16,6 +16,7 @@ import json
 import os
 import sys
 import tempfile
+from fnmatch import fnmatchcase
 from io import StringIO
 from types import SimpleNamespace
 from unittest import TestCase
@@ -26,8 +27,10 @@ import pytest
 
 from metadata.entity_resolution.engine import EntityResolver
 from metadata.entity_resolution.table import TableResolver
+from metadata.entity_resolution.table_binding import alias_resolution_cache
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import BulkSink
 from metadata.generated.schema.type.basic import (
@@ -396,13 +399,67 @@ def _metadata_for_usage_resolution(table: Table):
     published = []
     joins = []
 
-    def get_by_name(*, fqn, **_kwargs):
+    def get_by_name(_entity=None, *, fqn, **_kwargs):
         return entities.get(fqn)
 
+    def search(*, entity_type, fqn_search_string, **_kwargs):
+        if entity_type is not Table:
+            return []
+        candidates = [name for name in entities if fnmatchcase(name.lower(), fqn_search_string.lower())]
+        if not candidates:
+            candidates = metadata.search_fqn_candidates(
+                entity_type=entity_type, value=fqn_search_string, wildcard="*" in fqn_search_string, size=11
+            ).fqns
+        return [entities[name] for name in candidates if name in entities and fnmatchcase(name, fqn_search_string)]
+
     metadata.get_by_name.side_effect = get_by_name
+    metadata.es_search_from_fqn.side_effect = search
+    metadata.search_fqn_candidates.return_value = FqnSearchResult((), 0, True)
     metadata.publish_table_usage.side_effect = lambda entity, request: published.append((entity.id, request.count))
     metadata.publish_frequently_joined_with.side_effect = lambda entity, request: joins.append((entity.id, request))
     return metadata, entities, published, joins
+
+
+@pytest.mark.parametrize(
+    "include_synonyms,reference,expected_usage,expected_joins",
+    [(True, "orders_alias", 1, 1), (True, "orders", 1, 1), (False, "orders_alias", 0, 0), (False, "orders", 1, 0)],
+)
+def test_usage_and_joins_resolve_synonyms_to_canonical_tables(
+    include_synonyms, reference, expected_usage, expected_joins
+):
+    table = Table(
+        id=uuid4(),
+        name="orders",
+        fullyQualifiedName="test_service.test_db.test_schema.orders",
+        columns=[{"name": "id", "dataType": "INT", "fullyQualifiedName": "test_service.test_db.test_schema.orders.id"}],
+    )
+    metadata, entities, published, joins = _metadata_for_usage_resolution(table)
+    service = SimpleNamespace(connection=SimpleNamespace(config=SimpleNamespace(includeSynonyms=include_synonyms)))
+    metadata.get_by_name.side_effect = lambda entity=None, *, fqn, **kwargs: (
+        service if entity is DatabaseService else entities.get(fqn)
+    )
+    metadata.es_search_from_alias.side_effect = lambda *, alias_fqn, **kwargs: (
+        [table] if alias_fqn == "test_service.test_db.test_schema.orders_alias" else []
+    )
+    record = create_table_usage().model_dump()
+    record["table"] = reference
+    record["joins"] = [
+        {"tableColumn": {"table": reference, "column": "id"}, "joinedWith": [{"table": "orders_alias", "column": "id"}]}
+    ]
+    sink = MetadataUsageBulkSink(MetadataUsageSinkConfig(filename="/tmp/test_usage"), metadata)
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(json.dumps(record)) + "\n")])
+    alias_resolution_cache.clear()
+    try:
+        sink.handle_table_usage()
+    finally:
+        alias_resolution_cache.clear()
+    assert published == ([(table.id, 1)] if expected_usage else [])
+    targets = [target for _, request in joins for column in request.columnJoins for target in column.joinedWith]
+    assert len(targets) == expected_joins
+    if targets:
+        assert joins[0][0] == table.id
+        assert targets[0].fullyQualifiedName.root == "test_service.test_db.test_schema.orders.id"
+    assert not sink.status.failures
 
 
 def test_table_usage_run_reuses_resolution_across_files_and_refreshes_next_run():

@@ -13,6 +13,8 @@
 
 from dataclasses import replace
 
+from cachetools import LRUCache
+
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.engine import (
     EntityResolver,
@@ -20,6 +22,7 @@ from metadata.entity_resolution.engine import (
     FqnLookupMode,
     ResolutionTier,
 )
+from metadata.entity_resolution.table_binding import TableLookup
 from metadata.generated.schema.entity.data.table import Table
 from metadata.utils import fqn
 
@@ -55,11 +58,12 @@ def table_lookup_tiers(service: str, reference: TableReference, include: str | N
 
 
 class TableResolver:
-    """Build table plans without owning cache state or the client lifecycle."""
+    """Resolve table references within one execution without owning the client."""
 
     def __init__(self, resolver: EntityResolver, service_types: dict[str, str] | None = None):
         self._resolver = resolver
         self._service_types = service_types or {}
+        self._lineage_cache: LRUCache[tuple, tuple[Table, ...]] = LRUCache(maxsize=512)
 
     def resolve(
         self,
@@ -71,6 +75,7 @@ class TableResolver:
         schema_fallback: bool = False,
         fields: tuple[str, ...] = (),
         include: str | None = None,
+        lookup: TableLookup = TableLookup.CATALOG,
     ) -> tuple[Table, ...]:
         from metadata.entity_resolution.table_binding import load_table_binding_resolution  # noqa: PLC0415
 
@@ -83,12 +88,17 @@ class TableResolver:
         schemas = (reference.schema, None) if schema_fallback and reference.schema else (reference.schema,)
         for schema in schemas:
             for name in names:
+                key = (name, replace(reference, schema=schema), fields, include)
+                if lookup == TableLookup.LINEAGE and key in self._lineage_cache:
+                    return self._lineage_cache[key]
                 resolution = load_table_binding_resolution(
                     self._service_types.get(name), self._resolver.metadata, engine=self._resolver
                 )
                 matches = resolution.resolve(
-                    replace(reference, schema=schema), service_name=name, fields=fields, include=include
+                    replace(reference, schema=schema), service_name=name, fields=fields, include=include, lookup=lookup
                 )
                 if matches:
+                    if lookup == TableLookup.LINEAGE:
+                        self._lineage_cache[key] = matches
                     return matches
         return ()

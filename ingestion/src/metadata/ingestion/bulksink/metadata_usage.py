@@ -32,6 +32,7 @@ from pydantic import ValidationError
 from metadata.config.common import ConfigModel
 from metadata.entity_resolution.engine import EntityResolver
 from metadata.entity_resolution.table import TableResolver
+from metadata.entity_resolution.table_binding import TableLookup
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
@@ -214,6 +215,7 @@ class MetadataUsageBulkSink(BulkSink):
                             database_name=table_usage.databaseName,
                             database_schema=table_usage.databaseSchema,
                             table_name=table_usage.table,
+                            lookup=TableLookup.LINEAGE,
                         )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
@@ -396,6 +398,7 @@ class MetadataUsageBulkSink(BulkSink):
                 database_name=database,
                 database_schema=database_schema,
                 table_name=table_column.table,
+                lookup=TableLookup.LINEAGE,
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
