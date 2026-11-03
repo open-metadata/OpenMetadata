@@ -118,6 +118,14 @@ public interface OntologyConceptBindingDAO {
   @SqlQuery(
       "SELECT "
           + COLUMNS
+          + " FROM ontology_concept_binding WHERE assetId = :assetId "
+          + "ORDER BY conceptId ASC LIMIT :limit")
+  @RegisterRowMapper(BindingRowMapper.class)
+  List<BindingRow> listForAsset(@BindUUID("assetId") UUID assetId, @Bind("limit") int limit);
+
+  @SqlQuery(
+      "SELECT "
+          + COLUMNS
           + " FROM ontology_concept_binding WHERE conceptId = :conceptId AND assetId > :after "
           + "ORDER BY assetId ASC LIMIT :limit")
   @RegisterRowMapper(BindingRowMapper.class)
