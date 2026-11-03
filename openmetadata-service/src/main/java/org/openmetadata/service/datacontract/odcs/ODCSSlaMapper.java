@@ -188,7 +188,10 @@ public final class ODCSSlaMapper {
     Object value = entry.property().getValue();
     Integer number = null;
     if (value instanceof Number numeric) {
-      number = numeric.doubleValue() % 1 == 0 ? numeric.intValue() : null;
+      double asDouble = numeric.doubleValue();
+      boolean fitsInt =
+          asDouble % 1 == 0 && asDouble >= Integer.MIN_VALUE && asDouble <= Integer.MAX_VALUE;
+      number = fitsInt ? numeric.intValue() : null;
     } else if (value instanceof String textual) {
       try {
         number = Integer.valueOf(textual.trim());
@@ -201,7 +204,7 @@ public final class ODCSSlaMapper {
           entry,
           "value",
           String.format(
-              "SLA `%s` value `%s` is not a whole number, so it is not imported.",
+              "SLA `%s` value `%s` is not a whole number in the 32-bit integer range, so it is not imported.",
               entry.property().getProperty(), value));
     }
     return number;

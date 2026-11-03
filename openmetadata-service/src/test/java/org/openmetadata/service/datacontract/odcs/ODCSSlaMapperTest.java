@@ -17,8 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.MaxLatency;
 import org.openmetadata.schema.api.data.RefreshFrequency;
@@ -124,6 +129,68 @@ class ODCSSlaMapperTest {
 
     assertEquals(1, sla.getMaxLatency().getValue());
     assertEquals(1, ODCSSlaMapper.toOdcs(sla).get(0).getValue());
+  }
+
+  @ParameterizedTest
+  @MethodSource("unrepresentableNumbers")
+  void unrepresentableNumberIsOmittedAndReported(Object value) {
+    ODCSImportIssues issues = new ODCSImportIssues();
+    ContractSLA sla =
+        ODCSSlaMapper.toContractSla(
+            List.of(new ODCSSlaProperty().withProperty("latency").withValue(value).withUnit("h")),
+            issues);
+
+    assertNull(sla.getMaxLatency());
+    assertEquals(1, issues.toList().size());
+    ODCSImportIssue issue = issues.toList().getFirst();
+    assertEquals(ODCSImportIssueCategory.SLA, issue.getCategory());
+    assertEquals("slaProperties[0].value", issue.getPath());
+    assertTrue(issue.getMessage().contains("not imported"));
+  }
+
+  private static Stream<Object> unrepresentableNumbers() {
+    return Stream.of(
+        3_000_000_000L,
+        -3_000_000_000L,
+        (long) Integer.MAX_VALUE + 1,
+        (long) Integer.MIN_VALUE - 1,
+        new BigInteger("18446744073709551616"),
+        new BigDecimal("3000000000"),
+        1e20,
+        -1e20,
+        Double.NaN,
+        Double.POSITIVE_INFINITY,
+        Double.NEGATIVE_INFINITY,
+        1.5,
+        "3000000000",
+        "-3000000000");
+  }
+
+  @ParameterizedTest
+  @MethodSource("intRangeWholeNumbers")
+  void intRangeWholeNumberIsImportedWithoutWarnings(Number value) {
+    ODCSImportIssues issues = new ODCSImportIssues();
+    ContractSLA sla =
+        ODCSSlaMapper.toContractSla(
+            List.of(new ODCSSlaProperty().withProperty("latency").withValue(value).withUnit("h")),
+            issues);
+
+    assertEquals(value.intValue(), sla.getMaxLatency().getValue());
+    assertTrue(issues.toList().isEmpty());
+  }
+
+  private static Stream<Number> intRangeWholeNumbers() {
+    return Stream.of(
+        Integer.MIN_VALUE,
+        Integer.MAX_VALUE,
+        (long) Integer.MIN_VALUE,
+        (long) Integer.MAX_VALUE,
+        (double) Integer.MIN_VALUE,
+        (double) Integer.MAX_VALUE,
+        BigInteger.valueOf(Integer.MAX_VALUE),
+        new BigDecimal("2.0"),
+        0,
+        1.0);
   }
 
   private static ContractSLA toSla(ODCSSlaProperty property) {
