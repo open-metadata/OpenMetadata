@@ -684,22 +684,38 @@ class TableauSource(DashboardServiceSource):
             logger.warning(f"Error to get datamodel child column lineage: {exc}")
         return datamodel_child_column_lineage or None
 
+    @staticmethod
+    def _get_field_formulas(data_source: DataSource) -> dict[str, str]:
+        """Formula of each calculated field of a datasource, keyed by the field's display name."""
+        return {field.name: field.formula for field in data_source.fields or [] if field.name and field.formula}
+
     def _get_datamodel_col_lineage(
         self,
         data_model_entity: DashboardDataModel,
         upstream_data_model_entity: DashboardDataModel,
+        upstream_formulas: dict[str, str] | None = None,
     ):
         """
         Method to get the ColumnLineage list for the datamodels lineage
+
+        A calculated field of the published datasource carries its formula as the column edge's
+        ``function``, so selecting that edge in the lineage view shows how the field is computed.
         """
         datamodel_column_lineage = []
+        formulas = upstream_formulas or {}
         try:
             for data_model_col in data_model_entity.columns or []:
                 for upstream_data_model_col in upstream_data_model_entity.columns or []:
                     if data_model_col.displayName == upstream_data_model_col.displayName:
                         from_column = upstream_data_model_col.fullyQualifiedName.root
                         to_column = data_model_col.fullyQualifiedName.root
-                        datamodel_column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
+                        datamodel_column_lineage.append(
+                            ColumnLineage(
+                                fromColumns=[from_column],
+                                toColumn=to_column,
+                                function=formulas.get(upstream_data_model_col.displayName),
+                            )
+                        )
                         datamodel_child_col_lineage = self._get_datamodel_child_col_lineage(
                             data_model_col=data_model_col,
                             upstream_data_model_col=upstream_data_model_col,
@@ -740,6 +756,7 @@ class TableauSource(DashboardServiceSource):
                         column_lineage=self._get_datamodel_col_lineage(
                             data_model_entity=data_model_entity,
                             upstream_data_model_entity=upstream_data_model_entity,
+                            upstream_formulas=self._get_field_formulas(upstream_data_model),
                         ),
                     )
                     # Create [Table<->Published Datasource] lineage
@@ -1331,11 +1348,17 @@ class TableauSource(DashboardServiceSource):
             Columns details for Data Model
         """
         datasource_columns = []
+        # An embedded datasource reports a field it reads from a published datasource as a bare
+        # field with no formula, so the formula is taken from the published definition.
+        inherited_formulas: dict[str, str] = {}
+        for upstream in data_source.upstreamDatasources or []:
+            inherited_formulas.update(self._get_field_formulas(upstream))
         for field in data_source.fields or []:
             try:
                 description = field.description or ""
-                if field.formula:
-                    formula_text = f"**Formula:** `{field.formula}`"
+                formula = field.formula or inherited_formulas.get(field.name or "")
+                if formula:
+                    formula_text = f"**Formula:** `{formula}`"
                     description = f"{description}\n\n{formula_text}" if description else formula_text
                 parsed_fields = {
                     "dataTypeDisplay": TABLEAU_FIELD_TYPE_DISPLAY,
