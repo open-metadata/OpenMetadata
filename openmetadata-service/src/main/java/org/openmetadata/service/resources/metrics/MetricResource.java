@@ -152,8 +152,20 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     ResultList<MetricHierarchyItem> result;
     Optional<Set<UUID>> pickedMetrics =
         EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC);
-    if (pickedMetrics.isEmpty() && canListHierarchyWithoutFiltering(securityContext)) {
+    boolean canViewAll = canListHierarchyWithoutFiltering(securityContext);
+    if (pickedMetrics.isEmpty() && canViewAll) {
       result = repository.listHierarchy(limit, offset, query);
+    } else if (canViewAll) {
+      // Only the pick narrows: no per-entity checks, and the groups in it are found in one batch.
+      Set<UUID> picked = pickedMetrics.get();
+      result =
+          repository.listHierarchy(
+              limit,
+              offset,
+              query,
+              metric -> picked.contains(metric.getId()),
+              repository.groupInDomainPick(
+                  EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC_GROUP), picked));
     } else {
       Predicate<EntityReference> canViewMetric =
           metric ->

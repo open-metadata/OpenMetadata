@@ -295,7 +295,8 @@ class MetricResourceTest {
           .thenReturn(viewPermission(Entity.METRIC, Permission.Access.ALLOW));
       when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
           .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
-      when(fixture.repository().groupInDomainPick(any(), any())).thenReturn(group -> false);
+      when(fixture.repository().groupInDomainPick(any(), eq(Set.of(pickedMetric))))
+          .thenReturn(group -> false);
       ArgumentCaptor<Predicate<EntityReference>> canViewMetric =
           ArgumentCaptor.forClass(Predicate.class);
       when(fixture
@@ -305,8 +306,12 @@ class MetricResourceTest {
 
       fixture.resource().listHierarchy(securityContext, null, 25, 0);
 
-      // A pick filters even a caller who could list every metric unfiltered.
+      // A pick filters even a caller who could list every metric unfiltered, and finds the groups
+      // in
+      // it in one batch rather than by each group's capped member scan.
       verify(fixture.repository(), never()).listHierarchy(25, 0, null);
+      verify(fixture.repository(), never())
+          .groupInDomainPick(any(), org.mockito.ArgumentMatchers.<Predicate<EntityReference>>any());
       EntityReference picked = new EntityReference().withId(pickedMetric).withType(Entity.METRIC);
       EntityReference other =
           new EntityReference().withId(UUID.randomUUID()).withType(Entity.METRIC);

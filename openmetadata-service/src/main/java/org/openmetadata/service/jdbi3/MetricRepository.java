@@ -1076,6 +1076,28 @@ public class MetricRepository extends EntityRepository<Metric> {
             || groups.hasVisibleMemberMatching(group.getId(), null, canViewMetric);
   }
 
+  /**
+   * As above, for a caller who can view every metric: the groups holding a picked metric are read
+   * in one batch, rather than scanning each group's members (which is capped in size).
+   */
+  public Predicate<EntityReference> groupInDomainPick(
+      Optional<Set<UUID>> pickedGroups, Set<UUID> pickedMetrics) {
+    Set<UUID> holdingPickedMetric =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                pickedMetrics.stream().map(UUID::toString).toList(),
+                Relationship.HAS.ordinal(),
+                Entity.METRIC_GROUP,
+                NON_DELETED)
+            .stream()
+            .map(relationship -> UUID.fromString(relationship.getFromId()))
+            .collect(java.util.stream.Collectors.toSet());
+    return group ->
+        pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
+            || holdingPickedMetric.contains(group.getId());
+  }
+
   HierarchyScan scanUnrestrictedHierarchyRows(int limit, int offset, String nameLike) {
     CollectionDAO.MetricDAO metricDAO = daoCollection.metricDAO();
     List<CollectionDAO.MetricDAO.HierarchyRow> rows =
