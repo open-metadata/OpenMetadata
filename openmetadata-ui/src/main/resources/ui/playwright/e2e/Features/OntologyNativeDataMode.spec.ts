@@ -564,6 +564,15 @@ test.describe(
             `/table/${table.entityResponseData.fullyQualifiedName}`
           );
           const response = await links;
+          const startedAt = Date.now();
+          const probe = await api.get(
+            `/api/v1/ontologyConcepts/boundTo/table/${table.entityResponseData.id}`
+          );
+          expect(probe.ok()).toBe(true);
+          test.info().annotations.push({
+            type: 'perf-bound-to-ms',
+            description: String(Date.now() - startedAt),
+          });
           const section = page.getByTestId('table-linked-concepts');
 
           expect(
@@ -582,6 +591,8 @@ test.describe(
           await page.goto(`/table/${column?.fullyQualifiedName ?? ''}`);
           await expect(page.getByTestId('table-linked-concepts')).toBeVisible();
 
+          // The column route opens its detail drawer over the page in AI mode.
+          await page.keyboard.press('Escape');
           await section.getByTestId('table-linked-concept-link').click();
           await expect(page).toHaveURL(
             new RegExp(`/governance/ontology\\?ontology=${ontology.id}`)
