@@ -27,6 +27,7 @@ import {
   ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
   PortOverlayProps,
 } from './PortOverlay.interface';
+import { useRelationWarning } from './RelationWarning.context';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
 import { NODE_HEIGHT, NODE_WIDTH } from './utils/graphConfig';
 
@@ -74,6 +75,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
 }) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const warnRelation = useRelationWarning();
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const toLocalPoint = useCallback(
@@ -343,6 +345,13 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
             groups={relationTypeGroups}
             sourceLabel={getNodeLabel(pendingRelation.fromId)}
             targetLabel={getNodeLabel(pendingRelation.toId)}
+            warnRelation={(relationType) =>
+              warnRelation?.(
+                pendingRelation.fromId,
+                pendingRelation.toId,
+                relationType
+              ) ?? Promise.resolve(undefined)
+            }
             onCancel={dismissPending}
             onSelect={(relationType) => confirmRelationType(relationType)}
           />

@@ -24,6 +24,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { OntologyModelRelation } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { InspectorRemoveButton } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
+import { useRelationWarning } from '../../../OntologyExplorer/RelationWarning.context';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 
 interface OntologyRelationControlsProps {
@@ -48,6 +49,7 @@ const OntologyRelationControls = ({
   const { t } = useTranslation();
   const [isPicking, setIsPicking] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  const warnRelation = useRelationWarning();
 
   const change = async (typeId: string) => {
     setIsBusy(true);
@@ -101,6 +103,10 @@ const OntologyRelationControls = ({
               groups={groups}
               sourceLabel={getEntityName(relation.from)}
               targetLabel={getEntityName(relation.to)}
+              warnRelation={(typeId) =>
+                warnRelation?.(relation.from.id, relation.to.id, typeId) ??
+                Promise.resolve(undefined)
+              }
               onCancel={() => setIsPicking(false)}
               onSelect={(typeId) => void change(typeId)}
             />

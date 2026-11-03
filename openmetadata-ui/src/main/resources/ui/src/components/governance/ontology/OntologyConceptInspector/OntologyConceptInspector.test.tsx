@@ -53,6 +53,10 @@ import {
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
+import {
+  RelationWarningCheck,
+  RelationWarningContext,
+} from '../../../OntologyExplorer/RelationWarning.context';
 import OntologyConceptInspector from './OntologyConceptInspector';
 
 jest.mock('../../../../rest/ontologyAPI');
@@ -1050,26 +1054,29 @@ describe('OntologyConceptInspector relationship authoring', () => {
   ];
 
   const renderAuthoring = (
-    props: Partial<React.ComponentProps<typeof OntologyConceptInspector>> = {}
+    props: Partial<React.ComponentProps<typeof OntologyConceptInspector>> = {},
+    warn?: RelationWarningCheck
   ) =>
     renderWithQueryClient(
-      <MemoryRouter>
-        <OntologyConceptInspector
-          canAddRelation
-          canEditRelations
-          concept={concept}
-          model={authoringModel}
-          relationTypeGroups={relationTypeGroups}
-          relations={getModelRelations(authoringModel)}
-          onAddRelation={jest.fn().mockResolvedValue(true)}
-          onClose={jest.fn()}
-          onDeleteRelation={jest.fn().mockResolvedValue(true)}
-          onEditRelation={jest.fn().mockResolvedValue(true)}
-          onOpenData={jest.fn()}
-          onSelectConcept={jest.fn()}
-          {...props}
-        />
-      </MemoryRouter>
+      <RelationWarningContext.Provider value={warn}>
+        <MemoryRouter>
+          <OntologyConceptInspector
+            canAddRelation
+            canEditRelations
+            concept={concept}
+            model={authoringModel}
+            relationTypeGroups={relationTypeGroups}
+            relations={getModelRelations(authoringModel)}
+            onAddRelation={jest.fn().mockResolvedValue(true)}
+            onClose={jest.fn()}
+            onDeleteRelation={jest.fn().mockResolvedValue(true)}
+            onEditRelation={jest.fn().mockResolvedValue(true)}
+            onOpenData={jest.fn()}
+            onSelectConcept={jest.fn()}
+            {...props}
+          />
+        </MemoryRouter>
+      </RelationWarningContext.Provider>
     );
 
   beforeEach(() => {
@@ -1142,6 +1149,25 @@ describe('OntologyConceptInspector relationship authoring', () => {
     expect(
       screen.queryByTestId('ontology-relation-edit')
     ).not.toBeInTheDocument();
+  });
+
+  it('shows the server clash beside the chosen parent and still allows Add', async () => {
+    renderAuthoring(
+      { relations: [] },
+      async () => 'Customer would also be a Supplier, which are disjoint.'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    fireEvent.click(screen.getByTestId('relation-type-isA'));
+    fireEvent.click(screen.getByRole('button', { name: /label.target/ }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
+
+    expect(
+      await screen.findByTestId('ontology-relationship-clash')
+    ).toHaveTextContent(
+      'Customer would also be a Supplier, which are disjoint.'
+    );
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeEnabled();
   });
 
   it('explains why a new relationship cannot be added and disables Add', async () => {

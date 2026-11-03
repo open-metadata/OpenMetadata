@@ -32,6 +32,7 @@ import {
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { patchOntologyConcept } from '../../../../rest/ontologyAPI';
+import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
@@ -123,7 +124,11 @@ const OntologyConceptEditor = ({
             <FormField
               control={form.control}
               name={field.name as `conceptMappings.${number}.conceptIri`}
-              rules={field.rules}>
+              rules={{
+                validate: (value: string) =>
+                  isAbsoluteOntologyIri(value.trim()) ||
+                  t('message.invalid-concept-iri'),
+              }}>
               {({ field: control, fieldState }) => (
                 <OntologyIriInput
                   isRequired

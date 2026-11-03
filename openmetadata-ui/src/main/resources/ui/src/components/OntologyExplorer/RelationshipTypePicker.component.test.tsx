@@ -215,6 +215,59 @@ describe('RelationshipTypePicker', () => {
     ).not.toBeInTheDocument();
   });
 
+  describe('server clash warning', () => {
+    const GROUPS = [
+      {
+        id: 'core',
+        title: 'Core',
+        options: [
+          { id: 'subClassOf', label: 'is a', paletteKey: PaletteKey.Blue },
+        ],
+      },
+    ];
+    const CLASH = 'Customer would also be a Supplier, which are disjoint.';
+
+    it('shows the clash beside the choice and writes only after Add anyway', async () => {
+      const onSelect = jest.fn();
+      render(
+        <RelationshipTypePicker
+          groups={GROUPS}
+          sourceLabel="Customer"
+          targetLabel="Supplier"
+          warnRelation={async () => CLASH}
+          onSelect={onSelect}
+        />
+      );
+      fireEvent.click(screen.getByTestId('relation-type-subClassOf'));
+
+      expect(
+        await screen.findByTestId('relation-clash-warning')
+      ).toHaveTextContent(CLASH);
+      expect(onSelect).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId('relation-clash-continue'));
+
+      expect(onSelect).toHaveBeenCalledWith('subClassOf');
+    });
+
+    it('selects at once when the server finds no clash', async () => {
+      const onSelect = jest.fn();
+      render(
+        <RelationshipTypePicker
+          groups={GROUPS}
+          sourceLabel="Customer"
+          targetLabel="Party"
+          warnRelation={async () => undefined}
+          onSelect={onSelect}
+        />
+      );
+      fireEvent.click(screen.getByTestId('relation-type-subClassOf'));
+
+      await waitFor(() => expect(onSelect).toHaveBeenCalledWith('subClassOf'));
+      expect(screen.queryByTestId('relation-clash-warning')).toBeNull();
+    });
+  });
+
   it('offers the given groups without loading glossary relationship types', () => {
     const onSelect = jest.fn();
     render(

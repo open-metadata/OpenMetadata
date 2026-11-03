@@ -55,6 +55,7 @@ import {
   InspectorSection,
   InspectorSectionHeading,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
+import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
@@ -138,6 +139,17 @@ const RelationIssue = ({ message }: { message?: string }) =>
     </Typography>
   ) : null;
 
+const RelationClash = ({ message }: { message?: string }) =>
+  message ? (
+    <Typography
+      className="tw:text-warning-primary"
+      data-testid="ontology-relationship-clash"
+      role="status"
+      size="text-xs">
+      {message}
+    </Typography>
+  ) : null;
+
 const RelationAuthoring = ({
   canCreateRelationType,
   concept,
@@ -173,7 +185,13 @@ const RelationAuthoring = ({
 
   const target = targetConcepts.find(({ id }) => id === targetId);
   const issue = check?.(targetId, relationType);
-  const issueMessage = <RelationIssue message={issue} />;
+  const clash = useRelationClash(concept.id, targetId, relationType);
+  const issueMessage = (
+    <>
+      <RelationIssue message={issue} />
+      <RelationClash message={clash} />
+    </>
+  );
   const relationLabel =
     groups
       .flatMap((group) => group.options)

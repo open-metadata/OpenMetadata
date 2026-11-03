@@ -88,6 +88,7 @@ import {
   checkNativeRelation,
   describeRelationIssue,
 } from '../../../../utils/governance/ontology/OntologyRelationCheck.utils';
+import { findRelationClash } from '../../../../utils/governance/ontology/OntologyRelationClash.utils';
 import {
   buildDataPropertyRequest,
   buildReusePropertyPatch,
@@ -118,6 +119,10 @@ import {
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/RelationshipTypePicker.constants';
+import {
+  RelationWarningCheck,
+  RelationWarningContext,
+} from '../../../OntologyExplorer/RelationWarning.context';
 import {
   buildConflictHighlight,
   ConflictHighlight,
@@ -810,6 +815,21 @@ const OntologyGraphView = ({
       return issue ? describeRelationIssue(t, issue) : undefined;
     },
     [catalog, model, relations, t]
+  );
+
+  const warnFor = useCallback<RelationWarningCheck>(
+    async (fromId, toId, typeId) => {
+      const from = model?.concepts.find((concept) => concept.id === fromId);
+      const to = model?.concepts.find((concept) => concept.id === toId);
+      const type = catalog.find((candidate) => candidate.id === typeId);
+
+      if (!model || !from || !to || !type) {
+        return undefined;
+      }
+
+      return findRelationClash({ from, model, to, type });
+    },
+    [catalog, model]
   );
 
   const resolveRelationType = useCallback(
@@ -1614,49 +1634,51 @@ const OntologyGraphView = ({
   };
 
   return (
-    // Escape bubbles up from whichever control opened or sits in the panel.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div
-      className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
-      ref={rootRef}
-      onKeyDown={closeOnEscape}>
-      <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
-        {renderSearch()}
-        {renderMissingConcept()}
-        {renderAddConcept()}
-        {renderGraphMode()}
-        {renderSurface()}
-        {renderEmptyCard()}
-      </div>
-      {renderSidebar()}
-      {renderTypeDialog()}
-      {isDeletingConcept && selected ? (
-        <OntologyConceptDeleteDialog
-          concept={selected}
-          onCancel={() => setIsDeletingConcept(false)}
-          onDeleted={({ restore }) => {
-            setIsDeletingConcept(false);
-            (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
-            noteWorkingChange();
-            void refetch();
-            showUndoToast(
-              t('message.ontology-definition-deleted', {
-                name: selected.displayName ?? selected.name,
-              }),
-              async () => {
-                try {
-                  await restore();
-                  noteWorkingChange();
-                  await refetch();
-                } catch (error) {
-                  showWriteError(error);
+    <RelationWarningContext.Provider value={warnFor}>
+      {/* Escape bubbles up from whichever control opened or sits in the panel. */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+      <div
+        className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
+        ref={rootRef}
+        onKeyDown={closeOnEscape}>
+        <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
+          {renderSearch()}
+          {renderMissingConcept()}
+          {renderAddConcept()}
+          {renderGraphMode()}
+          {renderSurface()}
+          {renderEmptyCard()}
+        </div>
+        {renderSidebar()}
+        {renderTypeDialog()}
+        {isDeletingConcept && selected ? (
+          <OntologyConceptDeleteDialog
+            concept={selected}
+            onCancel={() => setIsDeletingConcept(false)}
+            onDeleted={({ restore }) => {
+              setIsDeletingConcept(false);
+              (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
+              noteWorkingChange();
+              void refetch();
+              showUndoToast(
+                t('message.ontology-definition-deleted', {
+                  name: selected.displayName ?? selected.name,
+                }),
+                async () => {
+                  try {
+                    await restore();
+                    noteWorkingChange();
+                    await refetch();
+                  } catch (error) {
+                    showWriteError(error);
+                  }
                 }
-              }
-            );
-          }}
-        />
-      ) : null}
-    </div>
+              );
+            }}
+          />
+        ) : null}
+      </div>
+    </RelationWarningContext.Provider>
   );
 };
 

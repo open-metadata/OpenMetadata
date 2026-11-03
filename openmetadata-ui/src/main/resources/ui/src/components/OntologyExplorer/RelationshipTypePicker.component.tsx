@@ -117,6 +117,48 @@ const renderGroup = (
     </div>
   );
 
+interface RelationMessagesProps {
+  issue?: string;
+  warning?: { message: string };
+  onContinue: () => void;
+}
+
+const RelationMessages = ({
+  issue,
+  warning,
+  onContinue,
+}: RelationMessagesProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {warning ? (
+        <div
+          className="tw:flex tw:flex-col tw:gap-2 tw:border-b tw:border-warning_subtle tw:bg-warning-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-warning-primary"
+          data-testid="relation-clash-warning"
+          role="alert">
+          {warning.message}
+          <Button
+            color="secondary"
+            data-testid="relation-clash-continue"
+            size="xs"
+            onPress={onContinue}>
+            {t('label.add-anyway')}
+          </Button>
+        </div>
+      ) : null}
+      {issue ? (
+        <div
+          className="tw:border-b tw:border-error_subtle tw:bg-error-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-error-primary"
+          data-testid="relation-check-message"
+          role="alert">
+          {issue}
+        </div>
+      ) : null}
+    </>
+  );
+};
+
 const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   onSelect,
   onCancel,
@@ -126,6 +168,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   groups,
   canCreateType = false,
   checkRelation,
+  warnRelation,
 }) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -133,12 +176,24 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(!groups);
   const [issue, setIssue] = useState<string>();
+  const [warning, setWarning] = useState<{ type: string; message: string }>();
   const select = (relationType: string) => {
     const found = checkRelation?.(relationType);
     setIssue(found);
-    if (!found) {
-      onSelect(relationType);
+    setWarning(undefined);
+    if (found) {
+      return;
     }
+    if (!warnRelation) {
+      onSelect(relationType);
+
+      return;
+    }
+    void warnRelation(relationType).then((message) =>
+      message
+        ? setWarning({ message, type: relationType })
+        : onSelect(relationType)
+    );
   };
 
   useEffect(() => {
@@ -305,14 +360,11 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         />
       </div>
 
-      {issue ? (
-        <div
-          className="tw:border-b tw:border-error_subtle tw:bg-error-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-error-primary"
-          data-testid="relation-check-message"
-          role="alert">
-          {issue}
-        </div>
-      ) : null}
+      <RelationMessages
+        issue={issue}
+        warning={warning}
+        onContinue={() => warning && onSelect(warning.type)}
+      />
 
       <div
         className={

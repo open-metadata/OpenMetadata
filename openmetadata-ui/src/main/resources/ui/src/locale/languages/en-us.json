@@ -79,6 +79,7 @@
     "add-domain": "Add Domain",
     "add-downstream": "Add Downstream",
     "add-email": "Add email",
+    "add-anyway": "Add anyway",
     "add-entity": "Add {{entity}}",
     "add-entity-metric": "Add {{entity}} metric",
     "add-entity-test": "Add {{entity}} test",
