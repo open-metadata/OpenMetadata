@@ -539,6 +539,20 @@ class OntologyStructureValidatorTest {
   }
 
   @Test
+  void validateDraftReportsOneClashRowWithBothConceptIds() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept dog = concept("Dog");
+    var report =
+        OntologyStructureValidator.validateDraft(
+            List.of(animal, dog, subclass(dog, animal), disjoint(dog, animal)));
+    assertFalse(report.getValid());
+    assertEquals(1, report.getViolations().size());
+    var violation = report.getViolations().getFirst();
+    assertEquals(OntologyProfileViolationCode.DISJOINT_CLASH, violation.getCode());
+    assertEquals(List.of(dog.getId(), animal.getId()), violation.getConceptIds());
+  }
+
+  @Test
   void aClassUnderTwoDisjointAncestorsIsAClashAndTheDiamondReportsOnce() {
     OntologyConcept left = concept("Left");
     OntologyConcept right = concept("Right");
