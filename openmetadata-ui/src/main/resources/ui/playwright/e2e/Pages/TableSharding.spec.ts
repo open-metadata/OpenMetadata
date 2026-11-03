@@ -130,7 +130,7 @@ test.describe('BigQuery sharded table identity', { tag: '@Discovery' }, () => {
   });
 
   for (const enabled of [true, false]) {
-    test(`persists metadata grouping enabled=${enabled} and exclusions`, async ({
+    test(`persists metadata grouping enabled=${enabled}`, async ({
       adminPage,
       browser,
     }) => {
@@ -157,15 +157,12 @@ test.describe('BigQuery sharded table identity', { tag: '@Discovery' }, () => {
             .click();
           await expect(grouping).not.toBeChecked();
         }
-        const exclusions = adminPage.getByRole('combobox', {
-          name: 'Exclude Patterns',
-          exact: true,
-        });
-        await exclusions.fill('^excluded_');
-        await exclusions.press('Enter');
         await expect(
-          adminPage.getByText('^excluded_', { exact: true })
-        ).toBeVisible();
+          adminPage.getByRole('combobox', {
+            name: 'Exclude Patterns',
+            exact: true,
+          })
+        ).toHaveCount(0);
         await clickIgnoringToasts(adminPage.getByTestId('next-button'));
         await adminPage.getByTestId('schedular-on-demand').click();
         const savedResponse = adminPage.waitForResponse(
@@ -192,7 +189,6 @@ test.describe('BigQuery sharded table identity', { tag: '@Discovery' }, () => {
         );
         expect(saved.sourceConfig.config?.shardedTables).toEqual({
           enabled,
-          excludePatterns: ['^excluded_'],
         });
         await adminPage.goto(
           `/service/databaseServices/${encodeURIComponent(
@@ -209,9 +205,6 @@ test.describe('BigQuery sharded table identity', { tag: '@Discovery' }, () => {
         } else {
           await expect(grouping).not.toBeChecked();
         }
-        await expect(
-          adminPage.getByText('^excluded_', { exact: true })
-        ).toBeVisible();
       } finally {
         if (pipeline?.id) {
           await deleteFixtureEntity(

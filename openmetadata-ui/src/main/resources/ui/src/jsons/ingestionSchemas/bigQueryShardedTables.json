@@ -9,16 +9,6 @@
       "description": "Group BigQuery daily shards into a stable logical table using the newest shard for columns and execution.",
       "type": "boolean",
       "default": false
-    },
-    "excludePatterns": {
-      "title": "Sharding Exclude Patterns",
-      "description": "Table names matching these regular expressions remain individual tables instead of joining a shard family.",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "format": "regex"
-      },
-      "default": []
     }
   },
   "additionalProperties": false

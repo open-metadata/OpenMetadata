@@ -473,10 +473,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         context.shard_family = None
         client = self._require_client()
         dataset = f"{context.database}.{context.database_schema}"
-        sharding = self.source_config.shardedTables
-        exclusions = (sharding.excludePatterns or []) if sharding else []
         logger.info("BigQuery sharding uses full discovery for %s, including incremental configurations", dataset)
-        families = inventory_families(client.list_tables(dataset), exclusions)
+        families = inventory_families(client.list_tables(dataset))
         context.shard_lifecycle = None
         context.shard_prefixes = set(families)
         blocked = set()
@@ -495,7 +493,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         context.sharding_failed = bool(blocked)
         pending = set(families) - blocked
         for table in client.list_tables(dataset):
-            parsed = eligible_shard(table.table_id, table.table_type, exclusions)
+            parsed = eligible_shard(table.table_id, table.table_type)
             context.shard_family = None
             if parsed and parsed[0] not in blocked:
                 family = families[parsed[0]]
@@ -522,12 +520,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     table.table_id, table.table_id, _bigquery_table_types.get(table.table_type, TableType.Regular)
                 )
         if pending:
-            yield from self._refresh_missing_families(dataset, pending, exclusions)
+            yield from self._refresh_missing_families(dataset, pending)
         self._set_sharding_scope(not context.sharding_failed)
 
-    def _refresh_missing_families(
-        self, dataset: str, pending: set[str], exclusions: list[str]
-    ) -> Iterable[DiscoveredTable]:
+    def _refresh_missing_families(self, dataset: str, pending: set[str]) -> Iterable[DiscoveredTable]:
         context = self._shard_context()
         client = self._require_client()
         collisions = set()
@@ -541,7 +537,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         logger.warning(
             "Refreshing BigQuery inventory once for %s: %d representatives disappeared", dataset, len(pending)
         )
-        families = inventory_families(refreshed_tables(), exclusions)
+        families = inventory_families(refreshed_tables())
         context.shard_lifecycle = None
         context.shard_prefixes = set(families)
         for prefix in sorted(pending):
@@ -731,14 +727,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 return {row.table_name: LifeCycleQueryByTable.model_validate(row._asdict()) for row in rows}
         if context.shard_lifecycle is None:
             summaries = {}
-            sharding = self.source_config.shardedTables
-            exclusions = (sharding.excludePatterns or []) if sharding else []
             with self.engine.connect() as conn:
                 for row in conn.execute(text(query)):
                     values = row._asdict()
                     name = values.get("table_name") or values.get("TABLE_NAME") or ""
                     kind = values.get("table_type") or values.get("TABLE_TYPE") or ""
-                    parsed = eligible_shard(name, "TABLE" if kind == "BASE TABLE" else kind, exclusions)
+                    parsed = eligible_shard(name, "TABLE" if kind == "BASE TABLE" else kind)
                     if not parsed or parsed[0] not in context.shard_prefixes:
                         continue
                     logical = logical_shard_name(parsed[0])

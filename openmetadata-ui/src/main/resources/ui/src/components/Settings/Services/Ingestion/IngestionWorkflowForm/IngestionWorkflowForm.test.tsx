@@ -317,7 +317,7 @@ describe('IngestionWorkflowForm auto partition detection', () => {
 });
 
 describe('BigQuery metadata sharding configuration', () => {
-  it('renders and submits grouping and exclusions in the metadata form', async () => {
+  it('renders and submits only the grouping toggle in the metadata form', async () => {
     const onSubmit = jest.fn();
     const { container } = render(
       <IngestionWorkflowForm
@@ -329,7 +329,7 @@ describe('BigQuery metadata sharding configuration', () => {
           {
             name: 'metadata-agent',
             type: 'DatabaseMetadata',
-            shardedTables: { enabled: true, excludePatterns: ['^excluded_'] },
+            shardedTables: { enabled: true },
           } as IngestionWorkflowData
         }
         onCancel={jest.fn()}
@@ -347,7 +347,9 @@ describe('BigQuery metadata sharding configuration', () => {
     });
 
     expect(toggle).toBeChecked();
-    expect(await screen.findByText('^excluded_')).toBeVisible();
+    expect(
+      screen.queryByRole('combobox', { name: 'Exclude Patterns' })
+    ).not.toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(toggle);
@@ -359,7 +361,6 @@ describe('BigQuery metadata sharding configuration', () => {
 
     expect(onSubmit.mock.calls[0][0].shardedTables).toEqual({
       enabled: false,
-      excludePatterns: ['^excluded_'],
     });
   });
 });

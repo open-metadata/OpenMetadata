@@ -8793,11 +8793,6 @@ export interface BigQueryShardedTables {
      * columns and execution.
      */
     enabled?: boolean;
-    /**
-     * Table names matching these regular expressions remain individual tables instead of
-     * joining a shard family.
-     */
-    excludePatterns?: string[];
 }
 
 /**

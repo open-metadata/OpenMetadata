@@ -47,8 +47,8 @@ def get_table_sharding(table: Table) -> TableSharding | None:
     return table.tableSharding if table.tableType == TableType.Sharded else None
 
 
-def eligible_shard(name: str, table_type: str, exclusions: Iterable[str] = ()) -> tuple[str, date] | None:
-    if table_type != "TABLE" or any(re.search(pattern, name) for pattern in exclusions):
+def eligible_shard(name: str, table_type: str) -> tuple[str, date] | None:
+    if table_type != "TABLE":
         return None
     return parse_shard_name(name)
 
@@ -84,11 +84,11 @@ class ShardFamily:
         )
 
 
-def inventory_families(tables: Iterable, exclusions: Iterable[str] = ()) -> dict[str, ShardFamily]:
+def inventory_families(tables: Iterable) -> dict[str, ShardFamily]:
     """Reduce a complete paginated inventory; fail before returning a partial inventory."""
     families: dict[str, ShardFamily] = {}
     for table in tables:
-        parsed = eligible_shard(table.table_id, table.table_type, exclusions)
+        parsed = eligible_shard(table.table_id, table.table_type)
         if parsed is None:
             continue
         prefix, shard_date = parsed
@@ -96,9 +96,7 @@ def inventory_families(tables: Iterable, exclusions: Iterable[str] = ()) -> dict
             families[prefix].add(table.table_id, shard_date)
         else:
             if len(families) >= MAX_FAMILIES:
-                raise ValueError(
-                    "BigQuery dataset exceeds 10000 shard families; narrow dataset selection or exclude families"
-                )
+                raise ValueError("BigQuery dataset exceeds 10000 shard families; narrow dataset selection")
             families[prefix] = ShardFamily(prefix, 1, shard_date, shard_date, table.table_id)
     return families
 

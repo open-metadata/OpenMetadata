@@ -77,7 +77,7 @@ def test_names_and_decorators():
     assert logical_shard_name("events_") == "events_yyyymmdd"
     assert strip_partition_decorator("events$20260102") == "events"
     assert strip_partition_decorator("events_20260101$20260102") == "events_20260101"
-    assert eligible_shard("backup_20260101", "TABLE", ["^backup_"]) is None
+    assert eligible_shard("backup_20260101", "TABLE") == ("backup_", date(2026, 1, 1))
     assert eligible_shard("events_20260101", "VIEW") is None
 
 
@@ -619,15 +619,14 @@ def test_sharding_enabled_comes_from_metadata_pipeline(config, enabled):
     assert source.sharding_enabled is enabled
 
 
-def test_pipeline_sharding_exclusion_keeps_physical_table():
-    source = source_for(["events_20260101", "events_20260102", "excluded_20260101"])
-    source.source_config = DatabaseServiceMetadataPipeline(
-        shardedTables={"enabled": True, "excludePatterns": ["^excluded_"]}
-    )
+def test_pipeline_groups_each_daily_family_and_keeps_ordinary_tables():
+    source = source_for(["events_20260101", "events_20260102", "backup_20260101", "ordinary"])
+    source.source_config = DatabaseServiceMetadataPipeline(shardedTables={"enabled": True})
     discovered = list(source._grouped_tables())
     assert [(table.catalog_name, table.table_type) for table in discovered] == [
         ("events_yyyymmdd", TableType.Sharded),
-        ("excluded_20260101", TableType.Regular),
+        ("backup_yyyymmdd", TableType.Sharded),
+        ("ordinary", TableType.Regular),
     ]
 
 
