@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -7267,17 +7268,26 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
           {"term":{"task.action":"indices:data/write/update/byquery"}},
           {"range":{"task.start_time_in_millis":{"gte":%d}}}]}}}"""
             .formatted(patchedAt - 1000);
-    return """
-        update-by-query tasks since the PATCH: %s
-        child aliases: %s
-        table document: %s"""
-        .formatted(
-            searchEngine("POST", "/.tasks/_search", tasksQuery),
-            searchEngine("GET", "/_alias/" + childAliases + "?ignore_unavailable=true", null),
-            searchEngine("GET", "/" + prefix + "table_search_index/_doc/" + tableId, null));
+    String report;
+    try (Rest5Client client = TestSuiteBootstrap.createSearchClient()) {
+      report =
+          """
+          update-by-query tasks since the PATCH: %s
+          child aliases: %s
+          table document: %s"""
+              .formatted(
+                  searchEngine(client, "POST", "/.tasks/_search", tasksQuery),
+                  searchEngine(
+                      client, "GET", "/_alias/" + childAliases + "?ignore_unavailable=true", null),
+                  searchEngine(
+                      client, "GET", "/" + prefix + "table_search_index/_doc/" + tableId, null));
+    } catch (IOException | RuntimeException e) {
+      report = "search engine unavailable (%s)".formatted(e.getMessage());
+    }
+    return report;
   }
 
-  private static String searchEngine(String method, String path, String body) {
+  private static String searchEngine(Rest5Client client, String method, String path, String body) {
     String response;
     try {
       Request request = new Request(method, path);
@@ -7286,11 +7296,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       }
       response =
           new String(
-              TestSuiteBootstrap.createSearchClient()
-                  .performRequest(request)
-                  .getEntity()
-                  .getContent()
-                  .readAllBytes(),
+              client.performRequest(request).getEntity().getContent().readAllBytes(),
               StandardCharsets.UTF_8);
     } catch (Exception e) {
       response = "unavailable (%s)".formatted(e.getMessage());

@@ -22,6 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -70,6 +71,7 @@ final class InheritedFieldPropagationCheck {
   private final StatusReader statusReader;
   private final Repair repair;
   private final AtomicInteger watched = new AtomicInteger();
+  private final AtomicLong unchecked = new AtomicLong();
   // A replay is itself checked; under sustained engine pressure it can fail again, and every queue
   // entry restarts the retry worker's attempt count, so the repairs of one parent are capped here.
   private final Cache<UUID, Integer> repairsByParent =
@@ -92,12 +94,23 @@ final class InheritedFieldPropagationCheck {
     if (taskId != null && parent != null) {
       if (watched.incrementAndGet() > MAX_WATCHED_TASKS) {
         watched.decrementAndGet();
-        LOG.debug(
-            "Not checking propagation task {}: {} are being checked", taskId, MAX_WATCHED_TASKS);
+        reportUnchecked(taskId);
       } else {
         Watch watch = new Watch(taskId, parent, change, FIRST_CHECK);
         scheduler.schedule(() -> check(watch), FIRST_CHECK);
       }
+    }
+  }
+
+  // Logged on the first and every thousandth task left unchecked, so a burst cannot flood the log.
+  private void reportUnchecked(String taskId) {
+    long count = unchecked.incrementAndGet();
+    if (count == 1 || count % MAX_WATCHED_TASKS == 0) {
+      LOG.warn(
+          "{} propagation task(s), most recently {}, went unchecked: {} were already being checked",
+          count,
+          taskId,
+          MAX_WATCHED_TASKS);
     }
   }
 

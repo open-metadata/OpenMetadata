@@ -14,10 +14,12 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
+import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
@@ -63,6 +65,12 @@ public class InheritedFieldPropagationRecoveryIT {
 
   @Test
   void anOwnerPropagationTheEngineFailedIsReplayed(TestNamespace ns) throws Exception {
+    // OpenSearch retries a refused scroll inside the task and completes it once contexts free up,
+    // so
+    // the failure this replays cannot be forced there; Elasticsearch fails the task outright.
+    assumeFalse(
+        "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
+        "Elasticsearch fails an update-by-query on a refused scroll; OpenSearch retries it");
     OpenMetadataClient client = SdkClients.adminClient();
     String owner = SharedEntities.get().USER1.getId().toString();
     Database database = createDatabase(client, ns);
@@ -164,12 +172,10 @@ public class InheritedFieldPropagationRecoveryIT {
     if (body != null) {
       request.setJsonEntity(body);
     }
-    return new String(
-        TestSuiteBootstrap.createSearchClient()
-            .performRequest(request)
-            .getEntity()
-            .getContent()
-            .readAllBytes(),
-        StandardCharsets.UTF_8);
+    try (Rest5Client client = TestSuiteBootstrap.createSearchClient()) {
+      return new String(
+          client.performRequest(request).getEntity().getContent().readAllBytes(),
+          StandardCharsets.UTF_8);
+    }
   }
 }
