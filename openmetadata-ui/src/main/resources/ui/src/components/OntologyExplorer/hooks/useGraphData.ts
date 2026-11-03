@@ -41,6 +41,11 @@ import {
   OntologyNode,
 } from '../OntologyExplorer.interface';
 import {
+  conflictEdgeKey,
+  CONFLICT_COLOR,
+  CONFLICT_COLOR_FALLBACK,
+} from '../utils/conflictHighlight';
+import {
   METRIC_NODE_TYPE,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
@@ -65,11 +70,6 @@ import {
   getCanvasColor,
   getEdgeRelationLabelStyle,
 } from '../utils/graphStyles';
-import {
-  CONFLICT_COLOR,
-  CONFLICT_COLOR_FALLBACK,
-  conflictEdgeKey,
-} from '../utils/conflictHighlight';
 import {
   computeGlossaryGroupPositions,
   computeOutermostRingRadius,

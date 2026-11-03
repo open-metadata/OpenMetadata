@@ -23,9 +23,9 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import OntologyConceptCreateDrawer from './OntologyConceptCreateDrawer';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyPropertyEditor from '../OntologyPropertyEditor/OntologyPropertyEditor';
+import OntologyConceptCreateDrawer from './OntologyConceptCreateDrawer';
 import OntologyDefinitionList from './OntologyDefinitionList';
 
 interface OntologyAuthoringWorkspaceProps {

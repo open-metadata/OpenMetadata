@@ -43,9 +43,9 @@ import { useTranslation } from 'react-i18next';
 import { OntologyDraftContext } from '../../../../context/OntologyDraft/OntologyDraftContext';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
-import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { OntologyProfileViolation } from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import {
   PaletteKey,
   RelationshipType,
@@ -67,6 +67,7 @@ import {
   restoreOntologyDefinition,
   softDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   buildInverseBackLink,
   buildNativeRelationCatalog,
@@ -82,7 +83,6 @@ import {
   RelationshipTypePlan,
   toNativeRelationType,
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
 import {
   checkNativeRelation,
@@ -91,8 +91,8 @@ import {
 import { findRelationClash } from '../../../../utils/governance/ontology/OntologyRelationClash.utils';
 import {
   buildDataPropertyRequest,
-  buildReusePropertyPatch,
   buildOntologyStudioGraph,
+  buildReusePropertyPatch,
   DataPropertyInput,
   OntologyModelRelation,
   OntologyStudioModel,
@@ -123,15 +123,14 @@ import {
   RelationWarningCheck,
   RelationWarningContext,
 } from '../../../OntologyExplorer/RelationWarning.context';
+import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import {
   buildConflictHighlight,
   ConflictHighlight,
 } from '../../../OntologyExplorer/utils/conflictHighlight';
-import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
 import OntologyConceptDeleteDialog from '../OntologyAuthoringWorkspace/OntologyConceptDeleteDialog';
-import OntologyConflictsPanel from './OntologyConflictsPanel';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
@@ -140,6 +139,7 @@ import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPane
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
 import OntologyConceptSearch from './OntologyConceptSearch';
+import OntologyConflictsPanel from './OntologyConflictsPanel';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
 import OntologyGraphNodeList from './OntologyGraphNodeList';
 import { useOntologyGraphSearchSlot } from './OntologyGraphSearchSlot.context';

@@ -264,6 +264,7 @@ describe('RelationshipTypePicker', () => {
       fireEvent.click(screen.getByTestId('relation-type-subClassOf'));
 
       await waitFor(() => expect(onSelect).toHaveBeenCalledWith('subClassOf'));
+
       expect(screen.queryByTestId('relation-clash-warning')).toBeNull();
     });
   });

@@ -55,9 +55,9 @@ import {
   InspectorSection,
   InspectorSectionHeading,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
-import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
+import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
 import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';

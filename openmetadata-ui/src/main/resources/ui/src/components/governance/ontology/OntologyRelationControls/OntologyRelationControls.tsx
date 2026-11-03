@@ -24,8 +24,8 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { OntologyModelRelation } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { InspectorRemoveButton } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
-import { useRelationWarning } from '../../../OntologyExplorer/RelationWarning.context';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
+import { useRelationWarning } from '../../../OntologyExplorer/RelationWarning.context';
 
 interface OntologyRelationControlsProps {
   readonly relation: OntologyModelRelation;

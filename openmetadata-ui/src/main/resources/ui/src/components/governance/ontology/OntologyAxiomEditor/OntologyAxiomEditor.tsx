@@ -18,8 +18,8 @@ import { isUndefined, omitBy, pick } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
@@ -31,10 +31,10 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
   AdvancedRuleFields,
-  axiomButtonSize,
-  axiomFormValues,
   AxiomActions,
+  axiomButtonSize,
   AxiomDetailFields,
+  axiomFormValues,
   AxiomFrame,
   AxiomModeSwitch,
   AxiomOutcome,

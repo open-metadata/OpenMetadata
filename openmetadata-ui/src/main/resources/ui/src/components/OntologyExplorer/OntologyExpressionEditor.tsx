@@ -117,6 +117,13 @@ const usesCardinality = (kind: RestrictionKind) =>
     kind
   );
 
+const hasFillerEditor = (
+  kind: RestrictionKind,
+  expression: OntologyExpression
+) =>
+  kind !== RestrictionKind.Value &&
+  (!usesCardinality(kind) || Boolean(expression.filler));
+
 const restrictionFiller = (
   kind: RestrictionKind,
   expression: OntologyExpression
@@ -381,14 +388,8 @@ const OntologyExpressionEditor = ({
   ];
   const restrictionKind = expression.restrictionKind ?? RestrictionKind.Some;
   const operands = expression.operands ?? [];
-  const hasNestedFiller =
-    restrictionKind !== RestrictionKind.Value &&
-    (!usesCardinality(restrictionKind) || Boolean(expression.filler));
-  const hasCardinality = [
-    RestrictionKind.Exact,
-    RestrictionKind.Max,
-    RestrictionKind.Min,
-  ].includes(restrictionKind);
+  const hasNestedFiller = hasFillerEditor(restrictionKind, expression);
+  const hasCardinality = usesCardinality(restrictionKind);
   const updateExpression = (next: OntologyExpression) =>
     onExpressionChange(carryExpressionRenderKey(expression, next));
 

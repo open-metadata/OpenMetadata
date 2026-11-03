@@ -21,11 +21,11 @@ import {
 } from '../../../generated/entity/data/ontologyConcept';
 import { PaletteKey } from '../../../generated/entity/data/relationshipType';
 import { validateOntologyAxiom } from '../../../rest/ontologyAPI';
-import { findRelationClash } from './OntologyRelationClash.utils';
 import {
   NativeRelationType,
   SUBCLASS_OF_PREDICATE,
 } from './OntologyNativeRelation.utils';
+import { findRelationClash } from './OntologyRelationClash.utils';
 import { OntologyStudioModel } from './OntologyStudioModel.utils';
 
 jest.mock('../../../rest/ontologyAPI', () => ({

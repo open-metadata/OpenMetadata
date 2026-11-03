@@ -27,8 +27,8 @@ import {
   ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
   PortOverlayProps,
 } from './PortOverlay.interface';
-import { useRelationWarning } from './RelationWarning.context';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
+import { useRelationWarning } from './RelationWarning.context';
 import { NODE_HEIGHT, NODE_WIDTH } from './utils/graphConfig';
 
 const DRAG_THRESHOLD_PX = 6;
