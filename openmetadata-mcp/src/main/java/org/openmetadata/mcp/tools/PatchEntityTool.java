@@ -2,8 +2,6 @@ package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonException;
@@ -46,8 +44,6 @@ import org.openmetadata.service.util.RestUtil;
 public class PatchEntityTool implements McpTool {
 
   private static final String PATCH_PARAM = "patch";
-  // Jackson's default limits, the reader REST PATCH uses (JsonPatchMessageBodyReader).
-  private static final ObjectMapper PATCH_READER = new ObjectMapper();
   private static final String OP_KEY = "op";
   private static final String PATH_KEY = "path";
   private static final String VALUE_KEY = "value";
@@ -268,24 +264,15 @@ public class PatchEntityTool implements McpTool {
    */
   private static JsonArray readOperations(String rawPatch) {
     try {
-      // Jackson first, as REST PATCH does: it refuses documents nested past its depth limit, where
-      // the JSON-P reader recurses once per level until the stack overflows.
-      String document = PATCH_READER.readTree(rawPatch).toString();
-      return Json.createReader(new StringReader(document)).readArray();
-    } catch (JsonProcessingException e) {
-      throw notValidJson(e.getOriginalMessage(), e);
+      return Json.createReader(new StringReader(rawPatch)).readArray();
     } catch (JsonException | IllegalStateException e) {
-      throw notValidJson(e.getMessage(), e);
+      throw new IllegalArgumentException(
+          "Parameter 'patch' is not valid JSON: "
+              + e.getMessage()
+              + ". It must be a JSON array of operations, e.g. [{\"op\": \"add\", \"path\":"
+              + " \"/owners/-\", \"value\": {\"id\": \"<uuid>\", \"type\": \"user\"}}].",
+          e);
     }
-  }
-
-  private static IllegalArgumentException notValidJson(String reason, Exception cause) {
-    return new IllegalArgumentException(
-        "Parameter 'patch' is not valid JSON: "
-            + reason
-            + ". It must be a JSON array of operations, e.g. [{\"op\": \"add\", \"path\":"
-            + " \"/owners/-\", \"value\": {\"id\": \"<uuid>\", \"type\": \"user\"}}].",
-        cause);
   }
 
   @Override

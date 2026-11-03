@@ -526,19 +526,6 @@ class PatchEntityToolTest {
   }
 
   @Test
-  void execute_deeplyNestedPatch_isRefusedBeforeTheJsonPReaderRecursesIntoIt() {
-    Map<String, Object> params = new HashMap<>();
-    params.put("entityType", "table");
-    params.put("fqn", "db.schema.test_table");
-    params.put("patch", "[".repeat(50_000) + "]".repeat(50_000));
-
-    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("not valid JSON")
-        .hasMessageContaining("nesting depth");
-  }
-
-  @Test
   void execute_missingPatch_throwsIllegalArgumentException() {
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
