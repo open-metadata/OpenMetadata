@@ -420,9 +420,6 @@ export const ENTITY_PATH = {
   users: 'user',
 };
 
-export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/custom-properties';
-
 export const SUPPORTED_FORMAT_MAP = {
   date: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy/MM/dd', 'dd/MM/yyyy'],
   dateTime: [
