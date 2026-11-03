@@ -182,11 +182,11 @@ describe('OntologyMemoryReviewPanel', () => {
   it('shows a reader without edit rights an empty queue and calls no draft endpoint', async () => {
     renderPanel(
       <OntologyMemoryReviewPanel
-        initialDraftId="draft-16"
-        ontologyId="native-id"
         canApply={false}
         canDiscard={false}
         canSubmit={false}
+        initialDraftId="draft-16"
+        ontologyId="native-id"
         onApplied={jest.fn()}
       />
     );
@@ -206,10 +206,10 @@ describe('OntologyMemoryReviewPanel', () => {
     );
     renderPanel(
       <OntologyMemoryReviewPanel
-        ontologyId="native-id"
         canApply
         canDiscard
         canSubmit
+        ontologyId="native-id"
         onApplied={jest.fn()}
       />
     );

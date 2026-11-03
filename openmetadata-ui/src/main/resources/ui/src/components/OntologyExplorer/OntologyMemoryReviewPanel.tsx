@@ -210,22 +210,6 @@ function reviewableDrafts(drafts: OntologyChangeSet[]): OntologyChangeSet[] {
 }
 
 // The deep-linked draft is fetched alongside the first page so it remains reachable.
-async function loadMemoryDrafts(
-  initialDraftId?: string,
-  after?: string,
-  ontologyId?: string
-): Promise<{ drafts: OntologyChangeSet[]; after?: string }> {
-  try {
-    return await fetchMemoryDrafts(initialDraftId, after, ontologyId);
-  } catch (error) {
-    // Drafts are unpublished content; a refused list means nothing to review, not a failure.
-    if (isAxiosError(error) && error.response?.status === 403) {
-      return { drafts: [] };
-    }
-    throw error;
-  }
-}
-
 async function fetchMemoryDrafts(
   initialDraftId?: string,
   after?: string,
@@ -255,6 +239,31 @@ async function fetchMemoryDrafts(
     ]).filter((draft) => !ontologyId || draft.ontology?.id === ontologyId),
   };
 }
+
+async function loadMemoryDrafts(
+  canRead: boolean,
+  initialDraftId?: string,
+  after?: string,
+  ontologyId?: string
+): Promise<{ drafts: OntologyChangeSet[]; after?: string }> {
+  if (!canRead) {
+    return { drafts: [] };
+  }
+  try {
+    return await fetchMemoryDrafts(initialDraftId, after, ontologyId);
+  } catch (error) {
+    // Drafts are unpublished content; a refused list means nothing to review, not a failure.
+    if (isAxiosError(error) && error.response?.status === 403) {
+      return { drafts: [] };
+    }
+
+    throw error;
+  }
+}
+
+// Drafts are unpublished, so only roles that act on them read them
+// (ADR:2026-11-03-ontology-working-draft-reads-require-edit-rights).
+const hasReviewRight = (...rights: boolean[]) => rights.some(Boolean);
 
 function DraftList({
   changeSets,
@@ -579,19 +588,13 @@ const OntologyMemoryReviewPanel = ({
     resourceType: 'ontologyChangeSet',
   });
 
-  const canReadDrafts = canApply || canSubmit || canDiscard;
+  const canReadDrafts = hasReviewRight(canApply, canSubmit, canDiscard);
 
   const loadChangeSets = useCallback(async () => {
-    if (!canReadDrafts) {
-      setChangeSets([]);
-      setNextCursor(undefined);
-      setIsLoading(false);
-
-      return;
-    }
     setIsLoading(true);
     try {
       const page = await loadMemoryDrafts(
+        canReadDrafts,
         initialDraftId,
         undefined,
         ontologyId
@@ -620,7 +623,12 @@ const OntologyMemoryReviewPanel = ({
     }
     setIsLoadingMore(true);
     try {
-      const page = await loadMemoryDrafts(undefined, nextCursor, ontologyId);
+      const page = await loadMemoryDrafts(
+        canReadDrafts,
+        undefined,
+        nextCursor,
+        ontologyId
+      );
       setChangeSets((current) =>
         reviewableDrafts([...current, ...page.drafts])
       );
