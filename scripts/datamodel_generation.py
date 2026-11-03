@@ -237,6 +237,10 @@ COMPATIBILITY_ALIASES = {
         "QlikCertificatePath = certificatePath.QlikCertificatePath",
         "QlikCertificateValues = certificateValues.QlikCertificateValues",
     ),
+    "entity/services/connections/dashboard/sapS4HanaConnection.py": (
+        "SapS4HanaBasicAuthType = basicAuth.SapS4HanaBasicAuth",
+        "SapS4HanaOAuthType = oAuth.SapS4HanaOAuthCredentials",
+    ),
     "entity/services/connections/dashboard/powerBIConnection.py": (
         "LocalConfig = localConfig.PowerBILocalConfig",
     ),
