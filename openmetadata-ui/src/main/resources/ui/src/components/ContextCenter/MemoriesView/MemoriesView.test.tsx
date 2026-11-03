@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, render, screen, waitFor } from '@testing-library/react';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import {
   ContextMemory,
   ContextMemoryStatus,
@@ -18,7 +19,6 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import MemoriesView from './MemoriesView.component';
 
 const DISPLAY_NAMES: Record<string, string> = {
