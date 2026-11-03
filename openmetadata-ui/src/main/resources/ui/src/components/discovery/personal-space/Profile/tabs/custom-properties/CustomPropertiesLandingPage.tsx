@@ -124,7 +124,7 @@ const CustomPropertiesLandingPage: React.FC<
                   variant="muted"
                   onClick={() => onSelectEntityType(entityTypeName)}
                   onKeyDown={handleKeyDown}>
-                  <Card.Content>
+                  <Card.Content className="tw:px-3">
                     <Box align="start" direction="row" gap={3}>
                       {getEntityIconWithBg(
                         entityTypeName,

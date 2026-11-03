@@ -14,7 +14,7 @@
 package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
+import static org.openmetadata.schema.entity.events.AlertType.NOTIFICATION;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,6 +66,7 @@ import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestReques
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.api.events.TypedEvent;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -84,6 +85,7 @@ import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.alerting.AlertLimits;
 import org.openmetadata.service.alerting.TestSends;
 import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
 import org.openmetadata.service.alerting.definition.AlertCatalog;
@@ -126,9 +128,11 @@ public class EventSubscriptionResource
   private static final String RESOURCES_DEPRECATED_SINCE = "@1792454400";
   private static final String CAPABILITIES_PATH = "/capabilities";
   private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
+  private final DestinationTestSecrets destinationTestSecrets;
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
     super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
+    this.destinationTestSecrets = new DestinationTestSecrets(repository, authorizer);
   }
 
   @Override
@@ -252,7 +256,8 @@ public class EventSubscriptionResource
     if (!nullOrEmpty(notificationTemplate)) {
       filter.addQueryParam("notificationTemplate", notificationTemplate);
     }
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return DestinationSecrets.mask(
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -283,7 +288,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
+    return DestinationSecrets.mask(getInternal(uriInfo, securityContext, id, fieldsParam, null));
   }
 
   @GET
@@ -315,7 +320,8 @@ public class EventSubscriptionResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
+    return DestinationSecrets.mask(
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, null));
   }
 
   @POST
@@ -339,7 +345,7 @@ public class EventSubscriptionResource
       @Valid CreateEventSubscription request) {
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, eventSub);
+    return maskResponse(create(uriInfo, securityContext, eventSub));
   }
 
   @PUT
@@ -363,7 +369,7 @@ public class EventSubscriptionResource
       @Valid CreateEventSubscription create) {
     EventSubscription eventSub =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, eventSub);
+    return maskResponse(createOrUpdate(uriInfo, securityContext, eventSub));
   }
 
   @PATCH
@@ -392,7 +398,7 @@ public class EventSubscriptionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return maskResponse(patchInternal(uriInfo, securityContext, id, patch));
   }
 
   @PATCH
@@ -421,7 +427,7 @@ public class EventSubscriptionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return maskResponse(patchInternal(uriInfo, securityContext, fqn, patch));
   }
 
   @GET
@@ -445,7 +451,7 @@ public class EventSubscriptionResource
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return DestinationSecrets.mask(super.listVersionsInternal(securityContext, id));
   }
 
   @GET
@@ -477,7 +483,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return DestinationSecrets.mask(super.getVersionInternal(securityContext, id, version));
   }
 
   @DELETE
@@ -505,7 +511,7 @@ public class EventSubscriptionResource
           UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return delete(uriInfo, securityContext, id, true, true);
+    return maskResponse(delete(uriInfo, securityContext, id, true, true));
   }
 
   @DELETE
@@ -554,7 +560,7 @@ public class EventSubscriptionResource
           String name) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return deleteByName(uriInfo, securityContext, name, true, true);
+    return maskResponse(deleteByName(uriInfo, securityContext, name, true, true));
   }
 
   @GET
@@ -637,7 +643,7 @@ public class EventSubscriptionResource
       @Context HttpServletResponse response,
       @Parameter(description = "AlertType", schema = @Schema(type = "string"))
           @PathParam("alertType")
-          CreateEventSubscription.AlertType alertType) {
+          AlertType alertType) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
@@ -1368,7 +1374,7 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return AlertDiagnostics.listDestinations(id);
+    return DestinationSecrets.mask(AlertDiagnostics.listDestinations(id));
   }
 
   @GET
@@ -1401,7 +1407,7 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
-    return AlertDiagnostics.listDestinations(sub.getId());
+    return DestinationSecrets.mask(AlertDiagnostics.listDestinations(sub.getId()));
   }
 
   @PUT
@@ -1469,6 +1475,11 @@ public class EventSubscriptionResource
           Response.Status.BAD_REQUEST);
     }
 
+    // A destination sent back as read carries masks, so the stored secrets are resolved before
+    // anything judges or sends its configuration.
+    request
+        .getDestinations()
+        .forEach(destination -> destinationTestSecrets.resolve(securityContext, destination));
     request.getDestinations().forEach(DestinationValidation::validate);
     List<SubscriptionDestination> resultDestinations =
         TestSends.toEach(
@@ -1506,6 +1517,14 @@ public class EventSubscriptionResource
     return destination.withConfig(null);
   }
 
+  private static Response maskResponse(Response response) {
+    // The create, update and patch endpoints return the alert itself; the masked copy keeps the
+    // status and the change-type header, from which the change event is built.
+    return response.getEntity() instanceof EventSubscription alert
+        ? Response.fromResponse(response).entity(DestinationSecrets.mask(alert)).build()
+        : response;
+  }
+
   /**
    * Endpoint query strings can carry credentials, so keep them out of the returned reason. The
    * reason can quote what the caller sent, so only its start is kept.
@@ -1526,7 +1545,7 @@ public class EventSubscriptionResource
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors() {
-    return AlertCatalog.load().served(CreateEventSubscription.AlertType.NOTIFICATION);
+    return AlertCatalog.load().served(AlertType.NOTIFICATION);
   }
 
   private ResultList<TypedEvent> fetchEventRecords(
@@ -1598,6 +1617,6 @@ public class EventSubscriptionResource
   }
 
   public static List<FilterResourceDescriptor> getObservabilityFilterDescriptors() {
-    return AlertCatalog.load().served(CreateEventSubscription.AlertType.OBSERVABILITY);
+    return AlertCatalog.load().served(AlertType.OBSERVABILITY);
   }
 }

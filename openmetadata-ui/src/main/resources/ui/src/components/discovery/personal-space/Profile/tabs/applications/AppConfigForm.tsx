@@ -217,8 +217,14 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
           </Button>
         </AppFooter>
       )}
-      {/* Full-width fields leave no room beside them, so the hint opens above. */}
-      <FieldDocPopover placement="top end" variant="muted" />
+      {/* Full-width fields leave no room beside them, so the hint opens below
+          the field. Never flipped above, where the first field's hint covered
+          the modal header; short of room below, the card shrinks and scrolls. */}
+      <FieldDocPopover
+        placement="bottom end"
+        shouldFlip={false}
+        variant="muted"
+      />
     </FieldDocProvider>
   );
 };

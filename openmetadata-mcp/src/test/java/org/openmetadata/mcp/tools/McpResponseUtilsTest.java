@@ -19,6 +19,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.entity.ai.Env;
+import org.openmetadata.schema.entity.ai.McpConnectionConfig;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -54,6 +57,33 @@ class McpResponseUtilsTest {
   private static final String STORED_SECRET = "fernet:stored-ciphertext";
   private static final String MUST_NOT_MUTATE =
       "masking must not mutate the entity the repository returned";
+
+  @Test
+  void readsMaskMcpServerConnectionsWithoutMutatingStoredEntities() {
+    final McpServer server =
+        new McpServer()
+            .withName("mcp")
+            .withConnectionConfig(
+                new McpConnectionConfig()
+                    .withUrl(STORED_SECRET)
+                    .withArgs(List.of(STORED_SECRET))
+                    .withEnv(new Env().withAdditionalProperty("SETTING", STORED_SECRET)))
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("connectionConfig")
+                                .withOldValue(STORED_SECRET)
+                                .withNewValue(STORED_SECRET))));
+    final String original = JsonUtils.pojoToJson(server);
+
+    final McpServer masked = (McpServer) McpResponseUtils.maskSecrets(server);
+
+    assertFalse(JsonUtils.pojoToJson(masked).contains(STORED_SECRET));
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, masked.getConnectionConfig().getUrl());
+    assertEquals(original, JsonUtils.pojoToJson(server), MUST_NOT_MUTATE);
+  }
 
   private static Glossary buildGlossary() {
     Glossary glossary = new Glossary();
@@ -219,8 +249,11 @@ class McpResponseUtilsTest {
         PasswordEntityMasker.PASSWORD_MASK,
         masked.at("/destinations/0/config/authType/secretKey").asText());
     assertEquals(
-        "https://hooks.example.com", masked.at("/destinations/0/config/endpoint").asText());
+        PasswordEntityMasker.PASSWORD_MASK,
+        masked.at("/destinations/0/config/endpoint").asText(),
+        "an incoming-webhook URL is a credential");
     assertTrue(JsonUtils.pojoToJson(alert).contains(STORED_SECRET), MUST_NOT_MUTATE);
+    assertTrue(JsonUtils.pojoToJson(alert).contains("https://hooks.example.com"), MUST_NOT_MUTATE);
   }
 
   @Test

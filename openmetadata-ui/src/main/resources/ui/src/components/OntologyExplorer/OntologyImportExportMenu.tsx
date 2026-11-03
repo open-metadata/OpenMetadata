@@ -27,9 +27,11 @@ import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
+import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import OntologyNativeImportDialog from '../governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
 import OntologyReleaseExportModal from '../governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal';
 import OntologyImportExportModal from './OntologyImportExportModal';
 
@@ -50,6 +52,7 @@ interface NativeOntologyExportProps {
   readonly ontology: Ontology;
   readonly canImport: boolean;
   readonly onApplied: () => void;
+  readonly onOpen?: () => void;
 }
 
 type OntologyImportExportMenuProps =
@@ -57,6 +60,7 @@ type OntologyImportExportMenuProps =
   | NativeOntologyExportProps
   | {
       readonly kind: 'allOntologies';
+      readonly isCatalogEmpty: boolean;
       readonly ontologies: Ontology[];
       readonly onApplied: () => void;
     };
@@ -65,6 +69,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const [isOpen, setIsOpen] = useState(false);
+  const guard = useOntologyDraftGuard();
   const [selectedOwner, setSelectedOwner] = useState<Ontology>();
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
@@ -90,6 +95,9 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
       return null;
     }
     if (props.kind === 'allOntologies') {
+      if (props.isCatalogEmpty) {
+        return <OntologyNativeImportDialog onClose={() => setIsOpen(false)} />;
+      }
       if (selectedOwner) {
         return (
           <OntologyReleaseExportModal
@@ -173,7 +181,14 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
         iconLeading={isAiMode ? Download01 : SwitchVertical01}
         size="sm"
         tooltip={t('label.import-export')}
-        onPress={() => setIsOpen(true)}
+        onPress={() =>
+          guard(() => {
+            if (props.kind === 'ontology') {
+              props.onOpen?.();
+            }
+            setIsOpen(true);
+          })
+        }
       />
       {renderModal()}
     </>

@@ -7,6 +7,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.service.Entity;
 
 public class TeamIndex implements SearchIndex {
+  private static final String FIELD_USER_COUNT = "userCount";
   final Team team;
   final Set<String> excludeFields = Set.of("owns", "users", "defaultRoles", "inheritedRoles");
 
@@ -18,8 +19,13 @@ public class TeamIndex implements SearchIndex {
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new HashSet<>(SearchIndex.super.getRequiredReindexFields());
     fields.add("parents");
-    fields.add("userCount");
+    fields.add(FIELD_USER_COUNT);
     return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
+  public Set<String> getFieldsLoadedOnWrite() {
+    return Set.of(FIELD_USER_COUNT);
   }
 
   @Override

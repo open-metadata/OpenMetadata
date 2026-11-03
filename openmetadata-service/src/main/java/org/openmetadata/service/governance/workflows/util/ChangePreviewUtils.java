@@ -27,10 +27,12 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 
 /**
  * Builds and merges structured change-preview data stored under the {@code proposedChanges} key in
@@ -241,6 +243,10 @@ public final class ChangePreviewUtils {
       // proposedChanges carried over from a prior revision's task.
       Map<String, FieldDiff> priorMap =
           hasNoChanges(pending) ? extractProposedChanges(existingPayload) : new LinkedHashMap<>();
+      if (entity instanceof McpServer) {
+        changeDescription = JsonUtils.deepCopy(changeDescription, ChangeDescription.class);
+        McpServerMasker.maskChangeDescription(changeDescription);
+      }
       Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
       Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
       if (hasNoChanges(pending)) {
