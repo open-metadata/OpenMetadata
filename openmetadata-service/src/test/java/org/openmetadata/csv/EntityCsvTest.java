@@ -799,6 +799,35 @@ public class EntityCsvTest {
   }
 
   @Test
+  void test_extensionEntityReferenceStoresOnlyTheTargetIdentity() throws IOException {
+    TestCsv testCsv = new TestCsv();
+    testCsv.enableProcessing();
+    User target = user("alice").withDisplayName("Alice Smith").withDescription("Payroll owner");
+    testCsv.addEntity(Entity.USER, "alice", target);
+
+    Schema schema = mock(Schema.class);
+    Mockito.when(schema.validate(Mockito.any())).thenReturn(List.of());
+    TypeRegistry registry = mock(TypeRegistry.class);
+    Mockito.when(registry.getSchema(Entity.TABLE, "steward")).thenReturn(schema);
+
+    try (MockedStatic<TypeRegistry> typeRegistry = Mockito.mockStatic(TypeRegistry.class)) {
+      typeRegistry.when(TypeRegistry::instance).thenReturn(registry);
+      typeRegistry
+          .when(() -> TypeRegistry.getCustomPropertyType(Entity.TABLE, "steward"))
+          .thenReturn("entityReference");
+
+      Map<String, Object> extension =
+          testCsv.parseExtension(singleRecord(testCsv, "", "steward:user:alice", ""), 1);
+
+      EntityReference stored = assertInstanceOf(EntityReference.class, extension.get("steward"));
+      assertEquals(target.getId(), stored.getId());
+      assertEquals("alice", stored.getFullyQualifiedName());
+      assertNull(stored.getDescription());
+      assertNull(stored.getDisplayName());
+    }
+  }
+
+  @Test
   void test_updateColumnsFromCsvRecursiveCreatesMissingParentHierarchyInDryRun() throws Exception {
     TestCsv testCsv = new TestCsv();
     testCsv.enableProcessing();
