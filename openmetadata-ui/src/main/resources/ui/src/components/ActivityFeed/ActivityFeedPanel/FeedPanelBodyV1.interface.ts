@@ -34,4 +34,6 @@ export interface FeedPanelBodyPropV1 {
   hideCardBorder?: boolean;
   isFeedWidget?: boolean;
   isFullSizeWidget?: boolean;
+  /** Rendered in the activity thread panel; see ActivityFeedCardNew. */
+  isThreadPanel?: boolean;
 }

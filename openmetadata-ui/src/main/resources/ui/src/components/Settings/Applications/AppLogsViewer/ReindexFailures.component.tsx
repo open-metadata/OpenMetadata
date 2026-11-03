@@ -298,6 +298,7 @@ const ReindexFailures = ({
               // than the 900px drawer, so the table scrolls sideways.
               scroll={{ x: 950 }}
               size="small"
+              variant="muted"
               onChange={({ current }) => handlePageChange(current ?? 1)}
             />
           </SlideoutMenu.Content>

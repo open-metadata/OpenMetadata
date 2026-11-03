@@ -50,12 +50,6 @@ jest.mock(
       )
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="errorPlaceHolder">ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
@@ -101,6 +95,14 @@ describe('KPI list component', () => {
 
     expect(descriptionKPI).toBeInTheDocument();
     expect(ownerKPI).toBeInTheDocument();
+  });
+
+  it('sizes the KPI columns to their content instead of fixed equal widths', async () => {
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    await screen.findByText('Description KPI');
+
+    expect(screen.getByRole('grid')).not.toHaveClass('tw:table-fixed');
   });
 
   it('Action button should work', async () => {

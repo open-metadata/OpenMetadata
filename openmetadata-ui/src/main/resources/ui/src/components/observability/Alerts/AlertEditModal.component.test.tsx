@@ -30,7 +30,6 @@ import {
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import AlertEditModal from './AlertEditModal.component';
-import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockUseAlertFormData = jest.fn();
 
@@ -195,35 +194,6 @@ describe('AlertEditModal', () => {
     }
   });
 
-  it('creates a notification alert when opened for notifications', () => {
-    const handleSave = jest.fn();
-    mockUseAlertFormData.mockReturnValue(getHookState({ handleSave }));
-
-    render(
-      <AlertEditModal
-        isOpen
-        kind={NOTIFICATION_ALERT_KIND}
-        mode="add"
-        onClose={jest.fn()}
-        onSaved={jest.fn()}
-      />
-    );
-
-    expect(mockUseAlertFormData).toHaveBeenCalledWith(
-      expect.objectContaining({ alertType: AlertType.Notification })
-    );
-    // Notification alerts have no trigger section, even before a source is picked.
-    expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent(
-      'false'
-    );
-
-    fireEvent.click(screen.getByTestId('submit-form'));
-
-    expect(handleSave).toHaveBeenCalledWith(
-      expect.objectContaining({ alertType: AlertType.Notification })
-    );
-  });
-
   it('shows loader while edit alert details are loading', () => {
     mockUseAlertFormData.mockReturnValue(
       getHookState({ alert: undefined, isLoading: false })
@@ -303,6 +273,23 @@ describe('AlertEditModal', () => {
     expect(screen.getByTestId('form-display-name')).toHaveTextContent('');
     expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
       expect.objectContaining({ sources: [] })
+    );
+  });
+
+  it('renders the shared drawer header with the title and the alerts description', () => {
+    render(<AlertEditModal isOpen onClose={jest.fn()} onSaved={jest.fn()} />);
+
+    const header = screen.getByRole('banner');
+
+    expect(header).toContainElement(screen.getByTestId('form-heading'));
+    expect(screen.getByTestId('form-heading')).toHaveTextContent(
+      'label.edit-entity'
+    );
+    expect(header).toContainElement(
+      screen.getByText('message.alerts-description')
+    );
+    expect(header).toContainElement(
+      screen.getByRole('switch', { name: 'label.show-hint' })
     );
   });
 

@@ -47,6 +47,7 @@ import {
 import {
   BADGE_MIN_NODE_WIDTH,
   estimateNodeWidth,
+  MODEL_NODE_MAX_LABEL_WIDTH,
   MODEL_NODE_MAX_WIDTH,
   NODE_HEIGHT,
   truncateNodeLabelByWidth,
@@ -415,7 +416,7 @@ function computeTermLabelHSpacing(
       return max;
     }
     const rawLabel = n.originalLabel ?? n.label;
-    const w = Math.min(MODEL_NODE_MAX_WIDTH, estimateNodeWidth(rawLabel));
+    const w = Math.min(MODEL_NODE_MAX_LABEL_WIDTH, estimateNodeWidth(rawLabel));
 
     return Math.max(max, w);
   }, 0);
@@ -723,7 +724,7 @@ function computeNodeVisualState(
     isInModelMode || (ctx.explorationMode === 'data' && !isDataAsset);
   const estimatedWidth = estimateNodeWidth(rawLabel);
   const truncatedWidth = shouldTruncateLabel
-    ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
+    ? Math.min(MODEL_NODE_MAX_LABEL_WIDTH, estimatedWidth)
     : estimatedWidth;
   const nodeWidth = ctx.studioMode ? MODEL_NODE_MAX_WIDTH : truncatedWidth;
   const label = shouldTruncateLabel

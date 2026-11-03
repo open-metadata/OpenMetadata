@@ -77,6 +77,18 @@ export interface PluginEntityDetailsContext {
    * Pass `null` to clear the override and restore the default header.
    */
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
+  /**
+   * The tab's own route below its key, when the host renders it as a panel-level
+   * sub-page (the Members team panel). Absent while the tab renders in place.
+   */
+  subPath?: string;
+  /**
+   * Opens one of this tab's sub-pages as a panel-level page, replacing the
+   * host's own chrome — or returns to the host when called with no sub-path.
+   * Only provided by hosts that support it; others leave it absent, and the tab
+   * is expected to fall back to rendering in place.
+   */
+  onNavigate?: (subPath?: string) => void;
 }
 
 // ============================================================================

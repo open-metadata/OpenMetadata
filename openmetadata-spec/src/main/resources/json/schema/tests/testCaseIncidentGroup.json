@@ -109,11 +109,11 @@
       "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "lastSeen": {
-      "description": "Timestamp of the most recent status change across the group's open incidents.",
+      "description": "Timestamp of the most recent status change across the group's open incidents. Not used for the `trend` bucket span, which runs over the incident open times.",
       "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "trend": {
-      "description": "Number of incidents opened in each of 8 equal time buckets spanning `firstSeen` to `lastSeen`.",
+      "description": "Number of incidents opened in each of 8 equal time buckets spanning the group's earliest incident open time to its latest incident open time (`firstSeen` to `max(createdAt)`). `lastSeen` is a status-change timestamp, not a bucket boundary.",
       "type": "array",
       "items": {
         "type": "integer"

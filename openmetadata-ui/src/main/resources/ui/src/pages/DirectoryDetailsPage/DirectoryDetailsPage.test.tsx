@@ -211,28 +211,6 @@ jest.mock('../../components/DriveService/Directory/DirectoryDetails', () =>
     )
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        permissionValue,
-        type,
-      }: {
-        children?: React.ReactNode;
-        permissionValue?: string;
-        type?: string;
-      }) => (
-        <div data-testid="error-placeholder">
-          <div data-testid="error-type">{type}</div>
-          <div data-testid="error-permission">{permissionValue}</div>
-          {children}
-        </div>
-      )
-    )
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
@@ -346,7 +324,11 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId(
+            /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+          )
+        ).toBeInTheDocument();
       });
 
       expect(getEntityMissingError).toHaveBeenCalledWith(
@@ -379,10 +361,16 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId(
+            /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+          )
+        ).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('error-type')).toHaveTextContent('PERMISSION');
+      expect(
+        screen.getByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
     });
   });
 

@@ -53,14 +53,21 @@ class CreateTaskLifecycleMoveTest {
     final Map<String, Object> payload =
         JsonUtils.getMap(
             CreateTask.approvalPayload(
-                TaskEntityType.RequestApproval, stageChangedDomain(), null, null, null));
+                TaskEntityType.RequestApproval,
+                changedDomain("description", "Old", "New"),
+                null,
+                null,
+                null));
 
     assertEquals(
-        List.of("entityStatus"),
-        List.copyOf(((Map<?, ?>) payload.get("proposedChanges")).keySet()));
+        List.of("description"), List.copyOf(((Map<?, ?>) payload.get("proposedChanges")).keySet()));
   }
 
   private static Domain stageChangedDomain() {
+    return changedDomain("entityStatus", "Draft", "In Review");
+  }
+
+  private static Domain changedDomain(String field, String oldValue, String newValue) {
     return new Domain()
         .withName("finance")
         .withVersion(0.2)
@@ -70,8 +77,8 @@ class CreateTaskLifecycleMoveTest {
                 .withFieldsUpdated(
                     List.of(
                         new FieldChange()
-                            .withName("entityStatus")
-                            .withOldValue("Draft")
-                            .withNewValue("In Review"))));
+                            .withName(field)
+                            .withOldValue(oldValue)
+                            .withNewValue(newValue))));
   }
 }

@@ -117,14 +117,16 @@ export const shouldShowRuleSection = (
 /**
  * What choosing other sources does to the rest of an alert, in every alert form. The filters and
  * triggers chosen so far start over, since the new sources may not support them. The destinations
- * start over only when a source is taken away; adding one keeps them.
+ * start over only when a source is taken away; adding one keeps them. Rules stored without
+ * selections stay listed: the form shows them read-only and a save keeps them as stored.
  */
 export const getAlertSourceChanges = (
   next: string[],
-  previous: string[]
+  previous: string[],
+  hasRulesWithoutSelections = false
 ): Partial<ModifiedCreateEventSubscription> => ({
   resources: next,
-  input: {},
+  ...(hasRulesWithoutSelections ? {} : { input: {} }),
   ...(previous.some((source) => !next.includes(source))
     ? { destinations: [] }
     : {}),

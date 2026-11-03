@@ -17,7 +17,7 @@ Applies to UI `*.{ts,tsx}`. Library choice in `component-library.md`; tokens/con
 - `eslint-plugin-jsx-a11y` runs at **error** on 24 rules with a measured zero backlog — an invalid
   `role`, a role missing its required `aria-*` props, a positive `tabIndex`, a label with no control.
   Do not reach for `eslint-disable` to get past them; use the library component instead.
-- No new Ant Design (`yarn tw-guard` blocks it) — do not reintroduce `antd` for its a11y behavior.
+- Ant Design is uninstalled — do not reintroduce `antd` for its a11y behavior.
 
 ## Semantics
 

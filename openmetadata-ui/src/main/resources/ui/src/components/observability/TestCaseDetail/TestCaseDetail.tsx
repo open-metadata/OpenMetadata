@@ -10,22 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  Tabs,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Copy01, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { ReactNode, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -37,10 +30,10 @@ import {
   getTestSuiteFqns,
   shouldFetchNextRun,
 } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils';
+import TestCaseHeaderTitle from '../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseHeaderTitle.component';
 import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
 import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -50,8 +43,9 @@ import {
 } from '../../../utils/RouterUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -68,10 +62,6 @@ import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageS
 import RunTestCaseButton from './RunTestCaseButton/RunTestCaseButton';
 import './test-case-detail.less';
 import { TestCaseDetailProps } from './TestCaseDetail.types';
-
-const breakableTooltipText = (text?: ReactNode) => (
-  <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
-);
 
 /**
  * App-mode test-case detail page. Follows the data-asset (table) details page
@@ -298,18 +288,23 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-case'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-case'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testCase)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   const getPageTitle = () =>
@@ -321,41 +316,6 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         entity: getEntityName(testCase) || t('label.test-case'),
       }
     );
-
-  const renderHeaderTitle = () => (
-    <Box className="tw:min-w-0" direction="col">
-      {displayName && (
-        <Typography
-          as="h2"
-          className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
-          data-testid="entity-header-display-name"
-          ellipsis={{
-            tooltip: breakableTooltipText(renderHighlightedText(displayName)),
-          }}
-          size="text-lg"
-          weight="bold">
-          {renderHighlightedText(displayName)}
-        </Typography>
-      )}
-      <Typography
-        as={displayName ? 'span' : 'h2'}
-        className={classNames(
-          'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
-          {
-            'tw:text-primary': !displayName,
-            'tw:text-tertiary': displayName,
-          }
-        )}
-        data-testid="entity-header-name"
-        ellipsis={{
-          tooltip: breakableTooltipText(testCase?.name),
-        }}
-        size={displayName ? 'text-sm' : 'text-lg'}
-        weight={displayName ? 'medium' : 'bold'}>
-        {testCase?.name}
-      </Typography>
-    </Box>
-  );
 
   const renderExpandButton = () => {
     if (!isExpandViewSupported) {
@@ -421,34 +381,13 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                     justify="center">
                     <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
                   </Box>
-                  <Box
-                    align="center"
-                    className="tw:min-w-0"
-                    data-testid="entity-header-title"
-                    gap={3}>
-                    {renderHeaderTitle()}
-                    <Tooltip
-                      placement="top"
-                      title={
-                        hasCopied
-                          ? t('message.link-copy-to-clipboard')
-                          : t('label.copy-item', {
-                              item: t('label.url-uppercase'),
-                            })
-                      }>
-                      <Button
-                        aria-label={t('label.copy-item', {
-                          item: t('label.url-uppercase'),
-                        })}
-                        color="tertiary"
-                        data-testid="entity-header-copy-button"
-                        iconLeading={Copy01}
-                        size="xs"
-                        type="button"
-                        onClick={handleCopyEntityUrl}
-                      />
-                    </Tooltip>
-                  </Box>
+                  <TestCaseHeaderTitle
+                    deleted={testCase.deleted}
+                    displayName={displayName}
+                    hasCopied={hasCopied}
+                    testCaseName={testCase.name}
+                    onCopy={handleCopyEntityUrl}
+                  />
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>
                   {!isVersionPage && (

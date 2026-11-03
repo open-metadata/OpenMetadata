@@ -33,6 +33,12 @@ export interface PermissionProviderProps {
 
 export interface PermissionContextType {
   permissions: UIPermission;
+  /**
+   * True while the logged-in user's permissions are being fetched. Once false,
+   * `permissions` is final for now, even when empty because the request
+   * failed: read this, not emptiness, to tell loading from loaded.
+   */
+  isPermissionsLoading: boolean;
   getEntityPermission: (
     resource: ResourceEntity,
     entityId: string

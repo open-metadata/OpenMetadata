@@ -29,12 +29,24 @@ import {
 import { ModifiedEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import AlertDetailsPage from './AlertDetailsPage';
-import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockNavigate = jest.fn();
 const mockUseAlertDetailsData = jest.fn();
 const mockUseAlertFormData = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
+
+jest.mock(
+  '../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest
+      .fn()
+      .mockImplementation(
+        ({ onUpdate }: { onUpdate?: (owners: unknown[]) => void }) => (
+          <button onClick={() => onUpdate?.([])}>Owner</button>
+        )
+      ),
+  })
+);
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -116,6 +128,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+      .EmptyPlaceholder,
     Box: ({
       children,
       'data-testid': testId,
@@ -164,6 +178,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ),
     },
     Tabs,
+    Typography: ({ children }: { children?: ReactNode }) => (
+      <span>{children}</span>
+    ),
     toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
       .toOwnerRefs,
     toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
@@ -172,6 +189,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   Edit03: () => null,
   RefreshCw04: () => null,
   Trash01: () => null,
@@ -188,16 +206,6 @@ jest.mock('../../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: () => <div data-testid="loader" />,
 }));
-
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => ({
-    __esModule: true,
-    default: ({ permissionValue }: { permissionValue?: string }) => (
-      <div data-testid="error-placeholder">{permissionValue}</div>
-    ),
-  })
-);
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
   __esModule: true,
@@ -444,19 +452,77 @@ describe('AlertDetailsPage', () => {
 
     renderPage(<AlertDetailsPage />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveTextContent(
-      'label.view-entity:label.alert-detail-plural'
-    );
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toHaveTextContent('label.view-entity:label.alert-detail-plural');
   });
 
-  it('renders generic error when alert details are unavailable', () => {
+  it('renders a retryable load error under the page header when the alert fails to load', () => {
+    const fetchAlertDetails = jest.fn();
     mockUseAlertDetailsData.mockReturnValue(
-      getDetailsState({ alertDetails: undefined, loadingCount: 0 })
+      getDetailsState({
+        alertDetails: undefined,
+        alertDetailsError: { response: { status: 500 } },
+        fetchAlertDetails,
+        loadingCount: 0,
+      })
     );
 
     renderPage(<AlertDetailsPage />);
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('page-header')).toHaveTextContent(
+      'service.alert'
+    );
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(fetchAlertDetails).toHaveBeenCalled();
+  });
+
+  it('renders a not-found state without retry when the alert does not exist', () => {
+    mockUseAlertDetailsData.mockReturnValue(
+      getDetailsState({
+        alertDetails: undefined,
+        alertDetailsError: { response: { status: 404 } },
+        loadingCount: 0,
+      })
+    );
+
+    renderPage(<AlertDetailsPage />);
+
+    expect(screen.getByText('label.alert-not-found')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.alert-not-found-description')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.something-went-wrong')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders an access-denied state without retry when the alert load is forbidden', () => {
+    mockUseAlertDetailsData.mockReturnValue(
+      getDetailsState({
+        alertDetails: undefined,
+        alertDetailsError: { response: { status: 403 } },
+        loadingCount: 0,
+      })
+    );
+
+    renderPage(<AlertDetailsPage />);
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the document title mounted while alert details are loading', () => {
@@ -506,8 +572,59 @@ describe('AlertDetailsPage', () => {
     // migration when it lost its horizontal wrapper).
     const metaRow = screen.getByTestId('header-metadata');
 
-    expect(within(metaRow).getByTestId('owner-label')).toBeInTheDocument();
+    expect(within(metaRow).getByTestId('alert-owners')).toBeInTheDocument();
     expect(within(metaRow).getByTestId('event-counts')).toHaveTextContent('3');
+  });
+
+  it('shows the owners label and edit control to an editor when the alert has no owners', () => {
+    mockUseAlertDetailsData.mockReturnValue(
+      getDetailsState({ alertDetails: { ...alertDetails, owners: [] } })
+    );
+
+    renderPage(<AlertDetailsPage />);
+
+    const ownersRow = screen.getByTestId('alert-owners');
+
+    expect(ownersRow).toHaveTextContent('label.owner-plural');
+    expect(
+      within(ownersRow).getByRole('button', { name: 'Owner' })
+    ).toBeInTheDocument();
+    expect(within(ownersRow).queryByTestId('owner-label')).toBeNull();
+    expect(ownersRow).not.toHaveTextContent('label.no-owners');
+  });
+
+  it('shows owner avatars without the edit control to a viewer', () => {
+    mockUseAlertDetailsData.mockReturnValue(
+      getDetailsState({
+        alertDetails: {
+          ...alertDetails,
+          owners: [{ id: 'u1', name: 'aaron', type: 'user' }],
+        },
+        editOwnersPermission: false,
+      })
+    );
+
+    renderPage(<AlertDetailsPage />);
+
+    const ownersRow = screen.getByTestId('alert-owners');
+
+    expect(within(ownersRow).getByTestId('owner-label')).toBeInTheDocument();
+    expect(
+      within(ownersRow).queryByRole('button', { name: 'Owner' })
+    ).toBeNull();
+  });
+
+  it('hides the owners row from a viewer when the alert has no owners', () => {
+    mockUseAlertDetailsData.mockReturnValue(
+      getDetailsState({
+        alertDetails: { ...alertDetails, owners: [] },
+        editOwnersPermission: false,
+      })
+    );
+
+    renderPage(<AlertDetailsPage />);
+
+    expect(screen.queryByTestId('alert-owners')).not.toBeInTheDocument();
   });
 
   it('renders the recent events and diagnostic tabs with AI content', () => {
@@ -614,53 +731,6 @@ describe('AlertDetailsPage', () => {
       '/observability/alert/service.alert/activity',
       { replace: true }
     );
-  });
-
-  describe('as a Settings → Notifications alert', () => {
-    it('loads the alert as a notification alert', () => {
-      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
-
-      expect(mockUseAlertFormData).toHaveBeenCalledWith(
-        expect.objectContaining({ alertType: AlertType.Notification })
-      );
-    });
-
-    it('hides the trigger section in the configuration view', () => {
-      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
-
-      expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent(
-        'false'
-      );
-    });
-
-    it('keeps tab changes and the list breadcrumb under settings', () => {
-      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
-
-      fireEvent.click(screen.getByTestId('change-tab'));
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/settings/notifications/alerts/service.alert/activity',
-        { replace: true }
-      );
-      expect(
-        screen.getByRole('link', { name: 'label.alert-plural' })
-      ).toHaveAttribute('href', '/settings/notifications/alerts');
-    });
-
-    it('edits the alert as a notification alert', () => {
-      mockUseAlertDetailsData.mockImplementation(
-        ({ onEditAlert }: { onEditAlert: () => void }) =>
-          getDetailsState({ handleAlertEdit: onEditAlert })
-      );
-
-      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
-
-      fireEvent.click(screen.getByTestId('edit-button'));
-
-      expect(screen.getByTestId('edit-modal-alert-type')).toHaveTextContent(
-        AlertType.Notification
-      );
-    });
   });
 
   it('shows the trigger section for observability alerts', () => {

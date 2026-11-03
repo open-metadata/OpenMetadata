@@ -62,6 +62,7 @@ public final class NamespaceCleanup {
           Map.entry(Entity.DASHBOARD_SERVICE, "services/dashboardServices"),
           Map.entry(Entity.PIPELINE_SERVICE, "services/pipelineServices"),
           Map.entry(Entity.MLMODEL_SERVICE, "services/mlmodelServices"),
+          Map.entry(Entity.MCP_SERVICE, "services/mcpServices"),
           Map.entry(Entity.STORAGE_SERVICE, "services/storageServices"),
           Map.entry(Entity.SEARCH_SERVICE, "services/searchServices"),
           Map.entry(Entity.API_SERVICE, "services/apiServices"),

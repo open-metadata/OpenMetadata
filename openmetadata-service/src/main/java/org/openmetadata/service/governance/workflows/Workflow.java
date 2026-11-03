@@ -16,12 +16,20 @@ public class Workflow {
   // that the gate raises when it holds a change. The trigger filter reads it to evaluate the fields
   // and the proposed entity for exactly that edit, rather than the requester's accumulated hold.
   public static final String PENDING_HELD_CHANGE_VARIABLE = "pendingHeldChange";
+  // The entity version the triggering event produced. Its change, read from the entity's history,
+  // is the edit the run judges, even when a later edit has replaced the entity's current change.
+  public static final String TRIGGERING_VERSION_VARIABLE = "triggeringVersion";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
   public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
   public static final String RESULT_VARIABLE = "result";
   public static final String UPDATED_BY_VARIABLE = "updatedBy";
+  // Global variables a rejected approval leaves for the steps after it: the reviewer's comment and
+  // who rejected
+  // (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+  public static final String REJECTION_COMMENT_VARIABLE = "rejectionComment";
+  public static final String REJECTED_BY_VARIABLE = "rejectedBy";
   public static final String CHANGE_REQUEST_ID_VARIABLE = "changeRequestId";
   public static final String CHANGE_REQUEST_REVISION_VARIABLE = "changeRequestRevision";
   public static final String CHANGE_REQUEST_WORKFLOW_VARIABLE = "changeRequestWorkflow";

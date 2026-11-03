@@ -23,6 +23,9 @@ from datetime import datetime
 from functools import cached_property
 from typing import Any
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -856,20 +859,18 @@ class DbtSource(DbtServiceSource):
     def _search_table(self, fqn_search_string: str | None) -> Table | None:
         if not fqn_search_string:
             return None
-        table_entities = get_entity_from_es_result(
-            entity_list=self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-                fields="sourceHash",
-            ),
-            fetch_multiple_entities=True,
-        )
-
-        if not table_entities:
+        parts = fqn.split(fqn_search_string)
+        if len(parts) != 4:
             return None
-
-        logger.debug("Found table entities from %s: %d entities", fqn_search_string, len(table_entities))
-        return next(iter(filter(None, table_entities)), None) if table_entities else None
+        entities = get_table_binding_resolution(self.metadata, parts[0]).resolve(
+            TableReference(parts[1], parts[2], parts[3]),
+            service_name=parts[0],
+            fields=("sourceHash",),
+            lookup=TableLookup.FIRST_MATCH,
+        )
+        if len(entities) > 1:
+            self.status.warning(fqn_search_string, "Ambiguous dbt metadata attachment; resolved multiple tables")
+        return entities[0] if len(entities) == 1 else None
 
     def _get_table_entity_in_mapped_database(self, table_fqn: str) -> Table | None:
         """
@@ -1363,9 +1364,40 @@ class DbtSource(DbtServiceSource):
         to_entity: Table = data_model_link.table_entity
         logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
 
+        wildcard_targets = {}
+        try:
+            for upstream in data_model_link.datamodel.upstream or []:
+                parts = fqn.split(upstream)
+                if len(parts) == 4 and "*" in parts[3]:
+                    matches = get_table_binding_resolution(self.metadata, parts[0]).resolve(
+                        TableReference(parts[1], parts[2], parts[3]), service_name=parts[0], lookup=TableLookup.SEARCH
+                    )
+                    if matches:
+                        wildcard_targets[upstream] = matches
+        except Exception as exc:
+            self.status.warning(
+                model_str(to_entity.fullyQualifiedName), f"dbt lineage incomplete; preserving prior lineage: {exc}"
+            )
+            return
+
         resolved = data_model_link.upstream_table_ids
         for upstream_node in data_model_link.datamodel.upstream or []:
             try:
+                if upstream_node in wildcard_targets:
+                    for upstream_table in wildcard_targets[upstream_node]:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=AddLineageRequest(
+                                    edge=EntitiesEdge(
+                                        fromEntity=EntityReference(id=upstream_table.id, type="table"),
+                                        toEntity=EntityReference(id=to_entity.id, type="table"),
+                                        lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
+                                    )
+                                ),
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    continue
                 from_id = resolved.get(upstream_node)
                 if from_id is None:
                     from_entity = self._get_table_entity(table_fqn=upstream_node)
