@@ -12,10 +12,10 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useCallback } from 'react';
-import { generatedOntologyIdentity } from './OntologyCreateForm.utils';
 import { listOntologies } from '../../../../rest/ontologyAPI';
 import { fetchRdfConfig } from '../../../../rest/rdfAPI';
 import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
+import { generatedOntologyIdentity } from './OntologyCreateForm.utils';
 
 const RDF_STATUS_QUERY_KEY = 'ontology-rdf-status';
 const IDENTITY_ONTOLOGIES_QUERY_KEY = 'ontology-identity-ontologies';

@@ -54,6 +54,99 @@ interface OntologyReleaseExportContentProps {
   ) => void;
 }
 
+const withCard = (
+  selection: OntologyReleaseExportSelection,
+  value: string
+): OntologyReleaseExportSelection => {
+  const option = ONTOLOGY_RELEASE_EXPORT_FORMATS.find(
+    (candidate) => candidate.format === value
+  );
+
+  return option ? { ...selection, card: option.format } : selection;
+};
+
+const ExportPreview = ({
+  content,
+  isLoading,
+}: {
+  readonly content?: string;
+  readonly isLoading?: boolean;
+}) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+
+  return (
+    <pre
+      className={classNames(
+        'tw:m-0 tw:min-h-64 tw:max-h-96 tw:flex-1 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary',
+        isAiMode
+          ? 'tw:bg-secondary_alt tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-secondary'
+          : [
+              'tw:bg-primary-solid tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed',
+              'tw:whitespace-pre-wrap tw:break-words tw:text-primary_on-brand',
+            ]
+      )}
+      data-testid="ontology-release-export-preview">
+      {isLoading
+        ? t('label.loading')
+        : content?.slice(0, ONTOLOGY_RELEASE_PREVIEW_LIMIT) ?? '—'}
+    </pre>
+  );
+};
+
+const ExportLoadState = ({
+  state,
+}: {
+  readonly state: OntologyReleaseExportContentProps['state'];
+}) => {
+  const { t } = useTranslation();
+
+  if (state.kind === 'loading') {
+    return <Typography role="status">{t('label.loading')}</Typography>;
+  }
+  if (state.kind !== 'error') {
+    return null;
+  }
+
+  return (
+    <Box direction="col" gap={3}>
+      <Alert variant="error">{t('message.ontology-review-unavailable')}</Alert>
+      <Button color="secondary" size="sm" onPress={state.onRetry}>
+        {t('label.retry')}
+      </Button>
+    </Box>
+  );
+};
+
+const ExportScopeSelect = ({
+  scopeKey,
+  scopes,
+  onScopeChange,
+}: Pick<
+  OntologyReleaseExportContentProps,
+  'scopeKey' | 'scopes' | 'onScopeChange'
+>) => {
+  const { t } = useTranslation();
+
+  return (
+    <Select
+      data-testid="ontology-export-scope"
+      hint={t('message.ontology-export-scope-help')}
+      label={t('label.scope')}
+      selectedKey={scopeKey}
+      onSelectionChange={(key) => onScopeChange(String(key))}>
+      {scopes.map((scope) => (
+        <Select.Item
+          id={scope.key}
+          key={scope.key}
+          label={scope.label}
+          supportingText={scope.hint}
+        />
+      ))}
+    </Select>
+  );
+};
+
 const OntologyReleaseExportContent = ({
   isDraft,
   isShaclRunning,
@@ -67,58 +160,30 @@ const OntologyReleaseExportContent = ({
   onSelectionChange,
 }: OntologyReleaseExportContentProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const { card, options, skosXl } = selection;
   const setOption = (changes: Partial<typeof options>) =>
     onSelectionChange({ ...selection, options: { ...options, ...changes } });
 
   return (
     <Box direction="col" gap={5}>
-      {state.kind === 'loading' ? (
-        <Typography role="status">{t('label.loading')}</Typography>
-      ) : null}
-      {state.kind === 'error' ? (
-        <Box direction="col" gap={3}>
-          <Alert variant="error">
-            {t('message.ontology-review-unavailable')}
-          </Alert>
-          <Button color="secondary" size="sm" onPress={state.onRetry}>
-            {t('label.retry')}
-          </Button>
-        </Box>
-      ) : null}
+      <ExportLoadState state={state} />
 
       {state.kind === 'ready' ? (
         <Grid className="tw:md:gap-x-5" rowGap="5">
           <Grid.Item className="tw:min-w-0">
-            <Select
-              data-testid="ontology-export-scope"
-              hint={t('message.ontology-export-scope-help')}
-              label={t('label.scope')}
-              selectedKey={scopeKey}
-              onSelectionChange={(key) => onScopeChange(String(key))}>
-              {scopes.map((scope) => (
-                <Select.Item
-                  id={scope.key}
-                  key={scope.key}
-                  label={scope.label}
-                  supportingText={scope.hint}
-                />
-              ))}
-            </Select>
+            <ExportScopeSelect
+              scopeKey={scopeKey}
+              scopes={scopes}
+              onScopeChange={onScopeChange}
+            />
           </Grid.Item>
           <Grid.Item className="tw:min-w-0 tw:md:col-span-13">
             <RadioGroup
               label={t('label.format')}
               value={card}
-              onChange={(value) => {
-                const option = ONTOLOGY_RELEASE_EXPORT_FORMATS.find(
-                  (candidate) => candidate.format === value
-                );
-                if (option) {
-                  onSelectionChange({ ...selection, card: option.format });
-                }
-              }}>
+              onChange={(value) =>
+                onSelectionChange(withCard(selection, value))
+              }>
               {ONTOLOGY_RELEASE_EXPORT_FORMATS.map((option) => (
                 <RadioButton
                   data-testid={`ontology-release-format-${option.format}`}
@@ -175,22 +240,10 @@ const OntologyReleaseExportContent = ({
               <Typography color="secondary" size="text-sm" weight="medium">
                 {t('label.preview')}
               </Typography>
-              <pre
-                className={classNames(
-                  'tw:m-0 tw:min-h-64 tw:max-h-96 tw:flex-1 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary',
-                  isAiMode
-                    ? 'tw:bg-secondary_alt tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-secondary'
-                    : [
-                        'tw:bg-primary-solid tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed',
-                        'tw:whitespace-pre-wrap tw:break-words tw:text-primary_on-brand',
-                      ]
-                )}
-                data-testid="ontology-release-export-preview">
-                {state.isPreviewLoading
-                  ? t('label.loading')
-                  : state.content?.slice(0, ONTOLOGY_RELEASE_PREVIEW_LIMIT) ??
-                    '—'}
-              </pre>
+              <ExportPreview
+                content={state.content}
+                isLoading={state.isPreviewLoading}
+              />
               {isDraft ? null : (
                 <OntologyReleaseExportShacl
                   isRunning={isShaclRunning}

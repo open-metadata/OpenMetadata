@@ -154,6 +154,28 @@ const reduceFile = (
   };
 };
 
+/** NEW and UPDATE carry an operation; the rest only explain why nothing will change. */
+export const isSelectableItem = (item: NativeOntologyImportItem) =>
+  item.status === Status.New || item.status === Status.Update;
+
+export const importItemsOf = (
+  summary: NativeOntologyImportSummary
+): readonly NativeOntologyImportItem[] => summary.items ?? [];
+
+export const itemsOfKind = (
+  items: readonly NativeOntologyImportItem[],
+  kind: Kind
+) => items.filter((item) => item.kind === kind);
+
+export const initialSelection = (
+  summary: NativeOntologyImportSummary
+): ReadonlySet<string> =>
+  new Set(
+    importItemsOf(summary)
+      .filter(isSelectableItem)
+      .map(({ id }) => id)
+  );
+
 const reduceParse = (
   state: NativeImportState,
   action: Exclude<NativeImportAction, FileAction>
@@ -233,28 +255,6 @@ export const NATIVE_IMPORT_STATUS_LABEL_KEYS: Record<Status, string> = {
   [Status.Update]: 'label.update',
 };
 
-/** NEW and UPDATE carry an operation; the rest only explain why nothing will change. */
-export const isSelectableItem = (item: NativeOntologyImportItem) =>
-  item.status === Status.New || item.status === Status.Update;
-
-export const importItemsOf = (
-  summary: NativeOntologyImportSummary
-): readonly NativeOntologyImportItem[] => summary.items ?? [];
-
-export const itemsOfKind = (
-  items: readonly NativeOntologyImportItem[],
-  kind: Kind
-) => items.filter((item) => item.kind === kind);
-
-export const initialSelection = (
-  summary: NativeOntologyImportSummary
-): ReadonlySet<string> =>
-  new Set(
-    importItemsOf(summary)
-      .filter(isSelectableItem)
-      .map(({ id }) => id)
-  );
-
 /**
  * Keeps the operations of the chosen items. The preview names each operation
  * on its item, so an unticked item drops exactly its own operation.
@@ -285,14 +285,6 @@ export const selectedCount = (
   selection: ReadonlySet<string>
 ) => importItemsOf(summary).filter(({ id }) => selection.has(id)).length;
 
-export const hasSelectedChanges = (
-  summary: NativeOntologyImportSummary,
-  selection: ReadonlySet<string>
-) =>
-  importItemsOf(summary).length > 0
-    ? selectedCount(summary, selection) > 0
-    : hasImportableChanges(summary);
-
 export const hasImportableChanges = (summary: NativeOntologyImportSummary) => {
   const { counts } = summary;
 
@@ -305,6 +297,23 @@ export const hasImportableChanges = (summary: NativeOntologyImportSummary) => {
     0
   );
 };
+
+/** Undefined when the preview has no item list, so the Import button keeps its plain label. */
+export const itemImportCount = (
+  summary: NativeOntologyImportSummary,
+  selection: ReadonlySet<string>
+) =>
+  importItemsOf(summary).length > 0
+    ? selectedCount(summary, selection)
+    : undefined;
+
+export const hasSelectedChanges = (
+  summary: NativeOntologyImportSummary,
+  selection: ReadonlySet<string>
+) =>
+  importItemsOf(summary).length > 0
+    ? selectedCount(summary, selection) > 0
+    : hasImportableChanges(summary);
 
 /** The one message the panel shows, in the order the steps can fail. */
 export const nativeImportErrorMessage = (
@@ -441,12 +450,16 @@ export const parseNativeImportFile = async (
   }
 };
 
+export const selectionOf = (parse: NativeImportParse): ReadonlySet<string> =>
+  parse.kind === 'ready' ? parse.selection : new Set();
+
 /** Which of Parse and Import the user may press right now. */
 export const nativeImportActionFlags = (
   state: NativeImportState,
   context: {
     canUseTarget: boolean;
     isBusy: boolean;
+    isIdentityReady: boolean;
     isLockedOrBusy: boolean;
   }
 ) => {
@@ -465,12 +478,10 @@ export const nativeImportActionFlags = (
         summary && hasSelectedChanges(summary, selectionOf(state.parse))
       ) &&
       context.canUseTarget &&
+      context.isIdentityReady &&
       !context.isBusy,
   };
 };
-
-export const selectionOf = (parse: NativeImportParse): ReadonlySet<string> =>
-  parse.kind === 'ready' ? parse.selection : new Set();
 
 export const hasReviewers = (ontology?: Ontology) =>
   Boolean(ontology?.reviewers?.length);
@@ -480,3 +491,22 @@ export const readySummaryOf = (state: NativeImportState) =>
 
 export const pick = <T>(condition: boolean, whenTrue: T, whenFalse: T) =>
   condition ? whenTrue : whenFalse;
+
+export const isNewImportTarget = (
+  state: NativeImportState,
+  ontology?: Ontology
+) => state.target === 'new' || !ontology;
+
+export const importBusyOf = (
+  state: NativeImportState,
+  isInstalling: boolean
+) => {
+  const isParsing = state.parse.kind === 'pending';
+
+  return { isParsing, isBusy: isParsing || isInstalling };
+};
+
+export const isFileChoiceDisabled = (
+  isLockedOrBusy: boolean,
+  canUseTarget: boolean
+) => isLockedOrBusy || !canUseTarget;

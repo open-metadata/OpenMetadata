@@ -185,8 +185,7 @@ const applyImport = async (page: Page) => {
 const itemRow = (page: Page, label: string) =>
   page
     .locator('[data-testid^="ontology-native-import-item-concept"]')
-    .filter({ hasText: label })
-    .first();
+    .filter({ hasText: label });
 
 const remove = (
   api: Awaited<ReturnType<typeof getWorkerAdminAPIContext>>,
@@ -473,11 +472,13 @@ test.describe(
 
         const group = page.getByTestId('ontology-native-import-group-RULE');
         await expect(group).toBeVisible();
-        const warning = group
-          .locator('[data-testid^="ontology-native-import-item-warning-"]')
-          .first();
-        await expect(warning).toContainText('Invoice');
-        await expect(warning).toContainText('Payment');
+        await expect(
+          group
+            .locator('[data-testid^="ontology-native-import-item-warning-"]')
+            .filter({
+              hasText: 'Receipt has disjoint ancestors Invoice and Payment',
+            })
+        ).not.toHaveCount(0);
       } finally {
         await remove(api, ontology.id);
       }

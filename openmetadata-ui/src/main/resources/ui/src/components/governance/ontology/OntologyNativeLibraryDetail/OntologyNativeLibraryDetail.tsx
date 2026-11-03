@@ -32,7 +32,6 @@ import type { OntologyPackManifest } from '../../../../generated/api/data/ontolo
 import type { Ontology } from '../../../../generated/entity/data/ontology';
 import type { OntologyPackInstallationRecord } from '../../../../generated/type/ontologyPackInstallationRecord';
 import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
-import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -47,6 +46,7 @@ import {
   updateModuleSelection,
 } from '../../../OntologyExplorer/OntologyLibrary.utils';
 import OntologyLibraryDetail from '../../../OntologyExplorer/OntologyLibraryDetail';
+import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import {
   nativeLibraryOntologyRequest,
   resolveNativeLibraryTarget,

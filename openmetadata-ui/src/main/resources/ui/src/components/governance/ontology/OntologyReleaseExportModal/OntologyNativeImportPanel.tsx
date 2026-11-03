@@ -27,7 +27,13 @@ import {
 import { Upload01 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { MutableRefObject, useEffect, useReducer, useRef } from 'react';
+import {
+  Dispatch,
+  MutableRefObject,
+  useEffect,
+  useReducer,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -40,7 +46,6 @@ import {
   NativeInstallTarget,
   useNativeOntologyInstall,
 } from '../../../../hooks/governance/ontology/useNativeOntologyInstall';
-import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -50,14 +55,20 @@ import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
+import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import { resolveNativeLibraryTarget } from '../OntologyNativeLibraryDetail/OntologyNativeLibraryDetail.utils';
 import OntologyNativeImportItems from './OntologyNativeImportItems';
 import {
   detectNativeImportFile,
   hasReviewers,
+  importBusyOf,
   importItemsOf,
   INITIAL_NATIVE_IMPORT_STATE,
+  isFileChoiceDisabled,
+  isNewImportTarget,
+  itemImportCount,
   landOnImportedOntology,
+  NativeImportAction,
   nativeImportActionFlags,
   nativeImportErrorMessage,
   nativeImportOntologyRequest,
@@ -73,7 +84,6 @@ import {
   pick,
   readySummaryOf,
   selectChanges,
-  selectedCount,
   selectionOf,
 } from './OntologyNativeImportPanel.utils';
 
@@ -417,6 +427,127 @@ const nativeImportInstallTarget = (
     : undefined;
 };
 
+const useNativeImportFileChoice = ({
+  content,
+  describe,
+  dispatch,
+  isLocked,
+  nextToken,
+}: {
+  readonly content: MutableRefObject<string>;
+  readonly describe: (error: unknown) => string;
+  readonly dispatch: Dispatch<NativeImportAction>;
+  readonly isLocked: boolean;
+  readonly nextToken: () => number;
+}) => {
+  const { t } = useTranslation();
+  const fileToken = useRef(0);
+
+  const handleFile = async (files: FileList) => {
+    const file = files[0];
+    if (!file || isLocked) {
+      return;
+    }
+    const fileId = nextToken();
+    fileToken.current = fileId;
+    content.current = '';
+    dispatch({ type: 'fileChosen', token: fileId, fileName: file.name });
+    const text = await detectNativeImportFile(file, fileId, dispatch, describe);
+    if (fileToken.current === fileId) {
+      content.current = text;
+    }
+  };
+
+  const rejectOversizedFile = () => {
+    const fileId = nextToken();
+    fileToken.current = fileId;
+    content.current = '';
+    dispatch({
+      type: 'fileRejected',
+      token: fileId,
+      message: t('message.file-size-exceeded', { size: '10 MB' }),
+    });
+  };
+
+  // FileTrigger has no size limit of its own, unlike the classic drop zone.
+  const handleSelectedFile = (files: FileList | null) => {
+    if (!files?.length) {
+      return;
+    }
+    if (files[0].size > NATIVE_IMPORT_MAX_BYTES) {
+      rejectOversizedFile();
+
+      return;
+    }
+    void handleFile(files);
+  };
+
+  return { handleFile, handleSelectedFile, rejectOversizedFile };
+};
+
+const ImportReview = ({
+  hasReviewers: hasReviewerGate,
+  isDisabled,
+  isNewTarget,
+  selection,
+  summary,
+  onSelectionChange,
+}: {
+  readonly hasReviewers: boolean;
+  readonly isDisabled: boolean;
+  readonly isNewTarget: boolean;
+  readonly selection: ReadonlySet<string>;
+  readonly summary: NativeOntologyImportSummary;
+  readonly onSelectionChange: (selection: ReadonlySet<string>) => void;
+}) => {
+  const items = importItemsOf(summary);
+
+  return (
+    <>
+      <ImportResult
+        hasReviewers={hasReviewerGate}
+        isNewTarget={isNewTarget}
+        summary={summary}
+      />
+      {items.length > 0 && (
+        <OntologyNativeImportItems
+          isDisabled={isDisabled}
+          items={items}
+          selection={selection}
+          onSelectionChange={onSelectionChange}
+        />
+      )}
+    </>
+  );
+};
+
+const ImportErrors = ({ message }: { readonly message?: string }) =>
+  message ? <Alert variant="error">{message}</Alert> : null;
+
+const ImportReading = ({
+  fileName,
+  isParsing,
+}: {
+  readonly fileName?: string;
+  readonly isParsing: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  if (!isParsing || !fileName) {
+    return null;
+  }
+
+  return (
+    <Typography
+      color="secondary"
+      data-testid="ontology-native-import-reading"
+      role="status"
+      size="text-sm">
+      {t('message.native-import-reading-file', { fileName })}
+    </Typography>
+  );
+};
+
 const OntologyNativeImportPanel = ({
   canImport,
   ontology,
@@ -435,9 +566,8 @@ const OntologyNativeImportPanel = ({
   });
   const content = useRef('');
   const token = useRef(0);
-  const fileToken = useRef(0);
   const nextToken = () => ++token.current;
-  const isNewTarget = state.target === 'new' || !ontology;
+  const isNewTarget = isNewImportTarget(state, ontology);
   const canUseTarget = pick(isNewTarget, canCreate, canImport);
   const unexpected = t('server.unexpected-error');
 
@@ -450,28 +580,21 @@ const OntologyNativeImportPanel = ({
     onApplied,
   });
 
-  const isParsing = state.parse.kind === 'pending';
-  const isBusy = isParsing || install.isBusy;
+  const { isBusy, isParsing } = importBusyOf(state, install.isBusy);
   useEffect(() => {
     onBusyChange?.(isBusy);
   }, [isBusy, onBusyChange]);
 
   const describe = (error: unknown) => describeError(error, unexpected);
 
-  const handleFile = async (files: FileList) => {
-    const file = files[0];
-    if (!file || install.isLocked) {
-      return;
-    }
-    const fileId = nextToken();
-    fileToken.current = fileId;
-    content.current = '';
-    dispatch({ type: 'fileChosen', token: fileId, fileName: file.name });
-    const text = await detectNativeImportFile(file, fileId, dispatch, describe);
-    if (fileToken.current === fileId) {
-      content.current = text;
-    }
-  };
+  const { handleFile, handleSelectedFile, rejectOversizedFile } =
+    useNativeImportFileChoice({
+      content,
+      describe,
+      dispatch,
+      isLocked: install.isLocked,
+      nextToken,
+    });
 
   const handleParse = async () => {
     const parseId = nextToken();
@@ -503,33 +626,10 @@ const OntologyNativeImportPanel = ({
   const flags = nativeImportActionFlags(state, {
     canUseTarget,
     isBusy,
+    isIdentityReady,
     isLockedOrBusy,
   });
-  const isFileDisabled = isLockedOrBusy || !canUseTarget;
-
-  const rejectOversizedFile = () => {
-    const fileId = nextToken();
-    fileToken.current = fileId;
-    content.current = '';
-    dispatch({
-      type: 'fileRejected',
-      token: fileId,
-      message: t('message.file-size-exceeded', { size: '10 MB' }),
-    });
-  };
-
-  // FileTrigger has no size limit of its own, unlike the classic drop zone.
-  const handleSelectedFile = (files: FileList | null) => {
-    if (!files?.length) {
-      return;
-    }
-    if (files[0].size > NATIVE_IMPORT_MAX_BYTES) {
-      rejectOversizedFile();
-
-      return;
-    }
-    void handleFile(files);
-  };
+  const isFileDisabled = isFileChoiceDisabled(isLockedOrBusy, canUseTarget);
 
   const targetSelect = (
     <ImportTargetSelect
@@ -545,50 +645,33 @@ const OntologyNativeImportPanel = ({
 
   const selection = selectionOf(state.parse);
   const importResult = readySummary && (
-    <>
-      <ImportResult
-        hasReviewers={!isNewTarget && hasReviewers(ontology)}
-        isNewTarget={isNewTarget}
-        summary={readySummary}
-      />
-      {importItemsOf(readySummary).length > 0 && (
-        <OntologyNativeImportItems
-          isDisabled={isLockedOrBusy}
-          items={importItemsOf(readySummary)}
-          selection={selection}
-          onSelectionChange={(next) =>
-            dispatch({
-              type: 'selectionChanged',
-              parseId: state.parseId,
-              selection: next,
-            })
-          }
-        />
-      )}
-    </>
+    <ImportReview
+      hasReviewers={!isNewTarget && hasReviewers(ontology)}
+      isDisabled={isLockedOrBusy}
+      isNewTarget={isNewTarget}
+      selection={selection}
+      summary={readySummary}
+      onSelectionChange={(next) =>
+        dispatch({
+          type: 'selectionChanged',
+          parseId: state.parseId,
+          selection: next,
+        })
+      }
+    />
   );
 
-  const errors = errorMessage && <Alert variant="error">{errorMessage}</Alert>;
+  const errors = <ImportErrors message={errorMessage} />;
 
-  const progress = isParsing && state.fileName && (
-    <Typography
-      color="secondary"
-      data-testid="ontology-native-import-reading"
-      role="status"
-      size="text-sm">
-      {t('message.native-import-reading-file', { fileName: state.fileName })}
-    </Typography>
+  const progress = (
+    <ImportReading fileName={state.fileName} isParsing={isParsing} />
   );
 
   const importActions = (
     <ImportActions
-      canImport={flags.canImport && isIdentityReady}
+      canImport={flags.canImport}
       canParse={flags.canParse}
-      importCount={
-        readySummary && importItemsOf(readySummary).length > 0
-          ? selectedCount(readySummary, selection)
-          : undefined
-      }
+      importCount={readySummary && itemImportCount(readySummary, selection)}
       isImporting={install.isBusy}
       isLocked={install.isLocked}
       isParsed={Boolean(readySummary)}
