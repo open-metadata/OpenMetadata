@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -32,6 +33,8 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -40,6 +43,7 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.util.AsyncService;
 
 @ExtendWith(TestNamespaceExtension.class)
@@ -176,9 +180,12 @@ class EntityHardDeletionAtomicityIT {
     "false,rollback",
     "true,rollback",
     "false,failure",
-    "true,failure"
+    "true,failure",
+    "false,retry",
+    "true,retry"
   })
-  void incidentCleanupFollowsSuccessfulDeletion(boolean bulk, String outcome, TestNamespace ns) {
+  void incidentAndResultCleanupFollowsSuccessfulDeletion(
+      boolean bulk, String outcome, TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final var service =
         DatabaseServiceTestFactory.createPostgresWithName("sv" + ns.shortPrefix(), ns);
@@ -199,6 +206,20 @@ class EntityHardDeletionAtomicityIT {
                 new CreateTestCaseResolutionStatus()
                     .withTestCaseReference(testCase.getFullyQualifiedName())
                     .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New));
+    final UUID resultId = UUID.randomUUID();
+    Entity.getCollectionDAO()
+        .dataQualityDataTimeSeriesDao()
+        .insert(
+            testCase.getFullyQualifiedName(),
+            TestCaseResultRepository.TESTCASE_RESULT_EXTENSION,
+            "testCaseResult",
+            JsonUtils.pojoToJson(
+                new TestCaseResult()
+                    .withId(resultId)
+                    .withTimestamp(System.currentTimeMillis())
+                    .withTestCaseStatus(TestCaseStatus.Success)),
+            null);
+    assertEquals(1, rowCount("data_quality_data_time_series", resultId));
     final var repository = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     final Runnable delete =
         () -> {
@@ -208,7 +229,14 @@ class EntityHardDeletionAtomicityIT {
             repository.delete("admin", testCase.getId(), true, true);
           }
         };
-    if ("failure".equals(outcome)) {
+    if ("retry".equals(outcome)) {
+      try (var failure =
+          new SqlFailureProbe(
+              Entity.getJdbi(), "delete from test_case", SqlFailureProbe.deadlock())) {
+        delete.run();
+        assertTrue(failure.injected());
+      }
+    } else if ("failure".equals(outcome)) {
       try (var failure =
           new SqlFailureProbe(
               Entity.getJdbi(),
@@ -239,9 +267,13 @@ class EntityHardDeletionAtomicityIT {
                     && async.getOperationActiveCount(
                             AsyncService.DatabaseOperation.TEST_CASE_CLEANUP)
                         == 0);
-    final int expected = "commit".equals(outcome) ? 0 : 1;
-    assertEquals(expected, rowCount("test_case", testCase.getId()));
-    assertEquals(expected, rowCount("test_case_resolution_status_time_series", status.getId()));
+    final int expected = "commit".equals(outcome) || "retry".equals(outcome) ? 0 : 1;
+    assertAll(
+        () -> assertEquals(expected, rowCount("test_case", testCase.getId())),
+        () ->
+            assertEquals(
+                expected, rowCount("test_case_resolution_status_time_series", status.getId())),
+        () -> assertEquals(expected, rowCount("data_quality_data_time_series", resultId)));
   }
 
   private int rowCount(String table, UUID id) {

@@ -1323,7 +1323,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .map(child -> UUID.fromString(child.getToId()))
             .distinct()
             .toList();
-    return () -> scheduleResolutionStatusCleanup(childIds);
+    final List<String> testCaseFQNs =
+        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList();
+    return () -> {
+      scheduleResolutionStatusCleanup(childIds);
+      deleteAllTestCaseResults(testCaseFQNs);
+    };
   }
 
   private void scheduleResolutionStatusCleanup(List<UUID> childIds) {
@@ -1347,17 +1352,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         LOG.error("Error hard deleting test case resolution status {}", childId, e);
       }
     }
-  }
-
-  @Override
-  protected void entitySpecificCleanup(TestCase entityInterface) {
-    deleteAllTestCaseResults(List.of(entityInterface.getFullyQualifiedName()));
-  }
-
-  @Override
-  protected void bulkEntitySpecificCleanup(List<TestCase> testCases, String deletedBy) {
-    deleteAllTestCaseResults(
-        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList());
   }
 
   private void deleteAllTestCaseResults(List<String> testCaseFQNs) {
