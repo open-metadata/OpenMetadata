@@ -1380,6 +1380,18 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     OpenMetadataException rejected =
         assertThrows(OpenMetadataException.class, () -> restoreEntity(child.getId().toString()));
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), rejected.getStatusCode());
+    OpenMetadataException rejectedAsync =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/metrics/restore?async=true",
+                        Map.of("id", child.getId().toString()),
+                        Object.class));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), rejectedAsync.getStatusCode());
     assertTrue(
         getEntityIncludeDeleted(child.getId().toString()).getDeleted(),
         "A rejected restore must leave the child deleted");

@@ -1569,6 +1569,21 @@
       ],
       "projects": ["DomainIsolation"],
       "specs": ["playwright/e2e/Features/DomainIsolation/**/*.spec.ts"]
+    },
+    {
+      "_comment": "The Metric backend: hierarchy, restore and governance rules that the Metric specs drive through the API and the metric pages.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/MetricRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/metrics/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/MetricHierarchy.spec.ts",
+        "playwright/e2e/Features/MetricGovernance.spec.ts",
+        "playwright/e2e/Features/MetricAssets.spec.ts",
+        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
+        "playwright/e2e/VersionPages/MetricVersionPage.spec.ts"
+      ]
     }
   ]
 }

@@ -1089,6 +1089,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       }
       throw notDeleted;
     }
+    repository.validateRestore(preCheck);
     String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();

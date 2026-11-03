@@ -5592,7 +5592,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /** Runs only for the entity a restore request names; its cascade restores children without it. */
-  protected void validateRestore(T entity) {}
+  public void validateRestore(T entity) {}
 
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {

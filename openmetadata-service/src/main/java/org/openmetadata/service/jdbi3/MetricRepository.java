@@ -1750,7 +1750,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   // ADR:2026-11-03-a-metric-is-restored-with-its-parent-never-under-a-deleted-one
   @Override
-  protected void validateRestore(Metric metric) {
+  public void validateRestore(Metric metric) {
     EntityReference parent = getParent(metric);
     if (parent != null && Boolean.TRUE.equals(parent.getDeleted())) {
       throw new IllegalArgumentException(
