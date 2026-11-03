@@ -13,6 +13,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,9 +33,11 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateOntology;
+import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.InstantiateOntologyPattern;
 import org.openmetadata.schema.api.data.OntologyBulkOperation;
 import org.openmetadata.schema.api.data.OntologyBulkRequest;
+import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.OntologyPatternTermInput;
 import org.openmetadata.schema.api.data.OntologyPatternType;
 import org.openmetadata.schema.api.data.RegulatoryControlPatternInput;
@@ -44,6 +47,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -53,6 +57,9 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyChangeSetState;
+import org.openmetadata.schema.type.OntologyEditLeaseToken;
+import org.openmetadata.schema.type.OntologyEditLock;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -267,6 +274,143 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
                 + glossary.getId()
                 + "?sessionId=admin-session",
             null));
+  }
+
+  @Test
+  void glossaryChangeSetCreateAndSubmitRequireEditAllOnTheScope(final TestNamespace ns) {
+    final User consumer = createUser(ns, "csConsumer", "DataConsumer");
+    final User editor = createEditAllUser(ns, "csEditor");
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final String deniedName = ns.prefix("DeniedDraft") + UUID.randomUUID();
+    final String editorName = ns.prefix("EditorDraft") + UUID.randomUUID();
+    final String adminName = ns.prefix("AdminDraft") + UUID.randomUUID();
+
+    assertEquals(
+        403,
+        status(consumer, "POST", "/v1/ontologyChangeSets", changeSetRequest(glossary, deniedName)));
+    assertFalse(
+        body(adminToken(), "GET", "/v1/ontologyChangeSets?limit=1000", null).contains(deniedName),
+        "A denied create left a change set behind");
+
+    final OntologyChangeSet adminDraft = createChangeSetAs(null, ns, glossary, adminName);
+    final OntologyEditLeaseToken adminLease = lease(SdkClients.adminClient(), adminDraft, ns);
+    assertEquals(
+        403,
+        status(
+            consumer,
+            "POST",
+            "/v1/ontologyChangeSets/" + adminDraft.getId() + "/submit",
+            json(new OntologyChangeSetCommand().withLease(adminLease))));
+    assertEquals(OntologyChangeSetState.DRAFT, currentState(adminDraft));
+    assertEquals(
+        200,
+        statusAsAdmin(
+            "POST",
+            "/v1/ontologyChangeSets/" + adminDraft.getId() + "/submit",
+            json(new OntologyChangeSetCommand().withLease(adminLease))));
+    assertEquals(OntologyChangeSetState.SUBMITTED, currentState(adminDraft));
+
+    final OntologyChangeSet editorDraft = createChangeSetAs(editor, ns, glossary, editorName);
+    final OntologyEditLeaseToken editorLease = lease(clientFor(editor), editorDraft, ns);
+    assertEquals(
+        200,
+        status(
+            editor,
+            "POST",
+            "/v1/ontologyChangeSets/" + editorDraft.getId() + "/submit",
+            json(new OntologyChangeSetCommand().withLease(editorLease))));
+    assertEquals(OntologyChangeSetState.SUBMITTED, currentState(editorDraft));
+  }
+
+  private static User createEditAllUser(final TestNamespace ns, final String base) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final String name = ns.shortPrefix(base);
+    final Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(name + "Policy")
+                        .withRules(
+                            List.of(
+                                new Rule()
+                                    .withName("EditEverything")
+                                    .withEffect(Rule.Effect.ALLOW)
+                                    .withResources(List.of("All"))
+                                    .withOperations(
+                                        List.of(
+                                            MetadataOperation.EDIT_ALL,
+                                            MetadataOperation.CREATE,
+                                            MetadataOperation.VIEW_ALL))))));
+    final Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(name + "Role")
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    return ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(name)
+                    .withEmail(name + "@test.om.org")
+                    .withDescription("v7 user")
+                    .withRoles(List.of(role.getId()))));
+  }
+
+  private static String changeSetRequest(final Glossary glossary, final String name) {
+    return json(
+        new CreateOntologyChangeSet()
+            .withName(name)
+            .withDisplayName("Scoped draft")
+            .withDescription("Glossary-scope change set")
+            .withGlossaries(Set.of(glossary.getFullyQualifiedName())));
+  }
+
+  private static OntologyChangeSet createChangeSetAs(
+      final User user, final TestNamespace ns, final Glossary glossary, final String name) {
+    final OpenMetadataClient client = user == null ? SdkClients.adminClient() : clientFor(user);
+    return ns.trackRoot(
+        "ontologyChangeSet",
+        client
+            .ontologyChangeSets()
+            .create(
+                new CreateOntologyChangeSet()
+                    .withName(name)
+                    .withDisplayName("Scoped draft")
+                    .withDescription("Glossary-scope change set")
+                    .withGlossaries(Set.of(glossary.getFullyQualifiedName()))));
+  }
+
+  private static OntologyEditLeaseToken lease(
+      final OpenMetadataClient client, final OntologyChangeSet changeSet, final TestNamespace ns) {
+    final OntologyEditLock lock =
+        client
+            .ontologyEditLocks()
+            .acquire(
+                new AcquireOntologyEditLock()
+                    .withResourceType("ontologyChangeSet")
+                    .withResourceId(changeSet.getId())
+                    .withSessionId(
+                        ns.shortPrefix("session") + UUID.randomUUID().toString().substring(0, 6))
+                    .withLeaseSeconds(60));
+    return new OntologyEditLeaseToken()
+        .withSessionId(lock.getSessionId())
+        .withVersion(lock.getVersion());
+  }
+
+  private static OntologyChangeSetState currentState(final OntologyChangeSet changeSet) {
+    return SdkClients.adminClient()
+        .ontologyChangeSets()
+        .get(changeSet.getId().toString())
+        .getState();
   }
 
   @Test

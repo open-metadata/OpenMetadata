@@ -1364,7 +1364,12 @@ describe('OntologyReleasePanel', () => {
     await selectRelease();
     await screen.findByTestId('ontology-release-definition');
 
-    expect(activationButton()).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'label.activate-release' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-rollback-release')
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'label.request-approval' })
     ).not.toBeInTheDocument();
@@ -1878,7 +1883,12 @@ describe('OntologyReleasePanel', () => {
     expect(
       screen.getByTestId(`ontology-release-export-${release.id}`)
     ).toBeEnabled();
-    expect(activationButton()).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'label.activate-release' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-rollback-release')
+    ).not.toBeInTheDocument();
     expect(screen.getByText('label.release-events')).toBeVisible();
   });
 

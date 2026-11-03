@@ -213,6 +213,11 @@ interface AiAssistantMockProps {
 
 interface QueryConsoleMockProps {
   initialQuery?: string;
+  queryScope?: {
+    ontologyName: string;
+    version: string;
+    releaseVersion?: string;
+  };
 }
 
 interface PageLayoutMockProps {
@@ -1367,9 +1372,6 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(trigger);
 
-    expect(
-      screen.queryByTestId('ontology-publication-picker')
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('ontology-publication-modal')
     ).not.toBeInTheDocument();
@@ -2611,18 +2613,67 @@ describe('OntologyExplorerPage', () => {
       screen.queryByTestId('sparql-query-console')
     ).not.toBeInTheDocument();
 
-    const selector = screen.getByRole('button', {
-      name: /label.select-entity/,
-    });
-    fireEvent.click(selector);
+    expect(screen.getByTestId('ontology-query-picker-title')).toHaveTextContent(
+      'message.query-choose-ontology-title'
+    );
+
     fireEvent.click(
-      await screen.findByRole('option', { name: nativeOntology.name })
+      await screen.findByTestId(
+        `ontology-query-picker-option-${nativeOntology.id}`
+      )
     );
     await waitFor(() =>
       expect(mockQueryConsole).toHaveBeenLastCalledWith(
         expect.objectContaining({ selectedOntologyId: nativeOntology.id })
       )
     );
+  });
+
+  it('queries the working draft for an editor and the active release once they switch', async () => {
+    renderNativeStudio('?ontology=native-sales&mode=query');
+
+    await waitFor(() =>
+      expect(mockQueryConsole).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          queryScope: {
+            ontologyName: 'Native sales',
+            releaseVersion: '1.0.0',
+            version: 'draft',
+          },
+        })
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-version-published'));
+
+    await waitFor(() =>
+      expect(mockQueryConsole).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          queryScope: {
+            ontologyName: 'Native sales',
+            releaseVersion: '1.0.0',
+            version: 'published',
+          },
+        })
+      )
+    );
+  });
+
+  it('holds a user without edit rights to the active release even when the URL asks for the draft', async () => {
+    (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: false });
+    renderNativeStudio('?ontology=native-sales&mode=query&version=draft');
+
+    await waitFor(() =>
+      expect(mockQueryConsole).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          queryScope: expect.objectContaining({ version: 'published' }),
+        })
+      )
+    );
+
+    expect(
+      screen.queryByTestId('ontology-version-switch')
+    ).not.toBeInTheDocument();
   });
 
   it('keeps a builder-generated query in its source scope only', async () => {

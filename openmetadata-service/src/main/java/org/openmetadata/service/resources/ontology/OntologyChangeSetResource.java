@@ -148,7 +148,7 @@ public class OntologyChangeSetResource
       @Context final SecurityContext securityContext,
       @Valid final CreateOntologyChangeSet request) {
     final OntologyChangeSet entity = mapper.createToEntity(request, user(securityContext));
-    authorizeScope(securityContext, entity, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeScope(securityContext, entity, MetadataOperation.EDIT_ALL);
     return create(uriInfo, securityContext, entity);
   }
 
@@ -203,7 +203,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @Valid final OntologyChangeSetCommand request) {
     final OntologyChangeSet changeSet = scopedChangeSet(id);
-    authorizeScope(securityContext, changeSet, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeScope(securityContext, changeSet, MetadataOperation.EDIT_ALL);
     requireLease(id, request.getLease(), securityContext);
     return repository
         .transition(uriInfo, user(securityContext), id, OntologyChangeSetState.SUBMITTED, null)

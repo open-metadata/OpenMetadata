@@ -217,22 +217,12 @@ const action = (
   isDisabled = false
 ): PublicationAction => ({ kind, isDisabled });
 
-export const derivePublicationState = (
-  input: PublicationActionInput
-): PublicationState => {
-  const { stage, canEdit } = input;
-  if (stage === Stage.Approved) {
-    return canEdit ? 'approvedCanPublish' : 'approvedCannotPublish';
-  }
-  if (!canEdit) {
-    return 'cannotEdit';
-  }
-  if (stage === Stage.InReview) {
-    return 'inReview';
-  }
-  if (stage === Stage.ChangesRequested) {
-    return 'rejected';
-  }
+const REVIEW_STAGE_STATES: Partial<Record<Stage, PublicationState>> = {
+  [Stage.InReview]: 'inReview',
+  [Stage.ChangesRequested]: 'rejected',
+};
+
+const deriveDraftState = (input: PublicationActionInput): PublicationState => {
   if (!input.hasChanges) {
     return 'noChanges';
   }
@@ -245,6 +235,23 @@ export const derivePublicationState = (
   return input.hasIndependentReviewer ? 'reviewersSet' : 'soloReviewer';
 };
 
+export const derivePublicationState = (
+  input: PublicationActionInput
+): PublicationState => {
+  const { stage, canEdit } = input;
+  if (stage === Stage.Published && !input.hasChanges) {
+    return 'published';
+  }
+  if (stage === Stage.Approved) {
+    return canEdit ? 'approvedCanPublish' : 'approvedCannotPublish';
+  }
+  if (!canEdit) {
+    return 'cannotEdit';
+  }
+
+  return REVIEW_STAGE_STATES[stage] ?? deriveDraftState(input);
+};
+
 type PublicationRow = (
   input: PublicationActionInput
 ) => Omit<PublicationActions, 'state' | 'errors'>;
@@ -254,6 +261,11 @@ type PublicationRow = (
  * and sentence for each row are rendered by the panel.
  */
 const PUBLICATION_ROWS: Record<PublicationState, PublicationRow> = {
+  published: () => ({
+    primary: null,
+    secondary: null,
+    text: 'message.ontology-publication-no-changes',
+  }),
   cannotEdit: () => ({
     primary: null,
     secondary: null,

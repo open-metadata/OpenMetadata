@@ -439,14 +439,9 @@ test.describe(
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText(shared.iri);
-          await page.getByTestId('ontology-publication-trigger').click();
           await expect(
-            page.getByTestId('ontology-publication-picker')
-          ).toBeVisible();
-          await expect(
-            page.getByTestId('ontology-publication-tab-changes')
-          ).toHaveCount(0);
-          await page.keyboard.press('Escape');
+            page.getByTestId('ontology-publication-trigger')
+          ).toBeDisabled();
           await page.getByTestId('ontology-import-export-trigger').click();
           await expect(
             page.getByTestId('ontology-import-target-picker')
