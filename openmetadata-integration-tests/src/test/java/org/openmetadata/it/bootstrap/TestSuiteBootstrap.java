@@ -67,6 +67,7 @@ import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -85,6 +86,9 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.TriggerKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -160,6 +164,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
   private static GenericContainer<?> OBJECT_STORAGE_CONTAINER;
+  private static final String SEARCH_INDEXING_APP = "SearchIndexingApplication";
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
@@ -718,8 +723,28 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     registerMcpServerIfAvailable();
+    pauseScheduledReindex();
 
     LOG.info("OpenMetadata application started on port {}", APP.getLocalPort());
+  }
+
+  /**
+   * The seeded search indexing app runs on a wall-clock cron, every Sunday at 00:30 UTC, as a full
+   * recreate reindex: it rebuilds every index from a database snapshot and swaps the aliases,
+   * dropping every search write the suite made meanwhile. A merge-queue run that spanned it failed
+   * 31 search tests at once. Tests that need a reindex run the app on demand, through a trigger of
+   * its own that this leaves alone.
+   */
+  private static void pauseScheduledReindex() {
+    try {
+      Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+      TriggerKey trigger = new TriggerKey(SEARCH_INDEXING_APP, AppScheduler.APPS_TRIGGER_GROUP);
+      scheduler.pauseTrigger(trigger);
+      LOG.info(
+          "Scheduled trigger of {} is {}", SEARCH_INDEXING_APP, scheduler.getTriggerState(trigger));
+    } catch (SchedulerException e) {
+      LOG.warn("Could not pause the scheduled {}: {}", SEARCH_INDEXING_APP, e.getMessage());
+    }
   }
 
   private void registerMcpServerIfAvailable() {

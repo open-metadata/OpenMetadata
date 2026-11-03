@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,8 +29,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -7201,9 +7204,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
     fetchedDb.setOwners(List.of(shared.USER1_REF));
+    long patchedAt = System.currentTimeMillis();
     client.databases().update(fetchedDb.getId().toString(), fetchedDb);
 
     String tableId = table.getId().toString();
+    try {
+      awaitInheritedOwner(client, mapper, tableId, shared);
+    } catch (ConditionTimeoutException timeout) {
+      fail(
+          "%s%n%s".formatted(timeout.getMessage(), ownerPropagationDiagnostics(tableId, patchedAt)),
+          timeout);
+    }
+  }
+
+  private void awaitInheritedOwner(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, SharedEntities shared) {
     Awaitility.await("Table search index should reflect inherited owner from database")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -7232,6 +7247,55 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                       .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
                   "Owner should match the user set on the database");
             });
+  }
+
+  /**
+   * The owner reaches the table through a background update-by-query whose result only the search
+   * engine keeps. On a timeout, report that result, how the child aliases it targeted resolve, and
+   * the table document, so a failure names its own cause.
+   */
+  private static String ownerPropagationDiagnostics(String tableId, long patchedAt) {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String prefix = nullOrEmpty(clusterAlias) ? "" : clusterAlias + "_";
+    String childAliases =
+        Stream.of("databaseSchema", "table", "storedProcedure", "testSuite", "testCase")
+            .map(alias -> prefix + alias)
+            .collect(Collectors.joining(","));
+    String tasksQuery =
+        """
+        {"size":20,"query":{"bool":{"filter":[
+          {"term":{"task.action":"indices:data/write/update/byquery"}},
+          {"range":{"task.start_time_in_millis":{"gte":%d}}}]}}}"""
+            .formatted(patchedAt - 1000);
+    return """
+        update-by-query tasks since the PATCH: %s
+        child aliases: %s
+        table document: %s"""
+        .formatted(
+            searchEngine("POST", "/.tasks/_search", tasksQuery),
+            searchEngine("GET", "/_alias/" + childAliases + "?ignore_unavailable=true", null),
+            searchEngine("GET", "/" + prefix + "table_search_index/_doc/" + tableId, null));
+  }
+
+  private static String searchEngine(String method, String path, String body) {
+    String response;
+    try {
+      Request request = new Request(method, path);
+      if (body != null) {
+        request.setJsonEntity(body);
+      }
+      response =
+          new String(
+              TestSuiteBootstrap.createSearchClient()
+                  .performRequest(request)
+                  .getEntity()
+                  .getContent()
+                  .readAllBytes(),
+              StandardCharsets.UTF_8);
+    } catch (Exception e) {
+      response = "unavailable (%s)".formatted(e.getMessage());
+    }
+    return response;
   }
 
   @Test
