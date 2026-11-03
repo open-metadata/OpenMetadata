@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -60,6 +61,20 @@ public final class SecurityUtil {
   public static final String ISSUER_CLAIM = "iss";
 
   private SecurityUtil() {}
+
+  /**
+   * Whether two user names, emails or email domains identify the same thing. Compares the {@link
+   * Locale#ROOT} lower-case forms, the normalization names get when they are stored, so a token
+   * that carries the original casing still matches. {@link String#equalsIgnoreCase} must not be
+   * used for this: it also compares upper-case forms, which equates characters such as {@code ı}
+   * with {@code i} and {@code ſ} with {@code s}, so two different stored names would compare
+   * equal.
+   */
+  public static boolean sameIdentifier(String first, String second) {
+    return first != null
+        && second != null
+        && first.toLowerCase(Locale.ROOT).equals(second.toLowerCase(Locale.ROOT));
+  }
 
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
@@ -391,7 +406,8 @@ public final class SecurityUtil {
       if (nullOrEmpty(expectedDomains)) {
         expectedDomains = nullOrEmpty(principalDomain) ? Set.of() : Set.of(principalDomain);
       }
-      if (expectedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      String tokenDomain = domain;
+      if (expectedDomains.stream().noneMatch(d -> sameIdentifier(d, tokenDomain))) {
         throw AuthenticationException.invalidEmailMessage(domain, expectedDomains);
       }
     }

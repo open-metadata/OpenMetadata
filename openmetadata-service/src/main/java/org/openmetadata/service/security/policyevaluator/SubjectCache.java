@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +75,16 @@ public class SubjectCache {
           .expireAfterWrite(15, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserContextLoader());
+
+  // Bumped whenever the compiled policy caches are dropped wholesale, which is what a policy-rule
+  // or role-policy change does. Downstream caches keyed only by user/role/team ids — the search
+  // RBAC query cache — add this so a rule edit that leaves those ids unchanged still invalidates
+  // them.
+  private static final AtomicLong POLICY_GENERATION = new AtomicLong();
+
+  public static long policyGeneration() {
+    return POLICY_GENERATION.get();
+  }
 
   private static final Invalidatable INVALIDATOR =
       (type, id, fqn) -> {
@@ -199,6 +210,9 @@ public class SubjectCache {
     LOG.info("Invalidating all user policy caches");
     USER_POLICIES_CACHE.invalidateAll();
     USER_CONTEXT_CACHE.invalidateAll();
+    // Bump last: a concurrent read that sees the new generation must do so only after the stale
+    // policies are gone, so it recomputes from fresh state rather than re-caching the old rules.
+    POLICY_GENERATION.incrementAndGet();
   }
 
   public static User getUserContext(String userName) {

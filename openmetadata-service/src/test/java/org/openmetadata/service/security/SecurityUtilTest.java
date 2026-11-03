@@ -835,4 +835,27 @@ class SecurityUtilTest {
     assertTrue(fragment.contains("name="));
     assertTrue(fragment.contains("%26"));
   }
+
+  @Test
+  void sameIdentifierIgnoresCaseTheWayStoredNamesAreNormalized() {
+    assertTrue(SecurityUtil.sameIdentifier("John.Doe", "john.doe"));
+    assertTrue(SecurityUtil.sameIdentifier("ADMIN", "admin"));
+    assertTrue(SecurityUtil.sameIdentifier("Example.COM", "example.com"));
+  }
+
+  @Test
+  void sameIdentifierKeepsNamesApartThatOnlyUpperCaseFoldingWouldJoin() {
+    // String.equalsIgnoreCase treats each pair as equal: both characters upper-case to I and S
+    assertTrue("admın".equalsIgnoreCase("admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admın", "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("ſam", "sam"));
+    assertFalse(SecurityUtil.sameIdentifier("fıntech.com", "fintech.com"));
+  }
+
+  @Test
+  void sameIdentifierNeverMatchesAMissingValue() {
+    assertFalse(SecurityUtil.sameIdentifier(null, "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admin", null));
+    assertFalse(SecurityUtil.sameIdentifier(null, null));
+  }
 }

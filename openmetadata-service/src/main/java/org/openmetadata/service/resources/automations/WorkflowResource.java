@@ -34,7 +34,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -42,12 +44,16 @@ import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
+import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
@@ -55,6 +61,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
@@ -64,13 +71,16 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -331,8 +341,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return decryptOrNullify(
-        securityContext, super.getVersionInternal(securityContext, id, version));
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -355,7 +364,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, unmask(workflow));
+    Response response = create(uriInfo, securityContext, unmask(securityContext, workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -477,7 +486,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    workflow = unmask(workflow);
+    workflow = unmask(securityContext, workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -588,20 +597,77 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   private void authorizeWorkflowTrigger(SecurityContext securityContext, Workflow workflow) {
-    if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
-      Workflow converted =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
-      if (converted.getRequest() instanceof TestServiceConnectionRequest testRequest) {
-        authorizeTestConnection(securityContext, testRequest);
-      } else {
-        // Fail closed: deny the trigger if a TEST_CONNECTION request cannot be resolved to a
-        // TestServiceConnectionRequest, rather than letting it run unauthorized.
-        throw new AuthorizationException(
-            String.format(
-                "Cannot authorize TEST_CONNECTION trigger for workflow [%s]: request is not a valid TestServiceConnectionRequest",
-                workflow.getId()));
-      }
+    switch (workflow.getWorkflowType()) {
+      case TEST_CONNECTION -> authorizeTestConnectionTrigger(securityContext, workflow);
+      case REVERSE_INGESTION -> authorizeReverseIngestionTrigger(securityContext, workflow);
+      case QUERY_RUNNER -> authorizeQueryRunnerTrigger(securityContext, workflow);
+      case TEST_SPARK_ENGINE_CONNECTION -> authorizeSparkEngineTrigger(securityContext, workflow);
+      case null -> throw unauthorizableTrigger(workflow, "it has no workflow type");
     }
+  }
+
+  private static Object typedRequest(Workflow workflow) {
+    return ((Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow))
+        .getRequest();
+  }
+
+  private void authorizeTestConnectionTrigger(SecurityContext securityContext, Workflow workflow) {
+    if (!(typedRequest(workflow) instanceof TestServiceConnectionRequest testRequest)) {
+      throw unauthorizableTrigger(workflow, "request is not a valid TestServiceConnectionRequest");
+    }
+    authorizeTestConnection(securityContext, testRequest);
+  }
+
+  /** Reverse ingestion writes back to the source system, so it needs EditAll on that service. */
+  private void authorizeReverseIngestionTrigger(
+      SecurityContext securityContext, Workflow workflow) {
+    if (!(typedRequest(workflow) instanceof ReverseIngestionPipeline reverseIngestion)
+        || !isResolvableService(reverseIngestion.getService())) {
+      throw unauthorizableTrigger(workflow, "request does not name the service it writes to");
+    }
+    // Resolve the reference from the store rather than trusting the type, id and FQN the request
+    // carries: a mismatched trio would otherwise authorize a different entity than the one written.
+    EntityReference service;
+    try {
+      service = Entity.getEntityReference(reverseIngestion.getService(), Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw unauthorizableTrigger(workflow, "the service it writes to does not exist");
+    }
+    if (!Entity.getServiceEntityTypes().contains(service.getType())) {
+      throw unauthorizableTrigger(workflow, "it does not write to a service");
+    }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(service.getType(), MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(service.getType(), service.getId(), null));
+  }
+
+  private static boolean isResolvableService(EntityReference service) {
+    return service != null
+        && service.getType() != null
+        && Entity.hasEntityRepository(service.getType())
+        && (service.getId() != null || service.getFullyQualifiedName() != null);
+  }
+
+  /**
+   * A query runner workflow runs a stored query with its requester's credentials, so only that
+   * requester may trigger it again. Admins and bots dispatch these on users' behalf.
+   */
+  private void authorizeQueryRunnerTrigger(SecurityContext securityContext, Workflow workflow) {
+    UUID callerId = DefaultAuthorizer.getSubjectContext(securityContext).user().getId();
+    boolean isRequester =
+        typedRequest(workflow) instanceof QueryRunnerRequest queryRequest
+            && callerId.equals(queryRequest.getUserId());
+    if (!isRequester) {
+      authorizer.authorizeAdminOrBot(securityContext);
+    }
+  }
+
+  private static AuthorizationException unauthorizableTrigger(Workflow workflow, String reason) {
+    return new AuthorizationException(
+        String.format(
+            "Cannot authorize the %s trigger for workflow [%s]: %s",
+            workflow.getWorkflowType(), workflow.getId(), reason));
   }
 
   private void authorizeTestConnection(
@@ -627,25 +693,72 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               new AuthRequest(pipelineOpCtx, pipelineResourceCtx)),
           AuthorizationLogic.ANY);
     } else {
-      OperationContext operationContext =
-          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.CREATE);
-      ResourceContext<?> resourceContext = new ResourceContext<>(Entity.INGESTION_PIPELINE);
-      authorizer.authorize(securityContext, operationContext, resourceContext);
+      authorizeIngestionPipelineCreate(securityContext);
     }
   }
 
-  private Workflow unmask(Workflow workflow) {
+  /**
+   * A Spark engine test authorizes only an ingestion-pipeline create, the lightest of the trigger
+   * checks. A workflow stored before the converter was made type-strict could carry a reverse
+   * ingestion or test-connection request under this label, so confirm the stored request really is
+   * a Spark one before applying the lighter check.
+   */
+  private void authorizeSparkEngineTrigger(SecurityContext securityContext, Workflow workflow) {
+    if (!(typedRequest(workflow) instanceof TestSparkEngineConnectionRequest)) {
+      throw unauthorizableTrigger(workflow, "request is not a TestSparkEngineConnectionRequest");
+    }
+    authorizeIngestionPipelineCreate(securityContext);
+  }
+
+  private void authorizeIngestionPipelineCreate(SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.CREATE),
+        new ResourceContext<>(Entity.INGESTION_PIPELINE));
+  }
+
+  private Workflow unmask(SecurityContext securityContext, Workflow workflow) {
     repository.setFullyQualifiedName(workflow);
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
       // in case of test connection type, we get the original connection values from the service
       // name
       originalWorkflow = buildFromOriginalServiceConnection(workflow);
+      if (!readsStoredSecrets(securityContext)) {
+        requireSecretsReenteredOnRetarget(workflow, originalWorkflow);
+      }
     } else {
       originalWorkflow =
           repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
+  }
+
+  /** Admins and bots may already read or replace any connection's secrets. */
+  private static boolean readsStoredSecrets(SecurityContext securityContext) {
+    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    return subject.isAdmin() || subject.isBot();
+  }
+
+  /** A test against another endpoint may not borrow the stored secrets it would be sent. */
+  private static void requireSecretsReenteredOnRetarget(Workflow workflow, Workflow original) {
+    Workflow converted =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    if (converted.getRequest() instanceof TestServiceConnectionRequest request
+        && original.getRequest() instanceof TestServiceConnectionRequest stored
+        && request.getConnection() instanceof ServiceConnectionEntityInterface connection
+        && stored.getConnection() instanceof ServiceConnectionEntityInterface storedConnection) {
+      ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+          connection.getConfig(),
+          storedConnection.getConfig(),
+          request.getConnectionType(),
+          request.getServiceType());
+    }
+  }
+
+  @Override
+  protected Optional<UnaryOperator<Workflow>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(workflow -> decryptOrNullify(securityContext, workflow));
   }
 
   private Workflow decryptOrNullify(SecurityContext securityContext, Workflow workflow) {
