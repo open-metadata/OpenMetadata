@@ -21,11 +21,13 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import org.openmetadata.schema.exception.JsonParsingException;
@@ -143,6 +145,22 @@ final class JsonSchemaRepository {
   boolean hasMatchingClosedBranch(Ref oneOf, Object value) {
     return branches(oneOf).stream()
         .anyMatch(branch -> containsPasswordFormat(branch) && isCandidate(oneOf, branch, value));
+  }
+
+  /** The secret-bearing candidate branch that declares the most of {@code value}'s fields. */
+  Optional<Ref> closestSecretBranch(Ref oneOf, Object value) {
+    if (!(value instanceof Map<?, ?> map)) {
+      return Optional.empty();
+    }
+    return branches(oneOf).stream()
+        .filter(branch -> containsPasswordFormat(branch) && isCandidate(oneOf, branch, value))
+        .filter(branch -> declaredFieldCount(branch, map) > 0)
+        .max(Comparator.comparingLong(branch -> declaredFieldCount(branch, map)));
+  }
+
+  private static long declaredFieldCount(Ref schema, Map<?, ?> value) {
+    JsonNode properties = schema.node().path("properties");
+    return value.keySet().stream().filter(key -> properties.has(key.toString())).count();
   }
 
   private boolean matchesRequiredProperties(Ref schema, Object value) {
