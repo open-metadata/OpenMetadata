@@ -1,7 +1,7 @@
 # A memory cites its supporting Queries, and retiring one holds the memory for review
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (the UI names the deleted Query at view time)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (a deleted Query reads in full only to admins; the UI names it at view time)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `MemoryEvidenceHoldsTest`, `ContextMemoryEvidenceAccessTest`, `ContextMemoryQueryEvidenceIT`,
   `useMemoryStatusReason.test.ts`
@@ -84,7 +84,7 @@ read the Query.
   row removal, loses its link without a hold. Closing it needs Memory Reconciliation to re-verify
   evidence, which is a Collate change.
 
-## Amendment — 2026-11-03: the UI names the deleted Query at view time
+## Amendment — 2026-11-03: a deleted Query reads in full only to admins, who see it named
 
 Release testing found the reason in item 6 unreadable: a reviewer sees a UUID, not the Query it
 stood for. The stored `statusReason` stays id-only, because every reader of the memory reads it.
@@ -94,7 +94,14 @@ reason by its fixed text (`RETIRED_QUERY_REASON`, which must match `EVIDENCE_RET
 
 The name comes from the history because a Query delete is always a hard delete: the Query's own
 endpoint answers 404 even with `include=deleted`. The versions that cited the Query still hold its
-reference, and item 7 already reduces it to `{id, type}` for a caller who may not view the Query,
-so the reason shows its name only to a viewer the API would show it to. When the history cannot be
-read, or no version names the Query (a late link under item 5 never stored one), the id stays.
+reference, which item 7 reduces to `{id, type}` for a caller who may not view the Query.
+
+Item 7 cannot decide that for a Query that is gone. A policy condition that needs the Query, such
+as `hasDomain()` or `matchAnyTag()`, evaluates without it and fails open, so a reader the Query was
+hidden from would see it in full once it is deleted: in the hold's change, in every version, and so
+in the named reason. A reference to a Query that no longer exists therefore reads in full only to
+an admin; every other caller gets `{id, type}`, in every memory response and version
+(`ContextMemoryEvidenceAccess`). So the reason is named for admins, and every other reader keeps
+the id. When the history cannot be read, or no version names the Query (a late link under item 5
+never stored one), the id stays too.
 

@@ -90,6 +90,7 @@ import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { navigatesThisTab } from '../../../utils/LinkClickUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -111,7 +112,6 @@ import {
   getLinkedAssetPath,
   getPrimaryAndRelatedEntities,
   getQueryTableFqn,
-  navigatesThisTab,
   getSuccessorSearch,
   removeAssetByKey,
   submitMemoryCreate,

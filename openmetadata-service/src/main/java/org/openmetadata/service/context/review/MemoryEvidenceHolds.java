@@ -47,7 +47,7 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 @Slf4j
 public final class MemoryEvidenceHolds {
 
-  /** The UI matches this text to name the Query at view time (RETIRED_QUERY_REASON). */
+  /** The UI reads the Query's id out of this text (RETIRED_QUERY_REASON; pinned by its test). */
   static final String EVIDENCE_RETIRED =
       "Supporting query %s was deleted; review whether this memory still holds without it";
 

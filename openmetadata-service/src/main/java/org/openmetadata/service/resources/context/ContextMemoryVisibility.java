@@ -288,7 +288,7 @@ public final class ContextMemoryVisibility {
         : securityContext.getUserPrincipal().getName();
   }
 
-  private static boolean isAdmin(SecurityContext securityContext) {
+  static boolean isAdmin(SecurityContext securityContext) {
     boolean admin = false;
     if (callerName(securityContext) != null) {
       SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);

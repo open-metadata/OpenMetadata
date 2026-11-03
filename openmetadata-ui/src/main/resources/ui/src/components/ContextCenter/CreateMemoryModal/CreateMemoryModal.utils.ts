@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { compare } from 'fast-json-patch';
-import { MouseEvent } from 'react';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -91,13 +90,6 @@ export const getLinkedAssetPath = (
       )
     : undefined;
 };
-
-const isModifiedClick = (event: MouseEvent<HTMLElement>): boolean =>
-  event.metaKey || event.altKey || event.ctrlKey || event.shiftKey;
-
-/** Whether a link click navigates this tab, as react-router's Link decides; a new-tab click does not. */
-export const navigatesThisTab = (event: MouseEvent<HTMLElement>): boolean =>
-  !event.defaultPrevented && event.button === 0 && !isModifiedClick(event);
 
 export const getAssetKey = (asset: DataAssetOption): string =>
   asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
