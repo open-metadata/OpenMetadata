@@ -1039,32 +1039,35 @@ test.describe(
           await expect(inspector).toContainText(concepts[2].name);
           await attachStudioShot(page, testInfo, `p1-keyboard-${mode}`);
 
-          await page.getByTestId('submode-tab-graph').click();
-          const list = page.getByRole('listbox', { name: 'Concepts (3)' });
-          let presses = 0;
-          while (
-            !(await list.evaluate((el) => el === document.activeElement)) &&
-            presses < 150
-          ) {
-            await page.keyboard.press('Tab');
-            presses += 1;
-          }
-          await expect(list).toBeFocused();
-          const options = list.getByRole('option');
-          await expect(options).toHaveCount(3);
-          const names = (await options.allTextContents()).map((name) =>
-            name.trim()
-          );
+          const focusList = async () => {
+            await openOntologyInStudio(page, ontology.id);
+            const list = page.getByRole('listbox', { name: 'Concepts (3)' });
+            for (
+              let presses = 0;
+              presses < 150 &&
+              !(await list.evaluate((el) => el === document.activeElement));
+              presses += 1
+            ) {
+              await page.keyboard.press('Tab');
+            }
+            await expect(list).toBeFocused();
+
+            return list;
+          };
+          const names = (
+            await (await focusList()).getByRole('option').allTextContents()
+          ).map((name) => name.trim());
           expect([...names].sort()).toEqual(['Alpha', 'Bravo', 'Charlie']);
           for (const [index, name] of names.entries()) {
+            const list = await focusList();
+            for (let step = 0; step < index; step += 1) {
+              await page.keyboard.press('ArrowDown');
+            }
             await page.keyboard.press('Enter');
             await expect(inspector).toContainText(name);
             await page.keyboard.press('Escape');
             await expect(inspector).toBeHidden();
             await expect(list).toBeFocused();
-            if (index < names.length - 1) {
-              await page.keyboard.press('ArrowDown');
-            }
           }
         } finally {
           await removeFlowOntologies(api, [ontology]);
