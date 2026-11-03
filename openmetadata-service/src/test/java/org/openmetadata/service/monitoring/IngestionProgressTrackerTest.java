@@ -352,6 +352,27 @@ class IngestionProgressTrackerTest {
   }
 
   @Test
+  void unresolvedRunCannotAdoptLaterPipelineIdentity() {
+    UUID run = UUID.randomUUID();
+    UUID pipelineId = UUID.randomUUID();
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withId(pipelineId)
+            .withName("metadata")
+            .withFullyQualifiedName("svc.metadata");
+    List<ServiceProgressSnapshot> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    tracker.updateProgress("svc.metadata", run, processing(run, "unbound"));
+    tracker.updateProgress("svc.metadata", run, processing(run, "bound"), pipeline);
+
+    assertEquals(2, received.size());
+    assertNull(received.getFirst().pipelineId());
+    assertNull(received.getLast().pipelineId());
+    assertNull(tracker.getActiveRunSnapshots("svc").getFirst().pipelineId());
+  }
+
+  @Test
   void serviceEventsKeepIdentityWithoutRepeatingDiscoveryPayload() {
     UUID run = UUID.randomUUID();
     UUID pipelineId = UUID.randomUUID();
