@@ -92,6 +92,7 @@ import {
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -1243,6 +1244,10 @@ const OntologyGraphView = ({
       return renderInspector(selected);
     }
 
+    if (graphMode === 'data') {
+      return null;
+    }
+
     return (
       <OntologyHealthPanel
         health={health}
@@ -1251,6 +1256,15 @@ const OntologyGraphView = ({
       />
     );
   };
+
+  const dataConcepts = useMemo(
+    () =>
+      (model?.concepts ?? []).map((concept) => ({
+        id: concept.id,
+        name: getEntityName(concept),
+      })),
+    [model?.concepts]
+  );
 
   const renderDataSurface = () =>
     hasOpenedData ? (
@@ -1262,6 +1276,8 @@ const OntologyGraphView = ({
         }
         hidden={graphMode !== 'data'}>
         <OntologyNativeDataMode
+          canEditBindings={canEditConcept}
+          concepts={dataConcepts}
           isActive={graphMode === 'data'}
           ontologyId={ontology.id}
           revision={dataRevision}

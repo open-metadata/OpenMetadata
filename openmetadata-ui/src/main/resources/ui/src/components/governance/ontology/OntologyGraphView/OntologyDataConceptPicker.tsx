@@ -114,7 +114,6 @@ const OntologyDataConceptPicker = ({
         icon={Search}
         inputDataTestId="ontology-data-concept-search"
         placeholder={`${t('label.find-concept')}…`}
-        role="combobox"
         size="sm"
         value={query}
         onChange={setQuery}
@@ -132,50 +131,50 @@ const OntologyDataConceptPicker = ({
             {t('message.ontology-find-no-match')}
           </Typography>
         ) : null}
-        {sections.map((section) => (
-          <div aria-label={section.label} key={section.key} role="group">
-            <Typography
-              aria-hidden="true"
-              className="tw:px-3 tw:pt-2 tw:pb-1 tw:uppercase"
-              color="tertiary"
-              size="text-xs"
-              weight="semibold">
-              {section.label}
-            </Typography>
-            {section.items.map((concept) => {
-              const position = options.indexOf(concept);
+        {sections.flatMap((section) => [
+          <Typography
+            aria-hidden="true"
+            className="tw:px-3 tw:pt-2 tw:pb-1 tw:uppercase"
+            color="secondary"
+            key={`caption-${section.key}`}
+            role="presentation"
+            size="text-xs"
+            weight="semibold">
+            {section.label}
+          </Typography>,
+          ...section.items.map((concept) => {
+            const position = options.indexOf(concept);
 
-              return (
-                // Keyboard users act through the input; the option is a pointer shortcut.
-                // eslint-disable-next-line jsx-a11y/click-events-have-key-events
-                <div
-                  aria-selected={position === active}
-                  className={`tw:flex tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:rounded-md tw:px-3 tw:py-2 ${
-                    position === active
-                      ? 'tw:bg-active'
-                      : 'tw:hover:bg-primary_hover'
-                  }`}
-                  data-testid={`ontology-data-concept-option-${concept.id}`}
-                  id={`${listId}-${concept.id}`}
-                  key={concept.id}
-                  role="option"
-                  tabIndex={-1}
-                  onClick={() => onPick(concept.id)}
-                  onMouseDown={(event) => event.preventDefault()}>
-                  <Typography ellipsis size="text-sm" weight="medium">
-                    {concept.name}
-                  </Typography>
-                  <Typography
-                    className="tw:shrink-0"
-                    color="secondary"
-                    size="text-xs">
-                    {describe(concept)}
-                  </Typography>
-                </div>
-              );
-            })}
-          </div>
-        ))}
+            return (
+              // Keyboard users act through the input; the option is a pointer shortcut.
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events
+              <div
+                aria-selected={position === active}
+                className={`tw:flex tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:rounded-md tw:px-3 tw:py-2 ${
+                  position === active
+                    ? 'tw:bg-active'
+                    : 'tw:hover:bg-primary_hover'
+                }`}
+                data-testid={`ontology-data-concept-option-${concept.id}`}
+                id={`${listId}-${concept.id}`}
+                key={concept.id}
+                role="option"
+                tabIndex={-1}
+                onClick={() => onPick(concept.id)}
+                onMouseDown={(event) => event.preventDefault()}>
+                <Typography ellipsis size="text-sm" weight="medium">
+                  {concept.name}
+                </Typography>
+                <Typography
+                  className="tw:shrink-0"
+                  color="secondary"
+                  size="text-xs">
+                  {describe(concept)}
+                </Typography>
+              </div>
+            );
+          }),
+        ])}
       </div>
     </div>
   );

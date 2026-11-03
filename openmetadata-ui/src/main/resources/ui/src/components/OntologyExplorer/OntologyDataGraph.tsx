@@ -82,6 +82,8 @@ interface OntologyDataGraphProps {
   data: OntologyGraphData;
   glossaryColorMap: Record<string, string>;
   hasMoreTerms: boolean;
+  /** One concept is drawn, so the multi-concept heading and inferred-edge legend do not apply. */
+  isSingleConcept?: boolean;
   isLoadingMoreTerms: boolean;
   limitMessage?: string;
   relationTypes: RelationshipType[];
@@ -308,11 +310,78 @@ function AssetTypeBadge({ entityType }: { entityType: string }) {
 
 interface AssetRowsProps {
   assets: OntologyNode[];
+  expandedColumnIds?: ReadonlySet<string>;
   isNative: boolean;
   onSelectNode: (node: OntologyNode) => void;
+  onToggleColumns?: (asset: OntologyNode) => void;
 }
 
-function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
+function BoundColumnList({
+  asset,
+  isOpen,
+  onToggle,
+}: {
+  asset: OntologyNode;
+  isOpen: boolean;
+  onToggle: (asset: OntologyNode) => void;
+}) {
+  const { t } = useTranslation();
+  const columns = asset.boundColumns ?? [];
+
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-1 tw:pr-5 tw:pb-3 tw:pl-16">
+      <Button
+        aria-expanded={isOpen}
+        className="tw:self-start"
+        color="link-gray"
+        data-testid={`ontology-data-asset-columns-toggle-${asset.id}`}
+        size="xs"
+        onPress={() => onToggle(asset)}>
+        {t('label.bound-column-count', { count: columns.length })}
+      </Button>
+      {isOpen ? (
+        <ul
+          className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-1 tw:border-l tw:border-dashed tw:border-secondary tw:p-0 tw:pl-3"
+          data-testid={`ontology-data-asset-columns-${asset.id}`}>
+          {columns.map((column) => (
+            <li
+              className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2"
+              data-testid="ontology-data-column"
+              key={column.path.join('.')}>
+              <Typography
+                ellipsis
+                className="tw:font-mono tw:text-primary"
+                size="text-xs"
+                weight="medium">
+                {column.path.join('.')}
+              </Typography>
+              {column.type ? (
+                <Typography color="secondary" size="text-xs">
+                  {column.type}
+                </Typography>
+              ) : null}
+              <Typography
+                ellipsis
+                className="tw:ml-auto"
+                color={column.isResolved ? 'secondary' : 'danger'}
+                size="text-xs">
+                {column.propertyLabel}
+              </Typography>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function AssetRowList({
+  assets,
+  expandedColumnIds,
+  isNative,
+  onSelectNode,
+  onToggleColumns,
+}: AssetRowsProps) {
   const { t } = useTranslation();
 
   return (
@@ -321,8 +390,9 @@ function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
         const entityType = getAssetEntityType(asset);
         const lineageNotes = isNative ? getLineageNotes(asset, t) : [];
         const descriptionId = `ontology-data-asset-lineage-${asset.id}`;
+        const hasColumns = isNative && (asset.boundColumns?.length ?? 0) > 0;
 
-        return (
+        const row = (
           // ADR:2026-10-30-data-mode-asset-rows-are-styled-at-the-call-site-until-core-ships-a-list-row-button
           <Button
             noTextPadding
@@ -364,6 +434,19 @@ function AssetRowList({ assets, isNative, onSelectNode }: AssetRowsProps) {
             ) : null}
           </Button>
         );
+
+        return hasColumns && onToggleColumns ? (
+          <div key={asset.id}>
+            {row}
+            <BoundColumnList
+              asset={asset}
+              isOpen={expandedColumnIds?.has(asset.id) ?? false}
+              onToggle={onToggleColumns}
+            />
+          </div>
+        ) : (
+          row
+        );
       })}
     </>
   );
@@ -375,6 +458,8 @@ const AssetRows = memo(
   (previous, next) =>
     previous.isNative === next.isNative &&
     previous.onSelectNode === next.onSelectNode &&
+    previous.expandedColumnIds === next.expandedColumnIds &&
+    previous.onToggleColumns === next.onToggleColumns &&
     previous.assets.length === next.assets.length &&
     previous.assets.every((asset, index) => asset === next.assets[index])
 );
@@ -721,6 +806,7 @@ const OntologyDataGraph = ({
   data,
   glossaryColorMap,
   hasMoreTerms,
+  isSingleConcept = false,
   isLoadingMoreTerms,
   limitMessage,
   relationTypes,
@@ -756,6 +842,19 @@ const OntologyDataGraph = ({
     () => new Set()
   );
   const [rowWindows, setRowWindows] = useState<Record<string, RowWindow>>({});
+  const [expandedColumnIds, setExpandedColumnIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const toggleColumns = useCallback((asset: OntologyNode) => {
+    setExpandedColumnIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(asset.id)) {
+        next.add(asset.id);
+      }
+
+      return next;
+    });
+  }, []);
   const cardHeightOf = useCallback(
     (term: OntologyNode) =>
       measuredHeights[term.id] ??
@@ -901,21 +1000,42 @@ const OntologyDataGraph = ({
     rowsInView,
     t,
   ]);
+  const hasBoundColumns = useMemo(
+    () =>
+      data.nodes.some(
+        (node) => node.type === 'dataAsset' && node.boundColumns?.length
+      ),
+    [data.nodes]
+  );
   const legendEntries = useMemo((): LegendEntry[] => {
     if (isNative) {
       return [
-        {
-          color: INFERRED_EDGE_COLOR,
-          isSolid: false,
-          key: 'inferred',
-          label: t('label.ontology-inferred-relation'),
-        },
+        ...(isSingleConcept
+          ? []
+          : [
+              {
+                color: INFERRED_EDGE_COLOR,
+                isSolid: false,
+                key: 'inferred',
+                label: t('label.ontology-inferred-relation'),
+              },
+            ]),
         {
           color: LINEAGE_EDGE_COLOR,
           isSolid: true,
           key: 'lineage',
           label: t('label.observed-lineage'),
         },
+        ...(hasBoundColumns
+          ? [
+              {
+                color: INFERRED_EDGE_COLOR,
+                isSolid: false,
+                key: 'column-binding',
+                label: t('label.ontology-column-binding'),
+              },
+            ]
+          : []),
       ];
     }
 
@@ -932,7 +1052,7 @@ const OntologyDataGraph = ({
         ])
       ).values(),
     ];
-  }, [isNative, renderedSemanticEdges, t]);
+  }, [hasBoundColumns, isNative, isSingleConcept, renderedSemanticEdges, t]);
   const linkedAssetTotal = useMemo(
     () =>
       visibleTerms.reduce(
@@ -1127,7 +1247,13 @@ const OntologyDataGraph = ({
         ? current
         : { ...current, ...Object.fromEntries(changed) };
     });
-  }, [assetsByTerm, expandedCardIds, isNative, measuredHeights]);
+  }, [
+    assetsByTerm,
+    expandedCardIds,
+    expandedColumnIds,
+    isNative,
+    measuredHeights,
+  ]);
 
   const layoutKey = useMemo(
     () => visibleTerms.map((term) => term.id).join('|'),
@@ -1558,7 +1684,9 @@ const OntologyDataGraph = ({
             <AssetRows
               isNative
               assets={assetState.shownAssets}
+              expandedColumnIds={expandedColumnIds}
               onSelectNode={onSelectNode}
+              onToggleColumns={toggleColumns}
             />
           </div>
         ) : (
@@ -1714,11 +1842,13 @@ const OntologyDataGraph = ({
         />
       </div>
 
-      <DataLayerHeading
-        assetCount={linkedAssetTotal}
-        conceptCount={visibleTerms.length}
-        isNative={isNative}
-      />
+      {isSingleConcept ? null : (
+        <DataLayerHeading
+          assetCount={linkedAssetTotal}
+          conceptCount={visibleTerms.length}
+          isNative={isNative}
+        />
+      )}
 
       {renderControls()}
     </div>

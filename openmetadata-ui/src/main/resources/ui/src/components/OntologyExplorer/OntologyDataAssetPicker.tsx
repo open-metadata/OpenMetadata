@@ -73,6 +73,11 @@ type OntologyDataAssetPickerProps = {
         readonly assetTypes: string[];
         readonly linkedIds: string[];
         readonly isDisabled: boolean;
+        /** The concept being linked, to suggest assets by name. */
+        readonly concept?: {
+          readonly name: string;
+          readonly synonyms?: string[];
+        };
         readonly saveAssets: (
           assets: EntityReference[]
         ) => Promise<NativeBindingBatchOutcome>;
