@@ -25,12 +25,15 @@ import {
 import {
   Copy01,
   Edit01 as Edit,
+  Role as RoleIcon,
+  Teams,
   Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
   FC,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -295,6 +298,7 @@ const renderRoleOrTeamCell = (
 interface RoleOrTeamTableProps {
   canEditAll: boolean;
   columns: DetailColumn[];
+  emptyIcon: ReactNode;
   emptyTitle: string;
   isLoadingOnSave: boolean;
   items: EntityReference[];
@@ -307,6 +311,7 @@ interface RoleOrTeamTableProps {
 const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
   canEditAll,
   columns,
+  emptyIcon,
   emptyTitle,
   isLoadingOnSave,
   items,
@@ -334,9 +339,9 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
         renderEmptyState={() => (
           <Box
             align="center"
-            className="tw:min-h-32 tw:relative"
+            className="tw:relative tw:min-h-60"
             justify="center">
-            <NoDataPlaceholder title={emptyTitle} />
+            <NoDataPlaceholder icon={emptyIcon} title={emptyTitle} />
           </Box>
         )}>
         {(item) => (
@@ -402,7 +407,7 @@ const usePolicyDetail = (fqn: string) => {
   const handleDeleteRule = useCallback(
     async (ruleName: string) => {
       if (!policy) {
-        return;
+        return false;
       }
 
       const updated = {
@@ -417,8 +422,12 @@ const usePolicyDetail = (fqn: string) => {
         showSuccessToast(
           t('server.entity-updated-success', { entity: t('label.rule') })
         );
+
+        return true;
       } catch (err) {
         showErrorToast(err as AxiosError);
+
+        return false;
       } finally {
         setIsLoadingOnSave(false);
       }
@@ -761,6 +770,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       <RoleOrTeamTable
         canEditAll={Boolean(isAdminUser)}
         columns={detailColumns}
+        emptyIcon={<RoleIcon />}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.role-plural'),
         })}
@@ -794,6 +804,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       <RoleOrTeamTable
         canEditAll={Boolean(isAdminUser)}
         columns={detailColumns}
+        emptyIcon={<Teams />}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.team-plural'),
         })}

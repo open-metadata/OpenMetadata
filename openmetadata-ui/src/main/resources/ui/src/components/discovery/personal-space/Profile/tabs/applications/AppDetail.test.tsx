@@ -195,9 +195,10 @@ describe('AppDetail', () => {
       Trigger: true,
       Deploy: true,
     });
-    jest
-      .spyOn(applicationsClassBase, 'importSchema')
-      .mockResolvedValue({ type: 'object' });
+    jest.spyOn(applicationsClassBase, 'importSchema').mockResolvedValue({
+      type: 'object',
+      properties: { batchSize: { type: 'number' } },
+    });
     jest
       .spyOn(applicationsClassBase, 'getModalAppConfigurationComponent')
       .mockReturnValue(() => <div data-testid="config-form" />);
@@ -280,6 +281,9 @@ describe('AppDetail', () => {
       'href',
       'https://www.getcollate.io'
     );
+    // Same icon-to-text gap as the other meta items.
+    expect(screen.getByTestId('developer-website')).toHaveClass('tw:gap-1');
+    expect(screen.getByTestId('developer-website')).not.toHaveClass('tw:gap-0');
   });
 
   it('shows the hint toggle only on the configuration tab', async () => {
@@ -526,6 +530,24 @@ describe('AppDetail', () => {
 
     expect(patchApplication).not.toHaveBeenCalled();
     expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+  });
+
+  it('shows an empty configuration state when the schema has no properties', async () => {
+    jest.spyOn(applicationsClassBase, 'importSchema').mockResolvedValue({
+      type: 'object',
+      description: 'Nothing to configure',
+      properties: {},
+    });
+    await renderDetail();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'label.configuration' }));
+
+    expect(screen.getByTestId('app-config-empty')).toHaveTextContent(
+      'label.no-entity'
+    );
+    // The schema's description is untranslated backend text, so it is not shown.
+    expect(screen.queryByText('Nothing to configure')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('config-form')).not.toBeInTheDocument();
   });
 
   it('shows an empty state with the reason when the app has no schema and no tabs', async () => {
