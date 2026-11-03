@@ -136,18 +136,28 @@ public abstract class SecretsManager {
           buildSecretId(true, serviceType.value(), connectionName),
           true,
           persistExternalSecrets);
-    } catch (Exception e) {
-      String message =
-          SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
-      if (message != null) {
-        throw new InvalidServiceConnectionException(message);
+    } catch (SecretsManagerException e) {
+      // A deliberate 400 names the offending value; the generic message would blame the key.
+      if (e.getResponse().getStatus() == Response.Status.BAD_REQUEST.getStatusCode()) {
+        throw e;
       }
-      throw InvalidServiceConnectionException.byMessage(
-          connectionType,
-          String.format(
-              "Failed to encrypt connection instance of %s. Did the Fernet Key change?",
-              connectionType));
+      throw invalidConnection(e, connectionType);
+    } catch (Exception e) {
+      throw invalidConnection(e, connectionType);
     }
+  }
+
+  private static InvalidServiceConnectionException invalidConnection(
+      Exception e, String connectionType) {
+    String message =
+        SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
+    return message != null
+        ? new InvalidServiceConnectionException(message)
+        : InvalidServiceConnectionException.byMessage(
+            connectionType,
+            String.format(
+                "Failed to encrypt connection instance of %s. Did the Fernet Key change?",
+                connectionType));
   }
 
   public Object decryptServiceConnectionConfig(
@@ -573,7 +583,9 @@ public abstract class SecretsManager {
    * additionalProperties} carry {@code format: password}, such as Kafka {@code consumerConfig}.
    * Non-string values are left alone: those maps also carry numbers and booleans that are not
    * secrets. Each entry is stored under its own secret id, derived from the map's id and the entry
-   * key, so that {@code deleteSecrets} derives the same id for the same entry.
+   * key, so that {@code deleteSecrets} derives the same id for the same entry. An empty entry is
+   * kept as an empty string, a valid setting of a string-valued map, while any secret previously
+   * stored for it is removed.
    */
   private void encryptSecretMapEntries(
       Map<?, ?> secretMap,
@@ -582,6 +594,7 @@ public abstract class SecretsManager {
       boolean store,
       boolean persistExternalSecrets) {
     String mapSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
+    rejectCollidingEntrySecretIds(secretMap, fieldName, mapSecretId);
     transformSecretMapEntries(
         secretMap,
         (entryKey, entryValue) -> {
@@ -592,9 +605,38 @@ public abstract class SecretsManager {
                   mapSecretId,
                   store && persistExternalSecrets);
           String newValue = persistExternalSecrets ? storedValue : entryValue;
-          return newValue == null || Fernet.isTokenized(newValue)
-              ? newValue
-              : store ? fernet.encrypt(newValue) : newValue;
+          return entryValue.isEmpty() ? entryValue : encryptedForStorage(newValue, store);
+        });
+  }
+
+  private String encryptedForStorage(String value, boolean store) {
+    return value == null || Fernet.isTokenized(value) || !store ? value : fernet.encrypt(value);
+  }
+
+  /**
+   * Secret ids are normalized - lower-cased, with characters the store does not accept replaced -
+   * so distinct entry keys such as {@code X.Auth.Token} and {@code X_Auth_Token} can share one id.
+   * Storing both would overwrite one secret with the other and resolve both references to the same
+   * value, so such a map is refused before any entry is written.
+   */
+  private void rejectCollidingEntrySecretIds(
+      Map<?, ?> secretMap, String fieldName, String mapSecretId) {
+    Map<String, String> keyBySecretId = new HashMap<>();
+    secretMap.forEach(
+        (key, value) -> {
+          String entryKey = String.valueOf(key);
+          String entrySecretId =
+              buildSecretId(false, mapSecretId, entryKey.toLowerCase(Locale.ROOT));
+          String clashingKey =
+              value instanceof String ? keyBySecretId.putIfAbsent(entrySecretId, entryKey) : null;
+          if (clashingKey != null) {
+            throw new SecretsManagerException(
+                Response.Status.BAD_REQUEST,
+                String.format(
+                    "Entries [%s] and [%s] of [%s] would be stored under the same secret id. "
+                        + "Rename one of them.",
+                    clashingKey, entryKey, fieldName));
+          }
         });
   }
 
