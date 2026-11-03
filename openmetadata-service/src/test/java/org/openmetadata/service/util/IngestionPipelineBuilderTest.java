@@ -24,8 +24,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
@@ -74,6 +76,28 @@ class IngestionPipelineBuilderTest {
         assertInstanceOf(
             StorageServiceMetadataPipeline.class, pipeline.getSourceConfig().getConfig());
     assertInstanceOf(StorageMetadataS3Config.class, config.getStorageMetadataConfigSource());
+  }
+
+  /** Stored dbt configs predate the `type` field; the pipeline type alone still types them. */
+  @Test
+  void aDbtConfigWithoutATypeIsTypedByItsPipelineType() {
+    Map<String, Object> dbtSource =
+        Map.of(
+            "dbtSecurityConfig",
+            Map.of("awsAccessKeyId", "key", "awsSecretAccessKey", SECRET, "awsRegion", "us-east-1"),
+            "dbtPrefixConfig",
+            Map.of("dbtBucketName", "bucket"));
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withName("dbt")
+            .withPipelineType(PipelineType.DBT)
+            .withSourceConfig(new SourceConfig().withConfig(Map.of("dbtConfigSource", dbtSource)));
+
+    IngestionPipelineBuilder.addDefinedConfig(pipeline);
+
+    DbtPipeline config =
+        assertInstanceOf(DbtPipeline.class, pipeline.getSourceConfig().getConfig());
+    assertInstanceOf(DbtS3Config.class, config.getDbtConfigSource());
   }
 
   private static IngestionPipeline storagePipeline(Map<String, Object> manifestSource) {
