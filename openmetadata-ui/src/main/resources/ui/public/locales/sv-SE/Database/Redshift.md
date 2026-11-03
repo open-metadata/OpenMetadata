@@ -16,7 +16,7 @@ GRANT SELECT ON TABLE svv_table_info to test_user;
 
 ### Profilering och datakvalitet
 
-Att köra profileringsarbetsflödet eller datakvalitetstester kräver att användaren har behörigheten `SELECT` på de tabeller/scheman där profileringen/testerna ska köras. Användaren bör också ha rätt att se information i `SVV_TABLE_INFO` för alla objekt i databasen. Mer information om hur profileringsarbetsflödet konfigureras finns <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">här</a> och datakvalitetstester <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">här</a>.
+Att köra profileringsarbetsflödet eller datakvalitetstester kräver att användaren har behörigheten `SELECT` på de tabeller/scheman där profileringen/testerna ska köras. Användaren bör också ha rätt att se information i `SVV_TABLE_INFO` för alla objekt i databasen. Mer information om hur profileringsarbetsflödet konfigureras finns <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">här</a> och datakvalitetstester <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">här</a>.
 
 Information om profilering av **systemmått** finns <a href="https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/metrics#redshift" target="_blank">här</a>.
 

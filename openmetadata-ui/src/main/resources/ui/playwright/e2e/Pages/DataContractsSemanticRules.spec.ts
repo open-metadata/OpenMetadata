@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { DateTime } from 'luxon';
 import {
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTIC_OPERATIONS,
@@ -36,11 +37,6 @@ import {
   saveAndTriggerDataContractValidation,
   triggerContractValidation,
 } from '../../utils/dataContracts';
-import {
-  customFormatDateTime,
-  getCurrentMillis,
-  getEpochMillisForFutureDays,
-} from '../../utils/dateTime';
 import { setDomain } from '../../utils/domainPicker';
 import {
   addOwner,
@@ -3107,12 +3103,38 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 });
 
 test.describe('Data Contracts Semantics Rule Updated on', () => {
+  // The rule's date-only input is serialized as UTC midnight
+  // (`moment.utc(value)` in JSONLogicSearchClassBase), so thresholds are taken
+  // from the UTC calendar day of the table's own `updatedAt`, not from the
+  // runner's local date. The two-day margins keep every threshold clear of
+  // that timestamp, even if a run crosses UTC midnight.
+  const getUpdatedOnDates = (table: TableClass) => {
+    const { updatedAt } = table.entityResponseData;
+
+    expect(updatedAt, 'The created table should report updatedAt').toEqual(
+      expect.any(Number)
+    );
+
+    const updatedOnDay = DateTime.fromMillis(updatedAt as number, {
+      zone: 'utc',
+    }).startOf('day');
+    const formatDay = (days: number) =>
+      updatedOnDay.plus({ days }).toFormat('yyyy-MM-dd');
+
+    return {
+      past: formatDay(-2),
+      future: formatDay(2),
+      rangeEnd: formatDay(5),
+    };
+  };
+
   test('Validate UpdatedOn Rule Between', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
     await table.create(apiContext);
+    const dates = getUpdatedOnDates(table);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -3143,13 +3165,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.between
       );
 
-      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
-      const endDate = customFormatDateTime(
-        getEpochMillisForFutureDays(5),
-        'yyyy-MM-dd'
-      );
-
-      await selectRange(page, ruleLocator, startDate, endDate);
+      await selectRange(page, ruleLocator, dates.past, dates.rangeEnd);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3173,11 +3189,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      const newStart = customFormatDateTime(
-        getEpochMillisForFutureDays(1),
-        'yyyy-MM-dd'
-      );
-      await page.getByTestId('query-date-value-0').fill(newStart);
+      await page.getByTestId('query-date-value-0').fill(dates.future);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3198,6 +3210,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
     await table.create(apiContext);
+    const dates = getUpdatedOnDates(table);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -3228,13 +3241,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_between
       );
 
-      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
-      const endDate = customFormatDateTime(
-        getEpochMillisForFutureDays(5),
-        'yyyy-MM-dd'
-      );
-
-      await selectRange(page, ruleLocator, startDate, endDate);
+      await selectRange(page, ruleLocator, dates.past, dates.rangeEnd);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3259,11 +3266,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      const newStart = customFormatDateTime(
-        getEpochMillisForFutureDays(1),
-        'yyyy-MM-dd'
-      );
-      await page.getByTestId('query-date-value-0').fill(newStart);
+      await page.getByTestId('query-date-value-0').fill(dates.future);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3283,6 +3286,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
     await table.create(apiContext);
+    const dates = getUpdatedOnDates(table);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -3313,7 +3317,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less
       );
 
-      const date = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
+      const date = dates.past;
 
       await ruleLocator
         .locator('[data-testid=advanced-search-value] input[type="date"]')
@@ -3342,10 +3346,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      const newDate = customFormatDateTime(
-        getEpochMillisForFutureDays(1),
-        'yyyy-MM-dd'
-      );
+      const newDate = dates.future;
 
       await page
         .getByTestId('query-builder-group-card')
@@ -3370,6 +3371,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
     await table.create(apiContext);
+    const dates = getUpdatedOnDates(table);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -3400,10 +3402,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater
       );
 
-      const date = customFormatDateTime(
-        getEpochMillisForFutureDays(1),
-        'yyyy-MM-dd'
-      );
+      const date = dates.future;
 
       await ruleLocator
         .locator('[data-testid=advanced-search-value] input[type="date"]')
@@ -3432,10 +3431,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      const newDate = customFormatDateTime(
-        getEpochMillisForFutureDays(-1),
-        'yyyy-MM-dd'
-      );
+      const newDate = dates.past;
 
       await page
         .getByTestId('query-builder-group-card')
@@ -3460,6 +3456,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
     await table.create(apiContext);
+    const dates = getUpdatedOnDates(table);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -3490,10 +3487,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
       );
 
-      const date = customFormatDateTime(
-        getEpochMillisForFutureDays(1),
-        'yyyy-MM-dd'
-      );
+      const date = dates.future;
 
       await ruleLocator
         .locator('[data-testid=advanced-search-value] input[type="date"]')
@@ -3521,10 +3515,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      const newDate = customFormatDateTime(
-        getEpochMillisForFutureDays(-1),
-        'yyyy-MM-dd'
-      );
+      const newDate = dates.past;
 
       await page
         .getByTestId('query-builder-group-card')
@@ -3553,6 +3544,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
     await table.create(apiContext);
+    const dates = getUpdatedOnDates(table);
     await afterAction();
 
     await test.step('Open contract section and start adding contract', async () => {
@@ -3583,10 +3575,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.greater_equal
       );
 
-      const date = customFormatDateTime(
-        getEpochMillisForFutureDays(-1),
-        'yyyy-MM-dd'
-      );
+      const date = dates.past;
 
       await ruleLocator
         .locator('[data-testid=advanced-search-value] input[type="date"]')
@@ -3614,10 +3603,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
-      const newDate = customFormatDateTime(
-        getEpochMillisForFutureDays(1),
-        'yyyy-MM-dd'
-      );
+      const newDate = dates.future;
 
       await page
         .getByTestId('query-builder-group-card')
