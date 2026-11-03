@@ -33,6 +33,9 @@ import {
 
 export const ONTOLOGY_STUDIO_MODEL_QUERY_KEY = 'ontology-studio-model';
 
+export const WORKING_CONCEPT_FIELDS =
+  'conceptMappings,lifecycleStatus,owners,subClasses,superClasses';
+
 const PAGE_SIZE = 1000;
 const MAX_DEFINITIONS = 10000;
 const MAX_DEFINITION_PAGES = MAX_DEFINITIONS / PAGE_SIZE;
@@ -79,8 +82,7 @@ const loadWorkingModel = async (
           {
             ...params,
             after,
-            fields:
-              'conceptMappings,lifecycleStatus,owners,subClasses,superClasses',
+            fields: WORKING_CONCEPT_FIELDS,
           },
           signal
         ),

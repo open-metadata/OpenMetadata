@@ -179,6 +179,48 @@ describe('OntologyMemoryReviewPanel', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows a reader without edit rights an empty queue and calls no draft endpoint', async () => {
+    renderPanel(
+      <OntologyMemoryReviewPanel
+        canApply={false}
+        canDiscard={false}
+        canSubmit={false}
+        initialDraftId="draft-16"
+        ontologyId="native-id"
+        onApplied={jest.fn()}
+      />
+    );
+
+    expect(await screen.findByText('label.no-data')).toBeInTheDocument();
+    expect(mockList).not.toHaveBeenCalled();
+    expect(mockGetChangeSet).not.toHaveBeenCalled();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('asks the server only for the open ontology and treats a refusal as an empty queue', async () => {
+    mockList.mockRejectedValueOnce(
+      Object.assign(new Error('Forbidden'), {
+        isAxiosError: true,
+        response: { status: 403 },
+      })
+    );
+    renderPanel(
+      <OntologyMemoryReviewPanel
+        canApply
+        canDiscard
+        canSubmit
+        ontologyId="native-id"
+        onApplied={jest.fn()}
+      />
+    );
+
+    expect(await screen.findByText('label.no-data')).toBeInTheDocument();
+    expect(mockList).toHaveBeenCalledWith(
+      expect.objectContaining({ memorySourced: true, ontologyId: 'native-id' })
+    );
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
   it('shows the persisted glossary, term, and a link to the source memory', async () => {
     renderPanel(
       <OntologyMemoryReviewPanel
