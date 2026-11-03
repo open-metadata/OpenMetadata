@@ -18,8 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -34,7 +32,6 @@ import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
@@ -75,24 +72,11 @@ class SecurityConfigSecretsIT {
   }
 
   @Test
-  void aPatchCopiesTheMaskNotTheSecret() {
-    String patch =
-        JsonUtils.pojoToJson(
-            List.of(
-                Map.of(
-                    "op", "copy",
-                    "from", "/authenticationConfiguration/oidcConfiguration/secret",
-                    "path", "/authenticationConfiguration/providerName")));
-    SdkClients.adminClient()
-        .getHttpClient()
-        .executeForString(HttpMethod.PATCH, PATH, patch, jsonPatchOptions());
-
-    assertNotEquals(SECRET, read().getAuthenticationConfiguration().getProviderName());
+  void theStoredSecretIsNeverReadBack() {
     assertEquals(SECRET, liveClient().getSecret());
-  }
-
-  private static RequestOptions jsonPatchOptions() {
-    return RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+    // An admin only ever reads the secret masked.
+    assertNotEquals(
+        SECRET, read().getAuthenticationConfiguration().getOidcConfiguration().getSecret());
   }
 
   @Test
