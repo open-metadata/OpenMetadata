@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Page,
+  TestInfo,
+} from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
+import { Ontology } from '../../src/generated/entity/data/ontology';
+import { OntologyConcept } from '../../src/generated/entity/data/ontologyConcept';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
-import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
+import { UserClass } from '../support/user/UserClass';
+import { deleteFixtureEntity, okJson } from './apiResponse';
+import { getAuthContext, getToken, redirectToHomePage, uuid } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
 
 export interface GraphTermRef {
@@ -703,4 +713,137 @@ export async function waitForNodeAbsent(
     termId,
     { timeout: 20000 }
   );
+}
+
+export const STUDIO_PATH = '/governance/ontology';
+
+export type OntologyRoleName =
+  | 'OntologyAuthor'
+  | 'OntologyReviewer'
+  | 'DataSteward'
+  | 'DataConsumer';
+
+/** A signed-up user holding exactly the named roles, on top of the DataConsumer default the signup grants. */
+export async function createUserWithRoles(
+  api: APIRequestContext,
+  roles: OntologyRoleName[]
+): Promise<UserClass> {
+  const user = new UserClass();
+  await user.create(api);
+  for (const roleName of roles.filter((name) => name !== 'DataConsumer')) {
+    const role = await okJson<{ id: string }>(
+      await api.get(`/api/v1/roles/name/${roleName}`),
+      `Read the ${roleName} role`
+    );
+    await okJson(
+      await api.patch(`/api/v1/users/${user.responseData.id}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/roles/-',
+            value: { id: role.id, type: 'role' },
+          },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }),
+      `Assign ${roleName}`
+    );
+  }
+
+  return user;
+}
+
+/** A signed-in page for the user, in its own browser context so two roles can act in one test. */
+export async function openPageAs(
+  browser: Browser,
+  user: UserClass
+): Promise<Page> {
+  const page = await browser.newPage();
+  await user.signIn(page);
+
+  return page;
+}
+
+export interface FlowOntologyOptions {
+  prefix: string;
+  ownerIds?: string[];
+  reviewerIds?: string[];
+  concepts?: string[];
+}
+
+/** An ontology with a name unique to the run, because hard delete archives one that has releases and archived names stay taken. */
+export async function createFlowOntology(
+  api: APIRequestContext,
+  {
+    prefix,
+    ownerIds = [],
+    reviewerIds = [],
+    concepts = [],
+  }: FlowOntologyOptions
+): Promise<{ ontology: Ontology; concepts: OntologyConcept[] }> {
+  const name = `${prefix}_${uuid()}`;
+  const ontology = await okJson<Ontology>(
+    await api.post('/api/v1/ontologies', {
+      data: {
+        name,
+        iri: `https://example.org/${name}`,
+        namespace: `https://example.org/${name}/`,
+        owners: ownerIds.map((id) => ({ id, type: 'user' })),
+        reviewers: reviewerIds.map((id) => ({ id, type: 'user' })),
+      },
+    }),
+    'Create the flow ontology'
+  );
+  const created: OntologyConcept[] = [];
+  for (const label of concepts) {
+    created.push(
+      await okJson<OntologyConcept>(
+        await api.post('/api/v1/ontologyConcepts', {
+          data: {
+            name: label,
+            ontology: ontology.fullyQualifiedName,
+            conceptType: 'OWL_CLASS',
+            description: `${label} definition`,
+          },
+        }),
+        `Create the ${label} concept`
+      )
+    );
+  }
+
+  return { ontology, concepts: created };
+}
+
+export async function removeFlowOntologies(
+  api: APIRequestContext,
+  ontologies: Array<Ontology | undefined>
+): Promise<void> {
+  for (const ontology of ontologies) {
+    if (ontology) {
+      await deleteFixtureEntity(
+        api,
+        `/api/v1/ontologies/${ontology.id}?recursive=true&hardDelete=true`
+      );
+    }
+  }
+}
+
+export async function openOntologyInStudio(
+  page: Page,
+  ontologyId: string,
+  query = ''
+): Promise<void> {
+  await page.goto(`${STUDIO_PATH}?ontology=${ontologyId}${query}`);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+}
+
+/** Attaches a full-page screenshot to the report under the P1 name, such as `p1-create`. */
+export async function attachStudioShot(
+  page: Page,
+  testInfo: TestInfo,
+  name: string
+): Promise<void> {
+  const path = testInfo.outputPath(`${name}.png`);
+  await page.screenshot({ path, fullPage: true });
+  await testInfo.attach(name, { path, contentType: 'image/png' });
 }
