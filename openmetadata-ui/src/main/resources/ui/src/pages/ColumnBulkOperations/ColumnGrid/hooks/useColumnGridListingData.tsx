@@ -26,7 +26,7 @@ import { ExploreQuickFilterField } from '../../../../components/Explore/ExploreP
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { ColumnGridItem } from '../../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../../generated/type/tagLabel';
-import { useSavedPageSize } from '../../../../hooks/paging/useSavedPageSize';
+import { usePageSizeState } from '../../../../hooks/paging/usePageSizeState';
 import { getColumnGrid } from '../../../../rest/columnAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { ColumnGridFilters, ColumnGridRowData } from '../ColumnGrid.interface';
@@ -94,8 +94,7 @@ export const useColumnGridListingData = (
 
   // Local pagination state (cursor-based, not in URL)
   const [currentPage, setCurrentPage] = useState(1);
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const [pageSize, setPageSize] = useState(savedPageSize);
+  const [pageSize, setPageSize] = usePageSizeState();
 
   // URL state management (search and filters only, pagination is local)
   const urlState = useMemo(() => {
@@ -414,14 +413,13 @@ export const useColumnGridListingData = (
   const handlePageSizeChange = useCallback(
     (size: number) => {
       setPageSize(size);
-      savePageSize(size);
       setCurrentPage(1);
       cursorsByPageRef.current = new Map();
       itemsByPageRef.current = new Map();
       totalUniqueColumnsRef.current = 0;
       totalOccurrencesRef.current = 0;
     },
-    [savePageSize]
+    [setPageSize]
   );
 
   /**

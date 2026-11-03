@@ -37,9 +37,8 @@ import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
@@ -104,10 +103,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   // reloaded page > 1 has no cursor to resume from and restarts at page 1.
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const showPagination =
     Boolean(paging.before || paging.after) ||
@@ -119,9 +118,11 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [setHashPage, pageSize]
   );
   const handlePageSizeChange = useCallback(
-    (size: number) =>
-      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size),
-    [setHashPage]
+    (size: number) => {
+      savePageSize(size);
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size);
+    },
+    [savePageSize, setHashPage]
   );
 
   const canCreateUser = useMemo(
@@ -492,11 +493,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             isLoading={isLoading}
             isNumberBased={Boolean(searchValue)}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             paging={paging}
             pagingHandler={handlePageNavigation}
             onShowSizeChange={handlePageSizeChange}

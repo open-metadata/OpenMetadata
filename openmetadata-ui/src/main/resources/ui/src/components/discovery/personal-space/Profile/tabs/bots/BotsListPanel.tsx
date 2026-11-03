@@ -45,8 +45,6 @@ import { useTranslation } from 'react-i18next';
 import {
   LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -56,7 +54,6 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { Include } from '../../../../../../generated/type/include';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import {
   useHashPagingParams,
   useSettingsHash,
@@ -115,13 +112,13 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const {
     page: hashPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: initialPageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
   } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const [currentPage, setCurrentPage] = useState(hashPage);
-  const { savePageSize, resolvePageSize } = useSavedPageSize();
-  const [pageSize, setPageSize] = useState(resolvePageSize(hashPageSize));
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [reloadKey, setReloadKey] = useState(0);
   const fetchRequestIdRef = useRef(0);
   const latestSearchRequest = useRef(0);
@@ -678,11 +675,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={Math.ceil((paging.total ?? 0) / pageSize)}
             onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}

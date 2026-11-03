@@ -55,6 +55,8 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => ({
   useHashPagingParams: () => ({
     page: 1,
     pageSize: mockPageSize,
+    resolvedPageSize: mockPageSize ?? 15,
+    savePageSize: jest.fn(),
     cursor: undefined,
     cursorType: undefined,
     setPage: jest.fn(),

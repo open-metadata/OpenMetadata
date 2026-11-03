@@ -17,7 +17,7 @@ import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
 import { Paging } from '../generated/type/paging';
 import { walkToAfterCursor } from '../utils/CursorPaging.utils';
 import { showErrorToast } from '../utils/ToastUtils';
-import { useSavedPageSize } from './paging/useSavedPageSize';
+import { usePageSizeState } from './paging/usePageSizeState';
 
 export interface CursorPageParams {
   after?: string;
@@ -53,11 +53,10 @@ export const useCursorPagedList = <T>(
   }>,
   pageSizeOptions: number[] = LIST_PAGE_SIZE_OPTIONS
 ) => {
-  const { savedPageSize, savePageSize } = useSavedPageSize(pageSizeOptions);
   const [items, setItems] = useState<T[]>([]);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(savedPageSize);
+  const [pageSize, onPageSizeChange] = usePageSizeState(pageSizeOptions);
   const [isLoading, setIsLoading] = useState(true);
   // Only the latest request may write state: a slow earlier response (e.g. the
   // list before a filter flipped) must not overwrite the newer one.
@@ -104,14 +103,6 @@ export const useCursorPagedList = <T>(
     setPage(1);
     void load();
   }, [load]);
-
-  const onPageSizeChange = useCallback(
-    (size: number) => {
-      setPageSize(size);
-      savePageSize(size);
-    },
-    [savePageSize]
-  );
 
   const onPageChange = async (nextPage: number) => {
     // Each page change supersedes any earlier one still walking.

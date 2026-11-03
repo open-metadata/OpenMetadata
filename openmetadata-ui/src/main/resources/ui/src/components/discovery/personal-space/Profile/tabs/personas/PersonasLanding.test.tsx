@@ -96,7 +96,9 @@ const mockPagingParams = (
     cursor: undefined,
     cursorType: undefined,
     setPage: mockSetPage,
+    savePageSize: jest.fn(),
     ...params,
+    resolvedPageSize: params.pageSize ?? 12,
   });
 
 const mockOnNavigate = jest.fn();

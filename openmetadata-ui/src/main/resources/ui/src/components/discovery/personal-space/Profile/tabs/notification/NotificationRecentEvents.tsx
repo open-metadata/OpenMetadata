@@ -33,8 +33,6 @@ import { ReactComponent as FilterOffIcon } from '../../../../../../assets/svg/ic
 import {
   LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
@@ -45,7 +43,6 @@ import {
 } from '../../../../../../generated/events/api/typedEvent';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
-import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import {
   useHashPagingParams,
   useSettingsHash,
@@ -93,11 +90,11 @@ function NotificationRecentEvents({
     AlertRecentEventFilters.ALL
   );
   const { updateParams } = useSettingsHash();
-  const { page: initialPage, pageSize: hashPageSize } = useHashPagingParams(
-    LIST_PAGE_SIZE_OPTIONS
-  );
-  const { savePageSize, resolvePageSize } = useSavedPageSize();
-  const initialPageSize = resolvePageSize(hashPageSize);
+  const {
+    page: initialPage,
+    resolvedPageSize: initialPageSize,
+    savePageSize,
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
@@ -357,11 +354,7 @@ function NotificationRecentEvents({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

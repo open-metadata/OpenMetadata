@@ -22,7 +22,10 @@ import {
 } from 'react-router-dom';
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
 import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
+import { User } from '../generated/entity/teams/user';
 import { getSettingsLink } from '../utils/SettingsModalLinkUtils';
+import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from './useApplicationStore';
 import { useAppModeStore } from './useAppMode';
 import { useHashPagingParams, useSettingsHash } from './useSettingsHash';
 
@@ -448,6 +451,51 @@ describe('useHashPagingParams', () => {
     expect(result.current.paging.cursor).toBeUndefined();
     expect(result.current.paging.cursorType).toBeUndefined();
     expect(result.current.hash.state.params).toEqual({});
+  });
+
+  describe('the resolved page size', () => {
+    const previousUser = useApplicationStore.getState().currentUser;
+
+    beforeEach(() => {
+      useApplicationStore.setState({
+        currentUser: { ...previousUser, name: 'hash-user' } as User,
+      });
+      usePersistentStorage
+        .getState()
+        .setUserPreference('hash-user', { globalPageSize: 50 });
+    });
+
+    afterEach(() => {
+      usePersistentStorage.getState().clearUserPreference('hash-user');
+      useApplicationStore.setState({ currentUser: previousUser });
+    });
+
+    it('is the hash size when the picker offers it', () => {
+      globalThis.location.hash = '#notification/events?pageSize=25';
+
+      const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+      expect(result.current.paging.resolvedPageSize).toBe(25);
+    });
+
+    it('falls back to the saved size when the hash carries none or an off-scale one', () => {
+      globalThis.location.hash = '#notification/events?pageSize=10';
+
+      const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+      expect(result.current.paging.resolvedPageSize).toBe(50);
+    });
+
+    it('saves a picked size for the next panel that opens without one', () => {
+      const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+      act(() => result.current.paging.savePageSize(25));
+
+      expect(result.current.paging.resolvedPageSize).toBe(25);
+      expect(
+        usePersistentStorage.getState().preferences['hash-user'].globalPageSize
+      ).toBe(25);
+    });
   });
 
   it('accepts any size when the caller declares no options', () => {

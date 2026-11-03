@@ -30,7 +30,6 @@ import {
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { Paging } from '../../../../../../generated/type/paging';
-import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { walkToAfterCursor } from '../../../../../../utils/CursorPaging.utils';
@@ -50,15 +49,12 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams(GRID_PAGE_SIZE_OPTIONS);
-  const { savePageSize, resolvePageSize } = useSavedPageSize(
-    GRID_PAGE_SIZE_OPTIONS
-  );
-  const pageSize = resolvePageSize(hashPageSize);
 
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [isLoading, setIsLoading] = useState(false);

@@ -22,12 +22,11 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaceholder from '../../../../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import { RelationshipType } from '../../../../../../generated/entity/data/relationshipType';
-import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
+import { usePageSizeState } from '../../../../../../hooks/paging/usePageSizeState';
 import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import RelationshipTypeTable from '../../../../../../pages/GlossaryTermRelationSettings/RelationshipTypeTable';
 import { getRelationTypeUsageCounts } from '../../../../../../rest/glossaryAPI';
@@ -42,8 +41,6 @@ import {
 import { GovernanceView } from './Governance.types';
 
 const FETCH_PAGE_SIZE = 1000;
-const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
-
 const fetchAll = async (): Promise<RelationshipType[]> => {
   const result: RelationshipType[] = [];
   let after: string | undefined;
@@ -74,8 +71,7 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
   const [items, setItems] = useState<RelationshipType[]>([]);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const [pageSize, setPageSize] = useState(savedPageSize);
+  const [pageSize, setPageSize] = usePageSizeState();
   const {
     target: deleteTarget,
     open: openDeleteConfirm,
@@ -190,12 +186,11 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={setCurrentPage}
             onPageSizeChange={(next) => {
               setPageSize(next);
-              savePageSize(next);
               setCurrentPage(1);
             }}
           />

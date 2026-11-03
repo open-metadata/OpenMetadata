@@ -34,10 +34,8 @@ import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.
 import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
 import {
   FULLSCREEN_QUERY_PARAM_KEY,
+  LIST_PAGE_SIZE_OPTIONS,
   NO_DATA,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import {
   IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
@@ -996,7 +994,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       isNumberBased: true,
       showPagination,
       onShowSizeChange: handlePageSizeChange,
-      pagesizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      pagesizeOptions: LIST_PAGE_SIZE_OPTIONS,
       pagingHandler: (data: PagingHandlerParams) => {
         handlePageChange(data.currentPage);
       },

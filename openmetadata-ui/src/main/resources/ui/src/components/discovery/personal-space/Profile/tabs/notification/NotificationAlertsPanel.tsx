@@ -38,8 +38,6 @@ import { useTranslation } from 'react-i18next';
 import {
   LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -50,7 +48,6 @@ import {
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
-import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import {
   getAlertsFromName,
@@ -79,13 +76,12 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
-  const { savePageSize, resolvePageSize } = useSavedPageSize();
-  const pageSize = resolvePageSize(hashPageSize);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
@@ -517,11 +513,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useSavedPageSize } from '../../../../hooks/paging/useSavedPageSize';
+import { usePageSizeState } from '../../../../hooks/paging/usePageSizeState';
 
 interface PageState {
   /** The query the page belongs to; a page of another query is page 1. */
@@ -27,15 +27,7 @@ interface PageState {
  * fetched on the way.
  */
 export const useIncidentPaging = (queryKey: string) => {
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const [pageSize, setPageSize] = useState(savedPageSize);
-  const changePageSize = useCallback(
-    (size: number) => {
-      setPageSize(size);
-      savePageSize(size);
-    },
-    [savePageSize]
-  );
+  const [pageSize, setPageSize] = usePageSizeState();
   const pagedKey = `${queryKey}|${pageSize}`;
   const [page, setPage] = useState<PageState>({
     queryKey: pagedKey,
@@ -49,5 +41,5 @@ export const useIncidentPaging = (queryKey: string) => {
     [pagedKey]
   );
 
-  return { currentPage, pageSize, setPageSize: changePageSize, goToPage };
+  return { currentPage, pageSize, setPageSize, goToPage };
 };

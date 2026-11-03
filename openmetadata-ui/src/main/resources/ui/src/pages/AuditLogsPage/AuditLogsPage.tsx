@@ -40,9 +40,7 @@ import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExport
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -50,7 +48,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
-import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
+import { usePageSizeState } from '../../hooks/paging/usePageSizeState';
 import { useStagedPickerValue } from '../../hooks/useStagedPickerValue';
 import {
   exportAuditLogs,
@@ -112,8 +110,7 @@ const AuditLogsPage = () => {
     {}
   );
   const filterParamsRef = useRef<Partial<AuditLogListParams>>({});
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const [pageSize, setPageSize] = useState(savedPageSize);
+  const [pageSize, setPageSize] = usePageSizeState();
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportDateRange, setExportDateRange] =
@@ -176,10 +173,9 @@ const AuditLogsPage = () => {
   const handlePageSizeChange = useCallback(
     (size: number) => {
       setPageSize(size);
-      savePageSize(size);
       setCurrentPage(1);
     },
-    [savePageSize]
+    [setPageSize]
   );
 
   const handleFiltersChange = useCallback(
@@ -602,11 +598,7 @@ const AuditLogsPage = () => {
                 currentPage={currentPage}
                 isLoading={isLoading}
                 pageSize={pageSize}
-                pageSizeOptions={[
-                  PAGE_SIZE_BASE,
-                  PAGE_SIZE_MEDIUM,
-                  PAGE_SIZE_LARGE,
-                ]}
+                pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
                 paging={paging}
                 pagingHandler={handlePaging}
                 onShowSizeChange={handlePageSizeChange}

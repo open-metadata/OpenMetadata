@@ -25,7 +25,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../../../../../constants/SearchSettings.constant';
 import { SearchSettings } from '../../../../../../../generated/configuration/searchSettings';
-import { useSavedPageSize } from '../../../../../../../hooks/paging/useSavedPageSize';
+import { usePageSizeState } from '../../../../../../../hooks/paging/usePageSizeState';
 import { searchPreview } from '../../../../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -52,8 +52,7 @@ const SearchPreviewPanel = ({
   const [query, setQuery] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const { savedPageSize, savePageSize } = useSavedPageSize();
-  const [pageSize, setPageSize] = useState(savedPageSize);
+  const [pageSize, setPageSize] = usePageSizeState();
   const [showRankingDetails, setShowRankingDetails] = useState(false);
   const [hits, setHits] = useState<SearchedDataProps['data']>([]);
   const [total, setTotal] = useState(0);
@@ -205,7 +204,6 @@ const SearchPreviewPanel = ({
             onPageChange={setPage}
             onPageSizeChange={(next) => {
               setPageSize(next);
-              savePageSize(next);
               setPage(1);
             }}
           />

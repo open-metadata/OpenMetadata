@@ -46,13 +46,10 @@ import { CSVExportWebsocketResponse } from '../../../../../../components/Entity/
 import {
   LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
   SOCKET_EVENTS,
 } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import { Paging } from '../../../../../../generated/type/paging';
-import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import {
   exportAuditLogs,
@@ -145,13 +142,12 @@ const AccessControlAuditLogsPanel: React.FC<
 
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
-  const { savePageSize, resolvePageSize } = useSavedPageSize();
-  const pageSize = resolvePageSize(hashPageSize);
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [paging, setPaging] = useState<Paging>(INITIAL_PAGING);
@@ -771,11 +767,7 @@ const AccessControlAuditLogsPanel: React.FC<
             <PaginationCardWithControls
               page={currentPage}
               pageSize={pageSize}
-              pageSizeOptions={[
-                PAGE_SIZE_BASE,
-                PAGE_SIZE_MEDIUM,
-                PAGE_SIZE_LARGE,
-              ]}
+              pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
               total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}

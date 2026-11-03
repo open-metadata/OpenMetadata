@@ -25,6 +25,7 @@ import {
   useNavigationType,
 } from 'react-router-dom';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
+import { useSavedPageSize } from './paging/useSavedPageSize';
 
 /**
  * Parsed hash state for the settings modal.
@@ -379,6 +380,7 @@ export const useHashPagingParams = (pageSizeOptions?: number[]) => {
   const { state, updateParams } = useSettingsHash();
   const { page, cursorType, cursor, pageSize, isPageSizeRejected } =
     readHashPaging(state.params, pageSizeOptions);
+  const { resolvePageSize, savePageSize } = useSavedPageSize(pageSizeOptions);
 
   useEffect(() => {
     if (isPageSizeRejected) {
@@ -408,7 +410,15 @@ export const useHashPagingParams = (pageSizeOptions?: number[]) => {
     [updateParams]
   );
 
-  return { page, cursorType, cursor, pageSize, setPage };
+  return {
+    page,
+    cursorType,
+    cursor,
+    pageSize,
+    resolvedPageSize: resolvePageSize(pageSize),
+    savePageSize,
+    setPage,
+  };
 };
 
 /**

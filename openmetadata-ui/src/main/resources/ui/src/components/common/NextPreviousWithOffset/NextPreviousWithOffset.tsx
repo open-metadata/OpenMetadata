@@ -19,11 +19,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import {
   NextPreviousWithOffsetProps,
@@ -39,10 +35,8 @@ const NextPreviousWithOffset = ({
   ...pagingProps
 }: NextPreviousWithOffsetProps) => {
   const { t } = useTranslation();
-  const {
-    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
-    onShowSizeChange,
-  } = (pagingProps ?? {}) as PagingProps;
+  const { pageSizeOptions = LIST_PAGE_SIZE_OPTIONS, onShowSizeChange } =
+    (pagingProps ?? {}) as PagingProps;
 
   const onNextHandler = useCallback(() => {
     pagingHandler({

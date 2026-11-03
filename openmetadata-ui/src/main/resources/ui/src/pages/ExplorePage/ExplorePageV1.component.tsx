@@ -35,9 +35,8 @@ import {
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
@@ -70,12 +69,6 @@ import {
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
-const EXPLORE_PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
-
 const ExplorePageV1: FC<unknown> = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
@@ -88,14 +81,14 @@ const ExplorePageV1: FC<unknown> = () => {
   const {
     preferences: { globalPageSize },
   } = useCurrentUserPreferences();
-  const defaultPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(globalPageSize)
+  const defaultPageSize = LIST_PAGE_SIZE_OPTIONS.includes(globalPageSize)
     ? globalPageSize
     : PAGE_SIZE_BASE;
   // Handed to usePaging rather than corrected afterwards: correcting wrote the size back to the
   // shared URL, and this page stays mounted in app mode (KeepAliveRoutes), so it overwrote the
   // selection of whichever page the user was actually on.
   const { currentPage, handlePageChange, handlePageSizeChange, pageSize } =
-    usePaging(defaultPageSize, EXPLORE_PAGE_SIZE_OPTIONS);
+    usePaging(defaultPageSize, LIST_PAGE_SIZE_OPTIONS);
 
   const { tab } = useRequiredParams<UrlParams>();
 
