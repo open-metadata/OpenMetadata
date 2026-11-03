@@ -637,7 +637,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   /** The delete resolves a quoted name to the account it names, so the self check does too. */
   @Test
-  void test_selfDeleteByQuotedName_forbiddenForNonAdmin(TestNamespace ns) {
+  void test_selfDeleteByName_forbiddenForNonAdmin(TestNamespace ns) {
     String plainName = selfLoginUserRequest().getName();
     for (String name : List.of(plainName + ".doe", plainName)) {
       User user =
@@ -2587,7 +2587,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_userNamedLikeTheAdminWithASlash_cannotMakeItselfAdmin(TestNamespace ns) {
+  void test_aUserIsAuthorizedAsItsWholeName_notAsTheAdmin(TestNamespace ns) {
     String userName = "admin/" + ns.uniqueShortId();
     User user =
         createEntity(
