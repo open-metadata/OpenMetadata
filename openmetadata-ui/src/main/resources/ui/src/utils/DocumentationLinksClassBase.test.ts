@@ -37,6 +37,12 @@ describe('DocumentationLinksClassBase', () => {
     expect(docsURLs.WORKFLOWS_PROFILER_DOCS).toBe(
       'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/profiler-workflow'
     );
+    expect(docsURLs.DATA_QUALITY_PROFILER_WORKFLOW_DOCS).toBe(
+      'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/profiler-workflow'
+    );
+    expect(docsURLs.AUTO_CLASSIFICATION_DOCS).toBe(
+      'https://docs.open-metadata.org/latest/how-to-guides/data-governance/classification/auto-classification'
+    );
     expect(docsURLs.GLOSSARIES_DOCS).toBe(
       'https://docs.open-metadata.org/latest/how-to-guides/data-governance/glossary'
     );
@@ -135,9 +141,7 @@ describe('DocumentationLinksClassBase', () => {
     expect(docsURLs.INGESTION_FRAMEWORK_DEPLOYMENT_DOCS).toBe(
       `${newURL}deployment/ingestion`
     );
-    expect(docsURLs.BOTS_DOCS).toBe(
-      `${newURL}developers/bots`
-    );
+    expect(docsURLs.BOTS_DOCS).toBe(`${newURL}developers/bots`);
     expect(docsURLs.TEAMS_DOCS).toBe(
       `${newURL}how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata`
     );
@@ -190,6 +194,15 @@ describe('DocumentationLinksClassBase', () => {
       `${newURL}how-to-guides/data-discovery`
     );
     expect(docsURLs.HOW_TO_GUIDE_DOCS).toBe(`${newURL}how-to-guides`);
+    expect(docsURLs.DATA_QUALITY_PROFILER_WORKFLOW_DOCS).toBe(
+      `${newURL}how-to-guides/data-quality-observability/profiler/profiler-workflow`
+    );
+    expect(docsURLs.AUTO_CLASSIFICATION_DOCS).toBe(
+      `${newURL}how-to-guides/data-governance/classification/auto-classification`
+    );
+    expect(docsURLs.MOST_USED_ASSETS_WIDGET_DOCS).toBe(
+      `${newURL}how-to-guides/data-insights/service-insights#most-used-data-assets`
+    );
     expect(docsURLs.OMD_SLACK_LINK).toBe(
       'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow'
     );
