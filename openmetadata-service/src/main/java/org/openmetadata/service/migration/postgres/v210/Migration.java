@@ -154,6 +154,6 @@ public class Migration extends MigrationProcessImpl {
         });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnPostgres(handle);
-    UnsupportedNotificationTemplates.logForReview(handle);
+    UnsupportedNotificationTemplates.review(handle);
   }
 }

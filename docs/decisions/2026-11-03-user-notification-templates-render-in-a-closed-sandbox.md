@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial)
 - **Deciders:** Adrià Manero
-- **Guard:** `NotificationTemplateSandboxTest`, `SystemTemplateParityTest`, `AlertingArchitectureTest.templatesCompileOnlyInTheSandbox`, `ContentPreparationTest.unsupportedCustomTemplateFallsBack`, `UnsupportedNotificationTemplatesTest`, `NotificationTemplateSandboxIT`
+- **Guard:** `NotificationTemplateSandboxTest`, `SystemTemplateParityTest`, `AlertingArchitectureTest.templatesCompileOnlyInTheSandbox`, `ContentPreparationTest.unsupportedCustomTemplateFallsBack`, `UnsupportedNotificationTemplatesTest`, `NotificationTemplateSandboxIT`, `SystemTemplateParityTest.everyPackagedTemplatePassesTheCheck`
 - **Related:** `alerting.content.template.sandbox.TemplateSandbox`, `HandlebarsProvider`, `HandlebarsNotificationTemplateProcessor`; ADR:2026-10-26-alerting-bounds-the-work-of-each-request-and-tick
 
 ## Context
@@ -38,9 +38,13 @@ A refused template is answered the way a syntax error is: 400 on create, update 
 and `isValid: false` with the reason on validate, render and send, which the template editor
 already shows.
 
-A template stored before this decision that uses a refused construct is left as it is, and the
-2.1.0 migration names each one in the log. At delivery, an alert whose own template is refused
-renders the system template for the event instead, with a warning.
+Templates stored before this decision are checked by the 2.1.0 migration. A user template that
+uses a refused construct is left as it is and named in the log; at delivery, an alert whose own
+template is refused renders the system template for the event instead, with a warning. A system
+template is what every alert falls back to, so one that an admin edited into a refused form is
+reset to its packaged default, as the Reset action does; the edited version stays in its version
+history and the migration names it in the log. Every packaged default passes the check, so a
+system template can always render.
 
 ## Consequences
 

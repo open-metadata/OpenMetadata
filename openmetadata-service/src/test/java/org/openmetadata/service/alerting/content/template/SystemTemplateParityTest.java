@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
@@ -151,6 +153,28 @@ class SystemTemplateParityTest {
 
     assertTrue(renders > 0);
     assertEquals(List.of(), differences.stream().limit(5).toList());
+  }
+
+  // A system template that cannot render is reset to its packaged default, so every default
+  // must pass the check that refuses templates.
+  @Test
+  void everyPackagedTemplatePassesTheCheck() throws IOException {
+    HandlebarsNotificationTemplateProcessor processor =
+        new HandlebarsNotificationTemplateProcessor();
+    List<String> refused = new ArrayList<>();
+    for (String templateName : TEMPLATE_NAMES) {
+      JsonNode template = readJson(TEMPLATES + templateName + ".json");
+      NotificationTemplateValidationResponse validation =
+          processor.validate(
+              new NotificationTemplateValidationRequest()
+                  .withTemplateBody(template.path("templateBody").asText())
+                  .withTemplateSubject(template.path("templateSubject").asText()));
+      if (!Boolean.TRUE.equals(validation.getIsValid())) {
+        refused.add(templateName);
+      }
+    }
+
+    assertEquals(List.of(), refused);
   }
 
   @Test
