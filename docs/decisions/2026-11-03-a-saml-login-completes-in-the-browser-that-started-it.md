@@ -14,13 +14,16 @@ the AuthnRequest that login had sent.
 
 ## Decision
 - `/api/v1/saml/login` stores the AuthnRequest id on the pending session (`state`).
-- The ACS accepts only a response whose `InResponseTo` is that id, in strict mode or not. It then
-  attaches the account to the pending session, clears the id, and answers `303` to
-  `/api/v1/saml/complete`.
+- The ACS accepts only a response whose verified assertion answers that id, in the `InResponseTo`
+  of its bearer subject confirmation, in strict mode or not. The response element's own
+  `InResponseTo` is not read: when only the assertion is signed, whoever posts the response can
+  rewrite it. The ACS then attaches the account to the pending session, clears the id, and answers
+  `303` to `/api/v1/saml/complete`.
 - `GET /api/v1/saml/complete` is a same-site top-level navigation, so it carries the session cookie. It
   activates the pending session named by that cookie, provided the ACS attached an account to it,
-  and redirects to the callback with the token as before. Without such a session it answers 401 and
-  leaves the browser's cookie alone.
+  and redirects to the callback with the token as before. It reads that session from the session
+  store, not the server's cache, because the ACS may have run on another server. Without such a
+  session it answers 401 and leaves the browser's cookie alone.
 - MCP logins over SAML keep their own correlation for now.
 
 ## Consequences

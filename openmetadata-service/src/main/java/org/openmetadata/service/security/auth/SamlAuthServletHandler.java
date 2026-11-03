@@ -10,9 +10,12 @@ import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.authn.AuthnRequestParams;
+import com.onelogin.saml2.authn.SamlResponse;
 import com.onelogin.saml2.exception.SAMLException;
+import com.onelogin.saml2.factory.SamlMessageFactory;
+import com.onelogin.saml2.http.HttpRequest;
 import com.onelogin.saml2.settings.Saml2Settings;
-import com.onelogin.saml2.util.Util;
+import com.onelogin.saml2.util.Constants;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.BadRequestException;
@@ -29,6 +32,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import javax.xml.xpath.XPathExpressionException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
 import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
@@ -58,12 +62,15 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlLoginCompletionServlet;
 import org.openmetadata.service.security.saml.SamlResponseValidator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 @Slf4j
 public class SamlAuthServletHandler implements AuthServeletHandler {
@@ -290,6 +297,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
       Saml2Settings samlSettings = SamlSettingsHolder.getSaml2Settings();
       Auth auth = new Auth(samlSettings, wrappedRequest, wrappedResponse);
+      ValidatedResponse validatedResponse = new ValidatedResponse();
+      auth.setSamlMessageFactory(validatedResponse);
       auth.processResponse(expectedRequestId);
 
       if (!auth.isAuthenticated()) {
@@ -305,7 +314,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
       SamlResponseValidator.validate(samlSettings, wrappedRequest);
       if (!mcpCallback) {
-        requireAnswerTo(auth, expectedRequestId);
+        requireAnswerTo(validatedResponse.response, expectedRequestId);
       }
 
       // Extract user information from SAML response
@@ -385,9 +394,11 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
    */
   public void completeLogin(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      // Read from the store, not this server's cache: the ACS that attached the account may have
+      // run on another server.
       UserSession pendingSession =
-          sessionService
-              .getSession(req)
+          SessionCookieUtil.getSessionId(req)
+              .flatMap(sessionService::getFreshSessionById)
               .filter(session -> session.getStatus() == SessionStatus.PENDING)
               .filter(session -> !session.isExpired(System.currentTimeMillis()))
               .filter(session -> !nullOrEmpty(session.getUserId()))
@@ -448,14 +459,50 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
   /**
    * The response must answer the request this login sent. java-saml checks {@code InResponseTo}
-   * only in strict mode and only when the response carries one; an answer to no request, or to
-   * another login's request, must not complete this one.
+   * only in strict mode, so it is read here from the assertion java-saml verified: when only the
+   * assertion is signed, the response element around it is not, and whoever relays a captured
+   * response can rewrite that element's {@code InResponseTo}.
    */
-  private static void requireAnswerTo(Auth auth, String requestId) throws Exception {
-    String inResponseTo =
-        Util.loadXML(auth.getLastResponseXML()).getDocumentElement().getAttribute("InResponseTo");
-    if (!requestId.equals(inResponseTo)) {
+  private static void requireAnswerTo(VerifiedAssertion response, String requestId)
+      throws XPathExpressionException {
+    if (!response.answers(requestId)) {
       throw new AuthenticationException("SAML response does not answer this login's request");
+    }
+  }
+
+  /** Keeps the response java-saml validates, so the login is checked against that same parse. */
+  private static final class ValidatedResponse implements SamlMessageFactory {
+    private VerifiedAssertion response;
+
+    @Override
+    public SamlResponse createSamlResponse(Saml2Settings settings, HttpRequest request)
+        throws Exception {
+      response = new VerifiedAssertion(settings, request);
+      return response;
+    }
+  }
+
+  /** Queries the assertion java-saml selects through the signature reference it verified. */
+  private static final class VerifiedAssertion extends SamlResponse {
+    private static final String BEARER_CONFIRMATION_DATA =
+        "/saml:Subject/saml:SubjectConfirmation[@Method='"
+            + Constants.CM_BEARER
+            + "']/saml:SubjectConfirmationData";
+    private static final String IN_RESPONSE_TO = "InResponseTo";
+
+    private VerifiedAssertion(Saml2Settings settings, HttpRequest request) throws Exception {
+      super(settings, request);
+    }
+
+    private boolean answers(String requestId) throws XPathExpressionException {
+      NodeList confirmations = queryAssertion(BEARER_CONFIRMATION_DATA);
+      boolean answered = false;
+      for (int i = 0; i < confirmations.getLength() && !answered; i++) {
+        answered =
+            confirmations.item(i) instanceof Element confirmation
+                && requestId.equals(confirmation.getAttribute(IN_RESPONSE_TO));
+      }
+      return answered;
     }
   }
 
