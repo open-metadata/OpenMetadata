@@ -164,6 +164,7 @@ jest.mock(
           memoryToEdit,
           onClose,
           onEditMemory,
+          onNavigate,
           viewOnly,
         }: CreateMemoryModalProps) => (
           <div
@@ -176,6 +177,7 @@ jest.mock(
               <>
                 <span>{memoryToEdit?.name}</span>
                 <button onClick={onClose}>Close memory</button>
+                <button onClick={onNavigate}>Follow linked asset</button>
                 {viewOnly && memoryToEdit && (
                   <button onClick={() => onEditMemory?.(memoryToEdit)}>
                     Edit memory
@@ -468,6 +470,23 @@ describe('ContextCenterMemoriesPage — memory links', () => {
       );
       expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument();
     });
+  });
+
+  // The followed link pushes its own entry; Back from it must land on the memory, not the list.
+  it('closes a memory whose link is followed without dropping it from the URL', async () => {
+    renderPage('/?memory=memory-one&author=test.user');
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Follow linked asset' })
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('memory-route')).toHaveTextContent(
+      '?memory=memory-one&author=test.user'
+    );
   });
 
   it('keeps the view modal closed when editing and clears the link when the editor closes', async () => {

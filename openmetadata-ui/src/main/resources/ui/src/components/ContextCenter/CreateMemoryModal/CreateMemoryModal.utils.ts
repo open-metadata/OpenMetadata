@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { compare } from 'fast-json-patch';
+import { MouseEvent } from 'react';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -44,9 +45,26 @@ import {
 const MEMORY_LABEL_KEY = 'label.memory';
 
 /**
+ * The table a linked Query opens on: the memory's only linked table. With none or several, which
+ * table the query belongs to is unknown.
+ */
+export const getQueryTableFqn = (
+  assets: DataAssetOption[]
+): string | undefined => {
+  const tables = assets.filter(
+    (asset) => asset.reference?.type === EntityType.TABLE
+  );
+
+  return tables.length === 1
+    ? tables[0].reference.fullyQualifiedName
+    : undefined;
+};
+
+/**
  * Where a linked asset opens, or undefined when it has nowhere to open. A Query has no page of its
- * own: it opens full screen on the table it was linked from. A document opens in Context Center. A
- * type with no route of its own stays unlinked rather than opening as a table.
+ * own: it opens full screen on `tableFqn` (see getQueryTableFqn), and stays unlinked without one. A
+ * document opens in Context Center. A type with no route of its own stays unlinked rather than
+ * opening as a table.
  */
 export const getLinkedAssetPath = (
   reference?: EntityReference,
@@ -73,6 +91,13 @@ export const getLinkedAssetPath = (
       )
     : undefined;
 };
+
+const isModifiedClick = (event: MouseEvent<HTMLElement>): boolean =>
+  event.metaKey || event.altKey || event.ctrlKey || event.shiftKey;
+
+/** Whether a link click navigates this tab, as react-router's Link decides; a new-tab click does not. */
+export const navigatesThisTab = (event: MouseEvent<HTMLElement>): boolean =>
+  !event.defaultPrevented && event.button === 0 && !isModifiedClick(event);
 
 export const getAssetKey = (asset: DataAssetOption): string =>
   asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');

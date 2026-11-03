@@ -1,9 +1,10 @@
 # A memory cites its supporting Queries, and retiring one holds the memory for review
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-03 (the UI names the deleted Query at view time)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `MemoryEvidenceHoldsTest`, `ContextMemoryEvidenceAccessTest`, `ContextMemoryQueryEvidenceIT`
+- **Guard:** `MemoryEvidenceHoldsTest`, `ContextMemoryEvidenceAccessTest`, `ContextMemoryQueryEvidenceIT`,
+  `useMemoryStatusReason.test.ts`
 - **Related:** open-metadata/ai-platform#1582; ADR:ai-platform/2026-10-15-a-captured-memory-links-the-saved-queries-that-support-it; ADR:2026-10-09-an-approved-memory-can-return-to-review-and-records-its-last-review; ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory
 
 ## Context
@@ -82,3 +83,18 @@ read the Query.
 - One race remains. A memory write that resolves a Query after the delete's lookup, but before the
   row removal, loses its link without a hold. Closing it needs Memory Reconciliation to re-verify
   evidence, which is a Collate change.
+
+## Amendment — 2026-11-03: the UI names the deleted Query at view time
+
+Release testing found the reason in item 6 unreadable: a reviewer sees a UUID, not the Query it
+stood for. The stored `statusReason` stays id-only, because every reader of the memory reads it.
+Where the Context Center shows the reason, in the memory list and the memory view, it names the
+Query instead when the memory's version history gives this viewer its name. The UI recognises the
+reason by its fixed text (`RETIRED_QUERY_REASON`, which must match `EVIDENCE_RETIRED`).
+
+The name comes from the history because a Query delete is always a hard delete: the Query's own
+endpoint answers 404 even with `include=deleted`. The versions that cited the Query still hold its
+reference, and item 7 already reduces it to `{id, type}` for a caller who may not view the Query,
+so the reason shows its name only to a viewer the API would show it to. When the history cannot be
+read, or no version names the Query (a late link under item 5 never stored one), the id stays.
+

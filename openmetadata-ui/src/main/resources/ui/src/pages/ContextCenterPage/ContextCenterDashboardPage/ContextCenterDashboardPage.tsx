@@ -325,11 +325,7 @@ const ContextCenterDashboardPage: FC = () => {
 
   const handleOpenDocument = useCallback(
     (documentId: string) => {
-      navigate(
-        `${contextCenterClassBase.getDocumentsListPath()}?document=${encodeURIComponent(
-          documentId
-        )}`
-      );
+      navigate(contextCenterClassBase.getDocumentPath(documentId));
     },
     [navigate]
   );

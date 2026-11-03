@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
+import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
 import {
   ContextMemory,
   ContextMemoryStatus,
@@ -31,6 +32,10 @@ jest.mock('react-i18next', () => ({
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn(() => <div data-testid="profile-picture" />)
 );
+
+jest.mock('../../../rest/contextMemoryAPI', () => ({
+  getContextMemoryVersions: jest.fn(),
+}));
 
 jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
   jest.fn(() => <button aria-label="Copy link" data-testid="copy-link-btn" />)
@@ -193,6 +198,40 @@ describe('MemoriesView', () => {
       expect(screen.getByText('alice')).toBeInTheDocument();
     }
   );
+
+  // A memory held for a deleted Query names it where the memory's history shows the viewer its name.
+  it('names the deleted Query a listed memory is held for', async () => {
+    (getContextMemoryVersions as jest.Mock).mockResolvedValue({
+      entityType: 'contextMemory',
+      versions: [
+        JSON.stringify({
+          relatedEntities: [
+            { id: 'query-id', type: 'query', displayName: 'Monthly expenses' },
+          ],
+        }),
+      ],
+    });
+
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            entityStatus: ContextMemoryStatus.Draft,
+            statusReason:
+              'Supporting query query-id was deleted; review whether this memory still holds without it',
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(
+      await screen.findByText(
+        'label.reason: Supporting query "Monthly expenses" was deleted; review whether this memory still holds without it'
+      )
+    ).toBeInTheDocument();
+  });
 
   it('renders the memories view container', () => {
     render(<MemoriesView data={mockMemories} isLoading={false} />);

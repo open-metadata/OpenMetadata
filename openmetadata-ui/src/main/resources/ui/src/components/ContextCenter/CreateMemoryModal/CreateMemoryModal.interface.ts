@@ -24,6 +24,8 @@ import {
 export interface CreateMemoryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Called instead of onClose when a link out of the memory is followed; the URL is left alone. */
+  onNavigate?: () => void;
   onCreated: () => void;
   memoryToEdit?: ContextMemory;
   onUpdated?: () => void;

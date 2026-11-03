@@ -521,9 +521,10 @@ const ContextCenterDocumentsPage: FC = () => {
     fetchPermission();
   }, [fetchPermission]);
 
+  // A link to another document (a memory's linked assets, Back) changes the URL without remounting.
   useEffect(() => {
     const documentId = searchParams.get('document');
-    if (!documentId || isDocumentsLoading || previewFile) {
+    if (!documentId || isDocumentsLoading || documentId === previewFile?.id) {
       return;
     }
     const match = allDocuments.find((d) => d.id === documentId);

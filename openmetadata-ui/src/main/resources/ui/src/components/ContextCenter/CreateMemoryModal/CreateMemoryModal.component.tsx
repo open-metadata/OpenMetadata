@@ -84,6 +84,7 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { queryClient } from '../../../queryClient';
 import { deleteContextMemory } from '../../../rest/contextMemoryAPI';
+import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
@@ -109,6 +110,8 @@ import {
   getAssetKey,
   getLinkedAssetPath,
   getPrimaryAndRelatedEntities,
+  getQueryTableFqn,
+  navigatesThisTab,
   getSuccessorSearch,
   removeAssetByKey,
   submitMemoryCreate,
@@ -168,7 +171,9 @@ const LinkedAssetCard: FC<{
                 to={href}
                 onClick={(event) => {
                   event.stopPropagation();
-                  onNavigate?.();
+                  if (navigatesThisTab(event)) {
+                    onNavigate?.();
+                  }
                 }}>
                 {displayName}
               </Link>
@@ -238,9 +243,7 @@ const LinkedAssetsReadOnly: FC<{
     return <EmptyLinkedAssets />;
   }
 
-  const tableFqn = assets.find(
-    (asset) => asset.reference?.type === EntityType.TABLE
-  )?.reference?.fullyQualifiedName;
+  const tableFqn = getQueryTableFqn(assets);
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-2">
@@ -317,7 +320,11 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
             className="tw:text-xs tw:font-medium tw:text-brand-secondary tw:hover:underline tw:truncate"
             data-testid="memory-source-file-link"
             to={memorySourceLink}
-            onClick={onNavigate}>
+            onClick={(event) => {
+              if (navigatesThisTab(event)) {
+                onNavigate();
+              }
+            }}>
             {getEntityName(memorySource)}
           </Link>
         </div>
@@ -717,6 +724,12 @@ const MemorySuccessor: FC<{
   );
 };
 
+const MemoryStatusReasonText: FC<{ memory: ContextMemory }> = ({ memory }) => {
+  const reason = useMemoryStatusReason(memory);
+
+  return <>{reason}</>;
+};
+
 const MemoryLifecycleRows: FC<{
   memoryToEdit?: ContextMemory;
   isViewOnly: boolean;
@@ -752,7 +765,7 @@ const MemoryLifecycleRows: FC<{
           className="tw:text-tertiary tw:whitespace-pre-wrap"
           data-testid="memory-lifecycle-reason"
           size="text-sm">
-          {memoryToEdit.statusReason}
+          <MemoryStatusReasonText memory={memoryToEdit} />
         </Typography>
       </div>
     )}
@@ -875,6 +888,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   memoryToEdit,
   isOpen,
   onClose,
+  onNavigate,
   onCreated,
   onUpdated,
   onDeleted,
@@ -976,7 +990,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setIsEditingVisibility(false);
   }, [memoryToEdit, form, t]);
 
-  const handleClose = () => {
+  const resetModal = () => {
     form.reset(DEFAULT_FORM_VALUES);
     setLinkedAssets([]);
     setSelectedTags([]);
@@ -984,7 +998,18 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setModalError('');
     setIsEditingVisibility(false);
     setIsViewOnly(viewOnly);
+  };
+
+  const handleClose = () => {
+    resetModal();
     onClose();
+  };
+
+  // In AI mode the modal outlives a route change, so a followed link closes it. A host that keeps
+  // the memory in the URL closes it in place, so Back from the linked page reopens the memory.
+  const handleNavigate = () => {
+    resetModal();
+    (onNavigate ?? onClose)();
   };
 
   const isSubmitDisabled = !watchedMemory?.trim();
@@ -1172,7 +1197,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 memoryToEdit={memoryToEdit}
                 modalTitle={modalTitle}
                 t={t}
-                onNavigate={handleClose}
+                onNavigate={handleNavigate}
               />
 
               {/* Scrollable body */}
@@ -1268,7 +1293,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   linkedAssets={linkedAssets}
                   setLinkedAssets={setLinkedAssets}
                   t={t}
-                  onNavigate={handleClose}
+                  onNavigate={handleNavigate}
                 />
 
                 {/* Section 5: Metadata */}
@@ -1291,7 +1316,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   <MemoryDerivedTerm
                     isViewOnly={isViewOnly}
                     memory={memoryToEdit}
-                    onNavigate={handleClose}
+                    onNavigate={handleNavigate}
                   />
                 )}
               </div>

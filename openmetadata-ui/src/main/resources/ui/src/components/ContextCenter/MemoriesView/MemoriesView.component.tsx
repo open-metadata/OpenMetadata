@@ -40,6 +40,7 @@ import {
   ContextMemoryStatus,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
+import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
@@ -353,22 +354,19 @@ const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
 
 const EntityStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
   const { t } = useTranslation();
+  const isShown =
+    Boolean(memory.statusReason) &&
+    memory.entityStatus !== ContextMemoryStatus.Approved;
+  const reason = useMemoryStatusReason(isShown ? memory : undefined);
 
-  if (
-    !memory.statusReason ||
-    memory.entityStatus === ContextMemoryStatus.Approved
-  ) {
-    return null;
-  }
-
-  return (
+  return isShown ? (
     <Typography
       className="tw:text-tertiary tw:line-clamp-2"
       data-testid={`memory-status-reason-${memory.id}`}
       size="text-xs">
-      {t('label.reason')}: {memory.statusReason}
+      {t('label.reason')}: {reason}
     </Typography>
-  );
+  ) : null;
 };
 
 const MemoryRow: FC<MemoryRowProps> = ({

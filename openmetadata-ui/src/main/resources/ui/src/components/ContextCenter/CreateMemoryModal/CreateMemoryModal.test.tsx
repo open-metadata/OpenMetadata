@@ -25,7 +25,9 @@ import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
 import CreateMemoryModal from './CreateMemoryModal.component';
+import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
 jest.mock('react-markdown', () => ({
   __esModule: true,
@@ -55,6 +57,7 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
   updateContextMemory: jest.fn(),
   deleteContextMemory: jest.fn(),
+  getContextMemoryVersions: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -372,41 +375,60 @@ describe('CreateMemoryModal', () => {
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 
-  // In AI mode the modal outlives a route change, so following a link closes it.
-  it('opens linked assets where they live and closes on the way', () => {
-    const memory = {
-      id: 'memory-id',
-      name: 'expense-limit',
-      title: 'Expense limit',
-      memory: 'Meals are reimbursed up to 50 EUR.',
-      primaryEntity: {
-        id: 'table-id',
-        type: 'table',
-        name: 'fct_expenses',
-        fullyQualifiedName: 'svc.db.sch.fct_expenses',
+  const expensesTable = {
+    id: 'table-id',
+    type: 'table',
+    name: 'fct_expenses',
+    fullyQualifiedName: 'svc.db.sch.fct_expenses',
+  };
+  const expensesQuery = {
+    id: 'query-id',
+    type: 'query',
+    name: 'monthly_expenses',
+    displayName: 'Monthly expenses',
+    fullyQualifiedName: 'svc.48f70df04c8bc43ab75a5da5da4f95f7',
+  };
+  const linkedMemory = {
+    id: 'memory-id',
+    name: 'expense-limit',
+    title: 'Expense limit',
+    memory: 'Meals are reimbursed up to 50 EUR.',
+    primaryEntity: expensesTable,
+    relatedEntities: [
+      {
+        id: 'file-id',
+        type: 'contextFile',
+        name: 'expense_policy.pdf',
+        fullyQualifiedName: 'policies.expense_policy.pdf',
       },
-      relatedEntities: [
-        {
-          id: 'file-id',
-          type: 'contextFile',
-          name: 'expense_policy.pdf',
-          fullyQualifiedName: 'policies.expense_policy.pdf',
-        },
-        {
-          id: 'other-memory-id',
-          type: 'contextMemory',
-          name: 'refund-window',
-          displayName: 'Refund window',
-          fullyQualifiedName: 'refund-window',
-        },
-      ],
-    } as ContextMemory;
+      {
+        id: 'other-memory-id',
+        type: 'contextMemory',
+        name: 'refund-window',
+        displayName: 'Refund window',
+        fullyQualifiedName: 'refund-window',
+      },
+    ],
+  } as ContextMemory;
 
+  const renderMemory = (
+    memory: ContextMemory,
+    props: Partial<CreateMemoryModalProps> = {}
+  ) =>
     render(
       <MemoryRouter>
-        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+        <CreateMemoryModal
+          {...defaultProps}
+          viewOnly
+          memoryToEdit={memory}
+          {...props}
+        />
       </MemoryRouter>
     );
+
+  // In AI mode the modal outlives a route change, so following a link closes it.
+  it('opens linked assets where they live and closes on the way', () => {
+    renderMemory(linkedMemory);
 
     const links = screen.getAllByTestId('linked-asset-link');
 
@@ -419,6 +441,75 @@ describe('CreateMemoryModal', () => {
     fireEvent.click(links[1]);
 
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // The Memories page keeps the memory in the URL; it closes it in place so Back reopens it.
+  it('hands a followed link to onNavigate and ignores a new-tab click', () => {
+    const onNavigate = jest.fn();
+    renderMemory(linkedMemory, { onNavigate });
+
+    const [tableLink] = screen.getAllByTestId('linked-asset-link');
+    fireEvent.click(tableLink, { ctrlKey: true });
+    fireEvent.click(tableLink, { metaKey: true });
+    fireEvent.click(tableLink, { button: 1 });
+
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    fireEvent.click(tableLink);
+
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+    expect(defaultProps.onClose).not.toHaveBeenCalled();
+  });
+
+  it('opens a linked query on the one table the memory links', () => {
+    renderMemory({
+      ...linkedMemory,
+      relatedEntities: [expensesQuery],
+    } as ContextMemory);
+
+    expect(
+      screen.getByRole('link', { name: 'Monthly expenses' })
+    ).toHaveAttribute('href', '/query-view/svc.db.sch.fct_expenses/query-id');
+  });
+
+  it('leaves a linked query unlinked when the memory links several tables', () => {
+    renderMemory({
+      ...linkedMemory,
+      relatedEntities: [
+        expensesQuery,
+        {
+          id: 'other-table-id',
+          type: 'table',
+          name: 'dim_employee',
+          fullyQualifiedName: 'svc.db.sch.dim_employee',
+        },
+      ],
+    } as ContextMemory);
+
+    expect(screen.getByText('Monthly expenses').closest('a')).toBeNull();
+  });
+
+  // The stored reason names the Query by id; its name shows only where the history shows it.
+  it('names the deleted Query a memory is held for', async () => {
+    (getContextMemoryVersions as jest.Mock).mockResolvedValue({
+      entityType: 'contextMemory',
+      versions: [
+        JSON.stringify({ ...linkedMemory, relatedEntities: [expensesQuery] }),
+      ],
+    });
+
+    renderMemory({
+      ...linkedMemory,
+      entityStatus: ContextMemoryStatus.Draft,
+      statusReason:
+        'Supporting query query-id was deleted; review whether this memory still holds without it',
+    } as ContextMemory);
+
+    expect(
+      await screen.findByText(
+        'Supporting query "Monthly expenses" was deleted; review whether this memory still holds without it'
+      )
+    ).toBeInTheDocument();
   });
 
   it('closes when the document a memory came from is opened', () => {

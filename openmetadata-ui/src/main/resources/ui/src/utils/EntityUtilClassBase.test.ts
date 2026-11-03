@@ -446,6 +446,9 @@ describe('EntityUtilClassBase', () => {
       expect(entityUtil.hasEntityLink('contextFile')).toBe(false);
       expect(entityUtil.hasEntityLink(EntityType.QUERY)).toBe(false);
       expect(entityUtil.hasEntityLink('constructor')).toBe(false);
+      expect(entityUtil.hasEntityLink(EntityType.INGESTION_PIPELINE)).toBe(
+        false
+      );
     });
   });
 

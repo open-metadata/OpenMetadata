@@ -20,6 +20,7 @@ import { updateContextMemory } from '../../../rest/contextMemoryAPI';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   getLinkedAssetPath,
+  getQueryTableFqn,
   submitMemoryUpdate,
 } from './CreateMemoryModal.utils';
 
@@ -73,6 +74,19 @@ describe('getLinkedAssetPath', () => {
 
   it('leaves a Query with no linked table unlinked', () => {
     expect(getLinkedAssetPath(query)).toBeUndefined();
+  });
+
+  it('opens a Query only on the one table a memory links', () => {
+    const table = (fqn: string) => ({
+      displayName: fqn,
+      reference: { id: fqn, type: EntityType.TABLE, fullyQualifiedName: fqn },
+    });
+
+    expect(getQueryTableFqn([table('svc.db.sch.a')])).toBe('svc.db.sch.a');
+    expect(
+      getQueryTableFqn([table('svc.db.sch.a'), table('svc.db.sch.b')])
+    ).toBeUndefined();
+    expect(getQueryTableFqn([])).toBeUndefined();
   });
 
   it('opens any other asset on its own page', () => {

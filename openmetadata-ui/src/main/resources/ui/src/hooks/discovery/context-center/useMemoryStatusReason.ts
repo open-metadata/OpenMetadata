@@ -1,0 +1,99 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { useEffect, useState } from 'react';
+import { RETIRED_QUERY_REASON } from '../../../constants/ContextCenter.constants';
+import {
+  ContextMemory,
+  EntityReference,
+} from '../../../generated/entity/context/contextMemory';
+import { EntityHistory } from '../../../generated/type/entityHistory';
+import { getContextMemoryVersions } from '../../../rest/contextMemoryAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+
+/** The id of the deleted Query a status reason names, when the reason is that hold's. */
+export const getRetiredQueryId = (reason = ''): string | undefined => {
+  const { prefix, suffix } = RETIRED_QUERY_REASON;
+  const isRetiredQueryReason =
+    reason.startsWith(prefix) &&
+    reason.endsWith(suffix) &&
+    reason.length > prefix.length + suffix.length;
+
+  return isRetiredQueryReason
+    ? reason.slice(prefix.length, reason.length - suffix.length)
+    : undefined;
+};
+
+const relatedEntitiesOf = (version: unknown): EntityReference[] => {
+  try {
+    const memory = (
+      typeof version === 'string' ? JSON.parse(version) : version
+    ) as ContextMemory | undefined;
+
+    return memory?.relatedEntities ?? [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * The Query's name as the memory's history records it. The server lists in each version only the
+ * Query references the caller may view in full; any other keeps just its id and type, so no name.
+ */
+export const findCitedQueryName = (
+  history: EntityHistory,
+  queryId: string
+): string | undefined =>
+  (history.versions ?? [])
+    .flatMap(relatedEntitiesOf)
+    .filter((reference) => reference.id === queryId)
+    .map((reference) => getEntityName(reference))
+    .find(Boolean);
+
+/**
+ * A memory's status reason as its viewer reads it. A hold for a deleted Query stores the Query's id
+ * only; the reason names the Query instead when the memory's history shows this viewer its name
+ * (ADR:2026-10-15-a-memory-cites-its-supporting-queries-and-their-retirement-holds-it-for-review).
+ * Pass no memory to skip the lookup.
+ */
+export const useMemoryStatusReason = (
+  memory?: ContextMemory
+): string | undefined => {
+  const reason = memory?.statusReason;
+  const memoryId = memory?.id;
+  const queryId = getRetiredQueryId(reason);
+  const [queryName, setQueryName] = useState<string>();
+
+  useEffect(() => {
+    setQueryName(undefined);
+    if (!memoryId || !queryId) {
+      return;
+    }
+    let isCurrent = true;
+    getContextMemoryVersions(memoryId)
+      .then((history) => {
+        if (isCurrent) {
+          setQueryName(findCitedQueryName(history, queryId));
+        }
+      })
+      // A viewer who may not read the history keeps the id.
+      .catch(() => undefined);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [memoryId, queryId]);
+
+  return queryName
+    ? `${RETIRED_QUERY_REASON.prefix}"${queryName}"${RETIRED_QUERY_REASON.suffix}`
+    : reason;
+};
