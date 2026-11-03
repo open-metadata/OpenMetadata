@@ -84,6 +84,9 @@ export type { OntologyReleaseMetadata } from './useOntologyPublication.types';
 export const ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY =
   'ontology-release-validation';
 export const ONTOLOGY_WORKING_DIFF_QUERY_KEY = 'ontology-working-diff';
+// The server's page maximum: search, filters, per-kind counts and the version
+// suggestion read every change, so a 25-row first page would make them wrong.
+export const ONTOLOGY_WORKING_DIFF_LIMIT = 1000;
 const RELEASE_QUERY = 'ontology-release';
 const PROJECTION_QUERY = 'ontology-publication';
 const REVIEW_QUERY = 'ontology-release-review';
@@ -201,7 +204,7 @@ export const useOntologyPublication = (
     queryFn: async ({ signal }) => {
       const value = await getOntologyWorkingDiff(
         ontologyId,
-        { limit: 25, groupBy: 'concept' },
+        { limit: ONTOLOGY_WORKING_DIFF_LIMIT, groupBy: 'concept' },
         signal
       );
       if (value.state.ontologyId !== ontologyId) {

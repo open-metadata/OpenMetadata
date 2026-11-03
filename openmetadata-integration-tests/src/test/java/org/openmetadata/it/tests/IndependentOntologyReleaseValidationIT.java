@@ -137,7 +137,7 @@ public class IndependentOntologyReleaseValidationIT extends BaseOntologyApproval
 
     final OntologyReleaseValidation report = validate(release);
     assertTrue(report.getValid());
-    assertEquals(OntologyReleaseLogicalCheck.NOT_RUN, report.getLogicalCheck());
+    assertEquals(OntologyReleaseLogicalCheck.NOT_APPLICABLE, report.getLogicalCheck());
     assertEquals(release.getId(), report.getReleaseId());
     assertEquals(0, report.getShacl().getViolationCount());
     assertEquals(0, report.getShacl().getWarningCount());

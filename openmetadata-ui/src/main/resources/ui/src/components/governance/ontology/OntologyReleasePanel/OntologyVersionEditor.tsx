@@ -21,12 +21,14 @@ import {
 import { useTranslation } from 'react-i18next';
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
+import type { VersionSuggestion } from './OntologyReleaseChanges.utils';
 import { nextSemanticVersion } from './OntologyReleasePanel.utils';
 
 interface OntologyVersionEditorProps {
   baseVersion?: string;
   bump: VersionBump;
   notes: string;
+  suggestion?: VersionSuggestion;
   isDisabled: boolean;
   onBumpChange: (bump: VersionBump) => void;
   onNotesChange: (notes: string) => void;
@@ -36,6 +38,7 @@ const OntologyVersionEditor = ({
   baseVersion,
   bump,
   notes,
+  suggestion,
   isDisabled,
   onBumpChange,
   onNotesChange,
@@ -50,6 +53,17 @@ const OntologyVersionEditor = ({
       onBumpChange(selected);
     }
   };
+  const reason = suggestion && (
+    <Typography
+      color="secondary"
+      data-testid="ontology-version-reason"
+      role="note"
+      size="text-xs">
+      {t(`message.ontology-version-reason-${suggestion.reason}`, {
+        version: nextSemanticVersion(baseVersion, suggestion.bump),
+      })}
+    </Typography>
+  );
   const bumpOptions = [VersionBump.Patch, VersionBump.Minor, VersionBump.Major];
   const notesField = (
     <TextArea
@@ -73,6 +87,7 @@ const OntologyVersionEditor = ({
               <Typography as="h3" size="text-sm" weight="semibold">
                 {t('label.version')}
               </Typography>
+              {reason}
               <RadioGroup
                 aria-label={t('label.version')}
                 className="tw:gap-2"
@@ -107,6 +122,7 @@ const OntologyVersionEditor = ({
       <Typography as="h3" size="text-sm" weight="semibold">
         {t('label.version')}
       </Typography>
+      {reason}
       <RadioGroup
         aria-label={t('label.version')}
         isDisabled={isDisabled}

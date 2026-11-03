@@ -45,6 +45,14 @@ const getVersionLabel = (
   return version;
 };
 
+// Before the first release the server counts the ontology itself as an added
+// member; a user did not make that a change, so it is not part of the count.
+const getUnpublishedCount = (status: OntologyPublicationStatus | undefined) => {
+  const count = status?.unpublishedChanges ?? 0;
+
+  return status?.active ? count : Math.max(count - 1, 0);
+};
+
 const getChipParts = (
   status: OntologyPublicationStatus | undefined,
   t: TFunction,
@@ -61,18 +69,15 @@ const getChipParts = (
     );
   }
   const stage = status?.latest?.stage;
-  if (
-    (status?.unpublishedChanges ?? 0) > 0 ||
-    (stage && stage !== Stage.Published)
-  ) {
-    parts.push(t(RELEASE_STAGE_LABELS[stage ?? Stage.Draft]));
+  const unpublished = getUnpublishedCount(status);
+  if (unpublished > 0 || (stage && stage !== Stage.Published)) {
+    const stageLabel = t(RELEASE_STAGE_LABELS[stage ?? Stage.Draft]);
+    if (!parts.includes(stageLabel)) {
+      parts.push(stageLabel);
+    }
   }
-  if ((status?.unpublishedChanges ?? 0) > 0) {
-    parts.push(
-      t('label.ontology-unpublished-count', {
-        count: status?.unpublishedChanges,
-      })
-    );
+  if (unpublished > 0) {
+    parts.push(t('label.ontology-unpublished-count', { count: unpublished }));
   }
 
   return parts;

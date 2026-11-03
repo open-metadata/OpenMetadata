@@ -157,7 +157,7 @@ const ConceptsSectionHeader = ({
             : t('label.concept-plural')}
         </Typography>
         <Typography className="tw:text-tertiary" size="text-xs">
-          {`${count} ${t('label.concept-plural').toLocaleLowerCase()}`}
+          {t('message.native-concept-count', { count })}
         </Typography>
       </Box>
       {actions}

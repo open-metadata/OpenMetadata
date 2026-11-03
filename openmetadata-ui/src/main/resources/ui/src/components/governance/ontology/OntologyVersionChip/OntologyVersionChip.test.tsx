@@ -13,6 +13,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
 import { RELEASE_STAGE_LABELS } from '../OntologyReleasePanel/OntologyReleasePanel.constants';
 import OntologyVersionChip from './OntologyVersionChip';
 
@@ -172,5 +176,46 @@ describe('Draft and Published switch', () => {
       screen.queryByTestId('ontology-version-switch')
     ).not.toBeInTheDocument();
     expect(screen.getByText('v1.3.2 · Aug 14')).toBeVisible();
+  });
+});
+
+describe('a new ontology with its first concept', () => {
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  it('reads Draft once and counts the concept, not the ontology row', () => {
+    render(
+      <OntologyVersionChip
+        status={{
+          latest: {
+            releaseId: 'latest',
+            releaseRevision: 1,
+            stage: Stage.Draft,
+          },
+          unpublishedChanges: 2,
+        }}
+        onPress={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button')).toHaveTextContent(
+      /^Draft · 1 unpublished$/
+    );
+  });
+
+  it('shows plain Draft for an ontology nobody has changed', () => {
+    render(
+      <OntologyVersionChip
+        status={{ unpublishedChanges: 1 }}
+        onPress={jest.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button')).toHaveTextContent(/^Draft$/);
   });
 });

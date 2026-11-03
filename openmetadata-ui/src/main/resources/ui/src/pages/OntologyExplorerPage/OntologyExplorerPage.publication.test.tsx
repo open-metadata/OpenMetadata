@@ -142,7 +142,7 @@ it('publishes the captured version and refreshes the live header, working count 
     },
   };
   const validationResponse = (url: string) => {
-    if (url.endsWith('/validation')) {
+    if (url.endsWith('/validation') && !url.includes('/working/')) {
       return {
         data: {
           releaseId: release.id,
@@ -196,6 +196,9 @@ it('publishes the captured version and refreshes the live header, working count 
     }
     if (url.endsWith('/state')) {
       return { data: state };
+    }
+    if (url.endsWith('/working/validation')) {
+      return { data: { valid: true, violations: [] } };
     }
     if (url.endsWith('/working/diff')) {
       return {

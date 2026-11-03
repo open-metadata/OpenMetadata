@@ -28,11 +28,13 @@ import {
   EntityStatus,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
+import { LogicalCheck } from '../../../../generated/api/data/ontologyReleaseValidation';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyReviewRelease from '../OntologyReviewPanel/OntologyReviewRelease';
 import OntologyReleaseEvents from './OntologyReleaseEvents';
 import OntologyReleaseExport from './OntologyReleaseExport';
+import { useReleaseValidation } from './OntologyReleaseValidation';
 
 interface OntologyReleaseDetailsProps {
   release: OntologyRelease;
@@ -190,9 +192,13 @@ const OntologyReleaseDetails = ({
     />
   );
 
-  const consistencyAlert = (
-    <Alert variant="warning">{t('message.ontology-consistency-not-run')}</Alert>
-  );
+  const validation = useReleaseValidation(release);
+  const consistencyAlert =
+    validation.data?.logicalCheck === LogicalCheck.NotRun ? (
+      <Alert variant="warning">
+        {t('message.ontology-consistency-not-run')}
+      </Alert>
+    ) : null;
 
   const history = (
     <>
