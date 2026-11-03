@@ -27,6 +27,7 @@ import {
 import {
   ArrowRight,
   ChevronRight,
+  Edit01,
   NoFilterFunnel,
   NoSearch,
   PendingChanges,
@@ -49,7 +50,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
@@ -602,7 +602,7 @@ const ColumnGridSelectionActions = ({
           className="tw:ml-2.5"
           color="primary"
           data-testid="edit-button"
-          iconLeading={<EditIcon height={14} width={14} />}
+          iconLeading={Edit01}
           isDisabled={isUpdating}
           size="sm"
           onPress={onOpenDrawer}>
@@ -623,7 +623,7 @@ const ColumnGridSelectionActions = ({
         className="tw:text-tertiary"
         color="tertiary"
         data-testid="edit-button-disabled"
-        iconLeading={<EditIcon height={14} width={14} />}
+        iconLeading={Edit01}
         size="sm"
         onPress={onOpenDrawer}>
         {t('label.edit')}

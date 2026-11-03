@@ -16,16 +16,18 @@ import {
   Button,
   ButtonUtility,
   Card,
+  ConfirmPopover,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { useEffect, useRef, useState } from 'react';
+import { MouseEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useAnchoredConfirm } from '../../../../hooks/popover/useAnchoredConfirm';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { NativeBindingBatchOutcome } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
@@ -90,6 +92,12 @@ const OntologyConceptAssets = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const bindings = useOntologyConceptBindings(conceptId);
+  const unlink = useAnchoredConfirm<
+    Parameters<typeof bindings.removeAsset>[0] & {
+      conceptId: string;
+      name: string;
+    }
+  >();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [page, setPage] = useState(0);
   const batch = useRef<AbortController>();
@@ -188,6 +196,41 @@ const OntologyConceptAssets = ({
 
   const renderStatus = () => (
     <>
+      {unlink.target && (
+        <ConfirmPopover
+          {...unlink.popoverProps}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.remove')}
+          data-testid="ontology-unlink"
+          isConfirmDisabled={
+            !canEdit ||
+            !bindings.editableSnapshot ||
+            unlink.target.conceptId !== conceptId
+          }
+          title={t('label.remove-entity', { entity: unlink.target.name })}
+          onConfirm={async () => {
+            if (
+              !canEdit ||
+              !bindings.editableSnapshot ||
+              !unlink.target ||
+              unlink.target.conceptId !== conceptId
+            ) {
+              return false;
+            }
+            const { assetId, assetType, expectedRevision } = unlink.target;
+            const result = await bindings.removeAsset({
+              assetId,
+              assetType,
+              expectedRevision,
+            });
+            const notify =
+              result.kind === 'confirmed' ? showSuccessToast : showErrorToast;
+            notify(t(getOntologyBindingWriteMessage(result)));
+
+            return result.kind === 'confirmed';
+          }}
+        />
+      )}
       {bindings.isPending ? (
         <Typography role="status">{t('label.loading')}</Typography>
       ) : null}
@@ -242,18 +285,18 @@ const OntologyConceptAssets = ({
                   tooltip={t('label.remove-entity', {
                     entity: getEntityName(binding.asset),
                   })}
-                  onClick={async () => {
+                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
                     if (bindings.editableSnapshot) {
-                      const result = await bindings.removeAsset({
-                        assetType: binding.assetType,
-                        assetId: binding.assetId,
-                        expectedRevision: bindings.editableSnapshot.revision,
-                      });
-                      const notify =
-                        result.kind === 'confirmed'
-                          ? showSuccessToast
-                          : showErrorToast;
-                      notify(t(getOntologyBindingWriteMessage(result)));
+                      unlink.open(
+                        {
+                          assetType: binding.assetType,
+                          assetId: binding.assetId,
+                          expectedRevision: bindings.editableSnapshot.revision,
+                          conceptId,
+                          name: getEntityName(binding.asset),
+                        },
+                        event.currentTarget
+                      );
                     }
                   }}
                 />

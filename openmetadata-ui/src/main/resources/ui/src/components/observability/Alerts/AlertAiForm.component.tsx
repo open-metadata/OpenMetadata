@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, HookForm, Typography } from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
+import { HookForm } from '@openmetadata/ui-core-components';
 import { FormEvent, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { FormHintDoc } from '../../common/atoms/drawer/formHint/FormHintDoc';
+import { FormHintEmptyState } from '../../common/atoms/drawer/formHint/FormHintEmptyState';
+import { FormHintHeader } from '../../common/atoms/drawer/formHint/FormHintHeader';
 import AlertAiFormFields from './AlertAiFormFields.component';
 import {
   AlertAiFormProps,
@@ -88,29 +88,9 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
 
   return (
     <HookForm
-      emptyFieldDoc={
-        // width="100%" is required: EmptyPlaceholder's 300px default is wider
-        // than the hint column's 260px minimum and would overflow when it
-        // shrinks.
-        <NoDataPlaceholder
-          description={t('message.form-hint-empty-state')}
-          icon={Lightbulb05}
-          title={t('label.no-entity-selected', { entity: t('label.field') })}
-          width="100%"
-        />
-      }
+      emptyFieldDoc={<FormHintEmptyState />}
       fieldDocDisplay={fieldDocDisplay}
-      fieldDocHeader={
-        <Box align="center" className="tw:gap-2" direction="row">
-          <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-          <Typography
-            className="tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.form-hint')}
-          </Typography>
-        </Box>
-      }
+      fieldDocHeader={<FormHintHeader />}
       fieldDocVariant={fieldDocVariant}
       form={fieldDocForm}
       // `relative` makes the scrolling form the containing block of the
@@ -124,18 +104,7 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
           : 'tw:relative tw:px-7 tw:pt-6 tw:pb-7'
       }
       id={formId}
-      renderFieldDoc={(markdown) => (
-        // form-hint-doc carries the hint panel's typography (12.5px / 1.55 /
-        // grey-600). Without it the docs inherit TipTap's defaults and render
-        // larger and darker than the Data Quality panels, which is not what
-        // the design asks for.
-        <div className="form-hint-doc">
-          <RichTextEditorPreviewerV1
-            enableSeeMoreVariant={false}
-            markdown={markdown}
-          />
-        </div>
-      )}
+      renderFieldDoc={(markdown) => <FormHintDoc markdown={markdown} />}
       showFieldDocs={showHint}
       onSubmit={handleSubmit}>
       <AlertAiFormFields

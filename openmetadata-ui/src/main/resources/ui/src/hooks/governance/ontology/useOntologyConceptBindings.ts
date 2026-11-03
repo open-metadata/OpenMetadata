@@ -12,6 +12,7 @@
  */
 import {
   CancelledError,
+  QueryClient,
   useIsMutating,
   useMutation,
   useQuery,
@@ -33,7 +34,24 @@ import {
 } from '../../../rest/ontologyAPI';
 
 const queryKey = (id?: string) => ['ontology-concept-bindings', id];
-const mutationKey = (id?: string) => ['ontology-concept-bindings-write', id];
+const WRITE_KEY = 'ontology-concept-bindings-write';
+const mutationKey = (id?: string) => [WRITE_KEY, id];
+
+export const subscribeToConceptBindingWrites = (
+  client: QueryClient,
+  onWritten: () => void
+) =>
+  client.getMutationCache().subscribe((event) => {
+    if (
+      event.type === 'updated' &&
+      event.action.type === 'success' &&
+      event.mutation.options.mutationKey?.[0] === WRITE_KEY &&
+      (event.action.data as BindingWriteOutcome | undefined)?.kind !==
+        'not-ready'
+    ) {
+      onWritten();
+    }
+  });
 
 type BindingCommand =
   | { kind: 'replace'; request: ReplaceAsset }

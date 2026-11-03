@@ -31,6 +31,7 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_R
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+import static org.openmetadata.service.security.SecurityUtil.isEmailRegistrationDomainAllowed;
 import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
@@ -195,6 +196,8 @@ import org.openmetadata.service.util.email.TemplateConstants;
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "/v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
+  static final String USERS_EXPORT_NEEDS_EMAIL_ACCESS =
+      "Exporting users requires access to their emails, which only admins and bots have";
   static final String BOT_TOKENS_ONLY =
       "This endpoint can only generate tokens for bot users. "
           + "Use PUT /users/security/token to create a personal access token.";
@@ -245,7 +248,39 @@ public class UserResource extends EntityResource<User, UserRepository> {
   /** A stored user carries its password hash, or for a bot its token, which no snapshot shows. */
   @Override
   protected Optional<UnaryOperator<User>> snapshotRedaction(SecurityContext securityContext) {
-    return Optional.of(user -> user.withAuthenticationMechanism(null));
+    return Optional.of(withoutCredentials(securityContext, false));
+  }
+
+  /**
+   * The user as a response may carry it: without the stored password hash or bot token, which the
+   * write paths load to carry them over, and with another person's email masked like a read masks
+   * it.
+   */
+  private UnaryOperator<User> withoutCredentials(
+      SecurityContext securityContext, boolean ownAccount) {
+    return user -> {
+      user.setAuthenticationMechanism(null);
+      return ownAccount ? user : PIIMasker.maskUser(authorizer, securityContext, user);
+    };
+  }
+
+  /**
+   * A users CSV names the team it covers, not a user, so the check is on users as a whole. Checked
+   * against a user who happens to share the team's name, it would let that user, who owns only
+   * their own account, import into the team. An export also carries each member's email in the
+   * clear, which reads of a user mask for anyone but an admin or a bot, so only they may export one:
+   * masking the file instead would let a re-import write the mask over the emails.
+   * ADR:2026-10-30-a-users-csv-export-needs-access-to-the-emails-it-carries
+   */
+  @Override
+  protected void authorizeCsv(
+      SecurityContext securityContext, String team, MetadataOperation operation) {
+    authorizer.authorize(
+        securityContext, new OperationContext(entityType, operation), getResourceContext());
+    if (operation == MetadataOperation.VIEW_ALL
+        && !authorizer.authorizePII(securityContext, null)) {
+      throw new AuthorizationException(USERS_EXPORT_NEEDS_EMAIL_ACCESS);
+    }
   }
 
   @Override
@@ -705,6 +740,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @POST
+  @IdentityEndpoint
   @Operation(
       operationId = "createUser",
       summary = "Create a user",
@@ -760,6 +796,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled()) {
         if (isOwnSignUp(securityContext, user)) {
+          if (!isRegistrationAllowed(user, SecurityConfigurationManager.getCurrentAuthzConfig())) {
+            throw new CustomExceptionMessage(
+                FORBIDDEN,
+                CatalogExceptionMessage.SELF_SIGNUP_DOMAIN_NOT_ALLOWED,
+                CatalogExceptionMessage.SELF_SIGNUP_DOMAIN_NOT_ALLOWED_MESSAGE);
+          }
           User created =
               addHref(
                   uriInfo,
@@ -799,6 +841,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return securityContext.getUserPrincipal() instanceof CatalogPrincipal principal
         && principal.getName().equals(user.getName())
         && sameIdentifier(principal.getEmail(), user.getEmail());
+  }
+
+  /**
+   * Self sign-up here applies the registration domains every sign-in flow that creates accounts
+   * applies.
+   */
+  static boolean isRegistrationAllowed(User user, AuthorizerConfiguration authorizer) {
+    return isEmailRegistrationDomainAllowed(
+        user.getEmail(),
+        authorizer == null ? null : authorizer.getAllowedEmailRegistrationDomains());
   }
 
   private void addUserAuthForBasic(User user, CreateUser create) {
@@ -872,6 +924,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
     repository.setFullyQualifiedName(user);
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
+    boolean createsOrRestores =
+        existingUser == null || Boolean.TRUE.equals(existingUser.getDeleted());
+    if (createsOrRestores) {
+      // Impersonated requests update active users only.
+      rejectPrivilegedImpersonation(containerRequestContext);
+    }
     if (existingUser == null) {
       validateEmailDomain(
           user,
@@ -900,10 +958,27 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsBot())) {
       return createOrUpdateBotUser(user, create, uriInfo, securityContext);
     }
+    if (existingUser != null && !mayChangeAdminFlag(securityContext, containerRequestContext)) {
+      user.setIsAdmin(existingUser.getIsAdmin());
+    }
     PutResponse<User> response =
         repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return withRedactedEntity(
+        response.toResponse(),
+        withoutCredentials(
+            securityContext,
+            sameIdentifier(securityContext.getUserPrincipal().getName(), user.getName())));
+  }
+
+  /**
+   * Granting or revoking admin is for admins alone. A PUT carries the whole user, so for anyone else
+   * the flag keeps its stored value: leaving it out of the request must not revoke it.
+   * ADR:2026-10-30-only-admins-grant-or-revoke-a-users-admin-flag
+   */
+  private static boolean mayChangeAdminFlag(
+      SecurityContext securityContext, ContainerRequestContext requestContext) {
+    return !isImpersonated(requestContext) && getSubjectContext(securityContext).isAdmin();
   }
 
   @PUT
@@ -1196,7 +1271,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
       }
     }
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return withRedactedEntity(
+        patchInternal(uriInfo, securityContext, id, patch),
+        withoutCredentials(securityContext, isSelf));
   }
 
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
@@ -1327,11 +1404,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
    * injected {@link SecurityContext} is a Jersey proxy that hides the impersonation.
    */
   private static void rejectPrivilegedImpersonation(ContainerRequestContext requestContext) {
-    if (requestContext.getSecurityContext() instanceof CatalogSecurityContext catalogSecurityContext
-        && catalogSecurityContext.impersonatedUser() != null) {
+    if (isImpersonated(requestContext)) {
       throw new AuthorizationException(
           "Impersonated requests cannot grant privileges or mint credentials for a user");
     }
+  }
+
+  private static boolean isImpersonated(ContainerRequestContext requestContext) {
+    return requestContext.getSecurityContext()
+            instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null;
   }
 
   private static Set<UUID> entityIds(List<EntityReference> references) {
@@ -1543,11 +1625,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return withPersonsAuthenticationMechanismRedacted(
+        deleteByName(uriInfo, securityContext, name, false, hardDelete));
   }
 
   @PUT
   @Path("/restore")
+  @IdentityEndpoint
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted User.",
@@ -1565,7 +1649,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return withPersonsAuthenticationMechanismRedacted(
+        restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   @GET
@@ -2129,6 +2214,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/import")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
@@ -2166,6 +2252,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/importAsync")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
@@ -2389,8 +2476,25 @@ public class UserResource extends EntityResource<User, UserRepository> {
             "Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
   }
 
+  private Response withPersonsAuthenticationMechanismRedacted(Response response) {
+    return withRedactedEntity(response, UserResource::withoutPersonsAuthenticationMechanism);
+  }
+
+  /**
+   * A person's mechanism holds their password hash, which no response needs. A bot's is left as it
+   * is, for the callers that handle bot tokens to decide on.
+   * ADR:2026-10-30-a-users-authentication-mechanism-never-leaves-in-a-response-or-change-event
+   */
+  private static User withoutPersonsAuthenticationMechanism(User user) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      user.setAuthenticationMechanism(null);
+    }
+    return user;
+  }
+
   private void decryptOrNullify(SecurityContext securityContext, User user) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    withoutPersonsAuthenticationMechanism(user);
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
         authorizer.authorize(
