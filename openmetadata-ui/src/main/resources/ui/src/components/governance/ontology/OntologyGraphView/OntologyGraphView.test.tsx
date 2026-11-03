@@ -57,6 +57,7 @@ import {
   createRelationshipType,
   getNativeOntologyDataGraphPage,
   getOntologyChangeSet,
+  getOntologyConcept,
   getOntologyState,
   getOntologyWorkingValidation,
   getRelationshipTypeByName,
@@ -144,6 +145,7 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   applyOntologyChangeSet: jest.fn(),
   createOntologyChangeSet: jest.fn(),
   getOntologyChangeSet: jest.fn(),
+  getOntologyConcept: jest.fn(),
   getOntologyEditLock: jest.fn(),
   getOntologyState: jest.fn(),
   getOntologyWorkingValidation: jest.fn(),
@@ -457,6 +459,11 @@ describe('OntologyGraphView', () => {
     mockCanEditConcept = true;
     mockUneditableProperties = [];
     mockUseOntologyStudioModel.mockReturnValue(modelResult);
+    (getOntologyConcept as jest.Mock).mockImplementation((id: string) =>
+      Promise.resolve(
+        modelResult.model.concepts.find((concept) => concept.id === id)
+      )
+    );
     (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
       valid: true,
       violations: [],
@@ -1031,7 +1038,7 @@ describe('OntologyGraphView', () => {
 
     fireEvent.click(screen.getByTestId('ontology-concept-edit'));
 
-    expect(screen.getByTestId('ontology-concept-editor')).toBeVisible();
+    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
 
     fireEvent.click(screen.getByTestId('ontology-concept-authoring-close'));
     rerender(
@@ -1975,6 +1982,29 @@ describe('OntologyGraphView', () => {
     expect(refetch).toHaveBeenCalledTimes(2);
   });
 
+  it('edits the draft wording of a concept the graph draws from the release', async () => {
+    (getOntologyConcept as jest.Mock).mockResolvedValue({
+      ...customer,
+      displayName: 'Customer, draft wording',
+    });
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    fireEvent.click(
+      await screen.findByTestId('native-graph-node-concept-customer')
+    );
+    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+
+    expect(
+      await screen.findByRole('textbox', { name: 'label.display-name' })
+    ).toHaveValue('Customer, draft wording');
+  });
+
   it('starts a blank concept after editing an existing concept and hides the editor in View', async () => {
     const { rerender } = render(
       <OntologyGraphView
@@ -1989,9 +2019,9 @@ describe('OntologyGraphView', () => {
     );
     fireEvent.click(screen.getByTestId('ontology-concept-edit'));
 
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
-      'Customer'
-    );
+    expect(
+      await screen.findByRole('textbox', { name: 'label.name' })
+    ).toHaveValue('Customer');
 
     rerender(
       <OntologyGraphView
@@ -2953,7 +2983,7 @@ describe('OntologyGraphView', () => {
     await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
     fireEvent.click(screen.getByTestId('ontology-concept-edit'));
     fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.display-name' }),
+      await screen.findByRole('textbox', { name: 'label.display-name' }),
       { target: { value: 'Client' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));

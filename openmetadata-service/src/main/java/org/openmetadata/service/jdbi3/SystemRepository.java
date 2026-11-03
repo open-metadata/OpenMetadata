@@ -65,6 +65,7 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMGoogleConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
+import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -112,6 +113,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO.SecuritySettingsUpdate;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -167,6 +169,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
   private static final String SYSTEM_BOTS_VALIDATION_KEY = "System Bots";
+  private static final String LLM_PROVIDER_VALIDATION_KEY = "LLM Provider";
+  private static final String LLM_PROVIDER_DESCRIPTION =
+      "LLM Provider is used to power Context Center memory extraction and Ontology AI";
   private static final Set<String> SYSTEM_BOT_TYPES = Set.of(Entity.BOT, Entity.USER);
   private static final String UNUSABLE_TOKEN_LINE = "Token not usable: bot %s (%s)";
   private static final String LDAP_VALIDATION_KEY = "LDAP";
@@ -989,6 +994,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
           "Semantic Search", getEmbeddingsValidation(applicationConfig));
     }
 
+    addLlmProviderValidation(validation, applicationConfig.getLlmConfiguration());
+
     validation.setAdditionalProperty(
         "Object Storage", getObjectStorageValidation(applicationConfig));
     validation.setAdditionalProperty(REINDEX_STATUS_VALIDATION_KEY, getReindexStatusValidation());
@@ -998,6 +1005,43 @@ public class SystemRepository implements DeploymentSettingPreparer {
     addExtraValidations(applicationConfig, validation);
 
     return validation;
+  }
+
+  /** Shown only when LLM is enabled, so deployments without LLM features get no failing card. */
+  private void addLlmProviderValidation(
+      ValidationResponse validation, LLMConfiguration llmConfiguration) {
+    if (llmConfiguration != null && Boolean.TRUE.equals(llmConfiguration.getEnabled())) {
+      validation.setAdditionalProperty(
+          LLM_PROVIDER_VALIDATION_KEY, getLlmProviderValidation(llmConfiguration));
+    }
+  }
+
+  /** Reports whether the LLM client was built at startup; makes no model call. */
+  @VisibleForTesting
+  static StepValidation getLlmProviderValidation(LLMConfiguration llmConfiguration) {
+    final String provider =
+        Optional.ofNullable(llmConfiguration.getProvider()).orElse(LLMProvider.NOOP).value();
+    final StepValidation validation =
+        new StepValidation().withDescription(LLM_PROVIDER_DESCRIPTION);
+    return LLMClientHolder.getUnavailableReason()
+        .map(
+            reason ->
+                validation
+                    .withPassed(false)
+                    .withMessage(
+                        String.format(
+                            "LLM is enabled but the %s client could not be built: %s",
+                            provider, reason)))
+        .orElseGet(
+            () ->
+                validation
+                    .withPassed(true)
+                    .withMessage(
+                        String.format(
+                            "Provider: %s, model: %s. Memory extraction: %s",
+                            provider,
+                            LLMClientHolder.get().getModelId(),
+                            LLMClientHolder.isMemoryExtractionEnabled() ? "on" : "off")));
   }
 
   private static final String OBJECT_STORAGE_DESCRIPTION =

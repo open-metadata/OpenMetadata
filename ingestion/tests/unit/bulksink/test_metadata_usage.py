@@ -587,3 +587,64 @@ def test_failed_join_lookup_preserves_usage_queries_lifecycle_and_other_joins(fa
         "test_service.test_db.test_schema.test_table.id"
     ]
     assert not sink.status.failures
+
+
+@pytest.mark.parametrize("source_type", ["bigquery-usage", "query-log-usage"])
+def test_usage_binding_resolves_physical_shards_and_join_targets(source_type):
+    family = Table(
+        id=uuid4(),
+        name="events_yyyymmdd",
+        fullyQualifiedName="test_service.test_db.test_schema.events_yyyymmdd",
+        tableType="Sharded",
+        tableSharding={
+            "prefix": "events_",
+            "suffixFormat": "YYYYMMDD",
+            "shardCount": 2,
+            "firstShardDate": "2026-01-01",
+            "lastShardDate": "2026-01-02",
+            "representative": {
+                "databaseName": "test_db",
+                "schemaName": "test_schema",
+                "tableName": "events_20260102",
+                "shardDate": "2026-01-02",
+            },
+        },
+        columns=[
+            {
+                "name": "id",
+                "dataType": "INT",
+                "fullyQualifiedName": "test_service.test_db.test_schema.events_yyyymmdd.id",
+            }
+        ],
+    )
+    metadata, _, published, joins = _metadata_for_usage_resolution(family)
+    workflow = UsageWorkflow.__new__(UsageWorkflow)
+    workflow.metadata = metadata
+    workflow.service_type = ServiceType.Database
+    workflow.config = SimpleNamespace(
+        source=SimpleNamespace(
+            type=source_type,
+            serviceName="test_service",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="BigQuery")))
+            ),
+        ),
+        bulkSink=BulkSink(type="metadata-usage", config={"filename": "/tmp/test_usage"}),
+    )
+    sink = workflow._get_bulk_sink()
+    record = create_table_usage().model_dump()
+    record["table"] = "events_20260101"
+    record["joins"] = [
+        {
+            "tableColumn": {"table": "events_20260101", "column": "id"},
+            "joinedWith": [{"table": "events_20260102", "column": "id"}],
+        }
+    ]
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(json.dumps(record)) + "\n")])
+    sink.handle_table_usage()
+    assert published == [(family.id, 1)]
+    assert len(joins) == 1
+    assert joins[0][1].columnJoins[0].joinedWith[0].fullyQualifiedName.root == (
+        "test_service.test_db.test_schema.events_yyyymmdd.id"
+    )
+    assert not sink.status.failures
