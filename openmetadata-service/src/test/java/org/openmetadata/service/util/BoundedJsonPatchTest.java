@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.json.JsonPatch;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
 class BoundedJsonPatchTest {
@@ -26,6 +27,21 @@ class BoundedJsonPatchTest {
     JsonPatch patch =
         BoundedJsonPatch.read("[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
     assertEquals(1, patch.toJsonArray().size());
+  }
+
+  @Test
+  void keepsEveryDigitOfANumberValue() {
+    JsonPatch patch =
+        BoundedJsonPatch.read(
+            "[{\"op\":\"add\",\"path\":\"/a\",\"value\":12345678901234567.891},"
+                + "{\"op\":\"add\",\"path\":\"/b\",\"value\":1e999}]");
+
+    assertEquals(
+        new BigDecimal("12345678901234567.891"),
+        patch.toJsonArray().getJsonObject(0).getJsonNumber("value").bigDecimalValue());
+    assertEquals(
+        new BigDecimal("1e999"),
+        patch.toJsonArray().getJsonObject(1).getJsonNumber("value").bigDecimalValue());
   }
 
   @Test
