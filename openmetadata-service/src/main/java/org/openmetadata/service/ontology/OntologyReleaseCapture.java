@@ -60,6 +60,38 @@ public final class OntologyReleaseCapture {
         working -> captureLocked(ontologyId, request, access, working));
   }
 
+  /** Working content shaped as a release so the release projections can write it; never stored. */
+  public record DraftContent(OntologyRelease release, List<OntologyReleaseMember> members) {}
+
+  /**
+   * The unpublished working content as an unstored release. It takes no revision number and writes
+   * no row, so exporting a draft leaves the release history as it was.
+   */
+  public DraftContent draftContent(final OntologyWorkingSnapshot.Snapshot working) {
+    final Ontology ontology = working.root();
+    final UUID id = UUID.randomUUID();
+    final Members members = new Members(id);
+    working.entries().forEach(entry -> members.add(entry.kind(), entry.definition()));
+    final OntologyRelease release =
+        new OntologyRelease()
+            .withId(id)
+            .withName("draft")
+            .withFullyQualifiedName(
+                FullyQualifiedName.add(ontology.getFullyQualifiedName(), "draft"))
+            .withOntology(ontology.getEntityReference())
+            .withOntologyIri(ontology.getIri())
+            .withVersionIri(URI.create("urn:openmetadata:ontology-release:" + id))
+            .withReleaseRevision(working.state().getLastReleaseRevision())
+            .withSourceWorkingRevision(working.state().getWorkingRevision())
+            .withEncodingVersion(
+                OntologyRelease.EncodingVersion.fromValue(OntologyReleaseManifest.ENCODING_VERSION))
+            .withContentDigest(OntologyReleaseManifest.digest(members.values))
+            .withMemberCount(members.values.size())
+            .withTotalBytes(members.bytes)
+            .withSealedAt(clock.millis());
+    return new DraftContent(release, List.copyOf(members.values));
+  }
+
   public OntologyWorkingSnapshot snapshot() {
     return snapshot;
   }

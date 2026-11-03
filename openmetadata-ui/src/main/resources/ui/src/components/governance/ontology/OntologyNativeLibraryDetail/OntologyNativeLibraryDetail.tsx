@@ -46,10 +46,12 @@ import {
   updateModuleSelection,
 } from '../../../OntologyExplorer/OntologyLibrary.utils';
 import OntologyLibraryDetail from '../../../OntologyExplorer/OntologyLibraryDetail';
+import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import {
   nativeLibraryOntologyRequest,
   resolveNativeLibraryTarget,
 } from './OntologyNativeLibraryDetail.utils';
+import OntologyNativePackReview from './OntologyNativePackReview';
 
 export interface NativeLibraryCompletion {
   ontology: Ontology;
@@ -87,6 +89,8 @@ const OntologyNativeLibraryDetail = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const currentUserId = useApplicationStore((state) => state.currentUser?.id);
+  const { identityOf, isReady: isIdentityReady } =
+    useOntologyIdentitySource(canCreate);
   const [targetId, setTargetId] = useState('new');
   const [target, setTarget] = useState<Ontology>();
   const [selectedModuleIds, setSelectedModuleIds] = useState(() =>
@@ -206,7 +210,7 @@ const OntologyNativeLibraryDetail = ({
       return true;
     }
     if (targetId === 'new' && !target) {
-      return !canCreate || !currentUserId;
+      return !canCreate || !currentUserId || !isIdentityReady;
     }
 
     return !canEditTarget;
@@ -250,7 +254,11 @@ const OntologyNativeLibraryDetail = ({
         target,
         request:
           targetId === 'new' && currentUserId
-            ? nativeLibraryOntologyRequest(pack, currentUserId)
+            ? nativeLibraryOntologyRequest(
+                pack,
+                currentUserId,
+                identityOf(pack.name)
+              )
             : undefined,
       };
     }
@@ -385,6 +393,13 @@ const OntologyNativeLibraryDetail = ({
                 </Card>
               ))}
             </Box>
+            {targetId !== 'new' && (
+              <OntologyNativePackReview
+                moduleIds={selectedModuleIds}
+                ontologyId={targetId}
+                packId={pack.id}
+              />
+            )}
             {renderInstallActions()}
             {error && <Alert variant="error">{error}</Alert>}
             {apply.status.kind === 'blocked' && (

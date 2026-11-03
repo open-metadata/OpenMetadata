@@ -22,6 +22,12 @@ export interface NativeOntologyImportSummary {
      */
     detectedFormat: Format;
     /**
+     * Every parsed definition in the order the source lists them, each with the status applying
+     * it would give. On a preview against a target each NEW or UPDATE item names its change set
+     * operation; a preview against a new ontology has no operations yet.
+     */
+    items?: NativeOntologyImportItem[];
+    /**
      * Label of the source ontology, when the source declares exactly one ontology header with a
      * label.
      */
@@ -68,4 +74,71 @@ export enum Format {
     Ntriples = "ntriples",
     Rdfxml = "rdfxml",
     Turtle = "turtle",
+}
+
+/**
+ * One definition an import source states, with what applying it would do to the target.
+ */
+export interface NativeOntologyImportItem {
+    /**
+     * Concepts the warning names, the clashing concept first.
+     */
+    conceptIds?: string[];
+    /**
+     * For UPDATE, what changes, for example `Description: none to A customer.`.
+     */
+    detail?: string;
+    /**
+     * Derived from what the item states, so it is the same in every preview of one source and a
+     * selection survives a second preview.
+     */
+    id: string;
+    /**
+     * IRI of the concept or property, or of the subject of a relationship or rule.
+     */
+    iri?: string;
+    kind: Kind;
+    /**
+     * What a reader calls the item: a display name, or the sentence of a relationship or rule.
+     */
+    label: string;
+    /**
+     * The change set operation that applies this item. Absent for ALREADY_EXISTS, DUPLICATE,
+     * and SKIPPED.
+     */
+    operationId?: string;
+    /**
+     * Why the item is DUPLICATE or SKIPPED.
+     */
+    reason?: string;
+    status:  Status;
+    /**
+     * A finding applying the item would cause, for example a disjointness clash. The item stays
+     * selectable.
+     */
+    warning?: string;
+}
+
+/**
+ * What the item is. A rule is any axiom other than a named subclass link or an object
+ * property assertion between two named concepts.
+ */
+export enum Kind {
+    Concept = "CONCEPT",
+    Property = "PROPERTY",
+    Relationship = "RELATIONSHIP",
+    Rule = "RULE",
+}
+
+/**
+ * NEW and UPDATE carry a change set operation. ALREADY_EXISTS matches a stored definition.
+ * DUPLICATE repeats an earlier item of the same source. SKIPPED names a reason in `reason`
+ * and carries no operation.
+ */
+export enum Status {
+    AlreadyExists = "ALREADY_EXISTS",
+    Duplicate = "DUPLICATE",
+    New = "NEW",
+    Skipped = "SKIPPED",
+    Update = "UPDATE",
 }

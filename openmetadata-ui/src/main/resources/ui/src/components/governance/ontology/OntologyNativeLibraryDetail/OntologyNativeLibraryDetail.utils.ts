@@ -19,11 +19,20 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { getOwnersOrCurrentUser } from '../../../Glossary/AddGlossary/AddGlossary.utils';
+import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
 
 export const nativeLibraryOntologyRequest = (
   pack: OntologyPackManifest,
-  userId: string
+  userId: string,
+  identity?: GeneratedOntologyIdentity
 ): CreateOntology => {
+  if (identity) {
+    return {
+      ...identity,
+      layer: pack.layer,
+      owners: getOwnersOrCurrentUser([], userId),
+    };
+  }
   const id = generateUUID();
 
   return {
