@@ -134,13 +134,16 @@ export type GraphPoints = Record<string, { x: number; y: number }>;
  * Client-space points the studio graph publishes for specs: node centres,
  * edge midpoints and the Edit-mode connect handles.
  */
+/** The studio's own graph, never the SPARQL results graph that query mode mounts beside it. */
+const STUDIO_GRAPH_CONTAINER =
+  '.ontology-g6-container:not([data-testid="ontology-sparql-result-graph"] *)';
+
 export async function readGraphPoints(
   page: Page,
   kind: 'node' | 'edge' | 'port'
 ): Promise<GraphPoints> {
   return page
-    .locator('.ontology-g6-container')
-    .first()
+    .locator(STUDIO_GRAPH_CONTAINER)
     .evaluate((el: HTMLElement, key) => {
       const raw = {
         node: el.dataset.nodePositions,
@@ -180,10 +183,7 @@ export async function findEmptyCanvasPoint(
   page: Page,
   clearance = 160
 ): Promise<{ x: number; y: number }> {
-  const box = await page
-    .locator('.ontology-g6-container')
-    .first()
-    .boundingBox();
+  const box = await page.locator(STUDIO_GRAPH_CONTAINER).boundingBox();
   if (!box) {
     throw new Error('The graph canvas is not rendered');
   }
@@ -191,15 +191,19 @@ export async function findEmptyCanvasPoint(
   // two reads agree.
   let previous = '';
   let positions = await readNodePositions(page);
-  for (
-    let attempt = 0;
-    attempt < 20 && JSON.stringify(positions) !== previous;
-    attempt++
-  ) {
-    previous = JSON.stringify(positions);
-    await page.waitForTimeout(300);
-    positions = await readNodePositions(page);
-  }
+  await expect
+    .poll(
+      async () => {
+        positions = await readNodePositions(page);
+        const current = JSON.stringify(positions);
+        const settled = current === previous;
+        previous = current;
+
+        return settled;
+      },
+      { intervals: [300], timeout: 6000 }
+    )
+    .toBe(true);
   const nodes = Object.values(positions);
   const candidates = [];
   for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {

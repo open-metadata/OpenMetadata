@@ -68,19 +68,13 @@ import {
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import {
   OntologyEditNodeClickDetail,
+  OntologyEditPortDownDetail,
   ONTOLOGY_EDIT_CANCEL_EVENT,
   ONTOLOGY_EDIT_NODE_CLICK_EVENT,
   ONTOLOGY_EDIT_PORT_DOWN_EVENT,
   ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
-  OntologyEditPortDownDetail,
 } from '../PortOverlay.interface';
 import { METRIC_NODE_TYPE } from '../utils/graphBuilders';
-import {
-  containerViewportSize,
-  graphFitsViewport,
-  revealHiddenNode,
-  settleStudioViewport,
-} from '../utils/studioViewport';
 import {
   adaptiveSpacing,
   getLayoutConfig,
@@ -103,13 +97,19 @@ import {
   STUDIO_EDIT_PORT_CLASS_NAME,
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
-import { STUDIO_EDIT_PORT_OUTER_OFFSET } from '../utils/studioEditPortStyles';
 import { computeAssetRingPositions } from '../utils/layoutCalculations';
 import {
   EdgeRoute,
   routeRelationsGraphEdges,
 } from '../utils/relationsGraphRouting';
+import { STUDIO_EDIT_PORT_OUTER_OFFSET } from '../utils/studioEditPortStyles';
 import { calculateStudioNodePositions } from '../utils/studioGraphLayout';
+import {
+  containerViewportSize,
+  graphFitsViewport,
+  revealHiddenNode,
+  settleStudioViewport,
+} from '../utils/studioViewport';
 import { measureTextWidth } from '../utils/textMeasure';
 
 // Matches the relation badge's [4, 8, 4, 8] padding around 10px text.

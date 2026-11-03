@@ -129,6 +129,7 @@ describe('Add concept from All ontologies', () => {
         'https://example.org/Risk#Remittance'
       )
     );
+
     expect(screen.getByTestId('new-class-label')).toHaveValue('Remittance');
     expect(screen.getByTestId('new-class-description')).toHaveValue(
       'Money sent abroad'
