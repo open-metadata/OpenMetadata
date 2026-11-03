@@ -2017,14 +2017,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/support/entity/ingestion/KafkaIngestionClass.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AutoPilot.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/ingestion/MetabaseIngestionClass.ts"
       ],
       "specs": [
