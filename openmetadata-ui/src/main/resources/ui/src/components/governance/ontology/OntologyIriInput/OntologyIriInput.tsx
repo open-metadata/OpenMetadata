@@ -58,6 +58,7 @@ const OntologyIriInput = ({
     return (
       <Input
         data-testid={testId}
+        hideRequiredIndicator={!isRequired}
         hint={error ?? hint}
         isInvalid={Boolean(error)}
         isRequired={isRequired ?? false}

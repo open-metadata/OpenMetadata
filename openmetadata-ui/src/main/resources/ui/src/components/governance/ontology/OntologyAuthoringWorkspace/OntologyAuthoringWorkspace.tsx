@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ComponentProps } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import {
   listOntologyConcepts,
   listOntologyProperties,
 } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyConceptCreateDrawer from './OntologyConceptCreateDrawer';
@@ -29,6 +33,26 @@ interface OntologyAuthoringWorkspaceProps {
   definitionType?: 'concept' | 'property';
   onWorkingChange?: () => void;
 }
+
+const PropertyEditorWithConcepts = ({
+  ontology,
+  ...props
+}: Omit<ComponentProps<typeof OntologyPropertyEditor>, 'concepts'>) => {
+  const { model } = useOntologyStudioModel(ontology);
+  const concepts = model?.concepts
+    .filter(
+      (concept) => concept.conceptType !== OntologyConceptType.SkosConcept
+    )
+    .map((concept) => ({ iri: concept.iri, label: getEntityName(concept) }));
+
+  return (
+    <OntologyPropertyEditor
+      {...props}
+      concepts={concepts}
+      ontology={ontology}
+    />
+  );
+};
 
 const OntologyAuthoringWorkspace = ({
   ontology,
@@ -84,7 +108,7 @@ const OntologyAuthoringWorkspace = ({
       ontology={ontology}
       onWorkingChange={onWorkingChange}>
       {(property, canEdit, onSaved) => (
-        <OntologyPropertyEditor
+        <PropertyEditorWithConcepts
           canEdit={canEdit}
           ontology={ontology}
           property={property}
