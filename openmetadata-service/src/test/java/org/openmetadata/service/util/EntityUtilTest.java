@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
@@ -1099,6 +1100,115 @@ class EntityUtilTest {
 
       assertEquals(sales.getId().toString(), filter.getQueryParam("domainId"));
       assertNull(filter.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void addNavbarDomainFilter_roleScopeKeepsItemsWithNoDomain() {
+    // With no pick, a domain-only user's lists cover their domains plus items with no domain, as
+    // the role allows; with no domains, only items with no domain.
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    org.openmetadata.schema.entity.teams.User withDomains =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(sales));
+    org.openmetadata.schema.entity.teams.User withoutDomains =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("newcomer")
+            .withRoles(List.of(domainRole));
+    CatalogSecurityContext analyst =
+        new CatalogSecurityContext(() -> "analyst", "https", "digest", null, false, null, null);
+    CatalogSecurityContext newcomer =
+        new CatalogSecurityContext(() -> "newcomer", "https", "digest", null, false, null, null);
+    EntityRepository domainAwareRepository = mock(EntityRepository.class);
+    when(domainAwareRepository.isSupportsDomains()).thenReturn(true);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository("glossaryTerm")).thenReturn(true);
+      entity
+          .when(() -> Entity.getEntityRepository("glossaryTerm"))
+          .thenReturn(domainAwareRepository);
+      entity.when(Entity::getSearchRepository).thenReturn(null);
+      stubSubDomainIds(entity, List.of());
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(analyst))
+          .thenReturn(new SubjectContext(withDomains, null));
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(newcomer))
+          .thenReturn(new SubjectContext(withoutDomains, null));
+
+      ListFilter theirDomains = new ListFilter();
+      EntityUtil.addNavbarDomainFilter(analyst, theirDomains, "glossaryTerm", () -> null);
+      assertEquals(sales.getId().toString(), theirDomains.getQueryParam("domainId"));
+      assertEquals("true", theirDomains.getQueryParam("domainAccessControl"));
+
+      ListFilter noDomains = new ListFilter();
+      EntityUtil.addNavbarDomainFilter(newcomer, noDomains, "glossaryTerm", () -> null);
+      assertEquals(new UUID(0, 0).toString(), noDomains.getQueryParam("domainId"));
+      assertEquals("true", noDomains.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
+  void navbarRoleSearchFilter_scopesADomainOnlyUserWithNoPick() {
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    SubjectContext restricted =
+        new SubjectContext(
+            new org.openmetadata.schema.entity.teams.User()
+                .withName("analyst")
+                .withRoles(List.of(domainRole))
+                .withDomains(List.of(sales)),
+            null);
+    SubjectContext unrestricted =
+        new SubjectContext(
+            new org.openmetadata.schema.entity.teams.User().withName("viewer"), null);
+    CatalogSecurityContext noPick =
+        new CatalogSecurityContext(() -> "analyst", "https", "digest", null, false, null, null);
+    org.openmetadata.service.search.SearchRepository searchRepository =
+        mock(org.openmetadata.service.search.SearchRepository.class);
+    when(searchRepository.getEntityTypesForIndex("table_search_index"))
+        .thenReturn(List.of("table"));
+    when(searchRepository.getEntityTypesForIndex("user_search_index")).thenReturn(List.of("user"));
+
+    try (MockedStatic<Entity> entity =
+        org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+
+      com.fasterxml.jackson.databind.JsonNode should =
+          JsonUtils.readTree(
+                  EntityUtil.navbarRoleSearchFilter(noPick, restricted, "table_search_index"))
+              .at("/query/bool/should");
+      // their domain and its sub-domains, their Domain documents, and items with no domain
+      assertEquals(4, should.size());
+      assertEquals("Sales", should.get(0).at("/term/domains.fullyQualifiedName").asText());
+      assertEquals("Sales.", should.get(1).at("/prefix/domains.fullyQualifiedName").asText());
+      assertEquals("domain", should.get(2).at("/bool/must/term/entityType").asText());
+      assertEquals(
+          "domains.fullyQualifiedName", should.get(3).at("/bool/must_not/0/exists/field").asText());
+      assertNull(EntityUtil.navbarRoleSearchFilter(noPick, restricted, "user_search_index"));
+      assertNull(EntityUtil.navbarRoleSearchFilter(noPick, unrestricted, "table_search_index"));
     }
   }
 

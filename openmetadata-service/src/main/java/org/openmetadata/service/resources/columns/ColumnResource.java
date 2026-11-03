@@ -402,7 +402,14 @@ public class ColumnResource {
     }
     request.setDatabaseName(databaseName);
     request.setSchemaName(schemaName);
-    request.setDomainId(domainId == null ? navbarDomainIds(securityContext) : domainId);
+    // The grid is a search aggregation, so the navbar scope is applied here.
+    if (domainId == null) {
+      EntityUtil.NavbarDomainIds scope = EntityUtil.navbarDomainIds(securityContext, Entity.TABLE);
+      request.setDomainId(scope.ids().isEmpty() ? null : String.join(",", scope.ids()));
+      request.setIncludeUnassignedDomain(scope.keepsUnassigned());
+    } else {
+      request.setDomainId(domainId);
+    }
     request.setHasConflicts(hasConflicts);
     request.setHasMissingMetadata(hasMissingMetadata);
     request.setMetadataStatus(metadataStatus);
@@ -416,14 +423,6 @@ public class ColumnResource {
     ColumnGridResponse response = repository.getColumnGridPaginated(securityContext, request);
 
     return Response.ok(response).build();
-  }
-
-  // The grid is a search aggregation, so the navbar domain pick is applied here (e.g. a bulk edit
-  // of
-  // a column picked from the grid then only reaches the picked domain's tables).
-  private static String navbarDomainIds(SecurityContext securityContext) {
-    List<String> ids = EntityUtil.navbarDomainIds(securityContext, Entity.TABLE);
-    return ids.isEmpty() ? null : String.join(",", ids);
   }
 
   @POST

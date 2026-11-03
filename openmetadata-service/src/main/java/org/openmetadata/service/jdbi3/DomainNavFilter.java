@@ -94,17 +94,28 @@ public final class DomainNavFilter {
       String selectedDomainIds,
       Supplier<String> matchedDomainIds,
       ParentScope parent) {
-    apply(filter, entityType, supportsDomains, selectedDomainIds, matchedDomainIds, () -> parent);
+    apply(
+        filter,
+        entityType,
+        supportsDomains,
+        selectedDomainIds,
+        matchedDomainIds,
+        () -> parent,
+        false);
   }
 
-  /** As above, with the parent resolved only when it can change the outcome. */
+  /**
+   * As above, with the parent resolved only when it can change the outcome. {@code keepsUnassigned}
+   * also keeps items with no domain (e.g. a scope that comes from the user's role, not a pick).
+   */
   public static void apply(
       ListFilter filter,
       String entityType,
       boolean supportsDomains,
       String selectedDomainIds,
       Supplier<String> matchedDomainIds,
-      Supplier<ParentScope> parentScope) {
+      Supplier<ParentScope> parentScope,
+      boolean keepsUnassigned) {
     String explicitDomainIds = filter.getQueryParams().get("domainId");
     boolean hasExplicitDomain = explicitDomainIds != null;
     boolean echoesSelection =
@@ -124,7 +135,8 @@ public final class DomainNavFilter {
     if (applies) {
       filter.addQueryParam("domainId", matchedDomainIds.get());
       filter.addQueryParam("domainEntityType", entityType);
-      if (parent == ParentScope.IN_SELECTION
+      if (keepsUnassigned
+          || parent == ParentScope.IN_SELECTION
           || DomainFilterExclusions.keepsUnassigned(entityType)) {
         filter.addQueryParam("domainAccessControl", Boolean.TRUE.toString());
       }

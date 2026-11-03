@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -1048,9 +1049,10 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_domainOnlyUserWithNoPickSeesOnlyTheirDomains(TestNamespace ns) {
-    // "All Domains" for a domain-only user means all of their domains: lists that otherwise follow
-    // only the pick must still leave out other domains' items.
+  void test_domainOnlyUserWithNoPickSeesWhatTheRoleAllows(TestNamespace ns) {
+    // "All Domains" for a domain-only user means what the role allows: their domains plus items
+    // with no domain. Lists that otherwise follow only the pick must leave out other domains'
+    // items.
     Domain first = createAggregateDomain(ns.prefix("roleFirst"));
     Domain second = createAggregateDomain(ns.prefix("roleSecond"));
     Domain other = createAggregateDomain(ns.prefix("roleOther"));
@@ -1058,10 +1060,13 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     Table firstTable = createTableInDomain(ns, "roleFirstTable", column, first);
     Table secondTable = createTableInDomain(ns, "roleSecondTable", column, second);
     Table otherTable = createTableInDomain(ns, "roleOtherTable", column, other);
+    Table unassignedTable = createTableInDomain(ns, "roleUnassignedTable", column, null);
     Metric firstMetric = createMetric(ns.prefix("roleFirstMetric"), first);
     Metric otherMetric = createMetric(ns.prefix("roleOtherMetric"), other);
+    Metric unassignedMetric = createMetric(ns.prefix("roleUnassignedMetric"), null);
     Page firstPage = createArticle(ns.prefix("roleFirstArticle"), first);
     Page otherPage = createArticle(ns.prefix("roleOtherArticle"), other);
+    Page unassignedPage = createArticle(ns.prefix("roleUnassignedArticle"), null);
     Glossary glossary =
         SdkClients.adminClient()
             .glossaries()
@@ -1071,6 +1076,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .withDescription("terms in several domains"));
     GlossaryTerm firstTerm = createTermInDomain(glossary, "roleFirstTerm", first);
     GlossaryTerm otherTerm = createTermInDomain(glossary, "roleOtherTerm", other);
+    GlossaryTerm unassignedTerm = createTermInDomain(glossary, "roleUnassignedTerm", null);
     Role domainOnlyRole = SdkClients.adminClient().roles().getByName("DomainOnlyAccessRole");
     User user =
         createEntity(
@@ -1081,14 +1087,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     String hierarchy = getAs(user, "/v1/metrics/hierarchy?limit=1000&q=" + ns.prefix(""));
     assertTrue(hierarchy.contains(firstMetric.getId().toString()));
+    assertTrue(hierarchy.contains(unassignedMetric.getId().toString()));
     assertFalse(hierarchy.contains(otherMetric.getId().toString()), "metrics hierarchy");
 
     String articles = getAs(user, "/v1/contextCenter/pages?sortBy=updatedAt&limit=10000");
     assertTrue(articles.contains(firstPage.getId().toString()));
+    assertTrue(articles.contains(unassignedPage.getId().toString()));
     assertFalse(articles.contains(otherPage.getId().toString()), "search-backed list");
 
     String terms = getAs(user, "/v1/glossaryTerms?limit=1000&glossary=" + glossary.getId());
     assertTrue(terms.contains(firstTerm.getId().toString()));
+    assertTrue(terms.contains(unassignedTerm.getId().toString()));
     assertFalse(terms.contains(otherTerm.getId().toString()), "glossary terms");
 
     String grid = "/v1/columns/grid?entityTypes=table&columnNamePattern=" + column;
@@ -1098,12 +1107,27 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         .until(() -> getAsAdmin(grid).contains(otherTable.getFullyQualifiedName()));
     String scopedGrid = getAs(user, grid);
     assertTrue(scopedGrid.contains(secondTable.getFullyQualifiedName()));
+    assertTrue(scopedGrid.contains(unassignedTable.getFullyQualifiedName()));
     assertFalse(scopedGrid.contains(otherTable.getFullyQualifiedName()), "column grid");
 
     String onlyTheseTables =
         String.format(
-            "{\"query\":{\"ids\":{\"values\":[\"%s\",\"%s\",\"%s\"]}}}",
-            firstTable.getId(), secondTable.getId(), otherTable.getId());
+            "{\"query\":{\"ids\":{\"values\":[\"%s\",\"%s\",\"%s\",\"%s\"]}}}",
+            firstTable.getId(), secondTable.getId(), otherTable.getId(), unassignedTable.getId());
+    String search =
+        "/v1/search/query?q=*&index=table_search_index&size=10&query_filter="
+            + URLEncoder.encode(onlyTheseTables, StandardCharsets.UTF_8);
+    Awaitility.await("all tables searchable")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                Stream.of(firstTable, secondTable, otherTable, unassignedTable)
+                    .allMatch(t -> getAsAdmin(search).contains(t.getId().toString())));
+    String scopedSearch = getAs(user, search);
+    assertTrue(scopedSearch.contains(firstTable.getId().toString()));
+    assertTrue(scopedSearch.contains(unassignedTable.getId().toString()));
+    assertFalse(scopedSearch.contains(otherTable.getId().toString()), "search");
     long end = System.currentTimeMillis();
     String chart =
         "/v1/analytics/dataInsights/system/charts/listChartData?chartNames=total_data_assets_live"
@@ -1113,8 +1137,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             + end
             + "&filter="
             + URLEncoder.encode(onlyTheseTables, StandardCharsets.UTF_8);
-    assertEquals(3, chartCount(getAsAdmin(chart)));
-    assertEquals(2, chartCount(getAs(user, chart)), "data insights");
+    assertEquals(4, chartCount(getAsAdmin(chart)));
+    assertEquals(3, chartCount(getAs(user, chart)), "data insights");
   }
 
   private static GlossaryTerm createTermInDomain(Glossary glossary, String name, Domain domain) {
@@ -1125,7 +1149,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 .withName(name)
                 .withGlossary(glossary.getFullyQualifiedName())
                 .withDescription("term in a domain")
-                .withDomains(List.of(domain.getFullyQualifiedName())));
+                .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName())));
   }
 
   private static long chartCount(String response) {
@@ -1158,7 +1182,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 .withDatabaseSchema(schema.getFullyQualifiedName())
                 .withColumns(
                     List.of(new Column().withName(column).withDataType(ColumnDataType.INT)))
-                .withDomains(List.of(domain.getFullyQualifiedName())));
+                .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName())));
   }
 
   private static String getAsAdmin(String path) {
