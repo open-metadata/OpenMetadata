@@ -78,6 +78,14 @@ const DependentsNotice = ({
           })}
         </Typography>
       )}
+      {notice.properties > 0 && (
+        <Typography color="secondary" size="text-sm">
+          {t('message.native-import-also-unticked-property', {
+            count: notice.properties,
+            name: notice.name,
+          })}
+        </Typography>
+      )}
     </>
   );
 };

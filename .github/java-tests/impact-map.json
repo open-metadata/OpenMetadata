@@ -735,6 +735,7 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyDraftQueryTest.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyImportReviewIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyPartialImportIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyPartialImportPropertyIT.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/rdf/NativeOntologyImportItemsTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/ontology/**",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseValidationTest.java",

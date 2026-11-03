@@ -120,6 +120,35 @@ class NativeOntologyImportItemsTest {
   }
 
   @Test
+  void aPropertyNamesTheNewConceptsInItsDomainAndRangeOnItsItemAndOperation() {
+    final String file =
+        PREFIXES
+            + """
+              ex:A a owl:Class ; rdfs:label "A" .
+              ex:C a owl:Class ; rdfs:label "C" .
+              ex:D a owl:Class ; rdfs:label "D" .
+              ex:owns a owl:ObjectProperty ; rdfs:label "owns" ; rdfs:domain ex:C ; rdfs:range ex:D .
+              ex:tag a owl:DatatypeProperty ; rdfs:label "tag" ; rdfs:domain ex:A ; rdfs:range xsd:string .
+              """;
+    final var preview =
+        importer.preview(
+            read(file), imported(root(), PREFIXES + "ex:A a owl:Class ; rdfs:label \"A\" ."));
+
+    final NativeOntologyImportItem owns = byLabel(preview).get("owns");
+    assertEquals(
+        List.of(
+            URI.create("https://example.org/items/C"), URI.create("https://example.org/items/D")),
+        owns.getDependsOnIris());
+    final OntologyChangeOperation operation =
+        preview.getChangeSet().getOperations().stream()
+            .filter(candidate -> candidate.getId().equals(owns.getOperationId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(owns.getDependsOnIris(), operation.getRequiresConceptIris());
+    assertTrue(byLabel(preview).get("tag").getDependsOnIris().isEmpty());
+  }
+
+  @Test
   void aRuleOverTwoNewConceptsNeedsBothInIriOrder() {
     final var preview =
         importer.preview(

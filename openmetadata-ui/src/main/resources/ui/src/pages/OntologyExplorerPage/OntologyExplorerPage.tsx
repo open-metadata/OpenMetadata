@@ -191,23 +191,16 @@ function findGlossaryById(
   return glossaries.find((glossary) => glossary.id === id);
 }
 
+// The glossary authoring lease, glossary change sets and AI drafts all require
+// EditAll on the glossary server-side, so no narrower right can complete an
+// Edit-mode action.
 function computeCanEditOntology(
   isAdminUser: boolean | undefined,
   permissions: UIPermission
 ): boolean {
   return (
     Boolean(isAdminUser) ||
-    checkPermission(Operation.EditAll, ResourceEntity.GLOSSARY, permissions) ||
-    checkPermission(
-      Operation.EditGlossaryTerms,
-      ResourceEntity.GLOSSARY,
-      permissions
-    ) ||
-    checkPermission(
-      Operation.EditEntityRelationship,
-      ResourceEntity.GLOSSARY_TERM,
-      permissions
-    )
+    checkPermission(Operation.EditAll, ResourceEntity.GLOSSARY, permissions)
   );
 }
 
@@ -230,13 +223,7 @@ function computeChangeSetPermissions(
   const canApply =
     Boolean(isAdminUser) ||
     checkPermission(Operation.EditAll, ResourceEntity.GLOSSARY, permissions);
-  const canSubmit =
-    canApply ||
-    checkPermission(
-      Operation.EditGlossaryTerms,
-      ResourceEntity.GLOSSARY,
-      permissions
-    );
+  const canSubmit = canApply;
   const canDiscard =
     Boolean(isAdminUser) ||
     checkPermission(

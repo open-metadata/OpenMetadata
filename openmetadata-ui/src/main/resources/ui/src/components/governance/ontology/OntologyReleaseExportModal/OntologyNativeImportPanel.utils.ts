@@ -202,11 +202,12 @@ export interface UntickedDependents {
   readonly name: string;
   readonly relationships: number;
   readonly rules: number;
+  readonly properties: number;
 }
 
 /**
- * Unticks `ids`, and with each concept the relationships and rules that
- * state a fact about it, because applying one without the concept is refused.
+ * Unticks `ids`, and with each concept the relationships, rules and properties
+ * that state a fact about it or name it in their domain or range, because applying one without the concept is refused.
  * Ticking the concept again leaves them unticked.
  */
 export const untickWithDependents = (
@@ -244,6 +245,9 @@ export const untickWithDependents = (
                 ({ kind }) => kind === Kind.Relationship
               ).length,
               rules: dependents.filter(({ kind }) => kind === Kind.Rule).length,
+              properties: dependents.filter(
+                ({ kind }) => kind === Kind.Property
+              ).length,
             },
           ];
     });

@@ -548,13 +548,6 @@ test.describe(
                 `/api/v1/ontologies/${ontologyId}` &&
               response.request().method() === 'PATCH'
           );
-          // The panel refetches after the PATCH and closes an open menu, so the next step opens its menu only after the last read of that refetch.
-          const refetched = author.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname ===
-                `/api/v1/ontologies/${ontologyId}/working/validation` &&
-              response.request().method() === 'GET'
-          );
           await author
             .getByRole('option', {
               name:
@@ -562,7 +555,6 @@ test.describe(
             })
             .click();
           expect((await addition).status()).toBe(200);
-          await refetched;
           await expect(emptyCard).toContainText(
             reviewer.responseData.displayName ?? reviewer.responseData.name
           );
@@ -2028,9 +2020,7 @@ test.describe(
             .poll(
               () =>
                 author
-                  .getByText(
-                    /rejected (v1\.0\.0|release-1): Add a label to Customer\./
-                  )
+                  .getByText(/rejected release #1: Add a label to Customer\./)
                   .count(),
               { timeout: 10_000 }
             )
@@ -2074,11 +2064,9 @@ test.describe(
         await expect(async () => {
           await author.goto('/inbox/activity');
           await expect
-            .poll(
-              () =>
-                author.getByText(/approved (v\d+\.\d+\.\d+|release-2)/).count(),
-              { timeout: 10_000 }
-            )
+            .poll(() => author.getByText(/approved release #2/).count(), {
+              timeout: 10_000,
+            })
             .toBeGreaterThan(0);
         }).toPass({ timeout: 60_000 });
         await g6Shot(author, testInfo, 'inbox-approved');

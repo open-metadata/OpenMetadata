@@ -12116,7 +12116,23 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReleasePanel/OntologyReleaseCompare.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyReview.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReleasePanel/OntologyReleaseDetails.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyReview.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyReleasePanel/OntologyReleaseEvents.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/OntologyReview.spec.ts"
@@ -12697,6 +12713,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyReleaseDiff.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyReview.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyReleaseValidation.ts"
       ],
       "specs": [
@@ -13174,7 +13198,8 @@
         "playwright/e2e/Features/OntologyQueryScope.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
         "playwright/e2e/Features/OntologyReviewChanges.spec.ts",
-        "playwright/e2e/Features/OntologyReviewTasks.spec.ts"
+        "playwright/e2e/Features/OntologyReviewTasks.spec.ts",
+        "playwright/e2e/Features/OntologyStudioPermissions.spec.ts"
       ]
     },
     {
@@ -14118,7 +14143,8 @@
         "playwright/e2e/Features/OntologyQueryScope.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
         "playwright/e2e/Features/OntologyReviewChanges.spec.ts",
-        "playwright/e2e/Features/OntologyReviewTasks.spec.ts"
+        "playwright/e2e/Features/OntologyReviewTasks.spec.ts",
+        "playwright/e2e/Features/OntologyStudioPermissions.spec.ts"
       ]
     },
     {

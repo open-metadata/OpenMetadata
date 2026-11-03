@@ -2470,6 +2470,62 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('mode-tab-query')).toBeVisible();
   });
 
+  describe('glossary Edit tab', () => {
+    const renderGlossaryStudio = (permissions: Record<string, object>) => {
+      mockUseAuth.mockReturnValue({
+        isAdminUser: false,
+        isFirstTimeUser: false,
+      });
+      (usePermissionProvider as jest.Mock).mockReturnValue({ permissions });
+      render(
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      );
+    };
+
+    afterEach(() => {
+      (usePermissionProvider as jest.Mock).mockReturnValue({ permissions: {} });
+    });
+
+    it.each([
+      [
+        'EditGlossaryTerms on glossaries',
+        { glossary: { EditGlossaryTerms: true } },
+      ],
+      [
+        'EditEntityRelationship on glossary terms',
+        { glossaryTerm: { EditEntityRelationship: true } },
+      ],
+    ])(
+      'hides Edit from a steward with only %s, because the authoring lease needs EditAll',
+      (_label, permissions) => {
+        renderGlossaryStudio(permissions);
+
+        expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
+        expect(screen.getByTestId('mode-tab-view')).toBeVisible();
+      }
+    );
+
+    it('offers Edit to a user with EditAll on glossaries', () => {
+      renderGlossaryStudio({ glossary: { EditAll: true } });
+
+      expect(screen.getByTestId('mode-tab-edit')).toBeVisible();
+    });
+
+    it('leaves the native Edit tab to the ontology permission, not the glossary one', async () => {
+      mockUseAuth.mockReturnValue({
+        isAdminUser: false,
+        isFirstTimeUser: false,
+      });
+      (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: true });
+      renderNativeStudio('?ontology=native-sales', nativeOntology, {});
+      await screen.findByTestId('native-canvas');
+
+      expect(screen.getByTestId('mode-tab-edit')).toBeVisible();
+    });
+  });
+
   it('lets a user approve AI proposals only with edit rights on glossaries and change sets', () => {
     mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
     const mockPermissions = usePermissionProvider as jest.Mock;

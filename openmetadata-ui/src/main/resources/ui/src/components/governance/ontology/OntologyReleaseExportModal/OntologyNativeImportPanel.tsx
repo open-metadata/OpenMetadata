@@ -557,9 +557,11 @@ const OntologyNativeImportPanel = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const { canCreate, currentUserId } = useCanCreateOntology();
-  const { identityOf, isReady: isIdentityReady } = useOntologyIdentitySource(
-    !ontology || canCreate
-  );
+  const {
+    identityOf,
+    refreshIdentityOf,
+    isReady: isIdentityReady,
+  } = useOntologyIdentitySource(!ontology || canCreate);
   const [state, dispatch] = useReducer(nativeImportReducer, {
     ...INITIAL_NATIVE_IMPORT_STATE,
     target: ontology ? 'existing' : 'new',
@@ -608,12 +610,12 @@ const OntologyNativeImportPanel = ({
     );
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     const target = nativeImportInstallTarget(
       state,
       isNewTarget ? undefined : ontology,
       currentUserId,
-      identityOf
+      isNewTarget ? await refreshIdentityOf() : identityOf
     );
     if (target) {
       void install.start(target);
@@ -676,7 +678,7 @@ const OntologyNativeImportPanel = ({
       isLocked={install.isLocked}
       isParsed={Boolean(readySummary)}
       isParsing={isParsing}
-      onImport={handleImport}
+      onImport={() => void handleImport()}
       onParse={() => void handleParse()}
     />
   );

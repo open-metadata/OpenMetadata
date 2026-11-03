@@ -32,10 +32,7 @@ public final class OntologyDecisionNotice {
       final String comment,
       final long decidedAt) {
     final boolean approved = resolution == TaskResolutionType.Approved;
-    final String version =
-        release.getSemanticVersion() == null
-            ? release.getName()
-            : "v" + release.getSemanticVersion();
+    final String version = describe(release);
     final String who =
         reviewer.getDisplayName() == null ? reviewer.getName() : reviewer.getDisplayName();
     final String reason = nullOrEmpty(comment) ? "" : ": " + truncate(comment);
@@ -48,6 +45,19 @@ public final class OntologyDecisionNotice {
         .withFieldName(FIELD_NAME)
         .withNewValue(approved ? "Approved" : "Rejected")
         .withSummary(who + (approved ? " approved " : " rejected ") + version + reason);
+  }
+
+  /**
+   * The release's name is a storage slug ("release-3") that reads like an identifier in a feed. A
+   * release with no semantic version is named by its revision, which readers recognize as a counter.
+   */
+  private static String describe(final OntologyRelease release) {
+    if (release.getSemanticVersion() != null) {
+      return "v" + release.getSemanticVersion();
+    }
+    return release.getReleaseRevision() == null
+        ? release.getName()
+        : "release #" + release.getReleaseRevision();
   }
 
   /** The decision is already committed; a failed notice must not undo or hide it. */
