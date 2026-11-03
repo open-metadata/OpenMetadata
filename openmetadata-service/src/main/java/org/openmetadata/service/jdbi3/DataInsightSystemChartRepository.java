@@ -529,10 +529,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       String filter,
       SubjectContext caller)
       throws IOException {
-    // A preview reads the Data Insights snapshots, which search access policies do not cover, so a
-    // caller under them gets the chart without their own filter.
-    if (underSearchAccessControl(caller)) {
-      filter = null;
+    // A preview reads the Data Insights snapshots, which search access policies do not cover.
+    if (scopesSnapshotsUnderAccessControl(filter, caller)) {
+      return new DataInsightCustomChartResultList();
     }
     if (chart.getChartDetails() != null && filter != null) {
       HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
@@ -549,6 +548,15 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   private static boolean underSearchAccessControl(SubjectContext caller) {
     return caller != null && !caller.isAdmin() && SearchUtils.isAccessControlEnabled();
+  }
+
+  /**
+   * Snapshots are not covered by search access policies, so for a caller under them a snapshot
+   * chart scoped by their own filter comes back empty, never unscoped under a scoped label
+   * (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
+   */
+  private static boolean scopesSnapshotsUnderAccessControl(String filter, SubjectContext caller) {
+    return !nullOrEmpty(filter) && underSearchAccessControl(caller);
   }
 
   private static SubjectContext ownerSubject(StreamingSession session) {
@@ -599,11 +607,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       throws IOException {
     HashMap<String, DataInsightCustomChartResultList> result = new HashMap<>();
     // Live charts aggregate search documents under the caller's access policies; the snapshots
-    // behind the other charts are not covered by them, so there the caller's filter is dropped
-    // (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
-    if (!live && underSearchAccessControl(caller)) {
-      filter = null;
-    }
+    // behind the other charts are not covered by them.
+    boolean emptyScopedSnapshots = !live && scopesSnapshotsUnderAccessControl(filter, caller);
     if (chartNames == null) {
       return result;
     }
@@ -612,7 +617,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       DataInsightCustomChart chart =
           Entity.getEntityByName(DATA_INSIGHT_CUSTOM_CHART, chartName, "", Include.NON_DELETED);
 
-      if (chart != null) {
+      if (chart != null && emptyScopedSnapshots) {
+        result.put(chartName, new DataInsightCustomChartResultList());
+      } else if (chart != null) {
         if (chart.getChartDetails() != null && filter != null) {
           HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
           if (chartDetails.get("metrics") != null) {

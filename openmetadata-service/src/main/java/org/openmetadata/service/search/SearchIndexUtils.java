@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,7 +52,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
-import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.Utilities;
 
 @Slf4j
@@ -1312,10 +1312,31 @@ public final class SearchIndexUtils {
    * every tag the table's own endpoints decide on.
    */
   public static List<String> policyTagFqns(Table table) {
-    return TableRepository.allTags(table).stream()
-        .map(TagLabel::getTagFQN)
-        .filter(Objects::nonNull)
-        .distinct()
-        .toList();
+    // The tags TableRepository.allTags merges, collected by FQN alone: merging the labels
+    // themselves
+    // scans the merged list once per tag, which on a wide table is the cost of every column.
+    Set<String> fqns = new LinkedHashSet<>();
+    addTagFqns(fqns, table.getTags());
+    addColumnTagFqns(fqns, table.getColumns());
+    if (table.getDataModel() != null) {
+      addTagFqns(fqns, table.getDataModel().getTags());
+      addColumnTagFqns(fqns, table.getDataModel().getColumns());
+    }
+    return List.copyOf(fqns);
+  }
+
+  private static void addColumnTagFqns(Set<String> fqns, List<Column> columns) {
+    for (Column column : listOrEmpty(columns)) {
+      addTagFqns(fqns, column.getTags());
+      addColumnTagFqns(fqns, column.getChildren());
+    }
+  }
+
+  private static void addTagFqns(Set<String> fqns, List<TagLabel> tags) {
+    for (TagLabel tag : listOrEmpty(tags)) {
+      if (tag.getTagFQN() != null) {
+        fqns.add(tag.getTagFQN());
+      }
+    }
   }
 }

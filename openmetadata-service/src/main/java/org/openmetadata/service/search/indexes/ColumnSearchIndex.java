@@ -23,10 +23,20 @@ public class ColumnSearchIndex implements SearchIndex {
   static final String POLICY_TAGS_FIELD = "policyTags";
   private final Column column;
   private final Table parentTable;
+  private final List<String> tablePolicyTags;
 
   public ColumnSearchIndex(Column column, Table parentTable) {
+    this(column, parentTable, null);
+  }
+
+  /**
+   * {@code tablePolicyTags} is {@link SearchIndexUtils#policyTagFqns(Table)} of the table, computed
+   * once by a caller that indexes all its columns.
+   */
+  public ColumnSearchIndex(Column column, Table parentTable, List<String> tablePolicyTags) {
     this.column = column;
     this.parentTable = parentTable;
+    this.tablePolicyTags = tablePolicyTags;
   }
 
   @Override
@@ -79,7 +89,9 @@ public class ColumnSearchIndex implements SearchIndex {
     doc.put("descriptionStatus", nullOrEmpty(column.getDescription()) ? "INCOMPLETE" : "COMPLETE");
     // Read only by search access control: a tag rule on a table covers its columns, as the column
     // endpoints decide on the table (ADR:2026-10-08-column-entries-carry-only-their-own-tags).
-    doc.put(POLICY_TAGS_FIELD, SearchIndexUtils.policyTagFqns(parentTable));
+    doc.put(
+        POLICY_TAGS_FIELD,
+        tablePolicyTags != null ? tablePolicyTags : SearchIndexUtils.policyTagFqns(parentTable));
 
     Map<String, Object> tableRef = new HashMap<>();
     tableRef.put("id", parentTable.getId().toString());

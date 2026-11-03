@@ -262,7 +262,8 @@ public class AuditLogResource {
             .setStartTs(startTs)
             .setEndTs(endTs)
             .setSearchTerm(searchTerm)
-            .setLimit(effectiveLimit);
+            .setLimit(effectiveLimit)
+            .setReadsUserEmails(readsUserEmails(securityContext));
     CsvAsyncJob job =
         CsvAsyncJobManager.getInstance()
             .createAuditExportJob(securityContext.getUserPrincipal().getName(), args);

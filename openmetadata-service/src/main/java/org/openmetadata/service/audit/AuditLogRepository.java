@@ -311,6 +311,8 @@ public class AuditLogRepository {
    * Export audit logs in batches to avoid long-running queries that could cause resource
    * contention with concurrent writes. Uses cursor-based pagination for efficient batching.
    *
+   * @param readsUserEmails whether the requester reads user emails; otherwise events about users
+   *     carry them masked, as in the listing
    * @param progressCallback Optional callback for progress notifications (can be null)
    */
   public int streamExportAsJson(
@@ -324,6 +326,7 @@ public class AuditLogRepository {
       Long endTs,
       String searchTerm,
       int totalLimit,
+      boolean readsUserEmails,
       ExportProgressCallback progressCallback)
       throws IOException {
 
@@ -393,7 +396,7 @@ public class AuditLogRepository {
               null, // before
               afterCursor,
               false, // skip the count — it would re-run once per batch
-              true);
+              readsUserEmails);
 
       if (batch.getData().isEmpty()) {
         break;

@@ -1499,11 +1499,12 @@ public class SearchRepository {
     }
 
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    List<String> tablePolicyTags = SearchIndexUtils.policyTagFqns(table);
     List<Map<String, String>> docs = new ArrayList<>();
 
     for (Column column : flattenedColumns) {
       try {
-        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table, tablePolicyTags);
         String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
         String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
         docs.add(Collections.singletonMap(columnId, doc));
@@ -1949,9 +1950,10 @@ public class SearchRepository {
       }
 
       List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+      List<String> tablePolicyTags = SearchIndexUtils.policyTagFqns(table);
       for (Column column : flattenedColumns) {
         try {
-          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table, tablePolicyTags);
           String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
           String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
           allColumnDocs.add(Collections.singletonMap(columnId, doc));

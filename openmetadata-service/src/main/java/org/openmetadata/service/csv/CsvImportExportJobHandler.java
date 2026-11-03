@@ -306,6 +306,7 @@ public class CsvImportExportJobHandler implements JobHandler {
               args.getEndTs(),
               args.getSearchTerm(),
               args.getLimit(),
+              Boolean.TRUE.equals(args.getReadsUserEmails()),
               (fetched, total, message) -> {
                 jobManager.updateProgress(jobId, fetched, total, message);
                 sendExportMessage(

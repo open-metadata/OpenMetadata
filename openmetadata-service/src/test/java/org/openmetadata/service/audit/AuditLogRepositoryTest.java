@@ -26,6 +26,8 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -208,6 +210,41 @@ class AuditLogRepositoryTest {
 
   @Test
   void anEventAboutAUserListsItsEmailMaskedForCallersWhoDoNotReadEmails() {
+    stubAUserEventWithEmails();
+
+    AuditLogEntry masked =
+        repository
+            .list(null, null, null, null, null, null, null, null, null, 25, null, null, false)
+            .getData()
+            .getFirst();
+    AuditLogEntry plain =
+        repository
+            .list(null, null, null, null, null, null, null, null, null, 25, null, null, true)
+            .getData()
+            .getFirst();
+
+    assertFalse(masked.getSummary().contains("alice@"), masked.getSummary());
+    assertFalse(masked.getRawEventJson().contains("alice@"), masked.getRawEventJson());
+    assertFalse(JsonUtils.pojoToJson(masked.getChangeEvent()).contains("alice@"));
+    assertTrue(plain.getSummary().contains("alice@example.com"), plain.getSummary());
+  }
+
+  @Test
+  void anExportMasksUserEmailsForARequesterWhoDoesNotReadThem() throws Exception {
+    stubAUserEventWithEmails();
+    ByteArrayOutputStream masked = new ByteArrayOutputStream();
+    ByteArrayOutputStream plain = new ByteArrayOutputStream();
+
+    repository.streamExportAsJson(
+        masked, null, null, null, null, null, 0L, 1L, null, 10, false, null);
+    repository.streamExportAsJson(
+        plain, null, null, null, null, null, 0L, 1L, null, 10, true, null);
+
+    assertFalse(masked.toString(StandardCharsets.UTF_8).contains("alice@"));
+    assertTrue(plain.toString(StandardCharsets.UTF_8).contains("alice@example.com"));
+  }
+
+  private void stubAUserEventWithEmails() {
     ChangeEvent event =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -240,22 +277,6 @@ class AuditLogRepositoryTest {
                         .eventJson(JsonUtils.pojoToJson(event))
                         .build()));
     stubCount();
-
-    AuditLogEntry masked =
-        repository
-            .list(null, null, null, null, null, null, null, null, null, 25, null, null, false)
-            .getData()
-            .getFirst();
-    AuditLogEntry plain =
-        repository
-            .list(null, null, null, null, null, null, null, null, null, 25, null, null, true)
-            .getData()
-            .getFirst();
-
-    assertFalse(masked.getSummary().contains("alice@"), masked.getSummary());
-    assertFalse(masked.getRawEventJson().contains("alice@"), masked.getRawEventJson());
-    assertFalse(JsonUtils.pojoToJson(masked.getChangeEvent()).contains("alice@"));
-    assertTrue(plain.getSummary().contains("alice@example.com"), plain.getSummary());
   }
 
   private void stubList() {
