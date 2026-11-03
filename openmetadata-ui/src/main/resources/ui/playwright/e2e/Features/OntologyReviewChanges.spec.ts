@@ -602,7 +602,12 @@ test.describe(
         }),
         'Create reviewer'
       );
-      const ontology = await createOntology(api, 'pw_g7_orphan', [reviewer.id]);
+      // The requester is left off the task's reviewers, so listing them on the
+      // ontology keeps it reviewer-bearing after the task's only reviewer goes.
+      const ontology = await createOntology(api, 'pw_g7_orphan', [
+        reviewer.id,
+        isolatedUser.responseData.id,
+      ]);
       const tasks: string[] = [];
       try {
         await addConcept(api, ontology, 'Customer');
