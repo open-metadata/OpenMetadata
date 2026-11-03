@@ -15,6 +15,7 @@ package org.openmetadata.mcp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -86,26 +87,39 @@ class McpReadOnlyModeTest {
 
   @Test
   void aRegisteredWriteToolIsRefusedOnceReadOnlyIsTurnedOn() {
+    DefaultToolContext toolContext = succeedingToolContext();
+
+    McpSchema.CallToolResult result = callInReadOnlyMode(toolContext, "patch_entity");
+
+    assertTrue(result.isError(), "patch_entity must not run in read-only mode");
+    assertEquals(403, ((Map<?, ?>) result.structuredContent()).get("statusCode"));
+    verify(toolContext, never()).callToolWithMetadata(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void aReadToolStillRunsInReadOnlyMode() {
+    assertSame(SUCCESS, callInReadOnlyMode(succeedingToolContext(), "search_metadata"));
+  }
+
+  private static DefaultToolContext succeedingToolContext() {
     DefaultToolContext toolContext = mock(DefaultToolContext.class);
     when(toolContext.callToolWithMetadata(any(), any(), any(), any(), any()))
         .thenReturn(new DefaultToolContext.CallToolOutcome(SUCCESS, 0L, null));
+    return toolContext;
+  }
+
+  private static McpSchema.CallToolResult callInReadOnlyMode(
+      DefaultToolContext toolContext, String toolName) {
     McpServer server = new McpServer(toolContext, new DefaultPromptsContext());
     server.jwtFilter = jwtFilterFor("alice");
-    McpSchema.Tool patchEntity = toolNamed("patch_entity");
     McpSchema.CallToolRequest request =
-        McpSchema.CallToolRequest.builder().name("patch_entity").arguments(Map.of()).build();
+        McpSchema.CallToolRequest.builder().name(toolName).arguments(Map.of()).build();
 
     try (MockedStatic<SecurityConfigurationManager> config =
             mockStatic(SecurityConfigurationManager.class);
         MockedStatic<McpUsageRecorder> usage = mockStatic(McpUsageRecorder.class)) {
       config.when(SecurityConfigurationManager::getCurrentMcpConfig).thenReturn(READ_ONLY);
-
-      McpSchema.CallToolResult result =
-          server.getTool(patchEntity).callHandler().apply(callerContext(), request);
-
-      assertTrue(result.isError(), "patch_entity must not run in read-only mode");
-      assertEquals(403, ((Map<?, ?>) result.structuredContent()).get("statusCode"));
-      verify(toolContext, never()).callToolWithMetadata(any(), any(), any(), any(), any());
+      return server.getTool(toolNamed(toolName)).callHandler().apply(callerContext(), request);
     }
   }
 
