@@ -87,6 +87,12 @@ public class TypeRepository extends EntityRepository<Type> {
     }
   }
 
+  // A type's custom property definitions are field relationships under its name.
+  @Override
+  protected boolean shouldCleanupFqnDependents() {
+    return true;
+  }
+
   @Override
   public void setFields(Type type, Fields fields, RelationIncludes relationIncludes) {
     type.withCustomProperties(

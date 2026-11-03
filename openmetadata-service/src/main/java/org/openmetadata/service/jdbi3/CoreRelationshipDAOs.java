@@ -2286,18 +2286,23 @@ public interface CoreRelationshipDAOs {
         @Bind("otherType") String otherType,
         @Bind("relation") int relation);
 
-    default void deleteAllByPrefix(String fqn) {
+    /**
+     * Deletes the rows under {@code fqn}, an FQN of {@code entityType}. Custom property definitions
+     * are rows of type {@code type} under an entity type's name, so only deleting that type removes
+     * them; an entity of another type that shares the name leaves them alone.
+     */
+    default void deleteAllByPrefix(String fqn, String entityType) {
       String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String condition = "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)";
+      String typeCondition =
+          Entity.TYPE.equals(entityType)
+              ? " AND fromType = :typeRow AND toType = :typeRow"
+              : " AND fromType <> :typeRow AND toType <> :typeRow";
+      String condition =
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition;
       Map<String, String> bindMap = new HashMap<>();
       bindMap.put("prefix", prefix);
+      bindMap.put("typeRow", Entity.TYPE);
       deleteAllByPrefixInternal(condition, bindMap);
-    }
-
-    default void deleteAllByPrefixes(List<String> threadIds) {
-      for (String threadId : threadIds) {
-        deleteAllByPrefix(threadId);
-      }
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")
