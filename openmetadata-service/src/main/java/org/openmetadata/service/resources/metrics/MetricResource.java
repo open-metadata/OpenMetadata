@@ -229,6 +229,32 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
             : decisions.computeIfAbsent(reference.getId(), id -> decide.test(reference));
   }
 
+  /**
+   * The request-scoped {@code ViewBasic} decisions for the references a metric or metric group
+   * response carries, each checked against its own entity type. A reference the caller may not
+   * view, or one that no longer resolves, is withheld.
+   */
+  public static Predicate<EntityReference> viewBasicDecisions(
+      Authorizer authorizer, SecurityContext securityContext) {
+    return cachedDecisions(
+        new HashMap<>(), reference -> canViewBasic(authorizer, securityContext, reference));
+  }
+
+  private static boolean canViewBasic(
+      Authorizer authorizer, SecurityContext securityContext, EntityReference reference) {
+    boolean visible = true;
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(reference.getType(), MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(
+              reference.getType(), reference.getId(), reference.getFullyQualifiedName()));
+    } catch (AuthorizationException | EntityNotFoundException | IllegalArgumentException e) {
+      visible = false;
+    }
+    return visible;
+  }
+
   private Metric sanitizeRelations(SecurityContext securityContext, Metric metric) {
     RelationVisibility visibility = relationVisibility(securityContext);
     return visibility.unrestricted()

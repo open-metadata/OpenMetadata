@@ -60,7 +60,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -276,23 +275,31 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    ResourcePermission metricPermission =
-        authorizer.getPermission(
-            securityContext, securityContext.getUserPrincipal().getName(), Entity.METRIC);
-    ResultList<Metric> result;
-    if (MetricResource.hasUnconditionalView(metricPermission)) {
-      result = repository.listMetrics(id, limit, offset, query, rootOnly);
-    } else {
-      result =
-          repository.listMetrics(
-              id,
-              limit,
-              offset,
-              query,
-              rootOnly,
-              metric -> canAccessMetric(securityContext, metric, MetadataOperation.VIEW_BASIC));
-    }
-    return result;
+    return repository.listMetrics(
+        id, limit, offset, query, rootOnly, memberVisibility(securityContext));
+  }
+
+  /**
+   * A caller with an unconditional view on metrics pages the members in the database; any other
+   * caller's members, and the groups every caller's member change entries name, are checked per
+   * reference for the request.
+   */
+  private MetricGroupRepository.MemberVisibility memberVisibility(SecurityContext securityContext) {
+    String user = securityContext.getUserPrincipal().getName();
+    boolean allMetricsVisible =
+        MetricResource.hasUnconditionalView(
+            authorizer.getPermission(securityContext, user, Entity.METRIC));
+    boolean allGroupsVisible =
+        MetricResource.hasUnconditionalView(
+            authorizer.getPermission(securityContext, user, Entity.METRIC_GROUP));
+    return new MetricGroupRepository.MemberVisibility(
+        allMetricsVisible,
+        allMetricsVisible
+            ? ignored -> true
+            : MetricResource.viewBasicDecisions(authorizer, securityContext),
+        allGroupsVisible
+            ? ignored -> true
+            : MetricResource.viewBasicDecisions(authorizer, securityContext));
   }
 
   @GET

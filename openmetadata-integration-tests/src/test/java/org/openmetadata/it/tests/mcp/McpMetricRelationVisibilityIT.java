@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.BeforeAll;
@@ -44,11 +45,12 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
   private static MetricGroup hiddenGroup;
   private static MetricGroup visibleGroup;
   private static String restrictedToken;
+  private static String suffix;
 
   @BeforeAll
   static void setup() throws Exception {
     initAuth();
-    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    suffix = UUID.randomUUID().toString().substring(0, 8);
     hiddenParent = createMetric(restricted(metric("mcp_rel_hidden_parent_" + suffix)));
     hiddenRelated = createMetric(restricted(metric("mcp_rel_hidden_related_" + suffix)));
     current =
@@ -136,10 +138,72 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
     assertThat(restricted.toString()).doesNotContain(hiddenMember.getName());
   }
 
+  /** A patch answers with the patched entity, so a write by the restricted caller is a read too. */
+  @Test
+  void patchResponse_omitsTheRelationsTheCallerCannotView() throws Exception {
+    JsonNode unrestricted = patchDescription(current, "Patched by the admin", authToken);
+    assertThat(unrestricted.path("parent").path("id").asText())
+        .isEqualTo(hiddenParent.getId().toString());
+
+    JsonNode restricted =
+        patchDescription(current, "Patched by the restricted user", restrictedToken);
+    assertThat(isAbsent(restricted.path("parent"))).isTrue();
+    assertThat(idsOf(restricted.path("relatedMetrics"))).isEmpty();
+    assertThat(restricted.toString())
+        .doesNotContain(hiddenParent.getName(), hiddenRelated.getName());
+  }
+
+  /** A metric created below a parent inherits the parent's group, which the creator may not view. */
+  @Test
+  void createResponse_omitsAnInheritedGroupTheCallerCannotView() throws Exception {
+    String name = "mcp_rel_created_variant_%s".formatted(suffix);
+    JsonNode created =
+        callTool(
+            McpTestUtils.createToolCallRequest(
+                "create_entity",
+                Map.of(
+                    "entityType",
+                    Entity.METRIC,
+                    "name",
+                    name,
+                    "description",
+                    "Variant created through MCP",
+                    "attributes",
+                    Map.of(
+                        "parent",
+                        Map.of("id", memberOfHiddenGroup.getId().toString(), "type", Entity.METRIC),
+                        "metricExpression",
+                        Map.of("language", "SQL", "code", "SELECT COUNT(*) FROM orders")))),
+            restrictedToken);
+    assertThat(isAbsent(created.path("metricGroup"))).isTrue();
+    assertThat(created.toString()).doesNotContain(hiddenGroup.getName());
+
+    // The admin read is the barrier: the variant did inherit the hidden group.
+    JsonNode unrestricted = readEntity(Entity.METRIC, name, authToken);
+    assertThat(unrestricted.path("metricGroup").path("id").asText())
+        .isEqualTo(hiddenGroup.getId().toString());
+  }
+
   private JsonNode readEntity(String entityType, String fqn, String token) throws Exception {
-    JsonNode response =
-        executeMcpRequest(McpTestUtils.createGetEntityToolCall(entityType, fqn), token);
-    assertThat(response.path("result").path("isError").asBoolean(false)).isFalse();
+    return callTool(McpTestUtils.createGetEntityToolCall(entityType, fqn), token);
+  }
+
+  private JsonNode patchDescription(Metric metric, String description, String token)
+      throws Exception {
+    String patch =
+        OBJECT_MAPPER.writeValueAsString(
+            List.of(Map.of("op", "add", "path", "/description", "value", description)));
+    return callTool(
+        McpTestUtils.createPatchEntityToolCall(
+            Entity.METRIC, metric.getFullyQualifiedName(), patch),
+        token);
+  }
+
+  private JsonNode callTool(Map<String, Object> request, String token) throws Exception {
+    JsonNode response = executeMcpRequest(request, token);
+    assertThat(response.path("result").path("isError").asBoolean(false))
+        .as(response.toString())
+        .isFalse();
     return OBJECT_MAPPER.readTree(
         response.path("result").path("content").get(0).path("text").asText());
   }
@@ -166,7 +230,10 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
     return post("metrics", create, Metric.class);
   }
 
-  /** Views the whole catalog except the metrics and metric groups tagged as restricted. */
+  /**
+   * Views, creates and describes across the catalog, except that the metrics and metric groups
+   * tagged as restricted are hidden from it.
+   */
   private static User createRestrictedUser(String suffix) throws Exception {
     List<MetadataOperation> viewOperations =
         List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL);
@@ -174,7 +241,12 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
         new Rule()
             .withName("AllowCatalog")
             .withResources(List.of("All"))
-            .withOperations(viewOperations)
+            .withOperations(
+                List.of(
+                    MetadataOperation.VIEW_BASIC,
+                    MetadataOperation.VIEW_ALL,
+                    MetadataOperation.CREATE,
+                    MetadataOperation.EDIT_DESCRIPTION))
             .withEffect(Rule.Effect.ALLOW);
     Rule denyRestricted =
         new Rule()

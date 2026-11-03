@@ -1582,26 +1582,37 @@ public class MetricRepository extends EntityRepository<Metric> {
    * are JSON-encoded references — one object for a single-valued field, an array for a list. A
    * change entry naming an entity the caller may not view is dropped whole, so no part of the
    * reference (id, name, description) leaves. Anything else — nulls, plain strings, payloads that
-   * are not references — names no entity and passes.
+   * are not references — names no entity and passes. Only the parsing tolerates failure: the
+   * visibility test runs outside it, so a failed authorization propagates rather than passing.
    */
   static boolean referencesOnlyVisibleEntities(
       Object value, Predicate<EntityReference> visibility) {
-    if (!(value instanceof String json) || json.isBlank()) {
-      return true;
-    }
-    try {
-      if (json.stripLeading().startsWith("[")) {
-        List<EntityReference> references =
-            JsonUtils.readValue(json, new TypeReference<List<EntityReference>>() {});
-        return references.stream().allMatch(visibility);
+    return referencesIn(value).stream().allMatch(visibility);
+  }
+
+  private static List<EntityReference> referencesIn(Object value) {
+    List<EntityReference> references = List.of();
+    // FieldChange values are untyped: the updater records relation fields as JSON-encoded
+    // references and other fields as plain values, so only a JSON string can name an entity.
+    if (value instanceof String json && !json.isBlank()) {
+      try {
+        references = parseReferences(json.stripLeading());
+      } catch (RuntimeException notReferences) {
+        LOG.debug("Change value is not a reference payload: {}", notReferences.getMessage());
       }
-      if (json.stripLeading().startsWith("{")) {
-        return visibility.test(JsonUtils.readValue(json, EntityReference.class));
-      }
-      return true;
-    } catch (RuntimeException parseFailure) {
-      return true;
     }
+    return references;
+  }
+
+  private static List<EntityReference> parseReferences(String json) {
+    List<EntityReference> references = List.of();
+    if (json.startsWith("[")) {
+      references =
+          listOrEmpty(JsonUtils.readValue(json, new TypeReference<List<EntityReference>>() {}));
+    } else if (json.startsWith("{")) {
+      references = List.of(JsonUtils.readValue(json, EntityReference.class));
+    }
+    return references;
   }
 
   int visibleChildCount(UUID metricId, Predicate<EntityReference> canViewMetric) {

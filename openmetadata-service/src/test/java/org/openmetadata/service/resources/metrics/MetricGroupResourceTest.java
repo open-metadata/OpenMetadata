@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -157,8 +159,11 @@ class MetricGroupResourceTest {
 
       assertEquals(expected, actual);
       verify(fixture.authorizer()).authorize(any(), any(), any());
+      ArgumentCaptor<MetricGroupRepository.MemberVisibility> visibility =
+          ArgumentCaptor.forClass(MetricGroupRepository.MemberVisibility.class);
       verify(fixture.repository())
-          .listMetrics(eq(groupId), eq(15), eq(30), eq("margin"), eq(true), any());
+          .listMetrics(eq(groupId), eq(15), eq(30), eq("margin"), eq(true), visibility.capture());
+      assertFalse(visibility.getValue().allMetricsVisible());
     }
   }
 
@@ -177,15 +182,20 @@ class MetricGroupResourceTest {
       when(fixture.repository().get(any(), eq(groupId), any())).thenReturn(group);
       when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
           .thenReturn(metricViewPermission(Permission.Access.ALLOW));
-      when(fixture.repository().listMetrics(groupId, 15, 30, "margin", false)).thenReturn(expected);
+      when(fixture
+              .repository()
+              .listMetrics(eq(groupId), eq(15), eq(30), eq("margin"), eq(false), any()))
+          .thenReturn(expected);
 
       ResultList<Metric> actual =
           fixture.resource().listMetrics(securityContext, groupId, "margin", false, 15, 30);
 
       assertEquals(expected, actual);
-      verify(fixture.repository()).listMetrics(groupId, 15, 30, "margin", false);
-      verify(fixture.repository(), never())
-          .listMetrics(eq(groupId), eq(15), eq(30), eq("margin"), eq(false), any());
+      ArgumentCaptor<MetricGroupRepository.MemberVisibility> visibility =
+          ArgumentCaptor.forClass(MetricGroupRepository.MemberVisibility.class);
+      verify(fixture.repository())
+          .listMetrics(eq(groupId), eq(15), eq(30), eq("margin"), eq(false), visibility.capture());
+      assertTrue(visibility.getValue().allMetricsVisible());
     }
   }
 

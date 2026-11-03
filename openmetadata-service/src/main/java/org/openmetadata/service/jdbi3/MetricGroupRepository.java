@@ -351,11 +351,15 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     return updateMembership(group, request, false);
   }
 
-  public ResultList<Metric> listMetrics(
-      UUID groupId, int limit, int offset, String query, boolean rootOnly) {
-    MemberScan scan = scanUnrestrictedMemberIds(groupId, limit, offset, query, rootOnly);
-    return buildMetricPage(scan, limit, offset, ignored -> true);
-  }
+  /**
+   * What a members-list caller may view: every member when {@code allMetricsVisible} (paged in the
+   * database), otherwise the members {@code canViewMetric} accepts; and among the groups the
+   * members' stored change descriptions name, the ones {@code canViewGroup} accepts.
+   */
+  public record MemberVisibility(
+      boolean allMetricsVisible,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {}
 
   public ResultList<Metric> listMetrics(
       UUID groupId,
@@ -363,17 +367,35 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
       int offset,
       String query,
       boolean rootOnly,
-      Predicate<EntityReference> isVisible) {
-    CollectionDAO.MetricGroupDAO groupDAO = (CollectionDAO.MetricGroupDAO) dao;
-    String nameLike = buildNameLike(query);
-    validatePermissionFilteredScanSize(groupDAO, groupId, query, nameLike, rootOnly);
+      MemberVisibility visibility) {
     MemberScan scan =
-        scanMemberIds(groupDAO, groupId, limit, offset, query, nameLike, rootOnly, isVisible);
-    return buildMetricPage(scan, limit, offset, isVisible);
+        visibility.allMetricsVisible()
+            ? scanUnrestrictedMemberIds(groupId, limit, offset, query, rootOnly)
+            : scanVisibleMemberIds(
+                groupId, new MemberPageRequest(limit, offset, query, rootOnly), visibility);
+    return buildMetricPage(scan, limit, offset, visibility);
+  }
+
+  private record MemberPageRequest(int limit, int offset, String query, boolean rootOnly) {}
+
+  private MemberScan scanVisibleMemberIds(
+      UUID groupId, MemberPageRequest page, MemberVisibility visibility) {
+    CollectionDAO.MetricGroupDAO groupDAO = (CollectionDAO.MetricGroupDAO) dao;
+    String nameLike = buildNameLike(page.query());
+    validatePermissionFilteredScanSize(groupDAO, groupId, page.query(), nameLike, page.rootOnly());
+    return scanMemberIds(
+        groupDAO,
+        groupId,
+        page.limit(),
+        page.offset(),
+        page.query(),
+        nameLike,
+        page.rootOnly(),
+        visibility.canViewMetric());
   }
 
   private ResultList<Metric> buildMetricPage(
-      MemberScan scan, int limit, int offset, Predicate<EntityReference> isVisible) {
+      MemberScan scan, int limit, int offset, MemberVisibility visibility) {
     List<UUID> ids = scan.ids();
     List<Metric> metrics = daoCollection.metricDAO().findEntitiesByIds(ids, NON_DELETED);
     MetricRepository metricRepository =
@@ -384,10 +406,12 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
         metrics.stream()
             .map(
                 metric ->
-                    MetricRepository.sanitizeHierarchyMetric(metric, isVisible, ignored -> true))
+                    MetricRepository.sanitizeHierarchyMetric(
+                        metric, visibility.canViewMetric(), visibility.canViewGroup()))
             .collect(Collectors.toCollection(ArrayList::new));
     for (Metric metric : metrics) {
-      metric.setChildrenCount(metricRepository.visibleChildCount(metric.getId(), isVisible));
+      metric.setChildrenCount(
+          metricRepository.visibleChildCount(metric.getId(), visibility.canViewMetric()));
     }
     Map<UUID, Integer> positions = new HashMap<>();
     for (int index = 0; index < ids.size(); index++) {

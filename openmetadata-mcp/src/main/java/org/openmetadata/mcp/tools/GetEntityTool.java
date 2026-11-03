@@ -267,11 +267,8 @@ public class GetEntityTool implements McpTool {
     // Kept as the entity, not just its map: the content section needs the object, and reading it
     // a second time for that would be the same fetch twice in one request.
     EntityInterface<?> entity =
-        MetricRelationVisibility.visibleTo(
-            CommonUtils.withVisibleEvidence(
-                CommonUtils.readEntityForCaller(entityType, fqn, "*", null, securityContext),
-                authorizer,
-                securityContext),
+        CommonUtils.withVisibleEvidence(
+            CommonUtils.readEntityForCaller(entityType, fqn, "*", null, securityContext),
             authorizer,
             securityContext);
     if (entity instanceof User user) {

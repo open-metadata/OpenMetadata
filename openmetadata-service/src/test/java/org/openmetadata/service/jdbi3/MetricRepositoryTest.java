@@ -406,6 +406,26 @@ class MetricRepositoryTest {
   }
 
   @Test
+  void aFailingVisibilityCheckPropagatesInsteadOfShowingTheChange() {
+    EntityReference reference = metricReference(UUID.randomUUID(), "unchecked_metric");
+    Predicate<EntityReference> failingCheck =
+        ignored -> {
+          throw new IllegalStateException("policy evaluation failed");
+        };
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            MetricRepository.referencesOnlyVisibleEntities(
+                JsonUtils.pojoToJson(reference), failingCheck));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            MetricRepository.referencesOnlyVisibleEntities(
+                JsonUtils.pojoToJson(List.of(reference)), failingCheck));
+  }
+
+  @Test
   void relationSanitizationRecountsChildrenCountWithOnlyVisibleChildren() {
     Metric metric = new Metric().withId(UUID.randomUUID()).withName("parent").withChildrenCount(2);
     UUID visibleChildId = UUID.randomUUID();
