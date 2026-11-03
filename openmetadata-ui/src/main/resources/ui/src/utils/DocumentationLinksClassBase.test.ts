@@ -40,6 +40,9 @@ describe('DocumentationLinksClassBase', () => {
     expect(docsURLs.DATA_QUALITY_PROFILER_WORKFLOW_DOCS).toBe(
       'https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/profiler-workflow'
     );
+    expect(docsURLs.AUTO_CLASSIFICATION_DOCS).toBe(
+      'https://docs.open-metadata.org/latest/how-to-guides/data-governance/classification/auto-classification'
+    );
     expect(docsURLs.GLOSSARIES_DOCS).toBe(
       'https://docs.open-metadata.org/latest/main-concepts/metadata-standard/schemas/entity/data/glossary'
     );
