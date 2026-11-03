@@ -238,6 +238,10 @@ describe('Owner inherited badge', () => {
   };
   const directUser = { id: 'u2', name: 'user2', type: 'user' };
 
+  afterEach(() => {
+    setOwnerHrefResolver(undefined);
+  });
+
   it('marks only inherited owners in the compact view', () => {
     render(<Owner owners={[inheritedUser, directUser]} />);
 
@@ -267,5 +271,19 @@ describe('Owner inherited badge', () => {
     expect(
       screen.queryByTestId('inherited-owner-icon')
     ).not.toBeInTheDocument();
+  });
+
+  it('names inherited owners as inherited in the stacked avatar links', () => {
+    setOwnerHrefResolver((o) => `/users/${o.name}`);
+
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[inheritedUser, inheritedTeam, directUser]}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: /^user1, \S/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'user2' })).toBeVisible();
   });
 });

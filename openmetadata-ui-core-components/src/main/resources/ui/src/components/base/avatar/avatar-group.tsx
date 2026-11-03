@@ -13,6 +13,7 @@
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import type { ReactNode } from 'react';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { HoverCard } from '../../application/hover-card/hover-card';
 import {
@@ -67,6 +68,7 @@ export const AvatarGroup = ({
   overflowUsersLabel,
   showOverflowHeadings = true,
 }: AvatarGroupProps) => {
+  const { t } = useCoreTranslation();
   const resolvedSize = groupAvatarSizeMap[avatarSize] ?? 'xs';
   const visibleOwners = owners.slice(0, maxCount);
   const overflowCount = Math.max(0, owners.length - maxCount);
@@ -125,7 +127,11 @@ export const AvatarGroup = ({
 
     const chip = href ? (
       <AriaLink
-        aria-label={nameStr}
+        // The link's aria-label overrides the badge's own label, so the
+        // inherited state has to be part of it.
+        aria-label={
+          owner.inherited ? `${nameStr}, ${t('label.inherited')}` : nameStr
+        }
         className="tw:block"
         data-testid="owner-link"
         href={href}
