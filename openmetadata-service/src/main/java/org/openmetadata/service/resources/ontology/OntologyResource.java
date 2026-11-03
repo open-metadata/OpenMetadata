@@ -59,6 +59,7 @@ import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
+import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
@@ -100,6 +101,8 @@ import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
+import org.openmetadata.service.ontology.OntologyStructureValidator;
+import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
@@ -289,6 +292,30 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
                 groupBy == null
                     ? comparison.compareWorking(working, limit, after, authorize)
                     : comparison.compareWorkingByConcept(working, limit, after, authorize));
+  }
+
+  @GET
+  @Path("/{id}/working/validation")
+  @Operation(
+      operationId = "validateOntologyWorkingDraft",
+      summary = "Validate every definition in the working draft")
+  public OntologyProfileReport validateWorking(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final Consumer<List<? extends OntologyDefinition>> authorize =
+        definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
+    return releaseCapture
+        .snapshot()
+        .read(
+            id,
+            authorize,
+            working ->
+                OntologyStructureValidator.validateDraft(
+                    working.entries().stream()
+                        .map(OntologyWorkingSnapshot.Entry::definition)
+                        .toList()));
   }
 
   @POST
