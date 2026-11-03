@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 /**
-/**
  * What deleting one ontology concept touches. Relationships and rules are removed together
  * with the concept; blockers must be edited by hand before the concept can be deleted.
  * Catalog bindings are listed by the bindings endpoint.

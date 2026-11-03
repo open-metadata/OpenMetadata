@@ -148,6 +148,10 @@ export interface Issue {
 /**
  * Unique id used to identify an entity.
  *
+ * Unique identifier that identifies an entity instance.
+ *
+ * Owning release when validating captured content; absent for a working definition.
+ *
  * Optional description of entity.
  *
  * Text in Markdown format.
@@ -155,10 +159,6 @@ export interface Issue {
  * Link to the entity resource.
  *
  * URI that points to a resource.
- *
- * Unique identifier that identifies an entity instance.
- *
- * Owning release when validating captured content; absent for a working definition.
  *
  * Absolute semantic IRI, preserved exactly without URL normalization, case folding, or
  * percent encoding.
