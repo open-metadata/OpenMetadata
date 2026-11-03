@@ -60,6 +60,15 @@ final class JsonSchemaRepository {
     return types.get(clazz.getName());
   }
 
+  Set<String> schemaPaths() {
+    return schemas.keySet();
+  }
+
+  Ref rootSchema(String path) {
+    JsonNode schema = schemas.get(path);
+    return schema == null ? null : new Ref(schema, path);
+  }
+
   Ref property(Ref schema, String propertyName) {
     JsonNode property = schema.node().path("properties").get(propertyName);
     return property == null ? null : new Ref(property, schema.path());
@@ -166,7 +175,7 @@ final class JsonSchemaRepository {
     }
     try {
       return Class.forName(javaType);
-    } catch (ClassNotFoundException e) {
+    } catch (ClassNotFoundException | NoClassDefFoundError e) {
       return null;
     }
   }
@@ -262,13 +271,17 @@ final class JsonSchemaRepository {
     }
   }
 
+  /** The spec build names a root class after its file name, as jsonschema2pojo does by default. */
   private String inferredRootJavaType(Ref schema) {
-    String title = schema.node().path("title").asText("");
-    if (title.isEmpty()) {
-      return "";
+    String path = schema.path();
+    String directory = path.substring(ROOT.length(), path.lastIndexOf('/'));
+    String fileName = path.substring(path.lastIndexOf('/') + 1, path.length() - ".json".length());
+    StringBuilder className = new StringBuilder();
+    for (String word : fileName.split("[^A-Za-z0-9]+")) {
+      if (!word.isEmpty()) {
+        className.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+      }
     }
-    String directory = schema.path().substring(ROOT.length(), schema.path().lastIndexOf('/'));
-    String className = Character.toUpperCase(title.charAt(0)) + title.substring(1);
     return "org.openmetadata.schema." + directory.replace('/', '.') + "." + className;
   }
 
