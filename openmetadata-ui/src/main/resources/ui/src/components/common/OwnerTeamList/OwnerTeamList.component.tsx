@@ -20,6 +20,7 @@ import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { OwnerInheritedBadge } from '../OwnerLabel/OwnerInheritedBadge.component';
 import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';
 import { AVATAR_SIZE_CLASS_MAP } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
@@ -51,12 +52,14 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
           className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:no-underline"
           data-testid="owner-link"
           to={getOwnerPath(visibleTeam)}>
-          <IconTeamsGrey
-            className={classNames(
-              'tw:text-secondary',
-              AVATAR_SIZE_CLASS_MAP[avatarSize]
-            )}
-          />
+          <OwnerInheritedBadge owner={visibleTeam}>
+            <IconTeamsGrey
+              className={classNames(
+                'tw:text-secondary',
+                AVATAR_SIZE_CLASS_MAP[avatarSize]
+              )}
+            />
+          </OwnerInheritedBadge>
 
           <div
             className={classNames('owner-team-name-wrapper', {
