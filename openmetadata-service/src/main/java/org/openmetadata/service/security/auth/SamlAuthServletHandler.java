@@ -372,7 +372,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         throw new AuthenticationException("SAML login is no longer pending");
       }
       resp.setStatus(HttpServletResponse.SC_SEE_OTHER);
-      resp.setHeader("Location", req.getContextPath() + SamlLoginCompletionServlet.PATH);
+      resp.setHeader("Location", completionLocation(req, pendingSession));
 
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid SAML redirect URI in callback", e);
@@ -385,6 +385,31 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       sendError(
           resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML callback processing failed");
     }
+  }
+
+  /**
+   * The completion page on the origin the login returns to, which is where it started: the pending
+   * session's cookie is host-only, and the ACS may be served under another host name.
+   */
+  private String completionLocation(HttpServletRequest req, UserSession pendingSession) {
+    String path = req.getContextPath() + SamlLoginCompletionServlet.PATH;
+    try {
+      URI callback = new URI(requireSamlRedirectUri(pendingSession.getRedirectUri()));
+      if (callback.getScheme() != null && callback.getHost() != null) {
+        return new URI(
+                callback.getScheme(),
+                null,
+                callback.getHost(),
+                callback.getPort(),
+                path,
+                null,
+                null)
+            .toString();
+      }
+    } catch (URISyntaxException e) {
+      LOG.warn("Could not derive the SAML completion origin from the login's redirect URI", e);
+    }
+    return path;
   }
 
   /**
