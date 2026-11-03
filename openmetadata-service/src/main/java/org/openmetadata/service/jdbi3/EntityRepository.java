@@ -1140,6 +1140,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return "domains";
   }
 
+  /** Whether an entity of this type with no owners of its own takes its parent's. */
+  public final boolean inheritsOwners() {
+    String inheritableFields = getInheritableFields();
+    return inheritableFields != null
+        && List.of(inheritableFields.split(",")).contains(FIELD_OWNERS);
+  }
+
   /**
    * Fields to load on a parent of the given type. Entities whose parent may be one of several types
    * override this when a field is only valid on some of them; requesting a field a parent type does
@@ -5587,6 +5594,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return DeleteLifecycle.NOOP;
   }
 
+  /**
+   * Captures cleanup inputs before hard deletion removes relationships. The returned action runs
+   * after the owning row deletion succeeds, or after an enclosing transaction commits.
+   */
+  protected Runnable preparePostDeleteCleanup(List<T> entities) {
+    return () -> {};
+  }
+
   protected void postDelete(T entity, boolean hardDelete) {
     // A bulk hard-delete cascade cancels the change requests of each chunk in one query; an entity
     // without an id was never stored, so it has none.
@@ -5605,6 +5620,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void postRestore(T entity) {
     getCountingParents(entity).forEach(this::refreshCountingParent);
   }
+
+  /** Checked by the restore endpoint only; upserts and cascades that restore do not call it. */
+  public void validateRestore(UUID id) {}
 
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {
@@ -5791,7 +5809,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
           // ordering for direct-entity hard delete.
           hardDeleteAdditionalChildren(original.getId(), deletedBy);
+          Runnable postDeleteCleanup = preparePostDeleteCleanup(List.of(updated));
           cleanup(updated);
+          PostCommitActionQueue.runOrDefer(postDeleteCleanup);
           changeType = ENTITY_DELETED;
         }
         LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
@@ -8550,7 +8570,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
         // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
         // already deleted by the recursion above, so this transaction is bounded to this chunk.
+        Runnable postDeleteCleanup = preparePostDeleteCleanup(entities);
         bulkDeleteReferencesAndRows(entities);
+        PostCommitActionQueue.runOrDefer(postDeleteCleanup);
         bulkInvalidate(entities);
         // When an ancestor's deleteFromSearch cascade already removes these docs in a single
         // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
@@ -15642,18 +15664,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * hard-delete the stale entities.
    *
    * <p>FQNs are compared by hash so quoting or case differences between the connector-supplied and
-   * stored values never cause spurious deletes. An empty scope yields zero deletions - it is never
-   * interpreted as "everything is stale". Each delete runs in its own transaction so a single
-   * failure does not roll back the rest of the batch.
+   * stored values never cause spurious deletes. An empty {@code seenFqns} yields zero deletions
+   * unless the connector sets {@code allowEmptySeenFqns}, confirming its listing was complete
+   * (ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing).
+   * Each delete runs in its own transaction so a single failure does not roll back the rest of the
+   * batch.
    */
   public BulkOperationResult bulkDeleteStaleEntities(
       BulkDeleteStaleRequest request, String deletedBy) {
     validateScopeRequest(request.getScopeEntityType(), request.getScopeFqn());
-    if (nullOrEmpty(request.getSeenFqns())) {
-      // An empty seen-set cannot be distinguished from a connector run that crashed or discovered
-      // nothing, so it must never be interpreted as "every entity under the scope is stale" - that
-      // would silently delete the whole service/database. Treat it as zero deletions, mirroring the
-      // scope-not-found path.
+    if (isAmbiguousEmptySeenSet(request)) {
+      // An unconfirmed empty seen-set cannot be distinguished from a connector run that crashed or
+      // discovered nothing, so it must never be interpreted as "every entity under the scope is
+      // stale" - that would silently delete the whole service/database. Treat it as zero
+      // deletions, mirroring the scope-not-found path.
       LOG.warn(
           "deleteStale for scope {} '{}' received an empty seenFqns; treating as zero deletions "
               + "rather than marking the entire scope stale",
@@ -15700,12 +15724,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return buildStaleDeletionResult(dryRun, successRequests, failedRequests);
   }
 
+  private static boolean isAmbiguousEmptySeenSet(BulkDeleteStaleRequest request) {
+    return nullOrEmpty(request.getSeenFqns())
+        && !Boolean.TRUE.equals(request.getAllowEmptySeenFqns());
+  }
+
   /**
    * Rejects a malformed request before any work runs: {@code scopeFqn} and {@code scopeEntityType}
    * must be present and {@code scopeEntityType} must resolve to a registered entity type. These are
-   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} is handled
-   * separately in {@link #bulkDeleteStaleEntities} as a safe zero-deletion no-op rather than a 400,
-   * since it is a well-formed request whose intent is genuinely ambiguous.
+   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} without
+   * {@code allowEmptySeenFqns} is handled separately in {@link #bulkDeleteStaleEntities} as a safe
+   * zero-deletion no-op rather than a 400, since it is a well-formed request whose intent is
+   * genuinely ambiguous.
    */
   private void validateScopeRequest(String scopeEntityType, String scopeFqn) {
     if (nullOrEmpty(scopeFqn)) {

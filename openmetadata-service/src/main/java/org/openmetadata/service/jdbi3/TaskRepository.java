@@ -62,7 +62,6 @@ import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -88,6 +87,7 @@ import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
 import org.openmetadata.service.tasks.TaskReviewVotes;
+import org.openmetadata.service.tasks.TaskTargetOperations;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
@@ -1059,6 +1059,21 @@ public class TaskRepository extends EntityRepository<Task> {
    */
   public void checkPermissionsForResolveTask(
       Authorizer authorizer, Task task, boolean closeTask, SecurityContext securityContext) {
+    checkPermissionsForResolveTask(
+        authorizer, task, closeTask, securityContext, TaskResolutionInput.NONE);
+  }
+
+  /** What a resolve request adds to the task's own payload before the resolution applies it. */
+  public record TaskResolutionInput(Object payload, String newValue) {
+    public static final TaskResolutionInput NONE = new TaskResolutionInput(null, null);
+  }
+
+  public void checkPermissionsForResolveTask(
+      Authorizer authorizer,
+      Task task,
+      boolean closeTask,
+      SecurityContext securityContext,
+      TaskResolutionInput input) {
     MetadataOperation operation =
         closeTask ? MetadataOperation.CLOSE_TASK : MetadataOperation.RESOLVE_TASK;
     OperationContext taskOp = new OperationContext(Entity.TASK, operation);
@@ -1100,7 +1115,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // schemas declare permission: EDIT_ALL, which TaskFormExecutionResolver surfaces via
     // getOperationForTask.
     if (!closeTask && !isApprovalTask(task)) {
-      validateUnderlyingEntityPermission(authorizer, securityContext, task);
+      validateUnderlyingEntityPermission(authorizer, securityContext, task, input);
     }
 
     if (!closeTask && isWorkflowApproval(task)) {
@@ -1260,7 +1275,10 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   private void validateUnderlyingEntityPermission(
-      Authorizer authorizer, SecurityContext securityContext, Task task) {
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      Task task,
+      TaskResolutionInput input) {
     EntityReference about = task.getAbout();
     if (about == null) {
       return;
@@ -1269,26 +1287,38 @@ public class TaskRepository extends EntityRepository<Task> {
     ResourceContext<?> resourceContext =
         new ResourceContext<>(about.getType(), about.getId(), null);
 
-    MetadataOperation operation = getOperationForTask(task);
-    if (operation == MetadataOperation.EDIT_OWNERS) {
-      // Same owners mapping as a PATCH
-      // (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all)
-      operation = ResourceRegistry.getEntityEditOperation(about.getType(), Entity.FIELD_OWNERS);
+    Set<MetadataOperation> operations = new LinkedHashSet<>();
+    MetadataOperation taskOperation =
+        TaskTargetOperations.forTarget(
+            about, getOperationForTask(task), securityContext.getUserPrincipal().getName());
+    if (taskOperation != null) {
+      operations.add(taskOperation);
     }
-    if (operation != null && operation != MetadataOperation.EDIT_ALL) {
+    operations.addAll(TaskTargetOperations.forTagLabels(task, input.payload(), input.newValue()));
+    for (MetadataOperation operation : operations) {
+      authorizeOperationOrEditAll(
+          authorizer, securityContext, about.getType(), operation, resourceContext);
+    }
+  }
+
+  private static void authorizeOperationOrEditAll(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      String entityType,
+      MetadataOperation operation,
+      ResourceContext<?> resourceContext) {
+    if (operation == MetadataOperation.EDIT_ALL) {
+      authorizer.authorize(
+          securityContext, new OperationContext(entityType, operation), resourceContext);
+    } else {
       // Allow either the specific operation OR EDIT_ALL (which encompasses all edit permissions)
-      OperationContext specificOpContext = new OperationContext(about.getType(), operation);
-      OperationContext editAllOpContext =
-          new OperationContext(about.getType(), MetadataOperation.EDIT_ALL);
       authorizer.authorizeRequests(
           securityContext,
           List.of(
-              new AuthRequest(specificOpContext, resourceContext),
-              new AuthRequest(editAllOpContext, resourceContext)),
+              new AuthRequest(new OperationContext(entityType, operation), resourceContext),
+              new AuthRequest(
+                  new OperationContext(entityType, MetadataOperation.EDIT_ALL), resourceContext)),
           AuthorizationLogic.ANY);
-    } else if (operation == MetadataOperation.EDIT_ALL) {
-      OperationContext operationContext = new OperationContext(about.getType(), operation);
-      authorizer.authorize(securityContext, operationContext, resourceContext);
     }
   }
 

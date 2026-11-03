@@ -44,9 +44,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -642,8 +644,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
-    return getInternal(
-        uriInfo, securityContext, id, fields, relationIncludes, operationContext, resourceContext);
+    return PIIMasker.getTestCase(
+        getInternal(
+            uriInfo,
+            securityContext,
+            id,
+            fields,
+            relationIncludes,
+            operationContext,
+            resourceContext),
+        authorizer,
+        securityContext);
   }
 
   @GET
@@ -695,8 +706,22 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
-    return getByNameInternal(
-        uriInfo, securityContext, fqn, fields, relationIncludes, operationContext, resourceContext);
+    return PIIMasker.getTestCase(
+        getByNameInternal(
+            uriInfo,
+            securityContext,
+            fqn,
+            fields,
+            relationIncludes,
+            operationContext,
+            resourceContext),
+        authorizer,
+        securityContext);
+  }
+
+  @Override
+  protected Optional<UnaryOperator<TestCase>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(testCase -> PIIMasker.getTestCase(testCase, authorizer, securityContext));
   }
 
   @GET

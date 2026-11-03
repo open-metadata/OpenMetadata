@@ -91,6 +91,29 @@ class TriggerEntityFilterTest {
     assertFalse(TriggerEntityFilter.excludes("not json logic", new GlossaryTerm().withName("foo")));
   }
 
+  @Test
+  void nonStringEntriesAreLeftOutAndOtherEntriesStillApply() {
+    Map<String, Object> filter = new HashMap<>();
+    filter.put("default", ALWAYS);
+    filter.put(GLOSSARY_TERM, Map.of("==", List.of(1, 1)));
+    filter.put("table", List.of(NAME_IS_FOO));
+    filter.put("dashboard", NAME_IS_FOO);
+
+    assertEquals(ALWAYS, TriggerEntityFilter.forEntityType(filter, GLOSSARY_TERM));
+    assertEquals(ALWAYS, TriggerEntityFilter.forEntityType(filter, "table"));
+    assertEquals(NAME_IS_FOO, TriggerEntityFilter.forEntityType(filter, "dashboard"));
+    assertEquals(
+        Map.of("default", ALWAYS, "dashboard", NAME_IS_FOO),
+        TriggerEntityFilter.textEntries(filter));
+  }
+
+  @Test
+  void anEntityTypeWhoseOnlyEntryIsNotAStringHasNoFilter() {
+    assertNull(
+        TriggerEntityFilter.forEntityType(
+            Map.of(GLOSSARY_TERM, Map.of("==", List.of(1, 1))), GLOSSARY_TERM));
+  }
+
   private static Map<String, String> filterFor(String key, String value) {
     Map<String, String> filter = new HashMap<>();
     filter.put(key, value);

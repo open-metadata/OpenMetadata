@@ -43,6 +43,7 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CreateConversation;
 import org.openmetadata.schema.api.policies.CreatePolicy;
@@ -2144,6 +2145,121 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     // FQN should have changed to include parent
     assertNotEquals(originalFqn, movedTerm.getFullyQualifiedName());
     assertTrue(movedTerm.getFullyQualifiedName().contains(parent.getName()));
+  }
+
+  @Test
+  void test_moveTermNeedsTheAccessChangingItsParentNeeds(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "mvAuthGls");
+    GlossaryTerm parent = createChildTerm(glossary, null, "parent");
+    GlossaryTerm term = createChildTerm(glossary, null, "child");
+
+    // USER3 holds only the default role and owns nothing here: it may tag assets with glossary
+    // terms but not restructure a glossary.
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.user3Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/glossaryTerms/%s/moveAsync".formatted(term.getId()),
+                        new MoveGlossaryTermRequest().withParent(parent.getEntityReference()),
+                        RequestOptions.builder().build()));
+
+    assertEquals(403, error.getStatusCode());
+    assertEquals(
+        term.getFullyQualifiedName(),
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .get(term.getId().toString(), "")
+            .getFullyQualifiedName());
+  }
+
+  @Test
+  void test_moveTermNeedsAParentWithIdAndType(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "mvParentGls");
+    GlossaryTerm parent = createChildTerm(glossary, null, "parent");
+    GlossaryTerm term = createChildTerm(glossary, null, "child");
+    String path = "/v1/glossaryTerms/%s/moveAsync".formatted(term.getId());
+
+    for (MoveGlossaryTermRequest move :
+        List.of(
+            new MoveGlossaryTermRequest(),
+            new MoveGlossaryTermRequest()
+                .withParent(new EntityReference().withType(Entity.GLOSSARY_TERM)),
+            new MoveGlossaryTermRequest()
+                .withParent(new EntityReference().withId(parent.getId())))) {
+      OpenMetadataException error =
+          assertThrows(
+              OpenMetadataException.class,
+              () ->
+                  SdkClients.adminClient()
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.PUT, path, move, RequestOptions.builder().build()));
+      assertEquals(400, error.getStatusCode(), JsonUtils.pojoToJson(move));
+    }
+    assertEquals(
+        term.getFullyQualifiedName(),
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .get(term.getId().toString(), "")
+            .getFullyQualifiedName());
+  }
+
+  @Test
+  void test_parentMustBeInTheTermsGlossary(TestNamespace ns) {
+    Glossary source = createGlossary(ns, "parentGlsA");
+    Glossary target = createGlossary(ns, "parentGlsB");
+    GlossaryTerm term = createChildTerm(source, null, "moving");
+    GlossaryTerm parent = createChildTerm(target, null, "parent");
+    String parentOp =
+        "{\"op\":\"add\",\"path\":\"/parent\",\"value\":{\"id\":\"%s\",\"type\":\"glossaryTerm\"}}"
+            .formatted(parent.getId());
+    String glossaryOp =
+        "{\"op\":\"replace\",\"path\":\"/glossary\",\"value\":{\"id\":\"%s\",\"type\":\"glossary\"}}"
+            .formatted(target.getId());
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class, () -> patchTerm(term, "[%s]".formatted(parentOp)));
+    assertEquals(400, error.getStatusCode());
+    GlossaryTerm unchanged =
+        SdkClients.adminClient().glossaryTerms().get(term.getId().toString(), "");
+    assertEquals(term.getFullyQualifiedName(), unchanged.getFullyQualifiedName());
+    assertEquals(source.getId(), unchanged.getGlossary().getId());
+
+    // A PUT that creates a term under a parent from another glossary is refused the same way.
+    OpenMetadataException putError =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/glossaryTerms",
+                        new CreateGlossaryTerm()
+                            .withName("created")
+                            .withGlossary(source.getFullyQualifiedName())
+                            .withParent(parent.getFullyQualifiedName())
+                            .withDescription("Created under another glossary's term"),
+                        RequestOptions.builder().build()));
+    assertEquals(400, putError.getStatusCode());
+
+    // Moving it with its glossary is the same move made consistently, and is published.
+    GlossaryTerm moved = patchTerm(term, "[%s,%s]".formatted(parentOp, glossaryOp));
+    assertEquals(
+        "%s.%s".formatted(parent.getFullyQualifiedName(), term.getName()),
+        moved.getFullyQualifiedName());
+    assertEquals(target.getId(), moved.getGlossary().getId());
+  }
+
+  private static GlossaryTerm patchTerm(GlossaryTerm term, String operations) {
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .patch(term.getId().toString(), JsonUtils.readTree(operations));
   }
 
   // task_entity.aboutFqnHash stores one 32-char hash per FQN level, so eight levels (263 chars)

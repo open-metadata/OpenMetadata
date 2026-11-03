@@ -263,20 +263,27 @@ public class JsonPatchUtils {
     return key.replace("~", "~0").replace("/", "~1");
   }
 
-  private static MetadataOperation mapTagToOperation(TagLabel tag) {
-    if (tag.getSource() == TagLabel.TagSource.CLASSIFICATION) {
-      if (isTierClassification(tag.getTagFQN())) {
-        return MetadataOperation.EDIT_TIER;
-      }
-      if (isCertificationClassification(tag.getTagFQN())) {
-        return MetadataOperation.EDIT_CERTIFICATION;
-      }
-      return MetadataOperation.EDIT_TAGS;
+  /**
+   * The operation adding or removing {@code tag} needs. A glossary term needs EditGlossaryTerms
+   * whatever its name; Tier and Certification are read from the FQN of any other label, including
+   * labels decoded from a task without their source.
+   */
+  public static MetadataOperation mapTagToOperation(TagLabel tag) {
+    if (tag == null) {
+      return null;
     }
     if (tag.getSource() == TagLabel.TagSource.GLOSSARY) {
       return MetadataOperation.EDIT_GLOSSARY_TERMS;
     }
-    return MetadataOperation.EDIT_ALL;
+    if (isTierClassification(tag.getTagFQN())) {
+      return MetadataOperation.EDIT_TIER;
+    }
+    if (isCertificationClassification(tag.getTagFQN())) {
+      return MetadataOperation.EDIT_CERTIFICATION;
+    }
+    return tag.getSource() == TagLabel.TagSource.CLASSIFICATION
+        ? MetadataOperation.EDIT_TAGS
+        : MetadataOperation.EDIT_ALL;
   }
 
   private static boolean isTierClassification(String tagFQN) {
