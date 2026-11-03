@@ -94,6 +94,7 @@ describe('AlertAiDestinationConfigFields — team/user picker', () => {
 
     expect(screen.queryByTestId('team-user-select-dropdown-0')).toBeNull();
     expect(drawerKeyDown).not.toHaveBeenCalled();
+    expect(screen.getByTestId('team-user-select-trigger-0')).toHaveFocus();
 
     document.body.removeEventListener('keydown', drawerKeyDown);
   });

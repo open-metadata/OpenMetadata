@@ -187,6 +187,7 @@ const TeamUserSelectInput = ({
 }: TeamUserSelectInputProps) => {
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -256,6 +257,9 @@ const TeamUserSelectInput = ({
       if (e.key === 'Escape' && rootRef.current?.contains(e.target as Node)) {
         e.stopPropagation();
         closeDropdown();
+        // The focused search input unmounts with the panel; keep keyboard users
+        // on the field instead of dropping focus to <body>.
+        triggerRef.current?.focus({ preventScroll: true });
       }
     };
     document.addEventListener('pointerdown', handleOutsidePointerDown, true);
@@ -307,11 +311,16 @@ const TeamUserSelectInput = ({
   return (
     <div className={ALERT_AI_FORM_CLASS_NAMES.teamUserSelectRoot} ref={rootRef}>
       <div
+        aria-disabled={isDisabled}
+        aria-expanded={isDropdownOpen}
         className={classNames(
           ALERT_AI_FORM_CLASS_NAMES.teamUserSelectTrigger,
           isDisabled && ALERT_AI_FORM_CLASS_NAMES.teamUserSelectTriggerDisabled
         )}
         data-testid={`team-user-select-trigger-${destinationNumber}`}
+        ref={triggerRef}
+        role="button"
+        tabIndex={isDisabled ? -1 : 0}
         onClick={isDisabled ? undefined : () => setIsDropdownOpen((p) => !p)}
         onKeyDown={
           isDisabled
