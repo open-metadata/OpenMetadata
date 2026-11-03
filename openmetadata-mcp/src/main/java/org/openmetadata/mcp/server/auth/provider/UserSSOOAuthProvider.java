@@ -623,10 +623,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     LOG.info("Serving consent page for MCP client {}", client.getClientId());
     response.setStatus(HttpServletResponse.SC_OK);
     response.setContentType("text/html; charset=UTF-8");
-    response.setHeader("Cache-Control", "no-store");
-    response.setHeader("X-Frame-Options", "DENY");
-    // Added next to any policy the web security headers set; browsers enforce both.
-    response.addHeader("Content-Security-Policy", "frame-ancestors 'none'");
+    HtmlTemplates.setSignInPageHeaders(response);
     response
         .getWriter()
         .write(
