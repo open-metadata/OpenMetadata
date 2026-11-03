@@ -2730,6 +2730,30 @@ public class EventSubscriptionResourceIT
     }
   }
 
+  /** An id copied into another alert is not kept, so a test send reaches the alert that holds it. */
+  @Test
+  void test_testDestinationResolvesAnIdCopiedIntoAnotherAlert(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      String headerValue = ns.prefix("one");
+      EventSubscription first =
+          createEntity(
+              secretRequest(ns, "first_holder", receiver.url("/first"), headerValue, null));
+      SubscriptionDestination masked = first.getDestinations().getFirst();
+      CreateEventSubscription second =
+          secretRequest(ns, "second_holder", receiver.url("/second"), ns.prefix("two"), null);
+      second.getDestinations().getFirst().withId(masked.getId());
+      UUID secondId = createEntity(second).getDestinations().getFirst().getId();
+      assertNotEquals(masked.getId(), secondId, "a create issues its own id");
+
+      HttpResponse<String> response = postTestDestination(List.of(masked));
+
+      assertEquals(200, response.statusCode(), response.body());
+      assertEquals(1, receiver.received().size());
+      assertEquals("/first", receiver.received().getFirst().path());
+      assertEquals(headerValue, headerOf(receiver.received().getFirst(), "Authorization"));
+    }
+  }
+
   /** Stored secrets are tested only by a caller allowed to edit the alert that holds them. */
   @Test
   void test_testDestinationWithStoredSecretsNeedsEditOnTheirAlert(TestNamespace ns)
