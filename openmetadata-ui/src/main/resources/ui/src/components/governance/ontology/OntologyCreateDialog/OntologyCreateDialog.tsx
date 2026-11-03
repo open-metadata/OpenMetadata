@@ -141,6 +141,8 @@ const OntologyCreateDialog = ({
           max: ONTOLOGY_NAME_MAX_LENGTH,
           count: nameError.length,
         });
+      case 'id-required':
+        return t('message.ontology-name-id-required');
       case 'duplicate':
         return t('message.ontology-name-duplicate', { name: nameError.name });
       default:

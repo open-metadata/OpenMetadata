@@ -117,6 +117,7 @@ export const ONTOLOGY_NAME_MAX_LENGTH = 256;
 export type OntologyNameError =
   | { kind: 'forbidden-character' }
   | { kind: 'too-long'; length: number }
+  | { kind: 'id-required' }
   | { kind: 'duplicate'; name: string };
 
 /** Kebab-cased display name, the default for the immutable ontology ID. */
@@ -141,6 +142,9 @@ export const validateOntologyName = (
   const trimmed = displayName.trim();
   if (hasForbiddenCharacter(trimmed) || hasForbiddenCharacter(id)) {
     return { kind: 'forbidden-character' };
+  }
+  if (trimmed && !id.trim()) {
+    return { kind: 'id-required' };
   }
   const length = Math.max(trimmed.length, id.length);
   if (length > ONTOLOGY_NAME_MAX_LENGTH) {
