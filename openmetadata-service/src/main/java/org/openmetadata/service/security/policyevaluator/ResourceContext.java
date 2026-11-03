@@ -434,14 +434,21 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
    * never sees less than it did before.
    */
   private Fields authorizationFields() {
+    return authorizationFields(entityRepository, requestedFields);
+  }
+
+  /**
+   * {@link #authorizationFields(EntityRepository)} together with {@code requested}, for a caller
+   * that loads the entity itself to answer a request and authorizes on the same copy.
+   */
+  public static Fields authorizationFields(EntityRepository<?> entityRepository, Fields requested) {
     Fields securityFields = authorizationFields(entityRepository);
-    Fields result = securityFields;
-    if (requestedFields != null) {
-      Set<String> merged = new HashSet<>(securityFields.getFieldList());
-      merged.addAll(requestedFields.getFieldList());
-      result = new Fields(merged);
+    if (requested == null) {
+      return securityFields;
     }
-    return result;
+    Set<String> merged = new HashSet<>(securityFields.getFieldList());
+    merged.addAll(requested.getFieldList());
+    return new Fields(merged);
   }
 
   /**

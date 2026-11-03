@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -36,6 +38,7 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -65,12 +68,14 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for GitHub issue #24180 — domain isolation for multi-tenant setups.
@@ -266,6 +271,43 @@ public class DomainIsolationIT {
       assertTrue(
           admin.tables().get(table.getId().toString(), null, "deleted").getDeleted(),
           "The table must stay soft-deleted");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_columnAndLineageHydrateOfAnotherDomainsTable_areDenied(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain marketing = createDomain(admin, p + "_mkt", cleanup);
+      Table ledger = createTable(admin, p + "_ledger", createSchema(ns, cleanup), finance, cleanup);
+      OpenMetadataClient marketer = createRestrictedUserClient(admin, p, marketing, cleanup);
+
+      String columnPath =
+          "/v1/columns/name/"
+              + URLEncoder.encode(
+                  ledger.getFullyQualifiedName() + "." + COLUMN.getName(), StandardCharsets.UTF_8)
+              + "?entityType=table";
+      assertThrows(
+          ForbiddenException.class,
+          () -> marketer.getHttpClient().executeForString(HttpMethod.GET, columnPath, null));
+
+      HydrateLineageRequest hydrate =
+          new HydrateLineageRequest()
+              .withEntities(
+                  List.of(new EntityReference().withType(Entity.TABLE).withId(ledger.getId())));
+      JsonNode response =
+          MAPPER.readTree(
+              marketer
+                  .getHttpClient()
+                  .executeForString(HttpMethod.POST, "/v1/lineage/hydrate", hydrate));
+      assertFalse(response.path("entitiesByType").has(Entity.TABLE), response.toString());
+      assertEquals(1, response.path("droppedCount").asInt(), response.toString());
     } finally {
       drain(cleanup);
     }

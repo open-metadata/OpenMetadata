@@ -46,6 +46,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
  */
 @Slf4j
 public class ViewPermissionFilter {
+  private static final List<MetadataOperation> VIEW_BASIC = List.of(MetadataOperation.VIEW_BASIC);
 
   private final Authorizer authorizer;
 
@@ -63,9 +64,43 @@ public class ViewPermissionFilter {
 
   /** Whether the caller may view one reference. Never throws; anything but a clear allow denies. */
   public boolean canView(SecurityContext securityContext, EntityReference reference) {
-    return reference != null
-        && reference.getType() != null
-        && authorizeQuietly(securityContext, reference, null);
+    if (reference == null || reference.getType() == null) {
+      return false;
+    }
+    ResourceContext<?> context;
+    try {
+      context = lazyContext(reference);
+    } catch (RuntimeException e) {
+      LOG.debug("Hiding reference {}: {}", reference.getId(), e.getMessage());
+      return false;
+    }
+    return authorizeQuietly(securityContext, reference.getType(), VIEW_BASIC, reference, context);
+  }
+
+  /**
+   * The {@code rows} the caller may read with every one of {@code operations}, in order. Each row
+   * must carry at least {@link ResourceContext#authorizationFields}; tags are batch-loaded into the
+   * rows only if a policy reads them. Never throws; a row whose check fails is left out.
+   */
+  public <T extends EntityInterface<?>> List<T> retainPermitted(
+      SecurityContext securityContext,
+      String entityType,
+      EntityRepository<T> repository,
+      List<T> rows,
+      List<MetadataOperation> operations) {
+    if (rows.isEmpty()) {
+      return rows;
+    }
+    BulkFieldHydrator hydrator = tagHydrator(repository, rows);
+    List<T> permitted = new ArrayList<>(rows.size());
+    for (T row : rows) {
+      ResourceContext<T> context = new ResourceContext<>(entityType, row, repository, hydrator);
+      if (authorizeQuietly(
+          securityContext, entityType, operations, row.getEntityReference(), context)) {
+        permitted.add(row);
+      }
+    }
+    return permitted;
   }
 
   /** One batch load and one hydrator per entity type, so cost scales with types, not references. */
@@ -82,7 +117,8 @@ public class ViewPermissionFilter {
     BulkFieldHydrator hydrator = tagHydrator(repository, entities);
     for (T entity : entities) {
       ResourceContext<T> context = new ResourceContext<>(entityType, entity, repository, hydrator);
-      if (authorizeQuietly(securityContext, entity.getEntityReference(), context)) {
+      if (authorizeQuietly(
+          securityContext, entityType, VIEW_BASIC, entity.getEntityReference(), context)) {
         viewable.add(entity.getId());
       }
     }
@@ -130,15 +166,19 @@ public class ViewPermissionFilter {
    * caller's request.
    */
   private boolean authorizeQuietly(
-      SecurityContext securityContext, EntityReference reference, ResourceContext<?> resolved) {
+      SecurityContext securityContext,
+      String entityType,
+      List<MetadataOperation> operations,
+      EntityReference reference,
+      ResourceContext<?> context) {
     boolean viewable = false;
     try {
       authorizer.authorize(
           securityContext,
           // OperationContext is stateful - it drops operations as they are satisfied - so each
           // decision needs its own.
-          new OperationContext(reference.getType(), MetadataOperation.VIEW_BASIC),
-          resolved != null ? resolved : lazyContext(reference));
+          new OperationContext(entityType, operations.toArray(new MetadataOperation[0])),
+          context);
       viewable = true;
     } catch (RuntimeException e) {
       LOG.debug("Hiding reference {}: {}", reference.getId(), e.getMessage());

@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -105,6 +104,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PagePermissionsResolver;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.ViewOperations;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -1525,18 +1525,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
 
   protected MetadataOperation[] getViewOperations(Fields fields) {
-    if (fields.getFieldList().isEmpty()) {
-      return VIEW_BASIC_OPERATIONS;
-    }
-    Set<MetadataOperation> viewOperations = new TreeSet<>();
-    for (String field : fields.getFieldList()) {
-      MetadataOperation operation = fieldsToViewOperations.get(field);
-      if (operation == null) {
-        return VIEW_ALL_OPERATIONS;
-      }
-      viewOperations.add(operation);
-    }
-    return viewOperations.toArray(new MetadataOperation[0]);
+    return ViewOperations.forFields(entityType, fields).toArray(new MetadataOperation[0]);
   }
 
   protected EntityReference getEntityReference(String entityType, String fqn) {

@@ -158,11 +158,13 @@ public class ColumnRepository {
     String entityType = spec.entityType();
     EntityRepository<? extends EntityInterface<?>> repository =
         Entity.getEntityRepository(entityType);
+    // Authorized on this copy, so it carries every attribute a condition reads.
     EntityInterface<?> parent =
         repository.getByName(
             null,
             parentFQN,
-            repository.getFields(spec.requiredFields() + ",owners"),
+            ResourceContext.authorizationFields(
+                repository, repository.getFields(spec.requiredFields() + ",owners")),
             include,
             false);
     authorizer.authorize(
