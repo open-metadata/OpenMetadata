@@ -1578,6 +1578,11 @@ public class UserRepository extends EntityRepository<User> {
         processRecord = false;
         return;
       }
+      if (Boolean.TRUE.equals(user.getIsBot()) || isStoredBot(user)) {
+        importFailure(printer, privilegedFieldRequiresAdmin(6, "isBot"), csvRecord);
+        processRecord = false;
+        return;
+      }
       if (!nullOrEmpty(user.getRoles())) {
         importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
         processRecord = false;
@@ -1587,6 +1592,11 @@ public class UserRepository extends EntityRepository<User> {
     private static boolean isStoredAdmin(User user) {
       User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
       return stored != null && Boolean.TRUE.equals(stored.getIsAdmin());
+    }
+
+    private static boolean isStoredBot(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsBot());
     }
 
     public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
