@@ -325,19 +325,15 @@ public final class JsonUtils {
 
   /** Applies the patch on original object and returns the updated object */
   /**
-   * How far a single patch may grow the document beyond its own size. {@code copy} and {@code add}
-   * build the result, so a few operations can double a growing array each time; this caps that
-   * before the work is done, on top of the input bound the reader applies
-   * (ADR:2026-11-03-input-parsing-is-bounded).
+   * How far a single patch may grow the document through {@code copy}, which can double a growing
+   * array each time. Every other operation only adds values the patch body carries, which the input
+   * bound the reader applies already caps (ADR:2026-11-03-input-parsing-is-bounded).
    */
   public static final int MAX_PATCH_GROWTH_BYTES = 10 * 1024 * 1024;
 
   public static JsonValue applyPatch(Object original, JsonPatch patch) {
-    JsonStructure targetJson = JsonUtils.getJsonStructure(original);
-    JsonStructure currentJson = targetJson;
-    // Computed from the input the first time a growing operation runs, so a patch of in-place edits
-    // pays nothing.
-    long sizeBudget = -1;
+    JsonStructure currentJson = JsonUtils.getJsonStructure(original);
+    long copiedLength = 0;
 
     // ---------------------------------------------------------------------
     // JSON patch modification - Ignore operations related to read-only fields
@@ -386,22 +382,26 @@ public final class JsonUtils {
       JsonArrayBuilder singleOp = Json.createArrayBuilder();
       singleOp.add(operation);
       JsonPatch singlePatch = Json.createPatch(singleOp.build());
+      JsonStructure previousJson = currentJson;
       currentJson = singlePatch.apply(currentJson);
 
-      // copy and add are the operations that grow the document; checking only after them keeps a
-      // large patch of in-place edits from paying for the measurement.
+      // Measure only what a copy duplicates: serializing the whole document after each operation
+      // would make a patch cost its operation count times the document size.
       String op = operation.getString("op", "");
-      if (op.equalsIgnoreCase("copy") || op.equalsIgnoreCase("add")) {
-        if (sizeBudget < 0) {
-          sizeBudget = (long) targetJson.toString().length() + MAX_PATCH_GROWTH_BYTES;
-        }
-        if (currentJson.toString().length() > sizeBudget) {
+      if (JsonPatch.Operation.COPY.operationName().equalsIgnoreCase(op)) {
+        copiedLength += copiedValueLength(previousJson, operation);
+        if (copiedLength > MAX_PATCH_GROWTH_BYTES) {
           throw new IllegalArgumentException(
               "JSON Patch grows the document beyond the allowed size");
         }
       }
     }
     return currentJson;
+  }
+
+  // Read from the document the copy ran on: a copy onto an ancestor of its source replaces it.
+  private static long copiedValueLength(JsonStructure document, JsonObject copy) {
+    return Json.createPointer(copy.getString("from")).getValue(document).toString().length();
   }
 
   private static void validateJsonPointer(String pointer, String fieldName) {

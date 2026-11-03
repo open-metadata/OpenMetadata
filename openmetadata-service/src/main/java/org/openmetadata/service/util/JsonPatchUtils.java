@@ -23,7 +23,6 @@ import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -74,9 +73,6 @@ public class JsonPatchUtils {
       for (String location : touchedLocations(jsonValue)) {
         MetadataOperation metadataOperation =
             getMetadataOperation(location, resourceType, entityClass);
-        if (metadataOperation.equals(MetadataOperation.EDIT_ALL)) {
-          return Collections.singleton(MetadataOperation.EDIT_ALL);
-        }
         if (metadataOperation.equals(MetadataOperation.EDIT_TAGS)) {
           tagsAffected = true;
         } else {
@@ -84,11 +80,17 @@ public class JsonPatchUtils {
         }
       }
     }
-    if (tagsAffected) {
-      if (originalEntity == null) {
-        // Without the entity there is no way to tell which labels change.
-        return Collections.singleton(MetadataOperation.EDIT_ALL);
-      }
+    if (uniqueOperations.contains(MetadataOperation.EDIT_ALL)) {
+      // EditAll stands in for the other field operations: the seeded bot policies deny
+      // EditDisplayName outright, and ingestion patches that rewrite the entity also fill in
+      // display names. The label operations below are still added, so a deny conditioned on
+      // tags applies whatever else the patch touches.
+      uniqueOperations.retainAll(Set.of(MetadataOperation.EDIT_ALL));
+    }
+    if (tagsAffected && originalEntity == null) {
+      // Without the entity there is no way to tell which labels change.
+      uniqueOperations.addAll(Set.of(MetadataOperation.EDIT_ALL, MetadataOperation.EDIT_TAGS));
+    } else if (tagsAffected) {
       Set<MetadataOperation> tagOperations = tagOperations(originalEntity, jsonPatch);
       // A patch that touches tags without changing a label still writes the entity.
       uniqueOperations.addAll(

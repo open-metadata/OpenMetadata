@@ -12,9 +12,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -23,6 +27,10 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -34,8 +42,11 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -223,6 +234,96 @@ public class PatchAuthorizationIT {
             .databaseServices()
             .get(service.getId().toString())
             .getDescription());
+  }
+
+  /**
+   * A location that needs EditAll does not stand in for the others: the owner's EditAll covers a
+   * test of the name, and the deny rule on EditTags still refuses the label removal beside it.
+   */
+  @Test
+  void aTestOperationBesideATagRemovalStillMeetsADenyOnEditTags(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Classification classification =
+        ns.trackRoot(
+            Entity.CLASSIFICATION,
+            admin
+                .classifications()
+                .create(
+                    new CreateClassification()
+                        .withName(ns.shortPrefix("guarded"))
+                        .withDescription("Classification whose labels owners may not edit")));
+    Tag sensitive =
+        admin
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("Sensitive")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Label an owner may not remove"));
+    Policy denyTagEdits =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(ns.prefix("denySensitiveTagEdits"))
+                        .withDescription("Deny editing the tags of a sensitive asset")
+                        .withRules(
+                            List.of(
+                                new Rule()
+                                    .withName("denySensitiveTagEdits")
+                                    .withResources(List.of(Entity.ALL_RESOURCES))
+                                    .withOperations(List.of(MetadataOperation.EDIT_TAGS))
+                                    .withEffect(Rule.Effect.DENY)
+                                    .withCondition(
+                                        "matchAnyTag('"
+                                            + sensitive.getFullyQualifiedName()
+                                            + "')")))));
+    Role tagGuard =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(ns.prefix("sensitiveTagGuard"))
+                        .withDescription("Role that may not edit sensitive tags")
+                        .withPolicies(List.of(denyTagEdits.getFullyQualifiedName()))));
+    User owner = createUser(ns, "tagowner", tagGuard);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName("guarded")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withOwners(List.of(owner.getEntityReference()))
+                    .withTags(
+                        List.of(
+                            new TagLabel()
+                                .withTagFQN(sensitive.getFullyQualifiedName())
+                                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                                .withLabelType(TagLabel.LabelType.MANUAL)
+                                .withState(TagLabel.State.CONFIRMED)))
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+    JsonNode testThenRemoveTag =
+        JsonUtils.valueToTree(
+            List.of(
+                Map.of("op", "test", "path", "/name", "value", table.getName()),
+                Map.of("op", "remove", "path", "/tags/0")));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> clientFor(owner).tables().patch(table.getId(), testThenRemoveTag));
+
+    assertEquals(
+        List.of(sensitive.getFullyQualifiedName()),
+        admin.tables().get(table.getId().toString(), "tags").getTags().stream()
+            .map(TagLabel::getTagFQN)
+            .toList());
   }
 
   private static JsonNode move(String from, String path) {

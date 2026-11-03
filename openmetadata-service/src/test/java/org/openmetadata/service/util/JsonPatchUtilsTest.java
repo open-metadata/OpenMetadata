@@ -187,6 +187,21 @@ class JsonPatchUtilsTest {
   }
 
   @Test
+  void aLabelChangeBesideAnEditAllLocationKeepsItsTagOperation() {
+    String patch =
+        """
+        [
+          {"op": "add", "path": "/sourceHash", "value": "changed"},
+          {"op": "remove", "path": "/columns/0/tags/0"}
+        ]
+        """;
+
+    assertEquals(
+        Set.of(MetadataOperation.EDIT_ALL, MetadataOperation.EDIT_GLOSSARY_TERMS),
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch)));
+  }
+
+  @Test
   void testAddClassificationAndRemoveGlossaryTag() {
     // Create a patch to add a Classification tag and remove a Glossary tag
     String patchString =

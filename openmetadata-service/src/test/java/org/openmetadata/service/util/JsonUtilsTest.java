@@ -801,4 +801,29 @@ class JsonUtilsTest {
     JsonValue patched = JsonUtils.applyPatch(document, Json.createPatch(ops.build()));
     assertEquals(1000, patched.asJsonObject().getJsonArray("items").size());
   }
+
+  /** The values a patch adds are in its body, which the reader bounds; only copy is charged. */
+  @Test
+  void applyPatch_acceptsAnAddHeavyPatchOnALargeDocument() {
+    int columnCount = 256;
+    String text = "d".repeat(JsonUtils.MAX_PATCH_GROWTH_BYTES / columnCount + 1);
+    JsonArrayBuilder columns = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      columns.add(Json.createObjectBuilder().add("name", "column" + i).add("description", text));
+    }
+    JsonObject table = Json.createObjectBuilder().add("columns", columns).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "add")
+              .add("path", "/columns/" + i + "/displayName")
+              .add("value", text));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(table, Json.createPatch(ops.build()));
+
+    JsonArray patchedColumns = patched.asJsonObject().getJsonArray("columns");
+    assertEquals(text, patchedColumns.getJsonObject(columnCount - 1).getString("displayName"));
+  }
 }

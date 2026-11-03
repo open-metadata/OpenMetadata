@@ -18,6 +18,13 @@ needed none either.
 ## Decision
 - Every location an operation touches is authorized: `path`, and `from` for `move` and `copy`.
   A location that is missing or not a string counts as the document root (EditAll).
+- A location that needs EditAll stands in for the other field operations, but the operations of
+  the label changes are always added beside it, so a deny rule on EditTags, EditTier,
+  EditGlossaryTerms or EditCertification still applies. Other narrower operations are not added:
+  the seeded bot policies deny EditDisplayName outright, and an ingestion patch that rewrites an
+  entity also fills in its display name, so naming EditDisplayName beside EditAll would refuse the
+  whole patch. A deny on a narrower non-label operation therefore does not refuse a patch that also
+  needs EditAll.
 - A field name selects a narrower operation only where the entity's type declares that field
   (Jackson introspection of the entity class, cached per class). Below a map or an untyped
   object, a write needs EditAll. Without an entity class the first mapped name decides, as before.
