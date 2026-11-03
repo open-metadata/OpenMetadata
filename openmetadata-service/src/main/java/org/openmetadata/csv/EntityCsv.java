@@ -1481,10 +1481,10 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   }
 
   // Column rows are written as one PATCH of their table, so they are checked as that PATCH. A table
-  // this import created was authorized with its columns.
+  // this import created was authorized with its columns; another type with the same FQN was not.
   private void authorizeColumnPatch(TableUpdateContext context, Supplier<JsonPatch> patch) {
     String tableFqn = createdKey(context.updatedTable.getFullyQualifiedName());
-    if (checksRowWrites() && !createdByImport.containsKey(tableFqn)) {
+    if (checksRowWrites() && !(createdByImport.get(tableFqn) instanceof Table)) {
       authorize(
           new OperationContext(TABLE, patch.get()),
           new ResourceContext<>(TABLE, context.originalTable.getId(), null, Include.ALL));

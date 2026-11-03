@@ -7,7 +7,8 @@
   `test_recursiveImportByServiceOwnerCreatesAndUpdatesOwnHierarchy`,
   `test_recursiveImportChecksEachNewRowAgainstItsOwnType`,
   `test_recursiveImportCannotEditColumnsOfTableOutsideCallerPermissions`,
-  `test_recursiveImportChecksChildOfNewDatabaseAgainstTheDatabaseOwners`), `GlossaryResourceIT`,
+  `test_recursiveImportChecksChildOfNewDatabaseAgainstTheDatabaseOwners`,
+  `test_recursiveImportChecksColumnRowsOfTableSharingStoredProcedureFqn`), `GlossaryResourceIT`,
   `TeamResourceIT`, `TestCaseCsvDomainIsolationIT.test_importCsv_rowIsCheckedAgainstItsOwnTable`
 - **Related:** ADR:2026-10-09-bulk-edits-authorize-each-entity-as-its-patch,
   ADR:2026-10-30-a-test-case-write-is-authorized-as-a-create-or-an-update
@@ -24,6 +25,8 @@ its FQN, so an import could create or overwrite entities the importer may not wr
   operations its paths map to over REST. The import also sets each column's position from its row,
   which only `EditAll` covers, so a reordering import needs it. Columns of a table the same file
   created are covered by that table's `CREATE`.
+- Only a table the file created covers its column rows; another entity with the same FQN (e.g. a
+  stored procedure) does not.
 - A row creating an entity under a parent created earlier in the same file is checked against that
   parent as REST would read it once stored: its own owners, or its parent's where the type inherits
   owners (a schema does, a database does not), and the domains it inherits. A team is checked

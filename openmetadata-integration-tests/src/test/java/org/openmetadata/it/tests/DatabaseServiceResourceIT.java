@@ -1426,6 +1426,109 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void test_recursiveImportChecksColumnRowsOfTableSharingStoredProcedureFqn(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Rule denyColumnEdits =
+        new Rule()
+            .withName("denyEditTableDescription")
+            .withEffect(Rule.Effect.DENY)
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.EDIT_DESCRIPTION));
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.prefix("denyTableDescPolicy"))
+                    .withRules(List.of(denyColumnEdits)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("denyTableDescRole"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = ns.shortPrefix("csvSchemaOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withRoles(List.of(role.getId())));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(ns.prefix("sp_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("sp_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("sp_schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withOwners(List.of(owner.getEntityReference())));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName("orders")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withOwners(List.of(admin.users().getByName("admin").getEntityReference()))
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Original column description"))));
+
+    // A new stored procedure with the table's FQN, then column rows for that table
+    String csv =
+        String.join(
+            "\n",
+            "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,"
+                + "retentionPeriod,sourceUrl,domains,extension,entityType*,fullyQualifiedName,"
+                + "column.dataTypeDisplay,column.dataType,column.arrayDataType,column.dataLength,"
+                + "storedProcedure.code,storedProcedure.language",
+            "orders,,,,,,,,,,,,storedProcedure,"
+                + table.getFullyQualifiedName()
+                + ",,,,,select 1,SQL",
+            "id,,Rewritten column,,,,,,,,,,column,"
+                + table.getFullyQualifiedName()
+                + ".id,int,INT,,,,");
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          importCsvRecursive(
+              "databaseSchemas", schema.getFullyQualifiedName(), csv, dryRun, ownerToken);
+      List<String> rows = result.getImportResultsCsv().lines().skip(1).toList();
+      assertTrue(
+          rows.stream()
+              .anyMatch(row -> row.startsWith("success") && row.contains("storedProcedure")),
+          result.getImportResultsCsv());
+      assertTrue(
+          rows.stream().anyMatch(row -> row.startsWith("failure") && row.contains(",column,")),
+          result.getImportResultsCsv());
+    }
+    assertEquals(
+        "Original column description",
+        admin
+            .tables()
+            .get(table.getId().toString(), "columns")
+            .getColumns()
+            .getFirst()
+            .getDescription());
+  }
+
+  @Test
   void test_recursiveImportByServiceOwnerCreatesAndUpdatesOwnHierarchy(TestNamespace ns)
       throws IOException, InterruptedException {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -1496,6 +1599,12 @@ public class DatabaseServiceResourceIT
   private CsvImportResult importCsvRecursive(
       String entityName, String csvData, boolean dryRun, String token)
       throws IOException, InterruptedException {
+    return importCsvRecursive("services/databaseServices", entityName, csvData, dryRun, token);
+  }
+
+  private CsvImportResult importCsvRecursive(
+      String collection, String entityName, String csvData, boolean dryRun, String token)
+      throws IOException, InterruptedException {
     String serverUrl = SdkClients.getServerUrl();
 
     HttpClient client = HttpClient.newHttpClient();
@@ -1504,7 +1613,9 @@ public class DatabaseServiceResourceIT
             .uri(
                 URI.create(
                     serverUrl
-                        + "/v1/services/databaseServices/name/"
+                        + "/v1/"
+                        + collection
+                        + "/name/"
                         + entityName
                         + "/import?recursive=true&dryRun="
                         + dryRun))
