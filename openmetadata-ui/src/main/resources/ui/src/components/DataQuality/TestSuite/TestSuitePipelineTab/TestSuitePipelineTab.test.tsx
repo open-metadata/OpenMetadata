@@ -301,15 +301,19 @@ jest.mock(
       ({
         open,
         ingestionPipeline,
+        onClose,
       }: {
         open: boolean;
         ingestionPipeline?: { fullyQualifiedName: string };
+        onClose: () => void;
       }) => (
-        <div
+        <button
           data-open={String(open)}
           data-pipeline={ingestionPipeline?.fullyQualifiedName ?? ''}
           data-testid="pipeline-form-drawer"
-        />
+          onClick={onClose}>
+          close-drawer
+        </button>
       )
     )
 );
@@ -599,5 +603,26 @@ describe('TestSuite Pipeline component', () => {
 
     expect(getIngestionPipelines).toHaveBeenCalled();
     expect(onPipelinesChange).not.toHaveBeenCalled();
+  });
+
+  it('should keep the edited pipeline while the drawer closes, and clear it for Add', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    const [firstRowActions] = await screen.findAllByTestId('pipeline-actions');
+    fireEvent.click(firstRowActions);
+    const drawer = screen.getByTestId('pipeline-form-drawer');
+    const editedPipeline = drawer.getAttribute('data-pipeline');
+
+    fireEvent.click(drawer);
+
+    expect(drawer).toHaveAttribute('data-open', 'false');
+    expect(drawer).toHaveAttribute('data-pipeline', editedPipeline as string);
+
+    fireEvent.click(screen.getByTestId('add-pipeline-button'));
+
+    expect(drawer).toHaveAttribute('data-open', 'true');
+    expect(drawer).toHaveAttribute('data-pipeline', '');
   });
 });

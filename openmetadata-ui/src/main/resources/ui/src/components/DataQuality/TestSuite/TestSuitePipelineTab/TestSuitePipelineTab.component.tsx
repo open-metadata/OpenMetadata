@@ -640,7 +640,9 @@ const TestSuitePipelineTab = ({
         ingestionPipeline={pipelineDrawer.pipeline}
         open={pipelineDrawer.open}
         testSuite={testSuite}
-        onClose={() => setPipelineDrawer({ open: false })}
+        // Keep the pipeline while the drawer slides out, so an edit drawer does
+        // not flip to its Add title mid-animation; Add clears it on open.
+        onClose={() => setPipelineDrawer((prev) => ({ ...prev, open: false }))}
         onSuccess={handlePipelineSaved}
       />
     </Box>
