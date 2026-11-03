@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -384,6 +385,42 @@ class ContextMemoryVisibilityTest {
             .isEmpty(),
         "another reader of the document");
     assertFalse(ContextMemoryVisibility.isPending(new ContextMemory()), "no stage is not pending");
+  }
+
+  /** A document a team owns: its members are its owners, as policies count owners. */
+  @Test
+  void aTeamThatOwnsTheDocumentSeesItsPendingPills() {
+    EntityReference team = ref(Entity.TEAM, "analytics", "analytics");
+    EntityReference document = ref(Entity.CONTEXT_FILE, "handbook", "handbook");
+    ContextMemory pill =
+        memoryOwnedBy("admin", MemoryVisibility.ENTITY)
+            .withSourceEntity(document)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    entityStaticMock
+        .when(() -> Entity.getEntity(document, Entity.FIELD_OWNERS, Include.NON_DELETED))
+        .thenReturn(new Table().withName("handbook").withOwners(List.of(team)));
+    SecurityContext bob = securityContextFor(BOB);
+    SecurityContext charlie = securityContextFor("charlie");
+    try (MockedStatic<SubjectContext> subjects = Mockito.mockStatic(SubjectContext.class)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext(BOB))
+          .thenReturn(new SubjectContext(new User().withName(BOB).withTeams(List.of(team)), null));
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("charlie"))
+          .thenReturn(new SubjectContext(new User().withName("charlie"), null));
+
+      withSubject(
+          bob,
+          BOB,
+          () ->
+              assertEquals(
+                  List.of(pill), ContextMemoryVisibility.filterListed(List.of(pill), bob)));
+      withSubject(
+          charlie,
+          "charlie",
+          () -> assertTrue(ContextMemoryVisibility.filterListed(List.of(pill), charlie).isEmpty()));
+    }
   }
 
   private static List<ContextMemory> listed(

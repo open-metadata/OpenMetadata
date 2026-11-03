@@ -269,7 +269,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     List<ContextMemory> listed =
         ContextMemoryVisibility.filterListed(memories.getData(), securityContext);
     Paging paging = memories.getPaging();
-    if (paging != null && paging.getTotal() != null) {
+    if (paging != null
+        && paging.getTotal() != null
+        && !ContextMemoryVisibility.seesEveryMemory(securityContext)) {
       paging.setTotal(
           listedTotal(
               paging.getTotal(),

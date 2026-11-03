@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -171,18 +172,117 @@ class ContextMemoryRepositoryTest {
     }
   }
 
-  /** Status transitions on update are out of scope: a PUT that updates keeps what it asked for. */
+  /**
+   * Review finding: a Data Steward's create started Unprocessed, then a PATCH of /entityStatus
+   * approved it. Only an admin, a bot or a conflict review decision moves a memory into Approved.
+   */
   @Test
-  void anUpdateByANonAdminKeepsTheStageItAskedFor() {
-    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
+  void aNonAdminsPatchIntoApprovedIsRefused() {
+    withWriters(
+        () ->
+            assertThrows(
+                AuthorizationException.class,
+                () ->
+                    stageMove(
+                        "alice",
+                        ContextMemoryStatus.APPROVED,
+                        null,
+                        EntityRepository.Operation.PATCH)));
+  }
+
+  /** A PUT re-sends its create request, stage included: it keeps the stored stage, as the create. */
+  @Test
+  void aNonAdminsPutKeepsTheStoredStage() {
+    withWriters(
+        () ->
+            assertEquals(
+                ContextMemoryStatus.UNPROCESSED,
+                stageMove(
+                    "alice", ContextMemoryStatus.APPROVED, null, EntityRepository.Operation.PUT)));
+  }
+
+  /** A conflict review's resolver writes as themselves through governance-bot. */
+  @Test
+  void aConflictReviewDecisionAndAnAdminOrBotMayApprove() {
+    withWriters(
+        () -> {
+          assertEquals(
+              ContextMemoryStatus.APPROVED,
+              stageMove(
+                  "alice",
+                  ContextMemoryStatus.APPROVED,
+                  GOVERNANCE_BOT,
+                  EntityRepository.Operation.PATCH));
+          assertEquals(
+              ContextMemoryStatus.APPROVED,
+              stageMove(
+                  Entity.ADMIN_USER_NAME,
+                  ContextMemoryStatus.APPROVED,
+                  null,
+                  EntityRepository.Operation.PATCH));
+          assertEquals(
+              ContextMemoryStatus.APPROVED,
+              stageMove(
+                  "ai-bot", ContextMemoryStatus.APPROVED, null, EntityRepository.Operation.PATCH));
+        });
+  }
+
+  /** Moves that ground nothing stay open: sending a memory to review or retiring it. */
+  @Test
+  void aNonAdminMayStillSendAMemoryToReviewOrRetireIt() {
+    withWriters(
+        () -> {
+          assertEquals(
+              ContextMemoryStatus.REJECTED,
+              stageMove(
+                  "alice", ContextMemoryStatus.REJECTED, null, EntityRepository.Operation.PATCH));
+          assertEquals(
+              ContextMemoryStatus.DRAFT,
+              stageMove(
+                  "alice", ContextMemoryStatus.DRAFT, null, EntityRepository.Operation.PATCH));
+        });
+  }
+
+  /** Moves an Unprocessed memory to {@code target} as {@code writer} and returns its stage. */
+  private ContextMemoryStatus stageMove(
+      String writer,
+      ContextMemoryStatus target,
+      String impersonatedBy,
+      EntityRepository.Operation operation) {
+    ContextMemory original =
+        memory(MemoryVisibility.ENTITY)
+            .withUpdatedBy("admin")
+            .withUpdatedAt(101L)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    ContextMemory updated =
+        JsonUtils.deepCopy(original, ContextMemory.class)
+            .withUpdatedBy(writer)
+            .withImpersonatedBy(impersonatedBy)
+            .withEntityStatus(target);
+    repository
+        .getUpdater(original, updated, operation, ChangeSource.MANUAL)
+        .updateEntityStatus(false);
+    return updated.getEntityStatus();
+  }
+
+  private static void withWriters(Runnable assertions) {
+    User alice = new User().withId(UUID.randomUUID()).withName("alice");
+    User bot = new User().withId(UUID.randomUUID()).withName("ai-bot").withIsBot(true);
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       subjects
           .when(() -> SubjectContext.getSubjectContext("alice"))
-          .thenReturn(new SubjectContext(new User().withName("alice"), null));
-      ContextMemory approved = byWriter("alice", ContextMemoryStatus.APPROVED);
-
-      repository.prepare(approved, true);
-
-      assertEquals(ContextMemoryStatus.APPROVED, approved.getEntityStatus());
+          .thenReturn(new SubjectContext(alice, null));
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("ai-bot"))
+          .thenReturn(new SubjectContext(bot, null));
+      entities
+          .when(() -> Entity.findEntityByNameOrNull(Entity.USER, "alice", Include.ALL))
+          .thenReturn(alice);
+      entities
+          .when(() -> Entity.findEntityByNameOrNull(Entity.USER, "ai-bot", Include.ALL))
+          .thenReturn(bot);
+      assertions.run();
     }
   }
 

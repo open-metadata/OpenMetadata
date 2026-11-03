@@ -2,12 +2,13 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (extraction provenance and write-response visibility);
-  v3 2026-11-03 (a non-admin's memory starts Unprocessed)
+  v3 2026-11-03 (a non-admin's memory starts Unprocessed and only a review approves it)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `DataConsumerPolicyGrantSqlMigrationTest` (the upgrade statement),
   `ContextMemoryCreateGrantIT` (the grant and the opt-out), `ContextMemoryWriteAccessTest` and
   `ContextMemoryWriteAccessIT` (what a non-admin may write), `ContextMemoryRepositoryTest` (the
-  stage a non-admin's memory starts in)
+  stage a non-admin's memory starts in, and who may approve it), `ContextMemoryLifecycleIT` (an
+  owner's restore to Approved is refused)
 - **Related:** ai-platform#1580; OpenMetadata#34253, which made `ExecuteSparqlQuery` a Data
   Consumer default the same way (ADR:2026-09-16-agent-sparql-execution, §2a);
   open-metadata/openmetadata-collate#6965 (`MemoryCaptureGate`)
@@ -85,19 +86,28 @@ may preserve them on an existing memory but cannot establish them. Server writes
 now fail closed. PUT updates and pin/unpin enforce the same visibility as PATCH, since each returns
 the complete memory. The accepted reach of user-authored Approved memories remains unchanged.
 
-## Amendment — 2026-11-03: a non-admin's memory starts Unprocessed
+## Amendment — 2026-11-03: a non-admin's memory starts Unprocessed and only a review approves it
 
 The revisit named above has happened: release testing found that a Data Steward could create an
-Approved or Public memory through the API, skipping review. A memory created by anyone but an admin
-or a bot now starts `Unprocessed`, whatever `entityStatus` it requests, so reconciliation decides
-it before anyone else grounds on it. `ContextMemoryRepository.prepare` applies this when it prepares
-a new memory, which every create path does: POST, a PUT that creates, and MCP `create_entity`
-(memories have no bulk endpoint). It runs before the stage stamps a
-review or validates stage-bound fields, so the memory never claims a review it did not have. A
-request for a stage it cannot start in, such as a superseding pointer or disputes, is refused as it
-would be on an `Unprocessed` memory.
+Approved or Public memory through the API, skipping review.
 
-A hold for retired evidence is kept: a memory that cites a retired Query still starts in `Draft`.
-Extraction (written as the admin account), Collate's reconciliation and governance bots, and
-capture or `upsertMemory` (which already ask for `Unprocessed`) are unaffected. A stage change on
-update is unchanged; a non-admin who may edit a memory can still move it, which is a follow-up.
+- A memory created by anyone but an admin or a bot starts `Unprocessed`, whatever `entityStatus`
+  it requests, so reconciliation decides it before anyone else grounds on it.
+  `ContextMemoryRepository.prepare` applies this to every new memory: POST, a PUT that creates, and
+  MCP `create_entity` (memories have no bulk endpoint). It runs before the stage stamps a review or
+  checks stage-bound fields, so the memory never claims a review it did not have. A request for a
+  stage it cannot start in, such as a superseding pointer or disputes, is refused as it would be on
+  an `Unprocessed` memory. A hold for retired evidence is kept: such a memory still starts in
+  `Draft`.
+- An update moves a memory into `Approved` only when an admin, a bot or a conflict review decision
+  makes it (`ContextMemoryRepository.checkStageDecision`). A review's resolver writes as themselves
+  through `governance-bot`, which a caller cannot claim without that bot's token. Any other PATCH
+  into `Approved` is refused (403). A PUT re-sends its create request, stage included, so it keeps
+  the stored stage instead; re-sending the same PUT stays repeatable. Sending a memory back to
+  review or retiring it stays open to anyone who may edit it.
+- Who is affected:
+  - unaffected: extraction (written as the admin account), Collate's reconciliation and governance
+    bots, evidence holds, and capture or `upsertMemory`, which ask for `Unprocessed` and never
+    patch the stage;
+  - changed: an owner can no longer restore their own retired memory to `Approved`. They send it
+    back to review (`Unprocessed`), or an admin restores it.

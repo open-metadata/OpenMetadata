@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
@@ -48,6 +49,7 @@ import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
 import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -587,6 +589,26 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
   }
 
+  /**
+   * Only an admin, a bot, or a conflict review decision moves a memory into Approved. A review's
+   * resolver writes through governance-bot, which no caller can claim without its token
+   * (ADR:2026-10-09-data-consumers-create-context-memories).
+   */
+  @Override
+  protected void checkStageDecision(
+      ContextMemory current, ContextMemory change, String from, String to) {
+    if (isSelfApproval(current, change)) {
+      throw new AuthorizationException(ContextMemoryWriteAccess.APPROVAL_NEEDS_REVIEW);
+    }
+  }
+
+  static boolean isSelfApproval(ContextMemory current, ContextMemory change) {
+    return change.getEntityStatus() == ContextMemoryStatus.APPROVED
+        && current.getEntityStatus() != ContextMemoryStatus.APPROVED
+        && !GOVERNANCE_BOT.equals(change.getImpersonatedBy())
+        && !ContextMemoryWriteAccess.isPrivilegedWriter(change.getUpdatedBy());
+  }
+
   private EntityReference resolvePrimaryEntity(ContextMemory memory, boolean update) {
     try {
       return Entity.getEntityReference(memory.getPrimaryEntity(), Include.NON_DELETED);
@@ -853,6 +875,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     void updateEntityStatus(boolean consolidatingChanges) {
       if (operation == Operation.PATCH && updated.getEntityStatus() == null) {
         throw new BadRequestException("A context memory requires an entityStatus");
+      }
+      // A PUT carries the stage of the create request it re-sends; a self-approval in it keeps the
+      // stored stage, as the create did, so the PUT stays repeatable. A PATCH is refused instead.
+      if (operation == Operation.PUT && isSelfApproval(original, updated)) {
+        updated.setEntityStatus(original.getEntityStatus());
       }
       super.updateEntityStatus(consolidatingChanges);
     }

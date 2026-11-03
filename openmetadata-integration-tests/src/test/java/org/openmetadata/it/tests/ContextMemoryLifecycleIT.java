@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
@@ -81,7 +82,7 @@ public class ContextMemoryLifecycleIT {
   @EnumSource(
       value = ContextMemoryStatus.class,
       names = {"DEPRECATED", "SUPERSEDED"})
-  void superseding_storesTheSuccessorAndTheOwnersRestoreClearsIt(
+  void superseding_storesTheSuccessorAndARestoreClearsIt(
       ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory keeper = admin().create(memory(ns, "keeper"));
     ContextMemory duplicate =
@@ -98,7 +99,11 @@ public class ContextMemoryLifecycleIT {
         changedFields(superseded)
             .containsAll(Set.of("entityStatus", "supersededBy", "statusReason")));
 
-    ContextMemory restored = user1().patch(idOf(duplicate), status(ContextMemoryStatus.APPROVED));
+    assertThrows(
+        ForbiddenException.class,
+        () -> user1().patch(idOf(duplicate), status(ContextMemoryStatus.APPROVED)),
+        "an owner cannot approve their own memory");
+    ContextMemory restored = admin().patch(idOf(duplicate), status(ContextMemoryStatus.APPROVED));
 
     assertEquals(ContextMemoryStatus.APPROVED, restored.getEntityStatus());
     assertNull(restored.getSupersededBy(), "leaving a superseded stage clears supersededBy");
@@ -164,7 +169,7 @@ public class ContextMemoryLifecycleIT {
   @EnumSource(
       value = ContextMemoryStatus.class,
       names = {"REJECTED", "INVALIDATED"})
-  void invalidating_keepsTheReasonAndTheOwnersRestoreDropsIt(
+  void invalidating_keepsTheReasonAndARestoreDropsIt(
       ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory memory =
         admin()
@@ -176,7 +181,11 @@ public class ContextMemoryLifecycleIT {
             .formatted(retirementStage.value());
 
     ContextMemory invalidated = admin().patch(idOf(memory), JsonUtils.readTree(invalidate));
-    ContextMemory restored = user1().patch(idOf(memory), status(ContextMemoryStatus.APPROVED));
+    assertThrows(
+        ForbiddenException.class,
+        () -> user1().patch(idOf(memory), status(ContextMemoryStatus.APPROVED)),
+        "an owner cannot approve their own memory");
+    ContextMemory restored = admin().patch(idOf(memory), status(ContextMemoryStatus.APPROVED));
 
     assertEquals(retirementStage, invalidated.getEntityStatus());
     assertEquals("Anchor table sales.orders was deleted", invalidated.getStatusReason());

@@ -331,16 +331,24 @@ public final class ContextMemoryVisibility {
         && ownership.owns(userName, memory.getSourceEntity());
   }
 
-  /** A source that is gone has no owner who could be shown its pills. */
+  /**
+   * A document's owners as policies count them, an owning team's members included. A source or
+   * user that is gone owns nothing.
+   */
   private static boolean ownsSource(String userName, EntityReference source) {
     boolean owns = false;
     try {
       EntityInterface entity = Entity.getEntity(source, Entity.FIELD_OWNERS, Include.NON_DELETED);
-      owns = ownsAny(entity.getOwners(), userName);
+      owns = SubjectContext.getSubjectContext(userName).isOwner(entity.getOwners());
     } catch (EntityNotFoundException e) {
-      LOG.debug("Memory source {} is gone; nobody owns it", source.getId(), e);
+      LOG.debug("Memory source {} or user {} is gone; no ownership", source.getId(), userName, e);
     }
     return owns;
+  }
+
+  /** Whether a listing can hide nothing from this caller, so its database total stands. */
+  public static boolean seesEveryMemory(SecurityContext securityContext) {
+    return isAdmin(securityContext);
   }
 
   /** Each entity is decided once per page, however many of its memories the page holds. */
@@ -394,14 +402,10 @@ public final class ContextMemoryVisibility {
    * team owner named like the caller is a different principal.
    */
   public static boolean isOwnedBy(ContextMemory memory, String userName) {
-    return ownsAny(memory.getOwners(), userName);
-  }
-
-  private static boolean ownsAny(List<EntityReference> owners, String userName) {
-    if (nullOrEmpty(owners) || userName == null) {
+    if (nullOrEmpty(memory.getOwners()) || userName == null) {
       return false;
     }
-    return owners.stream()
+    return memory.getOwners().stream()
         .filter(o -> Entity.USER.equals(o.getType()))
         .anyMatch(o -> userName.equals(o.getName()) || userName.equals(o.getFullyQualifiedName()));
   }
