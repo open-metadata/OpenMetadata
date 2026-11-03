@@ -496,6 +496,7 @@ export { ZapFast } from './ZapFast';
 export { Zap } from './Zap';
 export { ZoomIn } from './ZoomIn';
 export { ZoomOut } from './ZoomOut';
+export { AiAgent } from './AiAgent';
 export { AnnouncementColored } from './AnnouncementColored';
 export { AppAutopilotColored } from './AppAutopilotColored';
 export { AppCacheWarmupColored } from './AppCacheWarmupColored';

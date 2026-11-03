@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,26 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
+import { useTranslation } from 'react-i18next';
 
-import React from 'react';
-import { RightPanelProps } from '../AddDataQualityTest.interface';
+/** Title row of the Form Hint column. */
+export const FormHintHeader = () => {
+  const { t } = useTranslation();
 
-/**
- * @deprecated will be removed
- * I don't feel any good use of this component,
- * If it's for common use move this to component/common so that others can use it
- */
-const RightPanel: React.FC<RightPanelProps> = ({ data }) => {
   return (
-    <Box className="layout-row" wrap="wrap">
-      <Typography as="p" data-testid="right-panel-header">
-        {data.title}
+    <Box align="center" className="tw:gap-2" direction="row">
+      <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
+      <Typography
+        className="tw:whitespace-nowrap tw:text-secondary"
+        size="text-sm"
+        weight="medium">
+        {t('label.form-hint')}
       </Typography>
-      <Typography as="div">{data.body}</Typography>
     </Box>
   );
 };
-
-export default RightPanel;

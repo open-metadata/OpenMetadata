@@ -283,13 +283,15 @@ const GlossaryDetails = ({
           {tabs.map(({ key, children }) => (
             <Tabs.Panel
               className={classNames(
-                'tw:flex tw:flex-col tw:overflow-hidden',
+                'tw:flex tw:flex-col',
                 // The graph pins its toolbar to its own bottom edge, so it must
                 // fill the space left under the header rather than a fixed
                 // viewport calc that ignores the header's actual height.
                 key === EntityTabs.RELATIONS_GRAPH
-                  ? 'tw:min-h-0 tw:flex-1'
-                  : 'tw:h-[calc(100vh-176px-var(--navbar-height))]'
+                  ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden'
+                  : // The widget grid sizes itself to its content, so the panel
+                    // scrolls to keep the last terms and pagination reachable.
+                    'tw:h-[calc(100vh-176px-var(--navbar-height))] tw:overflow-y-auto'
               )}
               id={key}
               key={key}>

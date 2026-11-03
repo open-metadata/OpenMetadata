@@ -139,6 +139,8 @@ export type DataAssetsHeaderProps = {
   allowRename?: boolean;
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
+  softDeleteMessagePostFix?: string;
+  hardDeleteMessagePostFix?: string;
   isDqAlertSupported?: boolean;
   badge?: React.ReactNode;
   /** Entity-specific primary actions, rendered ahead of the manage menu. */
