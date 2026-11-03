@@ -58,9 +58,9 @@ const OntologyIriListInput = ({
             <Button
               aria-label={`${t('label.remove')} ${labelOf(iri)}`}
               color="secondary"
+              iconTrailing={XClose}
               isDisabled={isDisabled}
               key={iri}
-              iconTrailing={XClose}
               size="sm"
               title={iri}
               onPress={() => onChange(value.filter((entry) => entry !== iri))}>
@@ -72,6 +72,7 @@ const OntologyIriListInput = ({
       <Box align="end" direction="row" gap={2}>
         <OntologyIriInput
           error={error}
+          isDisabled={isDisabled}
           label={label}
           options={options}
           value={draft}

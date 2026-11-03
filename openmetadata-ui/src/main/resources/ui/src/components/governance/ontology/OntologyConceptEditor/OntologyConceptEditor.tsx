@@ -14,6 +14,7 @@ import {
   Badge,
   Box,
   Button,
+  FormField,
   getField,
   HookForm,
   Typography,
@@ -32,6 +33,8 @@ import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useO
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { patchOntologyConcept } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
+import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
 import {
   conceptFormFields,
   conceptFormValues,
@@ -45,6 +48,7 @@ interface OntologyConceptEditorProps {
   ontology: Ontology;
   concept: OntologyConcept;
   canEdit: boolean;
+  concepts?: ReadonlyArray<OntologyIriOption>;
   onSaved: (concept: OntologyConcept) => void;
 }
 
@@ -52,6 +56,7 @@ const OntologyConceptEditor = ({
   ontology,
   concept,
   canEdit,
+  concepts,
   onSaved,
 }: OntologyConceptEditorProps) => {
   const { t } = useTranslation();
@@ -113,7 +118,29 @@ const OntologyConceptEditor = ({
   const renderMappingFields = (index: number) => (
     <>
       {mappingFormFields(t, index, disabled).map((field) => (
-        <Fragment key={field.name}>{getField(field)}</Fragment>
+        <Fragment key={field.name}>
+          {field.name.endsWith('.conceptIri') ? (
+            <FormField
+              control={form.control}
+              name={field.name as `conceptMappings.${number}.conceptIri`}
+              rules={field.rules}>
+              {({ field: control, fieldState }) => (
+                <OntologyIriInput
+                  isRequired
+                  error={fieldState.error?.message}
+                  isDisabled={disabled}
+                  label={t('label.concept-iri')}
+                  options={concepts}
+                  testId="ontology-mapping-concept"
+                  value={control.value}
+                  onChange={control.onChange}
+                />
+              )}
+            </FormField>
+          ) : (
+            getField(field)
+          )}
+        </Fragment>
       ))}
     </>
   );

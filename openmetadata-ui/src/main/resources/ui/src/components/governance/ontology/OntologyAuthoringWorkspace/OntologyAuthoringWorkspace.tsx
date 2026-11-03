@@ -34,24 +34,30 @@ interface OntologyAuthoringWorkspaceProps {
   onWorkingChange?: () => void;
 }
 
-const PropertyEditorWithConcepts = ({
-  ontology,
-  ...props
-}: Omit<ComponentProps<typeof OntologyPropertyEditor>, 'concepts'>) => {
+const useConceptOptions = (ontology: Ontology) => {
   const { model } = useOntologyStudioModel(ontology);
-  const concepts = model?.concepts
+
+  return model?.concepts
     .filter(
       (concept) => concept.conceptType !== OntologyConceptType.SkosConcept
     )
     .map((concept) => ({ iri: concept.iri, label: getEntityName(concept) }));
+};
 
-  return (
-    <OntologyPropertyEditor
-      {...props}
-      concepts={concepts}
-      ontology={ontology}
-    />
-  );
+const PropertyEditorWithConcepts = (
+  props: Omit<ComponentProps<typeof OntologyPropertyEditor>, 'concepts'>
+) => {
+  const concepts = useConceptOptions(props.ontology);
+
+  return <OntologyPropertyEditor {...props} concepts={concepts} />;
+};
+
+const ConceptEditorWithConcepts = (
+  props: Omit<ComponentProps<typeof OntologyConceptEditor>, 'concepts'>
+) => {
+  const concepts = useConceptOptions(props.ontology);
+
+  return <OntologyConceptEditor {...props} concepts={concepts} />;
 };
 
 const OntologyAuthoringWorkspace = ({
@@ -87,7 +93,7 @@ const OntologyAuthoringWorkspace = ({
         onWorkingChange={onWorkingChange}>
         {(concept, canEdit, onSaved) =>
           concept ? (
-            <OntologyConceptEditor
+            <ConceptEditorWithConcepts
               canEdit={canEdit}
               concept={concept}
               ontology={ontology}

@@ -18,6 +18,7 @@ interface OntologyIriInputProps {
   value: string;
   options?: ReadonlyArray<{ iri: string; label: string }>;
   isRequired?: boolean;
+  isDisabled?: boolean;
   hint?: string;
   error?: string;
   testId?: string;
@@ -29,6 +30,7 @@ const OntologyIriInput = ({
   value,
   options,
   isRequired,
+  isDisabled,
   hint,
   error,
   testId,
@@ -60,6 +62,7 @@ const OntologyIriInput = ({
         data-testid={testId}
         hideRequiredIndicator={!isRequired}
         hint={error ?? hint}
+        isDisabled={isDisabled}
         isInvalid={Boolean(error)}
         isRequired={isRequired ?? false}
         label={label}
@@ -75,6 +78,7 @@ const OntologyIriInput = ({
       data-testid={testId}
       hint={error ?? hint}
       inputValue={search ?? selected?.label ?? value}
+      isDisabled={isDisabled}
       isInvalid={Boolean(error)}
       isRequired={isRequired ?? false}
       items={items}

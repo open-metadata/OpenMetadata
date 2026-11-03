@@ -146,6 +146,38 @@ describe('OntologyConceptEditor', () => {
     );
   });
 
+  it('maps a concept by searching its label and keeps a pasted IRI', async () => {
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(structuredClone(concept), operations as Operation[])
+        .newDocument,
+    }));
+    render(
+      <OntologyConceptEditor
+        canEdit
+        concept={concept}
+        concepts={[
+          { iri: 'urn:sales:customer', label: 'Customer' },
+          { iri: 'urn:sales:order', label: 'Order' },
+        ]}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
+    const input = within(
+      screen.getByTestId('ontology-concept-mapping')
+    ).getByRole('combobox', { name: /^label\.concept-iri/ });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Ord' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /Order/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+
+    expect(JSON.stringify(patch.mock.calls[0][1])).toContain('urn:sales:order');
+  });
+
   it('validates and saves external mappings with their scheme and source', async () => {
     patch.mockImplementation(async (_path, operations) => ({
       data: applyPatch(structuredClone(concept), operations as Operation[])
@@ -162,7 +194,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' }),
+      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
       {
         target: { value: 'relative/concept' },
       }
@@ -175,7 +207,7 @@ describe('OntologyConceptEditor', () => {
     expect(patch).not.toHaveBeenCalled();
 
     fireEvent.change(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' }),
+      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
       {
         target: { value: ' https://example.org/Customer ' },
       }
@@ -301,7 +333,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' }),
+      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
       {
         target: { value: 'urn:external:Customer' },
       }
@@ -317,7 +349,7 @@ describe('OntologyConceptEditor', () => {
 
     expect(saved).not.toHaveBeenCalled();
     expect(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' })
+      mapping.getByRole('textbox', { name: /^label\.concept-iri/ })
     ).toHaveValue('urn:external:Customer');
     expect(
       mapping.getByRole('button', { name: /label\.mapping-type$/ })
@@ -381,7 +413,7 @@ describe('OntologyConceptEditor', () => {
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
 
     expect(
-      mapping.getByRole('textbox', { name: 'label.concept-iri' })
+      mapping.getByRole('textbox', { name: /^label\.concept-iri/ })
     ).toBeDisabled();
     expect(
       mapping.getByRole('textbox', { name: 'label.scheme-iri' })
