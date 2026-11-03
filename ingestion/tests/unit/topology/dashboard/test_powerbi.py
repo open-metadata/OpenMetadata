@@ -20,6 +20,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
@@ -1833,13 +1834,50 @@ class PowerBIUnitTest(TestCase):
         """
         `--` inside a string literal is not a comment
         """
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.LineageParser",
+            wraps=LineageParser,
+        ) as parser_spy:
+            result = self.powerbi._extract_tables_from_sql(
+                "SELECT id#(lf)FROM orders#(lf)WHERE note = 'a--b'#(lf)  AND status = 1",
+                "MyDb",
+                "server",
+            )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders"}
+        assert "'a--b'" in parser_spy.call_args.args[0]
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_bracketed_identifiers(self):
+        """
+        `--` inside a [bracketed identifier] is not a comment
+        """
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.LineageParser",
+            wraps=LineageParser,
+        ) as parser_spy:
+            result = self.powerbi._extract_tables_from_sql(
+                "SELECT [a--b]#(lf)FROM dbo.orders",
+                "MyDb",
+                "server",
+            )
+        assert result is not None
+        assert {t["table"] for t in result} == {"orders"}
+        assert "[a--b]" in parser_spy.call_args.args[0]
+
+    @pytest.mark.order(40)
+    def test_extract_tables_from_sql_keeps_dashes_in_block_comments(self):
+        """
+        `--` inside a /* block comment */ does not hide the rest of the query
+        """
         result = self.powerbi._extract_tables_from_sql(
-            "SELECT id#(lf)FROM orders#(lf)WHERE note = 'a--b'#(lf)  AND status = 1",
+            "SELECT o.id#(lf)FROM dbo.orders o /* -- legacy */#(lf)"
+            "JOIN dbo.customers c ON c.id = o.customer_id",
             "MyDb",
             "server",
         )
         assert result is not None
-        assert {t["table"] for t in result} == {"orders"}
+        assert {t["table"] for t in result} == {"orders", "customers"}
 
     @pytest.mark.order(41)
     def test_create_dataflow_table_lineage(self):
