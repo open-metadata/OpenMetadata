@@ -19,7 +19,7 @@ import {
   within,
 } from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
-import { Profiler, ReactNode } from 'react';
+import { Profiler, ReactNode, useEffect, useState } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -550,6 +550,11 @@ describe('OntologyExplorerPage', () => {
             navigate('?ontology=native-sales&source=review&task=review-uuid')
           }>
           Task route
+        </button>
+        <button
+          data-testid="deselect-concept"
+          onClick={() => navigate('?ontology=native-sales&mode=edit')}>
+          Deselect concept
         </button>
       </>
     );
@@ -1721,6 +1726,65 @@ describe('OntologyExplorerPage', () => {
         'aria-selected',
         'true'
       );
+      expect(screen.getByTestId('location')).toHaveTextContent('mode=edit');
+    });
+
+    it('returns a concept owner to View when the concept is deselected in Edit', async () => {
+      asConceptOwner('Customer');
+      renderNativeStudio('?ontology=native-sales&mode=edit&concept=Customer');
+      await screen.findByTestId('native-canvas');
+
+      expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+
+      fireEvent.click(screen.getByTestId('deselect-concept'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
+
+      expect(screen.getByTestId('location')).not.toHaveTextContent('mode=edit');
+    });
+
+    it('keeps mode=edit from the URL while permissions load, then enters Edit once they allow it', async () => {
+      const grants: Array<() => void> = [];
+      (useEntityPermissions as jest.Mock).mockImplementation(() => {
+        const [granted, setGranted] = useState(false);
+        useEffect(() => {
+          grants.push(() => setGranted(true));
+        }, []);
+
+        return { canEditAll: granted, isLoading: !granted };
+      });
+      mockUseAuth.mockReturnValue({
+        isAdminUser: false,
+        isFirstTimeUser: false,
+      });
+      renderNativeStudio('?ontology=native-sales&mode=edit&concept=Customer');
+
+      await waitFor(() => expect(grants.length).toBeGreaterThan(0));
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(screen.getByTestId('location')).toHaveTextContent('mode=edit');
+
+      await act(async () => {
+        grants.forEach((grant) => grant());
+      });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+          'aria-selected',
+          'true'
+        )
+      );
+
       expect(screen.getByTestId('location')).toHaveTextContent('mode=edit');
     });
 

@@ -280,6 +280,21 @@ test.describe(
           await setMode(page, mode);
           await openData(page, ontology, concept);
 
+          const chipBox = await page
+            .getByTestId('ontology-data-concept-chip')
+            .boundingBox();
+          const headerBox = await page
+            .getByTestId(`ontology-data-cluster-${concept.id}`)
+            .boundingBox();
+
+          expect(chipBox).not.toBeNull();
+          expect(headerBox).not.toBeNull();
+          // The chip must sit wholly above, or wholly beside, the card header.
+          expect(
+            (chipBox?.y ?? 0) + (chipBox?.height ?? 0) <= (headerBox?.y ?? 0) ||
+              (chipBox?.x ?? 0) + (chipBox?.width ?? 0) <= (headerBox?.x ?? 0)
+          ).toBe(true);
+
           await assetRow(page, table).click();
           const panel = page.getByTestId('ontology-data-asset-panel');
 

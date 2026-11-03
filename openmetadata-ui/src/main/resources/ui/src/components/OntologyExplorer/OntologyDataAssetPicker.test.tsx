@@ -100,6 +100,47 @@ describe('OntologyDataAssetPicker', () => {
     expect(mockAddAssets).not.toHaveBeenCalled();
   });
 
+  it('offers the service of a suggested asset even when the plain list omits it', async () => {
+    const withService = (id: string, name: string, service: string) => ({
+      _source: {
+        ...hit(id, name, 'table')._source,
+        service: { name: service },
+      },
+    });
+    mockSearch.mockImplementation(async ({ query }) => {
+      const isSuggestion = String(query).includes('*Prescription*');
+
+      return {
+        hits: {
+          hits: isSuggestion
+            ? [withService('t-rx', 'prescription_orders', 'svc-pharmacy')]
+            : [withService('t-1', 'customers', 'svc-sales')],
+          total: { value: 1 },
+        },
+      } as never;
+    });
+    render(
+      <OntologyDataAssetPicker
+        native={{
+          assetTypes: ['table'],
+          concept: { name: 'Prescription' },
+          linkedIds: [],
+          isDisabled: false,
+          saveAssets: jest.fn(),
+        }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+    await screen.findByTestId('ontology-data-asset-suggested-heading');
+    fireEvent.click(screen.getByRole('button', { name: /label\.service/ }));
+
+    expect(
+      await screen.findByRole('option', { name: 'svc-pharmacy' })
+    ).toBeVisible();
+    expect(screen.getByRole('option', { name: 'svc-sales' })).toBeVisible();
+  });
+
   it('searches every data asset, then narrows to columns', async () => {
     render(
       <OntologyDataAssetPicker

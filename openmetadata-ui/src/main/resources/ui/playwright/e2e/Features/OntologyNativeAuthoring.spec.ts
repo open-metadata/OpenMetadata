@@ -28,6 +28,7 @@ import {
 } from '../../utils/common';
 import {
   clickGraphNode,
+  readGraphPoints,
   readGraphZoom,
   readNodePositions,
 } from '../../utils/ontologyStudio';
@@ -286,35 +287,53 @@ test.describe(
           await expect(
             page
               .getByTestId('ontology-working-concept-group')
-              .filter({ hasText: 'FundsTransfer' })
+              .filter({ hasText: 'Funds Transfer' })
               .getByTestId('ontology-working-concept-summary')
           ).toHaveText(
-            'Class FundsTransfer ⊑ Payment, Transaction · 3 properties'
+            'Class Funds Transfer ⊑ Payment, Transaction · 3 properties'
           );
           await page.keyboard.press('Escape');
         });
         await test.step('Cancel drawing from source and from the picker close control without persistence', async () => {
           const before = axioms.length;
           await clickGraphNode(page, concepts[0].id);
-          const positions = await readNodePositions(page);
-          const zoom = await readGraphZoom(page);
-          const source = positions[concepts[0].id];
-          await page.mouse.click(source.x + 75 * zoom, source.y);
+          // Opening the inspector re-fits the graph, so wait for the handle to stop moving.
+          const stablePoint = async (kind: 'node' | 'port', id: string) => {
+            let last = '';
+            let point: { x: number; y: number } | undefined;
+            await expect
+              .poll(
+                async () => {
+                  point = (await readGraphPoints(page, kind))[id];
+                  const key = JSON.stringify(point);
+                  const isStable = point !== undefined && key === last;
+                  last = key;
+
+                  return isStable;
+                },
+                { intervals: [300] }
+              )
+              .toBe(true);
+
+            return point as { x: number; y: number };
+          };
+          const port = await stablePoint('port', concepts[0].id);
+          await page.mouse.click(port.x, port.y);
           await expect(
             page.getByTestId('ontology-connect-instruction')
           ).toBeVisible();
-          await page.mouse.click(source.x, source.y);
+          // Clicking the armed source's own handle cancels; its body would pick the concept as the target.
+          await page.mouse.click(port.x, port.y);
           await expect(
             page.getByTestId('ontology-connect-instruction')
           ).toHaveCount(0);
-          await page.mouse.click(source.x + 75 * zoom, source.y);
+          const secondPort = await stablePoint('port', concepts[0].id);
+          await page.mouse.click(secondPort.x, secondPort.y);
           await expect(
             page.getByTestId('ontology-connect-instruction')
           ).toBeVisible();
-          await page.mouse.click(
-            positions[concepts[1].id].x,
-            positions[concepts[1].id].y
-          );
+          const target = await stablePoint('node', concepts[1].id);
+          await page.mouse.click(target.x, target.y);
           await expect(
             page.getByTestId('relationship-type-picker')
           ).toBeVisible();

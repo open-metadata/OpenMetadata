@@ -85,6 +85,8 @@ test.describe('Ontology Studio', () => {
   }) => {
     const graph = page.locator('.ontology-g6-container');
     const stats = page.getByTestId('ontology-explorer-stats');
+    // readGraphZoom answers 1 until the first draw writes the zoom, which would record a wrong baseline.
+    await expect(graph).toHaveAttribute('data-graph-zoom', /^\d/);
     const nodesBefore = Object.keys(await readNodePositions(page)).sort();
     const edgesBefore = await readGraphEdges(page, 0);
     const statsBefore = await stats.innerText();
