@@ -207,7 +207,7 @@ class TableauPipelineClient:
     def _sign_in_again(self, response: requests.Response, **kwargs: Any) -> requests.Response:
         """Tableau keeps one session per personal access token: a sign-in with the
         same token anywhere else ends this one, and every later call answers 401.
-        Sign in again once and resend the call."""
+        Sign in again once and resend the call. ADR:2026-10-30-tableau-pipeline-sign-in-again"""
         request = response.request
         if response.status_code != 401 or "/auth/" in str(request.url):
             return response

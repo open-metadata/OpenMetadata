@@ -19,11 +19,15 @@ only `[SIGNUM 14] STREAM ioctl timeout`. Tableau documents neither this limit's 
 A 429 or 5xx whose `Retry-After` is at most 30 s is retried as before, after that wait. A longer
 `Retry-After` is not retried. The client logs a WARNING naming the status, the `Retry-After` and
 the cap, and returns the response, so tableauserverclient raises Tableau's own message: "Too many
-requests for 'api.rest.flows.hourly'. Please retry after N seconds."
+requests for 'api.rest.flows.hourly'. Please retry after N seconds." The cap stays below what the
+180 s Test Connection step can absorb: three waits of 30 s take 90 s, while a cap of 60 s would let a
+single call reach the step's alarm, the silent stall this record removes.
 
 ## Consequences
 
-Short throttles, which Tableau sends per second, still recover without the user noticing. A used-up
+Short waits are still retried. Tableau's answers also carry undocumented per-second rate-limit
+headers (`x-ratelimit-limit: 1000, 1000;w=1`, `x-ratelimit-reset: 1`), whose throttles would ask for
+about a second. A used-up
 hourly quota fails each call within seconds and says why, instead of stalling the run. Calls that
 fail this way leave their pipelines without fresh status or lineage until a later run. A page of the
 flow listing can now fail too, so this ships with the guard that stops a partial flow listing from

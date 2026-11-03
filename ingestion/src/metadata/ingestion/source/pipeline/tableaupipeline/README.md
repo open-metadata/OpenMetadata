@@ -161,7 +161,8 @@ would replace their column lineage whenever `overrideLineage` is on.
   the same token signs in elsewhere, for example from another ingestion. The
   connector then signs in again once and repeats the call, which ends the other
   client's session in turn; the Tableau dashboard connector does not sign in
-  again. Give each ingestion its own token.
+  again. Give each ingestion its own token
+  (ADR:2026-10-30-tableau-pipeline-sign-in-again).
 - **Metadata API node limit.** A query that exceeds the node limit (20,000
   by default on Tableau Server) returns partial data plus `errors`; the
   connector logs the errors and ingests what was returned.
