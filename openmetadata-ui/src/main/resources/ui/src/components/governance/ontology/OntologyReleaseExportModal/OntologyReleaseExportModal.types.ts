@@ -27,7 +27,11 @@ export interface OntologyReleaseExportScopeOption {
 }
 
 export type OntologyReleaseExportContentState =
-  | { readonly kind: 'error'; readonly onRetry: () => void }
+  | {
+      readonly kind: 'error';
+      readonly onRetry: () => void;
+      readonly reason?: string;
+    }
   | { readonly kind: 'loading' }
   | {
       readonly content?: string;

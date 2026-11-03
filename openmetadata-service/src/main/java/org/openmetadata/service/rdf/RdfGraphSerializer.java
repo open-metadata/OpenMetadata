@@ -18,10 +18,10 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.irix.IRIException;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.RDFWriterI;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.shared.JenaException;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 /**
@@ -66,7 +66,7 @@ public final class RdfGraphSerializer {
     writer.setProperty("allowBadURIs", "true");
     try {
       writer.write(model, output, null);
-    } catch (IRIException e) {
+    } catch (JenaException e) {
       throw new UnsupportedRdfSerializationException(
           RdfSerializationFormat.RDF_XML, e.getMessage());
     }

@@ -510,8 +510,11 @@ describe('OntologyReleaseExportModal', () => {
     );
 
     expect(
-      await screen.findByText('message.ontology-review-unavailable')
+      await screen.findByText('message.ontology-export-failed')
     ).toBeVisible();
+    expect(
+      screen.queryByText('message.ontology-review-unavailable')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
 
@@ -519,6 +522,30 @@ describe('OntologyReleaseExportModal', () => {
       await screen.findByTestId('ontology-export-scope')
     ).toHaveTextContent('Release 1 · label.active');
     expect(mockGetOntologyState).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows the server reason when the export is refused', async () => {
+    mockExportOntologyRelease.mockRejectedValueOnce({
+      response: {
+        data: JSON.stringify({
+          code: 400,
+          message: 'Not an RDF IRI: <urn:bad>',
+        }),
+        status: 400,
+      },
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByText(
+        'message.ontology-export-failed Not an RDF IRI: <urn:bad>'
+      )
+    ).toBeVisible();
   });
 
   describe('native formats, options, and the SHACL gate', () => {

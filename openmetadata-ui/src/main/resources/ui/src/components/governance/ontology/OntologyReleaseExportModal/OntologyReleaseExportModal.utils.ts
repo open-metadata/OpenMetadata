@@ -20,6 +20,7 @@ import type {
 } from './OntologyReleaseExportModal.types';
 
 interface OntologyReleasePreviewState {
+  readonly error?: unknown;
   readonly content?: string;
   readonly isError: boolean;
   readonly isPreviewLoading: boolean;
@@ -35,8 +36,28 @@ export const resolveContentOptions = (
   includeInverses: selection.options.includeInverses,
 });
 
+/**
+ * The export endpoint is requested as text, so axios leaves an error body
+ * unparsed; the server's reason is the `message` of that JSON.
+ */
+export const resolveExportFailureReason = (error: unknown): string => {
+  const data = (error as { response?: { data?: unknown } } | undefined)
+    ?.response?.data;
+  if (typeof data !== 'string') {
+    return (data as { message?: string } | undefined)?.message ?? '';
+  }
+  try {
+    const message = (JSON.parse(data) as { message?: unknown }).message;
+
+    return typeof message === 'string' ? message : '';
+  } catch {
+    return data;
+  }
+};
+
 export const resolveContentState = ({
   content,
+  error,
   isError,
   isPreviewLoading,
   isScopesLoading,
@@ -47,7 +68,11 @@ export const resolveContentState = ({
   }
 
   return isError
-    ? { kind: 'error', onRetry: retry }
+    ? {
+        kind: 'error',
+        onRetry: retry,
+        reason: resolveExportFailureReason(error) || undefined,
+      }
     : { content, isPreviewLoading, kind: 'ready' };
 };
 

@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.StringReader;
+import java.io.StringWriter;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.GraphMemFactory;
 import org.apache.jena.graph.Node;
@@ -24,7 +26,9 @@ import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.shared.JenaException;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -92,24 +96,27 @@ class RdfGraphSerializerTest {
   }
 
   /**
-   * RDF/XML cannot name a predicate it cannot split into an XML QName, so this plain RDF 1.1 graph
-   * fails to write. That failure has nothing to do with triple terms and must reach the caller as
-   * itself rather than as a claim that the result holds RDF 1.2 terms.
+   * RDF/XML cannot name a predicate it cannot split into an XML QName. That is a property of the
+   * requested format, not a server fault, so it is refused as a 400 that names the format and the
+   * writer's reason instead of surfacing as a 500.
    */
   @Test
-  void leavesWriterFailuresUnrelatedToTripleTermsUntouched() {
+  void refusesAPredicateRdfXmlCannotNameAsAClientError() {
     final Graph graph = GraphMemFactory.createDefaultGraph();
     graph.add(
         Triple.create(
             NodeFactory.createURI("urn:table:orders"),
-            NodeFactory.createURI("urn:p"),
+            NodeFactory.createURI("https://example.com/p/"),
             NodeFactory.createLiteralString("plain")));
 
-    assertThrows(
-        JenaException.class,
-        () ->
-            RdfGraphSerializer.asString(
-                ModelFactory.createModelForGraph(graph), RdfSerializationFormat.RDF_XML));
+    final UnsupportedRdfSerializationException failure =
+        assertThrows(
+            UnsupportedRdfSerializationException.class,
+            () ->
+                RdfGraphSerializer.asString(
+                    ModelFactory.createModelForGraph(graph), RdfSerializationFormat.RDF_XML));
+
+    assertTrue(failure.getMessage().startsWith("'rdfxml' cannot write this graph: "));
   }
 
   @Test
@@ -168,5 +175,31 @@ class RdfGraphSerializerTest {
     assertTrue(
         RdfGraphSerializer.asString(model, RdfSerializationFormat.RDF_XML)
             .contains("rdf:about=\"urn:example:orders\""));
+  }
+
+  @Test
+  void writesAnHttpsOntologyAsTheSameGraphThePrettyWriterDid() {
+    final Model model = ModelFactory.createDefaultModel();
+    model.setNsPrefix("ex", "https://example.com/onto#");
+    final org.apache.jena.rdf.model.Resource ontology =
+        model.createResource("https://example.com/onto").addProperty(RDF.type, OWL2.Ontology);
+    model
+        .createResource("https://example.com/onto#Order")
+        .addProperty(RDF.type, OWL2.Class)
+        .addProperty(RDFS.label, "Order", "en")
+        .addProperty(RDFS.isDefinedBy, ontology);
+
+    final StringWriter legacy = new StringWriter();
+    RDFDataMgr.write(legacy, model, RDFFormat.RDFXML_PRETTY);
+    final Model before = ModelFactory.createDefaultModel();
+    before.read(new StringReader(legacy.toString()), null, Lang.RDFXML.getName());
+    final Model after =
+        new SafeRdfModelParser()
+            .parse(
+                RdfGraphSerializer.asString(model, RdfSerializationFormat.RDF_XML),
+                RdfSerializationFormat.RDF_XML);
+
+    assertTrue(before.isIsomorphicWith(after));
+    assertEquals(4, after.size());
   }
 }
