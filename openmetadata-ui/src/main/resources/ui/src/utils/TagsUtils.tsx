@@ -135,20 +135,13 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return (
-        <Check
-          data-icon
-          className="tw:shrink-0"
-          data-testid="check-outline"
-          size={14}
-        />
-      );
+      return <Check data-icon data-testid="check-outline" />;
     }
 
     return <Loader size="small" type="default" />;
   }
 
-  return <Trash01 data-icon data-testid="delete-icon" name="Delete" />;
+  return <Trash01 data-icon data-testid="delete-icon" />;
 };
 
 export const fetchGlossaryList = async (

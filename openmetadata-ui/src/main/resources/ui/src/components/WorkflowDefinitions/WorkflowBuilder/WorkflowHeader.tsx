@@ -254,9 +254,9 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
         <ButtonUtility
           data-testid="edit-workflow-title-button"
           icon={Edit01}
-          size="sm"
+          size="lg"
           tooltip={t('label.edit-entity', { entity: t('label.workflow') })}
-          onClick={handleOpenEditModal}
+          onPress={handleOpenEditModal}
         />
       ),
     [isViewMode, isNoOp, handleOpenEditModal, t]
@@ -284,6 +284,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
         <PageLayout.PageHeader
           actions={
             <>
+              {editTitleButton}
               {workflowControls}
               {editWorkflowButton}
               {manageMenu}
@@ -293,7 +294,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
             <>
               {suspendedBadge}
               {systemBadge}
-              {editTitleButton}
             </>
           }
           breadcrumb={breadcrumb}
@@ -343,7 +343,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                   </Typography>
                   {suspendedBadge}
                   {systemBadge}
-                  {editTitleButton}
                 </div>
                 {workflowName && (
                   <Typography
@@ -359,6 +358,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
             </div>
 
             <div className="tw:flex tw:shrink-0 tw:gap-3 tw:items-center">
+              {editTitleButton}
               {workflowControls}
               {editWorkflowButton}
               {manageMenu}

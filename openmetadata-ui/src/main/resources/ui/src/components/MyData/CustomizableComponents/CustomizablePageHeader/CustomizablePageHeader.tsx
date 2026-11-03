@@ -29,6 +29,7 @@ import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState, type Key } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
 import { PersonaCustomizePageFqn } from '../../../../constants/Customize.constants';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -85,7 +86,15 @@ export const CustomizablePageHeader = ({
   const requestExit = useCallback(
     (id: string) => {
       if (!chrome) {
-        navigate(getSettingsLink(getPersonaDetailsPath(personaFqn)));
+        // In AI mode this route is only reached from the home page's Customize
+        // button, so close returns there. A settings link would only change the
+        // hash, which NavigationBlocker lets through, opening the settings
+        // modal over unsaved edits; a path change gets the discard prompt.
+        navigate(
+          isAiMode
+            ? ROUTES.HOME
+            : getSettingsLink(getPersonaDetailsPath(personaFqn))
+        );
 
         return;
       }
@@ -95,7 +104,7 @@ export const CustomizablePageHeader = ({
         setPendingExit(id);
       }
     },
-    [chrome, disableSave, navigate, personaFqn]
+    [chrome, disableSave, isAiMode, navigate, personaFqn]
   );
 
   const handleClose = useCallback(
