@@ -34,7 +34,7 @@
       "description": "NATS authentication method. Leave empty for anonymous authentication.",
       "oneOf": [
         {
-          "title": "NatsBasicAuth",
+          "title": "Username and Password",
           "description": "Username and password authentication for NATS.",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
@@ -58,7 +58,7 @@
           "additionalProperties": false
         },
         {
-          "title": "NatsTokenAuth",
+          "title": "Token",
           "description": "Token-based authentication for NATS.",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
@@ -76,7 +76,7 @@
           "additionalProperties": false
         },
         {
-          "title": "NatsNkeyAuth",
+          "title": "NKey Seed",
           "description": "NKey seed authentication for NATS.",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",

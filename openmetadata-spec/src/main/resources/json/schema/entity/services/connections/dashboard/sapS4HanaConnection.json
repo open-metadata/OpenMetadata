@@ -33,10 +33,12 @@
       "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
       "oneOf": [
         {
-          "$ref": "./sapS4Hana/basicAuth.json"
+          "$ref": "./sapS4Hana/basicAuth.json",
+          "title": "Basic Auth"
         },
         {
-          "$ref": "./sapS4Hana/oAuth.json"
+          "$ref": "./sapS4Hana/oAuth.json",
+          "title": "OAuth 2.0 Client Credentials"
         }
       ]
     },

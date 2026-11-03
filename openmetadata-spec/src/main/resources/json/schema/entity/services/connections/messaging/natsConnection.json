@@ -31,13 +31,16 @@
       "description": "NATS authentication method. Leave empty for anonymous authentication.",
       "oneOf": [
         {
-          "$ref": "./nats/basicAuth.json"
+          "$ref": "./nats/basicAuth.json",
+          "title": "Username and Password"
         },
         {
-          "$ref": "./nats/tokenAuth.json"
+          "$ref": "./nats/tokenAuth.json",
+          "title": "Token"
         },
         {
-          "$ref": "./nats/nkeyAuth.json"
+          "$ref": "./nats/nkeyAuth.json",
+          "title": "NKey Seed"
         }
       ]
     },

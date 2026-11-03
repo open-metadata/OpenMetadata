@@ -89,7 +89,8 @@
       "description": "Source to get the .pbit files to extract lineage information",
       "oneOf": [
         {
-          "$ref": "powerbi/localConfig.json"
+          "$ref": "powerbi/localConfig.json",
+          "title": "Local Config"
         },
         {
           "$ref": "powerbi/azureConfig.json"

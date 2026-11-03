@@ -40,10 +40,12 @@
             "mask": true,
             "oneOf": [
                 {
-                    "$ref": "./qlikSense/certificateValues.json"
+                    "$ref": "./qlikSense/certificateValues.json",
+                    "title": "Qlik Certificates By Values"
                 },
                 {
-                    "$ref": "./qlikSense/certificatePath.json"
+                    "$ref": "./qlikSense/certificatePath.json",
+                    "title": "Qlik Certificates By File Path"
                 }
             ]
         },
