@@ -36,8 +36,8 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 /**
  * An entity announcement is shown on its asset, so reading one needs the ViewBasic that asset
- * needs (ADR:2026-11-03-reading-an-entity-announcement-needs-view-on-its-asset). Every read path
- * (REST and MCP) applies the rule through this class.
+ * needs (ADR:2026-11-03-reading-an-entity-announcement-needs-view-on-its-asset). The REST and
+ * MCP reads apply the rule through this class.
  */
 public final class AnnouncementVisibility {
 

@@ -26,8 +26,10 @@ edge is readable by admins only. System announcements (no `entityLink`) are not 
 A write to an existing announcement (PATCH, PUT of an existing name, DELETE, restore) answers with
 it, so it needs the same access first.
 
-`AnnouncementVisibility` holds the rule, and every path calls it: the REST resource and the MCP
-entity read and patch (`CommonUtils.readEntityForCaller`, `CommonUtils.enforceEntityVisibility`).
+`AnnouncementVisibility` holds the rule, and the REST and MCP reads call it: the REST resource and
+the MCP entity read and patch (`CommonUtils.readEntityForCaller`, `CommonUtils.enforceEntityVisibility`).
+The live websocket broadcast of a new announcement does not go through it yet; that is handled
+separately, together with the other feed broadcasts.
 
 ## Consequences
 
