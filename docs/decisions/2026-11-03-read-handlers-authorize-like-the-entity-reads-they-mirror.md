@@ -1,9 +1,9 @@
 # Read handlers authorize like the entity reads they mirror
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (task listings check the task's entity)
 - **Deciders:** Mohit Yadav
-- **Guard:** `FeedAccessAuthzIT` (conversation and task by id, activity by link),
+- **Guard:** `FeedAccessAuthzIT` (conversation and task by id, activity by link, task listings),
   `ReadHandlerAuthorizationIT`
 - **Related:** open-metadata/openmetadata-collate#8018
 
@@ -30,3 +30,14 @@ checked against whichever type the caller named.
 ## Consequences
 A new hand-written read handler authorizes the operation its entity read would, on the entity it
 discloses.
+
+## Amendment (v2, 2026-11-04)
+The task listings checked only the task row, so a task refused by id about a hidden entity was
+still listed with its payload: by `aboutEntity`, which matches an FQN prefix, in the assignee's
+`/tasks/assigned`, and in `/domains/{fqn}/tasks`. Every task listing (`/tasks`, `/assigned`,
+`/visible`, `/owned`, `/created`, `/dataAccessRequests` and `/domains/{fqn}/tasks`) now drops the
+tasks about an entity the caller may not view (`TaskAboutVisibility`): one relationship query per
+page reads each task's entity, `ViewPermissionFilter` decides them in a batch per type, and a check
+that fails hides the task. Types every entity of which the caller may view, as for an admin, are
+not checked. Pages are not refilled, so they can come back short; `paging.total` and
+`/tasks/count` still count every task.

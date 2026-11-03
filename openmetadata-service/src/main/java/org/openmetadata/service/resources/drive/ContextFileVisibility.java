@@ -22,6 +22,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -136,6 +138,20 @@ public final class ContextFileVisibility {
     String userName = callerName(securityContext);
     boolean admin = isAdmin(securityContext);
     return files.stream().filter(file -> isVisibleToUser(file, userName, admin)).toList();
+  }
+
+  /**
+   * The {@code snapshots} whose file, among {@code current}, the caller may see now. A snapshot
+   * carries the sharing it was written with, so deciding on it would keep showing a file as it was
+   * before it was made private.
+   */
+  public static List<ContextFile> retainVisibleNow(
+      List<ContextFile> snapshots, List<ContextFile> current, SecurityContext securityContext) {
+    Set<UUID> visible =
+        filterVisible(current, securityContext).stream()
+            .map(ContextFile::getId)
+            .collect(Collectors.toSet());
+    return snapshots.stream().filter(snapshot -> visible.contains(snapshot.getId())).toList();
   }
 
   /**

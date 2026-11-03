@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
@@ -30,6 +31,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
@@ -48,6 +50,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -72,6 +75,7 @@ import org.openmetadata.service.Entity;
  * this IT's scope.
  */
 @Execution(ExecutionMode.CONCURRENT)
+@ExtendWith(TestNamespaceExtension.class)
 public class LineageHydrateIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -235,6 +239,29 @@ public class LineageHydrateIT {
     assertEquals(1, bare.path("entitiesByType").path(Entity.TABLE).size(), bare.toString());
   }
 
+  /**
+   * Hydrate answers as each type's own GET would, which holds only for the data assets lineage
+   * draws: a service's GET drops its connection, a user's its credentials, an MCP server's its
+   * environment. Those types are refused, whoever asks.
+   */
+  @Test
+  void hydrateRefusesTypesWhoseOwnReadsRedact(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    UUID adminId = admin.users().getByName("admin").getId();
+
+    for (HydrateLineageRequest request :
+        List.of(
+            hydrateOne(Entity.DATABASE_SERVICE, service.getId(), null),
+            hydrateOne(Entity.USER, adminId, "authenticationMechanism"),
+            hydrateOne(Entity.MCP_SERVER, UUID.randomUUID(), null))) {
+      String type = request.getEntities().getFirst().getType();
+      InvalidRequestException refused =
+          assertThrows(InvalidRequestException.class, () -> postHydrate(admin, request), type);
+      assertTrue(refused.getMessage().contains(type), refused.getMessage());
+    }
+  }
+
   @Test
   void hydrateSilentlyDropsMissingIds() throws Exception {
     // The endpoint's silent-drop contract: ids the batch cannot resolve (because they're
@@ -313,6 +340,12 @@ public class LineageHydrateIT {
             || msg.contains("400")
             || msg.contains("404"),
         "unknown entity type must yield a 4xx, got: " + msg);
+  }
+
+  private static HydrateLineageRequest hydrateOne(String type, UUID id, String fields) {
+    return new HydrateLineageRequest()
+        .withEntities(List.of(new EntityReference().withType(type).withId(id)))
+        .withFields(fields);
   }
 
   private static JsonNode postHydrate(OpenMetadataClient client, HydrateLineageRequest request)

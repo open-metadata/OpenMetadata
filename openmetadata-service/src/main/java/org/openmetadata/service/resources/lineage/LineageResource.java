@@ -1103,15 +1103,20 @@ public class LineageResource {
       summary = "Batch-hydrate lineage nodes into full entity objects",
       description =
           "Replaces N per-node entity GETs with a single round-trip. Accepts a list of "
-              + "(type, id) pairs; returns hydrated entities grouped by entityType. Each entity "
-              + "is authorized individually with VIEW_BASIC — entities the caller cannot read "
-              + "are silently dropped from the response (rather than failing the whole batch).",
+              + "(type, id) pairs of lineage data assets (tables, topics, dashboards, pipelines, "
+              + "...); returns hydrated entities grouped by entityType. Each entity is authorized "
+              + "individually with the view operations its requested fields need — entities the "
+              + "caller cannot read are silently dropped from the response (rather than failing "
+              + "the whole batch). Other entity types, such as services and users, are refused.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Hydrated entities grouped by entityType",
             content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "400", description = "Request body is missing or empty")
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Request body is missing or empty, or names a type that is not a lineage data asset")
       })
   public HydrateLineageResponse hydrateLineageEntities(
       @Context UriInfo uriInfo,

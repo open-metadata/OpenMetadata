@@ -46,9 +46,9 @@ public class ResourceRegistry {
               MetadataOperation.EDIT_TASK));
 
   // The owner of these types administers configuration (a policy's rules, a team's default roles,
-  // a service's connection), and OrganizationPolicy gives every user EditOwners on an ownerless
-  // entity and All to its owner. So setting their owners needs EditAll, not EditOwners
-  // (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all).
+  // a service's connection, the SQL a test definition runs on it), and OrganizationPolicy gives
+  // every user EditOwners on an ownerless entity and All to its owner. So setting their owners
+  // needs EditAll, not EditOwners (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all).
   private static final Set<String> OWNERS_REQUIRE_EDIT_ALL =
       Set.of(
           Entity.POLICY,
@@ -60,6 +60,7 @@ public class ResourceRegistry {
           Entity.EVENT_SUBSCRIPTION,
           Entity.INGESTION_PIPELINE,
           Entity.TEST_CONNECTION_DEFINITION,
+          Entity.TEST_DEFINITION,
           Entity.CLASSIFICATION);
 
   static {

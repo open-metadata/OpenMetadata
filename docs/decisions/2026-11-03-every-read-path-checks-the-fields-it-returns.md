@@ -1,9 +1,10 @@
 # Every read path checks the fields it returns
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (hydrate serves lineage data assets only)
 - **Deciders:** Mohit Yadav
 - **Guard:** `ViewOperationsTest`, `LineageHydrateIT.hydrateChecksTheViewOperationsOfTheRequestedFields`,
+  `LineageHydrateIT.hydrateRefusesTypesWhoseOwnReadsRedact`,
   `DomainIsolationIT.test_columnAndLineageHydrateOfAnotherDomainsTable_areDenied`
 - **Related:** open-metadata/openmetadata-collate#8018
 
@@ -29,3 +30,17 @@ loaded without domains.
 A field restricted on GET is restricted on hydrate. The pre-resolved `ResourceContext`
 constructor still trusts the entity it is given; a new call site must load the authorization
 fields or pass an id.
+
+## Amendment (v2, 2026-11-04)
+Matching a GET's checks was not enough: several GETs also redact what they return. A service's
+GET drops its connection for callers without EditAll, a user's drops a basic-auth password hash
+and masks emails, an MCP server's masks its environment, arguments and URL, and ingestion
+pipelines and workflows redact their secrets. Hydrate ran none of that, so any caller who could
+view one of those entities read its secrets through it.
+
+Hydrate now serves only the data assets lineage draws as nodes (`LineageHydrator.HYDRATABLE_TYPES`:
+table, topic, dashboard, data model, chart, pipeline, ML model, container, search index, stored
+procedure, API endpoint, metric, and the drive directory, file, spreadsheet and worksheet), whose
+GETs redact nothing beyond the field checks above. A request naming any other type is refused with
+400 and the caller reads that entity from its own endpoint. A type joins the list only while its
+own GET adds no redaction; otherwise hydrate would have to apply it too.

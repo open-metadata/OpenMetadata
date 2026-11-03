@@ -67,6 +67,7 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.tasks.TaskAboutVisibility;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
@@ -89,11 +90,13 @@ import org.openmetadata.service.util.RestUtil;
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainMapper mapper = new DomainMapper();
+  private final TaskAboutVisibility taskAboutVisibility;
   static final String FIELDS =
       "tags,children,childrenCount,owners,experts,extension,followers,votes,certification";
 
   public DomainResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOMAIN, authorizer, limits);
+    this.taskAboutVisibility = new TaskAboutVisibility(authorizer);
   }
 
   @Override
@@ -277,9 +280,11 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         securityContext, listOperationContext, filter.getResourceContext(Entity.TASK));
     EntityUtil.addDomainQueryParam(securityContext, filter, Entity.TASK);
 
-    return before != null
-        ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
-        : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after);
+    return taskAboutVisibility.retainViewable(
+        securityContext,
+        before != null
+            ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
+            : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after));
   }
 
   @GET

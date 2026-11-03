@@ -74,6 +74,32 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class LineageHydrator {
   private static final String LINEAGE_SCENE_SYNTHETIC_COUNT = "lineageSceneSyntheticCount";
 
+  /**
+   * The data assets lineage draws as nodes. Their own GET returns the stored entity trimmed to the
+   * requested fields and redacts nothing, so authorizing and trimming here answers as that GET
+   * would. Every other type is refused: a service's connection, a user's credentials and email, an
+   * MCP server's environment are redacted only by their own GET
+   * (ADR:2026-11-03-every-read-path-checks-the-fields-it-returns).
+   */
+  private static final Set<String> HYDRATABLE_TYPES =
+      Set.of(
+          Entity.TABLE,
+          Entity.TOPIC,
+          Entity.DASHBOARD,
+          Entity.DASHBOARD_DATA_MODEL,
+          Entity.CHART,
+          Entity.PIPELINE,
+          Entity.MLMODEL,
+          Entity.CONTAINER,
+          Entity.SEARCH_INDEX,
+          Entity.STORED_PROCEDURE,
+          Entity.API_ENDPOINT,
+          Entity.METRIC,
+          Entity.DIRECTORY,
+          Entity.FILE,
+          Entity.SPREADSHEET,
+          Entity.WORKSHEET);
+
   private final ViewPermissionFilter viewPermissionFilter;
 
   public LineageHydrator(Authorizer authorizer) {
@@ -84,7 +110,8 @@ public class LineageHydrator {
    * Validate, group, hydrate, authorize.
    *
    * @throws IllegalArgumentException if {@code request} is null, the entities list is empty, or
-   *     any entry has a blank {@code type} or missing {@code id}.
+   *     any entry has a blank {@code type}, a missing {@code id} or a type that is not a lineage
+   *     data asset.
    */
   public HydrateLineageResponse hydrate(
       UriInfo uriInfo, SecurityContext securityContext, HydrateLineageRequest request) {
@@ -168,11 +195,22 @@ public class LineageHydrator {
       if (ref == null || ref.getType() == null || ref.getType().isBlank() || ref.getId() == null) {
         throw new IllegalArgumentException("each entity must have non-blank type and non-null id");
       }
+      requireHydratable(ref.getType());
       uniqueIdsByType.computeIfAbsent(ref.getType(), k -> new LinkedHashSet<>()).add(ref.getId());
     }
     Map<String, List<UUID>> idsByType = new LinkedHashMap<>(uniqueIdsByType.size());
     uniqueIdsByType.forEach((type, ids) -> idsByType.put(type, new ArrayList<>(ids)));
     return idsByType;
+  }
+
+  private static void requireHydratable(String entityType) {
+    if (!HYDRATABLE_TYPES.contains(entityType)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Entity type '%s' cannot be hydrated: hydrate serves lineage data assets only, so read"
+                  + " it from its own endpoint",
+              entityType));
+    }
   }
 
   private Set<EntityKey> authorizeLineageNodes(

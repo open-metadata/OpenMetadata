@@ -1,10 +1,11 @@
 # Setting the owners of a configuration entity needs EditAll
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (test definitions join the list)
 - **Deciders:** Mohit Yadav
 - **Guard:** `JsonPatchUtilsTest.ownersOfConfigurationEntitiesNeedEditAll`,
-  `PolicyEnforcementIT.ownersOfConfigurationEntitiesCannotBeClaimedThroughTheNoOwnerRule`
+  `PolicyEnforcementIT.ownersOfConfigurationEntitiesCannotBeClaimedThroughTheNoOwnerRule`,
+  `TestDefinitionOwnershipIT.anUnownedTestDefinitionCannotBeClaimedWithoutEditAll`
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
@@ -16,7 +17,8 @@ over configuration.
 ## Decision
 `ResourceRegistry` maps `owners` to `EditAll` for: policy, team, app, app marketplace definition,
 automation workflow, workflow definition, event subscription, ingestion pipeline, test connection
-definition, classification, and every service type (`Entity.getServiceEntityTypes()`). Ownership
+definition, test definition (v2), classification, and every service type
+(`Entity.getServiceEntityTypes()`). Ownership
 tasks and owner suggestions read the same mapping. Data assets keep `EditOwners`.
 
 ## Consequences
@@ -24,3 +26,9 @@ Users who hold only `EditOwners`, such as Data Stewards, can no longer set owner
 admins and existing owners can. Owners set before the change stay. The permissions endpoint still
 reports `EditOwners` for these types, so the UI may offer an owner edit that the server refuses.
 A new configuration-like entity type has to be added to the list.
+
+## Amendment (v2, 2026-11-04)
+Test definitions join the list. A user-provided definition's `sqlExpression` is stored as its owner
+writes it, and every data quality run of a test on that definition renders and executes it on the
+service connection, so claiming an unowned definition through the NoOwner rule and then editing
+its SQL ran arbitrary SQL with the connection's credentials.
