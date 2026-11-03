@@ -93,11 +93,19 @@ public final class OntologyConceptBindingService {
       final var asset = authorized(access, type.value(), assetId, MetadataOperation.VIEW_BASIC);
       final Map<UUID, Optional<OntologyProperty>> properties = new HashMap<>();
       final List<OntologyAssetConceptLink> links = new ArrayList<>();
-      for (final var row : store.forAsset(assetId, MAX_PAGE_SIZE)) {
-        if (row.assetType() == type) {
-          link(access, asset, row, properties).ifPresent(links::add);
+      // Rows are paged by concept id and filtered afterwards, so concepts the reader cannot see
+      // never crowd visible links out of a fixed-size window.
+      UUID after = null;
+      List<BindingRow> rows;
+      do {
+        rows = store.forAssetAfter(assetId, after, MAX_PAGE_SIZE);
+        for (final var row : rows) {
+          if (row.assetType() == type) {
+            link(access, asset, row, properties).ifPresent(links::add);
+          }
+          after = row.conceptId();
         }
-      }
+      } while (rows.size() == MAX_PAGE_SIZE);
       return new OntologyAssetConceptLinks().withLinks(links);
     }
   }
