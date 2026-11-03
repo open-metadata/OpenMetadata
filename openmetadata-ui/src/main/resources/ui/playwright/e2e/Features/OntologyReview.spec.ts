@@ -294,9 +294,9 @@ test.describe(
           });
           await expect(error).toBeVisible();
           await expect(page.getByTestId('task-approve')).toHaveCount(0);
-          await expect(page.getByTestId('code-mirror-container')).toHaveCount(
-            0
-          );
+          await expect(
+            page.getByTestId('ontology-review-field-changes')
+          ).toHaveCount(0);
           await page.unroute(versionPath);
           await error
             .getByRole('button', { name: 'Retry', exact: true })
@@ -305,9 +305,9 @@ test.describe(
             .getByTestId('ontology-review-panel')
             .getByRole('button', { name: 'Customer', exact: true })
             .click();
-          await expect(page.getByTestId('code-mirror-container')).toContainText(
-            'Submitted customer definition'
-          );
+          await expect(
+            page.getByTestId('ontology-review-field-changes')
+          ).toContainText('Submitted customer definition');
         });
 
         await test.step('Release review keeps the captured content after a draft edit', async () => {
@@ -331,7 +331,9 @@ test.describe(
           await review
             .getByRole('button', { name: 'Customer', exact: true })
             .click();
-          const definition = review.getByTestId('code-mirror-container');
+          const definition = review.getByTestId(
+            'ontology-review-field-changes'
+          );
           await expect(definition).toContainText(
             'Submitted customer definition'
           );
@@ -755,7 +757,7 @@ test.describe(
           );
           expect(release.baseReleaseId).toBe(releases.at(-1)?.id);
           expect(release.semanticVersion).toBe(
-            releases.length === 0 ? '1.0.0' : '1.1.0'
+            releases.length === 0 ? '0.1.0' : '0.1.1'
           );
           expect(release.releaseNotes).toBe(description);
           releases.push(release);
@@ -771,7 +773,7 @@ test.describe(
               .getByTestId('ontology-release-definition')
               .getByRole('alert')
               .filter({ hasText: 'Logical consistency has not been checked' })
-          ).toBeVisible();
+          ).toHaveCount(0);
 
           const submission = author.waitForResponse(
             (response) =>
@@ -820,7 +822,7 @@ test.describe(
             .click();
           await expect(
             reviewer
-              .getByTestId('code-mirror-container')
+              .getByTestId('ontology-review-field-changes')
               .filter({ hasText: description })
           ).toContainText(description);
           await approveReview(reviewer, task);
@@ -901,9 +903,9 @@ test.describe(
           .getByTestId('ontology-release-definition')
           .getByRole('button', { name: 'Customer', exact: true })
           .click();
-        await expect(author.getByTestId('code-mirror-container')).toContainText(
-          'First published definition'
-        );
+        await expect(
+          author.getByTestId('ontology-review-field-changes')
+        ).toContainText('First published definition');
         await author.screenshot({
           path: testInfo.outputPath('studio-release-rollback.png'),
           fullPage: true,
@@ -1081,13 +1083,13 @@ test.describe(
 
         await expect(
           author.getByTestId('ontology-publication-notice-unchanged')
-        ).toContainText('Nothing changed since v1.0.0 was saved');
+        ).toContainText('Nothing changed since v0.1.0 was saved');
         await expect(
           author.getByTestId('ontology-publication-unchanged-notes')
         ).toHaveText('Its release notes: Original notes');
         await g6Shot(author, testInfo, 'draft-reuse');
         expect(captures[0].releaseNotes).toBe('Original notes');
-        expect(captures[0].semanticVersion).toBe('1.0.0');
+        expect(captures[0].semanticVersion).toBe('0.1.0');
         expect(captures[1].id).toBe(captures[0].id);
         const history = await okJson<{ data: OntologyRelease[] }>(
           await api.get(`/api/v1/ontologies/${ontology.id}/releases`),
@@ -1103,7 +1105,7 @@ test.describe(
         ).toHaveCount(1);
         await expect(
           author.getByTestId(`ontology-release-select-${captures[0].id}`)
-        ).toHaveText('1.0.0');
+        ).toHaveText('0.1.0');
 
         await author.getByTestId('ontology-publication-tab-changes').click();
         const submission = author.waitForResponse(
@@ -1124,7 +1126,7 @@ test.describe(
           await api.get(`/api/v1/ontologyReleases/${captures[0].id}`),
           'Read the release under review'
         );
-        expect(reviewed.semanticVersion).toBe('1.0.0');
+        expect(reviewed.semanticVersion).toBe('0.1.0');
         expect(reviewed.reviewTask).toBe(task.id);
       } finally {
         await cleanReviews(api, tasks);
@@ -1479,7 +1481,7 @@ test.describe(
 
           await expect(
             author.getByTestId('ontology-publish-release')
-          ).toHaveText('Publish v1.0.0');
+          ).toHaveText('Publish v0.1.0');
           await expect(
             author.getByTestId('ontology-publish-release')
           ).toBeEnabled();
@@ -1548,13 +1550,13 @@ test.describe(
         await expect(
           author.getByTestId('ontology-publication-notice-published')
         ).toContainText(
-          `v1.0.0 published. Everyone using ${ontology.name} now sees this version.`
+          `v0.1.0 published. Everyone using ${ontology.name} now sees this version.`
         );
         const release = await okJson<OntologyRelease>(
           await api.get(`/api/v1/ontologyReleases/${state.activeReleaseId}`),
           'Read the published release'
         );
-        expect(release.semanticVersion).toBe('1.0.0');
+        expect(release.semanticVersion).toBe('0.1.0');
         expect(release.approvalBasis).toBe('NO_REVIEWERS_CONFIGURED');
         await author.getByRole('heading', { name: 'Review & publish' }).click();
         await author.keyboard.press('Escape');
@@ -1563,7 +1565,7 @@ test.describe(
         ).toHaveCount(0);
         await expect(
           author.getByTestId('ontology-release-history-trigger')
-        ).toContainText('v1.0.0');
+        ).toContainText('v0.1.0');
         await author.getByTestId('ontology-version-published').click();
         await expect(author).toHaveURL(/version=published/);
         await expect(
@@ -1571,7 +1573,7 @@ test.describe(
         ).toHaveAttribute('aria-pressed', 'true');
         await expect(
           author.getByTestId('ontology-release-history-trigger')
-        ).toContainText('v1.0.0');
+        ).toContainText('v0.1.0');
         expect(loads).toBe(0);
         await g6Shot(author, testInfo, 'published');
       } finally {
@@ -1706,7 +1708,7 @@ test.describe(
         expect((await removed).status()).toBe(200);
 
         await expect(author.getByTestId('ontology-publish-release')).toHaveText(
-          'Publish v1.0.0'
+          'Publish v0.1.0'
         );
         await expect(author.getByTestId('ontology-request-review')).toHaveCount(
           0
@@ -1776,7 +1778,7 @@ test.describe(
 
         await expect(
           author.getByTestId('ontology-publication-notice-requested')
-        ).toContainText(`v1.0.0 sent to ${reviewerName} for review`);
+        ).toContainText(`v0.1.0 sent to ${reviewerName} for review`);
         await expect(author.getByTestId('ontology-view-request')).toBeVisible();
         await expect(author).toHaveURL(/\/governance\/ontology/);
         await expect(
@@ -1798,7 +1800,7 @@ test.describe(
         await expect(
           author.getByTestId('ontology-publication-notice-withdrawn')
         ).toContainText(
-          'Review request for v1.0.0 withdrawn. The release is a draft again.'
+          'Review request for v0.1.0 withdrawn. The release is a draft again.'
         );
         await expect(
           author.getByTestId('ontology-request-review')

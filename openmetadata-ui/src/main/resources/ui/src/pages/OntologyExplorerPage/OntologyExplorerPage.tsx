@@ -645,11 +645,11 @@ function getStudioStatsLabel(
       return '';
     }
 
-    return `${aggregateGraph.nodes.length} ${t(
-      'label.concept-plural'
-    ).toLocaleLowerCase()} · ${aggregateGraph.edges.length} ${t(
-      'label.relation-plural'
-    ).toLocaleLowerCase()}`;
+    return `${t('message.native-concept-count', {
+      count: aggregateGraph.nodes.length,
+    })} · ${t('message.native-relation-count', {
+      count: aggregateGraph.edges.length,
+    })}`;
   }
   if (scope.kind === 'ontology') {
     const currentStats =
@@ -659,11 +659,11 @@ function getStudioStatsLabel(
       return '';
     }
 
-    return `${currentStats.conceptCount} ${t(
-      'label.concept-plural'
-    ).toLocaleLowerCase()} · ${currentStats.relationCount} ${t(
-      'label.relation-plural'
-    ).toLocaleLowerCase()}`;
+    return `${t('message.native-concept-count', {
+      count: currentStats.conceptCount,
+    })} · ${t('message.native-relation-count', {
+      count: currentStats.relationCount,
+    })}`;
   }
 
   return `${termCount} ${t(
@@ -2488,10 +2488,16 @@ const OntologyExplorerContent: React.FC = () => {
           },
           onApplied: (ontology) => {
             void queryClient.invalidateQueries({
+              queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+            });
+            void queryClient.invalidateQueries({
               queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY],
             });
             void queryClient.invalidateQueries({
               queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontology.id],
+            });
+            void queryClient.invalidateQueries({
+              queryKey: ['ontology-state', ontology.id],
             });
           },
         }}

@@ -22,7 +22,9 @@ import {
 } from '../../../../generated/api/data/createOntologyChangeSet';
 import {
   Format,
+  Kind,
   NativeOntologyImportSummary,
+  Status,
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import { OntologyChangeSetState } from '../../../../generated/entity/data/ontologyChangeSet';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -50,6 +52,15 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   listOntologyChangeSets: jest.fn(),
   previewNativeOntologyImport: jest.fn(),
   previewNativeOntologyImportWithoutTarget: jest.fn(),
+}));
+jest.mock('../OntologyCreateForm/useOntologyIdentitySource', () => ({
+  useOntologyIdentitySource: () => ({
+    isReady: true,
+    identityOf: (title: string) =>
+      jest
+        .requireActual('../OntologyCreateForm/OntologyCreateForm.utils')
+        .generatedOntologyIdentity(title, 'https://open-metadata.org', []),
+  }),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -388,8 +399,9 @@ describe('OntologyNativeImportPanel', () => {
 
     const request = (createOntology as jest.Mock).mock.calls[0][0];
 
-    expect(request.iri).toMatch(/^urn:openmetadata:ontology:[0-9a-f-]{36}$/);
-    expect(request.name).toMatch(/^fibo-sample-[0-9a-f-]{36}$/);
+    expect(request.iri).toBe('https://open-metadata.org/onto/fibosamp');
+    expect(request.namespace).toBe('https://open-metadata.org/onto/fibosamp#');
+    expect(request.name).toBe('fibo-sample');
     expect(request.displayName).toBe('Fibo sample');
     expect(request.owners).toEqual([{ id: 'author', type: 'user' }]);
     expect(previewNativeOntologyImport).toHaveBeenCalledWith(
@@ -541,5 +553,177 @@ describe('OntologyNativeImportPanel', () => {
       'message.file-size-exceeded'
     );
     expect(detectNativeOntologyImportFormat).not.toHaveBeenCalled();
+  });
+});
+
+describe('OntologyNativeImportPanel item review', () => {
+  const itemSummary: NativeOntologyImportSummary = {
+    ...summary,
+    items: [
+      {
+        id: 'concept:https://example.org/Invoice',
+        kind: Kind.Concept,
+        label: 'Invoice',
+        iri: 'https://example.org/Invoice',
+        status: Status.New,
+        operationId: 'op-invoice',
+        conceptIds: [],
+      },
+      {
+        id: 'concept:https://example.org/Payment',
+        kind: Kind.Concept,
+        label: 'Payment',
+        iri: 'https://example.org/Payment',
+        status: Status.New,
+        operationId: 'op-payment',
+        conceptIds: [],
+      },
+      {
+        id: 'concept:https://example.org/Customer',
+        kind: Kind.Concept,
+        label: 'Customer',
+        iri: 'https://example.org/Customer',
+        status: Status.AlreadyExists,
+        conceptIds: [],
+      },
+      {
+        id: 'axiom:1111111111111111',
+        kind: Kind.Rule,
+        label: 'Invoice and Payment are disjoint',
+        status: Status.New,
+        operationId: 'op-rule',
+        warning: 'Invoice and Payment would clash with an existing subclass',
+        conceptIds: [],
+      },
+      {
+        id: 'axiom:2222222222222222',
+        kind: Kind.Relationship,
+        label: 'Invoice relates to Payment',
+        status: Status.Duplicate,
+        reason: 'Stated twice in the file',
+        conceptIds: [],
+      },
+    ],
+  };
+  const itemChangeSet: CreateOntologyChangeSet = {
+    ...changeSet,
+    operations: ['op-invoice', 'op-payment', 'op-rule'].map((id) => ({
+      id,
+      operationType: OperationType.UpsertConcept,
+      state: OperationState.Active,
+    })),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (detectNativeOntologyImportFormat as jest.Mock).mockResolvedValue({
+      detectedFormat: 'turtle',
+    });
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: itemSummary,
+      changeSet: itemChangeSet,
+    });
+    let stored = draft;
+    (createOntologyChangeSet as jest.Mock).mockImplementation(
+      async (request: CreateOntologyChangeSet) => {
+        stored = {
+          ...draft,
+          operations: request.operations,
+          undoCursor: request.undoCursor ?? 0,
+        };
+
+        return stored;
+      }
+    );
+    (getOntologyChangeSet as jest.Mock).mockImplementation(async () => stored);
+    (applyOntologyChangeSet as jest.Mock).mockImplementation(async () => ({
+      ...stored,
+      state: OntologyChangeSetState.Applied,
+    }));
+  });
+
+  it('lists every item under its kind with its status, reason and warning', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.getByTestId('ontology-native-import-group-CONCEPT')
+    ).toHaveTextContent('Invoice');
+    expect(
+      within(
+        screen.getByTestId('ontology-native-import-group-RELATIONSHIP')
+      ).getByText('Invoice relates to Payment')
+    ).toBeVisible();
+    expect(
+      screen.getByTestId(
+        'ontology-native-import-item-status-concept:https://example.org/Customer'
+      )
+    ).toHaveTextContent('label.already-exists');
+    expect(
+      screen.getByTestId(
+        'ontology-native-import-item-note-axiom:2222222222222222'
+      )
+    ).toHaveTextContent('Stated twice in the file');
+    expect(
+      screen.getByTestId(
+        'ontology-native-import-item-warning-axiom:1111111111111111'
+      )
+    ).toHaveTextContent('Invoice and Payment would clash');
+    expect(
+      within(
+        screen.getByTestId(
+          'ontology-native-import-item-check-concept:https://example.org/Customer'
+        )
+      ).getByRole('checkbox')
+    ).toBeDisabled();
+  });
+
+  it('applies only the operations of the items left ticked', async () => {
+    const { onApplied } = renderPanel();
+    dropFile();
+    await parse();
+
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeEnabled();
+
+    await user.click(
+      within(
+        screen.getByTestId(
+          'ontology-native-import-item-check-concept:https://example.org/Payment'
+        )
+      ).getByRole('checkbox')
+    );
+    await user.click(
+      within(
+        screen.getByTestId(
+          'ontology-native-import-item-check-axiom:1111111111111111'
+        )
+      ).getByRole('checkbox')
+    );
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+
+    const sent = (createOntologyChangeSet as jest.Mock).mock.calls[0][0];
+
+    expect(sent.operations.map(({ id }: { id: string }) => id)).toEqual([
+      'op-invoice',
+    ]);
+  });
+
+  it('disables Import once every item is unticked', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    for (const kind of ['CONCEPT', 'RULE']) {
+      await user.click(
+        within(
+          screen.getByTestId(`ontology-native-import-group-check-${kind}`)
+        ).getByRole('checkbox')
+      );
+    }
+
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 });

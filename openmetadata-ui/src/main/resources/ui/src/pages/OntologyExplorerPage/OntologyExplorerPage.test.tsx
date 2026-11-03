@@ -41,6 +41,10 @@ import {
   listOntologyReleaseMembers,
 } from '../../rest/ontologyAPI';
 import { fetchRdfConfig } from '../../rest/rdfAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../test/unit/enUsTranslation';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { pageFixture } from '../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import { showInfoToast } from '../../utils/ToastUtils';
@@ -1526,10 +1530,20 @@ describe('OntologyExplorerPage', () => {
     expect(screen.queryByTestId('mode-tab-model')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mode-tab-releases')).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-import-export')).toBeVisible();
-    expect(screen.getByTestId('ontology-explorer-stats')).toHaveTextContent(
-      '2 label.concept-plural · 0 label.relation-plural'
-    );
     expect(screen.getByText('2 label.isolated')).toBeVisible();
+  });
+
+  it('counts the native ontology in the header with the singular and plural forms', async () => {
+    useEnUsTranslations();
+    renderNativeStudio('?ontology=native-sales');
+
+    await screen.findByTestId('native-canvas');
+
+    expect(screen.getByTestId('ontology-explorer-stats')).toHaveTextContent(
+      '2 concepts · 0 relations'
+    );
+
+    useKeyEchoTranslations();
   });
 
   it('keeps the native canvas in Edit and starts concept authoring from the shared header', async () => {
