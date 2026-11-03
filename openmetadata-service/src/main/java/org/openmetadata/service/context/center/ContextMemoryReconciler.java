@@ -1,6 +1,7 @@
 package org.openmetadata.service.context.center;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -127,7 +128,11 @@ public class ContextMemoryReconciler {
       Map<String, ContextMemory> derivedByQuestion,
       List<ContextMemory> unmatched,
       ReconciliationPlan plan) {
-    for (ContextMemory pill : unmatched) {
+    // Extracted pills claim their rewordings first, so a pill a person corrected takes only what
+    // they leave and never swallows another value the document gives for the same fact.
+    List<ContextMemory> ordered = new ArrayList<>(unmatched);
+    ordered.sort(Comparator.comparing(ContextMemoryReconciler::isHumanOwned));
+    for (ContextMemory pill : ordered) {
       ContextMemory match = removeMostSimilar(derivedByQuestion, pill);
       if (match == null) {
         if (isAutomated(pill)) {
@@ -183,7 +188,7 @@ public class ContextMemoryReconciler {
       ContextMemory derived,
       Map<String, ContextMemory> unmatched,
       ReconciliationPlan plan) {
-    if (sameContent(existing, derived)
+    if (sameClaim(existing, derived)
         || !memoryRepository.hasOtherSources(existing.getId(), sourceRef)) {
       return false;
     }
@@ -201,36 +206,45 @@ public class ContextMemoryReconciler {
     return byFact;
   }
 
+  private record Candidate(String key, double score, boolean conflicting) {}
+
   /**
    * Claims and returns the remaining candidate most similar to {@code pill}, or null when none
    * clears the identity bar. Always the best match above the bar rather than the first, so a loose
-   * bar cannot let a weaker candidate take a pill a closer one should own. Claimed even for a Manual
-   * pill, so a rephrased re-derivation cannot recreate a fact a human took ownership of.
+   * bar cannot let a weaker candidate take a pill a closer one should own. A changed number is a
+   * different claim, never the same pill reworded, except for a pill a person corrected: it claims
+   * the document's value when that is the only candidate left, so the value is never recreated
+   * beside the correction.
    */
   private static ContextMemory removeMostSimilar(
       Map<String, ContextMemory> derivedByQuestion, ContextMemory pill) {
-    String bestKey = null;
-    double bestScore = 0;
+    List<Candidate> clearing = candidatesClearingTheBar(derivedByQuestion, pill);
+    Candidate best =
+        clearing.stream()
+            .filter(candidate -> !candidate.conflicting())
+            .max(Comparator.comparingDouble(Candidate::score))
+            .orElse(null);
+    if (best == null && isHumanOwned(pill) && clearing.size() == 1) {
+      best = clearing.getFirst();
+    }
+    return best == null ? null : derivedByQuestion.remove(best.key());
+  }
+
+  private static List<Candidate> candidatesClearingTheBar(
+      Map<String, ContextMemory> derivedByQuestion, ContextMemory pill) {
+    List<Candidate> clearing = new ArrayList<>();
     for (Map.Entry<String, ContextMemory> entry : derivedByQuestion.entrySet()) {
-      if (!isHumanOwned(pill)
-          && MemoryTextSimilarity.hasConflictingNumbers(
-              pill.getAnswer(), entry.getValue().getAnswer())) {
-        // A changed number is a different claim, never the same pill reworded; a fact a person
-        // corrected keeps claiming the document's value, so it is never recreated beside them.
-        continue;
-      }
+      ContextMemory candidate = entry.getValue();
       double score =
           MemoryTextSimilarity.weighted(
-              pill.getQuestion(),
-              pill.getAnswer(),
-              entry.getValue().getQuestion(),
-              entry.getValue().getAnswer());
-      if (score >= MemoryTextSimilarity.IDENTITY_THRESHOLD && score > bestScore) {
-        bestScore = score;
-        bestKey = entry.getKey();
+              pill.getQuestion(), pill.getAnswer(), candidate.getQuestion(), candidate.getAnswer());
+      if (score >= MemoryTextSimilarity.IDENTITY_THRESHOLD) {
+        boolean conflicting =
+            MemoryTextSimilarity.hasConflictingNumbers(pill.getAnswer(), candidate.getAnswer());
+        clearing.add(new Candidate(entry.getKey(), score, conflicting));
       }
     }
-    return bestKey == null ? null : derivedByQuestion.remove(bestKey);
+    return clearing;
   }
 
   /**
@@ -244,8 +258,9 @@ public class ContextMemoryReconciler {
     boolean changed = contentChanged || needsMetadataRepair(existing);
     if (changed) {
       ContextMemory updated = JsonUtils.deepCopy(existing, ContextMemory.class);
-      if (contentChanged && derived.getEntityStatus() != null) {
-        // A reviewing provider derives Unprocessed, so a changed fact is reviewed again.
+      if (!sameClaim(existing, derived) && derived.getEntityStatus() != null) {
+        // A reviewing provider derives Unprocessed, so a changed claim is reviewed again; a
+        // reworded title or summary is the same claim and keeps the stage it was reviewed in.
         updated.setEntityStatus(derived.getEntityStatus());
       }
       updated.setTitle(derived.getTitle());
@@ -303,6 +318,10 @@ public class ContextMemoryReconciler {
         && Objects.equals(a.getAnswer(), b.getAnswer())
         && Objects.equals(a.getSummary(), b.getSummary())
         && Objects.equals(a.getMemoryType(), b.getMemoryType());
+  }
+
+  private static boolean sameClaim(ContextMemory a, ContextMemory b) {
+    return factKey(a).equals(factKey(b));
   }
 
   private static boolean isHumanOwned(ContextMemory pill) {

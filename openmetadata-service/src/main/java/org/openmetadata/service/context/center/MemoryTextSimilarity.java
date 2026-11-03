@@ -1,5 +1,6 @@
 package org.openmetadata.service.context.center;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
@@ -19,7 +20,8 @@ final class MemoryTextSimilarity {
    */
   static final double IDENTITY_THRESHOLD = 0.5;
 
-  private static final Pattern NUMBERS = Pattern.compile("\\d+(?:\\.\\d+)?");
+  private static final Pattern NUMBERS =
+      Pattern.compile("\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?");
   private static final double QUESTION_WEIGHT = 0.6;
   private static final double ANSWER_WEIGHT = 0.4;
 
@@ -28,7 +30,8 @@ final class MemoryTextSimilarity {
   /**
    * One answer replaces a number of the other: two values for one fact, not a rewording. An added
    * or dropped number, a section, a year or an edition, is a rewording: "15%" and "15% (section
-   * 3)" agree, "15%" and "20%" do not, nor do "15% (2025)" and "20% (2025)".
+   * 3)" agree, "15%" and "20%" do not, nor do "15% (2025)" and "20% (2025)". Numbers compare by
+   * value, so "1,500" and "1500", or "2.50" and "2.5", are one number.
    */
   static boolean hasConflictingNumbers(String answerA, String answerB) {
     Set<String> a = numbers(answerA);
@@ -39,7 +42,16 @@ final class MemoryTextSimilarity {
   private static Set<String> numbers(String text) {
     return text == null
         ? Set.of()
-        : NUMBERS.matcher(text).results().map(MatchResult::group).collect(Collectors.toSet());
+        : NUMBERS
+            .matcher(text)
+            .results()
+            .map(MatchResult::group)
+            .map(MemoryTextSimilarity::byValue)
+            .collect(Collectors.toSet());
+  }
+
+  private static String byValue(String number) {
+    return new BigDecimal(number.replace(",", "")).stripTrailingZeros().toPlainString();
   }
 
   static double weighted(String questionA, String answerA, String questionB, String answerB) {

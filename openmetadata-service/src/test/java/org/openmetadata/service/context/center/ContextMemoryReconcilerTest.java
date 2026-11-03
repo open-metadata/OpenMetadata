@@ -418,6 +418,83 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
   }
 
+  /**
+   * Listed first, the corrected pill would take the HR policy's 25%: the extracted pills claim
+   * their rewordings first, and the correction takes the document's value that is left.
+   */
+  @Test
+  void aCorrectedPillTakesOnlyTheValueTheExtractedPillsLeave() {
+    ContextMemory corrected =
+        pill(
+            "Commission rate?",
+            "20% per HR policy update",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED);
+    ContextMemory hrValue =
+        pill(
+            "Commission rate?",
+            "25% (HR policy)",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(corrected, hrValue);
+
+    reconcile(
+        List.of(
+            derived("Commission rate?", "15% per the Sales handbook"),
+            derived("Commission rate?", "25% per the HR policy")));
+
+    verify(memoryRepository, never()).create(any(), any());
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(hrValue), captor.capture(), any());
+    assertEquals("25% per the HR policy", captor.getValue().getAnswer());
+  }
+
+  /** Which of two values a person corrected is unknown, so neither is claimed for the correction. */
+  @Test
+  void aCorrectedPillClaimsNoValueWhenTwoAreLeft() {
+    existing(
+        pill(
+            "Commission rate?",
+            "20% per HR policy update",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(
+        List.of(
+            derived("Commission rate?", "15% per the Sales handbook"),
+            derived("Commission rate?", "25% per the HR policy")));
+
+    verify(memoryRepository, times(2)).create(isNull(), any());
+  }
+
+  /** The model rewrites summaries on every run; that alone must not send a reviewed fact back. */
+  @Test
+  void aRewordedSummaryKeepsTheStageItWasReviewedIn() {
+    ContextMemory approved =
+        pill(
+                "Refund window?",
+                "30 days",
+                ContextMemorySourceType.PAGE_EXTRACTION,
+                ContextMemoryStatus.APPROVED)
+            .withSummary("Refunds within a month.");
+    existing(approved);
+    ContextMemory rederived =
+        pill(
+                "Refund window?",
+                "30 days",
+                ContextMemorySourceType.PAGE_EXTRACTION,
+                ContextMemoryStatus.UNPROCESSED)
+            .withSummary("Customers have 30 days to ask for a refund.");
+
+    reconcile(List.of(rederived));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(approved), captor.capture(), any());
+    assertEquals(ContextMemoryStatus.APPROVED, captor.getValue().getEntityStatus());
+    assertEquals("Customers have 30 days to ask for a refund.", captor.getValue().getSummary());
+  }
+
   /** A run reading past this write's time must find it, however long the duplicate checks took. */
   @Test
   void aCreatedPillIsStampedWhenItIsWritten() {
