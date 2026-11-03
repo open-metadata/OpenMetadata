@@ -78,6 +78,7 @@ const OntologyReleaseExportModal = ({
   const {
     activeRelease,
     content,
+    error,
     isDraft,
     isError,
     isPreviewLoading,
@@ -97,6 +98,7 @@ const OntologyReleaseExportModal = ({
     selection.options.shaclGate && shacl.report?.valid === false;
   const contentState = resolveContentState({
     content,
+    error,
     isError,
     isPreviewLoading,
     isScopesLoading,

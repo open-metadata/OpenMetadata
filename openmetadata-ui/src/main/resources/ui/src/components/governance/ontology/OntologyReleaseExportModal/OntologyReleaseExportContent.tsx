@@ -110,7 +110,10 @@ const ExportLoadState = ({
 
   return (
     <Box direction="col" gap={3}>
-      <Alert variant="error">{t('message.ontology-review-unavailable')}</Alert>
+      <Alert variant="error">
+        {t('message.ontology-export-failed')}
+        {state.reason ? ` ${state.reason}` : null}
+      </Alert>
       <Button color="secondary" size="sm" onPress={state.onRetry}>
         {t('label.retry')}
       </Button>

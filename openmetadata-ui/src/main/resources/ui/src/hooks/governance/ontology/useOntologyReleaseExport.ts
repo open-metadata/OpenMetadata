@@ -69,6 +69,9 @@ const loadScopes = async (
   };
 };
 
+const firstError = (...errors: unknown[]) =>
+  errors.find((error) => error !== null && error !== undefined);
+
 /**
  * `scopeKey` is `draft` or a release id. Left out, the active release is
  * chosen, and the draft when nothing is published yet.
@@ -124,6 +127,7 @@ export const useOntologyReleaseExport = (
     activeRelease: scopes.data?.activeRelease ?? undefined,
     content: content.data,
     isDraft,
+    error: firstError(scopes.error, content.error),
     isError: scopes.isError || content.isError,
     isPreviewLoading: content.isLoading,
     isScopesLoading: scopes.isLoading,
