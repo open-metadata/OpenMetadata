@@ -172,14 +172,6 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     }
   }
 
-  /**
-   * Bookkeeping, not an edit: the article keeps the person who last changed it
-   * (ADR:2026-11-03-extraction-bookkeeping-keeps-the-sources-last-editor).
-   */
-  private static String lastEditorOf(Page page) {
-    return page.getUpdatedBy() == null ? Entity.ADMIN_USER_NAME : page.getUpdatedBy();
-  }
-
   @Override
   protected String entityType() {
     return Entity.PAGE;

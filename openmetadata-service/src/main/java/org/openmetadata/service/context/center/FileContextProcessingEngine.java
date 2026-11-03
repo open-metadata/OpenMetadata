@@ -89,13 +89,7 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
     if (current != null) {
       ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
       updated.setExtractionStats(stats);
-      // Bookkeeping, not an edit: the file keeps the person who last changed it
-      // (ADR:2026-11-03-extraction-bookkeeping-keeps-the-sources-last-editor).
-      fileRepository.update(
-          null,
-          current,
-          updated,
-          current.getUpdatedBy() == null ? Entity.ADMIN_USER_NAME : current.getUpdatedBy());
+      fileRepository.update(null, current, updated, lastEditorOf(current));
     }
   }
 
