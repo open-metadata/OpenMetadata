@@ -632,6 +632,9 @@ const SaveQueryModal = ({
   );
 };
 
+const getNewQueryTemplate = (selectedOntologyId: string | undefined) =>
+  selectedOntologyId ? NEW_NATIVE_ONTOLOGY_QUERY : NEW_ONTOLOGY_QUERY;
+
 const OntologyStudioQueryConsole = ({
   createQueryOnMount,
   initialQuery,
@@ -664,9 +667,7 @@ const OntologyStudioQueryConsole = ({
     [graphData, relationTypes, selectedGlossaryIds]
   );
   const defaultSuggestion = querySuggestions[0];
-  const newQuery = selectedOntologyId
-    ? NEW_NATIVE_ONTOLOGY_QUERY
-    : NEW_ONTOLOGY_QUERY;
+  const newQuery = getNewQueryTemplate(selectedOntologyId);
   const [query, setQuery] = useState(
     initialQuery ?? defaultSuggestion?.query ?? newQuery
   );

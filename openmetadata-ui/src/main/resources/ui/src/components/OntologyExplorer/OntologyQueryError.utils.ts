@@ -66,6 +66,33 @@ function isFederationRefusal({ status, message }: QueryFailure): boolean {
   return status === 403 && /federat|SERVICE/i.test(message);
 }
 
+const STATUS_MESSAGE_KEYS: Readonly<Record<number, string>> = {
+  403: 'forbidden',
+  429: 'busy',
+  503: 'timeout',
+  504: 'timeout',
+};
+
+function display(t: TFunction, kind: string, hint?: string): QueryErrorDisplay {
+  return {
+    title: t(`message.query-error-${kind}-title`),
+    hint: hint ?? t(`message.query-error-${kind}-hint`),
+  };
+}
+
+function classifyBadRequest(
+  message: string,
+  detail: string,
+  t: TFunction
+): QueryErrorDisplay {
+  if (/approved ontology release/i.test(message)) {
+    return display(t, 'nothing-published');
+  }
+  const kind = INVALID_SPARQL_PREFIX.test(message) ? 'invalid' : 'rejected';
+
+  return display(t, kind, detail || t('server.unexpected-error'));
+}
+
 function classify(
   failure: QueryFailure,
   isAdmin: boolean,
@@ -76,48 +103,16 @@ function classify(
 
   if (isFederationRefusal(failure)) {
     // Only an operator can act on the configuration keys the server names.
-    return {
-      title: t('message.query-error-external-title'),
-      hint: isAdmin ? message : t('message.query-error-external-hint'),
-    };
-  }
-  if (status === 403) {
-    return {
-      title: t('message.query-error-forbidden-title'),
-      hint: t('message.query-error-forbidden-hint'),
-    };
-  }
-  if (status === 429) {
-    return {
-      title: t('message.query-error-busy-title'),
-      hint: t('message.query-error-busy-hint'),
-    };
-  }
-  if (status === 503 || status === 504) {
-    return {
-      title: t('message.query-error-timeout-title'),
-      hint: t('message.query-error-timeout-hint'),
-    };
-  }
-  if (status === 400 && /approved ontology release/i.test(message)) {
-    return {
-      title: t('message.query-error-nothing-published-title'),
-      hint: t('message.query-error-nothing-published-hint'),
-    };
+    return display(t, 'external', isAdmin ? message : undefined);
   }
   if (status === 400) {
-    return {
-      title: INVALID_SPARQL_PREFIX.test(message)
-        ? t('message.query-error-invalid-title')
-        : t('message.query-error-rejected-title'),
-      hint: detail || t('server.unexpected-error'),
-    };
+    return classifyBadRequest(message, detail, t);
   }
+  const kind = status === undefined ? undefined : STATUS_MESSAGE_KEYS[status];
 
-  return {
-    title: t('message.query-error-failed-title'),
-    hint: detail || t('server.unexpected-error'),
-  };
+  return kind
+    ? display(t, kind)
+    : display(t, 'failed', detail || t('server.unexpected-error'));
 }
 
 /**

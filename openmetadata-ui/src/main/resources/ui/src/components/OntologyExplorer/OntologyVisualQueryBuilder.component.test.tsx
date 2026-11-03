@@ -449,6 +449,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     expect(mockListRelationshipTypes).not.toHaveBeenCalled();
     expect(mockGetGlossaryTerms).not.toHaveBeenCalled();
   });
+
   it('keeps the generated SPARQL out of sight until it is asked for', async () => {
     render(
       <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
