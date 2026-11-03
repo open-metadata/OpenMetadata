@@ -1128,6 +1128,19 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
           assertNull(
               admin.metrics().get(source.getId().toString(), "metricGroup").getMetricGroup());
 
+          Metric rootDocument =
+              admin.metrics().get(source.getId().toString(), "parent,metricGroup");
+          rootDocument.setParent(restrictedParent.getEntityReference());
+          JsonNode rootReplacePatch =
+              JSON.createArrayNode()
+                  .add(
+                      JSON.createObjectNode()
+                          .put("op", "replace")
+                          .put("path", "")
+                          .set("value", JSON.valueToTree(rootDocument)));
+          assertApiStatus(403, () -> editor.metrics().patch(source.getId(), rootReplacePatch));
+          assertNull(admin.metrics().get(source.getId().toString(), "parent").getParent());
+
           assertApiStatus(
               403,
               () ->

@@ -43,9 +43,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateMetricGroup;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -60,7 +58,6 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -329,8 +326,7 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
       @Valid CreateMetricGroup create) {
     MetricGroup metricGroup =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(metricGroup, false);
-    authorizeMembershipMutation(securityContext, null, metricGroup);
+    MetricAuthorization.authorizeGroupCreate(authorizer, securityContext, metricGroup);
     return withoutMembers(create(uriInfo, securityContext, metricGroup));
   }
 
@@ -359,7 +355,8 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     if (original != null) {
       original = repository.getWithMembers(original.getId(), Include.NON_DELETED);
     }
-    authorizeMembershipMutation(securityContext, original, metricGroup);
+    MetricAuthorization.authorizeMembershipMutation(
+        authorizer, securityContext, original, metricGroup);
     return withoutMembers(createOrUpdate(uriInfo, securityContext, metricGroup));
   }
 
@@ -374,10 +371,8 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
           @PathParam("id")
           UUID id,
       @Valid JsonPatch patch) {
-    MetricGroup original = repository.getWithMembers(id, Include.NON_DELETED);
-    MetricGroup updated = JsonUtils.applyPatch(original, patch, MetricGroup.class);
-    repository.prepareInternal(updated, true);
-    authorizeMembershipMutation(securityContext, original, updated);
+    MetricAuthorization.authorizeGroupPatch(
+        authorizer, securityContext, repository.get(null, id, repository.getPatchFields()), patch);
     return withoutMembers(patchInternal(uriInfo, securityContext, id, patch));
   }
 
@@ -559,42 +554,6 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
         | IllegalArgumentException exception) {
       return false;
     }
-  }
-
-  private void authorizeMembershipMutation(
-      SecurityContext securityContext, MetricGroup original, MetricGroup updated) {
-    for (EntityReference metric : membershipMutationTargets(original, updated)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.METRIC, MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
-    }
-  }
-
-  static List<EntityReference> membershipMutationTargets(
-      MetricGroup original, MetricGroup updated) {
-    Map<UUID, EntityReference> originalMembers = new LinkedHashMap<>();
-    Map<UUID, EntityReference> updatedMembers = new LinkedHashMap<>();
-    for (EntityReference metric : listOrEmpty(original == null ? null : original.getMetrics())) {
-      originalMembers.put(metric.getId(), metric);
-    }
-    for (EntityReference metric : listOrEmpty(updated.getMetrics())) {
-      updatedMembers.put(metric.getId(), metric);
-    }
-    List<EntityReference> affected = new ArrayList<>();
-    originalMembers.forEach(
-        (id, metric) -> {
-          if (!updatedMembers.containsKey(id)) {
-            affected.add(metric);
-          }
-        });
-    updatedMembers.forEach(
-        (id, metric) -> {
-          if (!originalMembers.containsKey(id)) {
-            affected.add(metric);
-          }
-        });
-    return affected;
   }
 
   private AuthorizedBulk authorizeBulkMetrics(SecurityContext securityContext, BulkAssets request) {

@@ -36,6 +36,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.metrics.MetricAuthorization;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -82,6 +83,7 @@ public class CreateEntityTool implements McpTool {
 
     applyRepositoryDefaults(entity);
     authorizeCreate(authorizer, limits, securityContext, entityType, entity);
+    MetricAuthorization.authorizeCreate(authorizer, securityContext, entity);
     RuleEngine.getInstance().evaluate(entity);
     RestUtil.PutResponse<EntityInterface<?>> response = persist(type, entity, userName);
 

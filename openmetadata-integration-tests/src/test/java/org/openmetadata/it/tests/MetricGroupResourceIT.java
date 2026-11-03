@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.METRIC_GROUP;
+import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1309,6 +1310,43 @@ public class MetricGroupResourceIT {
       references.add(JSON.convertValue(member, Metric.class).getEntityReference());
     }
     return references;
+  }
+
+  @Test
+  void patch_appendsAnOwnerThroughTheMembershipCheck(TestNamespace ns) {
+    MetricGroup group = createGroup(new CreateMetricGroup().withName(ns.prefix("owned_group")));
+    EntityReference admin =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+    // An append, not a whole-list add: the membership check applies the patch to its own copy of
+    // the group first, and that copy must hold the owners list the append points into.
+    String appendOwner =
+        JSON.createArrayNode()
+            .add(
+                JSON.createObjectNode()
+                    .put("op", "add")
+                    .put("path", "/owners/-")
+                    .set(
+                        "value",
+                        JSON.createObjectNode()
+                            .put("id", admin.getId().toString())
+                            .put("type", USER)))
+            .toString();
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            GROUPS_PATH + "/" + group.getId(),
+            appendOwner,
+            RequestOptions.builder()
+                .header("Content-Type", MediaType.APPLICATION_JSON_PATCH_JSON)
+                .build());
+
+    assertEquals(
+        List.of(admin.getId()),
+        getGroup(group.getName(), "owners").getOwners().stream()
+            .map(EntityReference::getId)
+            .toList());
   }
 
   private static void patchGroup(

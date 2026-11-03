@@ -21,6 +21,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.metrics.MetricAuthorization;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -68,6 +69,8 @@ public class PatchEntityTool implements McpTool {
   //   task                 restricted-field diff validation
   //   user                 isAdmin / isBot / roles / teams authorization
   //   workflow             connection-secret decryptOrNullify
+  // metric and metricGroup are not listed: their resources' checks are shared, and execute() runs
+  // them through MetricAuthorization.
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
       Set.of(
           Entity.ANNOUNCEMENT,
@@ -112,6 +115,7 @@ public class PatchEntityTool implements McpTool {
         securityContext,
         new OperationContext(entityType, jsonPatch),
         new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
+    MetricAuthorization.authorizePatch(authorizer, securityContext, entityType, fqn, jsonPatch);
 
     // The response carries the patched entity, so this write answers a read as well: apply the
     // per-entity visibility rules the authorize() above cannot see, since they live outside the
