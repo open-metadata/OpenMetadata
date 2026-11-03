@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import { applyPatch, Operation } from 'fast-json-patch';
 import { useQuery } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import {
@@ -77,6 +78,7 @@ let release: OntologyRelease;
 let review: OntologyReleaseReview;
 let historical: OntologyRelease | undefined;
 let activeReleaseRevision = 1;
+let reviewMissing = false;
 const renderPanel = async (
   canEdit = true,
   view: 'changes' | 'releases' = 'changes'
@@ -108,6 +110,7 @@ beforeEach(() => {
   (useIsAiMode as jest.Mock).mockReturnValue(false);
   historical = undefined;
   activeReleaseRevision = 1;
+  reviewMissing = false;
   get.mockReset();
   (APIClient.post as jest.MockedFunction<typeof APIClient.post>).mockReset();
   (APIClient.patch as jest.MockedFunction<typeof APIClient.patch>).mockReset();
@@ -234,6 +237,10 @@ beforeEach(() => {
       return { data: state };
     }
     if (url.endsWith('/review')) {
+      if (reviewMissing) {
+        throw new AxiosError('No open review', '404');
+      }
+
       return { data: review };
     }
     if (url.endsWith('/structure')) {
@@ -1763,7 +1770,13 @@ describe('publication flows', () => {
   it('withdraws an open request by closing its task and says the release is a draft again', async () => {
     setStage(Stage.InReview);
     review.requester = { id: id(2), type: 'user', name: 'editor' };
-    post.mockResolvedValue({ data: { id: review.task.id } });
+    post.mockImplementation(async () => {
+      setStage(Stage.Draft);
+      reviewMissing = true;
+      release.reviewTask = review.task.id;
+
+      return { data: { id: review.task.id } };
+    });
     await renderInRoute();
 
     await act(async () =>
@@ -1778,6 +1791,7 @@ describe('publication flows', () => {
     ).toHaveTextContent(
       'Review request for v1.5.0 withdrawn. The release is a draft again.'
     );
+    expect(await screen.findByTestId('ontology-request-review')).toBeEnabled();
   });
 
   it('publishes in one click with no reviewers: saves the draft, activates it, confirms and refreshes the version chip', async () => {

@@ -28,6 +28,7 @@ import {
   EntityStatus,
   OntologyRelease,
 } from '../../../generated/entity/data/ontologyRelease';
+import { Stage } from '../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../generated/type/ontologyState';
 import {
   activateOntologyRelease,
@@ -95,6 +96,11 @@ const releaseVersion = (
 const isDefinitiveWriteRejection = (error: unknown) =>
   isAxiosError(error) &&
   [400, 401, 403, 404, 409, 412, 422].includes(error.response?.status ?? 0);
+
+// A withdrawn request leaves its task on the Draft, and a closed task has no
+// review to read, so only a release past Draft looks the review up.
+const reviewTaskToRead = (stage: Stage | undefined, reviewTask?: string) =>
+  stage === Stage.Draft ? undefined : reviewTask;
 
 // A notice belongs to the ontology and user it was raised for, so switching
 // either hides it instead of announcing another scope's outcome.
@@ -278,15 +284,13 @@ export const useOntologyPublication = (
     Boolean(activeReleaseId),
     [state.isSuccess, working.isSuccess].every(Boolean)
   );
+  const reviewTask = reviewTaskToRead(
+    projection.data?.publicationStatus?.latest?.stage,
+    candidate.data?.reviewTask
+  );
   const review = useQuery({
-    queryKey: [
-      REVIEW_QUERY,
-      ontologyId,
-      currentId,
-      candidate.data?.reviewTask,
-      userId,
-    ],
-    enabled: Boolean(candidate.data?.reviewTask),
+    queryKey: [REVIEW_QUERY, ontologyId, currentId, reviewTask, userId],
+    enabled: Boolean(reviewTask),
     retry: false,
     gcTime: 0,
     queryFn: ({ signal }) => getOntologyReleaseReview(currentId ?? '', signal),
@@ -294,7 +298,7 @@ export const useOntologyPublication = (
   const candidateRead = currentId
     ? readPublicationQuery(candidate)
     : { kind: 'ready' as const, value: null };
-  const reviewRead = candidate.data?.reviewTask
+  const reviewRead = reviewTask
     ? readPublicationQuery(review)
     : { kind: 'ready' as const, value: null };
   const current =
@@ -313,9 +317,11 @@ export const useOntologyPublication = (
       [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontologyId],
       ['ontology-release-history', ontologyId],
       [RELEASE_QUERY, ontologyId],
-      [REVIEW_QUERY, ontologyId],
     ];
+    // A withdrawn request's review refetches once more before the Draft stage
+    // disables it; that read fails, and must not mark the whole panel failed.
     const independentKeys = [
+      [REVIEW_QUERY, ontologyId],
       ['ontology-release-events'],
       [ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY],
       [ONTOLOGY_STUDIO_MODEL_QUERY_KEY],
@@ -341,10 +347,7 @@ export const useOntologyPublication = (
     }
   }, [ontologyId, queryClient, scopeKey]);
   useEffect(() => {
-    if (
-      candidate.isSuccess &&
-      (!candidate.data.reviewTask || review.isSuccess)
-    ) {
+    if (candidate.isSuccess && (!reviewTask || review.isSuccess)) {
       void queryClient.invalidateQueries({
         queryKey: [PROJECTION_QUERY, ontologyId],
       });
@@ -353,7 +356,7 @@ export const useOntologyPublication = (
     candidate.dataUpdatedAt,
     review.dataUpdatedAt,
     candidate.isSuccess,
-    candidate.data?.reviewTask,
+    reviewTask,
     review.isSuccess,
     ontologyId,
     queryClient,

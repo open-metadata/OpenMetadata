@@ -1720,20 +1720,18 @@ const OntologyExplorerContent: React.FC = () => {
         <Tooltip
           isDisabled={!isAllOntologies}
           title={t('message.ontology-choose-ontology-to-publish')}>
-          <span data-testid="ontology-publication-trigger-wrapper">
-            <Button
-              color={isAiMode ? 'secondary-brand' : 'primary'}
-              data-testid="ontology-publication-trigger"
-              iconLeading={GitBranch01}
-              isDisabled={isAllOntologies}
-              size={headerActionSize}
-              onPress={() => {
-                setPublicationTab('changes');
-                setIsPublicationOpen(true);
-              }}>
-              {renderPublicationLabel()}
-            </Button>
-          </span>
+          <Button
+            color={isAiMode ? 'secondary-brand' : 'primary'}
+            data-testid="ontology-publication-trigger"
+            iconLeading={GitBranch01}
+            isDisabled={isAllOntologies}
+            size={headerActionSize}
+            onPress={() => {
+              setPublicationTab('changes');
+              setIsPublicationOpen(true);
+            }}>
+            {renderPublicationLabel()}
+          </Button>
         </Tooltip>
         {isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
