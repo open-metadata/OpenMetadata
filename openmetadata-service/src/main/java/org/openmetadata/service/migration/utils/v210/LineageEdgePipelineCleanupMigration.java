@@ -23,7 +23,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.lineage.LineageEdgePipeline;
 
 /**
  * Clears the {@code pipeline} reference from lineage edges that name something other than a pipeline
@@ -87,7 +87,7 @@ public final class LineageEdgePipelineCleanupMigration {
     LineageDetails details = JsonUtils.readValue(row.getJson(), LineageDetails.class);
     EntityReference pipeline = details.getPipeline();
     boolean isNonPipeline =
-        pipeline != null && !LineageRepository.isEdgePipelineType(pipeline.getType());
+        pipeline != null && !LineageEdgePipeline.isSupportedType(pipeline.getType());
     if (isNonPipeline) {
       logClearedReference(row, pipeline);
       details.setPipeline(null);

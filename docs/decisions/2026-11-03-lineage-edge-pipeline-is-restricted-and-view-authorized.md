@@ -1,7 +1,9 @@
 # A lineage edge's pipeline must be a pipeline or stored procedure, and linking one needs view access to it
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-03 (type predicate extracted to
+  `LineageEdgePipeline` so the cleanup migration shares it without initializing the search client;
+  PATCH authorizes the pipeline it resolves from the row it is about to write)
 - **Deciders:** harshsoni2024
 - **Guard:** `LineageEdgePipelineAuthorizationIT`, `LineageRepositoryTest`
 - **Related:** scanner finding ANT-2026-RL0ZDKB8 (open-metadata/openmetadata-collate#7797),
@@ -21,7 +23,8 @@ and deny/domain rules. All four lineage write routes and the OpenLineage ingest 
 ## Decision
 
 - **Type.** `lineageDetails.pipeline` may be only a `pipeline` or a `storedProcedure`
-  (`LineageRepository.isEdgePipelineType`). Any other type is refused with 400 before anything is
+  (`LineageEdgePipeline.isSupportedType`, a pure predicate the repository, the resources and the
+  cleanup migration share without pulling in the search client). Any other type is refused with 400 before anything is
   stored, on all four lineage write routes; the OpenLineage ingest path resolves a pipeline from the
   event and so never names another type. An edge already stored with another type is indexed without
   the entity, never with a copy of it.
@@ -29,7 +32,10 @@ and deny/domain rules. All four lineage write routes and the OpenLineage ingest 
   on that pipeline, on top of `EDIT_LINEAGE` on the two ends — because the edge copies it into a
   document every user can read. A pipeline already on the edge is not re-checked: ingestion re-sends
   it on every write and it may have been deleted since. `LineageRepository.newlyLinkedEdgePipeline`
-  is the single decision both `LineageResource` and `OpenLineageResource` apply. `VIEW_BASIC` is the
+  is the single decision both `LineageResource` and `OpenLineageResource` apply. A PATCH resolves and
+  authorizes the pipeline from the same row it is about to persist, inside the repository, so a
+  concurrent write cannot swap in a different, unviewable pipeline between the check and the insert.
+  `VIEW_BASIC` is the
   minimum that closes the read; requiring `EDIT_LINEAGE` on the pipeline instead would also cover the
   service-level edges drawn through its service, and remains a one-line change if wanted.
 - **Existing data.** A one-time 2.1.0 data migration (`LineageEdgePipelineCleanupMigration`) clears

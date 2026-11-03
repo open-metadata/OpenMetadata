@@ -46,6 +46,7 @@ import org.openmetadata.service.migration.utils.v210.DataContractEntityReference
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
+import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
@@ -95,6 +96,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
             mockStatic(GlossaryAutomationReviewMigration.class);
+        MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
+            mockStatic(LineageEdgePipelineCleanupMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
         // v206, v207 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
@@ -134,6 +137,8 @@ class IngestionPipelineMigrationEntryPointTest {
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
+      lineageEdgeCleanup.verify(
+          () -> LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(collectionDAO));
     }
   }
 

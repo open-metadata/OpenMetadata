@@ -74,7 +74,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
@@ -149,23 +148,20 @@ public class LineageResource {
   private void authorizeEdgePipeline(
       SecurityContext securityContext, UUID fromId, UUID toId, LineageDetails requested) {
     EntityReference requestedPipeline = requested == null ? null : requested.getPipeline();
-    EntityReference pipeline =
+    authorizeNewlyLinkedEdgePipeline(
+        securityContext,
         LineageRepository.newlyLinkedEdgePipeline(
-            requestedPipeline, dao.getLineageDetails(fromId, toId));
-    if (pipeline != null) {
-      authorizeLineageReference(securityContext, pipeline, MetadataOperation.VIEW_BASIC);
-    }
+            requestedPipeline, dao.getLineageDetails(fromId, toId)));
   }
 
-  /** The pipeline a PATCH leaves on the edge is the one to authorize. */
-  private void authorizePatchedEdgePipeline(
-      SecurityContext securityContext, UUID fromId, UUID toId, JsonPatch patch) {
-    LineageDetails stored = dao.getLineageDetails(fromId, toId);
-    EntityReference patched =
-        stored == null
-            ? null
-            : JsonUtils.applyPatch(stored, patch, LineageDetails.class).getPipeline();
-    EntityReference pipeline = LineageRepository.newlyLinkedEdgePipeline(patched, stored);
+  /**
+   * ViewBasic on a pipeline a write newly links to an edge, when there is one; the edge copies it
+   * into the downstream entity's world-readable search document. PATCH runs this from inside the
+   * repository, against the resolved pipeline it is about to persist, so a concurrent write cannot
+   * substitute a different, unviewable pipeline between the check and the insert.
+   */
+  private void authorizeNewlyLinkedEdgePipeline(
+      SecurityContext securityContext, EntityReference pipeline) {
     if (pipeline != null) {
       authorizeLineageReference(securityContext, pipeline, MetadataOperation.VIEW_BASIC);
     }
@@ -1264,9 +1260,14 @@ public class LineageResource {
         securityContext,
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, toId, null));
-    authorizePatchedEdgePipeline(securityContext, fromId, toId, patch);
     return dao.patchLineageEdge(
-        fromEntity, fromId, toEntity, toId, patch, securityContext.getUserPrincipal().getName());
+        fromEntity,
+        fromId,
+        toEntity,
+        toId,
+        patch,
+        securityContext.getUserPrincipal().getName(),
+        pipeline -> authorizeNewlyLinkedEdgePipeline(securityContext, pipeline));
   }
 
   @PATCH
@@ -1317,9 +1318,14 @@ public class LineageResource {
     EntityReference to = getLineageReferenceByName(toEntity, toFQN, Include.NON_DELETED);
     authorizeLineageReference(securityContext, from);
     authorizeLineageReference(securityContext, to);
-    authorizePatchedEdgePipeline(securityContext, from.getId(), to.getId(), patch);
     return dao.patchLineageEdgeByFQN(
-        fromEntity, fromFQN, toEntity, toFQN, patch, securityContext.getUserPrincipal().getName());
+        fromEntity,
+        fromFQN,
+        toEntity,
+        toFQN,
+        patch,
+        securityContext.getUserPrincipal().getName(),
+        pipeline -> authorizeNewlyLinkedEdgePipeline(securityContext, pipeline));
   }
 
   @DELETE
