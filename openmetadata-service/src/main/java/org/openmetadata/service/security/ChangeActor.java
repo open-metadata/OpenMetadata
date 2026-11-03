@@ -32,6 +32,7 @@ public record ChangeActor(String userName, String impersonatedBy, boolean system
    * records its own writes under, as the entity updater also treats it.
    */
   public static ChangeActor recorded(final String userName, final String impersonatedBy) {
-    return new ChangeActor(userName, impersonatedBy, ADMIN_USER_NAME.equalsIgnoreCase(userName));
+    return new ChangeActor(
+        userName, impersonatedBy, SecurityUtil.sameIdentifier(ADMIN_USER_NAME, userName));
   }
 }

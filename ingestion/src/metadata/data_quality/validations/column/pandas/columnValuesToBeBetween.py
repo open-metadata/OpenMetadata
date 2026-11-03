@@ -39,7 +39,7 @@ from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
     aggregate_others_statistical_pandas,
 )
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.entity.data.table import DataType, TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import is_date_time
@@ -58,14 +58,26 @@ class ColumnValuesToBeBetweenValidator(
 ):
     """Validator for column values to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | None:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | datetime | None:
         """compute result of the test case
 
         Args:
             metric: metric
             column: column
         """
-        return self.run_dataframe_results(self.runner, metric, column)
+        if column.type not in {DataType.DATE, DataType.DATETIME}:
+            return self.run_dataframe_results(self.runner, metric, column)
+
+        # Profiler datetime metrics are epoch milliseconds; validation needs datetimes
+        # with their original precision to compare them with the configured bounds.
+        aggregate = min if metric == Metrics.min else max
+        result = None
+        for df in self.runner:
+            values = pd.to_datetime(df[column.name], utc=True).dt.tz_localize(None)
+            chunk = values.min() if metric == Metrics.min else values.max()
+            if pd.notna(chunk):
+                result = chunk if result is None else aggregate(result, chunk)
+        return result
 
     def _run_violation_count(self, column: SQALikeColumn | Column, test_params: dict) -> tuple[int, int]:
         """Count the rows read and the values falling outside the window

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -228,6 +229,33 @@ class EntityRepositoryBulkFieldsTest {
             eq(FolderRepository.FOLDER_ENTITY),
             eq(Relationship.CONTAINS.ordinal()),
             eq(ContextFileRepository.CONTEXT_FILE_ENTITY));
+  }
+
+  @Test
+  void folderChildrenCount_loadsForTheSearchIndexWithoutClearingOtherFields() {
+    Folder f0 = folder("drive.f0").withDescription("kept");
+    when(relationshipDAO.countNonDeletedChildFilesBatch(
+            anyList(), anyString(), anyInt(), anyString()))
+        .thenReturn(
+            List.of(
+                CollectionDAO.EntityRelationshipCount.builder().id(f0.getId()).count(2).build()));
+
+    newFolderRepository().loadFieldsForSearchIndex(List.of(f0), Set.of("childrenCount"));
+
+    // Without a registered fetcher this throws, and every folder write lands in the retry queue.
+    assertEquals(2, f0.getChildrenCount());
+    assertEquals("kept", f0.getDescription());
+  }
+
+  @Test
+  void loadFieldsForSearchIndex_rejectsAFieldWithNoFetcher() {
+    // Folder parent is loaded in setFieldsInBulk, not by a fetcher, so the search write path
+    // cannot load it and must fail loud rather than index it as missing.
+    FolderRepository repository = newFolderRepository();
+    List<Folder> folders = List.of(folder("drive.f0"));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.loadFieldsForSearchIndex(folders, Set.of("parent")));
   }
 
   @Test

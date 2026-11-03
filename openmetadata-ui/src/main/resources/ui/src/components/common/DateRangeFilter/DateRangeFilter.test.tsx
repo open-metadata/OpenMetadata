@@ -26,6 +26,7 @@ type MockDateRangePickerProps = Pick<
   | 'onOpenChange'
   | 'size'
   | 'fullWidth'
+  | 'placeholder'
 >;
 
 // The core DateRangePicker speaks `@internationalized/date` values. We render a
@@ -42,15 +43,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onOpenChange,
     size,
     fullWidth,
+    placeholder,
   }: MockDateRangePickerProps) => (
     <div
       data-full-width={String(Boolean(fullWidth))}
+      data-placeholder={placeholder}
       data-size={size}
       data-testid="date-range-picker">
       <span data-testid="picker-value">
         {value ? JSON.stringify(value) : 'null'}
       </span>
-      <button data-testid="picker-apply" onClick={onApply}>
+      <button data-testid="picker-apply" onClick={() => onApply?.()}>
         apply
       </button>
       <button data-testid="picker-cancel" onClick={onCancel}>
@@ -84,6 +87,17 @@ describe('DateRangeFilter', () => {
     render(<DateRangeFilter onApply={onApply} />);
 
     expect(screen.getByTestId('date-range-picker')).toBeInTheDocument();
+  });
+
+  it('should pass the placeholder to the picker', () => {
+    render(
+      <DateRangeFilter placeholder="Last Run: All time" onApply={onApply} />
+    );
+
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-placeholder',
+      'Last Run: All time'
+    );
   });
 
   it('should render with null value when no timestamps are provided', () => {

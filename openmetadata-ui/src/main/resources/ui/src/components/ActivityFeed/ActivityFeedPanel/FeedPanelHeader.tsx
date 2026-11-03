@@ -16,37 +16,15 @@ import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import CloseIcon from '../../../components/Modals/CloseIcon.component';
-import { getEntityName } from '../../../utils/EntityNameUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityFieldDisplay } from '../../../utils/FeedUtils';
-import {
-  entityDisplayName,
-  getEntityField,
-  getEntityFQN,
-  getEntityType,
-} from '../../../utils/FeedUtilsPure';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   className,
-  entityLink,
-  noun,
-  feed,
   onShowNewConversation,
   onCancel,
   hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
-  // Prefer the entity reference over parsing `entityLink`: a thread created
-  // from an activity event links the changed field (`::entityStatus`), which
-  // the EntityLink grammar does not list, so ANTLR logs a syntax error.
-  const entityRef = feed?.entityRef;
-  const entityType = entityRef?.fullyQualifiedName
-    ? entityRef.type
-    : getEntityType(entityLink);
-  const entityFQN = entityRef?.fullyQualifiedName ?? getEntityFQN(entityLink);
-  const entityField = getEntityField(entityLink);
 
   return (
     <header
@@ -54,45 +32,21 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
         'd-flex justify-between items-center p-y-md',
         className
       )}>
-      <p data-testid="header-title">
-        <span data-testid="header-noun">
-          {noun ?? t('label.conversation')} {t('label.on-lowercase')}{' '}
-        </span>
-        <span className="font-medium" data-testid="entity-attribute">
-          {entityField ? (
-            getEntityFieldDisplay(entityField)
-          ) : (
-            <Link
-              className="break-all"
-              data-testid="entitylink"
-              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-              <span>
-                {entityRef
-                  ? getEntityName(entityRef)
-                  : entityDisplayName(entityType, entityFQN)}
-              </span>
-            </Link>
-          )}
-        </span>
-      </p>
+      <p data-testid="header-title">{t('label.conversation')}</p>
       <div className="d-flex items-center">
         {onShowNewConversation ? (
           <Button
-            aria-label={t('label.start-entity', {
-              entity: t('label.conversation-lowercase'),
-            })}
-            color="primary"
+            color="secondary"
             data-testid="add-new-conversation"
             iconLeading={Plus}
             size="sm"
-            tooltip={t('label.start-entity', {
-              entity: t('label.conversation-lowercase'),
-            })}
-            tooltipPlacement="bottom"
             onPress={() => {
               onShowNewConversation(true);
-            }}
-          />
+            }}>
+            {t('label.new-entity', {
+              entity: t('label.conversation-lowercase'),
+            })}
+          </Button>
         ) : null}
         {hideCloseIcon ? null : (
           <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />

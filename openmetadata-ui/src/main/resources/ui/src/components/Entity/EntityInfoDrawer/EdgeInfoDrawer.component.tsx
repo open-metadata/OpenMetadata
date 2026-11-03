@@ -78,7 +78,7 @@ const getUserTimeValue = (user?: string, timestamp?: number) => {
 
 type OverviewDataItem = {
   name: string;
-  value?: unknown;
+  value?: React.ReactNode;
   url?: string;
   isLink?: boolean;
   visible?: string[];
@@ -247,7 +247,7 @@ const EdgeInfoDrawer = ({
   const [edgeData, setEdgeData] = useState<
     Array<{
       name: string;
-      value?: unknown;
+      value?: React.ReactNode;
       url?: string;
       isLink?: boolean;
       visible?: string[];

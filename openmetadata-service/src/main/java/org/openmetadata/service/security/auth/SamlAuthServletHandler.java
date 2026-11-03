@@ -10,6 +10,7 @@ import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.exception.SAMLException;
+import com.onelogin.saml2.settings.Saml2Settings;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.BadRequestException;
@@ -51,6 +52,7 @@ import org.openmetadata.service.security.SamlIdentityResolver;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.security.saml.SamlResponseValidator;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.session.SessionRefreshInProgressException;
 import org.openmetadata.service.security.session.SessionService;
@@ -273,7 +275,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
 
-      Auth auth = new Auth(SamlSettingsHolder.getSaml2Settings(), wrappedRequest, wrappedResponse);
+      Saml2Settings samlSettings = SamlSettingsHolder.getSaml2Settings();
+      Auth auth = new Auth(samlSettings, wrappedRequest, wrappedResponse);
       auth.processResponse();
 
       if (!auth.isAuthenticated()) {
@@ -287,6 +290,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, errorReason);
         return;
       }
+      SamlResponseValidator.validate(samlSettings, wrappedRequest);
 
       // Extract user information from SAML response
       SamlIdentityResolver.ResolvedSamlIdentity identity = resolveSamlIdentity(auth);
@@ -374,6 +378,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid SAML redirect URI in callback", e);
       sendError(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+    } catch (AuthenticationException e) {
+      LOG.warn("SAML callback rejected: {}", e.getMessage());
+      sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
     } catch (Exception e) {
       LOG.error("Error processing SAML callback", e);
       sendError(

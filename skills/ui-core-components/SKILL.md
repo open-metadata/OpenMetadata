@@ -149,7 +149,7 @@ the text overflows instead of wrapping.
 
 ```tsx
 <div className="tw:relative tw:min-h-60">
-  <NoDataPlaceholder description={t('message.no-data-available')} />
+  <NoDataPlaceholder title={t('message.no-data-available')} />
 </div>
 ```
 

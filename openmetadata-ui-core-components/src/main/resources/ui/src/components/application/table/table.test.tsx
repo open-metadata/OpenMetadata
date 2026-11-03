@@ -59,6 +59,35 @@ describe('Table header accessibility', () => {
   });
 });
 
+describe('Table header alignment', () => {
+  it('starts header content by default and centres it on request', () => {
+    render(
+      <Table aria-label="aligned-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+          <Table.Head align="center" id="allowed">
+            Allowed
+          </Table.Head>
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="r1">
+            <Table.Cell>alpha</Table.Cell>
+            <Table.Cell>yes</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const content = (name: string) =>
+      screen.getByRole('columnheader', { name }).firstElementChild;
+
+    expect(content('Name')).not.toHaveClass('tw:justify-center');
+    expect(content('Allowed')).toHaveClass('tw:justify-center');
+  });
+});
+
 describe('Table sizes', () => {
   it('applies the compact scale', () => {
     renderTable({ size: 'compact' });
@@ -82,6 +111,26 @@ describe('Table sizes', () => {
     renderTable();
 
     expect(screen.getAllByRole('row')[1]).toHaveClass('tw:h-18');
+  });
+});
+
+describe('Table variant', () => {
+  const container = () => screen.getByRole('grid').parentElement;
+
+  it('leaves the container unframed by default', () => {
+    renderTable();
+
+    expect(container()).not.toHaveClass('tw:bg-primary_alt');
+  });
+
+  it('frames the container on the muted step with a single-layer hover', () => {
+    renderTable({ variant: 'muted' });
+
+    expect(container()).toHaveClass(
+      'tw:bg-primary_alt',
+      'tw:dark:border-primary',
+      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover'
+    );
   });
 });
 
@@ -242,5 +291,22 @@ describe('TableCard theme roles', () => {
       'tw:after:z-20'
     );
     expect(header).toHaveClass('tw:bg-surface', 'tw:border-subtle');
+  });
+
+  it('muted variant sits on primary_alt with a visible edge and row hover', () => {
+    render(<TableCard.Root data-testid="table-card" variant="muted" />);
+    const card = screen.getByTestId('table-card');
+
+    expect(card).toHaveClass(
+      'tw:bg-primary_alt',
+      'tw:after:outline-secondary',
+      'tw:dark:after:outline-primary',
+      'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
+      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
+      // Clamped markdown must fade into the muted row, not the surface.
+      'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!'
+    );
+    expect(card).not.toHaveClass('tw:bg-surface');
+    expect(card).not.toHaveClass('tw:after:outline-subtle');
   });
 });

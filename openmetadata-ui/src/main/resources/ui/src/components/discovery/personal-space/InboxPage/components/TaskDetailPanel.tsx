@@ -62,6 +62,7 @@ import OntologyReviewPanel from '../../../../governance/ontology/OntologyReviewP
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
+  getProposingAgent,
   getTaskDetailDescriptor,
   resolveIncidentTestCaseFqn,
   withExistingValues,
@@ -243,6 +244,7 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   // A closed task reads as its outcome — "Rejected by harsh.soni on Jul 21,
   // 2026" — led by whoever decided it, rather than by its request.
   const resolver = isTaskOpen(task) ? undefined : task.resolution?.resolvedBy;
+  const agent = resolver ? undefined : getProposingAgent(task, t);
   const person = resolver ?? task.createdBy;
   const text = resolver
     ? t('message.task-outcome-by-on', {
@@ -251,17 +253,18 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
         date: formatInboxDate(task.resolution?.resolvedAt),
       })
     : t(subtitleKey, {
-        user: getEntityName(task.createdBy),
+        user: agent ?? getEntityName(task.createdBy),
         time: getRelativeTime(task.createdAt),
       });
 
   return (
-    <Box align="center" gap={2}>
-      {person && (
+    <Box align="center" data-testid="task-byline" gap={2}>
+      {(agent || person) && (
         <ProfilePicture
           matchRingToFill
-          displayName={getEntityName(person)}
-          name={person.name ?? ''}
+          displayName={agent ?? getEntityName(person)}
+          isAgent={Boolean(agent)}
+          name={person?.name ?? ''}
           width="20"
         />
       )}
@@ -828,7 +831,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       </Box>
 
       <Box
-        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4 tw:dark:bg-secondary"
+        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         direction="col"
         gap={2}>
         {/* A soft fade into the card above the footer, so the activity reads

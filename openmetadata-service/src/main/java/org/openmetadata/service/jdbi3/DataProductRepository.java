@@ -83,6 +83,7 @@ import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
@@ -147,6 +148,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("experts", this::fetchAndSetExperts);
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return relabeledByReference(super.getSearchPropagationDescriptors());
   }
 
   @Override
@@ -294,10 +300,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     fieldDeleted(change, FIELD_DOMAINS, JsonUtils.pojoToJson(removedDomains));
     updated.setChangeDescription(change);
 
-    String versionExtension = EntityUtil.getVersionExtension(DATA_PRODUCT, original.getVersion());
-    daoCollection
-        .entityExtensionDAO()
-        .insert(original.getId(), versionExtension, DATA_PRODUCT, JsonUtils.pojoToJson(original));
+    storeVersions(List.of(original));
     storeEntity(updated, true);
     invalidate(updated);
     createAndInsertChangeEvent(original, updated, change, ENTITY_UPDATED);
@@ -536,8 +539,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final String opposite =
           oppositePort(relationship) == Relationship.INPUT_PORT ? "input" : "output";
       return oppositePorts.contains(ref.getId())
-          ? "Asset '%s' is already part of %s ports and cannot be added to %s"
-              .formatted(ref.getFullyQualifiedName(), opposite, portField(relationship))
+          ? "Asset '%s' is already an %s port of this data product; an asset cannot be both an input and an output port"
+              .formatted(ref.getFullyQualifiedName(), opposite)
           : null;
     }
 

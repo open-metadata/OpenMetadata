@@ -47,6 +47,14 @@ const RANGE_COLUMNS: { id: RangeKey; labelKey: string }[] = [
   { id: 'lte', labelKey: 'label.less-than-or-equal-to' },
 ];
 
+const getColumnClassName = (columnId: string, numericClassName: string) => {
+  if (NUMERIC_COLUMNS.has(columnId)) {
+    return numericClassName;
+  }
+
+  return columnId === 'actions' ? 'tw:w-20' : undefined;
+};
+
 const FieldValueBoostTable = ({
   boosts,
   isCompact = false,
@@ -117,7 +125,7 @@ const FieldValueBoostTable = ({
   };
 
   return (
-    <TableCard.Root size="compact">
+    <TableCard.Root size="compact" variant="muted">
       <Box
         align="center"
         className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
@@ -141,11 +149,10 @@ const FieldValueBoostTable = ({
           <Table.Header columns={columns}>
             {(column) => (
               <Table.Head
-                className={
-                  NUMERIC_COLUMNS.has(column.id)
-                    ? 'tw:[&>div]:justify-end'
-                    : undefined
-                }
+                className={getColumnClassName(
+                  column.id,
+                  'tw:[&>div]:justify-end'
+                )}
                 id={column.id}
                 isRowHeader={column.id === 'field'}
                 key={column.id}
@@ -170,11 +177,10 @@ const FieldValueBoostTable = ({
                 key={boost.field}>
                 {(column) => (
                   <Table.Cell
-                    className={
-                      NUMERIC_COLUMNS.has(column.id)
-                        ? 'tw:text-right tw:tabular-nums'
-                        : undefined
-                    }
+                    className={getColumnClassName(
+                      column.id,
+                      'tw:text-right tw:tabular-nums'
+                    )}
                     key={column.id}>
                     {renderCell(boost, column.id)}
                   </Table.Cell>

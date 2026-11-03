@@ -24,11 +24,13 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.ingestion.source import sqa_types
 from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
 from metadata.profiler.orm.converter.base import _safe_orm_attr, ometa_to_sqa_orm
 from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
-from metadata.profiler.orm.registry import CustomTypes
+from metadata.profiler.orm.registry import NOT_COMPUTE, CustomTypes
+from metadata.profiler.orm.types import custom_xml
 
 
 @patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
@@ -298,3 +300,102 @@ def test_safe_orm_attr_collision_between_normal_and_remapped_dunder():
 
     # Both keys are distinct — no column was silently overwritten.
     assert real_key != dunder_key
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Mssql, "mssql_xml_table"),
+        (DatabaseServiceType.Postgres, "postgres_xml_table"),
+    ],
+)
+def test_xml_columns_are_mapped(mock_schema, mock_database, service_type, table_name):
+    """An XML column holds a text document every driver returns as a string, but it had
+    no entry in the type map, so it fell back to CustomTypes.UNDETERMINED and its sample
+    data persisted as the literal "OPENMETADATA_UNDETERMIND[<root/>]" instead of the
+    document (found by the MSSQL CLI E2E v2 suite).
+
+    It maps to a TEXT subclass rather than TEXT itself: `NOT_COMPUTE` matches on the ORM
+    type's class name, so plain TEXT would have started running distinct/unique/histogram
+    metrics on a type most dialects cannot group or compare.
+    """
+    columns = [Column(name="payload", dataType=DataType.XML)]
+
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=columns,
+        serviceType=service_type,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    payload_type = orm_table.__table__.columns["payload"].type
+    assert not isinstance(payload_type, CustomTypes.UNDETERMINED.value)
+    assert isinstance(payload_type, sqlalchemy.TEXT)
+    # core._prepare_column_metrics and UniqueCount both gate on this name.
+    assert type(payload_type).__name__ in NOT_COMPUTE
+
+
+def test_xml_reverse_map_stays_separate_from_text():
+    """metric_filter picks a column's metrics off the reverse map, so XML needs its own
+    entry: sharing TEXT's would apply an XML metric configuration to every TEXT column.
+    """
+    reverse_map = CommonMapTypes.map_sqa_to_om_types()
+
+    assert reverse_map[custom_xml.XML] == {DataType.XML}
+    assert reverse_map[sqlalchemy.TEXT] == {DataType.TEXT, DataType.MEDIUMTEXT}
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Postgres, "postgres_geometry_table"),
+        (DatabaseServiceType.Mysql, "mysql_geometry_table"),
+        (DatabaseServiceType.Mssql, "mssql_geometry_table"),
+        (DatabaseServiceType.AzureSQL, "azuresql_geometry_table"),
+    ],
+)
+def test_geometry_columns_are_mapped(mock_schema, mock_database, service_type, table_name):
+    """A geometry column had no entry in the type map, so its sample data persisted as
+    "OPENMETADATA_UNDETERMIND[<wkb hex>]" (#33157). It must map to a type that decodes
+    WKB while `NOT_COMPUTE` still skips its metrics by class name.
+    """
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=[Column(name="shape", dataType=DataType.GEOMETRY)],
+        serviceType=service_type,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    shape_type = orm_table.__table__.columns["shape"].type
+    assert isinstance(shape_type, CustomTypes.GEOMETRY.value)
+    assert not isinstance(shape_type, CustomTypes.UNDETERMINED.value)
+    assert type(shape_type).__name__ in NOT_COMPUTE
+
+
+def test_redshift_mapper_does_not_leak_geometry_into_other_dialects():
+    """The Redshift mapper used to update the shared CommonMapTypes._TYPE_MAP on init,
+    remapping geometry to a bare string for every dialect built afterwards."""
+    from sqlalchemy_redshift.dialect import GEOMETRY
+
+    from metadata.profiler.orm.converter.redshift.converter import RedshiftMapTypes
+
+    redshift_mapper = RedshiftMapTypes()
+    geometry_col = Column(name="shape", dataType=DataType.GEOMETRY)
+
+    assert CommonMapTypes().return_custom_type(geometry_col, DatabaseServiceType.Postgres) is CustomTypes.GEOMETRY.value
+    assert redshift_mapper.return_custom_type(geometry_col, DatabaseServiceType.Redshift) is GEOMETRY
+
+
+def test_geometry_reverse_map_stays_separate_from_geography():
+    reverse_map = CommonMapTypes.map_sqa_to_om_types()
+
+    assert reverse_map[CustomTypes.GEOMETRY.value] == {DataType.GEOMETRY}
+    assert reverse_map[sqa_types.SQASGeography] == {DataType.GEOGRAPHY}

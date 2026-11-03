@@ -130,10 +130,6 @@ const IncidentManagerTable = ({
             record?.testCaseReference?.fullyQualifiedName
           )}
           isCompactView={false}
-          multiple={{
-            user: false,
-            team: false,
-          }}
           owners={value?.assignee ? [value.assignee] : []}
           placeHolder={t('label.no-entity', {
             entity: t('label.assignee'),

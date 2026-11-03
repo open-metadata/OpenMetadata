@@ -19,6 +19,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -66,7 +67,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   const navigationRef = useRef(0);
 
   const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
+    () =>
+      Boolean(paging.before || paging.after) ||
+      paging.total > pageSize ||
+      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
+      pageSize !== PAGE_SIZE_BASE,
     [paging, pageSize]
   );
 
@@ -202,10 +207,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     return (
       <Box
         align="center"
-        className="tw:min-h-64 tw:px-8 tw:relative"
+        className="tw:min-h-64 tw:flex-1 tw:px-8 tw:relative"
         data-testid="personas-landing-empty"
         justify="center">
         <NoDataPlaceholder
+          icon={<PersonaIcon />}
           title={t('label.no-entity-found', {
             entity: t('label.persona-plural'),
           })}
@@ -251,7 +257,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
                       });
                     }
                   }}>
-                  <Card.Content>
+                  <Card.Content className="tw:px-3">
                     <Box className="tw:min-w-0" direction="col" gap={2}>
                       <Box
                         align="center"

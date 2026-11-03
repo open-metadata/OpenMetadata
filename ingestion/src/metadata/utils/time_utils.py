@@ -15,8 +15,10 @@ Time utility functions
 
 from datetime import datetime, time, timedelta
 from datetime import timezone as dt_timezone
-from math import floor
+from math import floor, isfinite
 from zoneinfo import ZoneInfo
+
+from dateutil.parser import isoparse
 
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.utils.deprecation import deprecated
@@ -151,34 +153,41 @@ def get_end_of_day_timestamp_mill(
 def convert_timestamp(timestamp: str) -> int | float:
     """Convert a timestamp string to a Unix timestamp in seconds.
 
-    Handles three input formats:
-    - ISO-format / human-readable datetime strings (e.g. ``'2023-02-01 05:00:00'``,
-      ``'2023-02-01T05:00:00'``): parsed via ``datetime.fromisoformat`` and returned
-      as a UTC seconds-since-epoch float.
-    - Numeric millisecond strings (13+ digits): divided by 1000 to give seconds.
-    - Numeric second strings (< 13 digits): returned as an int directly.
+    Accepted formats:
+        - finite epoch seconds, including fractions (e.g. ``"1669852800.125"``)
+        - epoch milliseconds when the absolute numeric value is at least 10**12
+          (the existing 13-digit cutoff, independent of signs and formatting)
+        - ISO-8601 datetime (e.g. ``"2022-12-01T00:00:00"``, ``"2022-12-01 00:00:00.123"``,
+          ``"2022-12-01T00:00:00Z"``). Naive datetimes are interpreted as UTC.
 
     Args:
-        timestamp (str): timestamp string in one of the formats above.
-
+        timestamp (str): timestamp value; numeric inputs take precedence over ISO dates
     Returns:
-        int | float: Unix timestamp in seconds.
+        int | float: Unix timestamp in seconds
+    Raises:
+        ValueError: if the value matches none of the accepted formats
     """
-    # Numeric strings (pure digits, or digits with a leading minus) are unix
-    # timestamps — handle them first so that compact date strings like "20230201"
-    # are never accidentally parsed as an ISO date on Python 3.11+.
-    if not timestamp.lstrip("-").isdigit():
+    value = str(timestamp).strip()
+    error = (
+        f"Could not convert timestamp {timestamp!r}: expected finite epoch seconds, "
+        "epoch milliseconds or an ISO-8601 datetime string"
+    )
+    try:
+        numeric = float(value)
+    except ValueError:
         try:
-            dt = datetime.fromisoformat(timestamp)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=dt_timezone.utc)
-            return dt.timestamp()
-        except ValueError:
-            pass
+            parsed = isoparse(value)
+        except ValueError as exc:
+            raise ValueError(error) from exc
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt_timezone.utc)
+        return parsed.timestamp()
 
-    if len(timestamp) < 13:  # check for ms timestamp
-        return int(timestamp)
-    return float(timestamp) / 1000
+    if not isfinite(numeric):
+        raise ValueError(error)
+    if abs(numeric) >= 1_000_000_000_000:
+        return numeric / 1000
+    return int(numeric) if numeric.is_integer() else numeric
 
 
 def utc_from_timestamp(ts: int | float) -> datetime:
