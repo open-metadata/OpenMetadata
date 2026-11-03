@@ -5890,6 +5890,7 @@
     "ontology-review-created-by-you": "Hai creato questa attività. In attesa dei revisori.",
     "ontology-review-event-window": "È visualizzata una pagina degli eventi della versione, con i commenti dell’attività e i voti registrati.",
     "ontology-review-lock-unavailable": "Il blocco della revisione non è disponibile. Aggiorna prima di modificare.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

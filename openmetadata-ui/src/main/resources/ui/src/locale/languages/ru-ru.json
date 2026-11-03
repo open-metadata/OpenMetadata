@@ -5890,6 +5890,7 @@
     "ontology-review-created-by-you": "Вы создали эту задачу. Ожидание проверяющих.",
     "ontology-review-event-window": "Показана одна страница событий выпуска, включая комментарии задачи и записанные голоса.",
     "ontology-review-lock-unavailable": "Блокировка проверки недоступна. Обновите данные перед редактированием.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

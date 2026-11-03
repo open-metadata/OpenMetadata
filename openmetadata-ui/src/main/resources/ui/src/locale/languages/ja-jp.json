@@ -5890,6 +5890,7 @@
     "ontology-review-created-by-you": "このタスクを作成しました。レビュアーを待っています。",
     "ontology-review-event-window": "リリースイベントの1ページを表示しています。タスクのコメントと記録された投票を含みます。",
     "ontology-review-lock-unavailable": "レビューロックを取得できません。編集する前に更新してください。",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

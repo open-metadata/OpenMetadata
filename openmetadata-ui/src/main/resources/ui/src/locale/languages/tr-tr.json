@@ -5890,6 +5890,7 @@
     "ontology-review-created-by-you": "Bu görevi siz oluşturdunuz. İnceleyenler bekleniyor.",
     "ontology-review-event-window": "Görev yorumları ve kaydedilen oylarla birlikte sürüm olaylarının bir sayfası gösteriliyor.",
     "ontology-review-lock-unavailable": "İnceleme kilidi kullanılamıyor. Düzenlemeden önce yenileyin.",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",

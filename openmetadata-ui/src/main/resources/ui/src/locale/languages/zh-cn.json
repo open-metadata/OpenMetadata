@@ -5890,6 +5890,7 @@
     "ontology-review-created-by-you": "你创建了此任务。正在等待审核者。",
     "ontology-review-event-window": "显示一页版本事件，包括任务评论和已记录的投票。",
     "ontology-review-lock-unavailable": "审核锁定状态不可用。请刷新后再编辑。",
+    "ontology-review-no-reviewer-assigned": "In review · no reviewer assigned",
     "ontology-review-open-count_one": "{{count}} review in progress",
     "ontology-review-open-count_other": "{{count}} reviews in progress",
     "ontology-review-ready-to-publish": "In review · ready to publish",
