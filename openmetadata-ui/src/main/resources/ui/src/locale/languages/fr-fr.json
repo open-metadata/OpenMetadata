@@ -5820,6 +5820,7 @@
     "ontology-import-issues-count": "{{count}} élément(s) ont été ignorés ou nécessitent une révision",
     "ontology-import-summary": "{{terms}} terme(s), {{relations}} relation(s), {{mappings}} correspondance(s) de concepts et {{properties}} propriété(s) personnalisée(s) trouvé(s).",
     "ontology-imported-successfully": "Ontologie importée avec succès",
+    "ontology-install-name-taken": "An ontology named {{name}} already exists, so nothing was imported. Try again and the new ontology gets a free name.",
     "ontology-iri-chain-per-line": "One IRI per line; the order is the property chain order.",
     "ontology-iri-per-line": "Un IRI par ligne ; l’ordre de la chaîne de propriétés est conservé.",
     "ontology-iri-picker-hint": "Search by name, or paste a full IRI and choose Add.",

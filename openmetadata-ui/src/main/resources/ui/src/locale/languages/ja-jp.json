@@ -5820,6 +5820,7 @@
     "ontology-import-issues-count": "{{count}} 件の項目がスキップされたか、確認が必要です",
     "ontology-import-summary": "{{terms}} 件の用語、{{relations}} 件の関係、{{mappings}} 件の概念マッピング、{{properties}} 件のカスタムプロパティが見つかりました。",
     "ontology-imported-successfully": "オントロジーが正常にインポートされました",
+    "ontology-install-name-taken": "An ontology named {{name}} already exists, so nothing was imported. Try again and the new ontology gets a free name.",
     "ontology-iri-chain-per-line": "One IRI per line; the order is the property chain order.",
     "ontology-iri-per-line": "1行に1つのIRIを入力してください。プロパティチェーンの順序は保持されます。",
     "ontology-iri-picker-hint": "Search by name, or paste a full IRI and choose Add.",
