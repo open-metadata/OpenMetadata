@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_CUSTOM_FIELDS;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_LINEAGE;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_OWNERS;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_QUERIES;
@@ -24,8 +25,44 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.service.Entity;
 
 class PolicyEvaluatorTest {
+  @Test
+  void ownerEditsOfAConfigurationEntityAreReportedOnlyAsFarAsEditAll() {
+    ResourcePermission policyPermission =
+        permissions(Entity.POLICY, Access.ALLOW, Access.NOT_ALLOW);
+    PolicyEvaluator.ownerEditsNeedEditAll(policyPermission);
+    assertEquals(Access.NOT_ALLOW, access(policyPermission, EDIT_OWNERS));
+
+    ResourcePermission granted = permissions(Entity.POLICY, Access.ALLOW, Access.ALLOW);
+    PolicyEvaluator.ownerEditsNeedEditAll(granted);
+    assertEquals(Access.ALLOW, access(granted, EDIT_OWNERS));
+
+    ResourcePermission tablePermission = permissions(Entity.TABLE, Access.ALLOW, Access.NOT_ALLOW);
+    PolicyEvaluator.ownerEditsNeedEditAll(tablePermission);
+    assertEquals(Access.ALLOW, access(tablePermission, EDIT_OWNERS));
+  }
+
+  private static ResourcePermission permissions(
+      String resource, Access editOwners, Access editAll) {
+    return new ResourcePermission()
+        .withResource(resource)
+        .withPermissions(
+            new ArrayList<>(
+                List.of(
+                    new Permission().withOperation(EDIT_OWNERS).withAccess(editOwners),
+                    new Permission().withOperation(EDIT_ALL).withAccess(editAll))));
+  }
+
+  private static Access access(ResourcePermission permission, MetadataOperation operation) {
+    return permission.getPermissions().stream()
+        .filter(candidate -> candidate.getOperation() == operation)
+        .findFirst()
+        .orElseThrow()
+        .getAccess();
+  }
+
   @Test
   public void test_AccessOrderOfPrecedence() {
     //

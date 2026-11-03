@@ -96,7 +96,11 @@ class JsonPatchUtilsTest {
                 Entity.EVENT_SUBSCRIPTION,
                 Entity.INGESTION_PIPELINE,
                 Entity.TEST_CONNECTION_DEFINITION,
-                Entity.CLASSIFICATION));
+                Entity.TEST_DEFINITION,
+                Entity.CLASSIFICATION,
+                Entity.AI_GOVERNANCE_POLICY,
+                Entity.AI_GOVERNANCE_FRAMEWORK,
+                Entity.AI_FRAMEWORK_CONTROL));
     configurationTypes.addAll(Entity.getServiceEntityTypes());
     for (String entityType : configurationTypes) {
       assertEquals(
@@ -184,6 +188,24 @@ class JsonPatchUtilsTest {
     // Assertions
     assertTrue(operations.contains(MetadataOperation.EDIT_GLOSSARY_TERMS));
     assertEquals(1, operations.size());
+  }
+
+  @Test
+  void settingTheOwnersOfAConfigurationEntityNeedsEditAllAndEditOwners() {
+    ResourceContextInterface policyContext = Mockito.mock(ResourceContextInterface.class);
+    Mockito.when(policyContext.getResource()).thenReturn(Entity.POLICY);
+    String patch =
+        """
+        [{"op": "add", "path": "/owners/0", "value": {"id": "%s", "type": "user"}}]
+        """
+            .formatted(UUID.randomUUID());
+
+    assertEquals(
+        Set.of(MetadataOperation.EDIT_ALL, MetadataOperation.EDIT_OWNERS),
+        JsonPatchUtils.getMetadataOperations(policyContext, jsonPatch(patch)));
+    assertEquals(
+        Set.of(MetadataOperation.EDIT_OWNERS),
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch)));
   }
 
   @Test
