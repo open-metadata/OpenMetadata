@@ -90,10 +90,9 @@ const isQuickQuantifier = (
 const lossy = (reason: string): QuickRuleConversion => ({ reason });
 
 const isEmptyValue = (value: unknown) =>
-  value === undefined ||
-  value === null ||
-  value === '' ||
-  (Array.isArray(value) && value.length === 0);
+  Array.isArray(value)
+    ? value.length === 0
+    : value === undefined || value === null || value === '';
 
 // The server returns every expression field, empty ones included (`operands: []`).
 const hasOnlyKeys = (expression: OntologyExpression, allowed: string[]) =>

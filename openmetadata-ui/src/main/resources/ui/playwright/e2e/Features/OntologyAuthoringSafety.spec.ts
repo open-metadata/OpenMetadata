@@ -287,8 +287,7 @@ test.describe(
             await selectOptionWithRetry(
               editor
                 .getByTestId('ontology-expression-0')
-                .getByRole('button', { name: 'Constraint Type', exact: true })
-                .first(),
+                .getByRole('button', { name: 'Constraint Type', exact: true }),
               page.getByRole('option', { name: 'Classification', exact: true })
             );
             await editor

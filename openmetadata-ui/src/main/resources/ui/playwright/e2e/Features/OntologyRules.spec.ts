@@ -175,8 +175,7 @@ const useNamedClassCondition = async (editor: Locator) => {
   await selectOptionWithRetry(
     editor
       .getByTestId('ontology-expression-0')
-      .getByRole('button', { name: 'Constraint Type', exact: true })
-      .first(),
+      .getByRole('button', { name: 'Constraint Type', exact: true }),
     editor.page().getByRole('option', { name: 'Classification', exact: true })
   );
 };
