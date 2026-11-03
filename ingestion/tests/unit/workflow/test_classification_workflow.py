@@ -119,8 +119,9 @@ class UnavailableWorkflow(AutoClassificationWorkflow):
 def test_unavailable_model_drains_then_fails_status_and_cli(tmp_path, threshold, count, raise_on_error):
     workflow_config = deepcopy(config)
     workflow_config.source.sourceConfig.config = DatabaseServiceAutoClassificationPipeline()
-    workflow_config.workflowConfig.successThreshold = threshold
     workflow = UnavailableWorkflow(config=workflow_config)
+    workflow.workflow_config.successThreshold = threshold
+    assert workflow.workflow_config.successThreshold == threshold
     workflow.source.count = count
     status_file = tmp_path / "status.json"
     with patch.object(workflow, "set_ingestion_pipeline_status") as persist:

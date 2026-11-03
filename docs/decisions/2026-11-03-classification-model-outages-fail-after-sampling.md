@@ -20,4 +20,4 @@ Model initialization completes before an engine enters the loader cache. The cac
 
 ## Consequences
 
-Operators can repair models and rerun without losing successful sample writes. Retries may repeat sampling. The workflow does not roll back earlier tags or silently substitute a reduced classifier. Only model-operation failures enter this recovery path; process and resource signals propagate.
+Operators can repair models and rerun without losing successful sample writes. Retries may repeat sampling. The workflow does not roll back earlier tags or silently substitute a reduced classifier. Only model-operation failures enter this recovery path; process and resource signals are not normalized into model outages.
