@@ -50,6 +50,7 @@ import ReactFlow, {
   Edge,
   MiniMap,
   Node,
+  NodeChange,
   NodeTypes,
   Panel,
   ReactFlowInstance,
@@ -78,6 +79,7 @@ import {
 } from '../../../generated/api/lineage/lineageScene';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { LineageLayer } from '../../../generated/settings/settings';
+import { useUncontrolledNodeDrag } from '../../../hooks/lineage/useUncontrolledNodeDrag';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -1021,6 +1023,13 @@ const LineageMapCanvas = ({
   const [loading, setLoading] = useState(true);
   const [sceneError, setSceneError] = useState<AxiosError>();
   const [nodes, setNodes] = useState<Node<SceneFlowNodeData>[]>([]);
+  const handleNodesChange = useUncontrolledNodeDrag(
+    useCallback(
+      (changes: NodeChange[]) =>
+        setNodes((currentNodes) => applyNodeChanges(changes, currentNodes)),
+      []
+    )
+  );
   const [edges, setEdges] = useState<Edge[]>([]);
   const [hoveredEdge, setHoveredEdge] = useState<Edge | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string>();
@@ -2035,9 +2044,7 @@ const LineageMapCanvas = ({
       onNodeClick={handleNodeClick}
       onNodeMouseEnter={handleNodeMouseEnter}
       onNodeMouseLeave={handleNodeMouseLeave}
-      onNodesChange={(changes) =>
-        setNodes((currentNodes) => applyNodeChanges(changes, currentNodes))
-      }
+      onNodesChange={handleNodesChange}
       onPaneClick={handlePaneClick}>
       {loading && (
         <div

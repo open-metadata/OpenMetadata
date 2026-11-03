@@ -37,6 +37,7 @@ import {
   isEdgeInViewport,
   setupCanvas,
 } from '../utils/CanvasUtils';
+import { isEdgeOnDraggedNode } from '../utils/EdgeMidpointUtils';
 import {
   computeEdgeStyle,
   computeEdgeVisualState,
@@ -427,6 +428,7 @@ export function useCanvasEdgeRenderer({
     const visibleEdges = edges.filter(
       (edge) =>
         computeEdgeVisualState(edge, tracedNodes, tracedColumns) !== 'hidden' &&
+        !isEdgeOnDraggedNode(edge, getNode) &&
         (isEdgeTraced(edge, tracedColumns) ||
           isEdgeInViewport(
             edge,
