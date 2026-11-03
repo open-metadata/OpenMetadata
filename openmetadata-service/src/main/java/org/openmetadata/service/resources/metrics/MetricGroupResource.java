@@ -416,7 +416,7 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
 
   /**
    * Prepends a {@code test} of {@code /metrics} against the members the patch was authorized on,
-   * so the repository refuses to apply it to a member list that changed since.
+   * so the repository refuses to apply it to a member list that changed since (ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply).
    */
   static JsonPatch pinnedToMembers(MetricGroup authorizedOn, JsonPatch patch) {
     JsonValue members = JsonUtils.getJsonStructure(authorizedOn).asJsonObject().get("metrics");

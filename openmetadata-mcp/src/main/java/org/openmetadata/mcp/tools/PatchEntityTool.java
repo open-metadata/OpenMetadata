@@ -195,7 +195,7 @@ public class PatchEntityTool implements McpTool {
   /**
    * Moving a metric, or changing a metric group's members, needs EDIT_ALL on every metric moved and
    * on the destination parent and group, which only their REST resources check. Other metric edits
-   * (description, tags, owners) have no such checks and stay available here.
+   * (description, tags, owners) have no such checks and stay available here. See ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply.
    */
   private static void requireMetricHierarchyUntouched(String entityType, JsonPatch patch) {
     if (Entity.METRIC.equals(entityType)) {

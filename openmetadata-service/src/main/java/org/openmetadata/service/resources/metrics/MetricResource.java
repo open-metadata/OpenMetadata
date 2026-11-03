@@ -837,7 +837,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
 
   public static void validateMetricPatch(JsonPatch patch) {
     // The read-only and hierarchy guards work from the field names a patch touches. An operation on
-    // the document root rewrites every field, parent and metricGroup included, while naming none.
+    // the document root rewrites every field, parent and metricGroup included, while naming none
+    // (ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply).
     if (patchesDocumentRoot(patch)) {
       throw new IllegalArgumentException(
           "A metric patch operation must name a field; the document root can't be patched");
