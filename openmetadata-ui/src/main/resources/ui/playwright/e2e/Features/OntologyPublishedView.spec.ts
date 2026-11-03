@@ -497,15 +497,19 @@ test.describe(
       }
     });
 
+    // Signing out revokes the account's token, so it cannot be the worker's shared account.
     test('the health card stays minimized after a reload and after signing in again', async ({
-      isolatedUserPage: page,
-      isolatedUser: user,
+      browser,
     }) => {
       test.slow();
       const api = await getWorkerAdminAPIContext();
+      const user = new UserClass(undefined, true);
+      await user.create(api);
+      const page = await browser.newPage();
       const ontology = await createOntology(api);
       await createConcept(api, ontology, 'Lonely');
       try {
+        await user.signIn(page);
         await page.goto(studioUrl(ontology));
         await page.getByRole('button', { name: 'Minimize' }).click();
         await expect(page.getByTestId('ontology-health-restore')).toBeVisible();
@@ -520,6 +524,8 @@ test.describe(
 
         await expect(page.getByTestId('ontology-health-restore')).toBeVisible();
       } finally {
+        await page.close();
+        await user.delete(api);
         await cleanUp(api, [ontology]);
       }
     });

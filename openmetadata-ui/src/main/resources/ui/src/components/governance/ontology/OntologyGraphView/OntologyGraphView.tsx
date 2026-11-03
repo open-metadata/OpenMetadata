@@ -1334,7 +1334,9 @@ const OntologyGraphView = ({
     }
 
     return (
-      <>
+      <div
+        className="tw:flex tw:h-full tw:min-h-0 tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden"
+        data-testid="ontology-graph-sidebar">
         {releaseId ? null : (
           <OntologyConflictsPanel
             conceptLabel={(conceptId) => {
@@ -1351,12 +1353,14 @@ const OntologyGraphView = ({
             onValidateAll={() => void conflictsQuery.refetch()}
           />
         )}
-        <OntologyHealthPanel
-          health={health}
-          placement="sidebar"
-          onConnect={canEditOntology ? connectNode : undefined}
-        />
-      </>
+        <div className="tw:min-h-0 tw:flex-1">
+          <OntologyHealthPanel
+            health={health}
+            placement="sidebar"
+            onConnect={canEditOntology ? connectNode : undefined}
+          />
+        </div>
+      </div>
     );
   };
 

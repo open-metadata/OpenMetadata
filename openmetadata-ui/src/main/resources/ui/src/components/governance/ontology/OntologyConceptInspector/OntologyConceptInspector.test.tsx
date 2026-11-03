@@ -418,6 +418,29 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
       screen.getByTestId(`ontology-bind-property-${property.id}`)
     ).toBeEnabled();
   });
+
+  it('offers Bind to column on a data property but not on an annotation', async () => {
+    const annotation: OntologyProperty = {
+      ...property,
+      id: 'review-note',
+      iri: 'urn:sales:reviewNote',
+      kind: Kind.Annotation,
+      name: 'reviewNote',
+      range: [],
+    };
+    renderInspector([property, annotation]);
+    await screen.findByTestId('ontology-native-assets');
+
+    expect(
+      await screen.findByTestId(`ontology-bind-property-${property.id}`)
+    ).toBeEnabled();
+    expect(
+      screen.getByTestId(`ontology-property-bindings-${annotation.id}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`ontology-bind-property-${annotation.id}`)
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('OntologyConceptInspector relationships', () => {
@@ -817,6 +840,11 @@ describe('OntologyConceptInspector in AI mode', () => {
     expect(
       screen.queryByTestId('ontology-add-property')
     ).not.toBeInTheDocument();
+
+    const form = screen.getByTestId('ontology-property-form');
+
+    expect(within(form).getByTestId('ontology-property-name')).toBeVisible();
+    expect(within(form).getByTestId('ontology-property-submit')).toBeVisible();
 
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'loyaltyTier' },

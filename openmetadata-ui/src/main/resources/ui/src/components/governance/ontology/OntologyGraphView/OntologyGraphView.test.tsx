@@ -2704,6 +2704,78 @@ describe('OntologyGraphView', () => {
     expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
   });
 
+  it('stacks the conflicts and health panels in one sidebar column so the graph keeps its width', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    const sidebar = screen.getByTestId('ontology-graph-sidebar');
+
+    expect(
+      within(sidebar).getByTestId('ontology-conflicts-panel')
+    ).toBeVisible();
+    expect(within(sidebar).getByTestId('ontology-health-panel')).toBeVisible();
+  });
+
+  it('goes from loading to loaded and opens Data without a hook-order error', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({
+        clusters: [
+          {
+            id: 'concept-customer',
+            name: 'Customer',
+            count: 1,
+            assets: [{ id: 't1', name: 'customers' }],
+          },
+        ],
+      })
+    );
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      graph: undefined,
+      isLoading: true,
+      model: undefined,
+    });
+    const view = (
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    const { rerender } = render(view);
+
+    expect(
+      screen.queryByTestId('native-ontology-graph')
+    ).not.toBeInTheDocument();
+
+    mockUseOntologyStudioModel.mockReturnValue(modelResult);
+    rerender(view);
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(
+      await screen.findByTestId('ontology-data-cluster-concept-customer')
+    ).toBeVisible();
+    expect(
+      consoleError.mock.calls.filter(([message]) =>
+        String(message).includes('Rendered more hooks')
+      )
+    ).toEqual([]);
+
+    consoleError.mockRestore();
+  });
+
   it('reloads the picked concept once after a relation is drawn in Model, when Data shows again', async () => {
     const editableModel = {
       ...model,

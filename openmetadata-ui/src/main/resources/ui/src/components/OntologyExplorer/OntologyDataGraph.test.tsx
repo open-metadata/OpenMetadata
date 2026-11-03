@@ -861,6 +861,38 @@ describe('native Data mode of one concept', () => {
     );
   };
 
+  it('starts the single concept card below the concept chip, and a multi-concept graph at the top', () => {
+    const sizes = jest
+      .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockReturnValue(300);
+    const widths = jest
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockReturnValue(1200);
+    const canvasTop = () => {
+      const transform = screen.getByRole('button', { name: 'label.graph' })
+        .style.transform;
+
+      return Number(/translate3d\([^,]+px, ([\d.]+)px/.exec(transform)?.[1]);
+    };
+    const single = renderGraph({
+      data: singleConceptData(),
+      isSingleConcept: true,
+    });
+    // The chip's bottom edge is at 104px; the card starts 48px into the canvas.
+    const cardTopSingle = canvasTop() + 48 * 1;
+
+    expect(cardTopSingle).toBeGreaterThanOrEqual(104);
+
+    single.unmount();
+
+    renderGraph({ data: singleConceptData() });
+
+    expect(canvasTop()).toBeLessThan(cardTopSingle - 48);
+
+    sizes.mockRestore();
+    widths.mockRestore();
+  });
+
   it('counts the bound columns on the row that has them, and opens them as named column nodes', () => {
     renderGraph({ data: singleConceptData(), isSingleConcept: true });
 

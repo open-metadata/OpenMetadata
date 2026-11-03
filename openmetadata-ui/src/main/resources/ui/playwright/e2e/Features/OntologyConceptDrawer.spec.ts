@@ -458,7 +458,7 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.getByTestId('submode-tab-definitions').click();
         await page.getByRole('button', { name: 'Removable' }).click();
         await page.getByRole('button', { name: 'Delete', exact: true }).click();
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('ontology-concept-delete-confirm').click();
         await expect(page.getByTestId('ontology-undo')).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Removable' })
