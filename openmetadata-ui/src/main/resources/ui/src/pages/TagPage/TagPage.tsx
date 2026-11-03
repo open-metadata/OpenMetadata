@@ -294,6 +294,8 @@ const TagPage = () => {
           ...tagPermissions,
           EditOwners:
             isEditable && (tagCanEditAll || tagPermissions.EditOwners),
+          EditDomains:
+            isEditable && (tagCanEditAll || tagPermissions.EditDomains),
           EditAll: isEditable && tagCanEditAll,
         },
       };
