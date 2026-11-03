@@ -808,6 +808,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               serviceRepository.findByNameOrNull(
                   testServiceConnection.getServiceName(), Include.NON_DELETED);
       if (originalService != null && originalService.getConnection() != null) {
+        // ADR:2026-11-03-test-connection-workflows-check-service-edit-permission
         final String serviceEntityType = serviceRepository.getEntityType();
         authorizer.authorize(
             securityContext,
