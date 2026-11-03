@@ -1,10 +1,10 @@
 # An event-triggered workflow run judges the change its event made
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial)
+- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-03 (the 2.0.8 migration redeploys as well)
 - **Deciders:** yan-3005
 - **Guard:** `FilterEntityImplTest#eventPath_judgesTheChangeOfTheVersionTheEventProduced`
-- **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v210)
+- **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v208, v210)
 
 ## Context
 
@@ -33,3 +33,9 @@ governance workflow once (`WorkflowRedeployMigration`).
 - Batch-triggered runs judge each entity's current change, as before: they have no triggering event.
 - Until a workflow is redeployed, its main-workflow nodes do not receive the version and read the
   current change; the trigger filter, which runs Java code, uses the version at once.
+
+## Amendment
+
+v2 2026-11-03: the 2.0 line carries the same change, so the 2.0.8 migration runs the same
+redeploy step, identical on every branch that has 2.0.8. The 2.1.0 migration keeps it: a database
+already on a 2.1.0 build does not run its 2.0.8 data migration again.
