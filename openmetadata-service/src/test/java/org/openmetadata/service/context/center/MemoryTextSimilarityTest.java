@@ -24,9 +24,22 @@ class MemoryTextSimilarityTest {
   @Test
   void aReformattedNumberIsTheSameNumber() {
     assertFalse(MemoryTextSimilarity.hasConflictingNumbers("$1,500 per trip", "$1500 per trip"));
-    assertFalse(MemoryTextSimilarity.hasConflictingNumbers("2.50 EUR", "2.5 EUR"));
     assertFalse(MemoryTextSimilarity.hasConflictingNumbers("within 08 hours", "within 8 hours"));
     assertFalse(MemoryTextSimilarity.hasConflictingNumbers("sections 1,2", "sections 1, 2"));
     assertTrue(MemoryTextSimilarity.hasConflictingNumbers("$1,500 per trip", "$2,000 per trip"));
+    assertTrue(MemoryTextSimilarity.hasConflictingNumbers("Python 3.10", "Python 3.1"));
+  }
+
+  /** Inserting a section above a value renumbers its citation; the value is unchanged. */
+  @Test
+  void aCitationIsNotAValue() {
+    assertFalse(
+        MemoryTextSimilarity.hasConflictingNumbers(
+            "15% (Sales handbook, section 3)", "15% (Sales handbook, section 4)"));
+    assertFalse(MemoryTextSimilarity.hasConflictingNumbers("30 days, pages 3-5", "30 days, p. 6"));
+    assertTrue(MemoryTextSimilarity.hasConflictingNumbers("15% (section 3)", "25% (section 3)"));
+    assertTrue(
+        MemoryTextSimilarity.hasConflictingNumbers(
+            "Per section 3, 25% commission", "Per section 3, 15% commission"));
   }
 }

@@ -468,6 +468,98 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository, times(2)).create(isNull(), any());
   }
 
+  private static final String EMPLOYEES = "How many vacation days do employees get per year?";
+  private static final String CONTRACTORS = "How many vacation days do contractors get per year?";
+
+  /** A correction claims the document's value for its own question, never another fact. */
+  @Test
+  void aCorrectedPillClaimsOnlyTheValueOfItsOwnQuestion() {
+    existing(
+        pill(
+            EMPLOYEES,
+            "20 days per year",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(
+        List.of(derived(EMPLOYEES, "15 days per year"), derived(CONTRACTORS, "5 days per year")));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), captor.capture());
+    assertEquals(CONTRACTORS, captor.getValue().getQuestion());
+  }
+
+  /** With only another fact's value derived, the correction must not swallow it. */
+  @Test
+  void aCorrectedPillNeverTakesAnotherQuestionsValue() {
+    existing(
+        pill(
+            EMPLOYEES,
+            "20 days per year",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(List.of(derived(CONTRACTORS, "5 days per year")));
+
+    verify(memoryRepository).create(isNull(), any());
+  }
+
+  /** Inserting a section above both values renumbers their citations, not their claims. */
+  @Test
+  void aRenumberedSectionKeepsASettledConflictSettled() {
+    ContextMemory superseded =
+        pill(
+            "Commission rate?",
+            "15% (Sales handbook, section 3)",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.SUPERSEDED);
+    ContextMemory approved =
+        pill(
+            "Commission rate?",
+            "25% (HR policy, section 4)",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(superseded, approved);
+
+    reconcile(
+        List.of(
+            pill(
+                "Commission rate?",
+                "15% (Sales handbook, section 4)",
+                ContextMemorySourceType.PAGE_EXTRACTION,
+                ContextMemoryStatus.UNPROCESSED),
+            pill(
+                "Commission rate?",
+                "25% (HR policy, section 5)",
+                ContextMemorySourceType.PAGE_EXTRACTION,
+                ContextMemoryStatus.UNPROCESSED)));
+
+    verify(memoryRepository, never()).create(any(), any());
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(approved), captor.capture(), any());
+    assertEquals(ContextMemoryStatus.APPROVED, captor.getValue().getEntityStatus());
+  }
+
+  /** A pill another source also links is the same claim when only its summary was reworded. */
+  @Test
+  void aSharedPillWithARewordedSummaryStaysLinked() {
+    ContextMemory shared =
+        pill(
+                "Refund window?",
+                "30 days",
+                ContextMemorySourceType.PAGE_EXTRACTION,
+                ContextMemoryStatus.APPROVED)
+            .withSummary("Refunds within a month.");
+    existing(shared);
+    lenient().when(memoryRepository.hasOtherSources(any(), any())).thenReturn(true);
+
+    reconcile(List.of(derived("Refund window?", "30 days").withSummary("Thirty days to refund.")));
+
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(shared), any(), any());
+  }
+
   /** The model rewrites summaries on every run; that alone must not send a reviewed fact back. */
   @Test
   void aRewordedSummaryKeepsTheStageItWasReviewedIn() {

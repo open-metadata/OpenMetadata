@@ -20,6 +20,12 @@ final class MemoryTextSimilarity {
    */
   static final double IDENTITY_THRESHOLD = 0.5;
 
+  /** A citation names where a value is written, not the value: "section 3", "§ 4.2", "pp. 3-5". */
+  private static final Pattern CITATIONS =
+      Pattern.compile(
+          "(?i)(?:\\b(?:sections?|sec\\.|pages?|pp?\\.|chapters?|clauses?|paragraphs?|appendix)|§)"
+              + "\\s*\\d+(?:\\.\\d+)*(?:\\s*[-–&]\\s*\\d+(?:\\.\\d+)*)*");
+
   private static final Pattern NUMBERS =
       Pattern.compile("\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?");
   private static final double QUESTION_WEIGHT = 0.6;
@@ -31,7 +37,8 @@ final class MemoryTextSimilarity {
    * One answer replaces a number of the other: two values for one fact, not a rewording. An added
    * or dropped number, a section, a year or an edition, is a rewording: "15%" and "15% (section
    * 3)" agree, "15%" and "20%" do not, nor do "15% (2025)" and "20% (2025)". Numbers compare by
-   * value, so "1,500" and "1500", or "2.50" and "2.5", are one number.
+   * value, so "1,500" and "1500" are one number, and a citation is no value: "section 3" and
+   * "section 4" agree.
    */
   static boolean hasConflictingNumbers(String answerA, String answerB) {
     Set<String> a = numbers(answerA);
@@ -43,15 +50,20 @@ final class MemoryTextSimilarity {
     return text == null
         ? Set.of()
         : NUMBERS
-            .matcher(text)
+            .matcher(withoutCitations(text))
             .results()
             .map(MatchResult::group)
             .map(MemoryTextSimilarity::byValue)
             .collect(Collectors.toSet());
   }
 
+  /** Drops grouping commas and leading zeros; trailing zeros stay, so "3.10" is not "3.1". */
   private static String byValue(String number) {
-    return new BigDecimal(number.replace(",", "")).stripTrailingZeros().toPlainString();
+    return new BigDecimal(number.replace(",", "")).toPlainString();
+  }
+
+  static String withoutCitations(String text) {
+    return text == null ? null : CITATIONS.matcher(text).replaceAll(" ");
   }
 
   static double weighted(String questionA, String answerA, String questionB, String answerB) {

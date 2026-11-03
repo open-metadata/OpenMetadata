@@ -206,15 +206,15 @@ public class ContextMemoryReconciler {
     return byFact;
   }
 
-  private record Candidate(String key, double score, boolean conflicting) {}
+  private record Candidate(String key, double score, boolean conflicting, boolean sameQuestion) {}
 
   /**
    * Claims and returns the remaining candidate most similar to {@code pill}, or null when none
    * clears the identity bar. Always the best match above the bar rather than the first, so a loose
    * bar cannot let a weaker candidate take a pill a closer one should own. A changed number is a
    * different claim, never the same pill reworded, except for a pill a person corrected: it claims
-   * the document's value when that is the only candidate left, so the value is never recreated
-   * beside the correction.
+   * the document's value for its own question when that is the only one left, so the value is
+   * never recreated beside the correction and no other fact is taken for it.
    */
   private static ContextMemory removeMostSimilar(
       Map<String, ContextMemory> derivedByQuestion, ContextMemory pill) {
@@ -224,8 +224,9 @@ public class ContextMemoryReconciler {
             .filter(candidate -> !candidate.conflicting())
             .max(Comparator.comparingDouble(Candidate::score))
             .orElse(null);
-    if (best == null && isHumanOwned(pill) && clearing.size() == 1) {
-      best = clearing.getFirst();
+    if (best == null && isHumanOwned(pill)) {
+      List<Candidate> ownQuestion = clearing.stream().filter(Candidate::sameQuestion).toList();
+      best = ownQuestion.size() == 1 ? ownQuestion.getFirst() : null;
     }
     return best == null ? null : derivedByQuestion.remove(best.key());
   }
@@ -241,7 +242,8 @@ public class ContextMemoryReconciler {
       if (score >= MemoryTextSimilarity.IDENTITY_THRESHOLD) {
         boolean conflicting =
             MemoryTextSimilarity.hasConflictingNumbers(pill.getAnswer(), candidate.getAnswer());
-        clearing.add(new Candidate(entry.getKey(), score, conflicting));
+        boolean sameQuestion = questionKey(pill).equals(questionKey(candidate));
+        clearing.add(new Candidate(entry.getKey(), score, conflicting, sameQuestion));
       }
     }
     return clearing;
@@ -347,8 +349,11 @@ public class ContextMemoryReconciler {
     return normalized(pill.getQuestion());
   }
 
+  /** Where a document says a value is written is no part of the claim, so it is left out. */
   private static String factKey(ContextMemory pill) {
-    return questionKey(pill) + '\n' + normalized(pill.getAnswer());
+    return questionKey(pill)
+        + '\n'
+        + normalized(MemoryTextSimilarity.withoutCitations(pill.getAnswer()));
   }
 
   private static String normalized(String text) {

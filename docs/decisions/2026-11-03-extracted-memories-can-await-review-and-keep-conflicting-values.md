@@ -23,15 +23,18 @@ survived.
 - The prompt asks for one candidate per value and forbids merging them or choosing one, even when
   a section says it is newer. Deduplication keeps one pill per question, plus every answer whose
   numbers conflict with each kept one: a second value is a conflict for a reviewer, any other
-  answer to the same question is a rewording.
+  answer to the same question is a rewording. Cross-source duplicate linking uses the same number
+  rule.
 - Re-extraction maintains `Approved` and `Unprocessed` pills. It matches an existing pill by exact
   question and answer first, for every pill, then by similarity, never pairing two pills whose
   numbers conflict. Numbers conflict only when one answer replaces a number of the other, compared
-  by value (1,500 is 1500); an added or dropped number (a section, a year) is a rewording. A
-  replaced number is a new claim, created in the stage it was derived in, and the old pill is
-  released. Extracted pills claim their rewordings before a pill a person corrected (Manual) does;
-  the corrected pill then claims the document's value when exactly one is left, so that value is
-  never recreated beside the correction and the correction never takes another value. A pill whose
+  by value (1,500 is 1500); an added or dropped number (a year) is a rewording, and a citation
+  (section 3, page 4) is no number at all, so renumbering sections changes no claim. The prompt
+  names a value's section in its summary, not its answer. A replaced number is a new claim, created
+  in the stage it was derived in, and the old pill is released. Extracted pills claim their
+  rewordings before a pill a person corrected (Manual) does; the corrected pill then claims the
+  document's value for its own question when exactly one is left, so that value is never recreated
+  beside the correction and the correction never takes another fact's value. A pill whose
   question or answer changes takes the stage it was derived in; a reworded title or summary keeps
   its stage. Its writes are stamped when they run and updates are conditional, so a review decided
   during re-extraction wins.

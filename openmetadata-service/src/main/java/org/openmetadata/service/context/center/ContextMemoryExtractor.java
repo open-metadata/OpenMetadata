@@ -38,8 +38,9 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
           + "object with keys: title, question, answer, summary, memoryType (one of Faq, Note, "
           + "Runbook, UseCase, Preference). Capture durable facts, definitions, policies, and "
           + "how-to guidance. When the document gives different values for the same fact, "
-          + "return one element per value, each stating only its own value and the section it "
-          + "comes from; never merge them or choose one, even when a section says it is newer. "
+          + "return one element per value, each answer stating only its own value, with the "
+          + "section it comes from named in the summary, never in the answer; never merge them "
+          + "or choose one, even when a section says it is newer. "
           + "Return ONLY the JSON array, no prose.";
 
   private final LLMCompletionClient llmClient;
