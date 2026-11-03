@@ -929,10 +929,9 @@
       ]
     },
     {
-      "_comment": "TagsUtils builds the classification page's tag table actions (edit / delete / enable) and shared tag helpers; TagPage is the tag detail page (including which edits a disabled tag allows).",
+      "_comment": "TagsUtils builds the classification page's tag table actions (edit / delete / enable) and shared tag helpers used by the tag pages.",
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/TagsUtils.tsx",
-        "openmetadata-ui/src/main/resources/ui/src/pages/TagPage/**"
+        "openmetadata-ui/src/main/resources/ui/src/utils/TagsUtils.tsx"
       ],
       "projects": ["chromium"],
       "specs": [
