@@ -109,6 +109,19 @@ describe('useMembersTeamHeader', () => {
     expect(params.onCancelEditName).toHaveBeenCalled();
   });
 
+  it('places Cancel before Save in the title input', () => {
+    const params = buildParams({ isEditingName: true, editNameValue: 'New' });
+    render(<Harness {...params} />);
+
+    render(<>{lastPatch(params.onSetHeader).titleInput}</>);
+
+    expect(
+      screen
+        .getByTestId('cancel-display-name')
+        .compareDocumentPosition(screen.getByTestId('save-display-name'))
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('offers a join button for a group the user has not joined', () => {
     const params = buildParams({ isCurrentUserMember: false });
     render(<Harness {...params} />);

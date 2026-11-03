@@ -324,9 +324,10 @@ describe('WorkflowHeader — System badge', () => {
 
     render(<WorkflowHeader {...defaultProps} />);
 
+    // Sits in the centred actions row, not the title row, so it lines up with the buttons.
     expect(
-      screen.getByTestId('edit-workflow-title-button')
-    ).toBeInTheDocument();
+      screen.getByTestId('edit-workflow-title-button').parentElement
+    ).toHaveClass('tw:shrink-0', 'tw:items-center');
   });
 
   it('hides the title-edit button in view mode even when isNoOp is false', () => {
