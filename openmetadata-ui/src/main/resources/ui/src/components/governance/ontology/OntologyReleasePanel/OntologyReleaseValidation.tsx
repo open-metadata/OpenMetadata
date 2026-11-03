@@ -115,7 +115,11 @@ export const firstWorkingErrors = (
         .slice(0, limit)
     : [];
 
-const settledReport = (validation: ReturnType<typeof useReleaseValidation>) =>
+const settledReport = <T,>(validation: {
+  isSuccess: boolean;
+  isFetching: boolean;
+  data?: T;
+}) =>
   validation.isSuccess && !validation.isFetching ? validation.data : undefined;
 
 export const useSettledValidationReport = (release?: OntologyRelease | null) =>
@@ -137,6 +141,65 @@ export const firstValidationErrors = (
       ].slice(0, limit)
     : [];
 
+const structureStatus = (report?: OntologyReleaseValidationReport) => {
+  if (!report) {
+    return 'label.not-checked';
+  }
+
+  return report.structure.valid ? 'label.passed' : 'label.failed';
+};
+
+const shaclStatus = (report?: OntologyReleaseValidationReport) => {
+  if (report?.shacl.violationCount) {
+    return 'label.failed';
+  }
+
+  return report?.shacl.warningCount ? 'label.warning' : 'label.passed';
+};
+
+const workingStatus = (report?: OntologyProfileReport) => {
+  if (!report) {
+    return 'label.not-checked';
+  }
+
+  return report.valid ? 'label.passed' : 'label.failed';
+};
+
+const introKey = (working?: WorkingDraft) =>
+  working
+    ? 'message.ontology-working-validation'
+    : 'message.ontology-structure-after-capture';
+
+const QueryNotice = ({
+  isFetching,
+  isError,
+  showLoading,
+  onRetry,
+}: {
+  isFetching: boolean;
+  isError: boolean;
+  showLoading: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {showLoading && isFetching && (
+        <Typography role="status">{t('label.loading')}</Typography>
+      )}
+      {isError && (
+        <Alert variant="error">
+          {t('message.ontology-validation-unavailable')}
+          <Button color="secondary" size="sm" onPress={onRetry}>
+            {t('label.retry')}
+          </Button>
+        </Alert>
+      )}
+    </>
+  );
+};
+
 const OntologyReleaseValidation = ({
   release,
   working,
@@ -149,41 +212,17 @@ const OntologyReleaseValidation = ({
   const validation = useReleaseValidation(release);
   const report = settledReport(validation);
   const workingValidation = useWorkingValidation(working);
-  const workingReport =
-    working && workingValidation.isSuccess && !workingValidation.isFetching
-      ? workingValidation.data
-      : undefined;
+  const workingReport = working ? settledReport(workingValidation) : undefined;
   const truncated = (shown: number, total: number) => (
     <Typography color="secondary" size="text-xs">
       {t('message.ontology-findings-truncated', { shown, total })}
     </Typography>
   );
 
-  const structureStatus = () => {
-    if (!report) {
-      return 'label.not-checked';
-    }
-
-    return report.structure.valid ? 'label.passed' : 'label.failed';
-  };
-  const shaclStatus = () => {
-    if (report?.shacl.violationCount) {
-      return 'label.failed';
-    }
-
-    return report?.shacl.warningCount ? 'label.warning' : 'label.passed';
-  };
-  const workingStatus = () => {
-    if (!workingReport) {
-      return 'label.not-checked';
-    }
-
-    return workingReport.valid ? 'label.passed' : 'label.failed';
-  };
   const renderWorkingStructure = () => (
     <>
       <Typography size="text-sm">
-        {t('label.structural-validation')}: {t(workingStatus())}
+        {t('label.structural-validation')}: {t(workingStatus(workingReport))}
       </Typography>
       {workingReport && workingReport.violations.length > 0 && (
         <ul
@@ -208,7 +247,7 @@ const OntologyReleaseValidation = ({
   const renderStructure = () => (
     <>
       <Typography size="text-sm">
-        {t('label.structural-validation')}: {t(structureStatus())}
+        {t('label.structural-validation')}: {t(structureStatus(report))}
       </Typography>
       {report && (
         <>
@@ -251,7 +290,7 @@ const OntologyReleaseValidation = ({
     return (
       <>
         <Typography as="h3" size="text-sm" weight="semibold">
-          {t('label.shacl-validation')}: {t(shaclStatus())}
+          {t('label.shacl-validation')}: {t(shaclStatus(report))}
         </Typography>
         <Typography data-testid="ontology-shacl-counts" size="text-sm">
           {report.shacl.violationCount} {t('label.violation-plural')} ·{' '}
@@ -382,40 +421,20 @@ const OntologyReleaseValidation = ({
               ? t('message.ontology-captured-validation', {
                   version: release.semanticVersion ?? release.releaseRevision,
                 })
-              : t(
-                  working
-                    ? 'message.ontology-working-validation'
-                    : 'message.ontology-structure-after-capture'
-                )}
+              : t(introKey(working))}
           </Typography>
-          {working && workingValidation.isFetching && (
-            <Typography role="status">{t('label.loading')}</Typography>
-          )}
-          {working && workingValidation.isError && (
-            <Alert variant="error">
-              {t('message.ontology-validation-unavailable')}
-              <Button
-                color="secondary"
-                size="sm"
-                onPress={() => void workingValidation.refetch()}>
-                {t('label.retry')}
-              </Button>
-            </Alert>
-          )}
-          {release && validation.isFetching && (
-            <Typography role="status">{t('label.loading')}</Typography>
-          )}
-          {validation.isError && (
-            <Alert variant="error">
-              {t('message.ontology-validation-unavailable')}
-              <Button
-                color="secondary"
-                size="sm"
-                onPress={() => void validation.refetch()}>
-                {t('label.retry')}
-              </Button>
-            </Alert>
-          )}
+          <QueryNotice
+            isError={Boolean(working) && workingValidation.isError}
+            isFetching={workingValidation.isFetching}
+            showLoading={Boolean(working)}
+            onRetry={() => void workingValidation.refetch()}
+          />
+          <QueryNotice
+            isError={validation.isError}
+            isFetching={validation.isFetching}
+            showLoading={Boolean(release)}
+            onRetry={() => void validation.refetch()}
+          />
           {working ? renderWorkingStructure() : renderStructure()}
           {renderShacl()}
           {renderImpacts()}
