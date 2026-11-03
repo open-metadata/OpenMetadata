@@ -25,11 +25,15 @@ final class MemoryTextSimilarity {
 
   private MemoryTextSimilarity() {}
 
-  /** Both answers state numbers, and not the same ones: two values for one fact, not a rewording. */
+  /**
+   * One answer replaces a number of the other: two values for one fact, not a rewording. An added
+   * or dropped number, a section, a year or an edition, is a rewording: "15%" and "15% (section
+   * 3)" agree, "15%" and "20%" do not, nor do "15% (2025)" and "20% (2025)".
+   */
   static boolean hasConflictingNumbers(String answerA, String answerB) {
     Set<String> a = numbers(answerA);
     Set<String> b = numbers(answerB);
-    return !a.isEmpty() && !b.isEmpty() && !a.equals(b);
+    return !a.isEmpty() && !b.isEmpty() && !a.containsAll(b) && !b.containsAll(a);
   }
 
   private static Set<String> numbers(String text) {

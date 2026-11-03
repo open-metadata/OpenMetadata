@@ -212,9 +212,11 @@ public class ContextMemoryReconciler {
     String bestKey = null;
     double bestScore = 0;
     for (Map.Entry<String, ContextMemory> entry : derivedByQuestion.entrySet()) {
-      if (MemoryTextSimilarity.hasConflictingNumbers(
-          pill.getAnswer(), entry.getValue().getAnswer())) {
-        // A changed number is a different claim, never the same pill reworded.
+      if (!isHumanOwned(pill)
+          && MemoryTextSimilarity.hasConflictingNumbers(
+              pill.getAnswer(), entry.getValue().getAnswer())) {
+        // A changed number is a different claim, never the same pill reworded; a fact a person
+        // corrected keeps claiming the document's value, so it is never recreated beside them.
         continue;
       }
       double score =
@@ -301,6 +303,10 @@ public class ContextMemoryReconciler {
         && Objects.equals(a.getAnswer(), b.getAnswer())
         && Objects.equals(a.getSummary(), b.getSummary())
         && Objects.equals(a.getMemoryType(), b.getMemoryType());
+  }
+
+  private static boolean isHumanOwned(ContextMemory pill) {
+    return pill.getSourceType() == ContextMemorySourceType.MANUAL;
   }
 
   private boolean isAutomated(ContextMemory pill) {

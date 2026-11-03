@@ -354,6 +354,70 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository, never()).create(any(), any());
   }
 
+  /** A section or edition number added to both values rewords them; the settled review stands. */
+  @Test
+  void aSettledConflictRewordedWithSectionNumbersStaysSettled() {
+    ContextMemory superseded =
+        pill(
+            "Discount?",
+            "15%",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.SUPERSEDED);
+    ContextMemory approved =
+        pill(
+            "Discount?",
+            "25%",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(superseded, approved);
+
+    reconcile(
+        List.of(
+            derived("Discount?", "15% (Sales handbook, section 3)"),
+            derived("Discount?", "25% (HR policy, 2026 edition)")));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(approved), captor.capture(), any());
+    assertEquals("25% (HR policy, 2026 edition)", captor.getValue().getAnswer());
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
+  /** Dropping an incidental year keeps the pill and its telemetry. */
+  @Test
+  void anUnchangedFactWithoutItsYearKeepsItsPill() {
+    ContextMemory dated =
+        pill(
+            "Refund window?",
+            "As of 2025, refunds are accepted within 30 days.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(dated);
+
+    reconcile(List.of(derived("Refund window?", "Refunds are accepted within 30 days.")));
+
+    verify(memoryRepository).updateIfCurrent(isNull(), eq(dated), any(), any());
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
+  /** A person corrected 30 to 45 days: the document's 30 days must not come back beside it. */
+  @Test
+  void aHumanCorrectionKeepsClaimingTheDocumentsValue() {
+    ContextMemory corrected =
+        pill(
+            "Refund window?",
+            "45 days",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED);
+    existing(corrected);
+
+    reconcile(List.of(derived("Refund window?", "30 days")));
+
+    verify(memoryRepository, never()).create(any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
+  }
+
   /** A run reading past this write's time must find it, however long the duplicate checks took. */
   @Test
   void aCreatedPillIsStampedWhenItIsWritten() {

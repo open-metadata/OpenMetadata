@@ -16,6 +16,7 @@ package org.openmetadata.service.context.review;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import java.util.List;
 import java.util.Map;
@@ -23,12 +24,15 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -183,6 +187,35 @@ class MemoryConflictReviewTasksTest {
             memory -> memory == fromDocument ? List.of(uploader) : List.of());
 
     assertEquals(List.of(REVIEWER, uploader, CURATOR), assignees);
+  }
+
+  /** The disputed side is read without its source: the lookup reads it again to find the owners. */
+  @Test
+  void theDisputedDocumentsOwnersAreFoundFromAMemoryReadWithoutItsSource() {
+    EntityReference uploader = user("uploader");
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    ContextMemory asStored =
+        memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityOrNull(
+                      Entity.CONTEXT_MEMORY, asStored.getId(), "sourceEntity", Include.NON_DELETED))
+          .thenReturn(asStored.withSourceEntity(file));
+      entity
+          .when(() -> Entity.getEntityOrNull(file, "owners", Include.NON_DELETED))
+          .thenReturn(new ContextFile().withId(file.getId()).withOwners(List.of(uploader)));
+
+      assertEquals(
+          List.of(uploader),
+          MemoryConflictReviewTasks.currentSourceOwners(
+              memory("five-orders", ContextMemoryStatus.APPROVED, CURATOR)
+                  .withId(asStored.getId())
+                  .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)));
+    }
   }
 
   /** Every user may read tasks, while a memory may be Private: none of it reaches the task. */
