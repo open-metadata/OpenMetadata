@@ -12,11 +12,12 @@
  */
 import { Input, Select } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
+import { OntologyIriOption } from './OntologyIriInput.types';
 
 interface OntologyIriInputProps {
   label: string;
   value: string;
-  options?: ReadonlyArray<{ iri: string; label: string }>;
+  options?: ReadonlyArray<OntologyIriOption>;
   isRequired?: boolean;
   isDisabled?: boolean;
   hint?: string;
@@ -52,7 +53,9 @@ const OntologyIriInput = ({
       .map((option) => ({
         id: option.iri,
         label: option.label,
-        supportingText: option.iri,
+        supportingText: option.context
+          ? `${option.context} · ${option.iri}`
+          : option.iri,
       }));
   }, [options, search]);
 

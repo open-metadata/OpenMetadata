@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -31,6 +32,7 @@ import OntologyConceptEditor from './OntologyConceptEditor';
 
 jest.mock('../../../../rest/axiosClient', () => ({
   patch: jest.fn(),
+  get: jest.fn(),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -41,6 +43,7 @@ jest.mock('../../../../hooks/useAppMode', () => ({
 }));
 
 const patch = APIClient.patch as jest.MockedFunction<typeof APIClient.patch>;
+const get = APIClient.get as jest.MockedFunction<typeof APIClient.get>;
 const ontology: Ontology = {
   id: 'ontology-id',
   name: 'Sales',
@@ -61,7 +64,10 @@ const concept: OntologyConcept = {
 };
 
 describe('OntologyConceptEditor', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    get.mockResolvedValue({ data: { data: [], paging: { total: 0 } } });
+  });
 
   it('saves the selected vocabulary kind as a schema enum', async () => {
     patch.mockImplementation(async (_path, operations) => ({
@@ -176,6 +182,56 @@ describe('OntologyConceptEditor', () => {
     await waitFor(() => expect(patch).toHaveBeenCalled());
 
     expect(JSON.stringify(patch.mock.calls[0][1])).toContain('urn:sales:order');
+  });
+
+  it('maps to a concept in another readable ontology, showing which ontology it is in', async () => {
+    get.mockResolvedValue({
+      data: {
+        data: [
+          {
+            ...concept,
+            id: 'other-id',
+            name: 'Account',
+            iri: 'urn:finance:account',
+            ontology: { id: 'finance-id', type: 'ontology', name: 'Finance' },
+          },
+        ],
+        paging: { total: 1 },
+      },
+    });
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(structuredClone(concept), operations as Operation[])
+        .newDocument,
+    }));
+    render(
+      <OntologyConceptEditor
+        canEdit
+        concept={concept}
+        concepts={[{ iri: 'urn:sales:order', label: 'Order' }]}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
+    const input = within(
+      screen.getByTestId('ontology-concept-mapping')
+    ).getByRole('combobox', { name: /^label\.concept-iri/ });
+    await waitFor(() => expect(get).toHaveBeenCalled());
+    await act(async () => undefined);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Acc' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    const option = await screen.findByRole('option', { name: /Account/ });
+
+    expect(option).toHaveTextContent('Finance · urn:finance:account');
+
+    fireEvent.click(option);
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+
+    expect(JSON.stringify(patch.mock.calls[0][1])).toContain(
+      'urn:finance:account'
+    );
   });
 
   it('validates and saves external mappings with their scheme and source', async () => {

@@ -868,16 +868,18 @@ test.describe(
       }
     });
 
-    test('lane 9: adds a mapping by label and by pasted address', async ({
+    test('lane 9: adds a mapping by label, to another ontology by label, and by pasted address', async ({
       isolatedUserPage: page,
       isolatedUser: user,
     }, testInfo) => {
       test.slow();
       const api = await getWorkerAdminAPIContext();
       const fixture = await createFixture(api, 'rules_mappings');
+      const elsewhere = await createFixture(api, 'rules_mappings_other');
       try {
         const customer = await fixture.concept('Customer');
         const party = await fixture.concept('Party');
+        const account = await elsewhere.concept('Account');
         await setMode(api, user.responseData.id, 'classic');
 
         await openOntology(page, fixture.ontology);
@@ -896,9 +898,21 @@ test.describe(
           'Party'
         );
         await editor.getByRole('button', { name: 'Add Mapping' }).click();
+        const otherPicker = editor
+          .getByRole('group', { name: 'Mapping 2' })
+          .getByTestId('ontology-mapping-concept');
+        const otherInput = otherPicker.getByRole('combobox');
+        await otherInput.fill('Account');
+        await otherInput.press('ArrowDown');
+        const accountOption = page.getByRole('option', { name: /^Account/ });
+        await expect(accountOption).toContainText(
+          `${elsewhere.ontology.name} · ${account.iri}`
+        );
+        await accountOption.click();
+        await editor.getByRole('button', { name: 'Add Mapping' }).click();
         await pasteIri(
           editor
-            .getByRole('group', { name: 'Mapping 2' })
+            .getByRole('group', { name: 'Mapping 3' })
             .getByTestId('ontology-mapping-concept'),
           'https://schema.org/Person'
         );
@@ -916,7 +930,7 @@ test.describe(
 
         expect(
           updated.conceptMappings?.map((mapping) => mapping.conceptIri).sort()
-        ).toEqual(['https://schema.org/Person', party.iri].sort());
+        ).toEqual(['https://schema.org/Person', account.iri, party.iri].sort());
 
         await openOntology(page, fixture.ontology);
         await readNodePositions(page);
@@ -930,6 +944,7 @@ test.describe(
         });
       } finally {
         await fixture.cleanup();
+        await elsewhere.cleanup();
       }
     });
 
@@ -961,6 +976,20 @@ test.describe(
             });
           }
         }
+        const undeclared = 'urn:pw:undeclaredProperty';
+        await fixture.axiom({
+          name: 'MedicineNeedsUndeclared',
+          axiomType: 'SUBCLASS_OF',
+          subjectIri: medicine.iri,
+          expressions: [
+            {
+              kind: 'RESTRICTION',
+              restrictionKind: 'MIN',
+              cardinality: 1,
+              propertyIri: undeclared,
+            },
+          ],
+        });
         await setMode(api, user.responseData.id, 'classic');
 
         await openOntology(page, fixture.ontology);
@@ -971,10 +1000,11 @@ test.describe(
         await panel.getByTestId('ontology-validate-all').click();
         await validated;
 
-        await expect(panel.getByTestId('ontology-conflict-row')).toHaveCount(2);
+        await expect(panel.getByTestId('ontology-conflict-row')).toHaveCount(3);
         await expect(page.getByTestId('ontology-conflicts-title')).toHaveText(
-          '2 conflicts to resolve'
+          '3 conflicts to resolve'
         );
+        await expect(panel).toContainText(undeclared);
         await testInfo.attach('g13-validate-all', {
           body: await page.screenshot(),
           contentType: 'image/png',

@@ -279,11 +279,21 @@ test.describe(
               .click();
             await page.getByTestId('ontology-add-axiom').click();
             const editor = page.getByTestId('ontology-axiom-panel');
+            await expect(
+              editor.getByTestId('ontology-axiom-mode-quick')
+            ).toHaveAttribute('aria-checked', 'true');
+            await editor.getByTestId('ontology-axiom-mode-advanced').click();
             await editor
-              .getByRole('textbox', { name: 'Display Name', exact: true })
+              .getByRole('textbox', {
+                name: 'Display Name (optional)',
+                exact: true,
+              })
               .fill('Customer is a Person');
             await editor
-              .getByRole('textbox', { name: 'Description', exact: true })
+              .getByRole('textbox', {
+                name: 'Description (optional)',
+                exact: true,
+              })
               .fill('Every customer is a person.');
             for (const [label, name] of [
               ['Subject', 'Customer'],
@@ -320,7 +330,10 @@ test.describe(
               .getByRole('button', { name: 'Cancel', exact: true })
               .click();
             await expect(
-              editor.getByRole('textbox', { name: 'Display Name', exact: true })
+              editor.getByRole('textbox', {
+                name: 'Display Name (optional)',
+                exact: true,
+              })
             ).toHaveValue('Customer is a Person');
             const created = page.waitForResponse(
               (response) =>

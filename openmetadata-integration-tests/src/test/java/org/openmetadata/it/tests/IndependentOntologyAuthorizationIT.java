@@ -38,15 +38,21 @@ import org.openmetadata.schema.api.data.OntologyBulkRequest;
 import org.openmetadata.schema.api.data.OntologyPatternTermInput;
 import org.openmetadata.schema.api.data.OntologyPatternType;
 import org.openmetadata.schema.api.data.RegulatoryControlPatternInput;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -178,6 +184,50 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
     assertEquals(200, patchAsAdmin(conceptPath, describe));
     assertNotEquals(403, patchAsAdmin(conceptPath, tag));
     assertEquals(200, patchAsAdmin(ontologyPath, describe));
+  }
+
+  @Test
+  void userDeniedViewCannotReadTheWorkingDraftValidation(final TestNamespace ns) {
+    final String prefix = ns.shortPrefix("noView");
+    final var admin = SdkClients.adminClient();
+    final Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "Policy")
+                    .withRules(
+                        List.of(
+                            new Rule()
+                                .withName(prefix + "Rule")
+                                .withResources(List.of(Entity.ONTOLOGY))
+                                .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                                .withEffect(Rule.Effect.DENY))));
+    ns.trackRoot(Entity.POLICY, policy);
+    final Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "Role")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    ns.trackRoot(Entity.ROLE, role);
+    final User blocked =
+        ns.trackRoot(
+            Entity.USER,
+            admin
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(prefix)
+                        .withEmail(prefix + "@test.om.org")
+                        .withDescription("v7 user")
+                        .withRoles(List.of(role.getId()))));
+    final Ontology ontology = createOntologyWith(ns, "validationRead", List.of(), List.of());
+    final String path = "/v1/ontologies/" + ontology.getId() + "/working/validation";
+
+    assertEquals(403, status(blocked, "GET", path, null));
+    assertEquals(200, statusAsAdmin("GET", path, null));
   }
 
   @Test
