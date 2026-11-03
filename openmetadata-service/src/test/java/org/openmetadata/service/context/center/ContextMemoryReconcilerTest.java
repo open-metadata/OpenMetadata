@@ -542,6 +542,61 @@ class ContextMemoryReconcilerTest {
     verify(memoryRepository).create(isNull(), eq(us));
   }
 
+  @Test
+  void aCorrectionNeverClaimsTheReverseDirectionsValue() {
+    ContextMemory forward =
+        pill(
+            "What is the exchange rate from USD to EUR?",
+            "0.9",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED);
+    ContextMemory reverse =
+        pill(
+            "What is the exchange rate from EUR to USD?",
+            "1.1",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(forward, reverse);
+    ContextMemory changedForward = derived(forward.getQuestion(), "0.8");
+    ContextMemory changedReverse = derived(reverse.getQuestion(), "0.9");
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcile(List.of(changedForward, changedReverse));
+
+    assertEquals(1, result.created());
+    verify(memoryRepository, never()).create(isNull(), eq(changedForward));
+    verify(memoryRepository).create(isNull(), eq(changedReverse));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DRAFT", "REJECTED", "SUPERSEDED", "DEPRECATED", "ARCHIVED", "INVALIDATED"})
+  void aReviewedPillNeverClaimsAnotherQuestionsEqualValue(ContextMemoryStatus reviewedStatus) {
+    ContextMemory uk =
+        pill(
+            "How many vacation days do employees in the UK get?",
+            "20 days",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            reviewedStatus);
+    ContextMemory us =
+        pill(
+            "How many vacation days do employees in the US get?",
+            "15 days",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(uk, us);
+    ContextMemory changedUk = derived(uk.getQuestion(), "25 days");
+    ContextMemory changedUs = derived(us.getQuestion(), "20 days");
+
+    ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(changedUk, changedUs));
+
+    assertEquals(2, result.created());
+    verify(memoryRepository).create(isNull(), eq(changedUk));
+    verify(memoryRepository).create(isNull(), eq(changedUs));
+    verify(memoryRepository, never()).updateIfCurrent(any(), eq(uk), any(), any());
+  }
+
   /** With only another fact's value derived, the correction must not swallow it. */
   @Test
   void aCorrectedPillNeverTakesAnotherQuestionsValue() {

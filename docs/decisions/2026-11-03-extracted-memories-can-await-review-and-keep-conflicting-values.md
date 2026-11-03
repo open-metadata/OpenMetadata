@@ -35,9 +35,12 @@ survived.
   section in its summary, never in its question or answer. A replaced number is a new claim, created
   in the stage it was derived in, and the old pill is released. Extracted pills claim their
   rewordings before a pill a person corrected (Manual) does; the corrected pill then claims the
-  document's value for its own question (every word counts but filler: "What's" is "What is", "UK" is not "US") when exactly
+  document's value for its own question (significant words retain their order: "What's" is "What is",
+  "UK" is not "US", and "USD to EUR" is not "EUR to USD") when exactly
   one is left, so that value is never recreated
-  beside the correction and the correction never takes another fact's value. A pill whose
+  beside the correction and the correction never takes another fact's value. A reviewed pill
+  outside Approved or Unprocessed also claims only its own question's rewording: its decision must
+  never hide another question's equal answer. A pill whose
   question or answer changes takes the stage it was derived in; a reworded title or summary keeps
   its stage. Its writes are stamped when they run and updates are conditional, so a review decided
   during re-extraction wins.

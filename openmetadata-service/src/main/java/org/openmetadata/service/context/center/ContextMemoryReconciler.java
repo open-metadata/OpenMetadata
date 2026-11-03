@@ -223,7 +223,7 @@ public class ContextMemoryReconciler {
         clearing.stream()
             .filter(
                 candidate ->
-                    !candidate.conflicting() && (!isHumanOwned(pill) || candidate.sameQuestion()))
+                    !candidate.conflicting() && (isEngineManaged(pill) || candidate.sameQuestion()))
             .max(Comparator.comparingDouble(Candidate::score))
             .orElse(null);
     if (best == null && isHumanOwned(pill)) {
@@ -333,7 +333,7 @@ public class ContextMemoryReconciler {
     return pill.getSourceType() == ContextMemorySourceType.MANUAL;
   }
 
-  private boolean isAutomated(ContextMemory pill) {
+  private static boolean isAutomated(ContextMemory pill) {
     return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
         || pill.getSourceType() == ContextMemorySourceType.PAGE_EXTRACTION;
   }
@@ -342,7 +342,7 @@ public class ContextMemoryReconciler {
    * The engine maintains the pills extraction creates, Approved or awaiting review (Unprocessed).
    * Any other stage was a reviewer's decision that re-extracting the same fact must not undo.
    */
-  private boolean isEngineManaged(ContextMemory pill) {
+  private static boolean isEngineManaged(ContextMemory pill) {
     return isAutomated(pill)
         && (pill.getEntityStatus() == ContextMemoryStatus.APPROVED
             || pill.getEntityStatus() == ContextMemoryStatus.UNPROCESSED);

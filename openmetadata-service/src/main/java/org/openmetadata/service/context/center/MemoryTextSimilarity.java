@@ -3,6 +3,7 @@ package org.openmetadata.service.context.center;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.MatchResult;
@@ -95,18 +96,19 @@ final class MemoryTextSimilarity {
 
   /**
    * One question in other words: every word counts, short ones too ("UK" is not "US", "Q3" is not
-   * "Q4"), except filler a rewording adds or drops ("What is" and "What's" ask the same).
+   * "Q4"), and in order, except filler a rewording adds or drops ("What is" and "What's" ask the
+   * same).
    */
   static boolean sameQuestion(String questionA, String questionB) {
     return questionWords(questionA).equals(questionWords(questionB));
   }
 
-  private static Set<String> questionWords(String text) {
+  private static List<String> questionWords(String text) {
     return text == null
-        ? Set.of()
+        ? List.of()
         : Arrays.stream(text.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+"))
             .filter(word -> !word.isEmpty() && !FILLER.contains(word))
-            .collect(Collectors.toSet());
+            .toList();
   }
 
   static double weighted(String questionA, String answerA, String questionB, String answerB) {

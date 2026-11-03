@@ -83,5 +83,9 @@ class MemoryTextSimilarityTest {
             "How many vacation days do employees in the UK get?",
             "How many vacation days do employees in the US get?"));
     assertFalse(MemoryTextSimilarity.sameQuestion("What was Q3 revenue?", "What was Q4 revenue?"));
+    assertFalse(
+        MemoryTextSimilarity.sameQuestion(
+            "What is the exchange rate from USD to EUR?",
+            "What is the exchange rate from EUR to USD?"));
   }
 }
