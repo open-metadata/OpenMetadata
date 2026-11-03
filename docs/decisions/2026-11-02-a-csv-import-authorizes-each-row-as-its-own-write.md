@@ -1,12 +1,13 @@
 # A CSV import authorizes each row as its own write
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial)
+- **Revisions:** v1 2026-11-02 (initial); v2 2026-11-03 (column rows as their PATCH, admin imports, parents)
 - **Deciders:** Sonika Shah
 - **Guard:** `DatabaseServiceResourceIT` (`test_recursiveImportCannotEditEntitiesOutsideCallerPermissions`,
   `test_recursiveImportByServiceOwnerCreatesAndUpdatesOwnHierarchy`,
   `test_recursiveImportChecksEachNewRowAgainstItsOwnType`,
-  `test_recursiveImportCannotEditColumnsOfTableOutsideCallerPermissions`), `GlossaryResourceIT`,
+  `test_recursiveImportCannotEditColumnsOfTableOutsideCallerPermissions`,
+  `test_recursiveImportChecksChildOfNewDatabaseAgainstTheDatabaseOwners`), `GlossaryResourceIT`,
   `TeamResourceIT`, `TestCaseCsvDomainIsolationIT.test_importCsv_rowIsCheckedAgainstItsOwnTable`
 - **Related:** ADR:2026-10-09-bulk-edits-authorize-each-entity-as-its-patch,
   ADR:2026-10-30-a-test-case-write-is-authorized-as-a-create-or-an-update
@@ -17,12 +18,17 @@ its FQN, so an import could create or overwrite entities the importer may not wr
 
 ## Decision
 - Each row is authorized as the importing user, as the matching REST write: `EDIT_ALL` on the
-  stored entity it updates, `CREATE` on the entity it creates, checked against its parent.
-- A row creating an entity under a parent created earlier in the same file is checked on its own
-  type too, in real and dry runs alike, against that parent as the file defines it: with the owners
-  and domains it inherits where its row set none (writes are batched, so the parent may not be
-  stored yet). The importer created that parent and could have named itself owner over REST, so this
-  grants nothing REST would refuse. Teams do not inherit owners.
+  stored entity it updates, as a PUT is, and `CREATE` on the entity it creates, checked against its
+  parent. A row that changes nothing still needs `EDIT_ALL`, as an unchanged PUT does.
+- Column rows are written as one PATCH of their table, so they are checked as that PATCH, with the
+  operations its paths map to over REST. The import also sets each column's position from its row,
+  which only `EditAll` covers, so a reordering import needs it. Columns of a table the same file
+  created are covered by that table's `CREATE`.
+- A row creating an entity under a parent created earlier in the same file is checked against that
+  parent as REST would read it once stored: its own owners, or its parent's where the type inherits
+  owners (a schema does, a database does not), and the domains it inherits. A team is checked
+  against all of its parents. A parent counts only once its own row has succeeded.
+- The authorizer evaluates no policy for an admin, so an admin's import skips the per-row checks.
 - Test case rows use the REST test-case write checks (`TestCaseWriteAuthRequests`).
 - A refused row fails on its own and the rest of the import continues, in dry runs as well. User
   import keeps its own privileged-field checks.

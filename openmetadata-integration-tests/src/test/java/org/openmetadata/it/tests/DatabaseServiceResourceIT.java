@@ -1383,6 +1383,49 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void test_recursiveImportChecksChildOfNewDatabaseAgainstTheDatabaseOwners(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("csvNewDbOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("newdb_svc"))
+                .withOwners(List.of(owner.getEntityReference())));
+    // A database does not inherit its service's owners, so over REST the service owner may create
+    // it but not a schema in it
+    Database newDb = createDatabaseHierarchy(admin, service, ns.prefix("unowned_db"), null);
+    // Only the database and schema rows; table and column rows need their schema to exist
+    String exported =
+        String.join(
+            "\n",
+            exportCsvRecursive(service.getFullyQualifiedName())
+                .lines()
+                .filter(line -> !line.contains(",table,") && !line.contains(",column,"))
+                .toList());
+    admin
+        .databases()
+        .delete(newDb.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          importCsvRecursive(service.getFullyQualifiedName(), exported, dryRun, ownerToken);
+      assertTrue(result.getNumberOfRowsFailed() > 0, result.getImportResultsCsv());
+    }
+    assertNotNull(admin.databases().getByName(newDb.getFullyQualifiedName()));
+    assertThrows(
+        OpenMetadataException.class,
+        () -> admin.databaseSchemas().getByName(newDb.getFullyQualifiedName() + ".schema"));
+  }
+
+  @Test
   void test_recursiveImportByServiceOwnerCreatesAndUpdatesOwnHierarchy(TestNamespace ns)
       throws IOException, InterruptedException {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -1426,7 +1469,7 @@ public class DatabaseServiceResourceIT
                 new CreateDatabase()
                     .withName(databaseName)
                     .withService(service.getFullyQualifiedName())
-                    .withOwners(List.of(owner.getEntityReference())));
+                    .withOwners(owner == null ? null : List.of(owner.getEntityReference())));
     DatabaseSchema schema =
         admin
             .databaseSchemas()

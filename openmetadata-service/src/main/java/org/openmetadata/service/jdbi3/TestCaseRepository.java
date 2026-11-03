@@ -2599,9 +2599,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           // A row can name any table, so it is checked as the matching REST write, before anything
           // is created for it (e.g. the table's test suite)
           authorizeRowForAny(
-              repository.findByNameOrNull(testCaseFqn, Include.ALL) == null
-                  ? TestCaseWriteAuthRequests.forCreate(testCase)
-                  : TestCaseWriteAuthRequests.forUpdate(testCase));
+              () ->
+                  repository.findByNameOrNull(testCaseFqn, Include.ALL) == null
+                      ? TestCaseWriteAuthRequests.forCreate(testCase)
+                      : TestCaseWriteAuthRequests.forUpdate(testCase));
 
           // Get test suite if provided, otherwise get or create default test suite
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {

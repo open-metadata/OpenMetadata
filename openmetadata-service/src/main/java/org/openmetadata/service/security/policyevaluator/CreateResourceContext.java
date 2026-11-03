@@ -48,13 +48,15 @@ public class CreateResourceContext<T extends EntityInterface<?>>
     setParents(entity);
   }
 
-  /** For an entity whose parent is not stored yet (e.g. created by an earlier row of an import). */
+  /** For an entity whose parents are not all stored yet (e.g. created by earlier import rows). */
   public CreateResourceContext(
-      @NonNull String resource, @NotNull T entity, @NonNull EntityInterface<?> parent) {
+      @NonNull String resource,
+      @NotNull T entity,
+      @NonNull List<? extends EntityInterface<?>> parents) {
     this.resource = resource;
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
     this.entity = entity;
-    this.parentEntities = List.of(parent);
+    this.parentEntities = List.copyOf(parents);
   }
 
   @Override
