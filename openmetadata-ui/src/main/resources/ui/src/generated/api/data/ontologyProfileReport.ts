@@ -28,9 +28,9 @@ export interface OntologyProfileViolation {
      * to each.
      */
     conceptIds?: string[];
-    message:    string;
-    path:       string;
-    severity:   Severity;
+    message:     string;
+    path:        string;
+    severity:    Severity;
 }
 
 export enum Code {
