@@ -240,21 +240,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         return schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
 
     def _filter_deferred_excludes(self, table: Table) -> bool:
-        """Apply exclude filters that were deferred to client-side
-        because schema and table filters use conflicting modes.
-
-        The server can only accept a single ``regexMode`` per request, so when
-        schema and table filters use conflicting modes we forward the include
-        half to the server and apply the exclude half here. The deferred
-        exclude must use the *same* matcher as the server-side POSIX regex
-        operators (PostgreSQL ``!~`` / MySQL ``NOT REGEXP`` — both unanchored)
-        so the same ``FilterPattern`` yields the same result set whether it
-        runs server-side (non-conflicting modes) or is deferred here. We
-        therefore use ``_filter_server_compatible`` (``re.search``) instead of
-        ``filter_by_schema``/``filter_by_table`` (which route through ``_filter``
-        — start-anchored ``re.match`` + ``re.IGNORECASE`` — and would keep
-        substring excludes like ``summary`` against ``revenue_summary``).
-        """
+        """Apply conflicting-mode excludes with the listing API's substring semantics."""
         schema_filter = self.schema_filter_pattern
         table_filter = self.table_filter_pattern
 
