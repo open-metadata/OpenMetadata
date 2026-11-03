@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -46,6 +48,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -64,6 +67,8 @@ import org.openmetadata.service.resources.query.QueryResource;
 public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  // A cursor that stops advancing would page forever; cap it and let the assertion report it.
+  private static final int MAX_SAME_NAME_PAGES = 10;
 
   // Query has special name handling (null names allowed, uses checksum)
   // Query doesn't support dataProducts field
@@ -179,18 +184,19 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     try {
       return SdkClients.adminClient().databaseServices().getByName(serviceName);
     } catch (Exception e) {
-      org.openmetadata.schema.services.connections.database.PostgresConnection conn =
-          org.openmetadata.sdk.fluent.DatabaseServices.postgresConnection()
-              .hostPort("localhost:5432")
-              .username("test")
-              .build();
-
-      return org.openmetadata.sdk.fluent.DatabaseServices.builder()
-          .name(serviceName)
-          .connection(conn)
-          .description("Test Postgres service for Query tests")
-          .create();
+      return createDatabaseService(serviceName);
     }
+  }
+
+  private DatabaseService createDatabaseService(String serviceName) {
+    PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+
+    return DatabaseServices.builder()
+        .name(serviceName)
+        .connection(conn)
+        .description("Test Postgres service for Query tests")
+        .create();
   }
 
   @Override
@@ -999,6 +1005,64 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
 
     assertNotNull(response.getData());
     assertTrue(response.getData().size() >= 3);
+  }
+
+  /**
+   * Query names are unique only within a service, so the queries used in one table can share a
+   * name. Paging them by entityId one at a time must fall back to id inside a group of equal names.
+   */
+  @Test
+  void list_queriesOfEntityWithSameNameInSeveralServices(TestNamespace ns) {
+    final Table table = getOrCreateTable(ns);
+    createSameNamedQueries(ns, table, 3);
+
+    final List<UUID> onePage = ids(listQueriesOf(table, 100, null));
+    assertEquals(3, onePage.size());
+    assertEquals(
+        onePage, pageQueriesOf(table), "pages must not skip or repeat queries with equal names");
+  }
+
+  private void createSameNamedQueries(TestNamespace ns, Table table, int count) {
+    final String name = ns.prefix("same_name");
+    for (int i = 0; i < count; i++) {
+      final DatabaseService service =
+          ns.trackRoot(
+              Entity.DATABASE_SERVICE, createDatabaseService(ns.shortPrefix("pg_q_same_" + i)));
+      createEntity(
+          new CreateQuery()
+              .withName(name)
+              .withQuery("SELECT " + i + " FROM same_name_paging")
+              .withQueryUsedIn(List.of(table.getEntityReference()))
+              .withService(service.getFullyQualifiedName())
+              .withDuration(0.0)
+              .withQueryDate(System.currentTimeMillis()));
+    }
+  }
+
+  private List<UUID> pageQueriesOf(Table table) {
+    final List<UUID> paged = new ArrayList<>();
+    String after = null;
+    int pages = 0;
+    do {
+      final ListResponse<Query> response = listQueriesOf(table, 1, after);
+      paged.addAll(ids(response));
+      after = response.getPaging().getAfter();
+      pages++;
+    } while (after != null && pages < MAX_SAME_NAME_PAGES);
+    return paged;
+  }
+
+  private ListResponse<Query> listQueriesOf(Table table, int limit, String after) {
+    return listEntities(
+        new ListParams()
+            .setLimit(limit)
+            .setAfter(after)
+            .addQueryParam("entityId", table.getId().toString())
+            .addQueryParam("entityType", Entity.TABLE));
+  }
+
+  private static List<UUID> ids(ListResponse<Query> response) {
+    return response.getData().stream().map(Query::getId).toList();
   }
 
   @Test
