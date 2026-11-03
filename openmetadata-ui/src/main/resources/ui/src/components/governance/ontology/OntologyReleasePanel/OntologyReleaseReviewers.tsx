@@ -104,6 +104,9 @@ const OntologyReleaseReviewers = ({
   const readEpoch = useRef(0);
   const retained = useRef<ReadyReviewerModel>();
   const model = retainReadableModel(view, retained, readEpoch);
+  const wasEditable = useRef(false);
+  const queued = useRef<(latest: ReviewSettings) => ReviewSettings>();
+  const flushQueued = useRef<() => void>();
   useEffect(() => {
     if (view.kind === 'unavailable') {
       setSearchText('');
@@ -112,6 +115,11 @@ const OntologyReleaseReviewers = ({
       setSaving(false);
     }
   }, [view.kind, onSearchChange]);
+  useEffect(() => {
+    if (view.kind === 'ready' && !saving) {
+      flushQueued.current?.();
+    }
+  }, [view, saving]);
   if (!model) {
     return view.kind === 'loading' ? (
       <Typography role="status">{t('label.loading')}</Typography>
@@ -123,6 +131,15 @@ const OntologyReleaseReviewers = ({
   }
   const { settings, lock } = model;
   const editable = view.kind === 'ready' && model.canEditSettings && !saving;
+  if (view.kind === 'ready' && !saving) {
+    wasEditable.current = model.canEditSettings;
+  }
+  // The panel refetches after every save and reads as busy until the last read
+  // returns. Disabling the controls for that read would close a menu the user
+  // has just opened, so they stay usable and a pick made meanwhile is applied
+  // to the settings the refetch returns.
+  const refreshing = (saving || view.kind === 'loading') && wasEditable.current;
+  const interactive = editable || refreshing;
   const hasTeam = settings.reviewers.some((entry) => entry.type === 'team');
   // Clearing the input after a pick reopens React Aria's list while it still
   // has items, and the pick stays in them until the save returns.
@@ -179,6 +196,22 @@ const OntologyReleaseReviewers = ({
     }
   };
 
+  const change = (update: (latest: ReviewSettings) => ReviewSettings) => {
+    if (refreshing) {
+      queued.current = update;
+
+      return;
+    }
+    void save(update(settings));
+  };
+  flushQueued.current = () => {
+    const update = queued.current;
+    queued.current = undefined;
+    if (update && editable) {
+      void save(update(settings));
+    }
+  };
+
   const renderAssignees = () =>
     model.assignees.length > 0 && (
       <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
@@ -232,7 +265,7 @@ const OntologyReleaseReviewers = ({
         // The save marks the publication busy, which clears canEditSettings.
         // Disabling the focused input then blurs it, and the focus restored
         // after the save reopens the list over the dialog; stay read-only.
-        isDisabled={(!editable && !saving) || hasTeam}
+        isDisabled={(!interactive && !saving) || hasTeam}
         isReadOnly={saving}
         items={options}
         label={t('label.add-reviewer')}
@@ -244,17 +277,21 @@ const OntologyReleaseReviewers = ({
           search.onSearchChange(value);
         }}
         onSelectionChange={(key) => {
-          if (!editable || searchUnavailable) {
+          if (!interactive || searchUnavailable) {
             return;
           }
           const selected = options.find((option) => option.id === key);
           if (!selected) {
             return;
           }
-          void save({
-            ...settings,
-            reviewers: [...settings.reviewers, selected.value],
-          });
+          change((latest) => ({
+            ...latest,
+            reviewers: latest.reviewers.some(
+              ({ id }) => id === selected.value.id
+            )
+              ? latest.reviewers
+              : [...latest.reviewers, selected.value],
+          }));
           setSearchText('');
           search.onSearchChange('');
         }}>
@@ -323,7 +360,7 @@ const OntologyReleaseReviewers = ({
           {renderReviewerSearch()}
           <Select
             hint={hasTeam ? t('message.ontology-one-team-reviewer') : undefined}
-            isDisabled={!editable}
+            isDisabled={!interactive}
             items={ruleOptions}
             label={t('label.approval-rule')}
             selectedKey={settings.approvalRule}
@@ -333,7 +370,7 @@ const OntologyReleaseReviewers = ({
                 (option) => option.id === key
               )?.id;
               if (approvalRule) {
-                void save({ ...settings, approvalRule });
+                change((latest) => ({ ...latest, approvalRule }));
               }
             }}>
             {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}

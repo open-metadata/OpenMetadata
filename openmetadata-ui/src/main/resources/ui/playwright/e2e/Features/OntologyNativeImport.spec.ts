@@ -151,9 +151,13 @@ test.describe(
           expectedActivationRevision: state.activationRevision,
           expectedWorkingRevision: state.workingRevision,
           expectedLatestReleaseRevision: state.lastReleaseRevision,
-          versionBump: 'major',
+          versionBump: 'minor',
           releaseNotes: '',
         });
+        expect(
+          (await response.json()).semanticVersion,
+          'a first release is v0.1.0'
+        ).toBe('0.1.0');
       } finally {
         await deleteFixtureEntity(
           api,

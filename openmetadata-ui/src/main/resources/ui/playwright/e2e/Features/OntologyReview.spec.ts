@@ -548,13 +548,6 @@ test.describe(
                 `/api/v1/ontologies/${ontologyId}` &&
               response.request().method() === 'PATCH'
           );
-          // The panel refetches after the PATCH and closes an open menu, so the next step opens its menu only after the last read of that refetch.
-          const refetched = author.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname ===
-                `/api/v1/ontologies/${ontologyId}/working/validation` &&
-              response.request().method() === 'GET'
-          );
           await author
             .getByRole('option', {
               name:
@@ -562,7 +555,6 @@ test.describe(
             })
             .click();
           expect((await addition).status()).toBe(200);
-          await refetched;
           await expect(emptyCard).toContainText(
             reviewer.responseData.displayName ?? reviewer.responseData.name
           );

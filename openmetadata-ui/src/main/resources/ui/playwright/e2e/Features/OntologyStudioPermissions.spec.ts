@@ -14,6 +14,8 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
+import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
+import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
@@ -54,6 +56,27 @@ const createStudioFixture = async (
       )
     );
   }
+
+  // A reader sees only what is published, so the fixture publishes its two concepts.
+  const state = await okJson<OntologyState>(
+    await api.get(`${ONTOLOGIES}/${ontology.id}/state`),
+    'Read permission fixture state'
+  );
+  const release = await okJson<OntologyRelease>(
+    await api.post(`${ONTOLOGIES}/${ontology.id}/releases`, {
+      data: { expectedWorkingRevision: state.workingRevision },
+    }),
+    'Capture permission fixture release'
+  );
+  await okJson(
+    await api.put(`${ONTOLOGIES}/${ontology.id}/activation`, {
+      data: {
+        releaseId: release.id,
+        expectedActivationRevision: state.activationRevision,
+      },
+    }),
+    'Publish permission fixture release'
+  );
 
   return { ontology, concepts };
 };

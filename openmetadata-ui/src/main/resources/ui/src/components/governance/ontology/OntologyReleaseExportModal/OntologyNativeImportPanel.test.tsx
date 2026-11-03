@@ -733,6 +733,7 @@ describe('OntologyNativeImportPanel dependents of an unticked concept', () => {
   const LEDGER = 'concept:https://example.org/Ledger';
   const LINK = 'axiom:aaaaaaaaaaaaaaaa';
   const RULE = 'axiom:bbbbbbbbbbbbbbbb';
+  const OWNS = 'property:https://example.org/owns';
   const itemSummary: NativeOntologyImportSummary = {
     ...summary,
     items: [
@@ -780,6 +781,16 @@ describe('OntologyNativeImportPanel dependents of an unticked concept', () => {
         ],
         conceptIds: [],
       },
+      {
+        id: OWNS,
+        kind: Kind.Property,
+        label: 'owns',
+        iri: 'https://example.org/owns',
+        status: Status.New,
+        operationId: 'op-owns',
+        dependsOnIris: ['https://example.org/Ledger'],
+        conceptIds: [],
+      },
     ],
   };
   const check = (id: string) =>
@@ -796,13 +807,17 @@ describe('OntologyNativeImportPanel dependents of an unticked concept', () => {
       summary: itemSummary,
       changeSet: {
         ...changeSet,
-        operations: ['op-account', 'op-ledger', 'op-link', 'op-rule'].map(
-          (id) => ({
-            id,
-            operationType: OperationType.UpsertConcept,
-            state: OperationState.Active,
-          })
-        ),
+        operations: [
+          'op-account',
+          'op-ledger',
+          'op-link',
+          'op-rule',
+          'op-owns',
+        ].map((id) => ({
+          id,
+          operationType: OperationType.UpsertConcept,
+          state: OperationState.Active,
+        })),
       },
     });
     let stored = draft;
@@ -844,6 +859,23 @@ describe('OntologyNativeImportPanel dependents of an unticked concept', () => {
     ).toHaveTextContent('label.import-selected-count');
   });
 
+  it('unticks a property whose domain or range is the concept and says so', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    await user.click(check(LEDGER));
+
+    expect(check(OWNS)).not.toBeChecked();
+    expect(check(OWNS)).toBeDisabled();
+    expect(check(ACCOUNT)).toBeChecked();
+    expect(
+      screen.getByTestId('ontology-native-import-unticked-notice')
+    ).toHaveTextContent(
+      'message.native-import-also-unticked-relationshipmessage.native-import-also-unticked-rulemessage.native-import-also-unticked-property'
+    );
+  });
+
   it('keeps them unticked and unavailable until the concept is ticked, then lets the user tick them', async () => {
     renderPanel();
     dropFile();
@@ -882,7 +914,7 @@ describe('OntologyNativeImportPanel dependents of an unticked concept', () => {
       (createOntologyChangeSet as jest.Mock).mock.calls[0][0].operations.map(
         ({ id }: { id: string }) => id
       )
-    ).toEqual(['op-ledger']);
+    ).toEqual(['op-ledger', 'op-owns']);
   });
 
   it('unticks the dependents of every concept when the concept group is unticked', async () => {
