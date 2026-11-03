@@ -43,6 +43,7 @@ import { useTranslation } from 'react-i18next';
 import { OntologyDraftContext } from '../../../../context/OntologyDraft/OntologyDraftContext';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { OntologyProfileViolation } from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   PaletteKey,
@@ -57,6 +58,7 @@ import {
   createOntologyAxiom,
   createOntologyProperty,
   createRelationshipType,
+  getOntologyWorkingValidation,
   listRelationshipTypes,
   patchOntologyAxiom,
   patchOntologyProperty,
@@ -79,6 +81,7 @@ import {
   RelationshipTypePlan,
   toNativeRelationType,
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
 import {
   checkNativeRelation,
@@ -112,10 +115,15 @@ import {
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/RelationshipTypePicker.constants';
+import {
+  buildConflictHighlight,
+  ConflictHighlight,
+} from '../../../OntologyExplorer/utils/conflictHighlight';
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
 import OntologyConceptDeleteDialog from '../OntologyAuthoringWorkspace/OntologyConceptDeleteDialog';
+import OntologyConflictsPanel from './OntologyConflictsPanel';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
@@ -149,6 +157,7 @@ const GRAPH_BACKDROP_CLASS =
 const RELATIONSHIP_TYPES_QUERY_KEY = 'relationship-types';
 const NO_RELATIONSHIP_TYPES: RelationshipType[] = [];
 const NO_GRAPH: OntologyGraphData = { nodes: [], edges: [] };
+const NO_VIOLATIONS: OntologyProfileViolation[] = [];
 
 const missingRelationType = (id: string): never => {
   throw new Error(`Unknown relation type ${id}`);
@@ -455,6 +464,16 @@ const OntologyGraphView = ({
   );
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology, releaseId);
+  const conflictsQuery = useQuery({
+    enabled: !releaseId,
+    queryFn: () => getOntologyWorkingValidation(ontology.id),
+    queryKey: ['ontology-working-validation', ontology.id, dataRevision],
+    staleTime: 0,
+  });
+  const conflictViolations = useMemo(
+    () => conflictsQuery.data?.violations ?? NO_VIOLATIONS,
+    [conflictsQuery.data]
+  );
   const treeIndex = useMemo(
     () => buildNativeTreeIndex(graph, { ...FILTERS, searchQuery: search }, []),
     [graph, search]
@@ -495,6 +514,21 @@ const OntologyGraphView = ({
         ],
       }),
     [graph, searchResults, selectedId]
+  );
+  const conflictHighlight = useMemo<ConflictHighlight>(
+    () => buildConflictHighlight(conflictViolations, scope.graph.edges),
+    [conflictViolations, scope.graph.edges]
+  );
+  const graphNodes = useMemo(
+    () =>
+      conflictHighlight.nodeIds.size
+        ? scope.graph.nodes.map((node) =>
+            conflictHighlight.nodeIds.has(node.id)
+              ? { ...node, hasConflict: true }
+              : node
+          )
+        : scope.graph.nodes,
+    [conflictHighlight, scope.graph.nodes]
   );
   const nodeListEntries = useMemo(
     () =>
@@ -1244,11 +1278,29 @@ const OntologyGraphView = ({
     }
 
     return (
-      <OntologyHealthPanel
-        health={health}
-        placement="sidebar"
-        onConnect={canEditOntology ? connectNode : undefined}
-      />
+      <>
+        {releaseId ? null : (
+          <OntologyConflictsPanel
+            conceptLabel={(conceptId) => {
+              const concept = model?.concepts.find(
+                (candidate) => candidate.id === conceptId
+              );
+
+              return concept ? getEntityName(concept) : undefined;
+            }}
+            isChecking={conflictsQuery.isFetching}
+            isFailed={conflictsQuery.isError}
+            violations={conflictViolations}
+            onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+            onValidateAll={() => void conflictsQuery.refetch()}
+          />
+        )}
+        <OntologyHealthPanel
+          health={health}
+          placement="sidebar"
+          onConnect={canEditOntology ? connectNode : undefined}
+        />
+      </>
     );
   };
 
@@ -1367,6 +1419,7 @@ const OntologyGraphView = ({
               studioMode
               canCreateRelationType={canCreateRelationType}
               checkRelation={issueFor}
+              conflictEdgeKeys={conflictHighlight.edgeKeys}
               edges={scope.graph.edges}
               focusNodeId={selectedId}
               glossaries={[]}
@@ -1374,7 +1427,7 @@ const OntologyGraphView = ({
               graphSearchHighlight={searchHighlight}
               isEditMode={canCreateAxiom}
               nodePositions={nodePositions}
-              nodes={scope.graph.nodes}
+              nodes={graphNodes}
               ref={graphRef}
               relationColors={relationColors}
               relationTypeGroups={relationTypeGroups}
