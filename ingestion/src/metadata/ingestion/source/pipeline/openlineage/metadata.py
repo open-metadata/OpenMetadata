@@ -27,6 +27,7 @@ from cachetools import LRUCache, TTLCache
 
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -60,7 +61,6 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_table_binding_resolution
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str

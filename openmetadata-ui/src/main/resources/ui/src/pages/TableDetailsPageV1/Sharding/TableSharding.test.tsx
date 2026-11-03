@@ -39,7 +39,7 @@ it('renders the current representative without inventing metadata freshness', ()
     'href',
     expect.stringContaining('t=events_20260102')
   );
-  expect(screen.getByText('2026-01-01 – 2026-01-02')).toBeInTheDocument();
+  expect(screen.getByText('Jan 1, 2026 – Jan 2, 2026')).toBeInTheDocument();
 });
 
 it('does not display a sharding widget for an ordinary table', () => {

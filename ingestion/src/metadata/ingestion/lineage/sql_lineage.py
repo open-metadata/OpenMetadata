@@ -26,15 +26,21 @@ from collate_sqllineage.core.models import Column, DataFunction
 from collate_sqllineage.core.models import Table as LineageTable
 from networkx import DiGraph
 
-from metadata.domain.table_reference import TableReference
-from metadata.entity_resolution.table_binding import TableBindingResolution, TableLookup, load_table_binding_resolution
+from metadata.entity_resolution.table_search import (
+    DEFAULT_SCHEMA_NAME,
+    database_service_type_cache,  # noqa: F401 - compatibility import of the shared cache
+    get_database_service_type,  # noqa: F401 - compatibility import
+    get_table_binding_resolution,  # noqa: F401 - compatibility import
+    get_table_fqn_from_query_name,
+    search_cache,  # noqa: F401 - compatibility import of the shared cache
+    search_table_entities,
+)
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedure,
     StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -56,15 +62,12 @@ from metadata.ingestion.models.ometa_lineage import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
-from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.timeout import timeout
 
 logger = utils_logger()
-DEFAULT_SCHEMA_NAME = "<default>"
 CUTOFF_NODES = 20
 NODE_PROCESSING_TIMEOUT = 30  # seconds
 
@@ -100,157 +103,6 @@ def get_column_fqn(
             )
 
     return None
-
-
-search_cache = LRUCache(LRU_CACHE_SIZE)
-database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
-
-
-def get_database_service_type(metadata: OpenMetadata, service_name: str) -> str | None:
-    """
-    Get the database service type (e.g., 'mysql', 'postgres', 'clickhouse').
-
-    Args:
-        metadata: OMeta client
-        service_name: service name
-
-    Returns:
-        The database service type or None if not found.
-    """
-    key = service_name
-    if key in database_service_type_cache:
-        return database_service_type_cache.get(key)
-
-    try:
-        # try ES search first
-        es_result_entities = metadata.es_search_from_fqn(
-            entity_type=DatabaseService,
-            fqn_search_string=service_name,
-        )
-
-        service: DatabaseService | None = None
-        if es_result_entities:
-            service = es_result_entities[0] if es_result_entities else None
-
-        # try API search if ES is empty
-        if not service:
-            service = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
-
-        if service:
-            service_type = service.serviceType.value.lower()
-            logger.debug("Service %s is of type %s", service_name, service_type)
-
-            # cache the result
-            database_service_type_cache.put(key, service_type)
-            return service_type
-
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning("Could not determine service type for service %s: %s", service_name, exc)
-
-    return None
-
-
-def get_table_binding_resolution(metadata: OpenMetadata, service_name: str | None) -> TableBindingResolution:
-    """Load resolution for a known service, or the default for an unscoped reference."""
-    service_type = get_database_service_type(metadata, service_name) if service_name and service_name != "*" else None
-    return load_table_binding_resolution(service_type, metadata)
-
-
-def search_table_entities(
-    metadata: OpenMetadata,
-    service_names: str | list[str] | None,
-    database: str | None,
-    database_schema: str | None,
-    table: str,
-) -> list[Table] | None:
-    """
-    Method to get table entity from database, database_schema & table name.
-    Now supports searching across multiple services (cross-database lineage).
-
-    Args:
-        metadata: OMeta client
-        service_names: service name or list of service names (current + cross db)
-        database: database name
-        database_schema: schema name
-        table: table name
-
-    Returns:
-        A list of Table entities from the first service where found, otherwise None
-    """
-    if not table:
-        logger.debug(
-            f"Skipping table entity search with an empty table name for database [{database}] and schema [{database_schema}]"
-        )
-        return None
-
-    if isinstance(service_names, str):
-        service_names = [service_names]
-
-    for service_name in service_names or [None]:
-        result = _search_service_tables(metadata, service_name, database, database_schema, table)
-        if result:
-            return result
-    return None
-
-
-def _search_service_tables(metadata, service_name, database, database_schema, table):
-    key = (service_name, database, database_schema, table)
-    if key in search_cache:
-        return search_cache.get(key)
-    resolution = get_table_binding_resolution(metadata, service_name)
-    matches = resolution.resolve(
-        TableReference(database, database_schema, table),
-        service_name=service_name,
-        lookup=TableLookup.LINEAGE,
-    )
-    result = list(matches) if matches else None
-    if result:
-        search_cache.put(key, result)
-    return result
-
-
-def get_table_fqn_from_query_name(
-    table_name: str,
-) -> tuple[str | None, str | None, str | None]:
-    """
-    Method to extract database, schema and table name
-    from raw table name used in query
-
-    The split is quote-aware: connectors are free to put a `.` inside a single name
-    component (Dremio flattens nested folder paths into `folder.subfolder`), in which
-    case that component reaches us quoted. Splitting such a name on every `.` would
-    tear the quoted identifier in half and yield components with unbalanced quotes,
-    which `fqn.quote_name` then rejects with `Invalid name "folder`.
-    """
-
-    split_table = fqn.split_raw_name(table_name)
-    empty_list: list[Any] = [None]  # Otherwise, there's a typing error in the concat
-
-    if len(split_table) > 3:
-        # In case of bigquery, it is possible that tables within information schema when
-        # referred with their fully qualified name may look like this
-        # `project-id.dataset-id.information_schema.table-name` in such cases there
-        # will be 4 values to unpack vs the expected 3 values, hence in such case we
-        # just pick the table name and keep the database and schema name as none
-
-        table = split_table[-1]
-        database_query, schema_query = None, None
-    else:
-        database_query, schema_query, table = (empty_list * (3 - len(split_table))) + split_table
-
-        logger.debug(
-            f"[UsageSink] Extracted components before cleanup -> "
-            f"database: {database_query}, schema: {schema_query}, table: {table}"
-        )
-
-    if schema_query == DEFAULT_SCHEMA_NAME:
-        schema_query = None
-
-    if database_query == DEFAULT_SCHEMA_NAME:
-        database_query = None
-
-    return database_query, schema_query, table
 
 
 def __process_intermediate_column_lineage(
@@ -557,8 +409,12 @@ def get_column_lineage(
     Returns:
         List[ColumnLineage]
     """
+    if "*" in to_table_raw_name:
+        return []
     column_lineage = []
     pairs = column_lineage_map.get(to_table_raw_name, {}).get(from_table_raw_name, [])
+    if "*" in from_table_raw_name:
+        pairs = [(to_col, from_col) for to_col, from_col in pairs if "*" not in to_col and "*" not in from_col]
     if pairs:
         # COUNT(*) yields ("alias", "*"), which must not expand source columns.
         if ("*", "*") in pairs:
@@ -718,7 +574,7 @@ def _create_lineage_by_table_name(
                     to_table_raw_name=to_table,
                     from_table_raw_name=from_table,
                     masked_query=masked_query,
-                    column_lineage_map={} if "*" in from_table or "*" in to_table else column_lineage_map,
+                    column_lineage_map=column_lineage_map,
                     lineage_source=lineage_source,
                     procedure=procedure,
                 )

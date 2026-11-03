@@ -837,10 +837,6 @@ export interface Connection {
      */
     scheme?: AirflowConnectionScheme;
     /**
-     * Daily shard grouping. Omitted configuration remains disabled.
-     */
-    shardedTables?: BigQueryShardedTables;
-    /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:          FilterPattern;
@@ -5106,16 +5102,6 @@ export interface OpenMetadataJWTClientConfig {
      * OpenMetadata generated JWT token.
      */
     jwtToken: string;
-}
-
-/**
- * Daily shard grouping. Omitted configuration remains disabled.
- *
- * Group native daily shard tables into stable logical families.
- */
-export interface BigQueryShardedTables {
-    enabled?:         boolean;
-    excludePatterns?: string[];
 }
 
 export enum SpaceType {

@@ -315,3 +315,103 @@ describe('IngestionWorkflowForm auto partition detection', () => {
     expect(await getAutoPartitionField()).toHaveClass('tw:hidden');
   });
 });
+
+describe('BigQuery metadata sharding configuration', () => {
+  it('renders and submits grouping and exclusions in the metadata form', async () => {
+    const onSubmit = jest.fn();
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        serviceData={{ name: 'demo_bigquery', serviceType: 'BigQuery' }}
+        workflowData={
+          {
+            name: 'metadata-agent',
+            type: 'DatabaseMetadata',
+            shardedTables: { enabled: true, excludePatterns: ['^excluded_'] },
+          } as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByRole('button', { name: /label.scope-and-behaviour/ })
+      );
+    });
+    const toggle = await screen.findByRole('switch', {
+      name: 'Group Sharded Tables',
+    });
+
+    expect(toggle).toBeChecked();
+    expect(await screen.findByText('^excluded_')).toBeVisible();
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].shardedTables).toEqual({
+      enabled: false,
+      excludePatterns: ['^excluded_'],
+    });
+  });
+});
+
+describe('metadata sharding visibility and omitted defaults', () => {
+  it.each(['BigQuery', 'Mysql'])(
+    'preserves omitted settings for %s',
+    async (serviceType) => {
+      const onSubmit = jest.fn();
+      const { container } = render(
+        <IngestionWorkflowForm
+          pipeLineType={PipelineType.Metadata}
+          serviceCategory={ServiceCategory.DATABASE_SERVICES}
+          serviceData={{ name: 'demo_service', serviceType }}
+          workflowData={
+            {
+              name: 'metadata-agent',
+              type: 'DatabaseMetadata',
+            } as IngestionWorkflowData
+          }
+          onCancel={jest.fn()}
+          onFocus={jest.fn()}
+          onSubmit={onSubmit}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: /label.scope-and-behaviour/,
+          })
+        );
+      });
+      if (serviceType === 'BigQuery') {
+        expect(
+          await screen.findByRole('switch', { name: 'Group Sharded Tables' })
+        ).not.toBeChecked();
+      } else {
+        expect(
+          screen.queryByRole('switch', { name: 'Group Sharded Tables' })
+        ).not.toBeInTheDocument();
+      }
+      await act(async () => {
+        fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+      });
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      if (serviceType === 'BigQuery') {
+        expect(onSubmit.mock.calls[0][0].shardedTables?.enabled ?? false).toBe(
+          false
+        );
+      } else {
+        expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('shardedTables');
+      }
+    }
+  );
+});

@@ -72,7 +72,7 @@ export const findShardedFamilies = async (
   ) {
     return [];
   }
-  const parts = Fqn.split(query);
+  const parts = Fqn.split(query).map((part) => Fqn.unquoteName(part));
   const candidate = parseShardName(parts[parts.length - 1]);
   if (!candidate) {
     return [];

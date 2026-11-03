@@ -10,34 +10,63 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Check, Copy01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { TableExecutionSource } from '../../../../generated/type/tableExecutionSource';
+import { useClipboard } from '../../../../hooks/useClipBoard';
 
 interface ExecutionSourceProps {
   source?: TableExecutionSource;
   isSharded?: boolean;
   testId?: string;
+  copyable?: boolean;
 }
 
 export const ExecutionSource = ({
   source,
   isSharded = false,
   testId,
+  copyable = true,
 }: ExecutionSourceProps) => {
   const { t } = useTranslation();
+  const physicalName = source
+    ? `${source.databaseName}.${source.schemaName}.${source.tableName}`
+    : undefined;
+  const { hasCopied, onCopyToClipBoard } = useClipboard(physicalName ?? '');
 
   if (!source && !isSharded) {
     return null;
   }
 
   return (
-    <Typography data-testid={testId} size="text-sm">
-      {source
-        ? `${t('label.execution-source')}: ${source.databaseName}.${
-            source.schemaName
-          }.${source.tableName}`
-        : t('message.execution-source-unavailable')}
-    </Typography>
+    <Box data-testid={testId} direction="col" gap={1}>
+      <Typography color="secondary" size="text-xs" weight="medium">
+        {t('label.execution-source')}
+      </Typography>
+      <Box align="center" gap={2}>
+        <Typography className="tw:break-all" size="text-xs">
+          {physicalName ?? t('message.execution-source-unavailable')}
+        </Typography>
+        {physicalName && copyable && (
+          <ButtonUtility
+            aria-label={t('message.copy-to-clipboard')}
+            color="tertiary"
+            icon={hasCopied ? Check : Copy01}
+            size="xs"
+            tooltip={t(
+              hasCopied
+                ? 'message.copied-to-clipboard'
+                : 'message.copy-to-clipboard'
+            )}
+            onClick={() => onCopyToClipBoard(physicalName)}
+          />
+        )}
+      </Box>
+    </Box>
   );
 };

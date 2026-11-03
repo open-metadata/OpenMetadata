@@ -14,6 +14,14 @@
  * Group native daily shard tables into stable logical families.
  */
 export interface BigQueryShardedTables {
-    enabled?:         boolean;
+    /**
+     * Group BigQuery daily shards into a stable logical table using the newest shard for
+     * columns and execution.
+     */
+    enabled?: boolean;
+    /**
+     * Table names matching these regular expressions remain individual tables instead of
+     * joining a shard family.
+     */
     excludePatterns?: string[];
 }

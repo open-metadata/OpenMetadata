@@ -312,10 +312,6 @@ const SampleDataTable: FC<SampleDataProps> = ({
       className="p-md border-default border-radius-sm bg-white"
       data-testid="sample-data"
       id="sampleDataDetails">
-      <ExecutionSource
-        isSharded={isSharded}
-        source={sampleData?.executionSource}
-      />
       <Box
         inline
         align="center"
@@ -347,6 +343,10 @@ const SampleDataTable: FC<SampleDataProps> = ({
             ))}
           </Select>
         </Box>
+        <ExecutionSource
+          isSharded={isSharded}
+          source={sampleData?.executionSource}
+        />
         <ManageMenu
           data-testid="sample-data-manage-button"
           isOpen={showActions}

@@ -506,6 +506,7 @@ const ExploreResultsListPanel = ({
     <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
       <CoreCard className="tw:min-h-0 tw:flex-1 tw:rounded-b-none tw:border-b-0 tw:border-utility-gray-blue-100 tw:dark:border-subtle">
         <div className="tw:h-full tw:overflow-y-auto tw:p-5">
+          {additionalSearchResults}
           {!loading && !isElasticSearchIssue ? (
             <SearchedData
               data={searchResults?.hits.hits ?? []}
@@ -522,7 +523,6 @@ const ExploreResultsListPanel = ({
             <></>
           )}
           {loading ? <Loader /> : <></>}
-          {additionalSearchResults}
         </div>
       </CoreCard>
       {!loading && !isElasticSearchIssue && totalValue > 0 ? (

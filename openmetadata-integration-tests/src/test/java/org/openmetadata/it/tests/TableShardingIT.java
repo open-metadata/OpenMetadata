@@ -210,7 +210,7 @@ class TableShardingIT {
         JsonUtils.readValue(
                 """
         {"name":"demo_service","serviceType":"BigQuery","connection":{"config":{
-          "type":"BigQuery","credentials":{"gcpConfig":{}},"shardedTables":{"enabled":true}}}}
+          "type":"BigQuery","credentials":{"gcpConfig":{}}}}}
         """,
                 CreateDatabaseService.class)
             .withName(ns.prefix("bigquery_" + UUID.randomUUID()));

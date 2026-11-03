@@ -24,6 +24,7 @@ jest.mock('../rest/tableAPI');
 
 const family = {
   id: 'family',
+  columns: [],
   name: 'events_yyyymmdd',
   fullyQualifiedName: 'demo_service.demo_project.demo_dataset.events_yyyymmdd',
   tableType: TableType.Sharded,
@@ -31,13 +32,13 @@ const family = {
     prefix: 'events_',
     suffixFormat: 'YYYYMMDD',
     shardCount: 2,
-    firstShardDate: '2026-01-01',
-    lastShardDate: '2026-01-02',
+    firstShardDate: new Date('2026-01-01'),
+    lastShardDate: new Date('2026-01-02'),
     representative: {
       databaseName: 'demo_project',
       schemaName: 'demo_dataset',
       tableName: 'events_20260102',
-      shardDate: '2026-01-02',
+      shardDate: new Date('2026-01-02'),
     },
   },
 } as Table;
@@ -106,6 +107,30 @@ it('keeps nested query and post filters and uses its own bounded first page afte
       },
     })
   );
+});
+
+it('resolves quoted physical identifiers using unquoted catalog names', async () => {
+  (searchQuery as jest.Mock).mockImplementation(async ({ queryFilter }) => {
+    const terms = queryFilter.query.bool.must;
+    const names = Object.assign(
+      {},
+      ...terms.map(({ term }: { term: Record<string, string> }) => term)
+    );
+    const matches =
+      names['service.name'] === 'demo.service' &&
+      names['database.name'] === 'demo.project' &&
+      names['databaseSchema.name'] === 'demo.dataset' &&
+      names['name.keyword'] === 'events_yyyymmdd';
+
+    return { hits: { hits: matches ? [{ _source: family }] : [] } };
+  });
+  (getTableDetailsByFQN as jest.Mock).mockResolvedValue(family);
+
+  expect(
+    await findShardedFamilies(
+      '"demo.service"."demo.project"."demo.dataset"."events_20260101"'
+    )
+  ).toEqual([family]);
 });
 
 it('omits ordinary placeholders and inaccessible verification reads', async () => {

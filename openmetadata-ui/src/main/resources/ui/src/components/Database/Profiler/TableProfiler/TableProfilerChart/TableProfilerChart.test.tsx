@@ -155,7 +155,7 @@ jest.mock('../../ProfilerStateWrapper/ProfilerStateWrapper.component', () => ({
 }));
 
 describe('TableProfilerChart component test', () => {
-  it('keeps row profiles and recorded scope while showing unsupported system metrics', async () => {
+  it('keeps row profiles and recorded scope without unsupported system metrics', async () => {
     (getSystemProfileList as jest.Mock).mockClear();
     (getTableProfilesList as jest.Mock).mockResolvedValueOnce({
       data: [
@@ -179,8 +179,8 @@ describe('TableProfilerChart component test', () => {
     });
 
     expect(
-      screen.getByText('message.sharding-system-metrics-unsupported')
-    ).toBeInTheDocument();
+      screen.queryByText('message.sharding-system-metrics-unsupported')
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('row-metrics')).toBeInTheDocument();
     expect(screen.queryByTestId('operation-metrics')).not.toBeInTheDocument();
     expect(screen.getByText(/events_20260101/)).toBeInTheDocument();

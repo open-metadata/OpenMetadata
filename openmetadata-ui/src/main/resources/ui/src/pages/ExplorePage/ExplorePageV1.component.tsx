@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
@@ -654,16 +654,13 @@ const ExplorePageV1: FC<unknown> = () => {
     const controller = new AbortController();
     setShardedFamilies([]);
     const combined = getCombinedQueryFilterObject(
-      getCombinedQueryFilterObject(
-        advancedSearchQuickFilters,
-        browseQueryFilter
-      ),
-      queryFilter
+      advancedSearchQuickFilters,
+      browseQueryFilter
     );
     findShardedFamilies(
       searchQueryParam ?? '',
+      queryFilter,
       combined,
-      undefined,
       showDeleted,
       controller.signal
     )
@@ -704,19 +701,28 @@ const ExplorePageV1: FC<unknown> = () => {
         additionalSearchResults={
           shardedFamilies.length > 0 && (
             <section aria-label={t('label.matching-sharded-families')}>
-              <h2>{t('label.matching-sharded-families')}</h2>
-              <ul>
-                {shardedFamilies.map((table) => (
-                  <li key={table.id}>
+              <Box className="tw:mb-4" direction="col" gap={3}>
+                <Typography size="text-sm" weight="semibold">
+                  {t('label.matching-sharded-families')}
+                </Typography>
+                <Box direction="col" gap={2}>
+                  {shardedFamilies.map((table) => (
                     <Link
+                      key={table.id}
                       to={`/table/${encodeURIComponent(
                         table.fullyQualifiedName ?? ''
                       )}`}>
-                      {table.fullyQualifiedName}
+                      <Typography
+                        as="span"
+                        className="tw:break-all"
+                        color="brand"
+                        size="text-sm">
+                        {table.fullyQualifiedName}
+                      </Typography>
                     </Link>
-                  </li>
-                ))}
-              </ul>
+                  ))}
+                </Box>
+              </Box>
             </section>
           )
         }

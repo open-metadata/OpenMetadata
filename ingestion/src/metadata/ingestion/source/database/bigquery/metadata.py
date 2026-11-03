@@ -103,6 +103,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
 from metadata.ingestion.source.database.bigquery.sharding import (
+    MAX_FAMILIES,
     DiscoveredTable,
     eligible_shard,
     get_table_sharding,
@@ -245,6 +246,10 @@ class ShardingContext(Protocol):
     shard_lifecycle: dict[str, LifeCycleQueryByTable] | None
     shard_prefixes: set[str]
     sharding_failed: bool
+
+
+class BigqueryGlobalContext(Protocol):
+    deleted_tables: list[str]
 
 
 class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
@@ -437,7 +442,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     @property
     def sharding_enabled(self) -> bool:
-        config = self.service_connection.shardedTables
+        config = self.source_config.shardedTables
         return bool(config and config.enabled)
 
     def _require_client(self) -> bigquery.Client:
@@ -468,7 +473,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         context.shard_family = None
         client = self._require_client()
         dataset = f"{context.database}.{context.database_schema}"
-        exclusions = self.service_connection.shardedTables.excludePatterns or []
+        sharding = self.source_config.shardedTables
+        exclusions = (sharding.excludePatterns or []) if sharding else []
         logger.info("BigQuery sharding uses full discovery for %s, including incremental configurations", dataset)
         families = inventory_families(client.list_tables(dataset), exclusions)
         context.shard_lifecycle = None
@@ -553,8 +559,42 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 family.representative, logical_shard_name(prefix), TableType.Sharded, context.shard_family
             )
 
+    def _physical_tables(self) -> Iterable[DiscoveredTable]:
+        context = self._shard_context()
+        self._set_sharding_scope(False)
+        context.shard_family = None
+        context.sharding_failed = False
+        self._prefetch_table_ddls(context.database_schema)
+        clear_constraint_cache_for_schema(context.database, context.database_schema)
+        for table in self._require_client().list_tables(f"{context.database}.{context.database_schema}"):
+            if table.table_id.endswith("yyyymmdd"):
+                existing = self._catalog_table(table.table_id)
+                if existing and get_table_sharding(existing):
+                    context.sharding_failed = True
+                    self.status.warning(table.table_id, "Physical table conflicts with a cataloged shard family")
+                    continue
+            yield DiscoveredTable(
+                table.table_id, table.table_id, _bigquery_table_types.get(table.table_type, TableType.Regular)
+            )
+        self._set_sharding_scope(not context.sharding_failed)
+
     def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
-        if not self.sharding_enabled:
+        try:
+            has_families = self.sharding_enabled or any(
+                get_table_sharding(table)
+                for table in self.metadata.list_all_entities(
+                    Table,
+                    fields=["tableSharding"],
+                    params={"databaseSchema": self._sharding_scope(), "tableRegex": ".*yyyymmdd$"},
+                )
+            )
+        except Exception as exc:
+            self._set_sharding_scope(False)
+            self.status.failed(
+                StackTraceError(name=self._sharding_scope(), error=str(exc), stackTrace=traceback.format_exc())
+            )
+            return
+        if not has_families:
             for table_name, table_type in super().get_tables_name_and_type() or []:
                 if table_name.endswith("yyyymmdd"):
                     existing = self._catalog_table(table_name)
@@ -568,7 +608,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
             return
         try:
-            for discovered in self._grouped_tables():
+            tables = self._grouped_tables() if self.sharding_enabled else self._physical_tables()
+            for discovered in tables:
                 physical, table_type = discovered.physical_name, discovered.table_type
                 self._shard_context().shard_family = discovered.table_sharding
                 catalog_name = discovered.catalog_name
@@ -603,7 +644,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def yield_table(self, table_name_and_type):
         for result in super().yield_table(table_name_and_type):
-            if self.sharding_enabled and result.left:
+            if self._sharding_scope() in self._sharding_scopes and result.left:
                 self._shard_context().sharding_failed = True
                 self._set_sharding_scope(False)
             yield result
@@ -690,7 +731,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 return {row.table_name: LifeCycleQueryByTable.model_validate(row._asdict()) for row in rows}
         if context.shard_lifecycle is None:
             summaries = {}
-            exclusions = self.service_connection.shardedTables.excludePatterns or []
+            sharding = self.source_config.shardedTables
+            exclusions = (sharding.excludePatterns or []) if sharding else []
             with self.engine.connect() as conn:
                 for row in conn.execute(text(query)):
                     values = row._asdict()
@@ -1588,51 +1630,81 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
             )
 
+    def _live_physical_families(self, scope: str) -> set[str]:
+        families = set()
+        for name in self.database_source_state:
+            parts = fqn.split(name)
+            if fqn._build(*parts[:-1]) != scope:
+                continue
+            if parsed := parse_shard_name(parts[-1]):
+                families.add(logical_shard_name(parsed[0]))
+                if len(families) > MAX_FAMILIES:
+                    raise ValueError("BigQuery sharding exceeds 10000 shard families; narrow dataset selection")
+        return families
+
+    def _preserve_filtered_tables(self, scope: str) -> None:
+        live_families = self._live_physical_families(scope) if not self.sharding_enabled else set()
+        preserved = set()
+        for existing in self.metadata.list_all_entities(Table, params={"databaseSchema": scope}):
+            name = existing.fullyQualifiedName.root if self.source_config.useFqnForFiltering else existing.name.root
+            excluded = filter_by_table(self.source_config.tableFilterPattern, name)
+            is_view = existing.tableType in (TableType.View, TableType.MaterializedView)
+            disabled = not (self.source_config.includeViews if is_view else self.source_config.includeTables)
+            replaced = False
+            if get_table_sharding(existing):
+                replaced = not self.sharding_enabled and existing.name.root in live_families
+            elif self.sharding_enabled and (parsed := parse_shard_name(existing.name.root)):
+                replacement = fqn._build(*fqn.split(scope), logical_shard_name(parsed[0]))
+                replaced = replacement in self.database_source_state
+            if disabled or (excluded and not replaced):
+                preserved.add(existing.fullyQualifiedName.root)
+        self.database_source_state.update(preserved)
+
     def mark_tables_as_deleted(self):
         """
         Use the current inspector to mark tables as deleted
         """
-        if self.sharding_enabled:
+        if self.sharding_enabled or self._sharding_scopes:
             if not self.source_config.markDeletedTables:
                 return
             for scope in self._get_filtered_schema_names(return_fqn=True, add_to_status=False):
+                if scope not in self._sharding_scopes and not self.sharding_enabled:
+                    if not self.incremental.enabled:
+                        yield from delete_entity_from_source(
+                            self.metadata,
+                            Table,
+                            self.database_source_state,
+                            recursive=True,
+                            params={"databaseSchema": scope},
+                        )
+                    continue
                 if not self._sharding_scopes.get(scope, False):
                     continue
                 try:
-                    for existing in self.metadata.list_all_entities(Table, params={"databaseSchema": scope}):
-                        name = (
-                            existing.fullyQualifiedName.root
-                            if self.source_config.useFqnForFiltering
-                            else existing.name.root
-                        )
-                        excluded = filter_by_table(self.source_config.tableFilterPattern, name)
-                        is_view = existing.tableType in (TableType.View, TableType.MaterializedView)
-                        disabled = not (
-                            self.source_config.includeViews if is_view else self.source_config.includeTables
-                        )
-                        if (
-                            excluded
-                            or disabled
-                            or (not get_table_sharding(existing) and parse_shard_name(existing.name.root))
-                        ):
-                            self.database_source_state.add(existing.fullyQualifiedName.root)
+                    self._preserve_filtered_tables(scope)
                 except Exception as exc:
                     self.status.warning(scope, f"Catalog reconciliation inventory failed: {exc}")
                     continue
                 yield from delete_entity_from_source(
                     self.metadata, Table, self.database_source_state, recursive=True, params={"databaseSchema": scope}
                 )
-            return
+            if self.sharding_enabled or not self.incremental.enabled:
+                return
         if self.incremental.enabled and not self.sharding_enabled:
             if not self.context.get().__dict__.get("database"):
                 raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
             if self.source_config.markDeletedTables:
                 logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
+                global_context = cast("BigqueryGlobalContext", cast("object", self.context.get_global()))
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
-                    entity_names=self.context.get_global().deleted_tables,
+                    entity_names=[
+                        name
+                        for name in global_context.deleted_tables
+                        if fqn._build(*fqn.split(name)[:-1]) not in self._sharding_scopes
+                    ],
                     recursive=self.source_config.markDeletedTables,
                 )
         else:

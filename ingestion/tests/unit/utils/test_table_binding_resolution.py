@@ -32,6 +32,7 @@ def test_all_connector_resolvers_load_without_specs_or_connector_drivers():
             "snowflake.connector", "clickhouse_connect", "clickhouse_sqlalchemy", "psycopg2",
             "pymysql", "pyodbc", "oracledb", "trino", "pyhive", "databricks.sql",
             "metadata.utils.service_spec.default",
+            "metadata.ingestion.lineage.sql_lineage", "collate_sqllineage",
         )
         class NoDrivers(importlib.abc.MetaPathFinder):
             def find_spec(self, fullname, path=None, target=None):
@@ -65,12 +66,21 @@ def test_all_connector_resolvers_load_without_specs_or_connector_drivers():
                 "firstShardDate": "2026-01-01", "lastShardDate": "2026-01-01",
                 "representative": {"databaseName": "demo_db", "schemaName": "analytics",
                     "tableName": "events_20260101", "shardDate": "2026-01-01"}})
+        from types import SimpleNamespace
+        from metadata.generated.schema.entity.services.databaseService import DatabaseService
+        from metadata.generated.schema.type.queryParserData import ParsedData
         class Catalog:
+            def es_search_from_fqn(self, entity_type, **kwargs):
+                assert entity_type is DatabaseService
+                return [SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))]
             def get_by_name(self, entity, fqn, **kwargs):
                 return family if fqn == family.fullyQualifiedName.root else None
         resolution = load_table_binding_resolution("BigQuery", Catalog())
         assert resolution.resolve(TableReference("demo_db", "analytics", "events_20260101$20260101"),
                                   service_name="warehouse") == (family,)
+        execution = ParsedData(tables=["demo_db.analytics.events_20260101"],
+                               serviceName="warehouse", sql="select 1")
+        assert resolution.prepare_usage(execution).tables == ["demo_db.analytics.events_yyyymmdd"]
         assert not attempted, attempted
         print(f"Selected {len(specs)} resolvers and resolved a physical reference with specs and drivers blocked")
     """)

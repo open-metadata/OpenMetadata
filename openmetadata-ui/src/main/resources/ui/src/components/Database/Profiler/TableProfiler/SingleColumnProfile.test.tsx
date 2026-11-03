@@ -382,10 +382,11 @@ describe('SingleColumnProfile', () => {
   };
 
   it.each([TableType.Regular, TableType.Sharded])(
-    'keeps column history across representative changes (%s)',
+    'uses the latest recorded source independently of the representative (%s)',
     async (tableType) => {
       const records = [
         {
+          name: 'test_column',
           timestamp: MOCK_START_TS,
           executionSource: {
             databaseName: 'my_db',
@@ -394,6 +395,7 @@ describe('SingleColumnProfile', () => {
           },
         },
         {
+          name: 'test_column',
           timestamp: MOCK_END_TS,
           executionSource: {
             databaseName: 'my_db',
@@ -401,7 +403,7 @@ describe('SingleColumnProfile', () => {
             tableName: 'events_20260102',
           },
         },
-        { timestamp: MOCK_START_TS - 1000 },
+        { name: 'test_column', timestamp: MOCK_START_TS - 1000 },
       ];
       mockGetColumnProfilerList.mockResolvedValue({
         data: records,
@@ -430,7 +432,7 @@ describe('SingleColumnProfile', () => {
       );
 
       expect(
-        await screen.findByText(/my_db.my_schema.events_20260101/)
+        await screen.findByText(/my_db.my_schema.events_20260102/)
       ).toBeInTheDocument();
       expect(
         screen.getByText(/my_db.my_schema.events_20260102/)
@@ -457,18 +459,15 @@ describe('SingleColumnProfile', () => {
       );
 
       expect(
-        screen.getByText(/my_db.my_schema.events_20260101/)
+        screen.getByText(/my_db.my_schema.events_20260102/)
       ).toBeInTheDocument();
 
-      if (tableType === TableType.Sharded) {
-        expect(
-          screen.getByText('message.execution-source-unavailable')
-        ).toBeInTheDocument();
-      } else {
-        expect(
-          screen.queryByText('message.execution-source-unavailable')
-        ).not.toBeInTheDocument();
-      }
+      expect(
+        screen.queryByText(/my_db.my_schema.events_20260101/)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('message.execution-source-unavailable')
+      ).not.toBeInTheDocument();
     }
   );
 

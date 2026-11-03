@@ -545,7 +545,6 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           </Box>
         )}
         <RunScopeBadges scope={result.evaluationScope} />
-        <RunExecutionSource result={result} testCase={testCase} />
         <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box
@@ -558,6 +557,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
         <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]">
           <DetailCells cells={details} />
         </div>
+        <RunExecutionSource result={result} testCase={testCase} />
         <RunThreshold
           result={result}
           testCase={testCase}

@@ -10,13 +10,16 @@
 #  limitations under the License.
 """Daily family policy regressions."""
 
-from datetime import date
+from collections import namedtuple
+from contextlib import contextmanager
+from datetime import date, datetime
 from threading import Lock
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from google.cloud.bigquery import Table as BigQueryTable
 from sqlalchemy import select
 from sqlalchemy_bigquery import BigQueryDialect
 
@@ -26,6 +29,8 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table,
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import BigQueryConnection
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 from metadata.ingestion.source.database.bigquery.sharding import (
     eligible_shard,
@@ -36,6 +41,7 @@ from metadata.ingestion.source.database.bigquery.sharding import (
 )
 from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import BigQueryProfilerInterface
 from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
+from metadata.utils.lru_cache import LRUCache
 
 
 @pytest.mark.parametrize(
@@ -97,6 +103,17 @@ class Catalog:
         self.tables = {table.fullyQualifiedName.root: table for table in tables}
         self.fail = False
 
+    def list_all_entities(self, entity, fields=None, params=None):
+        assert entity is Table
+        assert params["databaseSchema"] == "demo_service.demo_project.demo_dataset"
+        if self.fail:
+            raise ConnectionError("catalog unavailable")
+        return (
+            table
+            for table in self.tables.values()
+            if not table.deleted and (not params.get("tableRegex") or table.name.root.endswith("yyyymmdd"))
+        )
+
     def get_by_name(self, entity, fqn, include=None):
         assert include == "all"
         if self.fail:
@@ -123,8 +140,8 @@ def source_for(names, tables=()):
     source = BigquerySource.__new__(BigquerySource)
     context = SimpleNamespace(database_service="demo_service", database="demo_project", database_schema="demo_dataset")
     source.context = SimpleNamespace(get=lambda: context)
-    source.service_connection = BigQueryConnection(credentials={"gcpConfig": {}}, shardedTables={"enabled": True})
-    source.source_config = DatabaseServiceMetadataPipeline()
+    source.service_connection = BigQueryConnection(credentials={"gcpConfig": {}})
+    source.source_config = DatabaseServiceMetadataPipeline(shardedTables={"enabled": True})
     source._sharding_scopes = {}
     source._sharding_scope_lock = Lock()
     source.client = Inventory(names)
@@ -284,7 +301,7 @@ def test_only_complete_scopes_delete_missing_families(complete):
     outcomes = list(source.mark_tables_as_deleted())
     assert all(outcome.left is None for outcome in outcomes)
     assert missing.deleted is complete
-    assert physical.deleted is False
+    assert physical.deleted is complete
 
 
 def test_filtered_logical_family_is_outside_reconciliation_scope():
@@ -417,3 +434,264 @@ def test_refreshed_inventory_controls_reconciliation(failure):
         assert submitted[0]["live_fqns"] == set()
     else:
         assert submitted == []
+
+
+def topology_source_for_mode(extraction_fails, grouping, incremental):
+    names = ["events_20260101", "events_20260102", "orders", "audit_20260103", "products", "visits_20260104"]
+    old_entries = [
+        catalog_table("events_20260101"),
+        catalog_table("events_20260102"),
+        catalog_table("events_yyyymmdd", sharded=True),
+    ]
+    source = source_for(names, old_entries)
+    source.incremental = SimpleNamespace(enabled=incremental)
+    source.context = TopologyContextManager(source.topology)
+    source.context.get_global().deleted_tables = ["demo_service.demo_project.demo_dataset.events_20260102"]
+    source.project_ids = []
+    source.context.set_threads(4)
+    source.context.get().__dict__.update(
+        database_service="demo_service", database="demo_project", database_schema="demo_dataset"
+    )
+    source.source_config = DatabaseServiceMetadataPipeline(
+        includeTags=False, includeDDL=False, markDeletedTables=True, shardedTables={"enabled": grouping}
+    )
+    source.database_source_state = set()
+    source._table_obj_cache = LRUCache(10)
+    source._dataset_obj_cache = LRUCache(10)
+    source._table_ddl_cache = {}
+
+    class WarehouseInventory(Inventory):
+        def get_table(self, name):
+            assert name.rsplit(".", 1)[-1] in names
+            return BigQueryTable(name)
+
+        def get_dataset(self, name):
+            return SimpleNamespace(location="US")
+
+    class WarehouseInspector:
+        def get_unique_constraints(self, table_name, schema_name):
+            if extraction_fails and table_name == "audit_20260103":
+                raise ConnectionError("table metadata unavailable")
+            return []
+
+        def get_foreign_keys(self, table_name, schema_name):
+            return []
+
+        def get_pk_constraint(self, table_name, schema_name):
+            return {}
+
+        def get_columns(self, *args, **kwargs):
+            return []
+
+        def get_table_comment(self, table_name, schema_name):
+            return {"text": table_name}
+
+    row = namedtuple("LifecycleRow", "table_name table_type created_at updated_at")
+    rows = [row(name, "BASE TABLE", datetime(2026, 1, index + 1), None) for index, name in enumerate(names)]
+
+    class WarehouseRows(list):
+        def all(self):
+            return self
+
+    class WarehouseEngine:
+        @contextmanager
+        def connect(self):
+            yield self
+
+        def execute(self, query):
+            query = str(query)
+            if "WHERE table_name = '" in query:
+                table_name = query.rsplit("WHERE table_name = '", 1)[1].removesuffix("'")
+                return WarehouseRows(item for item in rows if item.table_name == table_name)
+            return WarehouseRows(rows)
+
+    source.client = WarehouseInventory(names)
+    source._inspector_map = {source.context.get_current_thread_id(): WarehouseInspector()}
+    source.engine = WarehouseEngine()
+    scope = "demo_service.demo_project.demo_dataset"
+    source._get_filtered_schema_names = lambda **kwargs: [scope]
+    submitted = []
+
+    def delete_stale_entities(**kwargs):
+        submitted.append(kwargs)
+        for table in old_entries:
+            table.deleted = table.fullyQualifiedName.root not in kwargs["live_fqns"]
+        return {"deleted": sum(table.deleted for table in old_entries)}
+
+    source.metadata.delete_stale_entities = delete_stale_entities
+
+    return source, names, old_entries, submitted
+
+
+def test_disabling_grouping_preserves_physical_table_ddl():
+    source, names, _, _ = topology_source_for_mode(False, False, True)
+    source.source_config.includeDDL = True
+    warehouse_engine = source.engine
+
+    class WarehouseEngineWithDDL:
+        @contextmanager
+        def connect(self):
+            yield self
+
+        def execute(self, query):
+            if "ddl" in str(query).lower():
+                return SimpleNamespace(
+                    all=lambda: [
+                        SimpleNamespace(table_name=name, ddl=f"CREATE TABLE {name} (id INT64)") for name in names
+                    ]
+                )
+            return warehouse_engine.execute(query)
+
+    source.engine = WarehouseEngineWithDDL()
+    results = list(source.process_nodes([source.topology.table]))
+    assert not [result.left for result in results if result.left]
+    requests = [result.right for result in results if isinstance(result.right, CreateTableRequest)]
+    assert {request.name.root: request.schemaDefinition.root for request in requests} == {
+        name: f"CREATE TABLE {name} (id INT64)" for name in names
+    }
+
+
+@pytest.mark.parametrize("grouping", [False, True])
+@pytest.mark.parametrize("incremental", [False, True])
+@pytest.mark.parametrize("extraction_fails", [False, True])
+def test_topology_keeps_each_table_descriptor_and_lifecycle_through_extraction(extraction_fails, grouping, incremental):
+    source, names, old_entries, submitted = topology_source_for_mode(extraction_fails, grouping, incremental)
+    scope = "demo_service.demo_project.demo_dataset"
+    results = list(source.process_nodes([source.topology.table]))
+    failures = [result.left for result in results if result.left]
+    assert [failure.name for failure in failures] == (["audit_20260103"] if extraction_fails else []), [
+        failure.error for failure in failures
+    ]
+    requests = [result.right for result in results if isinstance(result.right, CreateTableRequest)]
+    expected = [
+        ("events_yyyymmdd", "events_20260102", "events_"),
+        ("orders", "orders", None),
+        *([("audit_yyyymmdd", "audit_20260103", "audit_")] if not extraction_fails else []),
+        ("products", "products", None),
+        ("visits_yyyymmdd", "visits_20260104", "visits_"),
+    ]
+    if not grouping:
+        expected = [(name, name, None) for name in names if not (extraction_fails and name == "audit_20260103")]
+    assert [
+        (request.name.root, request.description.root, request.tableSharding.prefix if request.tableSharding else None)
+        for request in requests
+    ] == expected
+    assert [request.tableType for request in requests] == [
+        TableType.Sharded if prefix else TableType.Regular for _, _, prefix in expected
+    ]
+    lifecycle = [result.right for result in results if isinstance(result.right, OMetaLifeCycleData)]
+    expected_created = {
+        "events_yyyymmdd": 1767225600000,
+        "orders": 1767398400000,
+        "products": 1767571200000,
+        "visits_yyyymmdd": 1767657600000,
+    }
+    if not extraction_fails:
+        expected_created["audit_yyyymmdd"] = 1767484800000
+    if not grouping:
+        expected_created = {
+            name: 1767225600000 + index * 86400000
+            for index, name in enumerate(names)
+            if not (extraction_fails and name == "audit_20260103")
+        }
+    assert {
+        item.entity_fqn.rsplit(".", 1)[-1]: item.life_cycle.created.timestamp.root for item in lifecycle
+    } == expected_created
+    if grouping or not extraction_fails:
+        assert len(lifecycle) == len(expected_created)
+    assert source.database_source_state == {f"{scope}.{name}" for name, _, _ in expected}
+    list(source.mark_tables_as_deleted())
+    if extraction_fails:
+        assert submitted == []
+        assert all(not table.deleted for table in old_entries)
+    else:
+        assert len(submitted) == 1
+        assert submitted[0]["live_fqns"] == source.database_source_state
+        assert [table.deleted for table in old_entries] == [grouping, grouping, not grouping]
+
+
+@pytest.mark.parametrize(
+    "config,enabled", [(None, False), ({}, False), ({"enabled": False}, False), ({"enabled": True}, True)]
+)
+def test_sharding_enabled_comes_from_metadata_pipeline(config, enabled):
+    source = source_for(["events_20260101"])
+    source.source_config = DatabaseServiceMetadataPipeline(shardedTables=config)
+    assert source.sharding_enabled is enabled
+
+
+def test_pipeline_sharding_exclusion_keeps_physical_table():
+    source = source_for(["events_20260101", "events_20260102", "excluded_20260101"])
+    source.source_config = DatabaseServiceMetadataPipeline(
+        shardedTables={"enabled": True, "excludePatterns": ["^excluded_"]}
+    )
+    discovered = list(source._grouped_tables())
+    assert [(table.catalog_name, table.table_type) for table in discovered] == [
+        ("events_yyyymmdd", TableType.Sharded),
+        ("excluded_20260101", TableType.Regular),
+    ]
+
+
+@pytest.mark.parametrize("grouping", [False, True])
+@pytest.mark.parametrize("mark_deleted", [False, True])
+@pytest.mark.parametrize("excluded", [False, True])
+def test_mode_switch_retires_previous_names_with_replacement_name_filters(grouping, mark_deleted, excluded):
+    physical = catalog_table("events_20260101")
+    family = catalog_table("events_yyyymmdd", sharded=True)
+    ordinary = catalog_table("orders")
+    old_entries = [family, physical, ordinary]
+    source = source_for(["events_20260101"], old_entries)
+    source.incremental = SimpleNamespace(enabled=False)
+    source.source_config = DatabaseServiceMetadataPipeline(
+        markDeletedTables=mark_deleted,
+        shardedTables={"enabled": grouping},
+        tableFilterPattern={
+            "includes": ["^events_yyyymmdd$" if grouping else "^events_[0-9]{8}$"],
+            "excludes": ["^events_"] if excluded else [],
+        },
+    )
+    source.database_source_state = set()
+    scope = "demo_service.demo_project.demo_dataset"
+    source._get_filtered_schema_names = lambda **kwargs: [scope]
+    for name, kind in source.get_tables_name_and_type():
+        request = source.prepare_table_request(
+            CreateTableRequest(name=name, tableType=kind, databaseSchema=scope, columns=[])
+        )
+        source.register_record(request)
+
+    def delete_stale_entities(**kwargs):
+        for table in old_entries:
+            table.deleted = table.fullyQualifiedName.root not in kwargs["live_fqns"]
+        return {"deleted": sum(table.deleted for table in old_entries)}
+
+    source.metadata.delete_stale_entities = delete_stale_entities
+    list(source.mark_tables_as_deleted())
+    assert physical.deleted is (grouping and mark_deleted and not excluded)
+    assert family.deleted is (not grouping and mark_deleted and not excluded)
+    assert ordinary.deleted is False
+
+
+@pytest.mark.parametrize("failure", ["listing", "catalog", "collision"])
+def test_disabling_grouping_cannot_retire_family_with_incomplete_or_conflicting_inventory(failure):
+    family = catalog_table("events_yyyymmdd", sharded=True)
+    source = source_for(["events_20260101", "events_20260102"], [family])
+    source.source_config = DatabaseServiceMetadataPipeline(markDeletedTables=True)
+    source.incremental = SimpleNamespace(enabled=False)
+    source.database_source_state = set()
+    scope = "demo_service.demo_project.demo_dataset"
+    source._get_filtered_schema_names = lambda **kwargs: [scope]
+    if failure == "listing":
+        source.client.fail_on = 1
+    elif failure == "catalog":
+        source.metadata.fail = True
+    else:
+        source.client.names.append("events_yyyymmdd")
+
+    def delete_stale_entities(**kwargs):
+        family.deleted = family.fullyQualifiedName.root not in kwargs["live_fqns"]
+        return {"deleted": int(family.deleted)}
+
+    source.metadata.delete_stale_entities = delete_stale_entities
+    list(source.get_tables_name_and_type())
+    list(source.mark_tables_as_deleted())
+    assert family.deleted is False
+    assert source._sharding_scopes[scope] is False

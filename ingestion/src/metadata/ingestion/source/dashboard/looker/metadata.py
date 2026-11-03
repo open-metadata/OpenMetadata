@@ -51,6 +51,7 @@ from pydantic import ValidationError
 
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -103,7 +104,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_table_binding_resolution
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest

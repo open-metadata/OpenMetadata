@@ -29,7 +29,7 @@ def test_canonical_match_does_not_consult_aliases():
     metadata = MagicMock()
     metadata.es_search_from_fqn.return_value = [_table("svc.analytics_master.dbo.orders")]
 
-    with patch("metadata.ingestion.lineage.sql_lineage.search_cache", MagicMock(get=lambda _: None)):
+    with patch("metadata.entity_resolution.table_search.search_cache", MagicMock(get=lambda _: None)):
         result = search_table_entities(
             metadata=metadata,
             service_names="svc",
@@ -49,7 +49,7 @@ def test_alias_match_resolves_to_the_canonical_table():
     metadata.es_search_from_alias.return_value = [_table("svc.analytics_master.dbo.orders")]
 
     with (
-        patch("metadata.ingestion.lineage.sql_lineage.search_cache", MagicMock(get=lambda _: None)),
+        patch("metadata.entity_resolution.table_search.search_cache", MagicMock(get=lambda _: None)),
         patch("metadata.entity_resolution.table_binding.service_resolves_aliases", return_value=True),
     ):
         result = search_table_entities(
@@ -71,7 +71,7 @@ def test_no_match_returns_none():
     metadata.es_search_from_alias.return_value = None
 
     with (
-        patch("metadata.ingestion.lineage.sql_lineage.search_cache", MagicMock(get=lambda _: None)),
+        patch("metadata.entity_resolution.table_search.search_cache", MagicMock(get=lambda _: None)),
         patch("metadata.entity_resolution.table_binding.service_resolves_aliases", return_value=True),
     ):
         result = search_table_entities(
@@ -140,7 +140,7 @@ class TestAliasOptInGate:
         metadata.get_by_name.return_value = None
         metadata.es_search_from_alias.return_value = [_table("svc.master.dbo.orders")]
 
-        with patch("metadata.ingestion.lineage.sql_lineage.search_cache", MagicMock(get=lambda _: None)):
+        with patch("metadata.entity_resolution.table_search.search_cache", MagicMock(get=lambda _: None)):
             result = search_table_entities(
                 metadata=metadata,
                 service_names="svc",

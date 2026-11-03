@@ -212,7 +212,7 @@ class BigQueryTableBindingResolution(DefaultTableBindingResolution):
                 engine.close()
 
     def prepare_usage(self, execution: ParsedData) -> ParsedData:
-        from metadata.ingestion.lineage.sql_lineage import get_table_fqn_from_query_name, search_table_entities
+        from metadata.entity_resolution.table_search import get_table_fqn_from_query_name, search_table_entities
 
         targets = {}
         joins = {}

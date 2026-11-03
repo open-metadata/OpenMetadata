@@ -33,13 +33,14 @@ from metadata.entity_resolution.engine import (
 )
 from metadata.entity_resolution.table import TableResolver
 from metadata.entity_resolution.table_binding import load_table_binding_resolution
-from metadata.generated.schema.entity.data.table import DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table, TableType
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableSharding import TableSharding
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query, search_table_entities
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.cell_lineage import ChainedCells
@@ -82,7 +83,7 @@ class Transport:
         self.requests.append((unquote(parsed.path), params))
         if self.error:
             raise self.error
-        if parsed.path == "/search/query":
+        if parsed.path == "/search/query" or params.get("index") == ["database_service_search_index"]:
             return {"hits": {"hits": [], "total": {"value": 0, "relation": "eq"}}}
         if parsed.path == "/search/fieldQuery":
             return {
@@ -547,6 +548,87 @@ def test_bigquery_wildcard_is_complete_or_fails(sdk, count):
 def test_bigquery_date_wildcard_does_not_invent_membership(sdk):
     with pytest.raises(ValueError, match="member inventory evidence"):
         resolve_bigquery(sdk[0], "events_2026*")
+
+
+@pytest.fixture
+def wildcard_lineage_catalog(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    family = bigquery_family()
+    ordinary = table("my_service.my_db.my_schema.events_archive")
+    target = table("my_service.my_db.my_schema.output")
+    for entity, names in [
+        (family, ["id", "label"]),
+        (ordinary, ["id"]),
+        (target, ["id", "label", "event_id", "total"]),
+    ]:
+        entity.columns = [
+            Column(name=name, dataType="INT", fullyQualifiedName=f"{entity.fullyQualifiedName.root}.{name}")
+            for name in names
+        ]
+        transport.entities[entity.fullyQualifiedName.root] = entity
+    transport.hits = [family.fullyQualifiedName.root, ordinary.fullyQualifiedName.root]
+    return metadata, target
+
+
+@pytest.mark.parametrize("kind", ["TABLE", "VIEW"])
+@pytest.mark.parametrize(
+    "projection,family_columns,ordinary_columns",
+    [
+        ("id, label", {("id", "id"), ("label", "label")}, {("id", "id")}),
+        ("id AS event_id, label", {("id", "event_id"), ("label", "label")}, {("id", "event_id")}),
+        ("*", set(), set()),
+        ("*, id AS event_id", {("id", "event_id"), ("id", "id")}, {("id", "event_id"), ("id", "id")}),
+        ("COUNT(*) AS total", set(), set()),
+        ("SUM(id) AS total", {("id", "total")}, {("id", "total")}),
+    ],
+)
+def test_wildcard_sql_lineage_keeps_only_established_columns(
+    wildcard_lineage_catalog, kind, projection, family_columns, ordinary_columns
+):
+    metadata, target = wildcard_lineage_catalog
+    target.tableType = TableType.View if kind == "VIEW" else TableType.Regular
+    results = list(
+        get_lineage_by_query(
+            metadata=metadata,
+            service_names="my_service",
+            database_name="my_db",
+            schema_name="my_schema",
+            query=f"CREATE {kind} my_db.my_schema.output AS SELECT {projection} FROM `my_db.my_schema.events_*`",
+            dialect=Dialect.BIGQUERY,
+        )
+    )
+    assert len(results) == 2
+    assert all(result.left is None for result in results)
+    assert {result.right.to_entity_fqn for result in results} == {"my_service.my_db.my_schema.output"}
+    assert {
+        result.right.from_entity_fqn.rsplit(".", 1)[-1]: {
+            (edge.fromColumns[0].root.rsplit(".", 1)[-1], edge.toColumn.root.rsplit(".", 1)[-1])
+            for edge in result.right.lineage_details.columnsLineage or []
+        }
+        for result in results
+    } == {"events_yyyymmdd": family_columns, "events_archive": ordinary_columns}
+
+
+def test_wildcard_sql_lineage_does_not_invent_missing_destination_columns(wildcard_lineage_catalog):
+    metadata, target = wildcard_lineage_catalog
+    target.columns = [column for column in target.columns if column.name.root == "id"]
+    results = list(
+        get_lineage_by_query(
+            metadata=metadata,
+            service_names="my_service",
+            database_name="my_db",
+            schema_name="my_schema",
+            query="CREATE TABLE my_db.my_schema.output AS SELECT id, label FROM `my_db.my_schema.events_*`",
+            dialect=Dialect.BIGQUERY,
+        )
+    )
+    assert len(results) == 2
+    assert all(result.left is None for result in results)
+    for result in results:
+        assert [
+            (edge.fromColumns[0].root, edge.toColumn.root) for edge in result.right.lineage_details.columnsLineage
+        ] == [(f"{result.right.from_entity_fqn}.id", "my_service.my_db.my_schema.output.id")]
 
 
 def add_bigquery_service(transport):

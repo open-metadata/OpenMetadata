@@ -25,6 +25,7 @@ from typing import Any
 
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -84,11 +85,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import (
-    get_column_fqn,
-    get_lineage_by_query,
-    get_table_binding_resolution,
-)
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest

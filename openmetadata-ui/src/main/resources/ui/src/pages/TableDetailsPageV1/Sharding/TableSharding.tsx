@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import {
   getBigQuerySourceLink,
   getTableSharding,
@@ -35,28 +37,42 @@ export const TableShardingWidget = () => {
   }
 
   return (
-    <Card data-testid="table-sharding">
-      <Card.Header title={t('label.sharding')} />
-      <Card.Content>
-        <Box direction="col" gap={2}>
-          <span>
-            {t('label.representative')}:{' '}
-            <a
-              href={getBigQuerySourceLink(sharding)}
-              rel="noopener noreferrer"
-              target="_blank">
-              {sharding.representative.tableName}
-            </a>
-          </span>
-          <span>
-            {t('label.shard-count')}: {sharding.shardCount}
-          </span>
-          <span>
-            {sharding.firstShardDate} – {sharding.lastShardDate}
-          </span>
-          <span>{t('message.sharding-representative-columns')}</span>
+    <WidgetCard
+      dataTestId="table-sharding"
+      helperText={t('message.sharding-representative-columns')}
+      title={t('label.sharding')}>
+      <Box direction="col" gap={3}>
+        <Box direction="col" gap={1}>
+          <Typography color="secondary" size="text-xs">
+            {t('label.representative')}
+          </Typography>
+          <Typography
+            as="a"
+            className="tw:break-all"
+            color="brand"
+            href={getBigQuerySourceLink(sharding)}
+            rel="noopener noreferrer"
+            size="text-sm"
+            target="_blank">
+            {sharding.representative.tableName}
+          </Typography>
         </Box>
-      </Card.Content>
-    </Card>
+        <Box direction="col" gap={1}>
+          <Typography color="secondary" size="text-xs">
+            {t('label.shard-count')}
+          </Typography>
+          <Typography size="text-sm">{sharding.shardCount}</Typography>
+        </Box>
+        <Box direction="col" gap={1}>
+          <Typography color="secondary" size="text-xs">
+            {t('label.date-range')}
+          </Typography>
+          <Typography size="text-sm">
+            {formatDate(new Date(sharding.firstShardDate).getTime(), true)} –{' '}
+            {formatDate(new Date(sharding.lastShardDate).getTime(), true)}
+          </Typography>
+        </Box>
+      </Box>
+    </WidgetCard>
   );
 };

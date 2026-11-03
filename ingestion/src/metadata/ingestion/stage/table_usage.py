@@ -22,6 +22,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from metadata.config.common import ConfigModel
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -30,9 +31,6 @@ from metadata.generated.schema.type.queryParserData import ParsedData, QueryPars
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Stage
-from metadata.ingestion.lineage.sql_lineage import (
-    get_table_binding_resolution,
-)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import get_query_hash, init_staging_dir
