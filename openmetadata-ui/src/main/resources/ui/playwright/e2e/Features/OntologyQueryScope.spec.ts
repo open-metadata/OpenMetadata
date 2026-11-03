@@ -397,7 +397,7 @@ test.describe(
       const file = await download;
       const csv = (
         await fs.readFile((await file.path()) ?? '', 'utf-8')
-      ).replace(/^﻿/, '');
+      ).replace(/^\ufeff/, '');
 
       expect(file.suggestedFilename()).toMatch(/\.csv$/);
       expect(csv).toBe(shown.map((cells) => cells.join(',')).join('\n'));
@@ -459,8 +459,7 @@ test.describe(
       await page.getByTestId('ontology-query-find').fill(suffix);
 
       await page
-        .locator('[data-testid^="ontology-query-saved-duplicate-"]')
-        .first()
+        .getByRole('button', { name: `Duplicate ${name}`, exact: true })
         .click();
       await expect(saved).toContainText(`${name} copy`);
 
@@ -471,8 +470,7 @@ test.describe(
       await page.screenshot({ path: 'test-results/g16-saved.png' });
 
       await page
-        .locator('[data-testid^="ontology-query-saved-delete-"]')
-        .nth(1)
+        .getByRole('button', { name: `Delete ${name} copy`, exact: true })
         .click();
       await expect(saved).not.toContainText(`${name} copy`);
 
@@ -483,8 +481,7 @@ test.describe(
       await expect(saved).not.toContainText(`${name} copy`);
 
       await page
-        .locator('[data-testid^="ontology-query-saved-delete-"]')
-        .first()
+        .getByRole('button', { name: `Delete ${name}`, exact: true })
         .click();
       await expect(saved).toHaveCount(0);
     });
