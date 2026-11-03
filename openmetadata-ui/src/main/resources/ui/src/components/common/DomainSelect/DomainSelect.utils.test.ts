@@ -76,6 +76,25 @@ describe('DomainSelect.utils', () => {
       });
     });
 
+    // A picked domain's chip drew the default colour until the entity was
+    // re-read, because the node's reference dropped the domain's style.
+    it("should keep the domain's colour and icon, without the cover image, on the node", () => {
+      const node = domainToTreeNode({
+        ...leafDomain,
+        style: {
+          color: '#F14C75',
+          iconURL: 'Database01',
+          coverImage: { url: 'https://example.com/cover.png' },
+        },
+      });
+
+      expect(node.data?.style).toEqual({
+        color: '#F14C75',
+        iconURL: 'Database01',
+      });
+      expect(domainToTreeNode(leafDomain).data?.style).toBeUndefined();
+    });
+
     it('should mark a domain with unloaded subdomains as lazy and not a leaf', () => {
       const node = domainToTreeNode(parentDomain);
 

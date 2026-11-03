@@ -43,7 +43,14 @@ export function domainToTreeNode(
     id,
     value: id,
     label: getEntityName(domain),
-    data: getEntityReferenceFromEntity<Domain>(domain, EntityType.DOMAIN),
+    data: {
+      ...getEntityReferenceFromEntity<Domain>(domain, EntityType.DOMAIN),
+      // A picked domain's chip draws before the entity is re-read, so its
+      // reference carries the colour and icon the server would add.
+      style: domain.style
+        ? { color: domain.style.color, iconURL: domain.style.iconURL }
+        : undefined,
+    },
     isLeaf: childrenCount === 0 && !hasLoadedChildren,
     lazyLoad: childrenCount > 0 && !hasLoadedChildren,
     count: childrenCount || undefined,
