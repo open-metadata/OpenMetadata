@@ -79,7 +79,7 @@ const OntologyReleasePicker = ({
       pageSize={25}
       renderTrigger={({ toggle }) => (
         <Button aria-label={label} color="secondary" size="sm" onPress={toggle}>
-          {value ? releaseName(value) : label}
+          {value ? `${label}: ${releaseName(value)}` : label}
         </Button>
       )}
       value={

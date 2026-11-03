@@ -23,6 +23,7 @@ import {
   ChangeType,
   MemberChange,
   MemberKind,
+  OntologyReleaseDiff,
 } from '../../../../generated/api/data/ontologyReleaseDiff';
 import { MemberKind as WorkingMemberKind } from '../../../../generated/api/data/ontologyWorkingDiff';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
@@ -68,11 +69,24 @@ const asWorkingKind = (kind: MemberKind) =>
 
 const releaseName = (release: OntologyRelease) => release.semanticVersion ?? '';
 
-const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
-  const { t } = useTranslation();
-  const [from, setFrom] = useState<OntologyRelease>();
-  const [to, setTo] = useState<OntologyRelease>();
-  const isSame = Boolean(from && to && from.id === to.id);
+const summarizeDiff = (pages: OntologyReleaseDiff[] | undefined) => {
+  const changes: MemberChange[] = (pages ?? [])
+    .flatMap((page) => page.data)
+    .filter(({ memberKind }) => memberKind !== MemberKind.Ontology);
+
+  return {
+    changes,
+    total: pages?.[0]?.paging.total ?? 0,
+    counts: countChangesByKind(
+      changes.map(({ memberKind }) => ({
+        memberKind: asWorkingKind(memberKind),
+      }))
+    ),
+  };
+};
+
+const useReleaseCompare = (from?: OntologyRelease, to?: OntologyRelease) => {
+  const isSame = from?.id === to?.id;
   const diff = useInfiniteQuery({
     queryKey: ['ontology-release-compare', to?.id, from?.id],
     initialPageParam: undefined as string | undefined,
@@ -83,22 +97,29 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
         signal
       ),
     getNextPageParam: (last) => last.paging.after,
-    enabled: Boolean(from && to && !isSame),
+    enabled: Boolean(from && to) && !isSame,
     retry: false,
     gcTime: 0,
   });
-  const changes: MemberChange[] = (
-    diff.data?.pages.flatMap((page) => page.data) ?? []
-  ).filter(({ memberKind }) => memberKind !== MemberKind.Ontology);
-  const total = diff.data?.pages[0]?.paging.total ?? 0;
-  const counts = countChangesByKind(
-    changes.map(({ memberKind }) => ({
-      memberKind: asWorkingKind(memberKind),
-    }))
-  );
+  const summary = summarizeDiff(diff.data?.pages);
   const hasResult = diff.isSuccess && !isSame;
-  const noDifferences =
-    isSame || (hasResult && changes.length === 0 && !diff.hasNextPage);
+  const isEmptyResult =
+    hasResult && summary.changes.length === 0 && !diff.hasNextPage;
+
+  return {
+    ...summary,
+    diff,
+    hasResult,
+    noDifferences: Boolean(from && to) && (isSame || isEmptyResult),
+  };
+};
+
+const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
+  const { t } = useTranslation();
+  const [from, setFrom] = useState<OntologyRelease>();
+  const [to, setTo] = useState<OntologyRelease>();
+  const { diff, changes, counts, total, hasResult, noDifferences } =
+    useReleaseCompare(from, to);
 
   const renderSummary = () => (
     <Typography

@@ -114,6 +114,128 @@ const ReleaseDecision = ({ release }: { release: OntologyRelease }) => {
   );
 };
 
+const useHistoryView = (
+  pages: { data: OntologyRelease[] }[] | undefined,
+  latestReleaseId: string | undefined
+) => {
+  const releases = visibleHistoryReleases(
+    (pages ?? []).flatMap((entry) => entry.data),
+    latestReleaseId
+  );
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<HistoryStatusFilter>('all');
+  const [requestedPage, setPage] = useState(0);
+  const matching = filterHistoryReleases(releases, filter, search);
+  const pageCount = Math.max(1, Math.ceil(matching.length / HISTORY_PAGE_SIZE));
+  const page = Math.min(requestedPage, pageCount - 1);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, filter]);
+
+  return {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    page,
+    setPage,
+    pageCount,
+    matching,
+    rows: matching.slice(
+      page * HISTORY_PAGE_SIZE,
+      (page + 1) * HISTORY_PAGE_SIZE
+    ),
+  };
+};
+
+const HistoryControls = ({
+  filter,
+  search,
+  onFilter,
+  onSearch,
+}: {
+  filter: HistoryStatusFilter;
+  search: string;
+  onFilter: (filter: HistoryStatusFilter) => void;
+  onSearch: (search: string) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box direction="col" gap={2}>
+      <Input
+        aria-label={t('label.search-entity', {
+          entity: t('label.release-plural'),
+        })}
+        icon={Search}
+        inputDataTestId="ontology-release-search"
+        placeholder={t('label.search-entity', {
+          entity: t('label.release-plural'),
+        })}
+        size="sm"
+        value={search}
+        onChange={onSearch}
+      />
+      <Box aria-label={t('label.status')} gap={1} role="group" wrap="wrap">
+        {HISTORY_STATUS_FILTERS.map((option) => (
+          <Button
+            aria-pressed={filter === option}
+            color={filter === option ? 'primary' : 'secondary'}
+            data-testid={`ontology-release-filter-${option}`}
+            key={option}
+            size="xs"
+            onPress={() => onFilter(option)}>
+            {t(`label.${option === 'inReview' ? 'in-review' : option}`)}
+          </Button>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
+const HistoryPager = ({
+  page,
+  pageCount,
+  onPage,
+}: {
+  page: number;
+  pageCount: number;
+  onPage: (page: number) => void;
+}) => {
+  const { t } = useTranslation();
+  if (pageCount < 2) {
+    return null;
+  }
+
+  return (
+    <Box align="center" gap={2}>
+      <Button
+        color="secondary"
+        data-testid="ontology-release-previous"
+        isDisabled={page === 0}
+        size="sm"
+        onPress={() => onPage(page - 1)}>
+        {t('label.previous')}
+      </Button>
+      <Typography
+        color="secondary"
+        data-testid="ontology-release-page"
+        size="text-sm">
+        {t('label.page')} {page + 1} / {pageCount}
+      </Typography>
+      <Button
+        color="secondary"
+        data-testid="ontology-release-next"
+        isDisabled={page >= pageCount - 1}
+        size="sm"
+        onPress={() => onPage(page + 1)}>
+        {t('label.next')}
+      </Button>
+    </Box>
+  );
+};
+
 const OntologyReleaseHistory = ({
   history,
   ontologyId,
@@ -124,25 +246,17 @@ const OntologyReleaseHistory = ({
 }: OntologyReleaseHistoryProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<HistoryStatusFilter>('all');
-  const [page, setPage] = useState(0);
-  const releases = visibleHistoryReleases(
-    history.data?.pages.flatMap((entry) => entry.data) ?? [],
-    latestReleaseId
-  );
-  const matching = filterHistoryReleases(releases, filter, search);
-  const pageCount = Math.max(1, Math.ceil(matching.length / HISTORY_PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount - 1);
-  const rows = matching.slice(
-    currentPage * HISTORY_PAGE_SIZE,
-    (currentPage + 1) * HISTORY_PAGE_SIZE
-  );
-
-  useEffect(() => {
-    setPage(0);
-  }, [search, filter]);
-
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    page,
+    setPage,
+    pageCount,
+    rows,
+    matching,
+  } = useHistoryView(history.data?.pages, latestReleaseId);
   const renderVersionButton = (release: OntologyRelease) => (
     <Button
       aria-expanded={selectedReleaseId === release.id}
@@ -263,34 +377,12 @@ const OntologyReleaseHistory = ({
   return (
     <Box data-testid="ontology-release-history" direction="col" gap={4}>
       {ontologyId && <OntologyReleaseCompare ontologyId={ontologyId} />}
-      <Box direction="col" gap={2}>
-        <Input
-          aria-label={t('label.search-entity', {
-            entity: t('label.release-plural'),
-          })}
-          icon={Search}
-          inputDataTestId="ontology-release-search"
-          placeholder={t('label.search-entity', {
-            entity: t('label.release-plural'),
-          })}
-          size="sm"
-          value={search}
-          onChange={setSearch}
-        />
-        <Box aria-label={t('label.status')} gap={1} role="group" wrap="wrap">
-          {HISTORY_STATUS_FILTERS.map((option) => (
-            <Button
-              aria-pressed={filter === option}
-              color={filter === option ? 'primary' : 'secondary'}
-              data-testid={`ontology-release-filter-${option}`}
-              key={option}
-              size="xs"
-              onPress={() => setFilter(option)}>
-              {t(`label.${option === 'inReview' ? 'in-review' : option}`)}
-            </Button>
-          ))}
-        </Box>
-      </Box>
+      <HistoryControls
+        filter={filter}
+        search={search}
+        onFilter={setFilter}
+        onSearch={setSearch}
+      />
       {history.isPending && (
         <Typography role="status">{t('label.loading')}</Typography>
       )}
@@ -309,32 +401,7 @@ const OntologyReleaseHistory = ({
         <Typography>{t('message.no-data-available')}</Typography>
       )}
       {isAiMode ? renderAiReleases() : renderClassicReleases()}
-      {pageCount > 1 && (
-        <Box align="center" gap={2}>
-          <Button
-            color="secondary"
-            data-testid="ontology-release-previous"
-            isDisabled={currentPage === 0}
-            size="sm"
-            onPress={() => setPage(currentPage - 1)}>
-            {t('label.previous')}
-          </Button>
-          <Typography
-            color="secondary"
-            data-testid="ontology-release-page"
-            size="text-sm">
-            {t('label.page')} {currentPage + 1} / {pageCount}
-          </Typography>
-          <Button
-            color="secondary"
-            data-testid="ontology-release-next"
-            isDisabled={currentPage >= pageCount - 1}
-            size="sm"
-            onPress={() => setPage(currentPage + 1)}>
-            {t('label.next')}
-          </Button>
-        </Box>
-      )}
+      <HistoryPager page={page} pageCount={pageCount} onPage={setPage} />
       {history.hasNextPage && (
         <Button
           color="secondary"
