@@ -1810,6 +1810,20 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
+   * Escapes a name for the replacement argument of a {@code REGEXP_REPLACE} rendered into MySQL
+   * statement text: backslashes double for the regex layer, then backslashes and apostrophes
+   * double again for the string literal.
+   *
+   * @deprecated the server's own statements bind these values
+   *     (ADR:2026-11-03-dao-statements-bind-every-value); kept for extensions that still render
+   *     them, until they move to bound parameters.
+   */
+  @Deprecated(forRemoval = true)
+  public static String escapeForMySqlRegexReplacement(String name) {
+    return escapeBackslashAndApostrophe(name.replace("\\", "\\\\"));
+  }
+
+  /**
    * Escape a value that travels as a LIKE <em>bind</em> parameter: only the LIKE metacharacters
    * and the escape character itself need escaping. Apostrophes stay as typed — {@link #escape}
    * doubles them for literal interpolation, which would make a bound search for "it's" match
