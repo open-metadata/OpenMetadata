@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { OntologyConceptBindingsResponse } from '../../../src/generated/type/ontologyConceptBindingsResponse';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { RelationshipType } from '../../../src/generated/entity/data/relationshipType';
+import { OntologyConceptBindingsResponse } from '../../../src/generated/type/ontologyConceptBindingsResponse';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
-import { TableClass } from '../../support/entity/TableClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
@@ -578,7 +578,10 @@ test.describe(
             'aria-selected',
             'true'
           );
-          await page.getByRole('button', { name: 'Close' }).first().click();
+          await page
+            .getByTestId('ontology-concept-inspector')
+            .getByRole('button', { name: 'Close' })
+            .click();
           const empty = await findEmptyCanvasPoint(page);
           await page.mouse.dblclick(empty.x, empty.y);
           const panel = page.getByTestId('ontology-new-class-panel');
@@ -646,9 +649,10 @@ test.describe(
 
         await test.step('Click the handle, then the target, to make a subclass', async () => {
           await connectByClick(page, beta.id, alpha.id);
+          const created = page.waitForResponse(isAxiomsPost);
           await chooseRelationType(page, SUBCLASS_OF);
           const axiom = await okJson<OntologyAxiom>(
-            await page.waitForResponse(isAxiomsPost),
+            await created,
             'Create the clicked relation'
           );
           expect(axiom.subjectIri).toBe(beta.iri);
@@ -663,9 +667,10 @@ test.describe(
             body: await page.screenshot(),
             contentType: 'image/png',
           });
+          const created = page.waitForResponse(isAxiomsPost);
           await chooseRelationType(page, PART_OF);
           const axiom = await okJson<OntologyAxiom>(
-            await page.waitForResponse(isAxiomsPost),
+            await created,
             'Create the dragged relation'
           );
           expect(axiom.subjectIri).toBe(gamma.iri);

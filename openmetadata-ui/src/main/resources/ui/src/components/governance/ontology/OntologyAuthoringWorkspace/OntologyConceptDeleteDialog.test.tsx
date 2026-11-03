@@ -13,14 +13,14 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { OntologyConceptDeleteImpact } from '../../../../generated/api/data/ontologyConceptDeleteImpact';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
-import { useEnUsTranslations } from '../../../../test/unit/enUsTranslation';
-import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import {
   getOntologyConceptBindings,
   getOntologyConceptDeleteImpact,
   restoreOntologyDefinition,
   softDeleteOntologyDefinition,
 } from '../../../../rest/ontologyAPI';
+import { useEnUsTranslations } from '../../../../test/unit/enUsTranslation';
+import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
 
 jest.mock('../../../../rest/ontologyAPI');

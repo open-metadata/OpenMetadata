@@ -227,22 +227,39 @@ const OntologyDefinitionList = <
     </>
   );
 
-  const renderEditor = () => {
-    if (!selected) {
-      return null;
-    }
-    if (selected === 'new' && renderCreate) {
-      return renderCreate({
-        close: () => guard(() => setSelected(undefined)),
-        onCreated: (saved) => {
-          if (saved) {
-            setSelected(saved);
-          }
+  const renderEditorForm = () => (
+    <Fragment
+      key={definition ? definition.id + ':' + definition.version : 'new'}>
+      {children(
+        definition,
+        selected === 'new' ? canCreate : permission.canEditAll,
+        (saved) => {
+          setSelected(saved);
           void page.refetch();
           onWorkingChange?.();
-        },
-      });
-    }
+        }
+      )}
+      {isAiMode ? (
+        <div className="tw:flex tw:empty:hidden">{renderDelete()}</div>
+      ) : (
+        renderDelete()
+      )}
+    </Fragment>
+  );
+
+  const renderCreateForm = (create: NonNullable<typeof renderCreate>) =>
+    create({
+      close: () => guard(() => setSelected(undefined)),
+      onCreated: (saved) => {
+        if (saved) {
+          setSelected(saved);
+        }
+        void page.refetch();
+        onWorkingChange?.();
+      },
+    });
+
+  const renderBlockedState = () => {
     if (definition && permission.isLoading) {
       return <Typography role="status">{t('label.loading')}</Typography>;
     }
@@ -254,25 +271,21 @@ const OntologyDefinitionList = <
       );
     }
 
-    const editor = (
-      <Fragment
-        key={definition ? definition.id + ':' + definition.version : 'new'}>
-        {children(
-          definition,
-          selected === 'new' ? canCreate : permission.canEditAll,
-          (saved) => {
-            setSelected(saved);
-            void page.refetch();
-            onWorkingChange?.();
-          }
-        )}
-        {isAiMode ? (
-          <div className="tw:flex tw:empty:hidden">{renderDelete()}</div>
-        ) : (
-          renderDelete()
-        )}
-      </Fragment>
-    );
+    return null;
+  };
+
+  const renderEditor = () => {
+    if (!selected) {
+      return null;
+    }
+    if (selected === 'new' && renderCreate) {
+      return renderCreateForm(renderCreate);
+    }
+    const blocked = renderBlockedState();
+    if (blocked) {
+      return blocked;
+    }
+    const editor = renderEditorForm();
 
     return isAiMode ? (
       <Card size="lg">

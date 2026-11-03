@@ -135,24 +135,23 @@ export const classIri = (
 const normalizedLabel = (value: string): string =>
   value.trim().toLocaleLowerCase();
 
-export const classIdentityIssues = (
-  model: OntologyStudioModel,
-  input: ClassIdentityInput
-): ClassIdentityIssue[] => {
-  const name = input.localName.trim();
-  const issues: ClassIdentityIssue[] = [];
-  const nameIri = model.ontology.namespace + name;
-  const definitions = [...model.concepts, ...model.properties];
-  const nameTaken = definitions.some(
-    (definition) => definition.iri === nameIri
-  );
+const nameIssues = (name: string, nameTaken: boolean): ClassIdentityIssue[] => {
   if (!name) {
-    issues.push('name-required');
-  } else if (!isValidLocalName(name)) {
-    issues.push('name-invalid');
-  } else if (nameTaken) {
-    issues.push('name-taken');
+    return ['name-required'];
   }
+  if (!isValidLocalName(name)) {
+    return ['name-invalid'];
+  }
+
+  return nameTaken ? ['name-taken'] : [];
+};
+
+const labelIssues = (
+  model: OntologyStudioModel,
+  input: ClassIdentityInput,
+  name: string,
+  nameTaken: boolean
+): ClassIdentityIssue[] => {
   const label = input.displayName.trim() || name;
   const labelTaken =
     Boolean(label) &&
@@ -161,23 +160,48 @@ export const classIdentityIssues = (
         normalizedLabel(concept.displayName ?? concept.name) ===
         normalizedLabel(label)
     );
-  if (labelTaken && !(nameTaken && !input.displayName.trim())) {
-    issues.push('label-taken');
+
+  return labelTaken && !(nameTaken && !input.displayName.trim())
+    ? ['label-taken']
+    : [];
+};
+
+const iriIssues = (
+  definitions: { iri: string }[],
+  customIri: string
+): ClassIdentityIssue[] => {
+  if (!customIri) {
+    return [];
   }
-  const customIri = input.iri.trim();
-  if (customIri && !isAbsoluteOntologyIri(customIri)) {
-    issues.push('iri-invalid');
-  } else if (
-    customIri &&
-    definitions.some((definition) => definition.iri === customIri)
-  ) {
-    issues.push('iri-taken');
-  }
-  if (input.source.trim() && !isAbsoluteOntologyIri(input.source.trim())) {
-    issues.push('source-invalid');
+  if (!isAbsoluteOntologyIri(customIri)) {
+    return ['iri-invalid'];
   }
 
-  return issues;
+  return definitions.some((definition) => definition.iri === customIri)
+    ? ['iri-taken']
+    : [];
+};
+
+export const classIdentityIssues = (
+  model: OntologyStudioModel,
+  input: ClassIdentityInput
+): ClassIdentityIssue[] => {
+  const name = input.localName.trim();
+  const nameIri = model.ontology.namespace + name;
+  const definitions = [...model.concepts, ...model.properties];
+  const nameTaken = definitions.some(
+    (definition) => definition.iri === nameIri
+  );
+  const source = input.source.trim();
+
+  return [
+    ...nameIssues(name, nameTaken),
+    ...labelIssues(model, input, name, nameTaken),
+    ...iriIssues(definitions, input.iri.trim()),
+    ...(source && !isAbsoluteOntologyIri(source)
+      ? ['source-invalid' as const]
+      : []),
+  ];
 };
 export interface MappingInput {
   mappingType: ConceptMappingType;
