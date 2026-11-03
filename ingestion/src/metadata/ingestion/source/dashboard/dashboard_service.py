@@ -196,6 +196,12 @@ class DashboardServiceTopology(ServiceTopology):
                 consumer=["dashboard_service"],
                 nullable=True,
             ),
+            NodeStage(
+                type_=PatchRequest,
+                processor="yield_dashboard_extension",
+                consumer=["dashboard_service"],
+                nullable=True,
+            ),
         ],
     )
 
@@ -445,6 +451,15 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         if not self.source_config.includeUsage:
             return
+
+    def yield_dashboard_extension(self, dashboard_details: Any) -> Iterable[Either[PatchRequest]]:
+        """
+        Custom property values that change on every run, such as the last run status. They
+        are patched in once the dashboard exists: a bot PUT keeps the stored extension unless
+        metadata is overridden, so values sent with the dashboard would stop updating after
+        the first run (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard).
+        """
+        yield from ()
 
     def close(self):
         if self._connection is not None:
