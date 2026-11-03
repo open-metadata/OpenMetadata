@@ -103,6 +103,7 @@ describe('Compare versions', () => {
     pickBoth();
 
     const added = await screen.findByTestId('ontology-compare-added');
+
     expect(added).toHaveTextContent('Invoice');
     expect(added).toHaveTextContent('hasOwner');
     expect(screen.getByTestId('ontology-compare-changed')).toHaveTextContent(

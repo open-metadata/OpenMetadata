@@ -24,5 +24,27 @@ export interface OntologyReleaseChangeSummary {
      * total is unavailable.
      */
     deprecated?: number;
+    /**
+     * Every counted change (added, changed, removed and deprecated) grouped by member kind. The
+     * ontology row is counted apart so readers can leave out the container the user created.
+     * Absent on summaries captured before kind counts existed.
+     */
+    kindCounts?: OntologyReleaseKindCounts;
     removed:     number;
+}
+
+/**
+ * Every counted change (added, changed, removed and deprecated) grouped by member kind. The
+ * ontology row is counted apart so readers can leave out the container the user created.
+ * Absent on summaries captured before kind counts existed.
+ *
+ * Counts of changed release members by member kind.
+ */
+export interface OntologyReleaseKindCounts {
+    association: number;
+    axiom:       number;
+    concept:     number;
+    ontology:    number;
+    property:    number;
+    shape:       number;
 }

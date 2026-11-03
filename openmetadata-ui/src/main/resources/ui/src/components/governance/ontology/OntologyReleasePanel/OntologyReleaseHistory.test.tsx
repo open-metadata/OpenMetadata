@@ -195,6 +195,45 @@ describe('Releases tab', () => {
     expect(screen.getByText('wip')).toBeVisible();
   });
 
+  it('lists the per-kind counts, folds rules together and leaves the ontology row out', () => {
+    renderHistory([
+      release('kinds', '2.0.0', EntityStatus.Approved, {
+        approvalBasis: ApprovalBasis.NoReviewersConfigured,
+        changeSummary: {
+          ...summary,
+          kindCounts: {
+            ontology: 1,
+            concept: 2,
+            property: 1,
+            association: 0,
+            axiom: 1,
+            shape: 2,
+          },
+        },
+      }),
+    ]);
+
+    expect(screen.getByTestId('ontology-release-kinds-kinds').textContent).toBe(
+      'message.native-concept-count {"count":2} · message.ontology-property-count {"count":1} · message.ontology-rule-count {"count":3}'
+    );
+  });
+
+  it('shows no kind line for a release captured before kind counts existed', () => {
+    renderHistory([
+      release('older', '1.0.0', EntityStatus.Approved, {
+        approvalBasis: ApprovalBasis.NoReviewersConfigured,
+        changeSummary: summary,
+      }),
+    ]);
+
+    expect(
+      screen.getByTestId('ontology-release-count-older')
+    ).toHaveTextContent(
+      '3 label.added-lowercase · 2 label.changed-lowercase · 2 label.removed-lowercase'
+    );
+    expect(screen.queryByTestId('ontology-release-kinds-older')).toBeNull();
+  });
+
   it('shows the same row facts in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     mockEvents([event(EventType.Approved, { voters: ['qa.reviewer1'] })]);

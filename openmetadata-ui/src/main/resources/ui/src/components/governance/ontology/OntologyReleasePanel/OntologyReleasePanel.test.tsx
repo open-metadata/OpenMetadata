@@ -602,6 +602,40 @@ describe('OntologyReleasePanel', () => {
     ).toBeInTheDocument();
   });
 
+  it('holds Activate and asks for a status check when the server sealed another version than the one requested', async () => {
+    post.mockImplementation(async () => {
+      currentRelease = {
+        ...release,
+        id: '00000000-0000-4000-8000-000000000007',
+        releaseRevision: 2,
+        semanticVersion: '1.3.1',
+        entityStatus: EntityStatus.Approved,
+      };
+      currentState = { ...currentState, lastReleaseRevision: 2 };
+
+      return { data: currentRelease };
+    });
+    await renderPanel(true, 'changes');
+    await screen.findByText(/Customer/);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'label.save-as-release-draft' })
+      ).toBeEnabled()
+    );
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.save-as-release-draft' })
+      )
+    );
+
+    expect(await screen.findByTestId('ontology-recovery-action')).toBeVisible();
+    expect(
+      screen.getByText('message.ontology-publication-recovery')
+    ).toBeVisible();
+    expect(activationButton()).toBeDisabled();
+    expect(put).not.toHaveBeenCalled();
+  });
+
   it('follows two captures in Changes while keeping their revision fences and release details aligned', async () => {
     const captures = [
       {

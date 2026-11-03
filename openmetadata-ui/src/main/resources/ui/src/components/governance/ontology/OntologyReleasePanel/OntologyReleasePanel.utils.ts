@@ -34,6 +34,7 @@ import { getTaskDetailPath } from '../../../../utils/TaskUtils';
 import {
   flattenConceptChanges,
   suggestVersion,
+  type ChangeKindCounts,
   type VersionSuggestion,
 } from './OntologyReleaseChanges.utils';
 import type {
@@ -320,6 +321,29 @@ export const releaseChangeBreakdown = (release: OntologyRelease) => {
     added: summary.added,
     changed: summary.changed + summary.deprecated,
     removed: summary.removed,
+  };
+};
+
+/**
+ * Per-kind counts of a release's changes, read from the summary the server
+ * wrote at capture. A release captured before kind counts existed has none,
+ * so its row keeps the added, changed and removed breakdown alone.
+ */
+export const releaseKindCounts = (
+  release: OntologyRelease
+): ChangeKindCounts | undefined => {
+  const kinds = release.changeSummary?.kindCounts;
+  if (!kinds) {
+    return undefined;
+  }
+  const rules = kinds.axiom + kinds.shape;
+
+  return {
+    concepts: kinds.concept,
+    properties: kinds.property,
+    relationships: kinds.association,
+    rules,
+    total: kinds.concept + kinds.property + kinds.association + rules,
   };
 };
 

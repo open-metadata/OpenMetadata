@@ -719,6 +719,8 @@
         "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Ontology*IT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyApprovalIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyReleaseKindCountsIT.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseComparisonTest.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/OntologyConcurrentHardDeleteIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyReleaseIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/IndependentOntologyPublicationIT.java",

@@ -217,9 +217,18 @@ test.describe(
           page.getByTestId('ontology-scope-menu-trigger')
         ).toHaveText('Ontology');
         await expect(page.getByTestId('ontology-explorer')).toHaveCount(0);
-        await expect(
-          page.getByRole('button', { name: 'Reload', exact: true })
-        ).toBeVisible();
+        if (status === 404) {
+          await expect(page.getByTestId('ontology-not-found')).toContainText(
+            'This ontology was not found.'
+          );
+          await expect(
+            page.getByRole('button', { name: 'Reload', exact: true })
+          ).toHaveCount(0);
+        } else {
+          await expect(
+            page.getByRole('button', { name: 'Reload', exact: true })
+          ).toBeVisible();
+        }
         await page
           .getByRole('button', { name: 'All ontologies', exact: true })
           .click();
@@ -539,6 +548,13 @@ test.describe(
                 `/api/v1/ontologies/${ontologyId}` &&
               response.request().method() === 'PATCH'
           );
+          // The panel refetches after the PATCH and closes an open menu, so the next step opens its menu only after the last read of that refetch.
+          const refetched = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}/working/validation` &&
+              response.request().method() === 'GET'
+          );
           await author
             .getByRole('option', {
               name:
@@ -546,6 +562,7 @@ test.describe(
             })
             .click();
           expect((await addition).status()).toBe(200);
+          await refetched;
           await expect(emptyCard).toContainText(
             reviewer.responseData.displayName ?? reviewer.responseData.name
           );
@@ -946,11 +963,11 @@ test.describe(
         await expect(
           author.getByTestId('ontology-publication-modal')
         ).not.toBeVisible();
-        for (const [card, previewFormat, extension] of [
-          ['rdfxml', 'turtle', 'rdf'],
-          ['jsonld', 'turtle', 'jsonld'],
-          ['skos', 'skos', 'ttl'],
-          ['csv', 'csv', 'csv'],
+        for (const [card, extension] of [
+          ['rdfxml', 'rdf'],
+          ['jsonld', 'jsonld'],
+          ['skos', 'ttl'],
+          ['csv', 'csv'],
         ]) {
           const exportPath = `/api/v1/ontologyReleases/${firstRelease.id}/export`;
           const previewed = author.waitForResponse((response) => {
@@ -958,7 +975,7 @@ test.describe(
 
             return (
               url.pathname === exportPath &&
-              url.searchParams.get('format') === previewFormat
+              url.searchParams.get('format') === card
             );
           });
           await author.getByTestId('ontology-import-export-trigger').click();
@@ -2106,6 +2123,17 @@ const g8Shot = async (page: Page, testInfo: TestInfo, name: string) => {
   await testInfo.attach(`g8-${name}`, { path, contentType: 'image/png' });
 };
 
+// Playwright drops the attachments of passing tests, so the review evidence is written straight to the folder the PR body reads.
+const g8ReviewShot = async (page: Page, lane: 1 | 2, mode: string) => {
+  const directory = process.env.G8_REVIEW_SHOT_DIR;
+  if (directory) {
+    await page.screenshot({
+      path: `${directory}/G8-review-history-${lane}-${mode}.png`,
+      fullPage: true,
+    });
+  }
+};
+
 type SealOptions = {
   notes?: string;
   publish?: boolean;
@@ -2280,7 +2308,14 @@ test.describe(
               page.getByTestId(`ontology-release-count-${release.id}`)
             ).toHaveText(expectedBreakdown(release));
           }
+          await expect(
+            page.getByTestId(`ontology-release-kinds-${first.id}`)
+          ).toHaveText('2 concepts');
+          await expect(
+            page.getByTestId(`ontology-release-kinds-${second.id}`)
+          ).toHaveText('3 concepts');
           await g8Shot(page, testInfo, mode === 'ai' ? 'rows' : 'classic');
+          await g8ReviewShot(page, 1, mode);
 
           await chooseRelease(page, 'From version', '0.1.0');
           await chooseRelease(page, 'To version', '0.2.0');
@@ -2318,11 +2353,57 @@ test.describe(
             testInfo,
             mode === 'ai' ? 'compare' : 'classic-compare'
           );
+          await g8ReviewShot(page, 2, mode);
         } finally {
           await removeFixture(api, ontology);
         }
       });
     }
+
+    test('lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed', async ({
+      isolatedUserPage: page,
+    }) => {
+      test.slow();
+      const api = await getWorkerAdminAPIContext();
+      const { ontology } = await createPublicationFixture(
+        api,
+        'pw_g8_kinds',
+        []
+      );
+      try {
+        await addConcept(api, ontology, 'Legacy');
+        const older = await sealRelease(api, ontology.id, { notes: 'older' });
+        await addConcept(api, ontology, 'Invoice');
+        const newer = await sealRelease(api, ontology.id, { notes: 'newer' });
+        await page.route(
+          new RegExp(`/api/v1/ontologies/${ontology.id}/releases\\?`),
+          async (route) => {
+            const response = await route.fetch();
+            const body = await response.json();
+            for (const release of body.data) {
+              if (release.id === older.id) {
+                delete release.changeSummary.kindCounts;
+              }
+            }
+            await route.fulfill({ response, json: body });
+          }
+        );
+
+        await openReleases(page, ontology);
+
+        await expect(
+          page.getByTestId(`ontology-release-kinds-${newer.id}`)
+        ).toHaveText('1 concept');
+        await expect(
+          page.getByTestId(`ontology-release-count-${older.id}`)
+        ).toHaveText('3 added · 0 changed · 0 removed');
+        await expect(
+          page.getByTestId(`ontology-release-kinds-${older.id}`)
+        ).toHaveCount(0);
+      } finally {
+        await removeFixture(api, ontology);
+      }
+    });
 
     test('says there are no differences when a release is compared with itself', async ({
       isolatedUserPage: page,

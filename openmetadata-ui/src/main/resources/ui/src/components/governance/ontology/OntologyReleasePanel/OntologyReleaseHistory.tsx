@@ -34,6 +34,7 @@ import { useOntologyPublication } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
+import { KIND_MESSAGES } from './OntologyReleaseChanges.utils';
 import OntologyReleaseCompare from './OntologyReleaseCompare';
 import OntologyReleaseExport from './OntologyReleaseExport';
 import {
@@ -41,6 +42,7 @@ import {
   HistoryStatusFilter,
   HISTORY_STATUS_FILTERS,
   releaseChangeBreakdown,
+  releaseKindCounts,
   visibleHistoryReleases,
 } from './OntologyReleasePanel.utils';
 
@@ -287,20 +289,33 @@ const OntologyReleaseHistory = ({
 
   const renderCounts = (release: OntologyRelease) => {
     const breakdown = releaseChangeBreakdown(release);
+    const kinds = releaseKindCounts(release);
 
     return (
-      <Typography
-        color="secondary"
-        data-testid={`ontology-release-count-${release.id}`}
-        size="text-xs">
-        {breakdown
-          ? [
-              `${breakdown.added} ${t('label.added-lowercase')}`,
-              `${breakdown.changed} ${t('label.changed-lowercase')}`,
-              `${breakdown.removed} ${t('label.removed-lowercase')}`,
-            ].join(' · ')
-          : t('message.ontology-change-summary-unavailable')}
-      </Typography>
+      <>
+        <Typography
+          color="secondary"
+          data-testid={`ontology-release-count-${release.id}`}
+          size="text-xs">
+          {breakdown
+            ? [
+                `${breakdown.added} ${t('label.added-lowercase')}`,
+                `${breakdown.changed} ${t('label.changed-lowercase')}`,
+                `${breakdown.removed} ${t('label.removed-lowercase')}`,
+              ].join(' · ')
+            : t('message.ontology-change-summary-unavailable')}
+        </Typography>
+        {kinds && kinds.total > 0 && (
+          <Typography
+            color="secondary"
+            data-testid={`ontology-release-kinds-${release.id}`}
+            size="text-xs">
+            {KIND_MESSAGES.filter(([kind]) => kinds[kind] > 0)
+              .map(([kind, message]) => t(message, { count: kinds[kind] }))
+              .join(' · ')}
+          </Typography>
+        )}
+      </>
     );
   };
 
