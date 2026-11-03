@@ -691,7 +691,8 @@ test.describe(
       conceptId: string,
       text: string
     ) => {
-      await clickGraphNode(page, conceptId);
+      await page.getByTestId('submode-tab-tree').click();
+      await page.getByTestId(`ontology-tree-term-${conceptId}`).click();
       await page.getByTestId('ontology-concept-edit').click();
       await page
         .getByTestId('ontology-concept-editor')
