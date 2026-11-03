@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -49,6 +51,7 @@ import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
@@ -995,6 +998,35 @@ class CreateTaskTest {
     assertTrue(
         CreateTask.isSupersedablePriorApprovalTask(
             priorByKaran, workflowDefinitionId, UUID.randomUUID(), "karan"));
+  }
+
+  // ---- reviewsStaleRevision ----
+
+  @Test
+  void testRunOfAReplacedRevisionReviewsAStaleRevision() {
+    // Revision 2's run created its task first; revision 1's run finishes last and must not
+    // supersede it.
+    DelegateTask delegateTask = changeRequestRun();
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(false);
+
+      assertTrue(CreateTask.reviewsStaleRevision(delegateTask));
+    }
+  }
+
+  @Test
+  void testRunOfTheActiveRevisionIsNotStale() {
+    DelegateTask delegateTask = changeRequestRun();
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(true);
+
+      assertFalse(CreateTask.reviewsStaleRevision(delegateTask));
+    }
+  }
+
+  @Test
+  void testRunWithoutAChangeRequestIsNeverStale() {
+    assertFalse(CreateTask.reviewsStaleRevision(Mockito.mock(DelegateTask.class)));
   }
 
   // ---- resolveRequester ----

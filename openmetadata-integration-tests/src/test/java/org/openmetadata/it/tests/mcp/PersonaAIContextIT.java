@@ -705,7 +705,16 @@ class PersonaAIContextIT extends McpTestBase {
   }
 
   @Test
-  void aiContextStatusPagesWithTheSameCursorAsThePersonaList() throws Exception {
+  void aiContextStatusPagesWithTheSameCursorAsThePersonaList() {
+    // The two lists are read one after the other, and a sibling test in the parallel lane may
+    // create or delete a persona in between; compare them again until both reads see one state.
+    Awaitility.await("status pages like the persona list")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(this::assertStatusPagesLikeThePersonaList);
+  }
+
+  private void assertStatusPagesLikeThePersonaList() throws Exception {
     JsonNode statusPage =
         OBJECT_MAPPER.readTree(getResponse("personas/aiContext/status?limit=1", authToken).body());
     JsonNode personaPage =

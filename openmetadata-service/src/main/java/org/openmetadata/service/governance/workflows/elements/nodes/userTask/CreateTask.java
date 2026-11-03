@@ -800,7 +800,7 @@ public class CreateTask implements TaskListener {
       String updatedBy) {
     // Best-effort cleanup: failing to supersede a prior task must never abort creation of the new
     // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
-    if (taskCategory == TaskCategory.Approval) {
+    if (taskCategory == TaskCategory.Approval && !reviewsStaleRevision(delegateTask)) {
       try {
         // A change request's review keeps one live approval per (entity, workflow, requester): a
         // new held edit supersedes only the same requester's prior review, so other requesters'
@@ -1239,6 +1239,17 @@ public class CreateTask implements TaskListener {
   }
 
   // Whether this run reviews a change request: such a run carries the request in its variables.
+  // A change request's runs can finish out of order. The run of a revision the request has since
+  // replaced must leave the newer revision's live review alone; attachTask then closes its own
+  // task.
+  static boolean reviewsStaleRevision(DelegateTask delegateTask) {
+    return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask))
+        .filter(
+            run ->
+                !ChangeRequestService.isActiveRevision(run.changeRequestId(), run.revisionNumber()))
+        .isPresent();
+  }
+
   private static boolean reviewsChangeRequest(DelegateTask delegateTask) {
     return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask)).isPresent();
   }

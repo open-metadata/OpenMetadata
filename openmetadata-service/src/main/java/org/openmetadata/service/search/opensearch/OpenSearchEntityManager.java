@@ -47,6 +47,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ChildPropagationWatcher;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
@@ -87,6 +88,7 @@ import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.UpdateRequest;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
+import os.org.opensearch.client.opensearch.tasks.GetTasksResponse;
 
 /**
  * OpenSearch implementation of entity management operations.
@@ -516,8 +518,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           updates);
       LOG.info("Successfully submitted child update in OpenSearch for index: {}", indexName);
     } catch (IOException | OpenSearchException e) {
-      SearchIndexRetryQueue.enqueue(
-          null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
+      SearchIndexRetryQueue.enqueueParent(
+          fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
       LOG.error("Failed to update children in OpenSearch for index: {}", indexName, e);
     }
   }
@@ -541,7 +543,43 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates)
       throws IOException {
-    client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
+    UpdateByQueryResponse submitted =
+        client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
+    ChildPropagationWatcher.watch(
+        submitted.task(), fieldAndValue.getValue(), this::awaitChildPropagation);
+  }
+
+  private ChildPropagationWatcher.TaskOutcome awaitChildPropagation(String taskId)
+      throws IOException {
+    GetTasksResponse task =
+        client
+            .tasks()
+            .get(
+                g ->
+                    g.taskId(taskId)
+                        .waitForCompletion(true)
+                        .timeout(t -> t.time(SearchPropagationLimits.CHILD_PROPAGATION_WAIT)));
+    return childPropagationOutcome(task);
+  }
+
+  static ChildPropagationWatcher.TaskOutcome childPropagationOutcome(GetTasksResponse task) {
+    ChildPropagationWatcher.TaskOutcome outcome = ChildPropagationWatcher.TaskOutcome.unfinished();
+    if (task.completed()) {
+      List<String> failures = new ArrayList<>();
+      if (task.error() != null) {
+        failures.add(task.error().reason());
+      }
+      long versionConflicts = 0;
+      if (task.response() != null) {
+        task.response().failures().forEach(failure -> failures.add(failure.toString()));
+        if (task.response().timedOut()) {
+          failures.add("updateChildren timed out");
+        }
+        versionConflicts = task.response().versionConflicts();
+      }
+      outcome = new ChildPropagationWatcher.TaskOutcome(true, failures, versionConflicts);
+    }
+    return outcome;
   }
 
   /**

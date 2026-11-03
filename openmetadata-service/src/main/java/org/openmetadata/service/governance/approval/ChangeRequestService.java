@@ -251,6 +251,14 @@ public final class ChangeRequestService {
     return reviewable;
   }
 
+  /** Whether {@code revisionNumber} is still the active revision of an open request. */
+  public static boolean isActiveRevision(UUID changeRequestId, int revisionNumber) {
+    ChangeRequest request = dao().changeRequestDAO().findById(changeRequestId);
+    return request != null
+        && isOpen(request)
+        && Objects.equals(request.getActiveRevisionNumber(), revisionNumber);
+  }
+
   /**
    * The open review task of a pending request in workflow run {@code workflowInstanceId}, if any.
    */

@@ -71,6 +71,22 @@ class SearchIndexRetryQueueTest {
   }
 
   @Test
+  void aParentIdIsQueuedInTheIdColumnTheWorkerResolvesById() {
+    String id = "8f0c2a8e-1c53-4b3e-9f39-5a3c1b1d2e4f";
+
+    assertEquals(
+        new SearchIndexRetryQueue.ParentKey(id, null), SearchIndexRetryQueue.ParentKey.of(id));
+  }
+
+  @Test
+  void aParentFqnIsQueuedInTheFqnColumn() {
+    String fqn = "service.database";
+
+    assertEquals(
+        new SearchIndexRetryQueue.ParentKey(null, fqn), SearchIndexRetryQueue.ParentKey.of(fqn));
+  }
+
+  @Test
   void plainAndMalformedReasonsAreDistinguished() {
     assertNull(SearchIndexRetryQueue.getPropagationContext("plain failure"));
     assertThrows(

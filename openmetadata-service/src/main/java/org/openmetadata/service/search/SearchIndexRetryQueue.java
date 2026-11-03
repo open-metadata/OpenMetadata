@@ -71,6 +71,23 @@ public final class SearchIndexRetryQueue {
     enqueue(entityId, entityFqn, "", failureReason);
   }
 
+  /**
+   * Queues the parent a child propagation matched its children on, so the retry worker reindexes
+   * the parent and its children. Propagations match on a parent id or FQN; the worker resolves the
+   * FQN column by name only, so an id queued there would never resolve.
+   */
+  public static void enqueueParent(String parentKey, String failureReason) {
+    ParentKey key = ParentKey.of(parentKey);
+    enqueue(key.entityId(), key.entityFqn(), failureReason);
+  }
+
+  /** A child propagation's parent key, split into the queue column the retry worker reads it from. */
+  record ParentKey(String entityId, String entityFqn) {
+    static ParentKey of(String parentKey) {
+      return isUuid(parentKey) ? new ParentKey(parentKey, null) : new ParentKey(null, parentKey);
+    }
+  }
+
   public static void enqueue(
       String entityId, String entityFqn, String entityType, String failureReason) {
     String normalizedEntityId = normalize(entityId);

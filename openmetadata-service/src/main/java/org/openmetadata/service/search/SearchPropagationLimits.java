@@ -28,4 +28,10 @@ public final class SearchPropagationLimits {
    * completion time for cluster stability is the right way round.
    */
   public static final float REQUESTS_PER_SECOND = 2000f;
+
+  /**
+   * How long a watcher waits for a child propagation to finish before giving up on learning its
+   * outcome. Covers the million-document service above with room to spare.
+   */
+  public static final String CHILD_PROPAGATION_WAIT = "15m";
 }
