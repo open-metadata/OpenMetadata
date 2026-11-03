@@ -249,7 +249,8 @@ const TeamUserSelectInput = ({
       setSearchText('');
     };
     // Capture phase: a parent stopping propagation must not keep the picker open.
-    const handleOutsidePointerDown = (e: PointerEvent) => {
+    // Also used for focus moving elsewhere, which react-aria's blur close handled.
+    const handleOutsideInteraction = (e: Event) => {
       const target = e.target as Node;
       if (
         !dropdownRef.current?.contains(target) &&
@@ -273,7 +274,8 @@ const TeamUserSelectInput = ({
       }
     };
     const listeners: [string, EventListener][] = [
-      ['pointerdown', handleOutsidePointerDown as EventListener],
+      ['pointerdown', handleOutsideInteraction],
+      ['focusin', handleOutsideInteraction],
       ['wheel', handleOutsideUserScroll],
       ['touchmove', handleOutsideUserScroll],
       ['keydown', handleEscape as EventListener],

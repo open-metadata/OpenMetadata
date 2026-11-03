@@ -101,6 +101,16 @@ describe('AlertAiDestinationConfigFields team/user picker', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('closes when focus moves outside the picker', () => {
+    renderOpenPicker();
+
+    fireEvent.focusIn(screen.getByTestId('scroll-container'));
+
+    expect(
+      screen.queryByTestId('team-user-search-input-0')
+    ).not.toBeInTheDocument();
+  });
+
   it('closes on a pointer press outside the picker', () => {
     renderOpenPicker();
 
