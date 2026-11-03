@@ -38,10 +38,10 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   activateOntologyRelease,
+  getOntology,
   getOntologyRelease,
   getOntologyReleaseEvents,
   getOntologyReleaseReview,
-  getOntology,
   getOntologyReleaseReviews,
   getOntologyState,
 } from '../../../../rest/ontologyAPI';

@@ -26,6 +26,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
+import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import {
   ChangeType,
   MemberChange,
@@ -35,14 +36,13 @@ import {
   OntologyApprovalRule,
 } from '../../../../generated/entity/data/ontology';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
-import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import {
   ONTOLOGY_WORKING_DIFF_QUERY_KEY,
   useOntologyPublication,
 } from '../../../../hooks/governance/ontology/useOntologyPublication';
+import { reusablePublicationCandidate } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
-import { reusablePublicationCandidate } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyReleaseDetails from './OntologyReleaseDetails';
 import OntologyReleaseHistory from './OntologyReleaseHistory';

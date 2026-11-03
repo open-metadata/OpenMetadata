@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query';
 import {
   act,
   fireEvent,
@@ -17,11 +18,9 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { applyPatch, Operation } from 'fast-json-patch';
-import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import { applyPatch, Operation } from 'fast-json-patch';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import {
   AssigneeStatus,
   OntologyReleaseReview,
@@ -39,13 +38,14 @@ import {
 } from '../../../../generated/entity/data/ontologyRelease';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../../../generated/type/ontologyState';
+import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
+import APIClient from '../../../../rest/axiosClient';
 import {
   useEnUsTranslations,
   useKeyEchoTranslations,
 } from '../../../../test/unit/enUsTranslation';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
-import APIClient from '../../../../rest/axiosClient';
 import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
