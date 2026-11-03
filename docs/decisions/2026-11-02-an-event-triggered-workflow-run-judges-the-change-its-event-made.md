@@ -1,10 +1,10 @@
 # An event-triggered workflow run judges the change its event made
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-03 (the 2.0.8 migration redeploys as well)
+- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-03 (the redeploy runs in the 2.0.8 migration)
 - **Deciders:** yan-3005
 - **Guard:** `FilterEntityImplTest#eventPath_judgesTheChangeOfTheVersionTheEventProduced`
-- **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v208, v210)
+- **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v208)
 
 ## Context
 
@@ -23,7 +23,7 @@ own change while it is still at that version, otherwise the change stored with t
 entity's history. A run that carries no version, or whose version is no longer in the history, reads
 the entity's current change as before. Change-request runs keep judging the revision they review.
 
-Deployed workflows keep the BPMN they were deployed with, so the 2.1.0 migration redeploys every
+Deployed workflows keep the BPMN they were deployed with, so the 2.0.8 migration redeploys every
 governance workflow once (`WorkflowRedeployMigration`).
 
 ## Consequences
@@ -36,6 +36,6 @@ governance workflow once (`WorkflowRedeployMigration`).
 
 ## Amendment
 
-v2 2026-11-03: the 2.0 line carries the same change, so the 2.0.8 migration runs the same
-redeploy step, identical on every branch that has 2.0.8. The 2.1.0 migration keeps it: a database
-already on a 2.1.0 build does not run its 2.0.8 data migration again.
+v2 2026-11-03: the 2.0 line carries the same change, so the redeploy step moves from the 2.1.0
+migration to the 2.0.8 migration, identical on every branch that has 2.0.8. An upgrade to 2.1.0 runs
+any 2.0.8 migration it has not run yet, so 2.1.0 does not repeat the step.

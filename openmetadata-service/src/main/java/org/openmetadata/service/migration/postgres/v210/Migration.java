@@ -38,7 +38,6 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -151,14 +150,6 @@ public class Migration extends MigrationProcessImpl {
         () -> {
           initializeWorkflowHandler();
           GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
-        });
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        WorkflowRedeployMigration.STEP_NAME,
-        () -> {
-          initializeWorkflowHandler();
-          WorkflowRedeployMigration.redeploy();
         });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnPostgres(handle);
