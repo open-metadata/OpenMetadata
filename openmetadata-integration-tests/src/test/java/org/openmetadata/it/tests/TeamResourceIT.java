@@ -1566,6 +1566,48 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_exportListsEachTeamOfAMultiParentHierarchyOnce(TestNamespace ns) {
+    // Each layer's two departments are both parents of the next layer's two, so the number of
+    // paths to a team doubles per layer while the number of teams grows by two.
+    final int layers = 4;
+    User member = createTestUser(ns, "latticeMember");
+    Team group =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("latticeGroup"))
+                .withTeamType(TeamType.GROUP)
+                .withUsers(List.of(member.getId())));
+    List<UUID> children = List.of(group.getId());
+    for (int layer = layers; layer >= 1; layer--) {
+      children =
+          List.of(
+              createLatticeDepartment(ns, "a" + layer, children).getId(),
+              createLatticeDepartment(ns, "b" + layer, children).getId());
+    }
+    Team top = createLatticeDepartment(ns, "top", children);
+
+    String teamCsv =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/teams/name/" + top.getName() + "/export", null);
+    String userCsv =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/export?team=" + top.getName(), null);
+
+    assertEquals(2 * layers + 1, teamCsv.lines().count() - 1, teamCsv);
+    assertEquals(1, userCsv.lines().count() - 1, userCsv);
+  }
+
+  private Team createLatticeDepartment(TestNamespace ns, String name, List<UUID> children) {
+    return createEntity(
+        new CreateTeam()
+            .withName(ns.prefix("lattice_" + name))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withChildren(children));
+  }
+
+  @Test
   void test_getAllTeamsWithAssetsCount_includesInheritedOwnership(TestNamespace ns)
       throws InterruptedException {
     OpenMetadataClient client = SdkClients.adminClient();

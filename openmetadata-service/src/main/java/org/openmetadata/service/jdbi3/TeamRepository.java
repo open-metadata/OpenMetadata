@@ -927,11 +927,15 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
+    Set<UUID> expandedTeams = new HashSet<>();
     for (Team team : joinableTeams) {
       if (team.getParents() == null) {
         continue;
       }
-      for (EntityReference parentRef : team.getParents()) {
+      // Sorted so the parent that carries a multi-parent team's children is the same on every call
+      List<EntityReference> parents =
+          team.getParents().stream().sorted(EntityUtil.compareEntityReference).toList();
+      for (EntityReference parentRef : parents) {
         if (parentRef.getName().equals(ORGANIZATION_NAME)) {
           continue;
         }
@@ -947,7 +951,12 @@ public class TeamRepository extends EntityRepository<Team> {
 
         hierarchyMap.putIfAbsent(parentTeam.getId(), getTeamHierarchy(parentTeam));
         TeamHierarchy parentNode = hierarchyMap.get(parentTeam.getId());
-        TeamHierarchy childNode = hierarchyMap.get(team.getId());
+        // A team with multiple parents is listed below each of them, but its own children only
+        // below the first one. Sharing the node would serialize its subtree once per path.
+        TeamHierarchy childNode =
+            expandedTeams.add(team.getId())
+                ? hierarchyMap.get(team.getId())
+                : getTeamHierarchy(team);
 
         if (parentNode.getChildren() == null) {
           parentNode.setChildren(new ArrayList<>());
@@ -1521,17 +1530,22 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     private List<Team> listTeams(
-        TeamRepository repository, String parentTeam, List<Team> teams, Fields fields) {
-      // Export the entire hierarchy of teams
+        TeamRepository repository,
+        String parentTeam,
+        List<Team> teams,
+        Set<UUID> visited,
+        Fields fields) {
+      // Export the entire hierarchy of teams. A team can have multiple parents, so each team is
+      // exported and descended into once, not once per path that leads to it.
       final ListFilter filter =
           new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
-      List<Team> list = repository.listAll(fields, filter);
-      if (nullOrEmpty(list)) {
-        return teams;
-      }
+      List<Team> list =
+          listOrEmpty(repository.listAll(fields, filter)).stream()
+              .filter(teamEntry -> visited.add(teamEntry.getId()))
+              .toList();
       teams.addAll(list);
       for (Team teamEntry : list) {
-        listTeams(repository, teamEntry.getFullyQualifiedName(), teams, fields);
+        listTeams(repository, teamEntry.getFullyQualifiedName(), teams, visited, fields);
       }
       return teams;
     }
@@ -1544,7 +1558,9 @@ public class TeamRepository extends EntityRepository<Team> {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
       return exportCsv(
-          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields), callback);
+          listTeams(
+              repository, team.getFullyQualifiedName(), new ArrayList<>(), new HashSet<>(), fields),
+          callback);
     }
   }
 
@@ -1891,6 +1907,7 @@ public class TeamRepository extends EntityRepository<Team> {
       return;
     }
 
+    Set<String> explored = new HashSet<>();
     for (EntityReference parentRef : team.getParents()) {
       // 1. Self Check by Name (since ID might be new)
       if (parentRef.getName().equals(team.getName())) {
@@ -1903,7 +1920,8 @@ public class TeamRepository extends EntityRepository<Team> {
           team.getName(),
           parentRef.getName(),
           dryRunCreatedEntities,
-          new HashSet<>(Set.of(team.getName())));
+          new HashSet<>(Set.of(team.getName())),
+          explored);
     }
   }
 
@@ -1911,12 +1929,16 @@ public class TeamRepository extends EntityRepository<Team> {
       String originalTeamName,
       String currentParentName,
       Map<String, Team> dryRunMap,
-      Set<String> visited) {
+      Set<String> visited,
+      Set<String> explored) {
     if (visited.contains(currentParentName)) {
       throw new IllegalArgumentException(
           String.format(
               "Circular reference detected in CSV: Team '%s' participates in a loop involving '%s'.",
               originalTeamName, currentParentName));
+    }
+    if (!explored.add(currentParentName)) {
+      return; // Ancestors were already checked through another path, a team can have many parents
     }
     visited.add(currentParentName);
 
@@ -1926,14 +1948,14 @@ public class TeamRepository extends EntityRepository<Team> {
     if (parentTeamInCsv != null) {
       for (EntityReference grandParent : listOrEmpty(parentTeamInCsv.getParents())) {
         checkCircularReferenceInDryRun(
-            originalTeamName, grandParent.getName(), dryRunMap, new HashSet<>(visited));
+            originalTeamName, grandParent.getName(), dryRunMap, new HashSet<>(visited), explored);
       }
     } else {
       Team dbTeam = findByNameOrNull(currentParentName, Include.NON_DELETED);
       if (dbTeam != null) {
         for (EntityReference parent : listOrEmpty(dbTeam.getParents())) {
           checkCircularReferenceInDryRun(
-              originalTeamName, parent.getName(), dryRunMap, new HashSet<>(visited));
+              originalTeamName, parent.getName(), dryRunMap, new HashSet<>(visited), explored);
         }
       }
     }

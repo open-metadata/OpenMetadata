@@ -702,7 +702,7 @@ public class UserRepository extends EntityRepository<User> {
         getLoggedInUserByNameAndEmail(
             uriInfo, context.getUserPrincipal().getName(), email, Fields.EMPTY_FIELDS);
     List<EntityReference> teams = getTeams(user);
-    return getGroupTeams(teams);
+    return getGroupTeams(teams, new HashSet<>());
   }
 
   public User getLoggedInUserByNameAndEmail(
@@ -742,15 +742,18 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
+  private List<EntityReference> getGroupTeams(List<EntityReference> teams, Set<UUID> visited) {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
+      if (!visited.add(t.getId())) {
+        continue; // A team with multiple parents was already visited through another parent
+      }
       Team team = Entity.getEntity(Entity.TEAM, t.getId(), "teamType", Include.ALL);
       if (TeamType.GROUP.equals(team.getTeamType())) {
         result.add(t);
       } else {
         List<EntityReference> children = getTeamChildren(team.getId());
-        result.addAll(getGroupTeams(children));
+        result.addAll(getGroupTeams(children, visited));
       }
     }
     return new ArrayList<>(result);
@@ -1607,8 +1610,10 @@ public class UserRepository extends EntityRepository<User> {
         UserRepository userRepository,
         String parentTeam,
         List<User> users,
+        Set<UUID> visitedTeams,
         Fields fields) {
-      // Export the users by listing users for the entire team hierarchy
+      // Export the users by listing users for the entire team hierarchy. A team can have multiple
+      // parents, so each team is visited once, not once per path that leads to it.
       ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("team", parentTeam);
 
       // Add users for the given team
@@ -1620,7 +1625,10 @@ public class UserRepository extends EntityRepository<User> {
       filter = new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
       List<Team> teamList = teamRepository.listAll(Fields.EMPTY_FIELDS, filter);
       for (Team teamEntry : teamList) {
-        listUsers(teamRepository, userRepository, teamEntry.getName(), users, fields);
+        if (visitedTeams.add(teamEntry.getId())) {
+          listUsers(
+              teamRepository, userRepository, teamEntry.getName(), users, visitedTeams, fields);
+        }
       }
       return users;
     }
@@ -1630,7 +1638,13 @@ public class UserRepository extends EntityRepository<User> {
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = userRepository.getFields("roles,teams");
       return exportCsv(
-          listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields));
+          listUsers(
+              teamRepository,
+              userRepository,
+              team.getName(),
+              new ArrayList<>(),
+              new HashSet<>(),
+              fields));
     }
 
     private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord csvRecord, String user)
