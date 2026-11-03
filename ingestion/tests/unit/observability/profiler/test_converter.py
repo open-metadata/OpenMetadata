@@ -405,20 +405,48 @@ def test_geometry_reverse_map_stays_separate_from_geography():
     "array_data_type, expected_item_type",
     [
         (DataType.STRING, sqlalchemy.String),
-        (DataType.ARRAY, sqlalchemy.types.NullType),
         (DataType.UNKNOWN, sqlalchemy.types.NullType),
     ],
 )
 def test_map_array_types(array_data_type, expected_item_type):
-    """Array columns map to an array of their element type. A nested array
-    (e.g. ClickHouse `Array(Array(String))`) or an unmapped element type is
-    left untyped, since SQLAlchemy cannot build a nested or element-less ARRAY.
+    """Array columns map to a one-dimensional array of their element type; an
+    unmapped element type is left untyped, since SQLAlchemy needs one to build an ARRAY.
     """
     col = Column(name="tags", dataType=DataType.ARRAY, arrayDataType=array_data_type)
 
     sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
 
     assert isinstance(sqa_type.impl.item_type, expected_item_type)
+    assert sqa_type.impl.dimensions is None
+
+
+@mark.parametrize(
+    "data_type_display, expected_item_type, expected_dimensions",
+    [
+        ("array<array<string>>", sqlalchemy.String, 2),
+        ("Array(Array(String))", sqlalchemy.String, 2),
+        ("array<array<array<int>>>", sqlalchemy.INT, 3),
+        ("array<array<nullable<string>>>", sqlalchemy.String, 2),
+        ("array<array<not_a_type>>", sqlalchemy.types.NullType, 2),
+        (None, sqlalchemy.types.NullType, 2),
+    ],
+)
+def test_map_nested_array_types(data_type_display, expected_item_type, expected_dimensions):
+    """SQLAlchemy does not nest ARRAY types (e.g. ClickHouse `Array(Array(String))`), so
+    a nested array maps to ARRAY(base_type, dimensions=N), with the depth and base type
+    read from `dataTypeDisplay`. A base type that cannot be resolved is left untyped.
+    """
+    col = Column(
+        name="tags",
+        dataType=DataType.ARRAY,
+        arrayDataType=DataType.ARRAY,
+        dataTypeDisplay=data_type_display,
+    )
+
+    sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
+
+    assert isinstance(sqa_type.impl.item_type, expected_item_type)
+    assert sqa_type.impl.dimensions == expected_dimensions
 
 
 @patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
@@ -431,7 +459,12 @@ def test_table_with_nested_array_column_builds_orm(mock_schema, mock_database):
         name="nested_array_repro",
         columns=[
             Column(name="id", dataType=DataType.BIGINT),
-            Column(name="tags", dataType=DataType.ARRAY, arrayDataType=DataType.ARRAY),
+            Column(
+                name="tags",
+                dataType=DataType.ARRAY,
+                arrayDataType=DataType.ARRAY,
+                dataTypeDisplay="array<array<string>>",
+            ),
         ],
         serviceType=DatabaseServiceType.Clickhouse,
     )

@@ -13,14 +13,19 @@
 Common Class For Profiler Converter.
 """
 
+import re
 from typing import Any
 
 import sqlalchemy
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source import sqa_types
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.orm.types.custom_xml import XML
+
+# One wrapper of a type string, e.g. `array<...>`, `Array(...)` or `nullable<...>`
+_TYPE_WRAPPER = re.compile(r"^\s*(array|nullable|lowcardinality)\s*[<(](.*)[>)]\s*$", re.IGNORECASE)
 
 
 class CommonMapTypes:
@@ -82,15 +87,37 @@ class CommonMapTypes:
         """returns an ORM type"""
 
         if col.arrayDataType:
-            return self._TYPE_MAP.get(col.dataType)(item_type=self._array_item_type(col))
+            if col.arrayDataType == DataType.ARRAY:
+                item_type, dimensions = self._nested_array_item_type(col)
+                return self._TYPE_MAP.get(col.dataType)(item_type=item_type, dimensions=dimensions)
+            return self._TYPE_MAP.get(col.dataType)(item_type=self._array_element_type(col.arrayDataType))
         return self.return_custom_type(col, table_service_type)
 
-    def _array_item_type(self, col: Column):
-        """SQLAlchemy cannot nest ARRAY types and needs an element type to build one,
-        so a nested or unmapped element type is left untyped."""
-        if col.arrayDataType == DataType.ARRAY:
+    def _array_element_type(self, data_type: DataType | None):
+        """SQLAlchemy needs an element type to build an ARRAY, so an unmapped one is left untyped."""
+        if data_type is None or data_type == DataType.ARRAY:
             return sqlalchemy.types.NullType()
-        return self._TYPE_MAP.get(col.arrayDataType) or sqlalchemy.types.NullType()
+        return self._TYPE_MAP.get(data_type) or sqlalchemy.types.NullType()
+
+    def _nested_array_item_type(self, col: Column) -> tuple[Any, int]:
+        """SQLAlchemy does not nest ARRAY types: a multi-dimensional array is
+        ARRAY(base_type, dimensions=N). The column only records that its element is
+        itself an array, so the depth and the base type are read from
+        `dataTypeDisplay`, e.g. `array<array<string>>` or `Array(Array(String))`."""
+        dimensions = 0
+        inner = col.dataTypeDisplay or ""
+        while match := _TYPE_WRAPPER.match(inner):
+            if match.group(1).lower() == "array":
+                dimensions += 1
+            inner = match.group(2)
+        if dimensions < 2:
+            # `dataTypeDisplay` does not spell out the nesting: the column is an array of arrays.
+            return sqlalchemy.types.NullType(), 2
+        try:
+            base_type = DataType(ColumnTypeParser.get_column_type(inner.strip()))
+        except ValueError:
+            base_type = None
+        return self._array_element_type(base_type), dimensions
 
     def return_custom_type(self, col: Column, _):
         return self._TYPE_MAP.get(col.dataType, CustomTypes.UNDETERMINED.value)
