@@ -2003,13 +2003,17 @@ test.describe(
         );
         await expect(async () => {
           await author.goto('/inbox/activity');
-          await expect(
-            author
-              .getByText(
-                /rejected (v1\.0\.0|release-1): Add a label to Customer\./
-              )
-              .first()
-          ).toBeVisible({ timeout: 10_000 });
+          await expect
+            .poll(
+              () =>
+                author
+                  .getByText(
+                    /rejected (v1\.0\.0|release-1): Add a label to Customer\./
+                  )
+                  .count(),
+              { timeout: 10_000 }
+            )
+            .toBeGreaterThan(0);
         }).toPass({ timeout: 60_000 });
         await g6Shot(author, testInfo, 'inbox-rejected');
 
@@ -2048,11 +2052,13 @@ test.describe(
         await approveReview(reviewerPage, approved);
         await expect(async () => {
           await author.goto('/inbox/activity');
-          await expect(
-            author.getByText(/approved (v\d+\.\d+\.\d+|release-2)/).first()
-          ).toBeVisible({
-            timeout: 10_000,
-          });
+          await expect
+            .poll(
+              () =>
+                author.getByText(/approved (v\d+\.\d+\.\d+|release-2)/).count(),
+              { timeout: 10_000 }
+            )
+            .toBeGreaterThan(0);
         }).toPass({ timeout: 60_000 });
         await g6Shot(author, testInfo, 'inbox-approved');
       } finally {

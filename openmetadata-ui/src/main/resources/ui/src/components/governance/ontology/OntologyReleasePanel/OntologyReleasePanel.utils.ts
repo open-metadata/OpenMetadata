@@ -217,6 +217,24 @@ const action = (
   isDisabled = false
 ): PublicationAction => ({ kind, isDisabled });
 
+const REVIEW_STAGE_STATES: Partial<Record<Stage, PublicationState>> = {
+  [Stage.InReview]: 'inReview',
+  [Stage.ChangesRequested]: 'rejected',
+};
+
+const deriveDraftState = (input: PublicationActionInput): PublicationState => {
+  if (!input.hasChanges) {
+    return 'noChanges';
+  }
+  if (!input.hasReviewers) {
+    return input.validationErrors.length > 0
+      ? 'noReviewersInvalid'
+      : 'noReviewers';
+  }
+
+  return input.hasIndependentReviewer ? 'reviewersSet' : 'soloReviewer';
+};
+
 export const derivePublicationState = (
   input: PublicationActionInput
 ): PublicationState => {
@@ -230,22 +248,8 @@ export const derivePublicationState = (
   if (!canEdit) {
     return 'cannotEdit';
   }
-  if (stage === Stage.InReview) {
-    return 'inReview';
-  }
-  if (stage === Stage.ChangesRequested) {
-    return 'rejected';
-  }
-  if (!input.hasChanges) {
-    return 'noChanges';
-  }
-  if (!input.hasReviewers) {
-    return input.validationErrors.length > 0
-      ? 'noReviewersInvalid'
-      : 'noReviewers';
-  }
 
-  return input.hasIndependentReviewer ? 'reviewersSet' : 'soloReviewer';
+  return REVIEW_STAGE_STATES[stage] ?? deriveDraftState(input);
 };
 
 type PublicationRow = (

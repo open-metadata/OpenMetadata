@@ -1593,7 +1593,10 @@ describe('publication state table', () => {
 
   it('the release in force with nothing newer: no action and the nothing-to-capture line', async () => {
     setStage(Stage.Published);
-    ontology.publicationStatus!.unpublishedChanges = 0;
+    if (!ontology.publicationStatus) {
+      throw new Error('Missing fixture');
+    }
+    ontology.publicationStatus.unpublishedChanges = 0;
     await renderPanel();
 
     expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
