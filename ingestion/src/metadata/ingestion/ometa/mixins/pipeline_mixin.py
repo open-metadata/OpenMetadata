@@ -85,10 +85,7 @@ class OMetaPipelineMixin:
         limit: int | None = None,
     ) -> list[PipelineStatus]:
         """
-        List PipelineStatus records for a Pipeline within a time range, newest first.
-
-        The server bounds each page by size as well as by `limit`, so this follows
-        `paging.after` until it has `limit` statuses, or every status when `limit` is None.
+        List PipelineStatus records for a Pipeline within a time range.
         """
         try:
             parts = fqn_utils.split(fqn)
@@ -96,38 +93,17 @@ class OMetaPipelineMixin:
         except Exception:
             normalized_fqn = fqn
 
-        statuses: list[PipelineStatus] = []
-        after: str | None = None
-        has_more = True
-        while has_more:
-            resp = self._get_pipeline_status_page(
-                normalized_fqn=normalized_fqn,
-                start_ts=start_ts,
-                end_ts=end_ts,
-                limit=None if limit is None else limit - len(statuses),
-                after=after,
-            )
-            statuses.extend(PipelineStatus(**status) for status in (resp or {}).get("data", []))
-            after = ((resp or {}).get("paging") or {}).get("after")
-            has_more = after is not None and (limit is None or len(statuses) < limit)
-        return statuses
-
-    def _get_pipeline_status_page(
-        self,
-        normalized_fqn: str,
-        start_ts: int,
-        end_ts: int,
-        limit: int | None,
-        after: str | None,
-    ) -> dict | None:
         params = f"startTs={start_ts}&endTs={end_ts}"
         if limit is not None:
             params += f"&limit={limit}"
-        if after is not None:
-            params += f"&after={quote(after)}"
-        return self.client.get(
+
+        resp = self.client.get(
             f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status?{params}",
         )
+
+        if resp and "data" in resp:
+            return [PipelineStatus(**status) for status in resp["data"]]
+        return []
 
     def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:
         """

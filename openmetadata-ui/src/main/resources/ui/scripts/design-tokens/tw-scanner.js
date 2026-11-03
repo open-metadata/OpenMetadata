@@ -26,9 +26,6 @@
  *   - explicit tw:dark:* overrides and unsupported --ai-* theme tokens
  *   - inline style={{ ... }} with a hardcoded colour or px
  *
- * Debt inventory (informational):
- *   - `import … from 'antd'`  (Antd is deprecated in favour of UntitledUI)
- *
  * Sizing utilities (w/h/min/max/size/inset/top/…) are layout dimensions, not
  * spacing tokens, and are never flagged.
  */
@@ -41,7 +38,6 @@ const ARBITRARY_RE = /tw:(?:[a-z][a-z0-9-]*:)*([a-z][a-z0-9-]*?)-\[([^\]]+)\]/g;
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/g;
 const RGB_RE = /\brgba?\(\s*\d[\d.]*\s*[, ]\s*\d[\d.]*\s*[, ]\s*\d[\d.]*(?:\s*[,/]\s*\d[\d.]*%?)?\s*\)/g;
 const NUM_UNIT_RE = /^(-?\d*\.?\d+)(px|rem)$/;
-const ANTD_IMPORT_RE = /import\s+[^;]*?\bfrom\s+['"]antd(?:\/[^'"]*)?['"]/g;
 const INLINE_STYLE_RE = /style=\{\{/g;
 const DARK_VARIANT_RE = /\btw:dark:[^\s"'{}\x60>,)]+/g;
 const AI_TOKEN_RE = /--ai-[a-z0-9_-]+/gi;
@@ -149,11 +145,6 @@ function scanText(text, relPath) {
   INLINE_STYLE_RE.lastIndex = 0;
   while ((m = INLINE_STYLE_RE.exec(text))) {
     push(m.index, { category: 'inline-style', severity: SEVERITY.WARNING, raw: 'style={{', suggestion: null });
-  }
-
-  ANTD_IMPORT_RE.lastIndex = 0;
-  while ((m = ANTD_IMPORT_RE.exec(text))) {
-    push(m.index, { category: 'antd-import', severity: SEVERITY.INFO, raw: 'antd', suggestion: null });
   }
 
   return findings;

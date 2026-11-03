@@ -152,6 +152,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkRetryPolicy;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
@@ -480,6 +481,9 @@ public class SearchRepository {
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
+  // The service types whose children carry a `service.id`, so a service's domain change propagates
+  // to them. A type missing here leaves its children searchable with no domain, which search RBAC
+  // then shows to everyone — so LLM and MCP services belong here with the rest.
   private static final Set<String> SERVICE_ENTITY_SET =
       Set.of(
           Entity.DATABASE_SERVICE,
@@ -491,7 +495,9 @@ public class SearchRepository {
           Entity.SEARCH_SERVICE,
           Entity.SECURITY_SERVICE,
           Entity.API_SERVICE,
-          Entity.DRIVE_SERVICE);
+          Entity.DRIVE_SERVICE,
+          Entity.LLM_SERVICE,
+          Entity.MCP_SERVICE);
 
   private static final Set<String> QUERY_DOMAIN_REINDEX_SOURCE_TYPES =
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
@@ -1251,8 +1257,12 @@ public class SearchRepository {
         index, managedIndexMappings(), aliasIndexMap, clusterAlias);
   }
 
+  // A query cost record carries the query's SQL, so a deny rule on the query must reach its cost
+  // records too; they are indexed separately, so search RBAC treats them as a child of the query.
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =
-      Map.of(Entity.TABLE, Set.of(Entity.TABLE_COLUMN));
+      Map.of(
+          Entity.TABLE, Set.of(Entity.TABLE_COLUMN),
+          Entity.QUERY, Set.of(Entity.QUERY_COST_RECORD));
 
   public List<String> getChildIndexAliases(String entityType) {
     Set<String> rbacChildren = RBAC_CHILD_TYPES.getOrDefault(entityType, Set.of());
@@ -1414,7 +1424,8 @@ public class SearchRepository {
     }
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
-      SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+      SearchIndex index =
+          searchIndexFactory.buildIndex(entityType, withFieldsLoadedOnWrite(entityType, entity));
       String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
       searchClient.createEntity(getWriteIndexName(indexMapping), entityId, doc);
 
@@ -1788,9 +1799,13 @@ public class SearchRepository {
           }
           return;
         }
+        List<EntityInterface<?>> indexed = new ArrayList<>(entities);
+        if (!loadFieldsOnWriteOrRetry(entityType, indexed, "createEntitiesIndex")) {
+          return;
+        }
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
-        for (EntityInterface<?> entity : entities) {
+        for (EntityInterface<?> entity : indexed) {
           try {
             if (!Entity.isSearchIndexable(entity)) {
               continue;
@@ -2045,7 +2060,9 @@ public class SearchRepository {
                 entityId,
                 getChangedFieldNames(changeDescription));
           }
-          SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+          SearchIndex searchIndex =
+              searchIndexFactory.buildIndex(
+                  entityType, withFieldsLoadedOnWrite(entityType, entity));
           doc = searchIndex.buildSearchIndexDoc();
           doc =
               SearchIndexUtils.stripDocMapIfOversized(
@@ -2360,6 +2377,9 @@ public class SearchRepository {
         for (EntityInterface<?> entity : typeEntities) {
           enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
         }
+        continue;
+      }
+      if (!loadFieldsOnWriteOrRetry(entityType, typeEntities, "updateEntitiesBulk")) {
         continue;
       }
 
@@ -2710,6 +2730,60 @@ public class SearchRepository {
       return;
     }
     SearchIndexRetryQueue.enqueue(entity, operation, failure);
+  }
+
+  /**
+   * Copies of {@code entities} carrying the fields their index loads on write, so a count computed
+   * on read is not indexed as 0. The callers' entities, and so the API responses, are untouched. A
+   * type that declares none gets the same list back, with no copy and no read.
+   *
+   * <p>ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
+   */
+  private <E extends EntityInterface<?>> List<E> withFieldsLoadedOnWrite(
+      String entityType, List<E> entities) {
+    Set<String> fields = searchIndexFactory.getFieldsLoadedOnWriteFor(entityType);
+    List<E> result = entities;
+    if (!fields.isEmpty() && !entities.isEmpty()) {
+      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+      result = entities.stream().map(SearchRepository::copyOf).toList();
+      repository.loadFieldsForSearchIndex(result, fields);
+    }
+    return result;
+  }
+
+  private EntityInterface<?> withFieldsLoadedOnWrite(String entityType, EntityInterface<?> entity) {
+    return withFieldsLoadedOnWrite(entityType, List.of(entity)).getFirst();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <E extends EntityInterface<?>> E copyOf(E entity) {
+    return (E) JsonUtils.deepCopy(entity, entity.getClass());
+  }
+
+  /**
+   * Swaps each entity for its copy with the fields loaded on write, in one batched read. When the
+   * load fails the batch is queued for retry, which re-reads every reindex field, instead of being
+   * written with zeros or not written at all.
+   */
+  private boolean loadFieldsOnWriteOrRetry(
+      String entityType, List<EntityInterface<?>> entities, String operation) {
+    boolean loaded = true;
+    try {
+      List<EntityInterface<?>> copies = withFieldsLoadedOnWrite(entityType, entities);
+      for (int i = 0; i < copies.size(); i++) {
+        entities.set(i, copies.get(i));
+      }
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "{}: loading fields on write failed for {} {} entities",
+          operation,
+          entities.size(),
+          entityType,
+          e);
+      entities.forEach(entity -> enqueueEntityRetry(entity, operation, e));
+      loaded = false;
+    }
+    return loaded;
   }
 
   public void updateEntitiesBulk(List<? extends EntityInterface<?>> entities) {
@@ -5198,6 +5272,7 @@ public class SearchRepository {
     }
   }
 
+  /** A sink for live indexing and the retry worker; see {@link BulkRetryPolicy#LIVE}. */
   public BulkSink createBulkSink(
       int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
     ElasticSearchConfiguration.SearchType searchType = getSearchType();
@@ -5205,6 +5280,22 @@ public class SearchRepository {
       return new OpenSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
     } else {
       return new ElasticSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    }
+  }
+
+  /** A sink for a reindex job, retrying with the job's settings. */
+  public BulkSink createBulkSink(
+      int batchSize,
+      int maxConcurrentRequests,
+      long maxPayloadSizeBytes,
+      BulkRetryPolicy retryPolicy) {
+    ElasticSearchConfiguration.SearchType searchType = getSearchType();
+    if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
+      return new OpenSearchBulkSink(
+          this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes, retryPolicy);
+    } else {
+      return new ElasticSearchBulkSink(
+          this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes, retryPolicy);
     }
   }
 

@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -53,7 +52,6 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -1281,160 +1279,6 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
                 pipeline.getFullyQualifiedName(), baseTime - 1, baseTime + 6 * 3600000);
     assertEquals(
         6, statusList.getData().size(), "Should be 6: 5 original + 1 new, overlap upserted");
-  }
-
-  /**
-   * A bulk write larger than one processing chunk still persists every status and applies the latest.
-   * The repository writes it in chunks of 25 to bound memory, which must not drop or reorder rows.
-   */
-  @Test
-  void put_bulkPipelineStatus_acrossChunks_persistsEveryStatus(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
-
-    CreatePipeline request = new CreatePipeline();
-    request.setName(ns.prefix("pipeline_bulk_chunks"));
-    request.setService(service.getFullyQualifiedName());
-    request.setTasks(List.of(new Task().withName("task1").withDescription("First task")));
-    Pipeline pipeline = createEntity(request);
-
-    int count = 60; // crosses the 25-status write-chunk boundary twice
-    long baseTime = System.currentTimeMillis() - count * 3600000L;
-    List<PipelineStatus> bulkStatuses = new ArrayList<>();
-    for (int i = 0; i < count; i++) {
-      bulkStatuses.add(
-          new PipelineStatus()
-              .withExecutionStatus(StatusType.Successful)
-              .withTimestamp(baseTime + i * 3600000L)
-              .withTaskStatus(
-                  List.of(
-                      new Status().withName("task1").withExecutionStatus(StatusType.Successful))));
-    }
-
-    Pipeline putResponse =
-        client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), bulkStatuses);
-    assertEquals(
-        bulkStatuses.get(count - 1).getTimestamp(), putResponse.getPipelineStatus().getTimestamp());
-
-    var statusList =
-        client
-            .pipelines()
-            .listPipelineStatuses(
-                pipeline.getFullyQualifiedName(), baseTime - 1, baseTime + count * 3600000L);
-    assertEquals(count, statusList.getData().size(), "every bulk status should be persisted");
-  }
-
-  /**
-   * A status listing reads one bounded page at a time, so the cursors are how a client reaches the
-   * rest of the range: forward with after, and back to the adjacent page with before.
-   */
-  @Test
-  void list_pipelineStatus_pagesFollowCursorsBothWays(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Pipeline pipeline = createPipelineForStatuses(ns, "pipeline_status_pages");
-    List<PipelineStatus> statuses = seedStatuses(client, pipeline, 12);
-    String fqn = pipeline.getFullyQualifiedName();
-
-    ResultList<PipelineStatus> first = listPipelineStatuses(client, fqn, "&limit=5");
-    ResultList<PipelineStatus> second =
-        listPipelineStatuses(client, fqn, "&limit=5&after=" + cursor(first.getPaging().getAfter()));
-    ResultList<PipelineStatus> third =
-        listPipelineStatuses(
-            client, fqn, "&limit=5&after=" + cursor(second.getPaging().getAfter()));
-    ResultList<PipelineStatus> backToSecond =
-        listPipelineStatuses(
-            client, fqn, "&limit=5&before=" + cursor(third.getPaging().getBefore()));
-
-    assertEquals(12, first.getPaging().getTotal());
-    assertEquals(newestFirst(statuses, 11, 7), timestampsOf(first));
-    assertEquals(newestFirst(statuses, 6, 2), timestampsOf(second));
-    assertEquals(newestFirst(statuses, 1, 0), timestampsOf(third));
-    assertNull(third.getPaging().getAfter());
-    assertEquals(timestampsOf(second), timestampsOf(backToSecond));
-  }
-
-  @Test
-  void list_pipelineStatus_filterPagesMatchesAndCountsThemAll(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Pipeline pipeline = createPipelineForStatuses(ns, "pipeline_status_filter");
-    List<PipelineStatus> statuses = seedStatuses(client, pipeline, 12);
-
-    ResultList<PipelineStatus> failed =
-        listPipelineStatuses(client, pipeline.getFullyQualifiedName(), "&limit=2&status=Failed");
-
-    // seedStatuses marks every third status Failed: indexes 0, 3, 6 and 9
-    assertEquals(4, failed.getPaging().getTotal());
-    assertEquals(
-        List.of(statuses.get(9).getTimestamp(), statuses.get(6).getTimestamp()),
-        timestampsOf(failed));
-    assertNotNull(failed.getPaging().getAfter());
-  }
-
-  /** A status larger than one listing page could never be read back, so it is refused. */
-  @Test
-  void put_pipelineStatusLargerThanAPage_4xx(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Pipeline pipeline = createPipelineForStatuses(ns, "pipeline_status_too_large");
-    PipelineStatus tooLarge =
-        new PipelineStatus()
-            .withTimestamp(System.currentTimeMillis())
-            .withExecutionStatus(StatusType.Successful)
-            .withExecutionId("x".repeat(2 * 1024 * 1024 + 1));
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), tooLarge));
-  }
-
-  private Pipeline createPipelineForStatuses(TestNamespace ns, String name) {
-    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
-    return createEntity(
-        new CreatePipeline()
-            .withName(ns.prefix(name))
-            .withService(service.getFullyQualifiedName()));
-  }
-
-  /** Seeds {@code count} statuses a minute apart, oldest first; every third one is Failed. */
-  private List<PipelineStatus> seedStatuses(
-      OpenMetadataClient client, Pipeline pipeline, int count) {
-    long base = System.currentTimeMillis() - count * 60_000L;
-    List<PipelineStatus> statuses = new ArrayList<>();
-    for (int i = 0; i < count; i++) {
-      statuses.add(
-          new PipelineStatus()
-              .withTimestamp(base + i * 60_000L)
-              .withExecutionStatus(i % 3 == 0 ? StatusType.Failed : StatusType.Successful));
-    }
-    client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), statuses);
-    return statuses;
-  }
-
-  private ResultList<PipelineStatus> listPipelineStatuses(
-      OpenMetadataClient client, String fqn, String query) {
-    String path =
-        "/v1/pipelines/"
-            + URLEncoder.encode(fqn, StandardCharsets.UTF_8).replace("+", "%20")
-            + "/status?startTs=0&endTs="
-            + Long.MAX_VALUE
-            + query;
-    String response = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
-    return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineStatus>>() {});
-  }
-
-  private String cursor(String pagingCursor) {
-    return encodeQueryValue(pagingCursor);
-  }
-
-  private static List<Long> timestampsOf(ResultList<PipelineStatus> page) {
-    return page.getData().stream().map(PipelineStatus::getTimestamp).toList();
-  }
-
-  private static List<Long> newestFirst(List<PipelineStatus> statuses, int newest, int oldest) {
-    List<Long> timestamps = new ArrayList<>();
-    for (int i = newest; i >= oldest; i--) {
-      timestamps.add(statuses.get(i).getTimestamp());
-    }
-    return timestamps;
   }
 
   @Test

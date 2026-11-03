@@ -1,8 +1,5 @@
 package org.openmetadata.sdk.services.dataassets;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -52,29 +49,7 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
     String path = basePath + "/" + encodedFqn + "/status?startTs=" + startTs + "&endTs=" + endTs;
     ResultList<PipelineStatus> result =
         httpClient.execute(HttpMethod.GET, path, null, getResultListType());
-    // The server bounds each page by size as well, so the rest of the range is behind
-    // paging.after; follow it to return every status, as this method always has.
-    List<PipelineStatus> statuses = new ArrayList<>(result.getData());
-    String after = afterCursor(result);
-    while (after != null) {
-      ResultList<PipelineStatus> page =
-          httpClient.execute(
-              HttpMethod.GET,
-              path + "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8),
-              null,
-              getResultListType());
-      statuses.addAll(page.getData());
-      after = afterCursor(page);
-    }
-    result.setData(statuses);
-    if (result.getPaging() != null) {
-      result.getPaging().setAfter(null);
-    }
     return new ListResponse<>(result);
-  }
-
-  private static String afterCursor(ResultList<PipelineStatus> page) {
-    return page.getPaging() == null ? null : page.getPaging().getAfter();
   }
 
   @SuppressWarnings("unchecked")

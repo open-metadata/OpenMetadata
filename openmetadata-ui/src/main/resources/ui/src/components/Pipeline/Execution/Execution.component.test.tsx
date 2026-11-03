@@ -34,9 +34,11 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../rest/pipelineAPI', () => ({
-  getAllPipelineStatuses: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve([])),
+  getPipelineStatus: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [],
+    })
+  ),
 }));
 
 jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>

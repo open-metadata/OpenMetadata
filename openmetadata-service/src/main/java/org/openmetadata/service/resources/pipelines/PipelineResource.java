@@ -694,9 +694,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           Long endTs,
       @Parameter(
               description =
-                  "Limit the number of pipeline statuses in a page. A page also ends once it holds"
-                      + " about 2 MB of status JSON, and then paging.after leads to the rest. If"
-                      + " not provided, a page is bounded by that size alone.",
+                  "Limit the number of pipeline statuses returned. If not provided, returns all results.",
               schema = @Schema(type = "integer"))
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = 1000000, message = "must be less than or equal to 1000000")

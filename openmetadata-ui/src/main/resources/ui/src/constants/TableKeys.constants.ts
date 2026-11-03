@@ -35,6 +35,8 @@ export const TABLE_COLUMNS_KEYS = {
   ORDINAL_POSITION: 'ordinalPosition',
 };
 
+export const CUSTOM_PROPERTY_COLUMN_KEY_PREFIX = 'columnCustomProperty.';
+
 export const COMMON_STATIC_TABLE_VISIBLE_COLUMNS = [TABLE_COLUMNS_KEYS.NAME];
 
 export const DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS = [

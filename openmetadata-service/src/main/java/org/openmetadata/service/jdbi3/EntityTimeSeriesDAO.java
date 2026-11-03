@@ -162,6 +162,34 @@ public interface EntityTimeSeriesDAO {
       @Bind("startTs") Long startTs,
       @Bind("endTs") Long endTs);
 
+  // A latest listing without a time range ranks its own rows: without the partitioned query
+  // the plain listing returns every revision, voiding the latest flag it was asked to honor.
+  @SqlQuery(
+      "SELECT json FROM "
+          + "(SELECT id, json, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+          + "FROM <table> <cond> "
+          + "ORDER BY timestamp DESC) ranked "
+          + "WHERE ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+  List<String> listWithOffset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Define("partition") String partition,
+      @Bind("limit") int limit,
+      @Bind("offset") int offset);
+
+  default List<String> listWithOffset(ListFilter filter, int limit, int offset, boolean latest) {
+    return latest
+        ? listWithOffset(
+            getTimeSeriesTableName(),
+            filter.getQueryParams(),
+            filter.getCondition(),
+            getPartitionFieldName(),
+            limit,
+            offset)
+        : listWithOffset(filter, limit, offset);
+  }
+
   default List<String> listWithOffset(
       ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
     return latest
@@ -385,6 +413,29 @@ public interface EntityTimeSeriesDAO {
             filter.getCondition(),
             startTs,
             endTs);
+  }
+
+  // The count a latest listing without a time range must return: the partition count, not the
+  // revision count, or pagination reports totals the listing can never return.
+  @SqlQuery(
+      "SELECT count(*) FROM "
+          + "(SELECT id, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num FROM "
+          + "<table> <cond>) ranked "
+          + "WHERE ranked.row_num = 1")
+  int listCount(
+      @Define("table") String table,
+      @Define("partition") String partition,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond);
+
+  default int listCount(ListFilter filter, boolean latest) {
+    return latest
+        ? listCount(
+            getTimeSeriesTableName(),
+            getPartitionFieldName(),
+            filter.getQueryParams(),
+            filter.getCondition())
+        : listCount(filter);
   }
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id")
@@ -720,110 +771,6 @@ public interface EntityTimeSeriesDAO {
       int limit) {
     return listBetweenTimestampsByOrderWithLimit(
         getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, orderBy, limit);
-  }
-
-  record TimestampedJson(long timestamp, String json) {}
-
-  class TimestampedJsonMapper implements RowMapper<TimestampedJson> {
-    @Override
-    public TimestampedJson map(ResultSet rs, StatementContext ctx) throws SQLException {
-      return new TimestampedJson(rs.getLong("timestamp"), rs.getString("json"));
-    }
-  }
-
-  /**
-   * One batch of a range read, with each row's timestamp alongside its JSON so a caller can move
-   * past a row without parsing it.
-   */
-  // A row longer than maxJsonLength is excluded, not transferred: a status stored before writes
-  // were
-  // size-capped could otherwise be loaded whole and parsed into many times its size. CHAR_LENGTH on
-  // MySQL, LENGTH(json::text) on Postgres — the exact count only has to tell a normal row from a
-  // multi-megabyte one.
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT timestamp, json FROM <table> WHERE entityFQNHash = :entityFQNHash "
-              + "AND extension = :extension AND timestamp >= :startTs AND timestamp <= :endTs "
-              + "AND CHAR_LENGTH(json) <= :maxJsonLength "
-              + "ORDER BY timestamp <orderBy> LIMIT :limit",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT timestamp, json FROM <table> WHERE entityFQNHash = :entityFQNHash "
-              + "AND extension = :extension AND timestamp >= :startTs AND timestamp <= :endTs "
-              + "AND LENGTH(json::text) <= :maxJsonLength "
-              + "ORDER BY timestamp <orderBy> LIMIT :limit",
-      connectionType = POSTGRES)
-  @RegisterRowMapper(TimestampedJsonMapper.class)
-  List<TimestampedJson> listTimestampedBetweenTimestamps(
-      @Define("table") String table,
-      @BindFQN("entityFQNHash") String entityFQNHash,
-      @Bind("extension") String extension,
-      @Bind("startTs") long startTs,
-      @Bind("endTs") long endTs,
-      @Bind("maxJsonLength") int maxJsonLength,
-      @Define("orderBy") OrderBy orderBy,
-      @Bind("limit") int limit);
-
-  default List<TimestampedJson> listTimestampedBetweenTimestamps(
-      String entityFQNHash,
-      String extension,
-      long startTs,
-      long endTs,
-      int maxJsonLength,
-      OrderBy orderBy,
-      int limit) {
-    return listTimestampedBetweenTimestamps(
-        getTimeSeriesTableName(),
-        entityFQNHash,
-        extension,
-        startTs,
-        endTs,
-        maxJsonLength,
-        orderBy,
-        limit);
-  }
-
-  // Counts only the rows a listing can return, so paging.total matches the rows walked above: a row
-  // over maxJsonLength is excluded here too.
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT count(*) FROM <table> WHERE entityFQNHash = :entityFQNHash "
-              + "AND extension = :extension AND timestamp >= :startTs AND timestamp <= :endTs "
-              + "AND CHAR_LENGTH(json) <= :maxJsonLength",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT count(*) FROM <table> WHERE entityFQNHash = :entityFQNHash "
-              + "AND extension = :extension AND timestamp >= :startTs AND timestamp <= :endTs "
-              + "AND LENGTH(json::text) <= :maxJsonLength",
-      connectionType = POSTGRES)
-  int countBetweenTimestamps(
-      @Define("table") String table,
-      @BindFQN("entityFQNHash") String entityFQNHash,
-      @Bind("extension") String extension,
-      @Bind("startTs") long startTs,
-      @Bind("endTs") long endTs,
-      @Bind("maxJsonLength") int maxJsonLength);
-
-  default int countBetweenTimestamps(
-      String entityFQNHash, String extension, long startTs, long endTs, int maxJsonLength) {
-    return countBetweenTimestamps(
-        getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, maxJsonLength);
-  }
-
-  @SqlQuery(
-      "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash "
-          + "AND extension = :extension AND timestamp IN (<timestamps>)")
-  List<String> listAtTimestamps(
-      @Define("table") String table,
-      @BindFQN("entityFQNHash") String entityFQNHash,
-      @Bind("extension") String extension,
-      @BindList("timestamps") List<Long> timestamps);
-
-  default List<String> listAtTimestamps(
-      String entityFQNHash, String extension, List<Long> timestamps) {
-    return listAtTimestamps(getTimeSeriesTableName(), entityFQNHash, extension, timestamps);
   }
 
   @ConnectionAwareSqlUpdate(

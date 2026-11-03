@@ -76,6 +76,7 @@ class SemanticSearchToolTest {
     assertEquals(0, result.get("returnedCount"));
     assertNotNull(result.get("error"));
     assertTrue(result.get("error").toString().contains("'query' parameter is required"));
+    assertEquals(400, result.get("statusCode"));
   }
 
   @Test
