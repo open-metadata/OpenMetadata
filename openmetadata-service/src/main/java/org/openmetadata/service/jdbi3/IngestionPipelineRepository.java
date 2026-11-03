@@ -36,6 +36,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -1663,8 +1665,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  public void streamServiceProgress(String serviceFqn, SseEventSink eventSink, Sse sse) {
-    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker);
+  public void streamServiceProgress(
+      String serviceFqn,
+      SseEventSink eventSink,
+      Sse sse,
+      Function<ServiceProgressEvent, Optional<ServiceProgressEvent>> subscriber) {
+    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker, subscriber);
   }
 
   private ProgressUpdate getLatestProgressUpdate(String pipelineFQN, UUID runId) {

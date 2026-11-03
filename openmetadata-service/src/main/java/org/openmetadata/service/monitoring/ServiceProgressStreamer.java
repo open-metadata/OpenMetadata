@@ -14,7 +14,9 @@ package org.openmetadata.service.monitoring;
 
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
+import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
@@ -30,8 +32,12 @@ public final class ServiceProgressStreamer {
   private ServiceProgressStreamer() {}
 
   public static void stream(
-      String serviceFqn, SseEventSink eventSink, Sse sse, IngestionProgressTracker tracker) {
-    Consumer<ServiceProgressEvent> listener = event -> send(eventSink, sse, event);
+      String serviceFqn,
+      SseEventSink eventSink,
+      Sse sse,
+      IngestionProgressTracker tracker,
+      Function<ServiceProgressEvent, Optional<ServiceProgressEvent>> subscriber) {
+    Consumer<ServiceProgressEvent> listener = event -> send(eventSink, sse, event, subscriber);
     tracker.registerServiceListener(serviceFqn, listener);
     Runnable onClose = () -> tracker.unregisterServiceListener(serviceFqn, listener);
     if (ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
@@ -41,7 +47,7 @@ public final class ServiceProgressStreamer {
       // replayed snapshot may duplicate a just-delivered live event, which is harmless (the
       // client keys by pipelineFqn and renders the latest).
       for (ServiceProgressEvent snapshot : tracker.getActiveRunSnapshots(serviceFqn)) {
-        send(eventSink, sse, snapshot);
+        listener.accept(snapshot);
       }
     } else {
       onClose.run();
@@ -49,16 +55,28 @@ public final class ServiceProgressStreamer {
     }
   }
 
-  private static void send(SseEventSink eventSink, Sse sse, ServiceProgressEvent event) {
+  private static void send(
+      SseEventSink eventSink,
+      Sse sse,
+      ServiceProgressEvent event,
+      Function<ServiceProgressEvent, Optional<ServiceProgressEvent>> subscriber) {
     if (!eventSink.isClosed()) {
-      eventSink
-          .send(sse.newEvent(JsonUtils.pojoToJson(event)))
-          .whenComplete(
-              (result, error) -> {
-                if (error != null) {
-                  ProgressSseManager.getInstance().close(eventSink);
-                }
-              });
+      try {
+        subscriber
+            .apply(event)
+            .ifPresent(
+                visible ->
+                    eventSink
+                        .send(sse.newEvent(JsonUtils.pojoToJson(visible)))
+                        .whenComplete(
+                            (result, error) -> {
+                              if (error != null) {
+                                ProgressSseManager.getInstance().close(eventSink);
+                              }
+                            }));
+      } catch (RuntimeException e) {
+        ProgressSseManager.getInstance().close(eventSink);
+      }
     }
   }
 }
