@@ -178,7 +178,6 @@ describe('pending banner text', () => {
     useKeyEchoTranslations();
   });
 
-  const author = { id: 'author', name: 'Author', type: 'user' };
   const alice = { id: 'alice', name: 'alice', type: 'user' };
   const bob = { id: 'bob', name: 'bob', type: 'user' };
   const asRequester = (

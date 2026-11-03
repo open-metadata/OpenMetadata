@@ -185,6 +185,7 @@ describe('OntologyReviewPanel', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(get).not.toHaveBeenCalled();
   });
+
   describe('field changes in English', () => {
     beforeEach(() => {
       useEnUsTranslations();

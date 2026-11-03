@@ -24,8 +24,8 @@ import {
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getReviewStatusMessage } from './OntologyReviewBanner.utils';
 import { releaseChangeCount } from '../OntologyReleasePanel/OntologyReleasePanel.utils';
+import { getReviewStatusMessage } from './OntologyReviewBanner.utils';
 
 type Props = {
   review: OntologyReleaseReview;

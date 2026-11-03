@@ -848,3 +848,42 @@ describe('the Studio review banner scope', () => {
     ]);
   });
 });
+
+it('titles each queue row with the task title that names the ontology and version', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url === '/ontologies/reviews' && config.params.limit === 25
+      ? Promise.resolve({
+          data: {
+            data: [
+              {
+                ...review,
+                task: { ...review.task, displayName: 'Review Sales v0.1.0' },
+              },
+              {
+                ...review,
+                taskId: 'TASK-00043',
+                task: {
+                  id: 'task-c',
+                  type: 'task',
+                  displayName: 'Review Finance v1.2.0',
+                },
+              },
+            ],
+            paging: { total: 2 },
+          },
+        })
+      : read?.(url, config)
+  );
+  renderWithQueryClient(<Harness />);
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+
+  expect(
+    await screen.findByRole('button', {
+      name: 'TASK-00042 · Review Sales v0.1.0',
+    })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'TASK-00043 · Review Finance v1.2.0' })
+  ).toBeInTheDocument();
+});

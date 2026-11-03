@@ -61,8 +61,8 @@ import {
 import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
-import OntologyTaskThread from './OntologyTaskThread';
 import { getOpenReviews } from './OntologyTasksDrawer.utils';
+import OntologyTaskThread from './OntologyTaskThread';
 
 type Props = {
   /** The ontology in view; its latest decided review is announced to the requester. */
@@ -691,7 +691,7 @@ const OntologyTasksDrawer = ({
                 key={entry.task.id}
                 onPress={() => onTaskChange(entry.task.id)}>
                 {entry.taskId ?? entry.task.id} ·{' '}
-                {getEntityName(entry.ontology)}
+                {entry.task.displayName ?? getEntityName(entry.ontology)}
               </Button>
             ))
           )}

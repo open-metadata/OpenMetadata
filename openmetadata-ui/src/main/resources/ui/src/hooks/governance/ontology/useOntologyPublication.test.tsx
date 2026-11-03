@@ -243,6 +243,7 @@ it('titles the review task with the ontology and the semantic version', async ()
     '/tasks',
     expect.objectContaining({ displayName: 'Review Sales v1.5.0' })
   );
+
   useKeyEchoTranslations();
 });
 

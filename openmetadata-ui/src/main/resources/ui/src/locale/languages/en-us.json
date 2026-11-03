@@ -5395,6 +5395,8 @@
     "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
     "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "Native ontology import is not supported yet. Export uses the active immutable release.",
+    "native-relation-count_one": "{{count}} relation",
+    "native-relation-count_other": "{{count}} relations",
     "natural-language-search-active": "Natural language search is active. Search for assets using simple phrases. Click again to reset the search mode.",
     "need-help-message": "Need help? <0>{{doc}}</0>.",
     "new-conversation": "You are starting a new conversation",

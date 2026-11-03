@@ -645,11 +645,11 @@ function getStudioStatsLabel(
       return '';
     }
 
-    return `${aggregateGraph.nodes.length} ${t(
-      'label.concept-plural'
-    ).toLocaleLowerCase()} · ${aggregateGraph.edges.length} ${t(
-      'label.relation-plural'
-    ).toLocaleLowerCase()}`;
+    return `${t('message.native-concept-count', {
+      count: aggregateGraph.nodes.length,
+    })} · ${t('message.native-relation-count', {
+      count: aggregateGraph.edges.length,
+    })}`;
   }
   if (scope.kind === 'ontology') {
     const currentStats =
@@ -659,11 +659,11 @@ function getStudioStatsLabel(
       return '';
     }
 
-    return `${currentStats.conceptCount} ${t(
-      'label.concept-plural'
-    ).toLocaleLowerCase()} · ${currentStats.relationCount} ${t(
-      'label.relation-plural'
-    ).toLocaleLowerCase()}`;
+    return `${t('message.native-concept-count', {
+      count: currentStats.conceptCount,
+    })} · ${t('message.native-relation-count', {
+      count: currentStats.relationCount,
+    })}`;
   }
 
   return `${termCount} ${t(

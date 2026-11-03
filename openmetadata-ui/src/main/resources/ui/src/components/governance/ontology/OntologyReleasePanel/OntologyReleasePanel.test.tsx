@@ -2300,6 +2300,7 @@ describe('reviewing what changed (G7)', () => {
       await screen.findByTestId('ontology-working-violations')
     ).toHaveTextContent('Customer is its own ancestor');
   });
+
   it('tells the reader the counts cover only the first page when the diff has a next page', async () => {
     serveGroups(
       [groupOf('Alpha', 'ADDED', [memberOf('CONCEPT', 'ADDED', 'Alpha')])],
