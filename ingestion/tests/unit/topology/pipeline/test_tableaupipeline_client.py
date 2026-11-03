@@ -139,6 +139,8 @@ class FakeTableau:
         self.unsorted_runs: list[str] | None = None
         self.users: dict[str, str] = {}
         self.graphql_response: dict = {"data": {"flows": []}}
+        # Answered one per Metadata API call, before graphql_response.
+        self.graphql_pages: list[dict] = []
         self.tasks: list[str] | None = []
         self.content: dict[str, str] = {}
         self.jobs: list[str] = []
@@ -208,6 +210,8 @@ class FakeTableau:
             return self.table_queries_status, json.dumps(self.table_queries_response), "application/json"
         if path.endswith("/api/metadata/graphql") and "outputSteps {\\n      outputFields" in str(request.body):
             return self.field_lineage_status, json.dumps(self.field_lineage_response), "application/json"
+        if path.endswith("/api/metadata/graphql") and self.graphql_pages:
+            return 200, json.dumps(self.graphql_pages.pop(0)), "application/json"
         if path.endswith("/api/metadata/graphql"):
             return self.graphql_status, json.dumps(self.graphql_response), "application/json"
         return None
@@ -528,6 +532,53 @@ class TestFlowLineage:
         assert [d.id for d in lineage.upstream_datasources] == ["gql-ds-in"]
         assert [t.id for t in lineage.downstream_tables] == ["gql-sales"]
         assert lineage.downstream_datasources == []
+
+    def test_a_wide_flow_is_read_a_page_at_a_time(self, tableau):
+        """Fields are paged so a wide flow stays under the node limit. Tableau ends
+        a side with endCursor null; that side is then asked for 0 fields."""
+
+        def connection(nodes: list, after: str | None) -> dict:
+            return {"nodes": nodes, "pageInfo": {"hasNextPage": after is not None, "endCursor": after}}
+
+        orders = {"__typename": "FlowColumnInputField", "column": {"table": LINEAGE["upstreamTables"][0]}}
+        targets = {"__typename": "FlowFieldInputField", "field": {"datasource": LINEAGE["upstreamDatasources"][0]}}
+        sales = {"__typename": "FlowColumnOutputField", "column": {"table": LINEAGE["downstreamTables"][0]}}
+        flow = {"outputSteps": [], "nextDownstreamFlows": []}
+        tableau.graphql_pages = [
+            {
+                "data": {
+                    "flows": [
+                        {
+                            **flow,
+                            "inputFieldsConnection": connection([orders], "in-1"),
+                            "outputFieldsConnection": connection([sales], None),
+                        }
+                    ]
+                }
+            },
+            {
+                "data": {
+                    "flows": [
+                        {
+                            **flow,
+                            "inputFieldsConnection": connection([targets], None),
+                            "outputFieldsConnection": connection([], None),
+                        }
+                    ]
+                }
+            },
+        ]
+
+        lineage = _client().get_flow_lineage("flow-1")
+
+        first, second = (json.loads(call.body)["query"] for call in tableau.calls_to("/api/metadata/graphql"))
+        assert "inputFieldsConnection(first: 100, after: null)" in first
+        assert 'inputFieldsConnection(first: 100, after: "in-1")' in second
+        assert "outputFieldsConnection(first: 0, after: null)" in second
+        assert lineage is not None
+        assert [t.id for t in lineage.upstream_tables] == ["gql-orders"]
+        assert [d.id for d in lineage.upstream_datasources] == ["gql-ds-in"]
+        assert [t.id for t in lineage.downstream_tables] == ["gql-sales"]
 
     def test_a_custom_sql_input_is_the_tables_its_query_reads(self, tableau):
         custom_sql = {

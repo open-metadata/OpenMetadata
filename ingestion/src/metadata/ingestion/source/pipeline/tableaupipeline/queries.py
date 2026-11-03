@@ -22,14 +22,17 @@ ref: https://help.tableau.com/current/api/metadata_api/en-us/reference/flow.doc.
 # the outputs of flows that read its own. For the same reason nextDownstreamFlows
 # rather than downstreamFlows: the latter would add an A -> C edge next to
 # A -> B -> C. The fields make the answer grow with the flow's column count, so
-# an answer cut short by the node limit is a failed query. A custom SQL input
+# they are read a page at a time (a finished side asks for 0) and a page cut
+# short by the node limit is a failed query. A custom SQL input
 # carries its own query; TABLEAU_TABLE_QUERIES_QUERY is only for unnamed tables
 # that come without one: referencedByQueries lists every query on the site that
 # reads a table, which on a popular table would spend most of the node budget.
 TABLEAU_FLOW_LINEAGE_QUERY = """
 {{
   flows(filter: {{luid: "{flow_luid}"}}) {{
-    inputFields {{
+    inputFieldsConnection(first: {inputFields_first}, after: {inputFields_after}) {{
+      pageInfo {{ hasNextPage endCursor }}
+      nodes {{
       ... on FlowColumnInputField {{
         column {{
           table {{
@@ -71,12 +74,15 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
           }}
         }}
       }}
+      }}
     }}
     outputSteps {{
       id
       name
     }}
-    outputFields {{
+    outputFieldsConnection(first: {outputFields_first}, after: {outputFields_after}) {{
+      pageInfo {{ hasNextPage endCursor }}
+      nodes {{
       ... on FlowColumnOutputField {{
         column {{
           table {{
@@ -103,6 +109,7 @@ TABLEAU_FLOW_LINEAGE_QUERY = """
             }}
           }}
         }}
+      }}
       }}
     }}
     nextDownstreamFlows {{

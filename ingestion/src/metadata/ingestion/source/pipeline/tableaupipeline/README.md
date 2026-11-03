@@ -97,10 +97,10 @@ dashboard Tableau connector does:
    parsed (ANSI dialect); each source table resolves via steps 1–2.
 
 A file a flow reads or writes (Excel, text, JSON, PDF, spatial, statistical,
-Hyper, Google Sheets, or one of these in cloud storage) is never resolved to a
-database table: Tableau reports it with a file connection type, or with no
-database and no schema, and by name alone it would match a table of the same
-name.
+Hyper, Google Sheets, one of these in cloud storage, or a SharePoint list) is
+never resolved to a database table: Tableau reports it with a file connection
+type, or with no database and no schema, and by name alone it would match a
+table of the same name.
 
 Published data sources resolve to the `DashboardDataModel`s the dashboard
 Tableau connector created — in every dashboard service that ingests the site
@@ -153,9 +153,10 @@ would replace their column lineage whenever `overrideLineage` is on.
   honouring `Retry-After`.
 - **Metadata API node limit.** A query that exceeds the node limit (20,000
   by default on Tableau Server) returns partial data plus `errors`. The flow
-  query lists every input and output field, so a flow cut short there keeps
-  its stored tasks and gets no new lineage that run, with a warning; other
-  queries log the errors and ingest what was returned.
+  query reads input and output fields 100 at a time, so a wide flow stays
+  under the limit; a page cut short anyway keeps the flow's stored tasks and
+  gets no new lineage that run, with a warning; other queries log the errors
+  and ingest what was returned.
 
 ## Test connection steps
 

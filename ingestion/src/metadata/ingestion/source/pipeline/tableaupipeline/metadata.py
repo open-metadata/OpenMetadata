@@ -132,24 +132,30 @@ AssetResolver = Callable[[], list[EntityReference]]
 
 _NOT_FETCHED = object()
 
-# Tableau's connection types for files, which are never database tables; a file
-# in cloud storage is `cloudfile:<service>-<type>`.
+# Tableau's connection types for files, cloud storage and SharePoint lists, which
+# are never database tables; a file in cloud storage can also be
+# `cloudfile:<service>-<type>`.
 # https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_connections.html
 FILE_CONNECTION_TYPES = frozenset(
     {
+        "box",
         "csv",
         "dataengine",
+        "dropbox",
         "excel",
         "excel-direct",
         "excel-reader",
         "google-sheets",
+        "googledrive",
         "hyper",
         "ogr",
         "ogrdirect",
+        "onedrive",
         "pdf",
         "pdf-reader",
         "semistructpassivestore",
         "semistructpassivestore-direct",
+        "sharepoint",
         "stat",
         "stat-direct",
         "textclean",
