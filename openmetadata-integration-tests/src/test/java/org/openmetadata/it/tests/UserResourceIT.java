@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,6 +53,7 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -67,6 +69,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -4345,6 +4348,129 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     operation.put("path", "");
     operation.set("value", value);
     return ops;
+  }
+
+  // ===================================================================
+  // USER PERSONAS
+  // Holding a persona opens its AI context, so assigning one is admin only, like roles
+  // (ADR:2026-11-03-only-admins-assign-personas)
+  // ===================================================================
+
+  @Test
+  void test_patchUser_ownPersonas_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "ownpersonapatch");
+    final Persona persona = createPersona(ns, "ownPersonaPatch");
+
+    assertPatchForbidden(clientFor(user), user, addPersonasOp(persona));
+
+    assertHoldsNoPersona(user);
+  }
+
+  @Test
+  void test_patchUser_ownDefaultPersonaNotHeld_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndefaultpersona");
+    final Persona persona = createPersona(ns, "ownDefaultPersona");
+
+    assertPatchForbidden(clientFor(user), user, setDefaultPersonaOp(persona));
+
+    assertHoldsNoPersona(user);
+  }
+
+  @Test
+  void test_patchUser_ownDefaultPersonaAmongHeld_allowed(TestNamespace ns) {
+    final Persona first = createPersona(ns, "heldPersonaFirst");
+    final Persona second = createPersona(ns, "heldPersonaSecond");
+    final String localPart = "heldpersona" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withPersonas(List.of(first.getEntityReference(), second.getEntityReference()))
+                .withDefaultPersona(first.getEntityReference()));
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/users/" + user.getId(), setDefaultPersonaOp(second));
+
+    assertEquals(
+        second.getId(),
+        Users.get(user.getId().toString(), "defaultPersona").getDefaultPersona().getId());
+  }
+
+  @Test
+  void test_putUser_ownPersonas_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "ownpersonaput");
+    final Persona persona = createPersona(ns, "ownPersonaPut");
+    final String body =
+        "{\"name\":\""
+            + user.getName()
+            + "\",\"email\":\""
+            + user.getEmail()
+            + "\",\"personas\":[{\"id\":\""
+            + persona.getId()
+            + "\",\"type\":\"persona\"}]}";
+
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                clientFor(user)
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", body));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Adding a persona to your own user is admin only: " + exception.getMessage());
+
+    assertHoldsNoPersona(user);
+  }
+
+  @Test
+  void test_admin_canAssignPersonas(TestNamespace ns) {
+    final User user = createRegularUser(ns, "adminpersona");
+    final Persona persona = createPersona(ns, "adminPersona");
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), addPersonasOp(persona));
+
+    assertEquals(
+        List.of(persona.getId()),
+        Users.get(user.getId().toString(), "personas").getPersonas().stream()
+            .map(EntityReference::getId)
+            .toList());
+  }
+
+  private static Persona createPersona(TestNamespace ns, String base) {
+    return Personas.create(new CreatePersona().withName(ns.prefix(base)));
+  }
+
+  private ArrayNode addPersonasOp(final Persona persona) {
+    final ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    final ObjectNode operation = ops.addObject().put("op", "add").put("path", "/personas");
+    operation
+        .putArray("value")
+        .addObject()
+        .put("id", persona.getId().toString())
+        .put("type", "persona");
+    return ops;
+  }
+
+  private ArrayNode setDefaultPersonaOp(final Persona persona) {
+    final ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    final ObjectNode operation = ops.addObject().put("op", "add").put("path", "/defaultPersona");
+    operation.putObject("value").put("id", persona.getId().toString()).put("type", "persona");
+    return ops;
+  }
+
+  private void assertHoldsNoPersona(final User user) {
+    final User stored = Users.get(user.getId().toString(), "personas");
+    assertEquals(
+        List.of(),
+        listOrEmpty(stored.getPersonas()),
+        "The rejected request must not have assigned a persona");
   }
 
   // ===================================================================

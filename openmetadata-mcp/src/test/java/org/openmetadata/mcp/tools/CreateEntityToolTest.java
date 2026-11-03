@@ -138,6 +138,32 @@ class CreateEntityToolTest {
   }
 
   @Test
+  void aTeamThatNamesADefaultPersonaNeedsAnAdmin() {
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Team.class);
+    CatalogSecurityContext securityContext = securityContext();
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("not admin"))
+        .when(authorizer)
+        .authorizeAdmin(securityContext);
+    Map<String, Object> params = params(Entity.TEAM);
+    params.put(
+        "attributes",
+        Map.of("teamType", "Group", "defaultPersona", Map.of("id", UUID.randomUUID().toString())));
+
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            withRepository(
+                Entity.TEAM,
+                repository,
+                () ->
+                    new CreateEntityTool()
+                        .execute(authorizer, mock(Limits.class), securityContext, params)));
+
+    verify(repository, never()).create(any(), any(), anyString(), any());
+  }
+
+  @Test
   void entityTypesWithDedicatedCreateLifecyclesAreRejectedByBothTools() {
     for (String entityType :
         List.of(

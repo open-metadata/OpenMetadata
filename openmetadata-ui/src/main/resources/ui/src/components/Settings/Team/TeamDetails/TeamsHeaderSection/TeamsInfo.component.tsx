@@ -89,6 +89,10 @@ const TeamsInfo = ({
     [entityPermissions, isTeamDeleted]
   );
   const hasEditPermission = canEditAll;
+  // Members inherit the default persona, so only admins set it, even when the
+  // owner may edit the rest of the team (ADR:2026-11-03-only-admins-assign-personas).
+  const hasEditPersonaPermission =
+    hasEditPermission && Boolean(currentUser?.isAdmin);
   // Reassigning a team's domain is EditDomains on the server (EditAll still
   // subsumes it), so gate the domain control on that, not bare EditAll.
   const hasEditDomainPermission = canEditDomains;
@@ -382,7 +386,7 @@ const TeamsInfo = ({
             </Typography>
             <PersonaSelectableList
               isDefaultPersona
-              hasPermission={hasEditPermission}
+              hasPermission={hasEditPersonaPermission}
               multiSelect={false}
               selectedPersonas={
                 currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []
@@ -412,7 +416,7 @@ const TeamsInfo = ({
   }, [
     isGroupType,
     currentTeam.defaultPersona,
-    hasEditPermission,
+    hasEditPersonaPermission,
     handleDefaultPersonaUpdate,
     t,
   ]);

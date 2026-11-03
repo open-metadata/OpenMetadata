@@ -105,6 +105,10 @@ public class CreateEntityTool implements McpTool {
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    // As TeamResource.create: the persona a Group hands its members is admin only.
+    if (entity instanceof Team team && team.getDefaultPersona() != null) {
+      authorizer.authorizeAdmin(securityContext);
+    }
   }
 
   private static RestUtil.PutResponse<EntityInterface<?>> persist(

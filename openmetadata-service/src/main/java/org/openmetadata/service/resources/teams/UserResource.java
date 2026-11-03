@@ -170,6 +170,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.CSVExportResponse;
@@ -1271,6 +1272,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
       }
     }
+    if (changesDefaultPersona(patch)) {
+      authorizeDefaultPersonaPatch(securityContext, containerRequestContext, id, patch);
+    }
     return withRedactedEntity(
         patchInternal(uriInfo, securityContext, id, patch),
         withoutCredentials(securityContext, isSelf));
@@ -1280,20 +1284,56 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private static final String IS_BOT_PATCH_PATH = "/isBot";
   private static final String ROLES_FIELD = "roles";
   private static final String TEAMS_FIELD = "teams";
+  private static final String PERSONAS_FIELD = "personas";
+  private static final String DEFAULT_PERSONA_FIELD = "defaultPersona";
   private static final String PRIVILEGED_FIELDS =
-      String.join(",", ROLES_FIELD, TEAMS_FIELD, Entity.FIELD_DOMAINS);
+      String.join(
+          ",",
+          ROLES_FIELD,
+          TEAMS_FIELD,
+          Entity.FIELD_DOMAINS,
+          PERSONAS_FIELD,
+          DEFAULT_PERSONA_FIELD);
   private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
   private static final String DOMAINS_PATCH_PATH = "/" + Entity.FIELD_DOMAINS;
+  private static final String PERSONAS_PATCH_PATH = "/" + PERSONAS_FIELD;
+  private static final String DEFAULT_PERSONA_PATCH_PATH = "/" + DEFAULT_PERSONA_FIELD;
 
   // A root-level operation (path "") replaces the whole user document, so it covers the same
   // fields as the explicit paths below. Domains grant access through hasDomain(), so only an admin
-  // changes them: ADR:2026-10-21-only-admins-change-a-users-domains
+  // changes them: ADR:2026-10-21-only-admins-change-a-users-domains. Holding a persona opens its
+  // AI context, so only an admin changes a user's persona list:
+  // ADR:2026-11-03-only-admins-assign-personas
   private static boolean isPrivilegedUserPatchPath(String path) {
     return path.isEmpty()
         || path.equals(IS_ADMIN_PATCH_PATH)
         || path.equals(IS_BOT_PATCH_PATH)
         || path.contains(ROLES_PATCH_PATH_SEGMENT)
-        || path.startsWith(DOMAINS_PATCH_PATH);
+        || path.startsWith(DOMAINS_PATCH_PATH)
+        || path.startsWith(PERSONAS_PATCH_PATH);
+  }
+
+  private static boolean changesDefaultPersona(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .anyMatch(op -> op.getString("path", "").startsWith(DEFAULT_PERSONA_PATCH_PATH));
+  }
+
+  // A user may pick their default among the personas they already hold, which is what the UI
+  // offers; any other persona would be handed out by the change. One change spans several
+  // operations (/defaultPersona/id, /defaultPersona/name, ...), so the patch is applied to a copy
+  // to read the persona it settles on.
+  private void authorizeDefaultPersonaPatch(
+      SecurityContext securityContext,
+      ContainerRequestContext containerRequestContext,
+      UUID id,
+      JsonPatch patch) {
+    User currentUser = repository.get(null, id, repository.getPatchFields(), ALL, false);
+    EntityReference requested =
+        JsonUtils.applyPatch(currentUser, patch, User.class).getDefaultPersona();
+    if (grantsDefaultPersona(currentUser, requested)) {
+      authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
+    }
   }
 
   // Fields on an update that only an admin may set, whoever the user being changed is. The teams
@@ -1306,15 +1346,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     if (nullOrEmpty(updatedUser.getRoles())
         && nullOrEmpty(create.getTeams())
-        && nullOrEmpty(updatedUser.getDomains())) {
+        && nullOrEmpty(updatedUser.getDomains())
+        && nullOrEmpty(updatedUser.getPersonas())
+        && updatedUser.getDefaultPersona() == null) {
       return false;
     }
-    // Reading back what the user already holds only pays off once the request names a role, a team
-    // or a domain - nothing else can be an elevation.
+    // Reading back what the user already holds only pays off once the request names a role, a
+    // team, a domain or a persona - nothing else can be an elevation.
     User currentUser = loadPrivilegedFields(existingUser);
     return hasRoleElevation(currentUser, updatedUser)
         || joinsClosedTeam(currentUser, create.getTeams())
-        || hasDomainElevation(currentUser, updatedUser);
+        || hasDomainElevation(currentUser, updatedUser)
+        || hasPersonaElevation(currentUser, updatedUser)
+        || grantsDefaultPersona(currentUser, updatedUser.getDefaultPersona());
   }
 
   // findByNameOrNull() sets core fields only, so the roles, teams and domains the user already
@@ -1337,6 +1381,24 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return true;
     }
     return !entityIds(currentUser.getRoles()).containsAll(updatedRoleIds);
+  }
+
+  // True when the request asks for a persona the user is not already assigned.
+  private static boolean hasPersonaElevation(User currentUser, User updatedUser) {
+    Set<UUID> heldPersonaIds =
+        currentUser == null ? Set.of() : entityIds(currentUser.getPersonas());
+    return !heldPersonaIds.containsAll(entityIds(updatedUser.getPersonas()));
+  }
+
+  // True when the requested default persona is not one the user already holds. hasPersona() counts
+  // personas inherited from teams and the current default, which may be the system default that
+  // is assigned to nobody explicitly.
+  private static boolean grantsDefaultPersona(User currentUser, EntityReference defaultPersona) {
+    if (defaultPersona == null) {
+      return false;
+    }
+    return currentUser == null
+        || !new SubjectContext(currentUser, null).hasPersona(defaultPersona.getId());
   }
 
   // True when the request asks for a domain the user does not already hold as their own. A domain
@@ -1368,14 +1430,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return !repository.isTeamJoinable(teamId.toString());
   }
 
-  // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team
-  // and domain named on a create request is one the user does not hold yet.
+  // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team,
+  // domain and persona named on a create request is one the user does not hold yet.
   private boolean grantsPrivileges(CreateUser create) {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
         || grantsRolesFromRequestBody(create)
         || joinsClosedTeam(null, create.getTeams())
-        || !nullOrEmpty(create.getDomains());
+        || !nullOrEmpty(create.getDomains())
+        || !nullOrEmpty(create.getPersonas())
+        || create.getDefaultPersona() != null;
   }
 
   // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
