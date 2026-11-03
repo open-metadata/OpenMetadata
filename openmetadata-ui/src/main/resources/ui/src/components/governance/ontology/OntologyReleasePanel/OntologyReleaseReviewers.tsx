@@ -30,6 +30,7 @@ import type {
   ReviewSettings,
   SettingsOutcome,
 } from '../../../../hooks/governance/ontology/useOntologyPublication.types';
+import { useSettlingReviewEdits } from '../../../../hooks/governance/ontology/useSettlingReviewEdits';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import type { ReleasePanelView } from './OntologyReleasePanel.types';
@@ -104,9 +105,6 @@ const OntologyReleaseReviewers = ({
   const readEpoch = useRef(0);
   const retained = useRef<ReadyReviewerModel>();
   const model = retainReadableModel(view, retained, readEpoch);
-  const wasEditable = useRef(false);
-  const queued = useRef<(latest: ReviewSettings) => ReviewSettings>();
-  const flushQueued = useRef<() => void>();
   useEffect(() => {
     if (view.kind === 'unavailable') {
       setSearchText('');
@@ -115,11 +113,28 @@ const OntologyReleaseReviewers = ({
       setSaving(false);
     }
   }, [view.kind, onSearchChange]);
-  useEffect(() => {
-    if (view.kind === 'ready' && !saving) {
-      flushQueued.current?.();
+  const save = async (next: ReviewSettings) => {
+    const epoch = readEpoch.current;
+    setSaving(true);
+    setOutcome(undefined);
+    try {
+      const result = await onChange(next);
+      if (readEpoch.current === epoch) {
+        setOutcome(result);
+      }
+    } finally {
+      if (readEpoch.current === epoch) {
+        setSaving(false);
+      }
     }
-  }, [view, saving]);
+  };
+  const { interactive, change } = useSettlingReviewEdits({
+    viewKind: view.kind,
+    canEditSettings: model?.canEditSettings,
+    saving,
+    settings: model?.settings,
+    save,
+  });
   if (!model) {
     return view.kind === 'loading' ? (
       <Typography role="status">{t('label.loading')}</Typography>
@@ -131,15 +146,6 @@ const OntologyReleaseReviewers = ({
   }
   const { settings, lock } = model;
   const editable = view.kind === 'ready' && model.canEditSettings && !saving;
-  if (view.kind === 'ready' && !saving) {
-    wasEditable.current = model.canEditSettings;
-  }
-  // The panel refetches after every save and reads as busy until the last read
-  // returns. Disabling the controls for that read would close a menu the user
-  // has just opened, so they stay usable and a pick made meanwhile is applied
-  // to the settings the refetch returns.
-  const refreshing = (saving || view.kind === 'loading') && wasEditable.current;
-  const interactive = editable || refreshing;
   const hasTeam = settings.reviewers.some((entry) => entry.type === 'team');
   // Clearing the input after a pick reopens React Aria's list while it still
   // has items, and the pick stays in them until the save returns.
@@ -177,41 +183,6 @@ const OntologyReleaseReviewers = ({
     { id: OntologyApprovalRule.AnyReviewer, label: t('label.any-one') },
     { id: OntologyApprovalRule.AllReviewers, label: t('label.all') },
   ];
-  const save = async (next: ReviewSettings) => {
-    if (!editable) {
-      return;
-    }
-    const epoch = readEpoch.current;
-    setSaving(true);
-    setOutcome(undefined);
-    try {
-      const result = await onChange(next);
-      if (readEpoch.current === epoch) {
-        setOutcome(result);
-      }
-    } finally {
-      if (readEpoch.current === epoch) {
-        setSaving(false);
-      }
-    }
-  };
-
-  const change = (update: (latest: ReviewSettings) => ReviewSettings) => {
-    if (refreshing) {
-      queued.current = update;
-
-      return;
-    }
-    void save(update(settings));
-  };
-  flushQueued.current = () => {
-    const update = queued.current;
-    queued.current = undefined;
-    if (update && editable) {
-      void save(update(settings));
-    }
-  };
-
   const renderAssignees = () =>
     model.assignees.length > 0 && (
       <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">

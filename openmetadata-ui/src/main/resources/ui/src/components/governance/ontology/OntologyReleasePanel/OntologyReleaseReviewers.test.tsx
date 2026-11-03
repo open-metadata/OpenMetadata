@@ -19,8 +19,8 @@ import {
   useEnUsTranslations,
   useKeyEchoTranslations,
 } from '../../../../test/unit/enUsTranslation';
-import OntologyReleaseReviewers from './OntologyReleaseReviewers';
 import type { ReleasePanelView } from './OntologyReleasePanel.types';
+import OntologyReleaseReviewers from './OntologyReleaseReviewers';
 
 jest.mock('../../../Glossary/hooks/useEntityReferenceOptions', () => ({
   useUserTeamOptions: () => ({
@@ -69,6 +69,7 @@ const busy = (settings: ReviewSettings): ReleasePanelView => {
 
 describe('OntologyReleaseReviewers approval rule menu while a save refetches', () => {
   beforeEach(() => useEnUsTranslations());
+
   afterEach(() => useKeyEchoTranslations());
 
   const all: ReviewSettings = {
@@ -124,6 +125,7 @@ describe('OntologyReleaseReviewers approval rule menu while a save refetches', (
     flow.show(ready(all));
 
     await waitFor(() => expect(flow.onChange).toHaveBeenCalledTimes(2));
+
     expect(flow.onChange).toHaveBeenLastCalledWith({
       reviewers: [reviewer],
       approvalRule: OntologyApprovalRule.AnyReviewer,
@@ -142,6 +144,7 @@ describe('OntologyReleaseReviewers approval rule menu while a save refetches', (
     flow.show(busy(all));
 
     await waitFor(() => expect(ruleButton(/^All/)).toBeDisabled());
+
     expect(flow.onChange).toHaveBeenCalledTimes(1);
   });
 
