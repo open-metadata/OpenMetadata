@@ -165,6 +165,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static K3sContainer K3S_CONTAINER;
   private static GenericContainer<?> OBJECT_STORAGE_CONTAINER;
   private static final String SEARCH_INDEXING_APP = "SearchIndexingApplication";
+  // One single-node engine serves the whole parallel suite: concurrent namespace-cleanup
+  // delete-by-query calls and inherited-field update-by-query tasks each hold a scroll context per
+  // shard, and at the default limit of 500 the engine refuses new ones. A refused background
+  // propagation fails silently and its test waits for a value that never arrives.
+  private static final String MAX_OPEN_SCROLL_CONTEXTS = "5000";
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
@@ -457,6 +462,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
       opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
+      opensearch.withEnv("search.max_open_scroll_context", MAX_OPEN_SCROLL_CONTEXTS);
       // The search-it suite reindexes the full shared catalog on every test (beforeEach recreate),
       // and heavy-seed tests (ReindexStopUnderLoadIT seeds 10k tables) leave thousands of entities
       // in the DB that every later recreate re-indexes. With only 1g heap / 1g tmpfs the
@@ -490,6 +496,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       elasticsearch.withPassword(ELASTIC_PASSWORD);
       elasticsearch.withEnv("discovery.type", "single-node");
       elasticsearch.withEnv("xpack.security.enabled", "false");
+      elasticsearch.withEnv("search.max_open_scroll_context", MAX_OPEN_SCROLL_CONTEXTS);
       elasticsearch.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
       elasticsearch.withStartupAttempts(3);
       elasticsearch.withTmpFs(java.util.Map.of("/usr/share/elasticsearch/data", "rw,size=1g"));
