@@ -50,6 +50,7 @@ import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
 import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -542,6 +543,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public void prepare(ContextMemory entity, boolean update) {
     requireWritableByWriter(entity, update);
     if (!update) {
+      requireDisputesOpenedByAutomation(null, entity, impersonatorOf(entity));
       startPendingUnlessPrivileged(entity);
     }
     if (entity.getPrimaryEntity() != null) {
@@ -577,16 +579,36 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   /**
    * A memory created by anyone but an admin or a bot starts Unprocessed, whatever stage it asked
-   * for, so reconciliation decides it before anyone else grounds on it. It runs before the stage
-   * derives anything, and keeps a hold for retired evidence that an earlier prepare of the same
-   * PUT applied (ADR:2026-10-09-data-consumers-create-context-memories).
+   * for, so reconciliation decides it before anyone else grounds on it. It runs before the server
+   * holds a memory for retired evidence, so a real hold still starts it in Draft and a requested
+   * one does not (ADR:2026-10-09-data-consumers-create-context-memories).
    */
   static void startPendingUnlessPrivileged(ContextMemory memory) {
     if (memory.getEntityStatus() != ContextMemoryStatus.UNPROCESSED
-        && !MemoryEvidenceHolds.isHeld(memory)
         && !ContextMemoryWriteAccess.isPrivilegedWriter(memory.getUpdatedBy())) {
       memory.withEntityStatus(ContextMemoryStatus.UNPROCESSED).withStatusReason(null);
     }
+  }
+
+  /**
+   * New disputes open a conflict review, which reconciliation does: only an admin, a bot, or a bot
+   * writing for a user adds them. Anyone else could open a review assigned to themselves over their
+   * own memory and approve it through that review.
+   */
+  static void requireDisputesOpenedByAutomation(
+      ContextMemory original, ContextMemory updated, String impersonatedBy) {
+    if (!ContextMemoryLifecycle.addedDisputes(original, updated).isEmpty()
+        && !ContextMemoryWriteAccess.isPrivilegedWriter(updated.getUpdatedBy())
+        && !ContextMemoryWriteAccess.isPrivilegedWriter(impersonatedBy)) {
+      throw new AuthorizationException(ContextMemoryWriteAccess.DISPUTES_NEED_AUTOMATION);
+    }
+  }
+
+  /** A create learns who impersonates its writer only after prepare, from the request. */
+  private static String impersonatorOf(ContextMemory memory) {
+    return memory.getImpersonatedBy() != null
+        ? memory.getImpersonatedBy()
+        : ImpersonationContext.getImpersonatedBy();
   }
 
   /**
@@ -1033,6 +1055,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         updated.setSupersededBy(original.getSupersededBy());
         updated.setDisputes(original.getDisputes());
       }
+      requireDisputesOpenedByAutomation(original, updated, updated.getImpersonatedBy());
       if (!consolidatingChanges) {
         ContextMemoryLifecycle.applyUpdate(
             original,

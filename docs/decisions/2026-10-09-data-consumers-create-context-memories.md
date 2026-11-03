@@ -93,21 +93,25 @@ Approved or Public memory through the API, skipping review.
 
 - A memory created by anyone but an admin or a bot starts `Unprocessed`, whatever `entityStatus`
   it requests, so reconciliation decides it before anyone else grounds on it.
-  `ContextMemoryRepository.prepare` applies this to every new memory: POST, a PUT that creates, and
-  MCP `create_entity` (memories have no bulk endpoint). It runs before the stage stamps a review or
-  checks stage-bound fields, so the memory never claims a review it did not have. A request for a
-  stage it cannot start in, such as a superseding pointer or disputes, is refused as it would be on
-  an `Unprocessed` memory. A hold for retired evidence is kept: such a memory still starts in
-  `Draft`.
+  `ContextMemoryRepository.prepare` applies this to every new memory: POST, MCP `create_entity`,
+  and a PUT that creates, which runs the POST create so that it is prepared once (memories have no
+  bulk endpoint). The rule runs before the stage stamps a review or checks stage-bound fields, so
+  the memory never claims a review it did not have. It trusts no requested hold. The server's own
+  evidence hold runs after it, so a memory citing a retired Query still starts in `Draft`.
 - An update moves a memory into `Approved` only when an admin, a bot or a conflict review decision
   makes it (`ContextMemoryRepository.checkStageDecision`). A review's resolver writes as themselves
   through `governance-bot`, which a caller cannot claim without that bot's token. Any other PATCH
   into `Approved` is refused (403). A PUT re-sends its create request, stage included, so it keeps
   the stored stage instead; re-sending the same PUT stays repeatable. Sending a memory back to
   review or retiring it stays open to anyone who may edit it.
+- Only an admin, a bot, or a bot writing for a user adds disputes, on create or update (403
+  otherwise). Disputes open the conflict review, and that review is assigned to the owners of both
+  sides, so anyone else could open a review over their own memory and approve it there. Collate's
+  reconciliation writes disputes as its bot, or as a restricted memory's owner with the bot
+  impersonating them.
 - Who is affected:
   - unaffected: extraction (written as the admin account), Collate's reconciliation and governance
     bots, evidence holds, and capture or `upsertMemory`, which ask for `Unprocessed` and never
-    patch the stage;
+    patch the stage or disputes;
   - changed: an owner can no longer restore their own retired memory to `Approved`. They send it
     back to review (`Unprocessed`), or an admin restores it.

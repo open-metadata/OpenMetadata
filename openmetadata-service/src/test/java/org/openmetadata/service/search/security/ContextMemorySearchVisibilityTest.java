@@ -638,6 +638,21 @@ class ContextMemorySearchVisibilityTest {
         listingJson(admin, listed));
   }
 
+  /**
+   * A listing asking only for pending stages leaves the share rules nothing to admit: their stage
+   * clause is an empty terms query, which matches no document, and only the owner's branch admits.
+   */
+  @Test
+  void aListingAskingOnlyForPendingStagesAdmitsOnlyTheSubjectsOwn() {
+    List<ContextMemoryStatus> pending =
+        List.of(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT);
+
+    List<List<String>> stageClauses =
+        JsonPath.parse(listingJson(nonAdminSubject(), pending)).read("$..terms.entityStatus");
+
+    assertEquals(List.of(List.of(), List.of("Unprocessed", "Draft")), stageClauses);
+  }
+
   private String listingJson(SubjectContext subject, List<ContextMemoryStatus> listed) {
     OMQueryBuilder listing =
         new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())

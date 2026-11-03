@@ -490,18 +490,18 @@ public class ContextMemoryLifecycleIT {
         assertThrows(
             InvalidRequestException.class,
             () -> user1().patch(idOf(editable), supersede(privateTarget, "Hidden keeper")));
-    InvalidRequestException disputeError =
-        assertThrows(
-            InvalidRequestException.class,
-            () ->
-                user1()
-                    .patch(
-                        idOf(editableDraft),
-                        JsonUtils.readTree(
-                            ADD_DISPUTE.formatted(privateTarget.getId(), "Hidden dispute"))));
+    // Only reconciliation opens a conflict review, so a person's dispute is refused before its
+    // target is even resolved.
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            user1()
+                .patch(
+                    idOf(editableDraft),
+                    JsonUtils.readTree(
+                        ADD_DISPUTE.formatted(privateTarget.getId(), "Hidden dispute"))));
 
     assertTrue(supersedeError.getMessage().contains("readable, non-deleted"));
-    assertTrue(disputeError.getMessage().contains("readable, non-deleted"));
     ContextMemory unchanged = admin().get(idOf(editable));
     assertEquals(ContextMemoryStatus.APPROVED, unchanged.getEntityStatus());
     assertNull(unchanged.getSupersededBy());

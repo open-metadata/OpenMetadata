@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -44,6 +45,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -150,26 +153,105 @@ class ContextMemoryRepositoryTest {
   }
 
   /**
-   * A PUT that creates prepares twice; the first may hold the memory for a retired Query, and the
-   * create-time rule must not undo that hold.
+   * Review finding: a create asking for Draft with the evidence-hold text opened a review directly.
+   * The rule trusts no requested hold; the server's own hold runs after it and still lands in Draft.
    */
   @Test
-  void aHoldForRetiredEvidenceSurvivesTheNonAdminRule() {
-    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
-      subjects
-          .when(() -> SubjectContext.getSubjectContext("alice"))
-          .thenReturn(new SubjectContext(new User().withName("alice"), null));
-      ContextMemory held =
-          byWriter("alice", ContextMemoryStatus.DRAFT)
-              .withStatusReason(
-                  "Supporting query "
-                      + UUID.randomUUID()
-                      + " was deleted; review whether this memory still holds without it");
+  void aRequestedHoldIsNotTrustedButTheServersOwnHoldLandsInDraft() {
+    withWriters(
+        () -> {
+          UUID query = UUID.randomUUID();
+          ContextMemory claimed =
+              byWriter("alice", ContextMemoryStatus.DRAFT)
+                  .withStatusReason(
+                      "Supporting query "
+                          + query
+                          + " was deleted; review whether this memory still holds without it");
+          ContextMemory citing = byWriter("alice", ContextMemoryStatus.APPROVED);
 
-      ContextMemoryRepository.startPendingUnlessPrivileged(held);
+          ContextMemoryRepository.startPendingUnlessPrivileged(claimed);
+          ContextMemoryRepository.startPendingUnlessPrivileged(citing);
+          MemoryEvidenceHolds.holdIfCitingRetired(
+              citing,
+              List.of(
+                  new EntityReference().withId(query).withType(Entity.QUERY).withDeleted(true)));
 
-      assertEquals(ContextMemoryStatus.DRAFT, held.getEntityStatus());
-    }
+          assertEquals(ContextMemoryStatus.UNPROCESSED, claimed.getEntityStatus());
+          assertNull(claimed.getStatusReason());
+          assertEquals(ContextMemoryStatus.DRAFT, citing.getEntityStatus());
+          assertTrue(citing.getStatusReason().contains(query.toString()));
+        });
+  }
+
+  /**
+   * Review finding: alice PATCHed her own memory to Draft with a dispute naming another of hers,
+   * which opened a review assigned only to her, and approved it there.
+   */
+  @Test
+  void aNonAdminCannotOpenAConflictReview() {
+    withWriters(
+        () -> {
+          ContextMemory original =
+              memory(MemoryVisibility.ENTITY)
+                  .withUpdatedBy("admin")
+                  .withUpdatedAt(101L)
+                  .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+          ContextMemory disputed =
+              JsonUtils.deepCopy(original, ContextMemory.class)
+                  .withUpdatedBy("alice")
+                  .withEntityStatus(ContextMemoryStatus.DRAFT)
+                  .withDisputes(List.of(dispute()));
+
+          assertThrows(
+              AuthorizationException.class,
+              () ->
+                  repository
+                      .getUpdater(
+                          original, disputed, EntityRepository.Operation.PATCH, ChangeSource.MANUAL)
+                      .entitySpecificUpdate(false));
+        });
+  }
+
+  /** The create variant: a new memory carrying disputes opens a review the moment it exists. */
+  @Test
+  void aNonAdminsCreateCannotCarryDisputes() {
+    withWriters(
+        () -> {
+          ContextMemory created =
+              byWriter("alice", ContextMemoryStatus.DRAFT).withDisputes(List.of(dispute()));
+
+          assertThrows(AuthorizationException.class, () -> repository.prepare(created, false));
+        });
+  }
+
+  /**
+   * Reconciliation writes disputes as its bot, or as a restricted memory's owner with the bot
+   * impersonating them, so both stay open, as does an admin.
+   */
+  @Test
+  void aBotAnAdminOrABotWritingForAUserMayOpenAConflictReview() {
+    withWriters(
+        () -> {
+          for (String writer : List.of("ai-bot", Entity.ADMIN_USER_NAME)) {
+            ContextMemory memory =
+                byWriter(writer, ContextMemoryStatus.DRAFT).withDisputes(List.of(dispute()));
+            assertDoesNotThrow(
+                () ->
+                    ContextMemoryRepository.requireDisputesOpenedByAutomation(null, memory, null));
+          }
+          ContextMemory forAlice =
+              byWriter("alice", ContextMemoryStatus.DRAFT).withDisputes(List.of(dispute()));
+          assertDoesNotThrow(
+              () ->
+                  ContextMemoryRepository.requireDisputesOpenedByAutomation(
+                      null, forAlice, "ai-bot"));
+        });
+  }
+
+  private static MemoryDispute dispute() {
+    return new MemoryDispute()
+        .withMemory(new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_MEMORY))
+        .withReason("States a different refund window");
   }
 
   /**
@@ -282,6 +364,10 @@ class ContextMemoryRepositoryTest {
       entities
           .when(() -> Entity.findEntityByNameOrNull(Entity.USER, "ai-bot", Include.ALL))
           .thenReturn(bot);
+      entities
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
+          .thenReturn(
+              new EntityReference().withId(alice.getId()).withName("alice").withType(Entity.USER));
       assertions.run();
     }
   }

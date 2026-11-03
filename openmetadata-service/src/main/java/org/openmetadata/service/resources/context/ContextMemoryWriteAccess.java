@@ -59,6 +59,8 @@ public final class ContextMemoryWriteAccess {
       "Only an admin or bot can claim file or page extraction provenance";
   public static final String APPROVAL_NEEDS_REVIEW =
       "Only an admin, a bot or a conflict review can approve a context memory";
+  public static final String DISPUTES_NEED_AUTOMATION =
+      "Only an admin or a bot can open a conflict review on a context memory";
 
   /** Whether a writer may read the entity a memory field points at. */
   @FunctionalInterface

@@ -63,6 +63,7 @@ import org.openmetadata.schema.entity.context.MemoryDerivation;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
@@ -85,6 +86,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 @Tag(name = "Context Memories", description = "APIs for managing reusable Context Center memories.")
@@ -802,10 +804,26 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     repository.setFullyQualifiedName(memory);
     ContextMemory existing =
         repository.findByNameOrNull(memory.getFullyQualifiedName(), Include.ALL);
-    if (existing != null) {
+    Response response;
+    if (existing == null) {
+      response = createForPut(uriInfo, securityContext, memory);
+    } else {
       enforceCurrentVisibility(securityContext, existing.getId());
+      response = createOrUpdate(uriInfo, securityContext, memory);
     }
-    return withVisibleEvidence(securityContext, createOrUpdate(uriInfo, securityContext, memory));
+    return withVisibleEvidence(securityContext, response);
+  }
+
+  /**
+   * A PUT that creates runs the POST create, which prepares the memory once, so the create rule
+   * runs before the server holds a memory for retired evidence; it still answers as a PUT
+   * (ADR:2026-10-09-data-consumers-create-context-memories).
+   */
+  private Response createForPut(
+      UriInfo uriInfo, SecurityContext securityContext, ContextMemory memory) {
+    ContextMemory created = (ContextMemory) create(uriInfo, securityContext, memory).getEntity();
+    return new PutResponse<>(Response.Status.CREATED, created, EventType.ENTITY_CREATED)
+        .toResponse();
   }
 
   @PATCH
