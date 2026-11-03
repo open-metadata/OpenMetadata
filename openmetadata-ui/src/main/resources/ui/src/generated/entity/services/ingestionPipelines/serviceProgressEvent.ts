@@ -3193,9 +3193,9 @@ export interface DBTPrefixConfig {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  *
  * GCP credentials configs.
  *
@@ -3878,7 +3878,7 @@ export interface ServiceConnections {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -4160,7 +4160,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -5945,7 +5945,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     /**
      * Fivetran API Secret.
      */
@@ -6636,9 +6636,9 @@ export interface AWSCredentials {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
     /**
@@ -6982,9 +6982,9 @@ export enum CloudProvider {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface DeltaLakeConfigurationSource {
     /**
@@ -6996,7 +6996,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: ConfigSourceConnection;
+    connection?: Connection;
     /**
      * Bucket Name of the data source.
      */
@@ -7039,7 +7039,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface ConfigSourceConnection {
+export interface Connection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -7238,7 +7238,7 @@ export interface AirflowConnectionConnection {
     /**
      * Service Type
      */
-    type?: ConnectionType;
+    type?: S3Type;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -7605,7 +7605,7 @@ export enum SSLMode {
  *
  * S3 service type
  */
-export enum ConnectionType {
+export enum S3Type {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -7631,9 +7631,9 @@ export enum ConnectionType {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface PurpleGCPCredentials {
     /**
@@ -8115,9 +8115,11 @@ export interface OracleConnectionType {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -8138,14 +8140,25 @@ export interface S3Connection {
      * Service Type
      */
     type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
 export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 
