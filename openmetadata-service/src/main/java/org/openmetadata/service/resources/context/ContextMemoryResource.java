@@ -998,4 +998,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return withVisibleEvidence(
         securityContext, restoreEntity(uriInfo, securityContext, restore.getId()));
   }
+
+  @Override
+  protected List<ContextMemory> retainReadableHistory(
+      SecurityContext securityContext, List<ContextMemory> snapshots) {
+    return ContextMemoryVisibility.filterByVisibility(snapshots, securityContext);
+  }
 }

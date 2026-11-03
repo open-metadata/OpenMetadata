@@ -126,8 +126,7 @@ public class ViewPermissionFilter {
 
   private <T extends EntityInterface<?>> BulkFieldHydrator tagHydrator(
       EntityRepository<T> repository, List<T> entities) {
-    return new BulkFieldHydrator(
-        Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
+    return BulkFieldHydrator.forTags(repository, entities);
   }
 
   @SuppressWarnings("unchecked")

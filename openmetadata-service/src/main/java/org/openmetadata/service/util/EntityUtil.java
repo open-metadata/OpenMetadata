@@ -66,7 +66,9 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
@@ -451,6 +453,22 @@ public final class EntityUtil {
   }
 
   /** Merge two sets of tags */
+  /** Merges the tags of {@code columns} and of every column nested under them. */
+  public static void mergeColumnTags(List<TagLabel> mergeTo, List<Column> columns) {
+    for (Column column : listOrEmpty(columns)) {
+      mergeTags(mergeTo, column.getTags());
+      mergeColumnTags(mergeTo, column.getChildren());
+    }
+  }
+
+  /** Merges the tags of schema {@code fields} and of every field nested under them. */
+  public static void mergeFieldTags(List<TagLabel> mergeTo, List<Field> fields) {
+    for (Field field : listOrEmpty(fields)) {
+      mergeTags(mergeTo, field.getTags());
+      mergeFieldTags(mergeTo, field.getChildren());
+    }
+  }
+
   public static void mergeTags(List<TagLabel> mergeTo, List<TagLabel> mergeFrom) {
     if (nullOrEmpty(mergeFrom)) {
       return;

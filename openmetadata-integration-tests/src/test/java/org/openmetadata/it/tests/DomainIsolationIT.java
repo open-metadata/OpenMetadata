@@ -314,6 +314,63 @@ public class DomainIsolationIT {
   }
 
   @Test
+  void test_referenceListsLeaveOutEntitiesOfAnotherDomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain marketing = createDomain(admin, p + "_mkt", cleanup);
+      String ownerName = p + "_owner";
+      User owner =
+          admin
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(ownerName)
+                      .withEmail(ownerName + "@test.openmetadata.org"));
+      cleanup.push(() -> admin.users().delete(owner.getId()));
+      Table ledger = createTable(admin, p + "_ledger", createSchema(ns, cleanup), finance, cleanup);
+      admin
+          .tables()
+          .patch(
+              ledger.getId(),
+              MAPPER.readTree(
+                  "[{\"op\":\"add\",\"path\":\"/owners\",\"value\":[{\"id\":\""
+                      + owner.getId()
+                      + "\",\"type\":\"user\"}]}]"));
+      Team financeTeam =
+          admin
+              .teams()
+              .create(
+                  new CreateTeam()
+                      .withName(p + "_finteam")
+                      .withTeamType(CreateTeam.TeamType.DEPARTMENT)
+                      .withDomains(List.of(finance.getFullyQualifiedName())));
+      cleanup.push(
+          () ->
+              admin
+                  .teams()
+                  .delete(
+                      financeTeam.getId().toString(),
+                      Map.of("hardDelete", "true", "recursive", "true")));
+      OpenMetadataClient marketer = createRestrictedUserClient(admin, p, marketing, cleanup);
+
+      User seenOwner = marketer.users().getByName(ownerName, "owns");
+      assertFalse(
+          seenOwner.getOwns().stream().anyMatch(ref -> ref.getId().equals(ledger.getId())),
+          "owns must not name another domain's table");
+      Team organization = marketer.teams().getByName("Organization", "children");
+      assertFalse(
+          organization.getChildren().stream()
+              .anyMatch(ref -> ref.getId().equals(financeTeam.getId())),
+          "children must not name another domain's team");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
   void test_userDomainChange_appliesToAuthorizationImmediately(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();

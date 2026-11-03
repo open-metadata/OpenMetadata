@@ -47,6 +47,7 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
   // When set (bulk authorization), on-demand fields are batch-loaded for the whole request instead
   // of once per entity. Null for single-entity requests, which keep the per-entity load.
   private BulkFieldHydrator bulkFieldHydrator;
+  private List<TagLabel> policyTags;
   // Service attributes are read only when a condition asks for them, then memoized for this
   // context. The loaded flags are needed separately because "no service" is a valid null result.
   private EntityInterface<?> serviceEntity;
@@ -198,8 +199,30 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
     if (entity == null) {
       return Collections.emptyList();
     }
+    if (entityRepository.hasNestedPolicyTags()) {
+      return nestedPolicyTags();
+    }
     ensureTagsLoaded();
     return Entity.getEntityTags(getResource(), entity);
+  }
+
+  /**
+   * Tags on inline children (columns, tasks, schema fields) are read from a copy loaded with the
+   * policy tag projection, so the entity being authorized, which a GET may return as is, keeps the
+   * projection it was loaded with (ADR:2026-11-03-tag-conditions-see-the-tags-of-inline-children).
+   */
+  private List<TagLabel> nestedPolicyTags() {
+    if (policyTags == null) {
+      List<TagLabel> fromBatch =
+          bulkFieldHydrator == null ? null : bulkFieldHydrator.policyTags(entity.getId());
+      policyTags =
+          fromBatch != null
+              ? fromBatch
+              : entityRepository
+                  .loadPolicyTags(List.of(entity))
+                  .getOrDefault(entity.getId(), List.of());
+    }
+    return policyTags;
   }
 
   /**

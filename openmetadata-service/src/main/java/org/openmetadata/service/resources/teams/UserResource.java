@@ -2598,4 +2598,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return new CatalogSecurityContext(
         catalogPrincipal, "https", SecurityContext.BASIC_AUTH, new HashSet<>());
   }
+
+  @Override
+  protected List<ReferenceListField<User>> viewFilteredReferenceFields() {
+    return List.of(
+        new ReferenceListField<>("owns", User::getOwns, User::setOwns),
+        new ReferenceListField<>("follows", User::getFollows, User::setFollows));
+  }
 }

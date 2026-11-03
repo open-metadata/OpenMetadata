@@ -985,4 +985,10 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   static int clampExpiry(int expirySeconds) {
     return Math.max(1, Math.min(expirySeconds, MAX_EXPIRY_SECONDS));
   }
+
+  @Override
+  protected List<ContextFile> retainReadableHistory(
+      SecurityContext securityContext, List<ContextFile> snapshots) {
+    return ContextFileVisibility.filterVisible(snapshots, securityContext);
+  }
 }

@@ -930,4 +930,14 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount(securityContext);
     return Response.ok(result).build();
   }
+
+  @Override
+  protected List<ReferenceListField<Team>> viewFilteredReferenceFields() {
+    return List.of(
+        new ReferenceListField<>("owns", Team::getOwns, Team::setOwns),
+        new ReferenceListField<>("children", Team::getChildren, Team::setChildren),
+        new ReferenceListField<>(
+            "descendantTeams", Team::getDescendantTeams, Team::setDescendantTeams),
+        new ReferenceListField<>("parents", Team::getParents, Team::setParents));
+  }
 }
