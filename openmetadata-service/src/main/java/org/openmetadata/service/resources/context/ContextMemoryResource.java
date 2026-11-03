@@ -52,6 +52,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.IntSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -264,26 +266,39 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                 limitParam,
                 before,
                 after));
-    List<ContextMemory> visible =
-        ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
+    List<ContextMemory> listed =
+        ContextMemoryVisibility.filterListed(memories.getData(), securityContext);
+    Paging paging = memories.getPaging();
+    if (paging != null && paging.getTotal() != null) {
+      paging.setTotal(
+          listedTotal(
+              paging.getTotal(),
+              listed.size(),
+              () -> listedCount(uriInfo, securityContext, filter)));
+    }
     // Keep the cursor so clients can page past hidden rows, but never count them.
     return withVisibleEvidence(
         securityContext,
-        visible.size() == memories.getData().size()
+        listed.size() == memories.getData().size()
             ? memories
-            : new ResultList<>(visible)
-                .setPaging(
-                    memories
-                        .getPaging()
-                        .withTotal(visibleTotal(uriInfo, securityContext, filter))));
+            : new ResultList<>(listed).setPaging(paging));
   }
 
   /**
-   * How many memories under {@code filter} the caller may read, counted over at most {@link
-   * #MAX_VISIBLE_COUNT_SCAN} rows: past that it is a lower bound, never a count of hidden rows
+   * The total a list page reports. The database counted every row under the filter, so it stands
+   * only when the page shows that many; otherwise rows may be hidden on this page or another, and
+   * the rows the caller may list are recounted. Never less than the page itself
    * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
-  private int visibleTotal(UriInfo uriInfo, SecurityContext securityContext, ListFilter filter) {
+  static int listedTotal(int total, int listedOnPage, IntSupplier recount) {
+    return total > listedOnPage ? Math.max(recount.getAsInt(), listedOnPage) : total;
+  }
+
+  /**
+   * How many memories under {@code filter} the caller may list, counted over at most {@link
+   * #MAX_VISIBLE_COUNT_SCAN} rows: past that it is a lower bound, never a count of hidden rows.
+   */
+  private int listedCount(UriInfo uriInfo, SecurityContext securityContext, ListFilter filter) {
     List<ContextMemory> scanned =
         listInternal(
                 uriInfo,
@@ -294,7 +309,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                 null,
                 null)
             .getData();
-    return ContextMemoryVisibility.filterByVisibility(scanned, securityContext).size();
+    return ContextMemoryVisibility.filterListed(scanned, securityContext).size();
   }
 
   private ResultList<ContextMemory> withVisibleEvidence(

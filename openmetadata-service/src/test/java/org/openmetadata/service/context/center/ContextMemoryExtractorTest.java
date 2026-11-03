@@ -89,6 +89,10 @@ class ContextMemoryExtractorTest {
             org.mockito.ArgumentMatchers.contains("Never extract personal data"),
             any(),
             eq(KnowledgePill.class));
+    assertTrue(
+        ContextMemoryExtractor.SYSTEM_PROMPT.contains(
+            "nor credentials, tokens, keys or connection strings"),
+        "secrets are kept out as well as contact details");
   }
 
   @Test

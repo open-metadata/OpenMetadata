@@ -40,6 +40,8 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -319,6 +321,68 @@ class ContextMemoryVisibilityTest {
 
     assertTrue(visible.isEmpty());
     assertEquals(1, checks.get());
+  }
+
+  /**
+   * Release testing: a reader listed another user's Shared memory still awaiting reconciliation.
+   * A listing shows it to its owners only, admins included; a read by id keeps the share rules.
+   */
+  @Test
+  void aListingShowsAnUnprocessedMemoryAPersonWroteToItsOwnersOnly() {
+    ContextMemory pending =
+        sharedWith(principalRef(BOB))
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+            .withSourceType(ContextMemorySourceType.REMEMBER_REQUEST);
+    ContextMemoryVisibility.AnchorAccess anyone = (userName, anchor) -> true;
+
+    assertTrue(listed(List.of(pending), ALICE, false, anyone).contains(pending));
+    assertTrue(listed(List.of(pending), BOB, false, anyone).isEmpty(), "bob may only read it");
+    assertTrue(listed(List.of(pending), "root", true, anyone).isEmpty(), "admins included");
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(pending, BOB, false));
+  }
+
+  /** Draft is the review queue: an evidence hold opens no task, so it is listed by the share rules. */
+  @Test
+  void aListingShowsADraftByTheShareRules() {
+    ContextMemory held = sharedWith(principalRef(BOB)).withEntityStatus(ContextMemoryStatus.DRAFT);
+    ContextMemoryVisibility.AnchorAccess anyone = (userName, anchor) -> true;
+
+    assertTrue(listed(List.of(held), BOB, false, anyone).contains(held));
+    assertTrue(listed(List.of(held), "root", true, anyone).contains(held));
+    assertTrue(listed(List.of(held), "charlie", false, anyone).isEmpty());
+  }
+
+  /** A document's pills have no author awaiting review: its readers list them in every stage. */
+  @Test
+  void aListingShowsADocumentsUnprocessedPillsToItsReaders() {
+    ContextMemory pill =
+        memoryOwnedBy("admin", MemoryVisibility.ENTITY)
+            .withPrimaryEntity(ANCHOR)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION);
+    ContextMemoryVisibility.AnchorAccess onlyBobReadsIt =
+        (userName, anchor) -> BOB.equals(userName);
+
+    assertTrue(listed(List.of(pill), BOB, false, onlyBobReadsIt).contains(pill));
+    assertTrue(listed(List.of(pill), "root", true, onlyBobReadsIt).contains(pill));
+    assertTrue(listed(List.of(pill), "charlie", false, onlyBobReadsIt).isEmpty());
+    assertFalse(
+        ContextMemoryVisibility.isListedToOwnersOnly(
+            pill.withSourceType(ContextMemorySourceType.PAGE_EXTRACTION)));
+    assertTrue(
+        ContextMemoryVisibility.isListedToOwnersOnly(pill.withSourceType(null)),
+        "a memory that does not say where it came from is a person's");
+    assertFalse(
+        ContextMemoryVisibility.isListedToOwnersOnly(new ContextMemory()),
+        "a memory with no stage is listed by the share rules");
+  }
+
+  private static List<ContextMemory> listed(
+      List<ContextMemory> memories,
+      String userName,
+      boolean isAdmin,
+      ContextMemoryVisibility.AnchorAccess anchorAccess) {
+    return ContextMemoryVisibility.filterListed(memories, userName, isAdmin, anchorAccess);
   }
 
   @Test

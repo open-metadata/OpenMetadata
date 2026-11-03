@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
 import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
@@ -65,6 +67,18 @@ public final class ContextMemoryVisibility {
    * (ADR:2026-10-09-search-admits-memories-of-pinned-anchors).
    */
   public static final int MAX_PINNED_ANCHORS = 20;
+
+  /**
+   * Stages a listing shows only to the memory's owners, admins included: an Unprocessed memory a
+   * person wrote is theirs until reconciliation decides it
+   * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+   */
+  public static final List<ContextMemoryStatus> OWNER_LISTED_STATUSES =
+      List.of(ContextMemoryStatus.UNPROCESSED);
+
+  /** A document's pills have no author awaiting review: a listing shows them by the share rules. */
+  public static final List<ContextMemorySourceType> EXTRACTED_SOURCES =
+      List.of(ContextMemorySourceType.FILE_EXTRACTION, ContextMemorySourceType.PAGE_EXTRACTION);
 
   /** The field selection that already asks for every allowed field, owners included. */
   private static final String ALL_FIELDS = "*";
@@ -250,24 +264,59 @@ public final class ContextMemoryVisibility {
 
   static List<ContextMemory> filterByVisibility(
       List<ContextMemory> memories, String userName, boolean isAdmin, AnchorAccess anchorAccess) {
-    Cache<UUID, Boolean> anchorDecisions =
-        CacheBuilder.newBuilder().maximumSize(MAX_ANCHOR_DECISIONS_PER_PAGE).build();
-    AnchorAccess cachedAccess =
-        (name, anchor) -> {
-          UUID anchorId = anchor.getId();
-          if (anchorId == null) {
-            return anchorAccess.canView(name, anchor);
-          }
-          Boolean cached = anchorDecisions.getIfPresent(anchorId);
-          if (cached == null) {
-            cached = anchorAccess.canView(name, anchor);
-            anchorDecisions.put(anchorId, cached);
-          }
-          return cached;
-        };
+    AnchorAccess cachedAccess = decidedOncePerPage(anchorAccess);
     return memories.stream()
         .filter(m -> isVisibleToUser(m, userName, isAdmin, cachedAccess))
         .toList();
+  }
+
+  /**
+   * The memories a listing shows the caller: those they may read, less another's memory in an
+   * {@link #OWNER_LISTED_STATUSES} stage. A read by id still follows the share rules alone.
+   */
+  public static List<ContextMemory> filterListed(
+      List<ContextMemory> memories, SecurityContext securityContext) {
+    return memories == null || memories.isEmpty()
+        ? memories
+        : filterListed(
+            memories,
+            callerName(securityContext),
+            isAdmin(securityContext),
+            ContextMemoryAnchorAccess::canView);
+  }
+
+  static List<ContextMemory> filterListed(
+      List<ContextMemory> memories, String userName, boolean isAdmin, AnchorAccess anchorAccess) {
+    return filterByVisibility(memories, userName, isAdmin, anchorAccess).stream()
+        .filter(m -> !isListedToOwnersOnly(m) || isOwnedBy(m, userName))
+        .toList();
+  }
+
+  /** Whether a listing shows {@code memory} to its owners only, whoever else may read it. */
+  public static boolean isListedToOwnersOnly(ContextMemory memory) {
+    ContextMemoryStatus status = memory.getEntityStatus();
+    ContextMemorySourceType source = memory.getSourceType();
+    return status != null
+        && OWNER_LISTED_STATUSES.contains(status)
+        && (source == null || !EXTRACTED_SOURCES.contains(source));
+  }
+
+  /** Each anchor is evaluated once per page, however many of its memories the page holds. */
+  private static AnchorAccess decidedOncePerPage(AnchorAccess anchorAccess) {
+    Cache<UUID, Boolean> anchorDecisions =
+        CacheBuilder.newBuilder().maximumSize(MAX_ANCHOR_DECISIONS_PER_PAGE).build();
+    return (name, anchor) -> {
+      UUID anchorId = anchor.getId();
+      if (anchorId == null) {
+        return anchorAccess.canView(name, anchor);
+      }
+      Boolean cached = anchorDecisions.getIfPresent(anchorId);
+      if (cached == null) {
+        cached = anchorAccess.canView(name, anchor);
+        anchorDecisions.put(anchorId, cached);
+      }
+      return cached;
+    };
   }
 
   public static List<ContextMemory> filterByVisibility(

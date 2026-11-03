@@ -33,6 +33,7 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 public class ContextMemoryIndex implements TaggableIndex {
 
   public static final String FIELD_STATUS = "entityStatus";
+  public static final String FIELD_SOURCE_TYPE = "sourceType";
   public static final String FIELD_ANCHOR_ID = "anchorId";
   public static final String FIELD_MEMORY_SCOPE = "memoryScope";
   public static final String FIELD_MEMORY_TYPE = "memoryType";
@@ -78,7 +79,8 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put(FIELD_MEMORY_TYPE, memoryTypeValue(memory));
     doc.put(FIELD_MEMORY_SCOPE, memoryScopeValue(memory));
     doc.put(FIELD_PINNED, Boolean.TRUE.equals(memory.getPinned()));
-    doc.put("sourceType", memory.getSourceType() != null ? memory.getSourceType().value() : null);
+    doc.put(
+        FIELD_SOURCE_TYPE, memory.getSourceType() != null ? memory.getSourceType().value() : null);
     doc.put(
         "sourceConversation",
         memory.getSourceConversation() != null ? memory.getSourceConversation().toString() : null);
