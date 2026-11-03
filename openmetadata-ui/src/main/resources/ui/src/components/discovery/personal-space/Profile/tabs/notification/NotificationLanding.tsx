@@ -88,7 +88,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                 onNavigate(card.view);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`notification-card-${card.id}`}

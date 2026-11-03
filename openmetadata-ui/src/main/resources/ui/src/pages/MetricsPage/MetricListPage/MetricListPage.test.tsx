@@ -32,6 +32,7 @@ import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
+  getMetricParentIds,
 } from '../../../rest/metricsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
@@ -483,6 +484,7 @@ jest.mock('../../../rest/searchAPI');
 jest.mock('../../../rest/metricsAPI', () => ({
   deleteMetricAsync: jest.fn(),
   exportMetricDetailsInCSV: jest.fn(),
+  getMetricParentIds: jest.fn(),
 }));
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
@@ -1288,6 +1290,55 @@ describe('MetricListPage', () => {
     await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
 
     expect(mockShowSuccessToast).toHaveBeenCalled();
+  });
+
+  it('skips a selected variant whose parent is also selected, since the recursive delete covers it', async () => {
+    const child = {
+      id: 'child-1',
+      name: 'net_sales_emea',
+      fullyQualifiedName: 'net_sales.net_sales_emea',
+    };
+    const parent = { ...rootMetric, children: [child] };
+    setHierarchy({ rows: [parent], topLevelNodes: [{ row: parent }] });
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('select-child-1'));
+    fireEvent.click(screen.getByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
+
+    expect(mockDeleteMetric).toHaveBeenCalledTimes(1);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
+  });
+
+  it('looks up a parent that is not on the page before skipping its selected descendant', async () => {
+    const grandchild = {
+      id: 'grandchild-1',
+      name: 'net_sales_emea_uk',
+      fullyQualifiedName: 'net_sales_emea_uk',
+      parent: { id: 'hidden-parent', type: 'metric' },
+    };
+    setHierarchy({
+      rows: [rootMetric, grandchild],
+      topLevelNodes: [{ row: rootMetric }, { row: grandchild }],
+    });
+    (getMetricParentIds as jest.Mock).mockResolvedValueOnce(
+      new Map([['hidden-parent', 'metric-1']])
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('select-grandchild-1'));
+    fireEvent.click(screen.getByTestId('select-metric-1'));
+    fireEvent.click(screen.getByTestId('bulk-delete-metric'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() => expect(hierarchyActions.reset).toHaveBeenCalled());
+
+    expect(getMetricParentIds).toHaveBeenCalledWith(['hidden-parent']);
+    expect(mockDeleteMetric).toHaveBeenCalledTimes(1);
+    expect(mockDeleteMetric).toHaveBeenCalledWith('metric-1', true);
   });
 
   it('refreshes the list when its own delete job completes, not for jobs started elsewhere', async () => {
