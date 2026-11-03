@@ -76,6 +76,7 @@ public final class OntologyReleaseActivation {
     if (release.getId().equals(previous.getActiveReleaseId())) {
       return previous;
     }
+    OntologyReleasePublication.requireUnpublishedVersion(dao, ontologyId, release);
     if (release.getEntityStatus() == EntityStatus.DRAFT) {
       release = publishWithoutReview(ontologyId, release, access.user());
     }

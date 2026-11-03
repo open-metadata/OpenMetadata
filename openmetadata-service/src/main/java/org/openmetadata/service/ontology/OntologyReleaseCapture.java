@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.openmetadata.schema.OntologyDefinition;
@@ -154,7 +155,11 @@ public final class OntologyReleaseCapture {
     return OntologyReleaseComparison.summarize(base, proposed);
   }
 
-  /** The bump applies to the active release, so a draft never moves the next suggestion. */
+  /**
+   * The bump applies to the active release, so a draft never moves the next suggestion. A version
+   * a release already published is stepped past: after a rollback the active release trails the
+   * newest one, and suggesting its successor would collide with a published version.
+   */
   private String targetVersion(final CaptureOntologyRelease request, final OntologyState state) {
     if (request.getVersionBump() == null) {
       return null;
@@ -170,7 +175,13 @@ public final class OntologyReleaseCapture {
                     Include.NON_DELETED,
                     false)
                 .getSemanticVersion();
-    return OntologyReleasePublication.nextVersion(active, request.getVersionBump());
+    final Set<String> taken =
+        OntologyReleasePublication.publishedVersions(dao, state.getOntologyId());
+    String candidate = OntologyReleasePublication.nextVersion(active, request.getVersionBump());
+    while (taken.contains(candidate)) {
+      candidate = OntologyReleasePublication.nextVersion(candidate, request.getVersionBump());
+    }
+    return candidate;
   }
 
   private List<OntologyRelease> draftsOf(final UUID ontologyId) {
