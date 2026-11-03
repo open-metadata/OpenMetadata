@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Locator } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/userPages';
@@ -39,6 +40,7 @@ import {
   setPersonaAsDefault,
   updatePersonaDisplayName,
 } from '../../utils/persona';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { settingClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
@@ -807,6 +809,12 @@ test.describe('Curated Assets – Description filter', () => {
         },
       ],
     });
+    await waitForSearchIndexed(
+      apiContext,
+      curatedTable.entityResponseData.fullyQualifiedName,
+      'table_search_index',
+      { minVersion: curatedTable.entityResponseData.version }
+    );
 
     await afterAction();
   });
@@ -846,15 +854,25 @@ test.describe('Curated Assets – Description filter', () => {
       await selectAssetTypes(adminPage, ['Table']);
 
       const rule0 = adminPage.getByTestId('query-builder-rule-0');
+      const selectRuleOption = async (
+        select: Locator,
+        option: string,
+        isSearchable = false
+      ) => {
+        await expect(async () => {
+          await selectOption(adminPage, select, option, isSearchable);
+          await expect(select.getByRole('combobox')).toHaveValue(option, {
+            timeout: 2_000,
+          });
+        }).toPass({ timeout: 30_000 });
+      };
 
-      await selectOption(
-        adminPage,
+      await selectRuleOption(
         rule0.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
-      await selectOption(
-        adminPage,
+      await selectRuleOption(
         rule0.getByTestId('advanced-search-operator-select'),
         'Contains'
       );
