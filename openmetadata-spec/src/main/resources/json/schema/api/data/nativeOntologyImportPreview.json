@@ -12,6 +12,14 @@
     "changeSet": {
       "description": "Draft operations that bring the target to the parsed definitions.",
       "$ref": "createOntologyChangeSet.json"
+    },
+    "items": {
+      "description": "Every parsed definition in the order the source lists them, each with the status applying it would give.",
+      "type": "array",
+      "items": {
+        "$ref": "nativeOntologyImportItem.json"
+      },
+      "default": []
     }
   },
   "required": ["summary", "changeSet"],

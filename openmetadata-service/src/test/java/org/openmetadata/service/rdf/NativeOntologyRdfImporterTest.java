@@ -376,7 +376,7 @@ class NativeOntologyRdfImporterTest {
       assertEquals(
           "https://external.example/C",
           plan.getOperations().getFirst().getConcept().getIri().toString());
-      assertTrue(plan.getOperations().getFirst().getConcept().getName().startsWith("imported-C-"));
+      assertEquals("C", plan.getOperations().getFirst().getConcept().getName());
       assertEquals(
           root.getFullyQualifiedName()
               + "."
