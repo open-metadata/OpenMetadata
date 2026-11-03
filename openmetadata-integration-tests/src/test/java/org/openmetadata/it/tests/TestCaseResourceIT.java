@@ -2605,14 +2605,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .parameter("value", "100")
             .create();
 
-    // Writes a TEST_CASE --PARENT_OF--> testCaseResolutionStatus row. testCaseResolutionStatus
-    // is a time-series entity (registered in ENTITY_TS_REPOSITORY_MAP, not
-    // ENTITY_REPOSITORY_MAP), so the bulk hard-delete cascade used to throw
-    // EntityRepositoryNotFound the moment it walked PARENT_OF children of a test case.
     CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
     newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
     newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
-    client.testCaseResolutionStatuses().create(newStatus);
+    var status = client.testCaseResolutionStatuses().create(newStatus);
+    assertEquals(
+        1, countRowsById("test_case_resolution_status_time_series", status.getId().toString()));
 
     String testCaseId = testCase.getId().toString();
 
@@ -2621,10 +2619,18 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     params.put("recursive", "true");
     client.tables().delete(table.getId().toString(), params);
 
-    assertThrows(
-        Exception.class,
-        () -> getEntity(testCaseId),
-        "Test case should be deleted along with its resolution-status children");
+    assertEquals(0, countRowsById("test_case", testCaseId));
+    Awaitility.await("incident children reaped after ancestor deletion")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  0,
+                  countRowsById(
+                      "test_case_resolution_status_time_series", status.getId().toString()),
+                  "Ancestor deletion must eventually remove incident history");
+              assertEquals(0, countRelationshipsTo(status.getId()));
+            });
   }
 
   @Test
@@ -2659,8 +2665,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     params.put("recursive", "true");
     client.testCases().delete(testCase.getId().toString(), params);
 
-    // TestCaseRepository.deleteChildren fires the resolution-status cleanup on a background virtual
-    // thread (AsyncService), so poll rather than assert synchronously right after delete returns.
     Awaitility.await("resolution-status children reaped after hard delete")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))

@@ -1305,27 +1305,38 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  protected void deleteChildren(
-      List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
-    if (hardDelete) {
-      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-          (TestCaseResolutionStatusRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+  protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
+    // Capture the children before the parent cascade removes their relationships.
+    final List<UUID> childIds =
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                id,
+                Entity.TEST_CASE,
+                Relationship.PARENT_OF.ordinal(),
+                Entity.TEST_CASE_RESOLUTION_STATUS)
+            .stream()
+            .map(CollectionDAO.EntityRelationshipRecord::getId)
+            .toList();
+    if (!nullOrEmpty(childIds)) {
       AsyncService.getInstance()
           .executeDatabaseTask(
               DatabaseOperation.TEST_CASE_CLEANUP,
-              "resolution-status:" + children.size(),
-              () -> {
-                for (CollectionDAO.EntityRelationshipRecord child : children) {
-                  try {
-                    LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
-                    testCaseResolutionStatusRepository.deleteById(child.getId(), true);
-                  } catch (Exception e) {
-                    LOG.error(
-                        "Error recursively hard deleting {} {}", child.getType(), child.getId(), e);
-                  }
-                }
-              });
+              "resolution-status:" + id,
+              () -> deleteResolutionStatusChildren(childIds));
+    }
+  }
+
+  private void deleteResolutionStatusChildren(List<UUID> childIds) {
+    final TestCaseResolutionStatusRepository statusRepository =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    for (UUID childId : childIds) {
+      try {
+        statusRepository.deleteById(childId, true);
+      } catch (RuntimeException e) {
+        LOG.error("Error hard deleting test case resolution status {}", childId, e);
+      }
     }
   }
 
