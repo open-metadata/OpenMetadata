@@ -18,6 +18,7 @@ import {
   chooseSelectOption,
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -618,6 +619,61 @@ test.describe(
       await expect(page.getByTestId('store-sample-data-value')).toHaveText(
         'Enabled'
       );
+    });
+
+    test('profiler configuration: "All" metrics excludes every other metric', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(
+        page,
+        'profilerConfiguration',
+        {
+          initial: {
+            metricConfiguration: [
+              { dataType: 'INT', metrics: ['max', 'min'], disabled: false },
+            ],
+            sampleDataConfig: { storeSampleData: false, readSampleData: true },
+          },
+        }
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'profiler-configuration');
+      await expect(page.getByTestId('metric-row-INT')).toContainText('Max');
+      await header(page).getByTestId('edit-button').click();
+
+      const metricSelect = page
+        .getByTestId('metric-row-0')
+        .getByTestId('metric-type-select');
+      const chips = metricSelect.getByTestId('autocomplete-selected-item');
+      const metricInput = metricSelect.getByRole('combobox');
+      const pickMetric = (name: string) =>
+        selectOptionWithRetry(
+          metricInput,
+          page.getByRole('option', { name, exact: true }),
+          () => metricInput.fill(name)
+        );
+
+      await test.step('Picking "All" clears the other metrics', async () => {
+        await pickMetric('All');
+
+        await expect(chips).toHaveCount(1);
+        await expect(chips).toContainText('All');
+      });
+
+      await test.step('Picking a metric clears "All"', async () => {
+        await pickMetric('Max');
+
+        await expect(chips).toHaveCount(1);
+        await expect(chips).toContainText('Max');
+      });
+
+      await saveSettings(page);
+
+      expect(settings.puts[0].config_value).toMatchObject({
+        metricConfiguration: [
+          { dataType: 'INT', metrics: ['max'], disabled: false },
+        ],
+      });
     });
 
     test('data quality: adds, edits and deletes a custom dimension', async ({
