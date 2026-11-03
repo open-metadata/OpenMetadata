@@ -78,6 +78,7 @@ describe('findRelationClash', () => {
         {
           code: Code.DisjointClash,
           message: CLASH_MESSAGE,
+          path: 'subjectIri',
           severity: Severity.Warning,
         },
       ],
