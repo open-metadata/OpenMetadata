@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -83,6 +84,8 @@ public class ListRowAuthorizationIT {
 
     JsonNode firstPage = listTables(restricted, schema, "&limit=2");
     assertEquals(List.of("b_visible_1", "b_visible_2"), names(firstPage));
+    // Nothing lies before the first page, so it offers no way back.
+    assertNull(firstPage.path("paging").path("before").asText(null), firstPage.toString());
     String after = firstPage.path("paging").path("after").asText(null);
     assertNotNull(after, firstPage.toString());
     for (String name : hidden) {

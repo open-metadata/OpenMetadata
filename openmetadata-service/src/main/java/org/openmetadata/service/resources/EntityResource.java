@@ -716,9 +716,12 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                   : kept.subList(0, page.limit()));
       onward = cursorOf(backward ? kept.getFirst() : kept.getLast(), page.filter());
     }
+    // The repository leaves this cursor null when no page lies that way (the first page); it stays
+    // null, so a client does not offer a page that would come back empty.
+    String repositoryBackAgain = backward ? first.getAfter() : first.getBefore();
     String backAgain =
-        kept.isEmpty()
-            ? (backward ? first.getAfter() : first.getBefore())
+        repositoryBackAgain == null || kept.isEmpty()
+            ? repositoryBackAgain
             : cursorOf(backward ? kept.getLast() : kept.getFirst(), page.filter());
     ResultList<T> result = new ResultList<>(kept, null, null, first.getTotal());
     result

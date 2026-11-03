@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -28,8 +29,8 @@ public final class RowDecisionGate {
   private static final int POLICY_PAGE_SIZE = 100;
   private static final int MAX_ENTRIES = 1000;
 
-  // Keyed by policy generation, so a policy change starts a fresh answer.
-  private static final Cache<String, Boolean> ANY_DENY_RULE =
+  // Keyed by policy generation, so a policy or team change starts a fresh answer.
+  private static final Cache<String, Boolean> TEAM_DENY_RULE =
       Caffeine.newBuilder().maximumSize(MAX_ENTRIES).build();
 
   private RowDecisionGate() {}
@@ -39,30 +40,43 @@ public final class RowDecisionGate {
     if (subject == null || subject.isAdmin()) {
       return false;
     }
-    return anyDenyRule(resource, operations)
-        || !unconditionallyAllowed(subject, resource, operations);
+    List<SubjectContext.PolicyContext> own = SubjectCache.getPolicies(subject.user().getName());
+    return ownDenyRule(own, resource, operations)
+        || teamDenyRule(resource, operations)
+        || !unconditionallyAllowed(own, resource, operations);
+  }
+
+  private static boolean ownDenyRule(
+      List<SubjectContext.PolicyContext> own, String resource, List<MetadataOperation> operations) {
+    return own.stream()
+        .flatMap(policy -> listOrEmpty(policy.getRules()).stream())
+        .anyMatch(
+            rule -> rule.getEffect() == Rule.Effect.DENY && applies(rule, resource, operations));
   }
 
   /**
-   * Any enabled policy, whoever it applies to, with a deny rule for these operations on this
-   * resource. Owner teams bring their deny rules to callers outside them, so the caller's own
-   * policies are not enough to rule a deny out.
+   * A deny rule of a policy attached to a team. A team that owns a row brings its policies' deny
+   * rules to callers outside it, so any team's policy can reach a row; a policy attached to no
+   * team, like the seeded TeamOnlyPolicy, reaches a caller only through their own roles.
    */
-  private static boolean anyDenyRule(String resource, List<MetadataOperation> operations) {
+  private static boolean teamDenyRule(String resource, List<MetadataOperation> operations) {
     String key = SubjectCache.policyGeneration() + "|" + resource + "|" + operations;
-    return ANY_DENY_RULE.get(key, ignored -> scanForDenyRule(resource, operations));
+    return TEAM_DENY_RULE.get(key, ignored -> scanTeamPolicies(resource, operations));
   }
 
-  private static boolean scanForDenyRule(String resource, List<MetadataOperation> operations) {
+  private static boolean scanTeamPolicies(String resource, List<MetadataOperation> operations) {
     @SuppressWarnings("unchecked")
     EntityRepository<Policy> policies =
         (EntityRepository<Policy>) Entity.getEntityRepository(Entity.POLICY);
     ListFilter filter = new ListFilter(Include.NON_DELETED);
+    Fields teams = policies.getFields("teams");
     String after = null;
     do {
-      ResultList<Policy> page =
-          policies.listAfter(null, Fields.EMPTY_FIELDS, filter, POLICY_PAGE_SIZE, after);
+      ResultList<Policy> page = policies.listAfter(null, teams, filter, POLICY_PAGE_SIZE, after);
       for (Policy policy : page.getData()) {
+        if (nullOrEmpty(policy.getTeams())) {
+          continue;
+        }
         for (CompiledRule rule : CompiledRule.enforcedRules(policy)) {
           if (rule.getEffect() == Rule.Effect.DENY && applies(rule, resource, operations)) {
             return true;
@@ -76,13 +90,11 @@ public final class RowDecisionGate {
 
   /** Whether the caller's own policies grant every operation without a condition. */
   private static boolean unconditionallyAllowed(
-      SubjectContext subject, String resource, List<MetadataOperation> operations) {
-    List<SubjectContext.PolicyContext> policies =
-        SubjectCache.getPolicies(subject.user().getName());
+      List<SubjectContext.PolicyContext> own, String resource, List<MetadataOperation> operations) {
     for (MetadataOperation operation : operations) {
       boolean granted =
-          policies.stream()
-              .flatMap(policy -> policy.getRules().stream())
+          own.stream()
+              .flatMap(policy -> listOrEmpty(policy.getRules()).stream())
               .anyMatch(
                   rule ->
                       rule.getEffect() == Rule.Effect.ALLOW

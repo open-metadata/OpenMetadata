@@ -340,6 +340,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @VisibleForTesting
   record DisplayNameCursor(String displayName, String id) {}
 
+  /** A display-name ordered listing pages on that key, so a cursor built from a row carries it. */
+  @Override
+  public String getCursorValue(IngestionPipeline pipeline, ListFilter filter) {
+    return filter == null || nullOrEmpty(filter.getSortField())
+        ? super.getCursorValue(pipeline, filter)
+        : displayNameCursorValue(pipeline);
+  }
+
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     if (ingestionPipeline.getService() == null) {
