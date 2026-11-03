@@ -45,9 +45,28 @@ public class ResourceRegistry {
               MetadataOperation.CREATE_TASK,
               MetadataOperation.EDIT_TASK));
 
+  // The owner of these types administers configuration (a policy's rules, a team's default roles,
+  // a service's connection), and OrganizationPolicy gives every user EditOwners on an ownerless
+  // entity and All to its owner. So setting their owners needs EditAll, not EditOwners
+  // (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all).
+  private static final Set<String> OWNERS_REQUIRE_EDIT_ALL =
+      Set.of(
+          Entity.POLICY,
+          Entity.TEAM,
+          Entity.APPLICATION,
+          Entity.APP_MARKET_PLACE_DEF,
+          Entity.WORKFLOW,
+          Entity.WORKFLOW_DEFINITION,
+          Entity.EVENT_SUBSCRIPTION,
+          Entity.INGESTION_PIPELINE,
+          Entity.TEST_CONNECTION_DEFINITION,
+          Entity.CLASSIFICATION);
+
   static {
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
     mapFieldOperation(MetadataOperation.EDIT_OWNERS, Entity.FIELD_OWNERS);
+    OWNERS_REQUIRE_EDIT_ALL.forEach(ResourceRegistry::ownersRequireEditAll);
+    Entity.getServiceEntityTypes().forEach(ResourceRegistry::ownersRequireEditAll);
     mapFieldOperation(MetadataOperation.EDIT_REVIEWERS, Entity.FIELD_REVIEWERS);
     mapFieldOperation(MetadataOperation.VIEW_CUSTOM_FIELDS, "extension");
     mapFieldOperation(MetadataOperation.EDIT_CUSTOM_FIELDS, "extension");
@@ -182,6 +201,10 @@ public class ResourceRegistry {
     ENTITY_FIELD_TO_EDIT_OPERATION_MAP
         .computeIfAbsent(entityType, k -> new ConcurrentHashMap<>())
         .put(field, operation);
+  }
+
+  private static void ownersRequireEditAll(String entityType) {
+    mapEntityFieldOperation(entityType, Entity.FIELD_OWNERS, MetadataOperation.EDIT_ALL);
   }
 
   /** Given an edit operation get the corresponding entity field */

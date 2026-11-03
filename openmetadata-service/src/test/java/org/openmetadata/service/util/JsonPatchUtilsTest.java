@@ -10,6 +10,8 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.jetbrains.annotations.NotNull;
@@ -70,6 +72,42 @@ class JsonPatchUtilsTest {
     originalTable.setColumns(listOf(column));
 
     Mockito.<EntityInterface<?>>when(resourceContextMock.getEntity()).thenReturn(originalTable);
+  }
+
+  @Test
+  void ownersOfConfigurationEntitiesNeedEditAll() {
+    for (String dataAsset : new String[] {Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM}) {
+      assertEquals(
+          MetadataOperation.EDIT_OWNERS,
+          JsonPatchUtils.getMetadataOperation("/" + Entity.FIELD_OWNERS, dataAsset));
+    }
+    List<String> configurationTypes =
+        new ArrayList<>(
+            List.of(
+                Entity.POLICY,
+                Entity.TEAM,
+                Entity.APPLICATION,
+                Entity.APP_MARKET_PLACE_DEF,
+                Entity.WORKFLOW,
+                Entity.WORKFLOW_DEFINITION,
+                Entity.EVENT_SUBSCRIPTION,
+                Entity.INGESTION_PIPELINE,
+                Entity.TEST_CONNECTION_DEFINITION,
+                Entity.CLASSIFICATION));
+    configurationTypes.addAll(Entity.getServiceEntityTypes());
+    for (String entityType : configurationTypes) {
+      assertEquals(
+          MetadataOperation.EDIT_ALL,
+          JsonPatchUtils.getMetadataOperation("/" + Entity.FIELD_OWNERS, entityType),
+          entityType);
+      assertEquals(
+          MetadataOperation.EDIT_ALL,
+          JsonPatchUtils.getMetadataOperation("/" + Entity.FIELD_OWNERS + "/0", entityType),
+          entityType);
+    }
+    assertEquals(
+        MetadataOperation.EDIT_DESCRIPTION,
+        JsonPatchUtils.getMetadataOperation("/" + Entity.FIELD_DESCRIPTION, Entity.POLICY));
   }
 
   @Test

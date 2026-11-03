@@ -62,6 +62,7 @@ import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -1269,6 +1270,11 @@ public class TaskRepository extends EntityRepository<Task> {
         new ResourceContext<>(about.getType(), about.getId(), null);
 
     MetadataOperation operation = getOperationForTask(task);
+    if (operation == MetadataOperation.EDIT_OWNERS) {
+      // Same owners mapping as a PATCH
+      // (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all)
+      operation = ResourceRegistry.getEntityEditOperation(about.getType(), Entity.FIELD_OWNERS);
+    }
     if (operation != null && operation != MetadataOperation.EDIT_ALL) {
       // Allow either the specific operation OR EDIT_ALL (which encompasses all edit permissions)
       OperationContext specificOpContext = new OperationContext(about.getType(), operation);

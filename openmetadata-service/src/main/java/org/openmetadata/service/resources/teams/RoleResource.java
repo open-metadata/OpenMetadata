@@ -62,6 +62,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -379,6 +380,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @POST
+  @IdentityEndpoint
   @Operation(
       operationId = "createRole",
       summary = "Create a role",
@@ -402,6 +404,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PUT
+  @IdentityEndpoint
   @Operation(
       operationId = "createOrUpdateRole",
       summary = "Update role",
@@ -425,6 +428,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PATCH
+  @IdentityEndpoint
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
@@ -453,6 +457,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PATCH
+  @IdentityEndpoint
   @Path("/name/{fqn}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
@@ -482,6 +487,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/{id}")
   @Operation(
       operationId = "deleteRole",
@@ -506,6 +512,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/async/{id}")
   @Operation(
       operationId = "deleteRoleAsync",
@@ -530,6 +537,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteRoleByName",
@@ -553,6 +561,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   }
 
   @PUT
+  @IdentityEndpoint
   @Path("/restore")
   @Operation(
       operationId = "restore",
