@@ -13,6 +13,10 @@
 import { compare } from 'fast-json-patch';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { ROUTES } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getQueryPath } from '../../../utils/RouterUtils';
 import { MEMORY_TYPE_OPTIONS } from '../../../constants/ContextCenter.constants';
 import {
   ContextMemory,
@@ -35,6 +39,29 @@ import {
 } from './CreateMemoryModal.interface';
 
 const MEMORY_LABEL_KEY = 'label.memory';
+
+/**
+ * Where a linked asset opens. A Query has no page of its own: it opens full screen on the table it
+ * was linked from, so without one in the memory it stays unlinked.
+ */
+export const getLinkedAssetPath = (
+  reference?: EntityReference,
+  tableFqn?: string
+): string | undefined => {
+  if (!reference?.type || !reference.fullyQualifiedName) {
+    return undefined;
+  }
+  if (reference.type === EntityType.QUERY) {
+    return tableFqn && reference.id
+      ? getQueryPath(tableFqn, reference.id)
+      : undefined;
+  }
+
+  return entityUtilClassBase.getEntityLink(
+    reference.type,
+    reference.fullyQualifiedName
+  );
+};
 
 export const getAssetKey = (asset: DataAssetOption): string =>
   asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');

@@ -107,6 +107,7 @@ import {
 import {
   buildMemoryFormState,
   getAssetKey,
+  getLinkedAssetPath,
   getPrimaryAndRelatedEntities,
   getSuccessorSearch,
   removeAssetByKey,
@@ -129,8 +130,9 @@ const DEFAULT_FORM_VALUES: MemoryFormValues = {
 
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;
+  href?: string;
   onRemove?: (fqn: string) => void;
-}> = ({ asset, onRemove }) => {
+}> = ({ asset, href, onRemove }) => {
   const displayName =
     asset.displayName || (typeof asset.label === 'string' ? asset.label : '');
 
@@ -158,7 +160,17 @@ const LinkedAssetCard: FC<{
             className="tw:leading-tight"
             size="text-xs"
             weight="medium">
-            {displayName}
+            {href ? (
+              <Link
+                className="tw:text-brand-secondary tw:hover:underline"
+                data-testid="linked-asset-link"
+                to={href}
+                onClick={(event) => event.stopPropagation()}>
+                {displayName}
+              </Link>
+            ) : (
+              displayName
+            )}
           </Typography>
           <Typography
             ellipsis
@@ -220,11 +232,16 @@ const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
     return <EmptyLinkedAssets />;
   }
 
+  const tableFqn = assets.find(
+    (asset) => asset.reference?.type === EntityType.TABLE
+  )?.reference?.fullyQualifiedName;
+
   return (
     <div className="tw:flex tw:flex-col tw:gap-2">
       {assets.map((asset) => (
         <LinkedAssetCard
           asset={asset}
+          href={getLinkedAssetPath(asset.reference, tableFqn)}
           key={asset.reference?.fullyQualifiedName ?? String(asset.value ?? '')}
         />
       ))}

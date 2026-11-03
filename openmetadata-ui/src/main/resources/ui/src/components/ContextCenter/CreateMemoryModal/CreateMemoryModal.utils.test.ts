@@ -17,7 +17,11 @@ import {
   ShareVisibility,
 } from '../../../generated/entity/context/contextMemory';
 import { updateContextMemory } from '../../../rest/contextMemoryAPI';
-import { submitMemoryUpdate } from './CreateMemoryModal.utils';
+import { EntityType } from '../../../enums/entity.enum';
+import {
+  getLinkedAssetPath,
+  submitMemoryUpdate,
+} from './CreateMemoryModal.utils';
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
@@ -53,6 +57,34 @@ const patchedPaths = () =>
   (updateContextMemory as jest.Mock).mock.calls[0][1].map(
     (operation: { path: string }) => operation.path
   );
+
+describe('getLinkedAssetPath', () => {
+  const query = {
+    id: 'query-id',
+    type: EntityType.QUERY,
+    fullyQualifiedName: 'banking-redshift.48f70df04c8bc43ab75a5da5da4f95f7',
+  };
+
+  it('opens a Query full screen on the table it was linked from', () => {
+    expect(getLinkedAssetPath(query, 'svc.db.sch.fct_fee_revenue')).toBe(
+      '/query-view/svc.db.sch.fct_fee_revenue/query-id'
+    );
+  });
+
+  it('leaves a Query with no linked table unlinked', () => {
+    expect(getLinkedAssetPath(query)).toBeUndefined();
+  });
+
+  it('opens any other asset on its own page', () => {
+    expect(
+      getLinkedAssetPath({
+        id: 'table-id',
+        type: EntityType.TABLE,
+        fullyQualifiedName: 'svc.db.sch.fct_fee_revenue',
+      })
+    ).toBe('/table/svc.db.sch.fct_fee_revenue');
+  });
+});
 
 describe('submitMemoryUpdate', () => {
   beforeEach(() => {
