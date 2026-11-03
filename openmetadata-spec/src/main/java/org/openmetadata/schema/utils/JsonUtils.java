@@ -87,7 +87,6 @@ import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.Type;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSCustomPropertiesCompatModule;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.exception.JsonParsingException;
 
@@ -142,9 +141,6 @@ public final class JsonUtils {
     // java.util.Date fields keeps deserialization tolerant while serialization stays on the
     // microsecond format above.
     OBJECT_MAPPER.registerModule(lenientDateModule());
-    // Contracts stored before customProperties adopted the ODCS array form keep a mapping; it is
-    // re-read as the array form so those rows keep working without a migration.
-    OBJECT_MAPPER.registerModule(new ODCSCustomPropertiesCompatModule());
 
     JSONP_MAPPER = OBJECT_MAPPER.copy().registerModule(new JSONPModule());
 

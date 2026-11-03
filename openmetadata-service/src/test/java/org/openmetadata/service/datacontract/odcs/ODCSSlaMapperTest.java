@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.api.data.MaxLatency;
 import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssue;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueSeverity;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 
 class ODCSSlaMapperTest {
@@ -93,6 +95,85 @@ class ODCSSlaMapperTest {
     assertEquals("05:00", sla.getAvailabilityTime());
     assertNull(sla.getTimezone());
     assertEquals(ODCSImportIssueCategory.SLA, issues.toList().getFirst().getCategory());
+  }
+
+  @Test
+  void availabilityStringsAreImportedWithoutCoercion() {
+    ODCSImportIssues issues = new ODCSImportIssues();
+    String timezone = ContractSLA.Timezone.values()[0].value();
+    ContractSLA sla =
+        ODCSSlaMapper.toContractSla(
+            List.of(
+                new ODCSSlaProperty()
+                    .withProperty("availabilityTime")
+                    .withValue("09:00 UTC")
+                    .withValueExt(timezone)),
+            issues);
+
+    assertEquals("09:00 UTC", sla.getAvailabilityTime());
+    assertEquals(timezone, sla.getTimezone().value());
+    assertTrue(issues.toList().isEmpty());
+  }
+
+  @ParameterizedTest
+  @MethodSource("nonStringValues")
+  void nonStringAvailabilityIsOmittedAndReported(Object value) {
+    ODCSImportIssues issues = new ODCSImportIssues();
+    ContractSLA sla =
+        ODCSSlaMapper.toContractSla(
+            List.of(new ODCSSlaProperty().withProperty("availabilityTime").withValue(value)),
+            issues);
+
+    assertNull(sla.getAvailabilityTime());
+    assertStringWarning(issues, "value");
+  }
+
+  @ParameterizedTest
+  @MethodSource("nonStringValues")
+  void nonStringTimezoneIsOmittedAndReported(Object value) {
+    ODCSImportIssues issues = new ODCSImportIssues();
+    ContractSLA sla =
+        ODCSSlaMapper.toContractSla(
+            List.of(
+                new ODCSSlaProperty()
+                    .withProperty("availabilityTime")
+                    .withValue("05:00")
+                    .withValueExt(value)),
+            issues);
+
+    assertEquals("05:00", sla.getAvailabilityTime());
+    assertNull(sla.getTimezone());
+    assertStringWarning(issues, "valueExt");
+  }
+
+  private static Stream<Object> nonStringValues() {
+    return Stream.of(500, 5.5, true, false, List.of("05:00"), Map.of("time", "05:00"));
+  }
+
+  @Test
+  void nullAvailabilityFieldsStayAbsentWithoutWarnings() {
+    ODCSImportIssues issues = new ODCSImportIssues();
+    ContractSLA sla =
+        ODCSSlaMapper.toContractSla(
+            List.of(
+                new ODCSSlaProperty()
+                    .withProperty("availabilityTime")
+                    .withValue(null)
+                    .withValueExt(null)),
+            issues);
+
+    assertNull(sla.getAvailabilityTime());
+    assertNull(sla.getTimezone());
+    assertTrue(issues.toList().isEmpty());
+  }
+
+  private static void assertStringWarning(ODCSImportIssues issues, String field) {
+    assertEquals(1, issues.toList().size());
+    ODCSImportIssue issue = issues.toList().getFirst();
+    assertEquals(ODCSImportIssueSeverity.WARNING, issue.getSeverity());
+    assertEquals(ODCSImportIssueCategory.SLA, issue.getCategory());
+    assertEquals("slaProperties[0]." + field, issue.getPath());
+    assertTrue(issue.getMessage().contains("string"));
   }
 
   @Test

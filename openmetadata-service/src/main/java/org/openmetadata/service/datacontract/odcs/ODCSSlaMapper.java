@@ -162,15 +162,21 @@ public final class ODCSSlaMapper {
     }
   }
 
-  /** The value is stored as text; other value shapes are rendered, null stays null. */
-  private static String text(Object value) {
-    if (value == null) return null;
-    return value instanceof String string ? string : String.valueOf(value);
+  private static String stringValue(Entry entry, String field, Object value) {
+    if (value != null && !(value instanceof String)) {
+      warn(
+          entry,
+          field,
+          String.format(
+              "SLA `%s` field `%s` must be a string, so it is not imported.",
+              entry.property().getProperty(), field));
+    }
+    return value instanceof String string ? string : null;
   }
 
   private static void applyAvailability(ContractSLA sla, Entry entry) {
-    sla.setAvailabilityTime(text(entry.property().getValue()));
-    String timezone = text(entry.property().getValueExt());
+    sla.setAvailabilityTime(stringValue(entry, "value", entry.property().getValue()));
+    String timezone = stringValue(entry, "valueExt", entry.property().getValueExt());
     if (TIMEZONES.contains(timezone)) {
       sla.setTimezone(ContractSLA.Timezone.fromValue(timezone));
     } else if (!nullOrEmpty(timezone)) {

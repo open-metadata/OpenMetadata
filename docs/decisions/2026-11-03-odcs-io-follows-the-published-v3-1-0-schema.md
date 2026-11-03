@@ -1,10 +1,11 @@
 # ODCS import/export follows the published v3.1.0 schema
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-03 (migrate stored custom properties;
+  require string availability fields)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `ODCSConverterTest`, `ODCSSlaMapperTest`, `ODCSLenientReaderTest`,
-  `ODCSLegacyShapeCompatTest`, `DataContractResourceIT`; reviewer
+  `ODCSCustomPropertiesMigrationTest`, `ODCSCustomPropertiesMigrationIT`, `DataContractResourceIT`; reviewer
 - **Related:** [#33493](https://github.com/open-metadata/OpenMetadata/issues/33493),
   [#36877](https://github.com/open-metadata/OpenMetadata/pull/36877)
 
@@ -36,7 +37,7 @@ and stored contracts need an explicit compatibility policy.
   [ODCSShapeNormalizer](../../openmetadata-service/src/main/java/org/openmetadata/service/datacontract/odcs/ODCSShapeNormalizer.java)
   wraps legacy bare-array teams, joins legacy approver arrays and converts supported nested
   map-form custom properties before import. The import report records these rewrites.
-  [ODCSCustomPropertiesCompatModule](../../openmetadata-spec/src/main/java/org/openmetadata/schema/entity/datacontract/odcs/ODCSCustomPropertiesCompatModule.java),
+  [ODCSCustomPropertiesCompatModule](https://github.com/open-metadata/OpenMetadata/blob/d0876bed4eb622a5a7704e5dc5f5b8c7908b3fa6/openmetadata-spec/src/main/java/org/openmetadata/schema/entity/datacontract/odcs/ODCSCustomPropertiesCompatModule.java),
   registered in `JsonUtils`, accepts map-form custom properties in stored contracts, preserving
   their values as it converts them to pairs. Reading does not rewrite the database row.
 - SLA quantities that OpenMetadata represents as integers are imported only when they are whole
@@ -49,3 +50,25 @@ properties remain readable. Clients expecting the former export shapes must adap
 on input does not preserve those shapes on export. Supporting commas within approver identities
 would require an explicit encoding change and compatibility tests. Future ODCS version changes
 must update the schema, converters and compatibility tests together.
+
+## Amendment — migrate stored custom properties and validate availability field types
+
+This replaces the stored-data compatibility policy in the initial decision. The 2.1.0 Java data
+migration converts map-form `odcsQualityRules[].customProperties` in `data_contract_entity` and
+its `dataContract.version.*` snapshots in `entity_extension`. Both database entry points call
+[ODCSCustomPropertiesMigration](../../openmetadata-service/src/main/java/org/openmetadata/service/migration/utils/v210/ODCSCustomPropertiesMigration.java)
+before later steps deserialize contracts. It changes only the known ODCS field, preserves its
+JSON values and leaves already converted arrays unchanged. Current contracts use `IdBatches`;
+history uses pages of 500 ordered by `(id, extension)`, because one id can have more than 500
+versions. See ADR:2026-10-09-data-migration-backfills-walk-ids-in-batches.
+
+The migration is appended to the current release's Java migration, whose code fingerprint makes
+already upgraded installations run the new work; see [migration tracking](../../bootstrap/MIGRATION_SYSTEM.md).
+The global Jackson compatibility module is removed. Database rows are repaired during upgrade;
+legacy uploaded documents still pass through `ODCSShapeNormalizer` at the import boundary.
+
+For the `availabilityTime` SLA property, `value` and `valueExt` accept strings or absent/null
+values only. Other JSON types are omitted and reported as SLA warnings at the corresponding
+field path. A timezone string must also match OpenMetadata's supported timezone values.
+Availability time remains free text as defined by the schema; no new time-format restriction is
+introduced. These fields no longer stringify numbers, booleans or collections.
