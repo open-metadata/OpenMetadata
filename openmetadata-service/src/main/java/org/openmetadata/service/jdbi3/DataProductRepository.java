@@ -480,8 +480,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
           String msg =
               String.format(
-                  "Asset '%s' is already part of %s ports and cannot be added to %s",
-                  ref.getFullyQualifiedName(), oppositePortType, fieldName);
+                  "Asset '%s' is already an %s port of this data product; an asset cannot be both an input and an output port",
+                  ref.getFullyQualifiedName(), oppositePortType);
           failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
           result.setStatus(ApiStatus.PARTIAL_SUCCESS);
