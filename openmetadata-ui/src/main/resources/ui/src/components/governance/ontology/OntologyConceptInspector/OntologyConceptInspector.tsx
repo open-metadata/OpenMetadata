@@ -471,6 +471,7 @@ const OntologyConceptInspector = ({
         ) : null}
         <OntologyPropertyBindings
           bindings={bindings}
+          canAdd={property.kind !== Kind.Annotation}
           canEdit={canEditBindings}
           conceptId={concept.id}
           isIdentifier={property.isIdentifier}

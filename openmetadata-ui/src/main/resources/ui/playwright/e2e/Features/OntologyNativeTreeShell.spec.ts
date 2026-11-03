@@ -96,7 +96,11 @@ const createOwner = async (api: APIRequestContext) => {
 
   return okJson<Ontology>(
     await api.post('/api/v1/ontologies', {
-      data: { name, iri: 'urn:' + name, namespace: 'urn:' + name + ':' },
+      data: {
+        name,
+        iri: 'https://example.org/' + name,
+        namespace: 'https://example.org/' + name + '#',
+      },
     }),
     'Create native shell ontology'
   );
@@ -151,6 +155,8 @@ test.describe(
       isolatedUser,
       isolatedUserPage: page,
     }) => {
+      // Two scopes times three modes, each opening its dialogs, is more than the default budget.
+      test.slow();
       const api = await getWorkerAdminAPIContext();
       const owner = await createOwner(api);
       const preferencePath =
@@ -269,7 +275,9 @@ test.describe(
                   shell.getByTestId('ontology-studio-query-console')
                 ).toHaveCount(0);
                 await expect(
-                  shell.getByRole('button', { name: /Select Ontology/ })
+                  shell
+                    .getByTestId('ontology-query-picker')
+                    .getByTestId('ontology-query-picker-title')
                 ).toBeVisible();
               }
               await expect(
@@ -298,22 +306,26 @@ test.describe(
               await expectNativeStudioCopy(page.getByRole('menu'));
               await page.keyboard.press('Escape');
 
-              await shell.getByTestId('ontology-publication-trigger').click();
-              await expect(
-                page.locator('#ontology-publication-title')
-              ).toHaveText('Review & publish');
-              if (scope === 'owner') {
+              if (scope === 'aggregate') {
+                await expect(
+                  shell.getByTestId('ontology-publication-trigger')
+                ).toBeDisabled();
+              } else {
+                await shell.getByTestId('ontology-publication-trigger').click();
+                await expect(
+                  page.locator('#ontology-publication-title')
+                ).toHaveText('Review & publish');
                 await expect(
                   page.getByTestId('ontology-publication-tab-changes')
                 ).toHaveText('Changes');
                 await expect(
                   page.getByTestId('ontology-publication-tab-releases')
                 ).toHaveText('Releases');
+                await expectNativeStudioCopy(
+                  page.getByTestId('ontology-publication-modal')
+                );
+                await page.keyboard.press('Escape');
               }
-              await expectNativeStudioCopy(
-                page.getByTestId('ontology-publication-modal')
-              );
-              await page.keyboard.press('Escape');
             }
             await shell.getByTestId('ontology-library-trigger').click();
             await expect(page.locator('#ontology-library-title')).toHaveText(
@@ -344,15 +356,18 @@ test.describe(
             await expect(
               transfer.getByTestId('ontology-native-import-tab')
             ).toHaveText('Import');
-            await expect(transfer).toContainText(
-              'There is no active release to export. Capture, approve, and activate a release first.'
-            );
+            await expect(
+              transfer.getByTestId('ontology-export-scope')
+            ).toContainText('Current draft');
+            await expect(
+              transfer.getByTestId('ontology-release-export-preview')
+            ).toContainText('owl:Ontology');
             await expect(
               transfer.getByTestId('ontology-run-release-export')
             ).toHaveText('Export');
             await expect(
               transfer.getByTestId('ontology-run-release-export')
-            ).toBeDisabled();
+            ).toBeEnabled();
             await expectNativeStudioCopy(transfer);
             await transfer.getByTestId('ontology-native-import-tab').click();
             await expect(
@@ -374,9 +389,8 @@ test.describe(
             if (scope === 'aggregate') {
               const libraryResponses = armQueryLibraryResponses(page);
               await shell
-                .getByRole('button', { name: /Select Ontology/ })
+                .getByTestId('ontology-query-picker-option-' + owner.id)
                 .click();
-              await page.getByRole('option', { name: owner.name }).click();
               await expectLoadedNativeLibrary(
                 page,
                 await Promise.all(libraryResponses)

@@ -137,6 +137,9 @@ const CARD_HEADER_HEIGHT = 50;
 // Card border + header and one asset row; used until the rendered card is measured.
 const CARD_CHROME_HEIGHT = 50;
 const ASSET_ROW_HEIGHT = 64;
+// The host pins the concept chip over the canvas top-left (top-16, one row
+// tall); the single card must start below its bottom edge.
+const SINGLE_CONCEPT_CARD_TOP = 112;
 const SHOW_MORE_HEIGHT = 41;
 // A collapsed card previews this many assets; the rest sit behind "Show N more".
 const COLLAPSED_ASSET_COUNT = 3;
@@ -1282,6 +1285,13 @@ const OntologyDataGraph = ({
     () => visibleTerms.map((term) => term.id).join('|'),
     [visibleTerms]
   );
+  const getTopInset = useCallback(
+    (zoom: number) =>
+      isSingleConcept
+        ? Math.max(0, SINGLE_CONCEPT_CARD_TOP - CLUSTER_LAYOUT_MARGIN * zoom)
+        : 0,
+    [isSingleConcept]
+  );
   // Frame each new set of clusters once; later pans and zooms are the user's.
   useEffect(() => {
     const element = containerRef.current;
@@ -1295,15 +1305,18 @@ const OntologyDataGraph = ({
     fittedLayoutKeyRef.current = layoutKey;
     const fitZoom = Math.min(
       element.clientWidth / canvasWidth,
-      element.clientHeight / canvasHeight
+      (element.clientHeight - getTopInset(1)) / canvasHeight
     );
     const zoom = clampZoom(Math.min(1, fitZoom));
     setView({
       x: Math.max(0, (element.clientWidth - canvasWidth * zoom) / 2),
-      y: Math.max(0, (element.clientHeight - canvasHeight * zoom) / 2),
+      y: Math.max(
+        getTopInset(zoom),
+        (element.clientHeight - canvasHeight * zoom) / 2
+      ),
       zoom,
     });
-  }, [canvasHeight, canvasWidth, layoutKey]);
+  }, [canvasHeight, canvasWidth, getTopInset, layoutKey]);
 
   const zoomAtCenter = (factor: number) => {
     const element = containerRef.current;
@@ -1332,17 +1345,20 @@ const OntologyDataGraph = ({
     const fitZoom = clampZoom(
       Math.min(
         element.clientWidth / canvasWidth,
-        element.clientHeight / canvasHeight
+        (element.clientHeight - getTopInset(1)) / canvasHeight
       )
     );
     setView({
       x: (element.clientWidth - canvasWidth * fitZoom) / 2,
-      y: (element.clientHeight - canvasHeight * fitZoom) / 2,
+      y: Math.max(
+        getTopInset(fitZoom),
+        (element.clientHeight - canvasHeight * fitZoom) / 2
+      ),
       zoom: fitZoom,
     });
   };
 
-  const resetView = () => setView({ x: 0, y: 0, zoom: 1 });
+  const resetView = () => setView({ x: 0, y: getTopInset(1), zoom: 1 });
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (

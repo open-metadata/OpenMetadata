@@ -386,7 +386,7 @@ test.describe(
             source: 'External vocabulary',
           };
           await mappingEditor
-            .getByRole('textbox', { name: 'Concept IRI', exact: true })
+            .getByRole('combobox', { name: /^Concept IRI/ })
             .fill(mapping.conceptIri);
           await mappingEditor
             .getByRole('textbox', { name: 'Scheme IRI', exact: true })
@@ -413,10 +413,7 @@ test.describe(
           await clickGraphNode(page, customer.id);
           await page.getByTestId('ontology-concept-edit').click();
           await expect(
-            mappingEditor.getByRole('textbox', {
-              name: 'Concept IRI',
-              exact: true,
-            })
+            mappingEditor.getByRole('combobox', { name: /^Concept IRI/ })
           ).toHaveValue(mapping.conceptIri);
           await expect(
             mappingEditor.getByRole('textbox', {
@@ -541,9 +538,14 @@ test.describe(
           ).not.toBeVisible();
 
           await page.getByTestId('ontology-import-export-trigger').click();
-          await expect(page.getByRole('dialog')).toContainText(
-            'There is no active release to export'
-          );
+          await expect(
+            page.getByRole('dialog').getByTestId('ontology-export-scope')
+          ).toContainText('Current draft');
+          await expect(
+            page
+              .getByRole('dialog')
+              .getByTestId('ontology-release-export-preview')
+          ).toContainText('owl:Ontology');
           await page.getByTestId('ontology-native-import-tab').click();
           await expect(
             page.getByTestId('ontology-native-import-file')
@@ -1031,7 +1033,7 @@ test.describe(
 
         await expect(
           page.getByTestId(`ontology-scope-${ontologies[7].id}`)
-        ).toContainText('1 concepts');
+        ).toContainText('1 concept');
         await expect(
           page.getByTestId(`ontology-scope-${ontologies[8].id}`)
         ).toHaveCount(0);
@@ -1044,33 +1046,31 @@ test.describe(
       }
     });
 
-    // Lane 2 needs the visible publish actions from G5 and G6, which land after this unit.
-    test.fixme(
-      'makes Publish the primary action after creating without reviewers',
-      async ({ isolatedUserPage: page }) => {
-        let created: Ontology | undefined;
-        try {
-          await page.goto('/governance/ontology');
-          await openCreateDialog(page);
-          await page
-            .getByTestId('ontology-create-name')
-            .fill(`PW G9 direct ${uuid()}`);
-          const response = page.waitForResponse((candidate) =>
-            isOntologyPost(candidate.request())
-          );
-          await page.getByTestId('ontology-create-submit').click();
-          created = await okJson<Ontology>(
-            await response,
-            'Create ontology without reviewers'
-          );
+    test('makes Publish the primary action after creating without reviewers', async ({
+      isolatedUserPage: page,
+    }) => {
+      let created: Ontology | undefined;
+      try {
+        await page.goto('/governance/ontology');
+        await openCreateDialog(page);
+        await page
+          .getByTestId('ontology-create-name')
+          .fill(`PW G9 direct ${uuid()}`);
+        const response = page.waitForResponse((candidate) =>
+          isOntologyPost(candidate.request())
+        );
+        await page.getByTestId('ontology-create-submit').click();
+        created = await okJson<Ontology>(
+          await response,
+          'Create ontology without reviewers'
+        );
 
-          await expect(
-            page.getByTestId('ontology-publication-trigger')
-          ).toHaveText(/^Publish/);
-        } finally {
-          await removeOntologies([created]);
-        }
+        await expect(
+          page.getByTestId('ontology-publication-trigger')
+        ).toHaveText(/^Publish/);
+      } finally {
+        await removeOntologies([created]);
       }
-    );
+    });
   }
 );

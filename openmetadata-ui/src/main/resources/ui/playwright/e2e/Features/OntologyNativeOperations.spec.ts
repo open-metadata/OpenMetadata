@@ -138,8 +138,13 @@ test.describe(
           const editor = inspector.getByTestId(
             'ontology-column-binding-editor'
           );
+          const columnSelect = editor.getByRole('button', {
+            name: /profile › customer_id/,
+          });
+          // The editor pre-selects the column whose name matches the property.
+          await expect(columnSelect).toBeVisible();
           await selectOptionWithRetry(
-            editor.getByRole('button', { name: 'Select Column', exact: true }),
+            columnSelect,
             page.getByRole('option', { name: /profile › customer_id/ })
           );
           const saved = page.waitForResponse(

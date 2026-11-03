@@ -272,6 +272,15 @@ const OntologyDataAssetPicker = ({
           searchIndex: SCOPE_INDEXES[scope],
         });
         if (isCurrent) {
+          // A suggested asset's service must be filterable even when the first page of the plain list omits it.
+          const serviceNames = response.hits.hits.flatMap(({ _source }) =>
+            typeof _source.service?.name === 'string'
+              ? [_source.service.name]
+              : []
+          );
+          if (serviceNames.length > 0) {
+            setServices((current) => new Set([...current, ...serviceNames]));
+          }
           setSuggestions(
             response.hits.hits.flatMap(({ _source }) => {
               const reason = getSuggestionReason(_source, terms);
