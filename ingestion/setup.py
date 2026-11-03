@@ -320,7 +320,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["thrift"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
-        "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
+        "pyasn1>=0.6.5",  # CVE-2026-119194..119197 quadratic-CPU decoder DoS
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
