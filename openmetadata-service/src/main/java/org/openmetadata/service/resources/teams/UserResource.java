@@ -162,6 +162,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.IdentityEndpoint;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -1475,9 +1476,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private static boolean isImpersonated(ContainerRequestContext requestContext) {
-    return requestContext.getSecurityContext()
-            instanceof CatalogSecurityContext catalogSecurityContext
-        && catalogSecurityContext.impersonatedUser() != null;
+    return SecurityUtil.isImpersonated(requestContext.getSecurityContext());
   }
 
   private static Set<UUID> entityIds(List<EntityReference> references) {

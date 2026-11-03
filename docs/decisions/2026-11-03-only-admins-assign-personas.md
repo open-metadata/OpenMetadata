@@ -7,8 +7,10 @@
   `test_patchUser_ownDefaultPersonaNotHeld_forbiddenForNonAdmin`,
   `test_putUser_ownPersonas_forbiddenForNonAdmin`), `TeamDefaultPersonaIT`
   (`test_groupOwnerCannotSetDefaultPersonaViaPatch`, `test_groupOwnerCannotSetDefaultPersonaViaPut`),
-  `CreateEntityToolTest.aTeamThatNamesADefaultPersonaNeedsAnAdmin`
-- **Related:** ADR:2026-10-21-only-admins-change-a-users-domains
+  `CreateEntityToolTest.aTeamThatNamesADefaultPersonaNeedsAnAdmin`, `BotImpersonationIT`
+  (`test_impersonation_cannotSetTeamDefaultPersona`)
+- **Related:** ADR:2026-10-21-only-admins-change-a-users-domains,
+  ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges
 
 ## Context
 Holding a persona is what lets a user read the persona's AI context, which is compiled once per
@@ -27,6 +29,8 @@ profile, and the owner rule gives a team's owner every operation on it.
 - Setting a team's `defaultPersona` needs an admin: `POST` with one, `PUT` that names a different
   one, any `PATCH` operation on `/defaultPersona`, and the MCP `create_entity` / `patch_entity`
   tools (`patch_entity` no longer patches teams).
+- An impersonated request cannot do any of the above, even as an admin: the persona outlives the
+  request (ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges).
 - Who belongs to a Group is unchanged. Its owner still manages members, and a joinable Group still
   lets anyone join; an admin who sets a default persona on a Group decides whether it stays
   joinable and who owns it.

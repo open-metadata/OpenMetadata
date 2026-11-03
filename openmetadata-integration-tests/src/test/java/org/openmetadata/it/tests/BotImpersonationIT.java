@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,6 +21,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -30,6 +32,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -588,6 +591,55 @@ public class BotImpersonationIT {
     assertTrue(
         denied.getMessage().contains("identity endpoint"),
         "Bot mint must be blocked as an identity endpoint: " + denied.getMessage());
+  }
+
+  @Test
+  void test_impersonation_cannotSetTeamDefaultPersona(TestNamespace ns) {
+    // Every member of a Group inherits its default persona after the request ends, so an
+    // impersonated admin can set it neither on create nor on patch.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Persona persona =
+        admin.personas().create(new CreatePersona().withName(ns.prefix("imp_team_persona")));
+    Team team =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("imp_persona_team"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "teampersona", "admin");
+    String patch =
+        "[{\"op\":\"add\",\"path\":\"/defaultPersona\",\"value\":{\"id\":\""
+            + persona.getId()
+            + "\",\"type\":\"persona\"}}]";
+    String create =
+        "{\"name\":\""
+            + ns.prefix("imp_persona_new_team")
+            + "\",\"teamType\":\"Group\",\"defaultPersona\":\""
+            + persona.getId()
+            + "\"}";
+
+    Exception patchDenied =
+        assertThrows(
+            Exception.class,
+            () ->
+                asAdmin
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH, "/v1/teams/" + team.getId(), JsonUtils.readTree(patch)));
+    Exception createDenied =
+        assertThrows(
+            Exception.class,
+            () -> asAdmin.getHttpClient().executeForString(HttpMethod.POST, "/v1/teams", create));
+
+    for (Exception denied : List.of(patchDenied, createDenied)) {
+      assertTrue(
+          denied.getMessage().contains("Impersonated requests cannot set a team's default persona"),
+          "Impersonated default persona grant must be refused: " + denied.getMessage());
+    }
+    assertNull(
+        admin.teams().get(team.getId().toString(), "defaultPersona").getDefaultPersona(),
+        "The team must not gain the persona");
   }
 
   @Test
