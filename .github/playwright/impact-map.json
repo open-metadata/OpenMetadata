@@ -138,7 +138,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PlatformLineage/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
         "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
-        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts"
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCanvasEdgeRenderer.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EdgeMidpointUtils*"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
