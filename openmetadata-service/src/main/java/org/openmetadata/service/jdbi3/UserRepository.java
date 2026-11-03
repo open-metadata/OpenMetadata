@@ -1637,14 +1637,15 @@ public class UserRepository extends EntityRepository<User> {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = userRepository.getFields("roles,teams");
-      return exportCsv(
+      List<User> users =
           listUsers(
               teamRepository,
               userRepository,
               team.getName(),
               new ArrayList<>(),
               new HashSet<>(),
-              fields));
+              fields);
+      return exportCsv(retainViewableForExport(users, importedBy));
     }
 
     private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord csvRecord, String user)

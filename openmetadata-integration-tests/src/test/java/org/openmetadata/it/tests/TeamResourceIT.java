@@ -1608,6 +1608,68 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_exportLeavesOutTeamsTheExporterMayNotView(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Rule ownedTeamsOnly =
+        new Rule()
+            .withName(ns.shortPrefix("ownedTeamsOnly"))
+            .withResources(List.of(Entity.TEAM))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("!isOwner()");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.shortPrefix("p_teamExport"))
+                    .withRules(List.of(ownedTeamsOnly)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.shortPrefix("r_teamExport"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = ns.shortPrefix("u_teamExport").toLowerCase();
+    User exporter =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withRoles(List.of(role.getId())));
+    List<EntityReference> owners = List.of(exporter.getEntityReference());
+    Team visible =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("exportVisible"))
+                .withTeamType(TeamType.GROUP)
+                .withOwners(owners));
+    Team hidden =
+        createEntity(
+            new CreateTeam().withName(ns.prefix("exportHidden")).withTeamType(TeamType.GROUP));
+    Team top =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("exportTop"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withOwners(owners)
+                .withChildren(List.of(visible.getId(), hidden.getId())));
+    OpenMetadataClient client =
+        SdkClients.createClient(exporter.getName(), exporter.getEmail(), new String[] {});
+
+    String csv =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/teams/name/" + top.getName() + "/export", null);
+
+    assertTrue(csv.contains(visible.getName()), csv);
+    assertFalse(csv.contains(hidden.getName()), csv);
+  }
+
+  @Test
   void test_getAllTeamsWithAssetsCount_includesInheritedOwnership(TestNamespace ns)
       throws InterruptedException {
     OpenMetadataClient client = SdkClients.adminClient();
