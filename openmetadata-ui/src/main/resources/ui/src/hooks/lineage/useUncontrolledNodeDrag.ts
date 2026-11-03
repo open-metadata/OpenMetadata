@@ -55,9 +55,24 @@ export const useUncontrolledNodeDrag = <T extends Node>(
   const handleNodesChange: OnNodesChange = useCallback(
     (changes) => {
       const dragFrames = changes.filter(isDragFrame);
+      let abandoned: NodeChange[] = [];
       if (dragFrames.length) {
-        // Each frame carries every node being dragged, so rebuilding drops
-        // entries a cancelled drag (a second touch) never ended.
+        // Each frame carries every node being dragged. A remembered node
+        // missing from it had its drag cancelled (a second touch) with no
+        // drop, so it is settled where it was left.
+        const draggedIds = new Set(
+          dragFrames.flatMap((change) =>
+            change.type === 'position' ? [change.id] : []
+          )
+        );
+        abandoned = [...dragPositions.current]
+          .filter(([id]) => !draggedIds.has(id))
+          .map(([id, drag]) => ({
+            id,
+            type: 'position',
+            dragging: false,
+            ...drag,
+          }));
         dragPositions.current = new Map();
         for (const change of dragFrames) {
           if (change.type === 'position' && change.position) {
@@ -68,7 +83,7 @@ export const useUncontrolledNodeDrag = <T extends Node>(
           }
         }
         const { getNodes, setNodes } = store.getState();
-        setNodes(applyNodeChanges(dragFrames, getNodes()));
+        setNodes(applyNodeChanges([...abandoned, ...dragFrames], getNodes()));
       }
 
       const committed = changes
@@ -84,8 +99,8 @@ export const useUncontrolledNodeDrag = <T extends Node>(
             ? { ...change, ...dragged }
             : change;
         });
-      if (committed.length) {
-        onNodesChange(committed);
+      if (abandoned.length || committed.length) {
+        onNodesChange([...abandoned, ...committed]);
       }
     },
     [onNodesChange, store]

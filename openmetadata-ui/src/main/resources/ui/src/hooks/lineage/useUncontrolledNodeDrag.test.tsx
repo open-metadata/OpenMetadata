@@ -111,29 +111,51 @@ describe('useUncontrolledNodeDrag', () => {
     expect(result.current.flow.nodes).toBe(NODES);
   });
 
-  it('forgets a drag that was cancelled without a drop once another drag starts', () => {
+  it('settles a drag cancelled without a drop once another drag starts', () => {
     const nodes: Node[] = [
       ...NODES,
       { id: 'b', position: { x: 100, y: 0 }, data: {} },
     ];
+    const onNodesChange = jest.fn();
     const { result, rerender } = renderHook(
-      () => useUncontrolledNodeDrag(nodes, jest.fn()),
+      () => ({
+        flow: useUncontrolledNodeDrag(nodes, onNodesChange),
+        store: useStoreApi(),
+      }),
       { wrapper }
     );
+    act(() => {
+      result.current.store.getState().setNodes(nodes);
+    });
+    const getNode = (id: string) =>
+      result.current.store.getState().nodeInternals.get(id);
 
     act(() => {
-      result.current.onNodesChange([
+      result.current.flow.onNodesChange([
         { id: 'a', type: 'position', dragging: true, position: { x: 5, y: 5 } },
       ]);
-      // No drop for `a`: a second touch aborted the drag.
-      result.current.onNodesChange([
+    });
+    // No drop for `a`: a second touch aborted the drag. Then `b` is dragged.
+    act(() => {
+      result.current.flow.onNodesChange([
         { id: 'b', type: 'position', dragging: true, position: { x: 9, y: 9 } },
-        { id: 'b', type: 'position', dragging: false },
       ]);
     });
     rerender();
 
-    expect(result.current.nodes).toBe(nodes);
+    expect(getNode('a')).toMatchObject({
+      position: { x: 5, y: 5 },
+      dragging: false,
+    });
+    expect(getNode('b')?.dragging).toBe(true);
+    expect(onNodesChange).toHaveBeenCalledTimes(1);
+    expect(onNodesChange).toHaveBeenCalledWith([
+      { id: 'a', type: 'position', dragging: false, position: { x: 5, y: 5 } },
+    ]);
+    expect(result.current.flow.nodes).toEqual([
+      nodes[0],
+      { ...nodes[1], position: { x: 9, y: 9 }, dragging: true },
+    ]);
   });
 
   it('passes non-drag changes through unchanged', () => {
