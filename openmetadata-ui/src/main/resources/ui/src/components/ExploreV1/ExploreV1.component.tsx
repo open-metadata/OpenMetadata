@@ -435,7 +435,7 @@ interface ExploreResultsPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
-  additionalSearchResults?: ExploreProps['additionalSearchResults'];
+  additionalSearchResults: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -460,7 +460,7 @@ interface ExploreResultsListPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
-  additionalSearchResults?: ExploreProps['additionalSearchResults'];
+  additionalSearchResults: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
