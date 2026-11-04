@@ -153,6 +153,64 @@ class TestDbtCloudErrorClassification:
         assert "no completed dbt runs" in str(exc_info.value).lower()
 
 
+def _dbt_cloud_artifacts(run_steps, run_results_by_step):
+    """Stand-in for the dbt Cloud API: artifacts for a step absent from
+    ``run_results_by_step`` 404, as they do for the clone/profile/deps steps.
+    Like the real API, a run lists its steps only when asked to via ``include_related``."""
+
+    def get(path, data=None):
+        if path.endswith("/runs"):
+            run = {"id": 1, "finished_at_humanized": "now", "duration_humanized": "1m"}
+            if run_steps is not None and "run_steps" in (data or {}).get("include_related", ""):
+                run["run_steps"] = run_steps
+            return {"data": [run]}
+        if path.endswith("manifest.json"):
+            return {"nodes": {}}
+        if path.endswith("run_results.json"):
+            # dbt Cloud nests the 404 code under "status", so the REST client returns None, not raises
+            return run_results_by_step.get((data or {}).get("step"))
+        raise _http_error(404)
+
+    return get
+
+
+class TestDbtCloudRunResultsSteps:
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_reads_run_results_from_every_step(self, tracked_rest):
+        """`dbt test` as step 7 of 8: the endpoint's default (last step) holds no tests."""
+        test_step = {"results": [{"unique_id": "test.p.not_null"}]}
+        last_step = {"results": [{"unique_id": "model.p.m"}]}
+        tracked_rest.return_value.get.side_effect = _dbt_cloud_artifacts(
+            run_steps=[{"index": index} for index in range(1, 9)],
+            run_results_by_step={7: test_step, 8: last_step},
+        )
+
+        (dbt_files,) = get_dbt_details(_dbt_cloud_config())
+
+        assert dbt_files.dbt_run_results == [test_step, last_step]
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_without_step_details_falls_back_to_last_step(self, tracked_rest):
+        last_step = {"results": [{"unique_id": "test.p.not_null"}]}
+        tracked_rest.return_value.get.side_effect = _dbt_cloud_artifacts(
+            run_steps=None, run_results_by_step={None: last_step}
+        )
+
+        (dbt_files,) = get_dbt_details(_dbt_cloud_config())
+
+        assert dbt_files.dbt_run_results == [last_step]
+
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
+    def test_no_run_results_in_any_step_skips_tests(self, tracked_rest):
+        tracked_rest.return_value.get.side_effect = _dbt_cloud_artifacts(
+            run_steps=[{"index": 1}, {"index": 2}], run_results_by_step={}
+        )
+
+        (dbt_files,) = get_dbt_details(_dbt_cloud_config())
+
+        assert dbt_files.dbt_run_results is None
+
+
 def _s3_config():
     config = MagicMock()
     # singledispatch dispatches on args[0].__class__, so this is what routes the mock to the

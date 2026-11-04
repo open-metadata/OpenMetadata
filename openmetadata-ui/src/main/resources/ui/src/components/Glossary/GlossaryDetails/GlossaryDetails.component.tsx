@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
-import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
-import { useGlossaryProposalCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import type { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -36,11 +35,11 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getReviewTab } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
@@ -73,14 +72,6 @@ const GenericTab = withSuspenseFallback(
 const OntologyExplorer = withSuspenseFallback(
   lazy(() => import('../../OntologyExplorer/OntologyExplorer'))
 );
-
-const AlignRightIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.AlignRightIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
 
 const GlossaryDetails = ({
   updateVote,
@@ -135,19 +126,6 @@ const GlossaryDetails = ({
     }
   };
 
-  const proposalScope = useMemo(
-    () =>
-      glossary?.id && !isVersionView
-        ? {
-            fullyQualifiedName: glossary.fullyQualifiedName ?? '',
-            id: glossary.id,
-            isGlossary: true,
-          }
-        : undefined,
-    [glossary?.id, glossary?.fullyQualifiedName, isVersionView]
-  );
-  const { counts: proposalCounts } = useGlossaryProposalCounts(proposalScope);
-
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -159,7 +137,6 @@ const GlossaryDetails = ({
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
-            proposedCount={proposalCounts.all}
           />
         ),
         key: EntityTabs.TERMS,
@@ -167,6 +144,13 @@ const GlossaryDetails = ({
       },
       ...(!isVersionView
         ? [
+            getReviewTab({
+              activeTab,
+              entityFqn: glossary.fullyQualifiedName ?? '',
+              name: tabLabelMap[EntityTabs.REVIEW],
+              openTaskCount: feedCount.openTaskCount,
+              onTasksChange: fetchTaskCounts,
+            }),
             {
               label: (
                 <TabsLabel
@@ -228,9 +212,10 @@ const GlossaryDetails = ({
     glossary.fullyQualifiedName,
     feedCount.conversationCount,
     feedCount.totalTasksCount,
+    feedCount.openTaskCount,
+    fetchTaskCounts,
     activeTab,
     isVersionView,
-    proposalCounts.all,
   ]);
 
   useEffect(() => {
@@ -268,9 +253,11 @@ const GlossaryDetails = ({
           <Tabs.List
             actions={
               isExpandViewSupported && (
-                <AlignRightIconButton
-                  className={isTabExpanded ? 'rotate-180' : ''}
-                  title={
+                <ButtonUtility
+                  data-testid="tab-expand-button"
+                  icon={isTabExpanded ? Collapse : Expand}
+                  size="lg"
+                  tooltip={
                     isTabExpanded ? t('label.collapse') : t('label.expand')
                   }
                   onClick={toggleTabExpanded}
@@ -289,13 +276,15 @@ const GlossaryDetails = ({
           {tabs.map(({ key, children }) => (
             <Tabs.Panel
               className={classNames(
-                'tw:flex tw:flex-col tw:overflow-hidden',
+                'tw:flex tw:flex-col',
                 // The graph pins its toolbar to its own bottom edge, so it must
                 // fill the space left under the header rather than a fixed
                 // viewport calc that ignores the header's actual height.
                 key === EntityTabs.RELATIONS_GRAPH
-                  ? 'tw:min-h-0 tw:flex-1'
-                  : 'tw:h-[calc(100vh-176px-var(--ant-navbar-height))]'
+                  ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden'
+                  : // The widget grid sizes itself to its content, so the panel
+                    // scrolls to keep the last terms and pagination reachable.
+                    'tw:h-[calc(100vh-176px-var(--navbar-height))] tw:overflow-y-auto'
               )}
               id={key}
               key={key}>

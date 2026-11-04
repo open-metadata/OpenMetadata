@@ -16,7 +16,6 @@ import {
   Button,
   ButtonUtility,
   Card,
-  EmptyPlaceholder,
   FeaturedIcon,
   GlossaryTag,
   Input,
@@ -28,6 +27,7 @@ import {
 import {
   ArrowRight,
   ChevronRight,
+  Edit01,
   NoFilterFunnel,
   NoSearch,
   PendingChanges,
@@ -50,7 +50,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
@@ -59,6 +58,9 @@ import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import GlossaryTermPicker from '../../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
@@ -109,7 +111,7 @@ import {
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 
-const ICON_TRANSITION_CLASS = 'tw:size-4 tw:transition-transform';
+const ICON_TRANSITION_CLASS = 'tw:transition-transform';
 const ROTATE_90_CLASS = 'tw:rotate-90';
 
 interface BulkAssetsSocketMessage {
@@ -384,8 +386,10 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
         };
       });
 
-    const glossaryTermValue: TagLabel[] = currentTags.filter(
-      (tag: TagLabel) => tag.source === TagSource.Glossary
+    // Local, not derived from `currentTags`: with several rows selected that is
+    // always empty, so a controlled picker would drop every pick.
+    const [glossaryTermValue, setGlossaryTermValue] = useState<TagLabel[]>(() =>
+      currentTags.filter((tag: TagLabel) => tag.source === TagSource.Glossary)
     );
 
     return (
@@ -529,6 +533,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
                 labelType: term.labelType ?? LabelType.Manual,
                 state: term.state ?? State.Confirmed,
               }));
+              setGlossaryTermValue(newTerms);
               selectedRowsData.forEach((selectedRow) => {
                 const rowId = selectedRow.id;
                 const foundRow = allRows.find(
@@ -597,20 +602,19 @@ const ColumnGridSelectionActions = ({
           className="tw:ml-2.5"
           color="primary"
           data-testid="edit-button"
-          iconLeading={<EditIcon height={14} width={14} />}
+          iconLeading={Edit01}
           isDisabled={isUpdating}
           size="sm"
           onPress={onOpenDrawer}>
           {t('label.edit')}
         </Button>
-        <Button
-          className="tw:text-fg-secondary"
-          color="tertiary"
+        <ButtonUtility
           data-testid="cancel-selection-button"
-          size="sm"
-          onPress={onCancelSelection}>
-          <XClose height={16} width={16} />
-        </Button>
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.cancel')}
+          onClick={onCancelSelection}
+        />
       </>
     ) : (
       <Button
@@ -618,7 +622,7 @@ const ColumnGridSelectionActions = ({
         className="tw:text-tertiary"
         color="tertiary"
         data-testid="edit-button-disabled"
-        iconLeading={<EditIcon height={14} width={14} />}
+        iconLeading={Edit01}
         size="sm"
         onPress={onOpenDrawer}>
         {t('label.edit')}
@@ -1399,16 +1403,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       <div className={COLUMN_NAME_CELL_GRID}>
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           <ButtonUtility
-            color="tertiary"
+            aria-label={
+              isGroupExpanded ? t('label.collapse') : t('label.expand')
+            }
             icon={
               <ChevronRight
+                data-icon
                 className={classNames(
                   ICON_TRANSITION_CLASS,
                   isGroupExpanded && ROTATE_90_CLASS
                 )}
               />
             }
-            size="sm"
+            size="xs"
             onClick={expandHandler}
           />
         </div>
@@ -1465,16 +1472,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           {hasChildren ? (
             <ButtonUtility
-              color="tertiary"
+              aria-label={
+                isStructExpanded ? t('label.collapse') : t('label.expand')
+              }
               icon={
                 <ChevronRight
+                  data-icon
                   className={classNames(
                     ICON_TRANSITION_CLASS,
                     isStructExpanded && ROTATE_90_CLASS
                   )}
                 />
               }
-              size="sm"
+              size="xs"
               onClick={() => structExpandHandler(entity)}
             />
           ) : null}
@@ -1512,16 +1522,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           {hasStructChildren ? (
             <ButtonUtility
-              color="tertiary"
+              aria-label={
+                isOccurrenceExpanded ? t('label.collapse') : t('label.expand')
+              }
               icon={
                 <ChevronRight
+                  data-icon
                   className={classNames(
                     ICON_TRANSITION_CLASS,
                     isOccurrenceExpanded && ROTATE_90_CLASS
                   )}
                 />
               }
-              size="sm"
+              size="xs"
               onClick={() => structExpandHandler(entity)}
             />
           ) : null}
@@ -2587,7 +2600,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   closeDrawerRef.current = closeDrawer;
-  bulkAssetsNotificationRef.current = handleBulkAssetsNotification;
+  // The replayed early messages are fire-and-forget, so a rejection is surfaced here.
+  bulkAssetsNotificationRef.current = (message: string) => {
+    handleBulkAssetsNotification(message).catch(() =>
+      showErrorToast(t('server.entity-updating-error'))
+    );
+  };
   openDrawerRef.current = openDrawer;
 
   // Automatically turn off "View Selected" when selection is cleared
@@ -2612,18 +2630,17 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const emptyPlaceholder = useMemo(() => {
     if (hasActiveSearch) {
       return (
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           description={t('message.check-spelling-or-try-shorter-term')}
-          icon={<NoSearch className="tw:text-fg-secondary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-result-plural')}
-          variant="blank"
         />
       );
     }
 
     if (hasActiveFilters) {
       return (
-        <EmptyPlaceholder
+        <NoFilteredResultsPlaceholder
           actions={[
             {
               color: 'primary',
@@ -2633,19 +2650,17 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             },
           ]}
           description={t('message.nothing-matches-current-filter')}
-          icon={<NoFilterFunnel className="tw:text-fg-secondary" />}
+          icon={<NoFilterFunnel />}
           title={t('label.no-result-for-these-filter-plural')}
-          variant="blank"
         />
       );
     }
 
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={t('message.column-bulk-empty-description')}
-        icon={<TableIcon className="tw:text-fg-secondary" />}
+        icon={<TableIcon />}
         title={t('message.no-columns-to-work-with')}
-        variant="blank"
       />
     );
   }, [hasActiveSearch, hasActiveFilters, handleClearAll, t]);

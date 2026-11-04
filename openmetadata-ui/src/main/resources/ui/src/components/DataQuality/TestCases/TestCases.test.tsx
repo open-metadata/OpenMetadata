@@ -182,17 +182,6 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
     ),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`}>
-        ErrorPlaceHolder.component
-      </div>
-    )),
-}));
-
 const mockOnAddTestCase = jest.fn();
 
 const mockDataQualityContext = {
@@ -386,7 +375,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       expect(
-        await screen.findByTestId('error-placeholder-type-PERMISSION')
+        await screen.findByTestId('permission-error-placeholder')
       ).toBeInTheDocument();
     });
 
@@ -848,14 +837,16 @@ describe('TestCases component', () => {
       });
     });
 
-    it('should not show lastRun filter by default', async () => {
+    it('should show the lastRun filter by default, ahead of the other filters', async () => {
       render(<TestCases />);
 
-      await waitFor(() => {
-        expect(
-          screen.queryByTestId('date-picker-menu')
-        ).not.toBeInTheDocument();
-      });
+      const datePicker = await screen.findByTestId('date-picker-menu');
+      const tableFilter = await screen.findByTestId('table-select-filter');
+
+      expect(
+        datePicker.compareDocumentPosition(tableFilter) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
     });
   });
 

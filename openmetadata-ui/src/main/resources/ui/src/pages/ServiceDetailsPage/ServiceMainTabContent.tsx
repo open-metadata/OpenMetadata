@@ -13,12 +13,13 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -480,25 +481,19 @@ function ServiceMainTabContent({
                         emptyText: (
                           <div className="tw:relative tw:min-h-42">
                             {searchValue ? (
-                              <EmptyPlaceholder
+                              <NoSearchResultsPlaceholder
                                 description={t(
                                   'message.check-spelling-or-try-shorter-term'
                                 )}
-                                icon={
-                                  <NoSearch className="tw:text-secondary" />
-                                }
+                                icon={<NoSearch />}
                                 title={t('label.no-matching-result-plural')}
-                                variant="blank"
                               />
                             ) : (
-                              <EmptyPlaceholder
-                                icon={
-                                  <Assets className="tw:text-utility-gray-600" />
-                                }
+                              <NoDataPlaceholder
+                                icon={<Assets />}
                                 title={t('message.no-entity-data-available', {
                                   entity: getCountLabel(serviceCategory),
                                 })}
-                                variant="blank"
                               />
                             )}
                           </div>

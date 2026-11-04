@@ -78,7 +78,7 @@ const WidgetCard = ({
         {widgetImage ? (
           <img
             alt={widgetLabel}
-            className="tw:h-full tw:w-full tw:object-cover tw:filter-(--widget-preview-filter)"
+            className="tw:h-full tw:w-full tw:object-contain tw:object-top tw:filter-(--widget-preview-filter)"
             data-testid="widget-image"
             src={widgetImage}
           />

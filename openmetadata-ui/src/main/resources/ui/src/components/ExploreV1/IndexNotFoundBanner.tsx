@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom';
 import { SEARCH_INDEXING_APPLICATION } from '../../constants/explore.constants';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 
 export const IndexNotFoundBanner = () => {
   const { t } = useTranslation();
@@ -32,7 +33,9 @@ export const IndexNotFoundBanner = () => {
           renderElement={
             <Link
               className="alert-link"
-              to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
+              to={getSettingsLink(
+                getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)
+              )}
             />
           }
           values={{

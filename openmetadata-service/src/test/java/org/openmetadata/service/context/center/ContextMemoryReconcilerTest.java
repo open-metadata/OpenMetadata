@@ -1,14 +1,17 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.llm.LLMCompletionException;
 
 @ExtendWith(MockitoExtension.class)
 class ContextMemoryReconcilerTest {
@@ -62,6 +66,102 @@ class ContextMemoryReconcilerTest {
 
   private ContextMemoryReconciler.ReconcileResult reconcile(List<ContextMemory> derived) {
     return new ContextMemoryReconciler(memoryRepository).reconcile(source, Entity.PAGE, derived);
+  }
+
+  @Test
+  void failedDuplicateCheckLeavesNoPartiallyCreatedPills() {
+    existing();
+    List<ContextMemory> saved = new ArrayList<>();
+    lenient()
+        .when(memoryRepository.create(isNull(), any()))
+        .thenAnswer(
+            invocation -> {
+              ContextMemory memory = invocation.getArgument(1);
+              saved.add(memory);
+              return memory;
+            });
+    ContextMemory first = derived("What is GDPR?", "A data protection regulation.");
+    ContextMemory second = derived("What is consent?", "Freely given agreement.");
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(
+            memoryRepository,
+            memory -> {
+              if (memory == second) {
+                throw new LLMCompletionException("Failed to parse LLM JSON array response");
+              }
+              return null;
+            });
+
+    assertThrows(
+        LLMCompletionException.class,
+        () -> reconciler.reconcile(source, Entity.PAGE, List.of(first, second)));
+    assertEquals(List.of(), saved);
+  }
+
+  @Test
+  void failedDuplicateCheckPreservesExistingPillsAndSourceLinks() {
+    ContextMemory changed = derived("What is GDPR?", "Original definition.");
+    ContextMemory retired = derived("Who owns the process?", "The compliance team.");
+    ContextMemory shared = derived("What is consent?", "Original consent definition.");
+    existing(changed, retired, shared);
+    when(memoryRepository.hasOtherSources(any(), eq(source)))
+        .thenAnswer(invocation -> shared.getId().equals(invocation.getArgument(0)));
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(
+            memoryRepository,
+            memory -> {
+              throw new LLMCompletionException("Failed to parse LLM JSON array response");
+            });
+
+    assertThrows(
+        LLMCompletionException.class,
+        () ->
+            reconciler.reconcile(
+                source,
+                Entity.PAGE,
+                List.of(
+                    derived("What is GDPR?", "Revised definition."),
+                    derived("What is consent?", "Revised consent definition."),
+                    derived("What is personal data?", "Information identifying a person."))));
+    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
+  @Test
+  void doesNotReuseTheOldContentOfAMemoryScheduledForUpdate() {
+    ContextMemory stored = derived("What is GDPR?", "Original definition.");
+    ContextMemory fresh = derived("What is personal data?", "Information identifying a person.");
+    existing(stored);
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(memoryRepository, ignored -> stored);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconciler.reconcile(
+            source, Entity.PAGE, List.of(derived("What is GDPR?", "Revised definition."), fresh));
+
+    assertEquals(1, result.updated());
+    assertEquals(1, result.created());
+    verify(memoryRepository).create(isNull(), eq(fresh));
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
+  }
+
+  @Test
+  void doesNotReuseAMemoryScheduledForRetirement() {
+    ContextMemory retired = derived("Who owns the process?", "The compliance team.");
+    ContextMemory fresh = derived("What is personal data?", "Information identifying a person.");
+    existing(retired);
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(memoryRepository, ignored -> retired);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconciler.reconcile(source, Entity.PAGE, List.of(fresh));
+
+    assertEquals(1, result.deleted());
+    assertEquals(1, result.created());
+    verify(memoryRepository).create(isNull(), eq(fresh));
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
   }
 
   @Test

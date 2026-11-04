@@ -67,6 +67,7 @@ from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
     build_fallback_task_statuses,
     build_task_statuses,
     query_sync_logs,
+    resolve_log_schema,
     sort_and_limit_syncs,
 )
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
@@ -129,6 +130,10 @@ class FivetranSource(PipelineServiceSource):
     @property
     def fivetran_client(self) -> FivetranClient:
         return cast(FivetranClient, self.client)  # noqa: TC006
+
+    @property
+    def fivetran_connection(self) -> FivetranConnection:
+        return cast(FivetranConnection, self.service_connection)  # noqa: TC006
 
     @classmethod
     def create(
@@ -217,7 +222,7 @@ class FivetranSource(PipelineServiceSource):
         yield from self._get_status_from_rest(pipeline_details, pipeline_fqn)
 
     def _resolve_log_source(self, log_service_type: str) -> DatabaseService | None:
-        """Resolve the warehouse DatabaseService that holds fivetran_metadata.log.
+        """Resolve the warehouse DatabaseService that holds the Platform Connector log table.
 
         Fivetran calls this warehouse the "destination" but from OM's
         perspective it is a *source* of pipeline-status data.
@@ -246,15 +251,27 @@ class FivetranSource(PipelineServiceSource):
         # Fivetran's "destination" config holds the warehouse where logs live
         log_database = self._get_database_name(pipeline_details.destination)
         if not log_database:
+            logger.debug("No database in the destination config of [%s]", pipeline_details.connector_id)
             return None
 
         log_service_type = pipeline_details.destination.get("service", "")
         service = self._resolve_log_source(log_service_type)
         if not service:
+            logger.debug("No [%s] service in dbServiceNames holds [%s]", log_service_type, log_database)
             return None
 
-        syncs = query_sync_logs(service, log_database, pipeline_details.connector_id)
-        if syncs is None:
+        syncs = query_sync_logs(
+            service,
+            log_database,
+            pipeline_details.connector_id,
+            log_schema=pipeline_details.log_schema,
+        )
+        if not syncs:
+            logger.debug(
+                "No sync rows in %s.log for [%s]",
+                pipeline_details.log_schema,
+                pipeline_details.connector_id,
+            )
             return None
 
         statuses = []
@@ -640,10 +657,12 @@ class FivetranSource(PipelineServiceSource):
             group_id: str = group.get("id", "")
             try:
                 destination = self.fivetran_client.get_destination_details(destination_id=group_id)
+                connectors = list(self.fivetran_client.list_group_connectors(group_id=group_id))
             except Exception as exc:
-                logger.warning(f"Failed to get destination for group [{group_id}]: {exc}")
+                logger.warning("Failed to list group [%s]: %s", group_id, exc)
                 continue
-            for connector in self.fivetran_client.list_group_connectors(group_id=group_id):
+            log_schema = self.fivetran_connection.logSchema or resolve_log_schema(connectors)
+            for connector in connectors:
                 connector_id: str = connector.get("id", "")
                 try:
                     yield FivetranPipelineDetails(
@@ -651,6 +670,7 @@ class FivetranSource(PipelineServiceSource):
                         source=self.fivetran_client.get_connector_details(connector_id=connector_id),
                         group=group,
                         connector_id=connector_id,
+                        log_schema=log_schema,
                     )
                 except Exception as exc:
                     logger.warning(f"Failed to get details for connector [{connector_id}] in group [{group_id}]: {exc}")

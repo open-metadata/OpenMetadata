@@ -20,8 +20,6 @@ import { Task } from '../../rest/tasksAPI';
 /** Who proposed a term awaiting review: an AI agent or a person. */
 export type ProposalSource = 'ai' | 'person';
 
-export type ProposalFilter = 'all' | ProposalSource;
-
 /** A glossary term that waits for a person to approve or reject it. */
 export interface GlossaryProposal {
   term: GlossaryTerm;
@@ -32,19 +30,4 @@ export interface GlossaryProposal {
   approvalTask?: Task;
 }
 
-export type ProposalCounts = Record<ProposalFilter, number>;
-
-/** A run of one source's pending terms, as the server lists them. */
-export interface ProposalSlice {
-  source: ProposalSource;
-  offset: number;
-  limit: number;
-}
-
 export type ProposalDecision = EntityStatus.Approved | EntityStatus.Rejected;
-
-/** A decision taken during this visit, listed under "Resolved". */
-export interface ResolvedProposal {
-  term: GlossaryTerm;
-  decision: ProposalDecision;
-}

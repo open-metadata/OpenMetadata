@@ -46,15 +46,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </button>
   ),
   ButtonUtility: ({
+    onClick,
     tooltip,
     'data-testid': dataTestId,
   }: {
+    onClick?: () => void;
     tooltip?: string;
     'data-testid'?: string;
-  }) => <button aria-label={tooltip} data-testid={dataTestId} />,
+  }) => (
+    <button aria-label={tooltip} data-testid={dataTestId} onClick={onClick} />
+  ),
   Card: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-header">{children}</div>
   ),
+  FeaturedIcon: jest.requireActual('@openmetadata/ui-core-components')
+    .FeaturedIcon,
   Dialog: ({
     children,
     title,
@@ -135,19 +141,27 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   Typography: ({
     children,
+    ellipsis,
     ...rest
   }: {
     children: React.ReactNode;
+    ellipsis?: boolean | { tooltip?: boolean };
     [key: string]: unknown;
-  }) => <span {...rest}>{children}</span>,
+  }) => (
+    <span
+      data-ellipsis={ellipsis ? 'true' : undefined}
+      data-ellipsis-tooltip={
+        typeof ellipsis === 'object' && ellipsis.tooltip ? 'true' : undefined
+      }
+      {...rest}>
+      {children}
+    </span>
+  ),
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   DotsVertical: () => null,
-}));
-
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => null,
+  Edit01: () => null,
 }));
 
 jest.mock('../../../assets/svg/workflow.svg', () => ({
@@ -225,6 +239,29 @@ describe('WorkflowHeader — System badge', () => {
     );
   });
 
+  it.each([false, true])(
+    'truncates a long title with a full-text tooltip and keeps the actions from shrinking (isAiMode=%s)',
+    (isAiMode) => {
+      mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+      render(<WorkflowHeader {...defaultProps} isAiMode={isAiMode} />);
+
+      const title = screen.getByTestId('workflow-title');
+
+      expect(title).toHaveAttribute('data-ellipsis', 'true');
+      expect(title).toHaveAttribute('data-ellipsis-tooltip', 'true');
+
+      if (!isAiMode) {
+        expect(screen.getByTestId('workflow-title-section')).toHaveClass(
+          'tw:min-w-0'
+        );
+        expect(
+          screen.getByTestId('edit-workflow-button').parentElement
+        ).toHaveClass('tw:shrink-0');
+      }
+    }
+  );
+
   it('shows the System badge when isNoOp is true', () => {
     mockUseWorkflowModeContext.mockReturnValue(
       buildContextMock({ isNoOp: true, showEditButton: false })
@@ -288,9 +325,10 @@ describe('WorkflowHeader — System badge', () => {
 
     render(<WorkflowHeader {...defaultProps} />);
 
+    // Sits in the centred actions row, not the title row, so it lines up with the buttons.
     expect(
-      screen.getByTestId('edit-workflow-title-button')
-    ).toBeInTheDocument();
+      screen.getByTestId('edit-workflow-title-button').parentElement
+    ).toHaveClass('tw:shrink-0', 'tw:items-center');
   });
 
   it('hides the title-edit button in view mode even when isNoOp is false', () => {

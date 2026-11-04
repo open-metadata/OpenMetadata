@@ -401,6 +401,12 @@ export const addInternalDestinationProfile = async ({
       .getByRole('listbox', { name: /destination/i })
       .getByRole('option', { name: category, exact: true })
   );
+  // The category popover opens over the type select below it; until it has
+  // unmounted it intercepts the type click and can take focus from the type
+  // popover, closing it before the option is picked.
+  await expect(
+    page.getByRole('listbox', { name: /destination/i })
+  ).toBeHidden();
 
   await selectDropdownOption({
     page,
@@ -673,11 +679,12 @@ export const deleteAlertFromList = async (
   const displayName = getEntityDisplayName(alertDetails);
 
   await page.getByTestId(`alert-delete-${displayName}`).click();
+  await expect(page.getByTestId('delete-alert-popover')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
     (response) => response.request().method() === 'DELETE'
   );
-  await page.getByTestId('confirm-button').click();
+  await page.getByTestId('delete-alert-popover-confirm').click();
   expect((await deleteResponse).status()).toBe(200);
   await toastNotification(page, `"${displayName}" deleted successfully!`);
 };

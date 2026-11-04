@@ -43,8 +43,8 @@ const IncidentGroupByDropdown = ({
         className="tw:shrink-0"
         color="secondary"
         data-testid="incident-group-by-button"
-        iconLeading={<LayersTwo01 className="tw:size-4" />}
-        iconTrailing={<ChevronDown className="tw:size-4" />}
+        iconLeading={LayersTwo01}
+        iconTrailing={ChevronDown}
         size="lg">
         {/* The field's name stays for screen readers; the icon stands for it. */}
         <span className="tw:sr-only">{`${t('label.group-by')} `}</span>

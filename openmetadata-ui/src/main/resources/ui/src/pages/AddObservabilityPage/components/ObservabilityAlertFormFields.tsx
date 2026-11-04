@@ -12,6 +12,7 @@
  */
 
 import {
+  Alert,
   Box,
   Divider,
   FormField,
@@ -67,6 +68,7 @@ function ObservabilityAlertFormFields({
     const latest = typeof next === 'function' ? next(form.getValues()) : next;
     form.setValue('input', latest.input, { shouldDirty: true });
   };
+  const areRulesReadOnly = Boolean(alert?.hasRulesWithoutSelections);
   const onValuesChange = (changes: Partial<ModifiedCreateEventSubscription>) =>
     applyAlertValueChanges(form.setValue, changes);
 
@@ -133,10 +135,22 @@ function ObservabilityAlertFormFields({
               error={validationErrors.resources}
               value={resources}
               onChange={(next, previous) => {
-                onValuesChange(getAlertSourceChanges(next, previous));
+                onValuesChange(
+                  getAlertSourceChanges(next, previous, areRulesReadOnly)
+                );
               }}
             />
           </Box>
+          {areRulesReadOnly &&
+            (shouldShowFiltersSection || shouldShowActionsSection) && (
+              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0 tw:mt-4">
+                <Alert
+                  data-testid="alert-rules-read-only"
+                  title={t('message.alert-rules-read-only')}
+                  variant="brand"
+                />
+              </Box>
+            )}
           {shouldShowFiltersSection && (
             <>
               <Box className="layout-column tw:block">
@@ -148,6 +162,7 @@ function ObservabilityAlertFormFields({
               </Box>
               <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                 <ObservabilityFormFiltersItem
+                  isViewMode={areRulesReadOnly}
                   validationErrors={validationErrors}
                   value={ruleValue}
                   onChange={onChange}
@@ -166,6 +181,7 @@ function ObservabilityAlertFormFields({
               </Box>
               <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                 <ObservabilityFormTriggerItem
+                  isViewMode={areRulesReadOnly}
                   validationErrors={validationErrors}
                   value={ruleValue}
                   onChange={onChange}

@@ -79,16 +79,20 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
       <Button
         className="tw:w-full"
         color="tertiary"
+        iconTrailing={
+          isItemSelected ? (
+            <Eye data-icon="trailing" data-testid="eye-icon" />
+          ) : (
+            <EyeInvisibleFilled
+              data-icon="trailing"
+              data-testid="eye-invisible-icon"
+            />
+          )
+        }
         onClick={() => onSelect(value, !isItemSelected)}>
         <Typography className="draggable-menu-item-button-label">
           {label}
         </Typography>
-
-        {isItemSelected ? (
-          <Eye data-testid="eye-icon" size={16} />
-        ) : (
-          <EyeInvisibleFilled data-testid="eye-invisible-icon" size={16} />
-        )}
       </Button>
     </div>
   );

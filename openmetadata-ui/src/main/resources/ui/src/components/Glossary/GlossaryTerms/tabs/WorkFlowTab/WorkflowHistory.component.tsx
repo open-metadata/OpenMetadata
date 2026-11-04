@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Card,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -46,6 +41,7 @@ import {
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
@@ -234,11 +230,10 @@ const WorkflowHistory = memo(
             className="workflow-history-widget"
             isWidget={isWidget}>
             <div className="tw:relative tw:min-h-24">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 title={t('label.no-entity-available', {
                   entity: workflowHistoryLabel,
                 })}
-                variant="blank"
                 width="100%"
               />
             </div>

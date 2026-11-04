@@ -95,10 +95,6 @@ jest.mock(
     ))
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../components/common/FormBuilderV1/FormBuilderV1', () =>
   jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
     <div>
@@ -294,7 +290,11 @@ describe('AppInstall component', () => {
     expect(mockShowErrorToast).toHaveBeenCalledWith(
       'server.no-application-schema-found'
     );
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('error check in installing application', async () => {

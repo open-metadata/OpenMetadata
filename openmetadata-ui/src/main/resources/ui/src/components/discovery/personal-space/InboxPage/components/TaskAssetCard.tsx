@@ -79,7 +79,7 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
       direction="col">
       <Box align="center" className="tw:gap-3 tw:p-4">
         <Box align="center" className="tw:min-w-0" gap={3}>
-          <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:text-quaternary">
+          <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-secondary tw:text-quaternary tw:dark:bg-surface">
             {getEntityIcon(aboutRef.type)}
           </span>
           <Box className="tw:min-w-0" direction="col" gap={1}>
@@ -99,7 +99,11 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
                 </Link>
               </Typography>
               {about?.tier && (
-                <Badge color="blue" size="sm" type="color">
+                <Badge
+                  color="blue"
+                  size="sm"
+                  tooltip={about.tier.displayName || startCase(about.tier.name)}
+                  type="color">
                   {about.tier.displayName || startCase(about.tier.name)}
                 </Badge>
               )}

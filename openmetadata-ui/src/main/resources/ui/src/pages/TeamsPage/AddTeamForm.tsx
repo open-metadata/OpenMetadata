@@ -13,7 +13,7 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   FieldTypes,
   FormField,
   FormFields,
@@ -257,14 +257,13 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                       )
                     )
                   }>
-                  <Button
-                    aria-label={t('label.add-entity', {
-                      entity: t('label.domain'),
-                    })}
+                  <ButtonUtility
                     color="primary"
                     data-testid="add-domain"
-                    iconLeading={Plus}
-                    size="xs"
+                    icon={Plus}
+                    tooltip={t('label.add-entity', {
+                      entity: t('label.domain'),
+                    })}
                   />
                 </DomainSelectableList>
               </Box>

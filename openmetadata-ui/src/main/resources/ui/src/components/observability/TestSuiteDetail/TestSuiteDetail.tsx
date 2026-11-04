@@ -13,23 +13,23 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   DialogTrigger,
+  Input,
   Modal,
   ModalOverlay,
   Owner,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -40,10 +40,12 @@ import { HeaderDotSeparator } from '../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -188,6 +190,7 @@ const TestSuiteDetail = () => {
     isLoading,
     isTestCaseLoading,
     testCaseResult,
+    testCaseSearchQuery,
     testSuitePermissions,
     permissions,
     extraDropdownContent,
@@ -199,11 +202,13 @@ const TestSuiteDetail = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
     handleTestCasesRemoved,
     handleSortTestCase,
+    handleTestCaseSearch,
     handleAddTestCaseSubmit,
     onUpdateOwner,
     handleDomainUpdate,
@@ -219,6 +224,19 @@ const TestSuiteDetail = () => {
     () => getDerivedPermissionFlags(testSuitePermissions),
     [testSuitePermissions]
   );
+
+  const { searchInputProps } = useListSearchInput({
+    searchQuery: testCaseSearchQuery,
+    onSearchChange: handleTestCaseSearch,
+  });
+  // UI core and Untitled icons currently resolve React types from separate
+  // package trees even though their runtime component contract is compatible.
+  const searchInputIcon = searchInputProps.icon as ComponentProps<
+    typeof Input
+  >['icon'];
+  const testCaseSearchLabel = t('label.search-entity', {
+    entity: t('label.test-case-plural'),
+  });
 
   const afterDeleteAction = () => {
     navigate(
@@ -274,7 +292,10 @@ const TestSuiteDetail = () => {
     if (activeTab === EntityTabs.PIPELINE) {
       return (
         <div className="tw:w-full">
-          <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+          <TestSuitePipelineTab
+            testSuite={testSuite}
+            onPipelinesChange={handlePipelinesChange}
+          />
         </div>
       );
     }
@@ -294,10 +315,23 @@ const TestSuiteDetail = () => {
             afterDeleteAction={handleTestCasesRemoved}
             breadcrumbData={incidentUrlState}
             fetchTestCases={handleSortTestCase}
+            hasActiveFilters={Boolean(testCaseSearchQuery.trim())}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
             removeFromTestSuite={removeFromTestSuite}
             showPagination={showPagination}
+            tableHeader={
+              <Box align="center" className="tw:w-full" justify="end">
+                <Input
+                  {...searchInputProps}
+                  aria-label={testCaseSearchLabel}
+                  className="tw:w-full tw:max-w-72"
+                  icon={searchInputIcon}
+                  inputDataTestId="test-suite-test-case-search"
+                  placeholder={testCaseSearchLabel}
+                />
+              </Box>
+            }
             testCases={testCaseResult}
             onTestCaseResultUpdate={handleTestSuiteUpdate}
             onTestUpdate={handleTestSuiteUpdate}
@@ -321,6 +355,10 @@ const TestSuiteDetail = () => {
     pagingData,
     showPagination,
     testCaseResult,
+    testCaseSearchQuery,
+    searchInputProps,
+    searchInputIcon,
+    testCaseSearchLabel,
     handleTestSuiteUpdate,
   ]);
 
@@ -330,18 +368,23 @@ const TestSuiteDetail = () => {
 
   if (!flags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-suite'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-suite'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testSuite)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (
@@ -389,19 +432,13 @@ const TestSuiteDetail = () => {
                     displayName={testSuite?.displayName}
                     name={testSuite?.name}
                   />
-                  <Tooltip placement="top" title={getCopyTooltipTitle()}>
-                    <Button
-                      aria-label={t('label.copy-item', {
-                        item: t('label.url-uppercase'),
-                      })}
-                      color="tertiary"
-                      data-testid="entity-header-copy-button"
-                      iconLeading={Copy01}
-                      size="xs"
-                      type="button"
-                      onClick={handleCopyEntityUrl}
-                    />
-                  </Tooltip>
+                  <ButtonUtility
+                    data-testid="entity-header-copy-button"
+                    icon={Copy01}
+                    size="lg"
+                    tooltip={getCopyTooltipTitle()}
+                    onClick={handleCopyEntityUrl}
+                  />
                 </Box>
               </Box>
               <Box align="center" className="tw:shrink-0" gap={2}>

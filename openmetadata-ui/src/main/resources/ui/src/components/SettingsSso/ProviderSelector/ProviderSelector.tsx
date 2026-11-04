@@ -12,7 +12,7 @@
  */
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
-import { ArrowUp } from '@openmetadata/ui-core-components/icons';
+import { ArrowUpRight } from '@openmetadata/ui-core-components/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
@@ -48,10 +48,10 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
         </Typography>
         <Button
           color="primary"
+          iconTrailing={ArrowUpRight}
           isDisabled={!selectedProvider}
           onClick={handleConfigureClick}>
           {t('label.configure')}
-          <ArrowUp className="configure-arrow tw:ml-2" height={12} width={12} />
         </Button>
       </div>
 

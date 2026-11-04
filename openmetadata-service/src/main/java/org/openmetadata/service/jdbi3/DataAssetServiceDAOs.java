@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -51,7 +50,9 @@ import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.SecurityService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public interface DataAssetServiceDAOs {
@@ -561,15 +562,7 @@ public interface DataAssetServiceDAOs {
      * in the JSON document so column FQNs follow their container. {@code WHERE fqnHash LIKE
      * 'oldHash.%'} restricts the update to descendants — the moved row itself updates via the
      * standard {@code storeEntity} path after {@code setFullyQualifiedName} runs in memory.
-     *
-     * <p><b>On SQL interpolation:</b> mirrors the pre-existing {@link EntityDAO#updateFqn}
-     * pattern — values are spliced into the SQL via {@link String#format} because the
-     * connection-aware {@code @SqlUpdate} dispatcher takes the full statement as a single
-     * {@code <mySqlUpdate>}/{@code <postgresUpdate>} bind. The values come from server-side
-     * code (the FQN computed by {@code setFullyQualifiedName}, not user-supplied input), and
-     * {@link ListFilter#escapeApostrophe} handles the only SQL meta-character that can appear
-     * in a validated entity name. If a future code path lets arbitrary strings reach this
-     * method, swap to a parameterised form with {@code @Bind} parameters.
+     * Container names are user input, so like {@link EntityDAO#updateFqn} the prefixes are bound.
      */
     @Override
     default void updateFqn(String oldPrefix, String newPrefix) {
@@ -578,32 +571,34 @@ public interface DataAssetServiceDAOs {
       }
       String oldHash = FullyQualifiedName.buildHash(oldPrefix);
       String newHash = FullyQualifiedName.buildHash(newPrefix);
-      String mySqlUpdate =
-          String.format(
-              "UPDATE %s SET json = CAST(REPLACE(CAST(json AS CHAR), "
-                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.') AS JSON), "
-                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                  + "WHERE fqnHash LIKE '%s.%%'",
-              getTableName(),
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              oldHash,
-              newHash,
-              oldHash);
-      String postgresUpdate =
-          String.format(
-              "UPDATE %s SET json = REPLACE(json::text, "
-                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.')::jsonb, "
-                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                  + "WHERE fqnHash LIKE '%s.%%'",
-              getTableName(),
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              oldHash,
-              newHash,
-              oldHash);
-      updateFqnInternal(mySqlUpdate, postgresUpdate);
+      updateDescendantFqnsInternal(
+          EntityDAO.jsonFqnPrefix(oldPrefix),
+          EntityDAO.jsonFqnPrefix(newPrefix),
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE storage_container_entity SET json = "
+                + "CAST(REPLACE(CAST(json AS CHAR), :oldJsonPrefix, :newJsonPrefix) AS JSON), "
+                + "fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+                + "WHERE fqnHash LIKE :oldHashLike",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE storage_container_entity SET json = "
+                + "REPLACE(json::text, :oldJsonPrefix, :newJsonPrefix)::jsonb, "
+                + "fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+                + "WHERE fqnHash LIKE :oldHashLike",
+        connectionType = POSTGRES)
+    void updateDescendantFqnsInternal(
+        @Bind("oldJsonPrefix") String oldJsonPrefix,
+        @Bind("newJsonPrefix") String newJsonPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
 
     /**
      * Cheap descendant count used by the PATCH re-parent guard (#24294) to short-circuit

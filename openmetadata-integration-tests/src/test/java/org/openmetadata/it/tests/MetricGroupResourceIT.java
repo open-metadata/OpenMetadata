@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.METRIC_GROUP;
+import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,6 +70,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -711,6 +713,37 @@ public class MetricGroupResourceIT {
   }
 
   @Test
+  void list_groupMembersCarryTheirTags(TestNamespace ns) {
+    Metric tagged =
+        SdkClients.adminClient()
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(ns.prefix("tagged_member"))
+                    .withDescription("Group member")
+                    .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN))));
+    MetricGroup group =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("tagged_group"))
+                .withMetrics(List.of(tagged.getFullyQualifiedName())));
+
+    JsonNode members =
+        JSON.valueToTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.GET,
+                    GROUPS_PATH + "/" + group.getId() + "/metrics?rootOnly=true",
+                    null,
+                    Object.class));
+
+    JsonNode tags = members.get("data").get(0).get("tags");
+    assertEquals(1, tags.size(), "Group members must be hydrated with the hierarchy row fields");
+    assertEquals(RESTRICTED_TAG_FQN, tags.get(0).get("tagFQN").asText());
+  }
+
+  @Test
   void list_groupMembersCanPageHierarchyRootsOnly(TestNamespace ns) {
     Metric root = createMetric(ns, "page_root");
     createChild(ns, "page_child", root);
@@ -933,6 +966,144 @@ public class MetricGroupResourceIT {
   }
 
   @Test
+  void searchCountsSurviveChildCreateAndPlainEdits(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric parent = createMetric(ns, "count_parent");
+    MetricGroup group =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("count_group"))
+                .withMetrics(List.of(parent.getFullyQualifiedName())));
+    createChild(ns, "count_child", parent);
+
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
+
+    String bulkChildName = ns.prefix("count_bulk_child");
+    SdkClients.adminClient()
+        .metrics()
+        .bulkCreateOrUpdate(
+            List.of(
+                new CreateMetric()
+                    .withName(bulkChildName)
+                    .withDescription("Bulk-created child")
+                    .withParent(parent.getFullyQualifiedName())));
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(2, document.path("childrenCount").asInt()));
+
+    Metric bulkChild = SdkClients.adminClient().metrics().getByName(bulkChildName);
+    SdkClients.adminClient().metrics().delete(bulkChild.getId().toString());
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
+
+    SdkClients.adminClient().metrics().restore(bulkChild.getId().toString());
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(2, document.path("childrenCount").asInt()));
+
+    String parentJson = JSON.writeValueAsString(parent);
+    parent.setDescription("Edited parent description");
+    rest.patch("/v1/metrics", parent.getId(), parentJson, parent, Metric.class);
+    awaitMetricSearchDocument(
+        rest,
+        parent.getId(),
+        document -> {
+          assertEquals("Edited parent description", document.path("description").asText());
+          assertEquals(2, document.path("childrenCount").asInt());
+        });
+
+    String groupJson = JSON.writeValueAsString(group);
+    group.setDescription("Edited group description");
+    rest.patch(GROUPS_PATH, group.getId(), groupJson, group, MetricGroup.class);
+    awaitSearchDocument(
+        rest,
+        "metric_group_search_index",
+        group.getId(),
+        document -> {
+          assertEquals("Edited group description", document.path("description").asText());
+          assertEquals(3, document.path("metricCount").asInt());
+        });
+  }
+
+  @Test
+  void patchMovesRefreshEveryParentAMetricPassesThrough(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric first = createMetric(ns, "move_first");
+    Metric second = createMetric(ns, "move_second");
+    Metric third = createMetric(ns, "move_third");
+    Metric child = createChild(ns, "move_child", first);
+    awaitChildrenCount(rest, first, 1);
+
+    moveTo(rest, child, second);
+    awaitChildrenCount(rest, first, 0);
+    awaitChildrenCount(rest, second, 1);
+
+    // The same user's next edit in the session is consolidated into the previous version, so the
+    // update compares the first parent with the third and must still refresh the second.
+    moveTo(rest, child, third);
+    awaitChildrenCount(rest, second, 0);
+    awaitChildrenCount(rest, third, 1);
+  }
+
+  private static void moveTo(RestClient rest, Metric child, Metric parent) throws Exception {
+    Metric current = SdkClients.adminClient().metrics().get(child.getId().toString(), "parent");
+    String currentJson = JSON.writeValueAsString(current);
+    current.setParent(parent.getEntityReference());
+    rest.patch("/v1/metrics", current.getId(), currentJson, current, Metric.class);
+  }
+
+  private static void awaitChildrenCount(RestClient rest, Metric metric, int count) {
+    awaitMetricSearchDocument(
+        rest,
+        metric.getId(),
+        document -> assertEquals(count, document.path("childrenCount").asInt()));
+  }
+
+  @Test
+  void csvReimportKeepsAParentsChildrenCount(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric parent = createMetric(ns, "csv_count_parent");
+    createChild(ns, "csv_count_child", parent);
+    awaitMetricSearchDocument(
+        rest, parent.getId(), document -> assertEquals(1, document.path("childrenCount").asInt()));
+
+    String exported = SdkClients.adminClient().metrics().exportCsv(parent.getFullyQualifiedName());
+    String reimported = exported.replace("Group member", "Re-imported through CSV");
+    CsvImportResult result =
+        JSON.readValue(
+            SdkClients.adminClient().metrics().importCsv("*", reimported, false),
+            CsvImportResult.class);
+    assertEquals(1, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    awaitMetricSearchDocument(
+        rest,
+        parent.getId(),
+        document -> {
+          assertEquals("Re-imported through CSV", document.path("description").asText());
+          assertEquals(1, document.path("childrenCount").asInt());
+        });
+  }
+
+  @Test
+  void csvReparentRefreshesBothParentsChildrenCount(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Metric oldParent = createMetric(ns, "csv_move_old_parent");
+    Metric newParent = createMetric(ns, "csv_move_new_parent");
+    Metric child = createChild(ns, "csv_move_child", oldParent);
+    awaitChildrenCount(rest, oldParent, 1);
+
+    String exported = SdkClients.adminClient().metrics().exportCsv(child.getFullyQualifiedName());
+    String moved =
+        exported.replace(oldParent.getFullyQualifiedName(), newParent.getFullyQualifiedName());
+    CsvImportResult result =
+        JSON.readValue(
+            SdkClients.adminClient().metrics().importCsv("*", moved, false), CsvImportResult.class);
+    assertEquals(1, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    awaitChildrenCount(rest, oldParent, 0);
+    awaitChildrenCount(rest, newParent, 1);
+  }
+
+  @Test
   void groupMutationsAndHardDeleteRefreshMemberSearchDocuments(TestNamespace ns) throws Exception {
     RestClient rest = RestClient.admin();
     Metric metric = createMetric(ns, "search_refresh_member");
@@ -1141,6 +1312,43 @@ public class MetricGroupResourceIT {
     return references;
   }
 
+  @Test
+  void patch_appendsAnOwnerThroughTheMembershipCheck(TestNamespace ns) {
+    MetricGroup group = createGroup(new CreateMetricGroup().withName(ns.prefix("owned_group")));
+    EntityReference admin =
+        SdkClients.adminClient().users().getByName("admin").getEntityReference();
+    // An append, not a whole-list add: the membership check applies the patch to its own copy of
+    // the group first, and that copy must hold the owners list the append points into.
+    String appendOwner =
+        JSON.createArrayNode()
+            .add(
+                JSON.createObjectNode()
+                    .put("op", "add")
+                    .put("path", "/owners/-")
+                    .set(
+                        "value",
+                        JSON.createObjectNode()
+                            .put("id", admin.getId().toString())
+                            .put("type", USER)))
+            .toString();
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            GROUPS_PATH + "/" + group.getId(),
+            appendOwner,
+            RequestOptions.builder()
+                .header("Content-Type", MediaType.APPLICATION_JSON_PATCH_JSON)
+                .build());
+
+    assertEquals(
+        List.of(admin.getId()),
+        getGroup(group.getName(), "owners").getOwners().stream()
+            .map(EntityReference::getId)
+            .toList());
+  }
+
   private static void patchGroup(
       OpenMetadataClient client, UUID groupId, MetricGroup original, MetricGroup updated) {
     String patch = JsonUtils.getJsonPatch(original, updated).toString();
@@ -1204,25 +1412,96 @@ public class MetricGroupResourceIT {
     }
   }
 
+  /**
+   * Moving a metric out of a hidden group records that group in the metric's stored change
+   * description. The members list withholds the entry from a caller who may not view the group,
+   * whether the caller's metric access is conditional or unconditional.
+   */
+  @Test
+  void membersListWithholdsAHiddenGroupNamedInAMembersMoveChange(TestNamespace ns) {
+    Metric moved = createMetric(ns, "moved_out_of_hidden_group");
+    MetricGroup hiddenGroup =
+        createGroup(
+            new CreateMetricGroup()
+                .withName(ns.prefix("hidden_origin_group"))
+                .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN)))
+                .withMetrics(List.of(moved.getFullyQualifiedName())));
+    MetricGroup visibleGroup =
+        createGroup(new CreateMetricGroup().withName(ns.prefix("visible_destination_group")));
+    SdkClients.adminClient()
+        .metrics()
+        .patch(
+            moved.getId(),
+            JSON.createArrayNode()
+                .add(
+                    JSON.createObjectNode()
+                        .put("op", "add")
+                        .put("path", "/metricGroup")
+                        .set("value", JSON.valueToTree(visibleGroup.getEntityReference()))));
+
+    // The admin listing is the barrier: it proves the move recorded the hidden group, so its
+    // absence below is the visibility rule and not a change that was never stored.
+    assertTrue(getGroupMembers(visibleGroup, 10, 0).toString().contains(hiddenGroup.getName()));
+
+    Consumer<OpenMetadataClient> readMembers =
+        reader -> {
+          JsonNode members =
+              JSON.valueToTree(
+                  reader
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          GROUPS_PATH + "/" + visibleGroup.getId() + "/metrics?limit=10&offset=0",
+                          null,
+                          Object.class));
+          assertEquals(moved.getId().toString(), members.path("data").get(0).path("id").asText());
+          assertFalse(members.toString().contains(hiddenGroup.getName()));
+        };
+    withRestrictedReader(ns, List.of(METRIC, METRIC_GROUP), readMembers);
+    withRestrictedReader(ns, List.of(METRIC_GROUP), readMembers);
+  }
+
   private static void withRestrictedMetricEditor(
       TestNamespace ns, Consumer<OpenMetadataClient> assertions) {
+    withRestrictedUser(
+        ns,
+        List.of(MetadataOperation.CREATE, MetadataOperation.VIEW_ALL, MetadataOperation.EDIT_ALL),
+        List.of(METRIC, METRIC_GROUP),
+        List.of(MetadataOperation.EDIT_ALL),
+        assertions);
+  }
+
+  /** A reader who views the catalog except the tagged entities of {@code hiddenResources}. */
+  private static void withRestrictedReader(
+      TestNamespace ns, List<String> hiddenResources, Consumer<OpenMetadataClient> assertions) {
+    List<MetadataOperation> viewOperations =
+        List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL);
+    withRestrictedUser(ns, viewOperations, hiddenResources, viewOperations, assertions);
+  }
+
+  /**
+   * Runs {@code assertions} as a user allowed {@code allowed} on every resource and denied {@code
+   * denied} on the {@code restrictedResources} entities tagged {@link #RESTRICTED_TAG_FQN}.
+   */
+  private static void withRestrictedUser(
+      TestNamespace ns,
+      List<MetadataOperation> allowed,
+      List<String> restrictedResources,
+      List<MetadataOperation> denied,
+      Consumer<OpenMetadataClient> assertions) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String suffix = ns.uniqueShortId();
     Rule allowCatalog =
         new Rule()
-            .withName("AllowMetricGroupWrites")
+            .withName("AllowCatalog")
             .withResources(List.of(ALL_RESOURCES))
-            .withOperations(
-                List.of(
-                    MetadataOperation.CREATE,
-                    MetadataOperation.VIEW_ALL,
-                    MetadataOperation.EDIT_ALL))
+            .withOperations(allowed)
             .withEffect(Rule.Effect.ALLOW);
-    Rule denyRestrictedMetricEdits =
+    Rule denyRestricted =
         new Rule()
-            .withName("DenyRestrictedMetricEdits")
-            .withResources(List.of(METRIC, METRIC_GROUP))
-            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withName("DenyRestricted")
+            .withResources(restrictedResources)
+            .withOperations(denied)
             .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
             .withEffect(Rule.Effect.DENY);
     Policy policy =
@@ -1230,18 +1509,18 @@ public class MetricGroupResourceIT {
             .policies()
             .create(
                 new CreatePolicy()
-                    .withName("metricGroupWritePolicy_" + suffix)
-                    .withRules(List.of(allowCatalog, denyRestrictedMetricEdits)));
+                    .withName("metricGroupRestrictedPolicy_" + suffix)
+                    .withRules(List.of(allowCatalog, denyRestricted)));
     try {
       Role role =
           admin
               .roles()
               .create(
                   new CreateRole()
-                      .withName("metricGroupWriteRole_" + suffix)
+                      .withName("metricGroupRestrictedRole_" + suffix)
                       .withPolicies(List.of(policy.getFullyQualifiedName())));
       try {
-        String userName = "metric-group-writer-" + suffix;
+        String userName = "metric-group-restricted-" + suffix;
         String email = userName + "@test.openmetadata.org";
         User user =
             admin

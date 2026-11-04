@@ -19,6 +19,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -90,12 +91,14 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
@@ -107,6 +110,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
@@ -984,7 +988,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_database")), fieldCaptor.capture(), updateCaptor.capture());
     assertEquals("service.id", fieldCaptor.getValue().getLeft());
     assertEquals("service-id", fieldCaptor.getValue().getRight());
@@ -995,25 +999,31 @@ class SearchRepositoryBehaviorTest {
   void propagateInheritedFieldsToChildrenUpdatesDomainChildrenAndDataProductsSeparately()
       throws IOException {
     EntityInterface<?> domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER);
+    doReturn(List.of(owner)).when(domainEntity).getOwners();
     ChangeDescription changeDescription =
         changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_OWNERS).withNewValue(List.of(owner))),
             List.of(),
-            List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_DISPLAY_NAME)
-                    .withOldValue("Old Domain")
-                    .withNewValue("New Domain")),
             List.of());
 
     repository.propagateInheritedFieldsToChildren(
         Entity.DOMAIN, "domain-id", changeDescription, DOMAIN_MAPPING, domainEntity);
 
+    // The reconciled, synchronous variant: the relabel pass that follows rewrites the same data
+    // products, and two concurrent passes over a document drop one of the writes.
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_domain_search_index")), any(Pair.class), any(Pair.class));
+            eq(List.of("cluster_domain_search_index")),
+            eq("parent.id"),
+            eq(List.of("domain-id")),
+            any(Pair.class));
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
+            eq(List.of("cluster_data_product_search_index")),
+            eq("domains.id"),
+            eq(List.of("domain-id")),
+            any(Pair.class));
   }
 
   @Test
@@ -1100,7 +1110,8 @@ class SearchRepositoryBehaviorTest {
         table);
 
     verify(searchClient)
-        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+        .updateChildrenInBackground(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
     ArgumentCaptor<Pair<String, String>> parentMatchCaptor = ArgumentCaptor.forClass(Pair.class);
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
@@ -1169,12 +1180,16 @@ class SearchRepositoryBehaviorTest {
             List.of(),
             List.of());
 
-    invokePrivateMethod(
-        repo,
-        "syncTableColumns",
-        new Class<?>[] {Table.class, ChangeDescription.class},
-        table,
-        tagChange);
+    try (MockedStatic<SearchUtils> search =
+        mockStatic(SearchUtils.class, Mockito.CALLS_REAL_METHODS)) {
+      search.when(SearchUtils::isAccessControlEnabled).thenReturn(false);
+      invokePrivateMethod(
+          repo,
+          "syncTableColumns",
+          new Class<?>[] {Table.class, ChangeDescription.class},
+          table,
+          tagChange);
+    }
     repo.propagateInheritedFieldsToChildren(
         Entity.TABLE, tableId.toString(), tagChange, TABLE_MAPPING, table);
 
@@ -1189,7 +1204,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> tagUpdateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_tableColumn")),
             eq(new ImmutablePair<>("table.id", tableId.toString())),
             tagUpdateCaptor.capture());
@@ -1198,6 +1213,52 @@ class SearchRepositoryBehaviorTest {
         (List<TagLabel>) tagUpdateCaptor.getValue().getValue().get("tagAdded");
     assertEquals(1, inheritedTags.size());
     assertEquals(TagLabel.LabelType.DERIVED, inheritedTags.getFirst().getLabelType());
+  }
+
+  /**
+   * Under search access control a column entry's policyTags carry its table's tags, which the tag
+   * cascade does not maintain, so a tags-only change rebuilds the entries.
+   */
+  @Test
+  void tableTagOnlyChangeRebuildsColumnDocsUnderSearchAccessControl() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    UUID tableId = UUID.randomUUID();
+    Table table =
+        new Table()
+            .withId(tableId)
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withFullyQualifiedName("svc.db.schema.orders.amount")
+                        .withDataType(ColumnDataType.INT)))
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+    ChangeDescription tagChange =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue("[]")),
+            List.of(),
+            List.of());
+
+    try (MockedStatic<SearchUtils> search =
+        mockStatic(SearchUtils.class, Mockito.CALLS_REAL_METHODS)) {
+      search.when(SearchUtils::isAccessControlEnabled).thenReturn(true);
+      invokePrivateMethod(
+          repo,
+          "syncTableColumns",
+          new Class<?>[] {Table.class, ChangeDescription.class},
+          table,
+          tagChange);
+    }
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<Map<String, String>>> docs = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_column_search_index"), docs.capture());
+    JsonNode columnDoc = JsonUtils.readTree(docs.getValue().getFirst().values().iterator().next());
+    assertEquals("PII.Sensitive", columnDoc.path("policyTags").path(0).asText());
   }
 
   /**
@@ -1297,6 +1358,8 @@ class SearchRepositoryBehaviorTest {
     repository.propagateEntityAfterRetry(table, staleDelta);
 
     verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+    verify(searchClient, never())
+        .updateChildrenInBackground(any(List.class), any(Pair.class), any(Pair.class));
   }
 
   @Test
@@ -1336,7 +1399,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
     Map<String, Object> params = updatesCaptor.getValue().getValue();
     assertEquals(
@@ -1380,7 +1443,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
 
     assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
     String entityChildScript = updatesCaptor.getValue().getLeft();
@@ -1426,7 +1490,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient, times(2))
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, Map<String, Object>> paramsByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
       paramsByTargets.put(
@@ -1478,7 +1543,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient, times(2))
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, List<TagLabel>> addedByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
       addedByTargets.put(
@@ -1523,7 +1589,8 @@ class SearchRepositoryBehaviorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
-    verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
+    verify(searchClient)
+        .updateChildrenInBackground(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
 
     assertEquals(
         List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
@@ -3162,10 +3229,11 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateToRelatedEntitiesUpdatesGlossaryTagFqnsAndDisplayNames() {
-    EntityInterface<?> glossaryTerm =
-        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+  @SuppressWarnings("unchecked")
+  void propagateToRelatedEntitiesRelabelsGlossaryTermCopiesWithoutPrefixRewrite() {
+    EntityInterface<?> glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Income");
     when(glossaryTerm.getFullyQualifiedName()).thenReturn("BusinessGlossary.Income");
+    when(glossaryTerm.getDisplayName()).thenReturn("Income Display");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -3184,19 +3252,20 @@ class SearchRepositoryBehaviorTest {
     repository.propagateToRelatedEntities(
         Entity.GLOSSARY_TERM, changeDescription, TABLE_MAPPING, glossaryTerm);
 
-    verify(searchClient)
-        .updateByFqnPrefix(
-            SearchClient.GLOBAL_SEARCH_ALIAS,
-            "BusinessGlossary.Revenue",
-            "BusinessGlossary.Income",
-            "tags.tagFQN");
+    // The term's updater rewrites the tag FQNs on assets; the prefix script that used to run here
+    // also substring-replaced the assets' own FQNs.
+    verify(searchClient, never()).updateByFqnPrefix(any(), any(), any(), any());
+    ArgumentCaptor<Pair<String, Map<String, Object>>> update = ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
             eq(SearchClient.GLOBAL_SEARCH_ALIAS),
             eq(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "tags.tagFQN", "BusinessGlossary.Income")),
-            any(Pair.class));
+            update.capture());
+    assertEquals(
+        Map.of(Entity.FIELD_DISPLAY_NAME, "Income Display"),
+        update.getValue().getValue().get("updates"));
   }
 
   @Test
@@ -3218,7 +3287,38 @@ class SearchRepositoryBehaviorTest {
     when(pipelineStatus.getExecutionStatus())
         .thenReturn(org.openmetadata.schema.type.StatusType.Successful);
 
-    repository.bulkIndexPipelineExecutions(pipeline, List.of(pipelineStatus));
+    UUID ownerId = UUID.randomUUID();
+    UUID pipelineId = pipeline.getId();
+    Pipeline withAccessFields =
+        new Pipeline()
+            .withId(pipelineId)
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline")
+            .withService(service)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType
+                    .Airflow)
+            .withOwners(List.of(new EntityReference().withId(ownerId).withType(Entity.USER)))
+            .withDomains(List.of())
+            .withTags(List.of());
+    when(pipeline.getEntityReference())
+        .thenReturn(new EntityReference().withId(pipelineId).withType(Entity.PIPELINE));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, Mockito.CALLS_REAL_METHODS)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntity(
+                      Entity.PIPELINE,
+                      pipelineId,
+                      PipelineExecutionIndex.ACCESS_FIELDS,
+                      Include.ALL))
+          .thenReturn(withAccessFields);
+      entity
+          .when(() -> Entity.getEntityTags(Entity.PIPELINE, withAccessFields))
+          .thenReturn(List.of());
+      repository.bulkIndexPipelineExecutions(pipeline, List.of(pipelineStatus));
+    }
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
@@ -3227,8 +3327,9 @@ class SearchRepositoryBehaviorTest {
     assertEquals(1, docsCaptor.getValue().size());
     String docId = docsCaptor.getValue().getFirst().keySet().iterator().next();
     assertEquals("service.pipeline_run-1_100", docId);
-    assertTrue(
-        docsCaptor.getValue().getFirst().values().iterator().next().contains("\"runtime\":60"));
+    String doc = docsCaptor.getValue().getFirst().values().iterator().next();
+    assertTrue(doc.contains("\"runtime\":60"));
+    assertTrue(doc.contains(ownerId.toString()), "the run carries its pipeline's owners: " + doc);
   }
 
   @Test
@@ -3747,6 +3848,9 @@ class SearchRepositoryBehaviorTest {
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
 
     when(openSearchClient.getNewClient()).thenReturn(rawClient);
+    lenient()
+        .when(openSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(embeddingClient.getDimension()).thenReturn(1536);
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
@@ -3790,6 +3894,9 @@ class SearchRepositoryBehaviorTest {
     ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
 
     when(elasticSearchClient.getNewClient()).thenReturn(rawClient);
+    lenient()
+        .when(elasticSearchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(embeddingClient.getDimension()).thenReturn(1536);
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
@@ -4053,7 +4160,8 @@ class SearchRepositoryBehaviorTest {
       propagationOrder.verify(bulkSink).close();
       propagationOrder
           .verify(searchClient)
-          .updateChildren(eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
+          .updateChildrenInBackground(
+              eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
       verify(searchClient, never())
           .updateEntity(any(String.class), eq(serviceId), any(), any(String.class));
       retryQueue.verifyNoInteractions();
@@ -4197,7 +4305,8 @@ class SearchRepositoryBehaviorTest {
       repository.updateEntitiesIndex(List.of(failedService, successfulService));
 
       ArgumentCaptor<Pair<String, String>> parentMatch = ArgumentCaptor.forClass(Pair.class);
-      verify(searchClient).updateChildren(any(List.class), parentMatch.capture(), any(Pair.class));
+      verify(searchClient)
+          .updateChildrenInBackground(any(List.class), parentMatch.capture(), any(Pair.class));
       assertEquals(successfulService.getId().toString(), parentMatch.getValue().getValue());
       verify(bulkSinks.constructed().getFirst()).close();
       retryQueue.verify(

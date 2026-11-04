@@ -235,7 +235,7 @@ jest.mock(
       updateFeed: jest.fn(),
     }),
     __esModule: true,
-    default: ({ children }) => <>{children}</>,
+    default: ({ children }: React.PropsWithChildren) => <>{children}</>,
   })
 );
 
@@ -310,6 +310,26 @@ jest.mock(
       .fn()
       .mockImplementation(() => <div>AssetSelectionModal</div>),
   })
+);
+
+const mockGenericProvider = jest.fn();
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => {
+    const actual = jest.requireActual(
+      '../../components/Customization/GenericProvider/GenericProvider'
+    );
+
+    return {
+      ...actual,
+      GenericProvider: (props: { permissions: unknown }) => {
+        mockGenericProvider(props.permissions);
+
+        return actual.GenericProvider(props);
+      },
+    };
+  }
 );
 
 describe('TagPage', () => {
@@ -473,6 +493,49 @@ describe('TagPage', () => {
       expect(
         screen.queryByTestId('data-classification-add-button')
       ).not.toBeInTheDocument();
+    });
+
+    it('denies owner and domain edits on a disabled tag even with EditDomains', async () => {
+      setMockTagPermissions({
+        EditAll: true,
+        EditOwners: true,
+        EditDomains: true,
+      });
+      (getTagByFqn as jest.Mock).mockResolvedValueOnce({
+        id: 'tag-id',
+        name: 'NonSensitive',
+        fullyQualifiedName: 'PII.NonSensitive',
+        disabled: true,
+      });
+
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockGenericProvider).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            EditAll: false,
+            EditOwners: false,
+            EditDomains: false,
+          })
+        );
+      });
+    });
+
+    it('keeps an explicit EditDomains deny on an enabled tag with EditAll', async () => {
+      setMockTagPermissions({ EditAll: true, EditDomains: false });
+      (getTagByFqn as jest.Mock).mockResolvedValueOnce({
+        id: 'tag-id',
+        name: 'NonSensitive',
+        fullyQualifiedName: 'PII.NonSensitive',
+      });
+
+      render(<TagPage />);
+
+      await waitFor(() => {
+        expect(mockGenericProvider).toHaveBeenLastCalledWith(
+          expect.objectContaining({ EditAll: true, EditDomains: false })
+        );
+      });
     });
   });
 });

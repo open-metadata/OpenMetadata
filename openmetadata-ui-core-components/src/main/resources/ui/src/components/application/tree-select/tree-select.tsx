@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, Search, XClose } from '../../../icons';
+import {
+  ChevronDown,
+  Folder,
+  NoSearch,
+  RefreshCw01,
+  Search,
+  XClose,
+} from '../../../icons';
 import {
   DropdownSearchField,
   DropdownStagedFooter,
@@ -19,6 +26,7 @@ import {
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
+  type MouseEvent,
   type ReactElement,
   type RefObject,
   useCallback,
@@ -32,10 +40,12 @@ import {
 import { FocusScope } from 'react-aria';
 import type { Key, Selection } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
@@ -893,9 +903,14 @@ export const TreeSelect = <T = unknown,>({
   const resolvedNoDataMessage = noDataMessage ?? t('label.no-data-found');
   const resolvedLoadingMessage = loadingMessage ?? t('label.loading');
 
+  // A cascade root only groups its descendants, which are already counted. In
+  // any other tree a root is a real pick, e.g. a top-level domain.
   const displayedSelectedCount = useMemo(
-    () => selectedData.filter((n) => !stableRootIds.has(n.id)).length,
-    [selectedData, stableRootIds]
+    () =>
+      cascadeSelection
+        ? selectedData.filter((n) => !stableRootIds.has(n.id)).length
+        : selectedData.length,
+    [cascadeSelection, selectedData, stableRootIds]
   );
 
   const selectableNodes = useMemo(
@@ -1003,9 +1018,13 @@ export const TreeSelect = <T = unknown,>({
     <div
       className="tw:contents"
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
-      ref={popoverRef}>
+      ref={popoverRef}
+      // Portaled, but still a React child of the trigger: keys typed here must
+      // not reach an ancestor menu's arrow-key and typeahead handlers.
+      onKeyDown={(event) => event.stopPropagation()}>
       {usesDropdownChrome && searchable && (
         <DropdownSearchField
+          autoFocus={isCustomTrigger}
           inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
           placeholder={searchPlaceholder ?? t('label.search')}
           value={inputValue}
@@ -1043,7 +1062,15 @@ export const TreeSelect = <T = unknown,>({
             {resolvedLoadingMessage}
           </div>
         ) : filteredTreeData.length === 0 ? (
-          <div className="tw:px-4 tw:py-2 tw:text-center tw:text-xs tw:text-tertiary">
+          <div
+            className="tw:flex tw:flex-col tw:items-center tw:gap-2 tw:px-4 tw:py-4 tw:text-center tw:text-xs tw:text-tertiary"
+            data-testid="tree-select-empty">
+            <FeaturedIcon
+              color="gray"
+              icon={searchTerm ? NoSearch : Folder}
+              size="sm"
+              theme="modern"
+            />
             {resolvedNoDataMessage}
           </div>
         ) : (
@@ -1175,7 +1202,7 @@ export const TreeSelect = <T = unknown,>({
           <Button
             className={cx(
               'tw:whitespace-nowrap',
-              !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              !bordered && 'tw:p-1',
               hasSelection && selectedTriggerClassName(bordered),
               triggerClassName
             )}
@@ -1227,7 +1254,7 @@ export const TreeSelect = <T = unknown,>({
             openTrigger();
             inputRef.current?.focus();
           }}>
-          <Search className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
+          <Search className="tw:shrink-0 tw:text-fg-quaternary" size={20} />
 
           {renderSelectedItem
             ? visibleNodes.map((node) => (
@@ -1244,17 +1271,16 @@ export const TreeSelect = <T = unknown,>({
                 <p className="tw:max-w-40 tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
                   {node.label}
                 </p>
-                <button
+                <ButtonUtility
                   aria-label={`${t('label.remove')} ${node.label}`}
-                  className="tw:flex tw:cursor-pointer tw:rounded-[3px] tw:p-0.5 tw:text-fg-quaternary tw:outline-transparent tw:transition tw:duration-100 tw:ease-linear tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:cursor-not-allowed"
-                  disabled={disabled}
-                  type="button"
-                  onClick={(event) => {
+                  icon={XClose}
+                  isDisabled={disabled}
+                  size="xs"
+                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
                     event.stopPropagation();
                     removeSelection(node.id);
-                  }}>
-                  <XClose className="tw:size-2.5" strokeWidth={3} />
-                </button>
+                  }}
+                />
               </span>
             ))}
 

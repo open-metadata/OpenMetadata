@@ -47,15 +47,17 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { AddCustomPropertyFormValues } from '../../../discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesPanel.types';
-import { toCustomPropertyPayload } from '../../../discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
-import CustomPropertyFormFields from '../../../discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertyFormFields';
+import { AddCustomPropertyFormValues } from '../../../discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesPanel.types';
+import { toCustomPropertyPayload } from '../../../discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesPanel.utils';
+import CustomPropertyFormFields from '../../../discovery/personal-space/Profile/tabs/custom-properties/CustomPropertyFormFields';
 
 interface AddCustomPropertyProps {
   onCancel?: () => void;
   onSubmit?: (data: CustomProperty) => void;
   loading?: boolean;
   entityType?: EntityType;
+  /** The entity type already loaded by the caller; skips fetching it again. */
+  typeDetail?: Type;
   open?: boolean;
   onClose?: () => void;
 }
@@ -72,6 +74,7 @@ const AddCustomProperty = ({
   onSubmit,
   loading,
   entityType: entityTypeProp,
+  typeDetail: typeDetailProp,
   open,
   onClose,
   onCancel,
@@ -87,7 +90,12 @@ const AddCustomProperty = ({
   const entityType = entityTypeProp ?? entityTypeParam;
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [typeDetail, setTypeDetail] = useState<Type>();
+  const [fetchedTypeDetail, setTypeDetail] = useState<Type>();
+  const typeDetail = typeDetailProp ?? fetchedTypeDetail;
+  const existingNames = useMemo(
+    () => typeDetail?.customProperties?.map(({ name }) => name),
+    [typeDetail]
+  );
   const [propertyTypes, setPropertyTypes] = useState<Type[]>([]);
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -173,10 +181,10 @@ const AddCustomProperty = ({
   const submit = form.handleSubmit(handleFormSubmit);
 
   useEffect(() => {
-    if (entityType) {
+    if (entityType && !typeDetailProp) {
       fetchTypeDetail(entityType);
     }
-  }, [entityType]);
+  }, [entityType, typeDetailProp]);
 
   useEffect(() => {
     fetchPropertyType();
@@ -200,6 +208,7 @@ const AddCustomProperty = ({
         onSubmit={submit}>
         <CustomPropertyFormFields
           descriptionKey={descriptionKey}
+          existingNames={existingNames}
           form={form}
           propertyTypes={propertyTypes}
           typeAddon={
@@ -222,10 +231,10 @@ const AddCustomProperty = ({
           }
         />
         {isUndefined(open) && (
-          <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-row" gap={3} justify="end" wrap="wrap">
             <Box className="layout-column tw:block">
               <Button
-                color="link-color"
+                color="secondary"
                 data-testid="back-button"
                 onClick={handleCancel}>
                 {t('label.back')}

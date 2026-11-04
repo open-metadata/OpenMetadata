@@ -29,6 +29,7 @@ import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState, type Key } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
 import { PersonaCustomizePageFqn } from '../../../../constants/Customize.constants';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -36,6 +37,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';
@@ -84,7 +86,15 @@ export const CustomizablePageHeader = ({
   const requestExit = useCallback(
     (id: string) => {
       if (!chrome) {
-        navigate(getPersonaDetailsPath(personaFqn));
+        // In AI mode this route is only reached from the home page's Customize
+        // button, so close returns there. A settings link would only change the
+        // hash, which NavigationBlocker lets through, opening the settings
+        // modal over unsaved edits; a path change gets the discard prompt.
+        navigate(
+          isAiMode
+            ? ROUTES.HOME
+            : getSettingsLink(getPersonaDetailsPath(personaFqn))
+        );
 
         return;
       }
@@ -94,7 +104,7 @@ export const CustomizablePageHeader = ({
         setPendingExit(id);
       }
     },
-    [chrome, disableSave, navigate, personaFqn]
+    [chrome, disableSave, isAiMode, navigate, personaFqn]
   );
 
   const handleClose = useCallback(
@@ -160,7 +170,7 @@ export const CustomizablePageHeader = ({
       onPress={handleClose}
     />
   ) : (
-    <Link to={getPersonaDetailsPath(personaFqn)} />
+    <Link to={getSettingsLink(getPersonaDetailsPath(personaFqn))} />
   );
 
   const headerActions = (
@@ -169,7 +179,7 @@ export const CustomizablePageHeader = ({
         <Button
           color="primary"
           data-testid="add-widget-button"
-          iconLeading={<Plus />}
+          iconLeading={Plus}
           onPress={onAddWidget}>
           {t('label.add-widget-plural')}
         </Button>
@@ -177,7 +187,7 @@ export const CustomizablePageHeader = ({
       <Button
         color="secondary"
         data-testid="reset-button"
-        iconLeading={<RefreshCcw01 />}
+        iconLeading={RefreshCcw01}
         isDisabled={saving}
         onPress={() => setResetModalOpen(true)}>
         {t('label.reset')}
@@ -192,10 +202,10 @@ export const CustomizablePageHeader = ({
       </Button>
       <ButtonUtility
         aria-label={t('label.cancel')}
-        color="tertiary"
         data-testid="cancel-button"
         icon={XClose}
         isDisabled={saving}
+        size="lg"
         onPress={handleClose}
       />
     </>
@@ -231,10 +241,9 @@ export const CustomizablePageHeader = ({
             />
             <ButtonUtility
               aria-label={t('label.close')}
-              color="tertiary"
               data-testid="customize-minimize-button"
               icon={Minimize01}
-              size="sm"
+              size="lg"
               onPress={handleClose}
             />
           </Box>

@@ -13,7 +13,6 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   EmptyPlaceholderAction,
   Owner,
   Skeleton,
@@ -36,6 +35,8 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -170,6 +171,9 @@ export const TestSuitesTable = ({
   );
 
   const noDataPlaceholder = useMemo(() => {
+    const EmptyStatePlaceholder = hasActiveFilters
+      ? NoFilteredResultsPlaceholder
+      : NoDataPlaceholder;
     let title = t('message.no-table-suites-yet');
     let description = t('message.no-table-suites-yet-description');
 
@@ -183,7 +187,7 @@ export const TestSuitesTable = ({
 
     return (
       <Box className="tw:relative tw:min-h-80 tw:w-full">
-        <EmptyPlaceholder
+        <EmptyStatePlaceholder
           actions={
             !hasActiveFilters &&
             subTab === DataQualitySubTabs.BUNDLE_SUITES &&
@@ -194,7 +198,6 @@ export const TestSuitesTable = ({
           description={description}
           icon={<EmptyTableSuiteIcon className="tw:text-fg-brand-primary" />}
           title={title}
-          variant="blank"
         />
       </Box>
     );

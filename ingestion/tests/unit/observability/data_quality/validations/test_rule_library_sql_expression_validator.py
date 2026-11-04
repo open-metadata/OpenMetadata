@@ -377,8 +377,10 @@ class TestPandasValidatorRunResults:
 
         pandas_validator.runner = [df1]
 
+        # The expression is syntactically safe so it passes is_safe_pandas_query and
+        # reaches DataFrame.query, whose error must propagate
         with pytest.raises(Exception, match="Query error"):
-            pandas_validator._run_results("invalid query")
+            pandas_validator._run_results("age >= 18")
 
 
 class TestCompileSqlExpressionSandbox:

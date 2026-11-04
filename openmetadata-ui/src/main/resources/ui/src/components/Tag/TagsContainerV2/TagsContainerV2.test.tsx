@@ -533,7 +533,7 @@ const emitGlossaryChange = (terms: TagLabel[]) => {
     throw new Error('GlossaryTermPicker was never rendered');
   }
 
-  return onChange(terms);
+  return onChange(terms, terms);
 };
 
 const renderGlossaryContainer = (props: {
@@ -780,5 +780,44 @@ describe('TagsContainerV2 entityFqn propagation to TagsViewer', () => {
       'data-entity-fqn',
       'sample.db.schema.table'
     );
+  });
+});
+
+describe('TagsContainerV2 table cell action row', () => {
+  const renderTableCell = (selectedTags: EntityTags[]) =>
+    render(
+      <MemoryRouter>
+        <TagsContainerV2
+          permission
+          showBottomEditButton
+          entityFqn="sample.db.schema.table"
+          entityType="table"
+          selectedTags={selectedTags}
+          tagType={TagSource.Classification}>
+          <span data-testid="task-icons" />
+        </TagsContainerV2>
+      </MemoryRouter>
+    );
+
+  it('renders the add button in the same row as the task icons when there are no tags', () => {
+    renderTableCell([]);
+
+    const taskIcons = screen.getByTestId('task-icons');
+
+    expect(screen.getByTestId('add-tag').closest('.w-full.d-flex')).toBe(
+      taskIcons.parentElement
+    );
+    expect(screen.queryByTestId('entity-tags')).toBeNull();
+  });
+
+  it('renders the edit button in the same row as the task icons when tags exist', () => {
+    renderTableCell([personalDataTag]);
+
+    const taskIcons = screen.getByTestId('task-icons');
+
+    expect(screen.getByTestId('edit-button').closest('.w-full.d-flex')).toBe(
+      taskIcons.parentElement
+    );
+    expect(screen.queryByTestId('add-tag')).toBeNull();
   });
 });

@@ -13,11 +13,9 @@
 
 import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
-import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
-import { sidebarClick } from '../utils/sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
 
 export interface GraphTermRef {
@@ -43,7 +41,6 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
 }
 
 export async function navigateToOntologyStudio(page: Page) {
-  await redirectToHomePage(page);
   const glossaryResponse = waitForResponseWithStatus(
     page,
     (response) =>
@@ -53,11 +50,13 @@ export async function navigateToOntologyStudio(page: Page) {
     { timeout: ACTION_TIMEOUT }
   );
 
-  await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
-  await page.getByTestId('ontology-scope-menu-trigger').click();
-  await page.getByTestId('ontology-scope-all-glossaries').click();
+  await page.goto('/governance/ontology?scope=glossary:all');
   await glossaryResponse;
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await expect(page.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+    'data-scope-key',
+    'glossary:all'
+  );
 }
 
 export async function waitForGraphLoaded(page: Page) {

@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -40,11 +41,13 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
@@ -130,6 +133,68 @@ class FilterEntityImplTest {
     assertTrue(passesFilter(), "A change to a non-excluded field must fire");
   }
 
+  @Test
+  void eventPath_judgesTheChangeOfTheVersionTheEventProduced() {
+    UUID id = UUID.randomUUID();
+    givenEntity(glossary().withId(id).withVersion(0.3).withChangeDescription(changeOf("tags")));
+    givenHistory(id, "0.2", glossary().withId(id).withChangeDescription(changeOf("description")));
+    when(execution.getVariable("global_triggeringVersion")).thenReturn(0.2);
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertFalse(
+        passesFilter(),
+        "The event's own description-only change must not fire, whatever came next");
+  }
+
+  @Test
+  void eventPath_atTheEventsVersion_judgesTheEntitysChange() {
+    givenEntity(glossary().withVersion(0.2).withChangeDescription(changeOf("tags")));
+    when(execution.getVariable("global_triggeringVersion")).thenReturn(0.2);
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "At the event's version the entity's own change is the event's");
+  }
+
+  // ---- No change to judge: only a create may carry none ----
+
+  @Test
+  void eventPath_createWithNoChange_fires() {
+    givenEntity(glossary().withChangeDescription(null));
+    triggeredBy(EventType.ENTITY_CREATED);
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "A create carries no change and fires");
+  }
+
+  @Test
+  void eventPath_updateThatLeftNoChange_doesNotFire() {
+    // An edit undone within its session reverts the entity to a version with no change, and a
+    // follow never stores one: the update has nothing for include/exclude to judge.
+    givenEntity(glossary().withChangeDescription(null));
+    triggeredBy(EventType.ENTITY_UPDATED);
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertFalse(passesFilter(), "An update with no change to judge must not fire");
+  }
+
+  @Test
+  void eventPath_runWithoutEventType_keepsPassingWithNoChange() {
+    givenEntity(glossary().withChangeDescription(null));
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "A run started before the event type was recorded keeps passing");
+  }
+
   // ---- Change-request path: admitted at submission, routed only to the reviewing workflow ----
 
   @Test
@@ -176,10 +241,22 @@ class FilterEntityImplTest {
         .thenReturn(glossary);
   }
 
+  @SuppressWarnings("unchecked")
+  private void givenHistory(UUID id, String version, Glossary atVersion) {
+    EntityRepository<Glossary> repository = mock(EntityRepository.class);
+    when(repository.getVersion(id, version)).thenReturn(atVersion);
+    mockedEntity.when(() -> Entity.getEntityTypeFromObject(any())).thenReturn("glossary");
+    mockedEntity.when(() -> Entity.getEntityRepository("glossary")).thenReturn(repository);
+  }
+
   private void changeRequestFor(String workflowName) {
     when(execution.getVariable("global_changeRequestId")).thenReturn(UUID.randomUUID().toString());
     when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
     when(execution.getVariable("global_changeRequestWorkflow")).thenReturn(workflowName);
+  }
+
+  private void triggeredBy(EventType eventType) {
+    when(execution.getVariable("global_triggeringEventType")).thenReturn(eventType.value());
   }
 
   private void exclude(String... fields) {
