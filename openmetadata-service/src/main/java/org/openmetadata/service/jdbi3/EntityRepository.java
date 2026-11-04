@@ -15147,11 +15147,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           authorizeDomainWrite(
               original, entity, ChangeActor.recorded(userName, null), Edit.Kind.PUT);
 
+          evaluatePutRulesDeferredUntilInherited(original, entity);
           if (Boolean.TRUE.equals(original.getDeleted())) {
             restoreEntity(entity.getUpdatedBy(), original.getId());
           }
 
-          evaluatePutRulesDeferredUntilInherited(original, entity);
           EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
           updater.setOverrideMetadata(overrideMetadata);
           updater.updateWithDeferredStore();

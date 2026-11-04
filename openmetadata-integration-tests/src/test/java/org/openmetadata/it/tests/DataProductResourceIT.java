@@ -1212,6 +1212,36 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     assertTrue(hasDataProduct(stored.getDataProducts(), sameProduct.getId()));
   }
 
+  /** A bulk PUT the rules reject leaves a soft-deleted table deleted, as a single PUT does. */
+  @Test
+  void test_bulkPutRejectedByTheRulesDoesNotRestoreADeletedTable(TestNamespace ns)
+      throws Exception {
+    Domain domain = createTestDomain(ns, "domain_bulk_restore");
+    Domain other = createTestDomain(ns, "other_bulk_restore");
+    var schema = createSchemaWithDomain(ns, "schema_bulk_restore", domain);
+    Table table = createChildTable(ns, "table_bulk_restore", schema, null);
+    DataProduct otherProduct = createFinanceDataProduct(ns, "dp_bulk_restore_other", other);
+    SdkClients.adminClient()
+        .tables()
+        .delete(table.getId().toString(), Map.of("hardDelete", "false"));
+
+    BulkOperationResult rejected =
+        SdkClients.adminClient()
+            .tables()
+            .bulkCreateOrUpdate(
+                List.of(
+                    new CreateTable()
+                        .withName(table.getName())
+                        .withDatabaseSchema(schema.getFullyQualifiedName())
+                        .withDataProducts(List.of(otherProduct.getFullyQualifiedName()))));
+
+    assertEquals(1, rejected.getNumberOfRowsFailed(), JsonUtils.pojoToJson(rejected));
+    Table stored =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts", "deleted");
+    assertTrue(Boolean.TRUE.equals(stored.getDeleted()), "The rejected item must stay deleted");
+    assertFalse(hasDataProduct(stored.getDataProducts(), otherProduct.getId()));
+  }
+
   /** Inheriting owners onto the patched copy must not store the schema's owner on the table. */
   @Test
   void test_removingDirectOwnerFallsBackToInheritedOwnerWithoutStoringIt(TestNamespace ns)
