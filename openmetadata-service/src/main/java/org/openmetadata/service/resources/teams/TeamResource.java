@@ -86,6 +86,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -577,6 +578,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Valid CreateTeam ct) {
     Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
     rejectImpersonatedGrant(containerRequestContext, team);
+    if (team.getDefaultPersona() != null) {
+      authorizeDefaultPersonaChange(securityContext, containerRequestContext);
+    }
     return create(uriInfo, securityContext, team);
   }
 
@@ -602,6 +606,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Valid CreateTeam ct) {
     Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
     rejectImpersonatedGrant(containerRequestContext, team);
+    if (grantsDefaultPersona(team)) {
+      authorizeDefaultPersonaChange(securityContext, containerRequestContext);
+    }
     return createOrUpdate(uriInfo, securityContext, team);
   }
 
@@ -788,6 +795,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                       }))
           JsonPatch patch) {
     rejectImpersonatedGrant(containerRequestContext, patch);
+    authorizeDefaultPersonaPatch(securityContext, containerRequestContext, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -819,7 +827,58 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                       }))
           JsonPatch patch) {
     rejectImpersonatedGrant(containerRequestContext, patch);
+    authorizeDefaultPersonaPatch(securityContext, containerRequestContext, patch);
     return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
+  private static final String DEFAULT_PERSONA_FIELD = "defaultPersona";
+  private static final String DEFAULT_PERSONA_PATCH_PATH = "/" + DEFAULT_PERSONA_FIELD;
+
+  // Members of a Group inherit its default persona, and holding a persona opens its AI context, so
+  // only an admin sets it (ADR:2026-11-03-only-admins-assign-personas). EditAll on the team cannot
+  // stand in for that: the owner rule allows the owner of a team every operation on it. A
+  // root-level operation (path "") replaces the whole document, so it covers the field too. A move
+  // or copy also touches its "from" location
+  // (ADR:2026-11-03-a-patch-is-authorized-at-every-location-it-touches).
+  private void authorizeDefaultPersonaPatch(
+      SecurityContext securityContext,
+      ContainerRequestContext containerRequestContext,
+      JsonPatch patch) {
+    boolean touchesDefaultPersona =
+        JsonPatchUtils.touchedLocations(patch).stream()
+            .anyMatch(
+                location -> location.isEmpty() || location.startsWith(DEFAULT_PERSONA_PATCH_PATH));
+    if (touchesDefaultPersona) {
+      authorizeDefaultPersonaChange(securityContext, containerRequestContext);
+    }
+  }
+
+  // The persona outlives the request, so an impersonated admin cannot hand it out either:
+  // ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges
+  private void authorizeDefaultPersonaChange(
+      SecurityContext securityContext, ContainerRequestContext containerRequestContext) {
+    if (SecurityUtil.isImpersonated(containerRequestContext.getSecurityContext())) {
+      throw new AuthorizationException("Impersonated requests cannot set a team's default persona");
+    }
+    authorizer.authorizeAdmin(securityContext);
+  }
+
+  // True when the request names a default persona the stored team does not already have. PUT
+  // carries the whole document, so upserts that re-send the current persona pass, and leaving it
+  // out hands nothing out.
+  private boolean grantsDefaultPersona(Team team) {
+    if (team.getDefaultPersona() == null) {
+      return false;
+    }
+    repository.setFullyQualifiedName(team);
+    Team stored = repository.findByNameOrNull(team.getFullyQualifiedName(), Include.ALL);
+    EntityReference current =
+        stored == null
+            ? null
+            : repository
+                .get(null, stored.getId(), getFields(DEFAULT_PERSONA_FIELD), Include.ALL, false)
+                .getDefaultPersona();
+    return current == null || !current.getId().equals(team.getDefaultPersona().getId());
   }
 
   @DELETE
@@ -1131,7 +1190,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
    */
   private static void rejectImpersonatedGrant(
       ContainerRequestContext requestContext, JsonPatch patch) {
-    if (UserResource.isImpersonated(requestContext)
+    if (SecurityUtil.isImpersonated(requestContext.getSecurityContext())
         && JsonPatchUtils.touchedLocations(patch).stream()
             .anyMatch(TeamResource::isGrantLocation)) {
       throw new AuthorizationException(IMPERSONATED_GRANT_CHANGE);
@@ -1140,7 +1199,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   /** A create or a PUT is judged against the stored team, when there is one. */
   private void rejectImpersonatedGrant(ContainerRequestContext requestContext, Team written) {
-    if (UserResource.isImpersonated(requestContext)
+    if (SecurityUtil.isImpersonated(requestContext.getSecurityContext())
         && changesGrants(storedGrants(written.getName()), written)) {
       throw new AuthorizationException(IMPERSONATED_GRANT_CHANGE);
     }

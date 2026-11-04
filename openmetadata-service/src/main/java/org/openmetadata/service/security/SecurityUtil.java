@@ -94,6 +94,11 @@ public final class SecurityUtil {
     return principal == null ? null : principal.getName();
   }
 
+  public static boolean isImpersonated(SecurityContext securityContext) {
+    return securityContext instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null;
+  }
+
   public static String getImpersonatedByUser(SecurityContext securityContext) {
     if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
       return catalogSecurityContext.impersonatedUser() != null
