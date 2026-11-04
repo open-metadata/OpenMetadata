@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TFunctionKeys } from 'i18next';
+import { ParseKeys } from 'i18next';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 
@@ -74,7 +74,7 @@ export const TAB_LABEL_MAP = {
   [EntityTabs.RELATIONS_GRAPH]: 'label.relations-graph',
   [EntityTabs.DATA_OBSERVABILITY]: 'label.data-observability',
   [EntityTabs.APPROVAL]: 'label.approval',
-} as Record<EntityTabs, TFunctionKeys>;
+} satisfies Partial<Record<EntityTabs, ParseKeys>>;
 
 export type CustomizeEntityType =
   | EntityType.TABLE

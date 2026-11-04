@@ -113,7 +113,7 @@ const MarketplaceAppBody: FC<{
   return (
     <Box className="tw:px-8 tw:pb-8" direction="col" gap={8}>
       {appData.enabled === false && (
-        <Card data-testid="install-blocked-alert" size="sm">
+        <Card data-testid="install-blocked-alert" size="sm" variant="muted">
           <Card.Content>
             <Typography className="tw:text-secondary" size="text-sm">
               {blockedReasonNode}
@@ -128,7 +128,7 @@ const MarketplaceAppBody: FC<{
       )}
 
       <Section testId="app-overview" title={t('label.overview')}>
-        <Card size="md">
+        <Card size="md" variant="muted">
           <Card.Content>
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
@@ -139,7 +139,7 @@ const MarketplaceAppBody: FC<{
       </Section>
 
       <Section testId="app-details" title={t('label.detail-plural')}>
-        <Card size="md">
+        <Card size="md" variant="muted">
           <DetailRow
             description={t('message.marketplace-verify-msg')}
             label={t('label.publisher')}
@@ -159,7 +159,7 @@ const MarketplaceAppBody: FC<{
 
       {resources.length > 0 && (
         <Section testId="app-resources" title={t('label.resource-plural')}>
-          <Card size="md">
+          <Card size="md" variant="muted">
             <Grid gap="0">
               {resources.map((resource) => (
                 <Grid.Item

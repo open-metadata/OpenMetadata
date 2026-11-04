@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **812**.
+Total project tokens: **794**.
 
 ## Spacing (50)
 
@@ -69,7 +69,7 @@ Shared viewport and shell-derived dimensions.
 
 | Token | Value |
 | --- | --- |
-| `--om-page-height` | `calc(100vh - var(--ant-navbar-height, 80px))` |
+| `--om-page-height` | `calc(100vh - var(--navbar-height, 80px))` |
 
 ## Radius (23)
 
@@ -101,13 +101,12 @@ border-radius. See foundations/radius.md.
 | `--om-radius-xl` | `12px` |
 | `--om-radius-xs` | `2px` |
 
-## Font size (23)
+## Font size (21)
 
 font-size. See foundations/typography.md.
 
 | Token | Value |
 | --- | --- |
-| `--om-font-size-8` | `8px` |
 | `--om-font-size-9` | `9px` |
 | `--om-font-size-10` | `10px` |
 | `--om-font-size-11` | `11px` |
@@ -116,7 +115,6 @@ font-size. See foundations/typography.md.
 | `--om-font-size-13` | `13px` |
 | `--om-font-size-15` | `15px` |
 | `--om-font-size-15_2` | `15.2px` |
-| `--om-font-size-22` | `22px` |
 | `--om-font-size-32` | `32px` |
 | `--om-font-size-55` | `55px` |
 | `--om-font-size-display-2xl` | `72px` |
@@ -182,7 +180,7 @@ box-shadow. See foundations/elevation.md.
     0px 8px 8px -4px rgba(10, 13, 18, 0.03)` |
 | `--om-shadow-xs` | `0px 1px 2px rgba(10, 13, 18, 0.05)` |
 
-## z-index (27)
+## z-index (25)
 
 stacking. Prefer the semantic ladder for new work.
 
@@ -198,10 +196,8 @@ stacking. Prefer the semantic ladder for new work.
 | `--om-z-20` | `20` |
 | `--om-z-50` | `50` |
 | `--om-z-400` | `400` |
-| `--om-z-900` | `900` |
 | `--om-z-999` | `999` |
 | `--om-z-1001` | `1001` |
-| `--om-z-1500` | `1500` |
 | `--om-z-9001` | `9001` |
 | `--om-z-9999` | `9999` |
 | `--om-z-base` | `0` |
@@ -691,11 +687,11 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (184)
+## Legacy colors (170)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 184</summary>
+<details><summary>Show all 170</summary>
 
 | Token | Value |
 | --- | --- |
@@ -706,13 +702,10 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-0-0-0-0-05` | `rgba(0, 0, 0, 0.05)` |
 | `--om-legacy-color-0-0-0-0-5` | `rgba(0, 0, 0, 0.5)` |
 | `--om-legacy-color-0-0-0-0-06` | `rgba(0, 0, 0, 0.06)` |
-| `--om-legacy-color-0-0-0-0-6` | `rgba(0, 0, 0, 0.6)` |
 | `--om-legacy-color-0-0-0-0-8` | `rgba(0, 0, 0, 0.8)` |
 | `--om-legacy-color-0-0-0-0-9` | `rgba(0, 0, 0, 0.9)` |
 | `--om-legacy-color-0-0-0-0-12` | `rgba(0, 0, 0, 0.12)` |
 | `--om-legacy-color-0-0-0-0-15` | `rgba(0, 0, 0, 0.15)` |
-| `--om-legacy-color-0-0-0-0-25` | `rgba(0, 0, 0, 0.25)` |
-| `--om-legacy-color-0-0-0-0-102` | `#0000001a` |
 | `--om-legacy-color-0c5460` | `#0c5460` |
 | `--om-legacy-color-1f67e9` | `#1f67e9` |
 | `--om-legacy-color-1f242f` | `#1f242f` |
@@ -729,14 +722,9 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-7f56d9` | `#7f56d9` |
 | `--om-legacy-color-008a00` | `#008a00` |
 | `--om-legacy-color-8a5cf0` | `#8a5cf0` |
-| `--om-legacy-color-8c8c8c` | `#8c8c8c` |
 | `--om-legacy-color-9-80-197-0-05` | `rgba(9, 80, 197, 0.05)` |
-| `--om-legacy-color-10-13-18-0-04` | `rgba(10, 13, 18, 0.04)` |
 | `--om-legacy-color-10-13-18-0-05` | `rgba(10, 13, 18, 0.05)` |
 | `--om-legacy-color-10-13-18-0-08` | `rgba(10, 13, 18, 0.08)` |
-| `--om-legacy-color-10-13-18-0-051` | `#0a0d120d` |
-| `--om-legacy-color-10-13-18-0-059` | `#0a0d120f` |
-| `--om-legacy-color-10-13-18-0-102` | `#0a0d121a` |
 | `--om-legacy-color-13c2c2` | `#13c2c2` |
 | `--om-legacy-color-15-15-15-0-1` | `rgba(15, 15, 15, 0.1)` |
 | `--om-legacy-color-15-23-42-0-06` | `rgba(15, 23, 42, 0.06)` |
@@ -788,7 +776,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-373e44` | `#373e44` |
 | `--om-legacy-color-721c24` | `#721c24` |
 | `--om-legacy-color-754ddb` | `#754ddb` |
-| `--om-legacy-color-1677ff` | `#1677ff` |
 | `--om-legacy-color-1890ff` | `#1890ff` |
 | `--om-legacy-color-2563eb` | `#2563eb` |
 | `--om-legacy-color-3793ff` | `#3793ff` |
@@ -802,7 +789,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-111827` | `#111827` |
 | `--om-legacy-color-155724` | `#155724` |
 | `--om-legacy-color-515151` | `#515151` |
-| `--om-legacy-color-595959` | `#595959` |
 | `--om-legacy-color-666666` | `#666666` |
 | `--om-legacy-color-757575` | `#757575` |
 | `--om-legacy-color-777777` | `#777` |
@@ -822,14 +808,12 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-d4d4d8` | `#d4d4d8` |
 | `--om-legacy-color-d5d6d9` | `#d5d6d9` |
 | `--om-legacy-color-d9ceee` | `#d9ceee` |
-| `--om-legacy-color-d9d9d9` | `#d9d9d9` |
 | `--om-legacy-color-d93025` | `#d93025` |
 | `--om-legacy-color-d99600` | `#d99600` |
 | `--om-legacy-color-dadada` | `#dadada` |
 | `--om-legacy-color-dbe4ff` | `#dbe4ff` |
 | `--om-legacy-color-dce3ec` | `rgb(220, 227, 236)` |
 | `--om-legacy-color-dddddd` | `#ddd` |
-| `--om-legacy-color-dde3ea` | `#dde3ea` |
 | `--om-legacy-color-e1e4e8` | `#e1e4e8` |
 | `--om-legacy-color-e2dfd4` | `#e2dfd4` |
 | `--om-legacy-color-e3d9f8` | `#e3d9f8` |
@@ -854,8 +838,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-f2f1f5` | `#f2f1f5` |
 | `--om-legacy-color-f3effc` | `#f3effc` |
 | `--om-legacy-color-f3f7fd` | `#f3f7fd` |
-| `--om-legacy-color-f3f8ff` | `#f3f8ff` |
-| `--om-legacy-color-f4f0fd` | `#f4f0fd` |
 | `--om-legacy-color-f4f7f9` | `#f4f7f9` |
 | `--om-legacy-color-f4f7ff` | `#f4f7ff` |
 | `--om-legacy-color-f5c6cb` | `#f5c6cb` |

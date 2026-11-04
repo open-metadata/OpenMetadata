@@ -732,6 +732,32 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  /**
+   * EntityResource.createOrUpdate prepares an entity before it authorizes the PUT, and
+   * DataContractRepository.prepare creates, edits or deletes the contract's test suite, so a
+   * contract PUT is authorized first. The generic checks still run after prepare. A request whose
+   * entity reference is missing, incomplete or of an unsupported type is left to prepare, which
+   * refuses it before it writes anything.
+   */
+  @Override
+  public Response createOrUpdate(
+      UriInfo uriInfo, SecurityContext securityContext, DataContract dataContract) {
+    if (hasSupportedTarget(dataContract.getEntity())) {
+      repository.setFullyQualifiedName(dataContract);
+      ResourceContext<DataContract> stored =
+          getResourceContextByName(dataContract.getFullyQualifiedName());
+      authorizeContractWrite(securityContext, dataContract, (DataContract) stored.getEntity());
+    }
+    return super.createOrUpdate(uriInfo, securityContext, dataContract);
+  }
+
+  private boolean hasSupportedTarget(EntityReference target) {
+    return target != null
+        && target.getId() != null
+        && target.getType() != null
+        && repository.isEntityTypeSupported(target.getType());
+  }
+
   private DataContract getDataContract(CreateDataContract create, String user) {
     return DataContractMapper.createEntity(create, user);
   }
@@ -783,20 +809,25 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    final long start = startTs != null ? startTs : 0L;
+    final long end = endTs != null ? endTs : System.currentTimeMillis();
     List<String> jsonResults =
-        timeSeriesDAO.listBetweenTimestampsByOrder(
-            dataContract.getFullyQualifiedName(),
-            "dataContract.dataContractResult",
-            startTs != null ? startTs : 0L,
-            endTs != null ? endTs : System.currentTimeMillis(),
-            EntityTimeSeriesDAO.OrderBy.DESC);
+        limitParam > 0
+            ? timeSeriesDAO.listBetweenTimestampsByOrderWithLimit(
+                dataContract.getFullyQualifiedName(),
+                "dataContract.dataContractResult",
+                start,
+                end,
+                EntityTimeSeriesDAO.OrderBy.DESC,
+                limitParam)
+            : timeSeriesDAO.listBetweenTimestampsByOrder(
+                dataContract.getFullyQualifiedName(),
+                "dataContract.dataContractResult",
+                start,
+                end,
+                EntityTimeSeriesDAO.OrderBy.DESC);
 
     List<DataContractResult> results = JsonUtils.readObjects(jsonResults, DataContractResult.class);
-
-    // Apply limit
-    if (limitParam > 0 && results.size() > limitParam) {
-      results = results.subList(0, limitParam);
-    }
 
     return new ResultList<>(
         results, String.valueOf(startTs), String.valueOf(endTs), results.size());
@@ -1002,18 +1033,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    // Get the effective contract (with inherited properties from data products) for validation
     EntityInterface<?> entity =
         Entity.getEntity(
             dataContract.getEntity().getType(),
             dataContract.getEntity().getId(),
             "*",
             Include.NON_DELETED);
-    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
+    DataContract effectiveContract = repository.getEffectiveDataContract(entity, dataContract);
 
-    // Use the effective contract for validation to include inherited semantics
     RestUtil.PutResponse<DataContractResult> result =
-        repository.validateContract(effectiveContract != null ? effectiveContract : dataContract);
+        repository.validateContractWithEffective(dataContract, effectiveContract);
     return result.toResponse();
   }
 

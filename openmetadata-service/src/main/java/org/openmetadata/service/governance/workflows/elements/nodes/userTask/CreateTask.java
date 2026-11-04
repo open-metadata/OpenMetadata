@@ -222,7 +222,13 @@ public class CreateTask implements TaskListener {
       // the task on the first resolution that moves it.
       boolean catalogCounts =
           reviewsChangeRequest(delegateTask) && reviewPolicy.getPartialDecisions();
-      delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : approvalThreshold);
+      int taskApprovalThreshold =
+          resolveApprovalThreshold(
+              WorkflowVariableResolver.stringVariable(
+                  delegateTask, WorkflowStartVariables.APPROVAL_MODE),
+              approvalThreshold,
+              task.getAssignees());
+      delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : taskApprovalThreshold);
       delegateTask.setVariable("rejectionThreshold", catalogCounts ? 1 : rejectionThreshold);
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
@@ -784,7 +790,7 @@ public class CreateTask implements TaskListener {
     return task;
   }
 
-  private void supersedePriorApprovalTask(
+  void supersedePriorApprovalTask(
       DelegateTask delegateTask,
       TaskRepository taskRepository,
       EntityInterface<?> entity,
@@ -801,9 +807,12 @@ public class CreateTask implements TaskListener {
         // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
         // null).
         String requesterToMatch = reviewsChangeRequest(delegateTask) ? updatedBy : null;
-        taskRepository
-            .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
-            .stream()
+        List<Task> priors =
+            reviewsStaleRevision(delegateTask)
+                ? List.of()
+                : taskRepository.listNonTerminalTasksByEntityAndCategory(
+                    entity.getFullyQualifiedName(), taskCategory);
+        priors.stream()
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(
@@ -956,6 +965,19 @@ public class CreateTask implements TaskListener {
           priorTaskId,
           prior == null ? null : prior.getStatus());
     }
+  }
+
+  /**
+   * The approval threshold a new task starts with. Under {@link
+   * WorkflowStartVariables#APPROVAL_MODE_ALL_ASSIGNEES} every assignee entry must approve, so the
+   * node's threshold is raised to the entry count; a team is one entry, covered by any member.
+   * Every other mode keeps the node's threshold.
+   */
+  static int resolveApprovalThreshold(
+      String approvalMode, int nodeThreshold, List<EntityReference> assignees) {
+    return WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES.equals(approvalMode)
+        ? Math.max(nodeThreshold, assignees == null ? 0 : assignees.size())
+        : nodeThreshold;
   }
 
   static List<EntityReference> resolveExistingTaskAssignees(
@@ -1220,6 +1242,17 @@ public class CreateTask implements TaskListener {
   }
 
   // Whether this run reviews a change request: such a run carries the request in its variables.
+  // A change request's runs can finish out of order. The run of a revision the request has since
+  // replaced must leave the newer revision's live review alone; attachTask then closes its own
+  // task.
+  static boolean reviewsStaleRevision(DelegateTask delegateTask) {
+    return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask))
+        .filter(
+            run ->
+                !ChangeRequestService.isActiveRevision(run.changeRequestId(), run.revisionNumber()))
+        .isPresent();
+  }
+
   private static boolean reviewsChangeRequest(DelegateTask delegateTask) {
     return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask)).isPresent();
   }

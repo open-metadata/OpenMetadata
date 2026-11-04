@@ -30,6 +30,7 @@ interface UserAssetCardListProps {
   hasMore: boolean;
   onLoadMore: () => void;
   onSelect: (source: SearchSourceAlias) => void;
+  cardVariant?: 'default' | 'muted';
 }
 
 const UserAssetCardList: React.FC<UserAssetCardListProps> = ({
@@ -39,17 +40,19 @@ const UserAssetCardList: React.FC<UserAssetCardListProps> = ({
   hasMore,
   onLoadMore,
   onSelect,
+  cardVariant = 'default',
 }) => {
   const { t } = useTranslation();
 
   return (
     <Box
-      className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pb-1"
+      className="tw:-mx-1 tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-1 tw:pt-1 tw:pb-1"
       data-testid="user-assets-list"
       direction="col"
       gap={3}>
       {assets.map((asset) => (
         <UserAssetCard
+          cardVariant={cardVariant}
           isSelected={asset.id === selectedId}
           key={asset.id}
           source={asset}

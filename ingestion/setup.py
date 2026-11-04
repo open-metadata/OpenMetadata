@@ -81,7 +81,7 @@ VERSIONS = {
     "elasticsearch": "elasticsearch>=8.19.3,<9",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
-    "teradata": "teradatasqlalchemy==20.0.0.2",
+    "teradata": "teradatasqlalchemy==20.0.0.9",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
@@ -372,8 +372,11 @@ plugins: dict[str, set[str]] = {
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
-        "adbc-driver-flightsql",
-        "adbc-driver-manager",
+        # ADBC 1.13 requires Python >=3.11; retain 1.12 for Python 3.10 compatibility.
+        "adbc-driver-flightsql==1.12.0; python_version < '3.11'",
+        "adbc-driver-flightsql>=1.13.0; python_version >= '3.11'",
+        "adbc-driver-manager==1.12.0; python_version < '3.11'",
+        "adbc-driver-manager>=1.13.0; python_version >= '3.11'",
     },
     "impala": {
         "presto-types-parser>=0.0.2",
@@ -474,7 +477,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["validators"],
         VERSIONS["packaging"],
     },
-    "teradata": {VERSIONS["teradata"]},
+    "teradata": {VERSIONS["teradata"], "teradatasql>=20.0.0.72"},
     "trino": {VERSIONS["trino"], DATA_DIFF["trino"]},
     "vertica": {VERSIONS["sqlalchemy-vertica"], DATA_DIFF["vertica"]},
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)

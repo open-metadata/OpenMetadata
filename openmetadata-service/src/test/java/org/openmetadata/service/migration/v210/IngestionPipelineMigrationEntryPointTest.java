@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -32,6 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -48,8 +50,10 @@ import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMig
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
+import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
+import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
 class IngestionPipelineMigrationEntryPointTest {
 
@@ -60,6 +64,9 @@ class IngestionPipelineMigrationEntryPointTest {
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    EventSubscriptionDAO eventSubscriptionDAO = mock(EventSubscriptionDAO.class);
+    when(collectionDAO.eventSubscriptionDAO()).thenReturn(eventSubscriptionDAO);
+    when(eventSubscriptionDAO.listAllEventsSubscriptions()).thenReturn(List.of());
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     when(handle.createQuery(anyString()).mapTo(String.class).list()).thenReturn(List.of());
     setField(migration, "handle", handle);
@@ -72,6 +79,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(ConversationReferenceMigration.class);
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<OntologyMigration> ontologyMigration = mockStatic(OntologyMigration.class);
+        MockedStatic<OntologyConceptBindingMigration> bindingMigration =
+            mockStatic(OntologyConceptBindingMigration.class);
         MockedStatic<DataContractEntityReferenceMigration> dataContractMigration =
             mockStatic(DataContractEntityReferenceMigration.class);
         MockedStatic<CustomPropertyReferenceMigration> referenceMigration =
@@ -93,10 +102,15 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
             mockStatic(GlossaryAutomationReviewMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
-        // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
+        MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
+            mockStatic(WorkflowRedeployMigration.class);
+        // v206, v207 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
-                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class)) {
+                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class);
+        MockedStatic<org.openmetadata.service.migration.utils.v207.MigrationUtil>
+            v207MigrationUtil =
+                mockStatic(org.openmetadata.service.migration.utils.v207.MigrationUtil.class)) {
       migration.runDataMigration();
 
       deltaLakeRetirement.verify(
@@ -108,6 +122,8 @@ class IngestionPipelineMigrationEntryPointTest {
           "MySQL".equals(database) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
       referenceMigration.verify(
           () -> CustomPropertyReferenceMigration.migrate(handle, collectionDAO, connectionType));
+      bindingMigration.verify(
+          () -> OntologyConceptBindingMigration.copyConceptBindingsToRows(handle, connectionType));
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
@@ -116,10 +132,17 @@ class IngestionPipelineMigrationEntryPointTest {
           () ->
               org.openmetadata.service.migration.utils.v206.MigrationUtil
                   .addContractAndStatusToActivityFeedAlert(handle));
-      // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
-      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
+      if (connectionType == ConnectionType.MYSQL) {
+        v207MigrationUtil.verify(
+            () ->
+                org.openmetadata.service.migration.utils.v207.MigrationUtil
+                    .addMcpConsentColumnsOnMySql(handle));
+      }
+      // `migrate` runs before Flowable starts, so each step that deploys a workflow starts it.
+      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
+      workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
     }
   }
 

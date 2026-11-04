@@ -134,7 +134,8 @@ const Reactions: FC<ReactionsProps> = ({
     <div
       className={classNames(
         'tw:inline-flex tw:items-center',
-        isPill(variant) ? 'tw:gap-1.5' : 'tw:gap-2'
+        // Many reactions wrap onto a second row rather than past the card.
+        isPill(variant) ? 'tw:flex-wrap tw:gap-1.5' : 'tw:gap-2'
       )}
       data-testid="feed-reaction-container">
       {emojis}

@@ -15,11 +15,11 @@ import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { FC, Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 
-export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
-  props: ObjectFieldTemplateProps
+export const ProfilerObjectFieldTemplate = <T,>(
+  props: ObjectFieldTemplateProps<T>
 ) => {
   const { t } = useTranslation();
 

@@ -62,8 +62,8 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { useFillViewportHeight } from '../../hooks/useFillViewportHeight';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
@@ -335,7 +335,7 @@ const ExploreExportScopeModal = ({
           </Dialog.Content>
           <Dialog.Footer className="tw:mt-0 tw:border-secondary tw:sm:mt-0 tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
             <Button
-              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
+              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--theme-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--theme-primary-color-hover)]"
               color="tertiary"
               data-testid="export-scope-cancel-button"
               onPress={onCancel}>
@@ -395,6 +395,8 @@ const ExploreFilterStatusRow = ({
   onEditQueryFilter,
   t,
 }: ExploreFilterStatusRowProps) => {
+  const isAiMode = useIsAiMode();
+
   return (
     <>
       {shouldShowQueryFilterChips && (
@@ -411,7 +413,8 @@ const ExploreFilterStatusRow = ({
             onRemoveBrowseLevel={handleRemoveBrowseLevel}
             onRemoveValue={handleRemoveQuickFilterValue}
           />
-          <DomainFilterChip className="tw:mt-2" />
+          {/* AI mode shows the chip in its search header. */}
+          {!isAiMode && <DomainFilterChip className="tw:mt-2" />}
         </div>
       )}
       {isElasticSearchIssue ? (
@@ -438,6 +441,7 @@ interface ExploreResultsPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
+  additionalSearchResults?: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -462,6 +466,7 @@ interface ExploreResultsListPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
+  additionalSearchResults?: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -483,6 +488,7 @@ const ExploreResultsListPanel = ({
   loading,
   isElasticSearchIssue,
   searchResults,
+  additionalSearchResults,
   parsedSearch,
   handleSummaryPanelDisplay,
   hasActiveFilters,
@@ -500,6 +506,7 @@ const ExploreResultsListPanel = ({
     <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
       <CoreCard className="tw:min-h-0 tw:flex-1 tw:rounded-b-none tw:border-b-0 tw:border-utility-gray-blue-100 tw:dark:border-subtle">
         <div className="tw:h-full tw:overflow-y-auto tw:p-5">
+          {additionalSearchResults}
           {!loading && !isElasticSearchIssue ? (
             <SearchedData
               data={searchResults?.hits.hits ?? []}
@@ -538,6 +545,7 @@ const ExploreResultsPanel = ({
   loading,
   isElasticSearchIssue,
   searchResults,
+  additionalSearchResults,
   parsedSearch,
   handleSummaryPanelDisplay,
   hasActiveFilters,
@@ -559,6 +567,7 @@ const ExploreResultsPanel = ({
       className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
       colGap={3}>
       <ExploreResultsListPanel
+        additionalSearchResults={additionalSearchResults}
         entityDetails={entityDetails}
         handleExplorePageChange={handleExplorePageChange}
         handleExplorePageSizeChange={handleExplorePageSizeChange}
@@ -608,6 +617,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   activeTabKey,
   tabItems = [],
   searchResults,
+  additionalSearchResults,
   showRankingDetails = false,
   onChangeShowRankingDetails,
   onChangeAdvancedSearchQuickFilters,
@@ -631,7 +641,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onTreeSelect = noop,
 }) => {
   const { t, i18n } = useTranslation();
-  const panelsRef = useFillViewportHeight<HTMLDivElement>();
   // getTabsInfo() bakes translated labels into its result, so recompute on a
   // language switch rather than freezing the first language for the mount.
   const tabsInfo = useMemo(
@@ -1250,7 +1259,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
-      <CoreCard className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle">
+      <CoreCard
+        className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle"
+        data-tour-step="explore-search">
         <div className="tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
           {/* Zero flex-basis: with flex-wrap, a max-content basis would place
               the sort controls on their own row before shrinking is even
@@ -1391,7 +1402,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       </CoreCard>
 
-      <div ref={panelsRef}>
+      <div className="content-height-with-resizable-panel">
         <ResizableLeftPanels
           showLearningIcon
           className="tw:h-full"
@@ -1410,6 +1421,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             minWidth: 800,
             children: (
               <ExploreResultsPanel
+                additionalSearchResults={additionalSearchResults}
                 entityDetails={entityDetails}
                 firstEntity={firstEntity}
                 handleClosePanel={handleClosePanel}

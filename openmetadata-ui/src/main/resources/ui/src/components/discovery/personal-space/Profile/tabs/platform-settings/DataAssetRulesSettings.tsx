@@ -93,7 +93,7 @@ const DataAssetRulesSettings = () => {
 
   return (
     <Box data-testid="data-asset-rules-settings" direction="col">
-      <TableCard.Root size="compact">
+      <TableCard.Root size="compact" variant="muted">
         <Table
           aria-label={t('label.data-asset-rules')}
           data-testid="data-asset-rules-table"

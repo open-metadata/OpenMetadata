@@ -65,8 +65,6 @@ interface LineageNodeLabelProps {
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
   actions?: ReactNode;
-  /** Colour of the clickable title; the base node uses link-primary. */
-  titleColor?: 'link-gray' | 'link-primary';
 }
 
 const getFooterChildrenCount = (node: LineageNodeType) =>
@@ -100,11 +98,7 @@ const EntityLabel = ({
   actions,
   node,
   onEntityClick,
-  titleColor = 'link-gray',
-}: Pick<
-  LineageNodeLabelProps,
-  'actions' | 'node' | 'onEntityClick' | 'titleColor'
->) => {
+}: Pick<LineageNodeLabelProps, 'actions' | 'node' | 'onEntityClick'>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -187,7 +181,7 @@ const EntityLabel = ({
               <Button
                 ellipsis
                 className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0"
-                color={titleColor}
+                color="link-primary"
                 size="sm"
                 onClick={onEntityClick}>
                 {entityName}
@@ -390,7 +384,6 @@ const LineageNodeLabelV1 = ({
   actions,
   node,
   onEntityClick,
-  titleColor,
   isChildrenListExpanded,
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
@@ -401,7 +394,6 @@ const LineageNodeLabelV1 = ({
       <EntityLabel
         actions={actions}
         node={node}
-        titleColor={titleColor}
         onEntityClick={onEntityClick}
       />
       <EntityFooter

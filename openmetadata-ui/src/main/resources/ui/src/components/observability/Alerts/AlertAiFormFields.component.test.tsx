@@ -963,6 +963,71 @@ describe('AlertAi form field components', () => {
     );
   });
 
+  it('resolves the label of a saved value that arrives after the field mounted, once', async () => {
+    (searchQuery as jest.Mock).mockClear();
+    (searchQuery as jest.Mock).mockImplementation(({ queryFilter }) =>
+      Promise.resolve({
+        hits: {
+          hits: queryFilter
+            ? [
+                {
+                  _source: {
+                    displayName: 'Finance',
+                    fullyQualifiedName: 'finance',
+                  },
+                },
+              ]
+            : [],
+        },
+      })
+    );
+    const valueWith = (input: string[]) =>
+      ({
+        ...baseValue,
+        input: {
+          filters: [
+            {
+              arguments: [{ input, name: 'domainList' }],
+              effect: Effect.Include,
+              name: 'matchAnyDomain',
+            },
+          ],
+        },
+      } as ModifiedCreateEventSubscription);
+    const renderField = (input: string[]) => (
+      <RuleArgumentField
+        argument="domainList"
+        field="filters"
+        index={0}
+        name={0}
+        sourceSearch={makeSourceSearch()}
+        value={valueWith(input)}
+        onChange={jest.fn()}
+      />
+    );
+
+    const { rerender } = render(renderField([]));
+    await act(async () => {
+      rerender(renderField(['finance']));
+    });
+
+    expect(
+      screen.getByTestId('domainList-autocomplete-clear-finance')
+    ).toHaveTextContent('Finance');
+
+    await act(async () => {
+      rerender(renderField(['finance']));
+    });
+
+    const lookups = (searchQuery as jest.Mock).mock.calls.filter(
+      ([request]) => request.queryFilter
+    );
+
+    expect(lookups).toHaveLength(1);
+
+    (searchQuery as jest.Mock).mockReset();
+  });
+
   it('renders fixed runtime options with the fqn autocomplete contract', () => {
     const onChange = jest.fn();
     const selectedRule: ArgumentsInput = {
@@ -2105,6 +2170,12 @@ describe('AlertAi form field components', () => {
 
     it("keeps a legacy-shaped alert's rules listed when its sources change", () => {
       const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+      const formValue: ModifiedCreateEventSubscription = {
+        ...seeded,
+        domains: seeded.domains?.map(
+          (domain) => domain.fullyQualifiedName ?? domain.id
+        ),
+      };
       const onChange = jest.fn();
 
       render(
@@ -2113,7 +2184,7 @@ describe('AlertAi form field components', () => {
           shouldShowFiltersSection
           alert={seeded}
           selection={selectionOf()}
-          value={seeded}
+          value={formValue}
           onChange={onChange}
         />
       );
@@ -2122,7 +2193,7 @@ describe('AlertAi form field components', () => {
         target: { value: 'pipeline' },
       });
 
-      expect(applyLastUpdater(onChange, seeded)).toEqual(
+      expect(applyLastUpdater(onChange, formValue)).toEqual(
         expect.objectContaining({
           input: seeded.input,
           resources: ['table', 'pipeline'],

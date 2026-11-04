@@ -38,6 +38,7 @@ import { Team } from '../../../generated/entity/teams/team';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/entity/type';
 import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import type { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget/CustomPropertiesWidget.interface';
 
 export type ExtentionEntities = {
@@ -65,6 +66,7 @@ export type ExtentionEntities = {
   [EntityType.WORKSHEET]: Worksheet;
   [EntityType.TEAM]: Team;
   [EntityType.USER]: User;
+  [EntityType.KNOWLEDGE_PAGE]: KnowledgePage;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;

@@ -265,9 +265,8 @@ test.describe('Task Workflow Tests', () => {
             assignees: [regularUser.responseData.name],
           },
         });
-        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBeTruthy();
 
-        // Login as regular user (who is the assignee)
         const page = await browser.newPage();
         await regularUser.signIn(page);
 

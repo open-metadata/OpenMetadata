@@ -71,9 +71,15 @@ public final class MockSamlIdp {
 
   /** A signed, base64 SAML Response for {@code subjectEmail}, ready to POST as {@code SAMLResponse}. */
   public String signedResponse(String subjectEmail, String acsUrl, String spEntityId) {
+    return signedResponse(subjectEmail, acsUrl, spEntityId, Instant.now());
+  }
+
+  /** As above, issued at {@code issuedAt}; its validity window is five minutes either side. */
+  public String signedResponse(
+      String subjectEmail, String acsUrl, String spEntityId, Instant issuedAt) {
     String result;
     try {
-      Document doc = Util.loadXML(buildResponseXml(subjectEmail, acsUrl, spEntityId));
+      Document doc = Util.loadXML(buildResponseXml(subjectEmail, acsUrl, spEntityId, issuedAt));
       // Message-level (Response) signature: addSign signs the document root and returns the whole
       // signed document. onelogin unconditionally requires a valid Response- or Assertion-level
       // signature, so this is sufficient when the SP's want_assertions_signed is left false.
@@ -91,15 +97,17 @@ public final class MockSamlIdp {
   public String unsignedResponse(String subjectEmail, String acsUrl, String spEntityId) {
     String result;
     try {
-      result = Util.base64encoder(buildResponseXml(subjectEmail, acsUrl, spEntityId));
+      result =
+          Util.base64encoder(buildResponseXml(subjectEmail, acsUrl, spEntityId, Instant.now()));
     } catch (Exception e) {
       throw new IllegalStateException("Failed to build unsigned SAML response", e);
     }
     return result;
   }
 
-  private String buildResponseXml(String subjectEmail, String acsUrl, String spEntityId) {
-    Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+  private String buildResponseXml(
+      String subjectEmail, String acsUrl, String spEntityId, Instant issuedAt) {
+    Instant now = issuedAt.truncatedTo(ChronoUnit.SECONDS);
     String issueInstant = DateTimeFormatter.ISO_INSTANT.format(now);
     String notBefore = DateTimeFormatter.ISO_INSTANT.format(now.minus(5, ChronoUnit.MINUTES));
     String notOnOrAfter = DateTimeFormatter.ISO_INSTANT.format(now.plus(5, ChronoUnit.MINUTES));

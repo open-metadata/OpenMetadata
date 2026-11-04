@@ -166,9 +166,7 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
 
   return (
     <Table
-      bordered
       columns={columns}
-      currentPage={currentPage}
       dataSource={records}
       loading={isLoading}
       locale={{
@@ -181,20 +179,18 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
           </Box>
         ),
       }}
-      pageSize={pageSize}
       pagination={{
         total: paging.total,
         pageSize,
         current: currentPage,
         showSizeChanger: true,
         pageSizeOptions: ['10', '15', '25', '50'],
-        onChange: (page) =>
-          handlePageChangeHandler({ currentPage: page, cursorType: '' }),
+        onChange: (page) => handlePageChangeHandler({ currentPage: page }),
         onShowSizeChange: (_, size) => handlePageSizeChange(size),
       }}
-      paginationVisible={records.length > 0 && paging.total > pageSize}
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}
       size="small"
+      variant="muted"
     />
   );
 };

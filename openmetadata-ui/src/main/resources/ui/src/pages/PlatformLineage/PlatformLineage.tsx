@@ -28,6 +28,7 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DataAssetAsyncSelectList from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
@@ -326,48 +327,62 @@ const PlatformLineage = () => {
     isAiMode,
   ]);
 
+  // `/lineage` with no entity is the platform-wide view; the focused variant
+  // names the entity it is centred on.
+  const pageTitle = decodedFqn
+    ? t('label.entity-lineage', {
+        entity: getEntityName(selectedEntity) || decodedFqn,
+      })
+    : t('label.lineage');
+
+  const configModal = (
+    <LineageConfigModal
+      config={lineageConfig}
+      visible={dialogVisible}
+      onCancel={() => setDialogVisible(false)}
+      onSave={handleDialogSave}
+    />
+  );
+
+  if (isAiMode) {
+    return (
+      <PageLayout data-testid="platform-lineage-page">
+        <DocumentTitle title={pageTitle} />
+        {header}
+        <PageLayout.Content className="tw:pt-4">
+          <div className="platform-lineage-container platform-lineage-container-fill">
+            {lineageElement}
+          </div>
+        </PageLayout.Content>
+        {configModal}
+      </PageLayout>
+    );
+  }
+
   return (
-    <PageLayoutV1
-      pageTitle={
-        // `/lineage` with no entity is the platform-wide view; the focused
-        // variant names the entity it is centred on.
-        decodedFqn
-          ? t('label.entity-lineage', {
-              entity: getEntityName(selectedEntity) || decodedFqn,
-            })
-          : t('label.lineage')
-      }>
+    <PageLayoutV1 pageTitle={pageTitle}>
       <Grid rowGap="2">
-        {isAiMode ? (
-          <Grid.Item span={24}>{header}</Grid.Item>
-        ) : (
-          <Grid.Item span={24}>
-            <Card size="sm">
-              <Card.Content>
-                <PageHeader
-                  data={{
-                    header: title,
-                    subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
-                  }}
-                  learningPageId={LEARNING_PAGE_IDS.LINEAGE}
-                  title={t('label.lineage')}
-                />
-              </Card.Content>
-            </Card>
-          </Grid.Item>
-        )}
+        <Grid.Item span={24}>
+          <Card size="sm">
+            <Card.Content>
+              <PageHeader
+                data={{
+                  header: title,
+                  subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
+                }}
+                learningPageId={LEARNING_PAGE_IDS.LINEAGE}
+                title={t('label.lineage')}
+              />
+            </Card.Content>
+          </Card>
+        </Grid.Item>
 
         <Grid.Item span={24}>
           <div className="platform-lineage-container">{lineageElement}</div>
         </Grid.Item>
       </Grid>
 
-      <LineageConfigModal
-        config={lineageConfig}
-        visible={dialogVisible}
-        onCancel={() => setDialogVisible(false)}
-        onSave={handleDialogSave}
-      />
+      {configModal}
     </PageLayoutV1>
   );
 };

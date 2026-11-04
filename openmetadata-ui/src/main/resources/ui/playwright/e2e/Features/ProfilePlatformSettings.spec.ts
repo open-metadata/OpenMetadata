@@ -18,6 +18,7 @@ import {
   chooseSelectOption,
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -343,13 +344,16 @@ test.describe(
       await openCard(page, 'email');
 
       await header(page).getByTestId('test-email-button').click();
-      const modal = page.getByTestId('test-email-modal');
-      await expect(modal).toBeVisible();
+      const popover = page.getByTestId('test-email-popover');
+      await expect(popover).toBeVisible();
 
-      await modal.getByTestId('test-email-input').locator('input').fill('nope');
-      await modal.getByTestId('test-email-submit').click();
+      await popover
+        .getByTestId('test-email-input')
+        .locator('input')
+        .fill('nope');
+      await popover.getByTestId('test-email-popover-confirm').click();
 
-      await expect(modal.getByText('Email is invalid.')).toBeVisible();
+      await expect(popover.getByText('Email is invalid.')).toBeVisible();
     });
 
     test('health check: shows every status step and refreshes', async ({
@@ -617,6 +621,61 @@ test.describe(
       );
     });
 
+    test('profiler configuration: "All" metrics excludes every other metric', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(
+        page,
+        'profilerConfiguration',
+        {
+          initial: {
+            metricConfiguration: [
+              { dataType: 'INT', metrics: ['max', 'min'], disabled: false },
+            ],
+            sampleDataConfig: { storeSampleData: false, readSampleData: true },
+          },
+        }
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'profiler-configuration');
+      await expect(page.getByTestId('metric-row-INT')).toContainText('Max');
+      await header(page).getByTestId('edit-button').click();
+
+      const metricSelect = page
+        .getByTestId('metric-row-0')
+        .getByTestId('metric-type-select');
+      const chips = metricSelect.getByTestId('autocomplete-selected-item');
+      const metricInput = metricSelect.getByRole('combobox');
+      const pickMetric = (name: string) =>
+        selectOptionWithRetry(
+          metricInput,
+          page.getByRole('option', { name, exact: true }),
+          () => metricInput.fill(name)
+        );
+
+      await test.step('Picking "All" clears the other metrics', async () => {
+        await pickMetric('All');
+
+        await expect(chips).toHaveCount(1);
+        await expect(chips).toContainText('All');
+      });
+
+      await test.step('Picking a metric clears "All"', async () => {
+        await pickMetric('Max');
+
+        await expect(chips).toHaveCount(1);
+        await expect(chips).toContainText('Max');
+      });
+
+      await saveSettings(page);
+
+      expect(settings.puts[0].config_value).toMatchObject({
+        metricConfiguration: [
+          { dataType: 'INT', metrics: ['max'], disabled: false },
+        ],
+      });
+    });
+
     test('data quality: adds, edits and deletes a custom dimension', async ({
       page,
     }) => {
@@ -665,10 +724,12 @@ test.describe(
         await expect(row).toContainText('PW Renamed');
 
         await page.getByTestId(`delete-${name}`).click();
-        await expect(page.getByTestId('delete-dimension-dialog')).toBeVisible();
+        await expect(
+          page.getByTestId('delete-dimension-popover')
+        ).toBeVisible();
         await clickAndWaitFor(
           page,
-          page.getByTestId('confirm-delete-dimension'),
+          page.getByTestId('delete-dimension-popover-confirm'),
           '**/api/v1/dataQuality/dimensions/*'
         );
         await expect(row).toHaveCount(0);
@@ -806,7 +867,7 @@ test.describe(
         await page.getByTestId(`delete-${name}`).click();
         await clickAndWaitFor(
           page,
-          page.getByTestId('confirm-button'),
+          page.getByTestId('delete-learning-resource-popover-confirm'),
           '**/api/v1/learning/resources/*'
         );
         await expect(row).toHaveCount(0);
@@ -898,13 +959,13 @@ test.describe(
       });
 
       await header(page).getByTestId('reset-search-settings-btn').click();
-      await page.getByTestId('reset-search-settings-dialog-cancel').click();
+      await page.getByTestId('reset-search-settings-popover-cancel').click();
       expect(resets).toBe(0);
 
       await header(page).getByTestId('reset-search-settings-btn').click();
       await clickAndWaitFor(
         page,
-        page.getByTestId('reset-search-settings-dialog-confirm'),
+        page.getByTestId('reset-search-settings-popover-confirm'),
         '**/api/v1/system/settings/reset/searchSettings'
       );
       expect(resets).toBe(1);

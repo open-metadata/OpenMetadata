@@ -25,7 +25,7 @@ export const styles = {
   primary: buttonStyles.colors.primary.root,
   secondary: [
     'tw:bg-surface tw:shadow-xs-skeuomorphic',
-    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:disabled:shadow-xs',
+    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:dark:disabled:bg-disabled tw:disabled:shadow-xs',
     borderAfter,
     'tw:after:outline-primary tw:disabled:after:outline-disabled_subtle',
     neutralIcon,
@@ -62,7 +62,7 @@ const borderless: Partial<Record<keyof typeof styles, keyof typeof styles>> = {
 /**
  * Common props shared between button and anchor variants
  */
-export interface CommonProps {
+export interface CommonProps extends Pick<AriaButtonProps, 'onPress'> {
   /** Disables the button and shows a disabled state */
   isDisabled?: boolean;
   /** The size variant of the button */
