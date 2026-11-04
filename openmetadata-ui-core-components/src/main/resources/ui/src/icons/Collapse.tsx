@@ -17,7 +17,7 @@ interface Props extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const Trash02: FC<Props> = ({
+export const Collapse: FC<Props> = ({
   size = 20,
   color = 'currentColor',
   ...props
@@ -32,11 +32,19 @@ export const Trash02: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
+    <rect
+      height={16}
+      rx={5}
+      stroke="currentColor"
+      strokeWidth={1.3}
+      transform="matrix(-1 0 0 1 18 2)"
+      width={16}
+    />
     <path
-      d="M13.333 5v-.667c0-.933 0-1.4-.182-1.757a1.67 1.67 0 0 0-.728-.728c-.356-.181-.823-.181-1.756-.181H9.334c-.933 0-1.4 0-1.757.182a1.67 1.67 0 0 0-.728.728c-.182.356-.182.823-.182 1.756V5M2.5 5h15m-1.667 0v9.333c0 1.4 0 2.1-.272 2.635a2.5 2.5 0 0 1-1.092 1.093c-.536.272-1.236.272-2.636.272H8.167c-1.4 0-2.1 0-2.635-.272a2.5 2.5 0 0 1-1.092-1.092c-.273-.536-.273-1.236-.273-2.636V5"
+      d="M6.443 12.665 9.109 10 6.443 7.332m5.334-4.442v14.223"
       stroke="currentColor"
       strokeWidth={1.3}
     />
   </svg>
 );
-Trash02.displayName = 'Trash02';
+Collapse.displayName = 'Collapse';

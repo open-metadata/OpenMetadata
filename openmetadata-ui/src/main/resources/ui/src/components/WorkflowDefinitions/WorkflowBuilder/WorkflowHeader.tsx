@@ -62,10 +62,9 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
   return (
     <Dropdown.Root>
       <ButtonUtility
-        color="tertiary"
         data-testid="workflow-manage-button"
         icon={DotsVertical}
-        size="sm"
+        size="lg"
         tooltip={t('label.more-action-plural')}
       />
       <Dropdown.Popover className="tw:w-min">
@@ -253,7 +252,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
       !isViewMode &&
       !isNoOp && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-workflow-title-button"
           icon={Edit01}
           size="lg"

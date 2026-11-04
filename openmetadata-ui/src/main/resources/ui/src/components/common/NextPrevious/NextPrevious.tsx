@@ -15,11 +15,14 @@ import {
   Button as CoreButton,
   Dropdown,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
-import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';
 import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
@@ -110,9 +113,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         className={PAGINATION_BUTTON_CLASS}
         color="tertiary"
         data-testid="previous"
-        iconLeading={
-          <ArrowRightOutlined className="tw:-mt-px tw:size-3 tw:shrink-0 tw:rotate-180" />
-        }
+        iconLeading={ChevronLeft}
         isDisabled={computePrevDisableState() || isLoading}
         onPress={onPreviousHandler}>
         {t('label.previous')}
@@ -125,9 +126,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         className={PAGINATION_BUTTON_CLASS}
         color="tertiary"
         data-testid="next"
-        iconTrailing={
-          <ArrowRightOutlined className="tw:-mt-0.5 tw:size-3 tw:shrink-0" />
-        }
+        iconTrailing={ChevronRight}
         isDisabled={computeNextDisableState() || isLoading}
         onPress={onNextHandler}>
         {t('label.next')}
@@ -138,7 +137,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
             className="pagination-button"
             color="tertiary"
             data-testid="page-size-selection-dropdown"
-            iconTrailing={<DownOutlined height={14} width={14} />}
+            iconTrailing={ChevronDown}
             isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
           </CoreButton>
