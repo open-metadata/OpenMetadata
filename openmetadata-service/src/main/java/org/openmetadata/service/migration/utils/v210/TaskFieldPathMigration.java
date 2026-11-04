@@ -33,6 +33,7 @@ import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -127,24 +128,48 @@ public final class TaskFieldPathMigration {
             .bindList("types", TASK_TYPES)
             .mapToMap()
             .list();
+    Map<String, EntityReference> abouts = aboutsOf(handle, ids);
     Map<UUID, EntityInterface<?>> loaded = new HashMap<>();
     Function<EntityReference, EntityInterface<?>> entities =
         about -> loaded.computeIfAbsent(about.getId(), id -> load(about));
     Summary summary = Summary.NONE;
     for (Map<String, Object> row : rows) {
-      summary = summary.plus(migrateRow(handle, connectionType, row, entities));
+      EntityReference about = abouts.get(row.get("id").toString());
+      summary = summary.plus(migrateRow(handle, connectionType, row, about, entities));
     }
     return summary;
+  }
+
+  // A task's entity is a relationship, not part of its stored JSON (TaskRepository.getAboutEntity).
+  private static Map<String, EntityReference> aboutsOf(Handle handle, List<String> ids) {
+    Map<String, EntityReference> abouts = new HashMap<>();
+    handle
+        .createQuery(
+            "SELECT toId, fromId, fromEntity FROM entity_relationship "
+                + "WHERE toId IN (<ids>) AND toEntity = :task AND relation = :relation")
+        .bindList("ids", ids)
+        .bind("task", Entity.TASK)
+        .bind("relation", Relationship.MENTIONED_IN.ordinal())
+        .mapToMap()
+        .forEach(
+            row ->
+                abouts.put(
+                    row.get("toid").toString(),
+                    new EntityReference()
+                        .withId(UUID.fromString(row.get("fromid").toString()))
+                        .withType(row.get("fromentity").toString())));
+    return abouts;
   }
 
   private static Summary migrateRow(
       Handle handle,
       ConnectionType connectionType,
       Map<String, Object> row,
+      EntityReference about,
       Function<EntityReference, EntityInterface<?>> entities) {
     String id = row.get("id").toString();
     ObjectNode json = (ObjectNode) JsonUtils.readTree(row.get("json").toString());
-    Optional<Rewrite> rewrite = rewrite(json, entities);
+    Optional<Rewrite> rewrite = rewrite(json, about, entities);
     rewrite
         .filter(Rewrite::changed)
         .ifPresent(applied -> updateJson(handle, connectionType, id, json.toString()));
@@ -156,10 +181,15 @@ public final class TaskFieldPathMigration {
   /** What rewriting one task did: whether it changed the row, or found no field to name. */
   record Rewrite(boolean changed, boolean unreadable) {}
 
-  /** Rewrites the task's field path in {@code json} in place. Empty for a task with none. */
+  /**
+   * Rewrites the field path in {@code json}, a stored task about {@code about}, in place. Empty
+   * for a task with none.
+   */
   static Optional<Rewrite> rewrite(
-      ObjectNode json, Function<EntityReference, EntityInterface<?>> entities) {
-    Task task = JsonUtils.readValue(json.toString(), Task.class);
+      ObjectNode json,
+      EntityReference about,
+      Function<EntityReference, EntityInterface<?>> entities) {
+    Task task = JsonUtils.readValue(json.toString(), Task.class).withAbout(about);
     JsonNode payload = json.path("payload");
     Optional<Target> target =
         payload instanceof ObjectNode ? TaskFieldTarget.targetOf(task, payload) : Optional.empty();

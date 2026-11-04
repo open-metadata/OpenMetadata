@@ -47,6 +47,9 @@ class TaskFieldPathMigrationTest {
 
   private static final FieldProperty DESCRIPTION = FieldProperty.DESCRIPTION;
   private static final FieldProperty TAGS = FieldProperty.TAGS;
+  // A stored task keeps its entity as a relationship, not in its JSON.
+  private static final EntityReference TABLE_ABOUT =
+      new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
 
   static Stream<Arguments> tablePaths() {
     return Stream.of(
@@ -162,7 +165,7 @@ class TaskFieldPathMigrationTest {
         taskJson(TaskEntityType.DescriptionUpdate, Map.of("field", "columns.profile.child"));
 
     Optional<TaskFieldPathMigration.Rewrite> rewrite =
-        TaskFieldPathMigration.rewrite(json, about -> table());
+        TaskFieldPathMigration.rewrite(json, TABLE_ABOUT, about -> table());
 
     assertTrue(rewrite.orElseThrow().changed());
     assertEquals(
@@ -175,7 +178,10 @@ class TaskFieldPathMigrationTest {
     ObjectNode json =
         taskJson(TaskEntityType.TagUpdate, Map.of("fieldPath", "columns.amount.tags"));
 
-    assertFalse(TaskFieldPathMigration.rewrite(json, about -> table()).orElseThrow().changed());
+    assertFalse(
+        TaskFieldPathMigration.rewrite(json, TABLE_ABOUT, about -> table())
+            .orElseThrow()
+            .changed());
   }
 
   @Test
@@ -185,7 +191,7 @@ class TaskFieldPathMigrationTest {
             TaskEntityType.Suggestion,
             Map.of("suggestionType", "Owner", "fieldPath", "owners", "suggestedValue", "x"));
 
-    assertTrue(TaskFieldPathMigration.rewrite(json, about -> table()).isEmpty());
+    assertTrue(TaskFieldPathMigration.rewrite(json, TABLE_ABOUT, about -> table()).isEmpty());
   }
 
   private static String convert(
@@ -196,12 +202,7 @@ class TaskFieldPathMigrationTest {
   }
 
   private static ObjectNode taskJson(TaskEntityType type, Map<String, Object> payload) {
-    Task task =
-        new Task()
-            .withId(UUID.randomUUID())
-            .withType(type)
-            .withAbout(new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE))
-            .withPayload(payload);
+    Task task = new Task().withId(UUID.randomUUID()).withType(type).withPayload(payload);
     return (ObjectNode) JsonUtils.valueToTree(task);
   }
 
