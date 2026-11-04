@@ -48,13 +48,7 @@ const WidgetFooter = ({
             className="footer-view-more-button tw:my-2 tw:h-10 tw:w-full tw:justify-center tw:font-normal"
             color="link-color"
             href={moreButtonLink}
-            iconTrailing={
-              <ArrowRight
-                className="tw:size-4"
-                data-icon="trailing"
-                data-testid="arrow-right-icon"
-              />
-            }
+            iconTrailing={ArrowRight}
             onPress={onMoreClick}>
             {moreButtonText || t('label.view-more')}
           </Button>

@@ -16,12 +16,14 @@ package org.openmetadata.service.resources.metrics;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -38,8 +40,10 @@ import java.lang.reflect.Method;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -52,6 +56,7 @@ import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
@@ -70,6 +75,10 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 class MetricResourceTest {
 
@@ -287,6 +296,46 @@ class MetricResourceTest {
   }
 
   @Test
+  void hierarchyListKeepsOnlyPickedDomainMetricsUnderANavbarPick() {
+    UUID pickedMetric = UUID.randomUUID();
+    ResultList<MetricHierarchyItem> expected =
+        new ResultList<>(List.of(), new Paging().withLimit(25).withOffset(0).withTotal(0));
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      fixture
+          .entityUtil()
+          .when(() -> EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC))
+          .thenReturn(Optional.of(Set.of(pickedMetric)));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
+      when(fixture.repository().groupInDomainPick(any(), eq(Set.of(pickedMetric))))
+          .thenReturn(group -> false);
+      ArgumentCaptor<Predicate<EntityReference>> canViewMetric =
+          ArgumentCaptor.forClass(Predicate.class);
+      when(fixture
+              .repository()
+              .listHierarchy(eq(25), eq(0), eq(null), canViewMetric.capture(), any()))
+          .thenReturn(expected);
+
+      fixture.resource().listHierarchy(securityContext, null, 25, 0);
+
+      // A pick filters even a caller who could list every metric unfiltered, and finds the groups
+      // in
+      // it in one batch rather than by each group's capped member scan.
+      verify(fixture.repository(), never()).listHierarchy(25, 0, null);
+      verify(fixture.repository(), never())
+          .groupInDomainPick(any(), org.mockito.ArgumentMatchers.<Predicate<EntityReference>>any());
+      EntityReference picked = new EntityReference().withId(pickedMetric).withType(Entity.METRIC);
+      EntityReference other =
+          new EntityReference().withId(UUID.randomUUID()).withType(Entity.METRIC);
+      assertTrue(canViewMetric.getValue().test(picked));
+      assertFalse(canViewMetric.getValue().test(other));
+    }
+  }
+
+  @Test
   void hierarchyListUsesDatabasePagingWhenMetricsAndGroupsAreUnconditionallyVisible() {
     ResultList<MetricHierarchyItem> expected =
         new ResultList<>(List.of(), new Paging().withLimit(25).withOffset(50).withTotal(0));
@@ -469,6 +518,103 @@ class MetricResourceTest {
     }
   }
 
+  @Test
+  void genericReadSanitizesRelationsWhenViewIsConditional() {
+    UUID metricId = UUID.randomUUID();
+    Metric stored =
+        new Metric().withId(metricId).withName("revenue").withFullyQualifiedName("revenue");
+    Metric sanitized = new Metric().withId(metricId).withName("revenue");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture
+              .repository()
+              .get(any(), eq(metricId), any(Fields.class), any(RelationIncludes.class), eq(false)))
+          .thenReturn(stored);
+      when(fixture.repository().sanitizeMetricRelations(eq(stored), any(), any()))
+          .thenReturn(sanitized);
+
+      Metric actual =
+          fixture
+              .resource()
+              .get(null, securityContext, metricId, "parent", Include.NON_DELETED, null);
+
+      assertEquals(sanitized, actual);
+      verify(fixture.repository()).sanitizeMetricRelations(eq(stored), any(), any());
+    }
+  }
+
+  @Test
+  void genericReadSkipsSanitizationWhenViewIsUnconditional() {
+    UUID metricId = UUID.randomUUID();
+    Metric stored =
+        new Metric().withId(metricId).withName("revenue").withFullyQualifiedName("revenue");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
+      when(fixture
+              .repository()
+              .get(any(), eq(metricId), any(Fields.class), any(RelationIncludes.class), eq(false)))
+          .thenReturn(stored);
+
+      Metric actual =
+          fixture
+              .resource()
+              .get(null, securityContext, metricId, "parent", Include.NON_DELETED, null);
+
+      assertSame(stored, actual);
+      verify(fixture.repository(), never())
+          .sanitizeMetricRelations(any(Metric.class), any(), any());
+    }
+  }
+
+  @Test
+  void versionSnapshotsRedactRelationsOnlyWhenViewIsConditional() {
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.CONDITIONAL_ALLOW));
+      assertTrue(fixture.resource().snapshotRedaction(securityContext).isPresent());
+
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.ALLOW));
+      assertTrue(fixture.resource().snapshotRedaction(securityContext).isEmpty());
+    }
+  }
+
+  @Test
+  void patchResponseSanitizesRelationsForRestrictedCallers() {
+    UUID metricId = UUID.randomUUID();
+    Metric patched = new Metric().withId(metricId).withName("revenue");
+    Metric sanitized = new Metric().withId(metricId).withName("revenue");
+    try (ResourceFixture fixture = resourceFixture()) {
+      SecurityContext securityContext = securityContext("alice");
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
+          .thenReturn(viewPermission(Entity.METRIC, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC_GROUP))
+          .thenReturn(viewPermission(Entity.METRIC_GROUP, Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.repository().patch(any(), eq(metricId), anyString(), any(), any(), any(), any()))
+          .thenReturn(new PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED));
+      when(fixture.repository().sanitizeMetricRelations(eq(patched), any(), any()))
+          .thenReturn(sanitized);
+
+      jakarta.json.JsonPatch patch =
+          Json.createPatchBuilder().replace("/description", "updated").build();
+      Response response = fixture.resource().updateMetric(null, securityContext, metricId, patch);
+
+      assertEquals(sanitized, response.getEntity());
+      verify(fixture.repository()).sanitizeMetricRelations(eq(patched), any(), any());
+    }
+  }
+
   private SecurityContext securityContext(String name) {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn(name);
@@ -495,11 +641,20 @@ class MetricResourceTest {
         .thenReturn(org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
     entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
     entity.when(() -> Entity.getEntityClassFromType(Entity.METRIC)).thenReturn(Metric.class);
+    MockedStatic<EntityUtil> entityUtil = mockStatic(EntityUtil.class, CALLS_REAL_METHODS);
+    entityUtil
+        .when(() -> EntityUtil.navbarDomainMemberIds(any(), anyString()))
+        .thenReturn(Optional.empty());
     try {
       return new ResourceFixture(
-          new MetricResource(authorizer, mock(Limits.class)), repository, authorizer, entity);
+          new MetricResource(authorizer, mock(Limits.class)),
+          repository,
+          authorizer,
+          entity,
+          entityUtil);
     } catch (RuntimeException exception) {
       entity.close();
+      entityUtil.close();
       throw exception;
     }
   }
@@ -508,11 +663,13 @@ class MetricResourceTest {
       MetricResource resource,
       MetricRepository repository,
       Authorizer authorizer,
-      MockedStatic<Entity> entity)
+      MockedStatic<Entity> entity,
+      MockedStatic<EntityUtil> entityUtil)
       implements AutoCloseable {
     @Override
     public void close() {
       entity.close();
+      entityUtil.close();
     }
   }
 }

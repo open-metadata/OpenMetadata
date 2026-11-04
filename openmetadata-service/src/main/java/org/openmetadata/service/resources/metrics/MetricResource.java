@@ -51,10 +51,15 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
@@ -74,19 +79,24 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.jdbi3.MetricRepository.MetricCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil;
 
 @Path("/v1/metrics")
 @Tag(
@@ -142,18 +152,51 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     ResultList<MetricHierarchyItem> result;
-    if (canListHierarchyWithoutFiltering(securityContext)) {
+    Optional<Set<UUID>> pickedMetrics =
+        EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC);
+    boolean canViewAll = canListHierarchyWithoutFiltering(securityContext);
+    if (pickedMetrics.isEmpty() && canViewAll) {
       result = repository.listHierarchy(limit, offset, query);
-    } else {
+    } else if (canViewAll) {
+      // Only the pick narrows: no per-entity checks, and the groups in it are found in one batch.
+      Set<UUID> picked = pickedMetrics.get();
       result =
           repository.listHierarchy(
               limit,
               offset,
               query,
-              metric -> canAccessEntity(securityContext, metric, MetadataOperation.VIEW_BASIC),
-              group -> canAccessEntity(securityContext, group, MetadataOperation.VIEW_BASIC));
+              metric -> picked.contains(metric.getId()),
+              repository.groupInDomainPick(
+                  EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC_GROUP), picked));
+    } else {
+      Predicate<EntityReference> canViewMetric =
+          metric ->
+              pickedMetrics.map(ids -> ids.contains(metric.getId())).orElse(true)
+                  && canAccessEntity(securityContext, metric, MetadataOperation.VIEW_BASIC);
+      Predicate<EntityReference> groupInPick =
+          groupInPick(securityContext, pickedMetrics, canViewMetric);
+      result =
+          repository.listHierarchy(
+              limit,
+              offset,
+              query,
+              canViewMetric,
+              group ->
+                  canAccessEntity(securityContext, group, MetadataOperation.VIEW_BASIC)
+                      && groupInPick.test(group));
     }
     return result;
+  }
+
+  // The hierarchy pages its own rows, so the navbar domain pick is applied here, as on /metrics.
+  private Predicate<EntityReference> groupInPick(
+      SecurityContext securityContext,
+      Optional<Set<UUID>> pickedMetrics,
+      Predicate<EntityReference> canViewMetric) {
+    return pickedMetrics.isEmpty()
+        ? group -> true
+        : repository.groupInDomainPick(
+            EntityUtil.navbarDomainMemberIds(securityContext, Entity.METRIC_GROUP), canViewMetric);
   }
 
   private boolean canListHierarchyWithoutFiltering(SecurityContext securityContext) {
@@ -163,7 +206,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
             authorizer.getPermission(securityContext, user, Entity.METRIC_GROUP));
   }
 
-  static boolean hasUnconditionalView(ResourcePermission resourcePermission) {
+  public static boolean hasUnconditionalView(ResourcePermission resourcePermission) {
     return resourcePermission != null
         && listOrEmpty(resourcePermission.getPermissions()).stream()
             .anyMatch(
@@ -171,6 +214,124 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                     MetadataOperation.VIEW_BASIC.equals(permission.getOperation())
                         && Permission.Access.ALLOW.equals(permission.getAccess())
                         && permission.getRule() == null);
+  }
+
+  /**
+   * The view permissions a metric response's relation fields answer to, resolved once per request.
+   * A caller with an unconditional view on metrics and metric groups pays no per-reference check
+   * and no copy; any other caller's decisions are cached per referenced entity for the request.
+   */
+  private record RelationVisibility(
+      boolean unrestricted,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {}
+
+  private RelationVisibility relationVisibility(SecurityContext securityContext) {
+    String user = securityContext.getUserPrincipal().getName();
+    boolean unrestricted =
+        hasUnconditionalView(authorizer.getPermission(securityContext, user, Entity.METRIC))
+            && hasUnconditionalView(
+                authorizer.getPermission(securityContext, user, Entity.METRIC_GROUP));
+    if (unrestricted) {
+      return new RelationVisibility(true, ignored -> true, ignored -> true);
+    }
+    Map<UUID, Boolean> metricDecisions = new HashMap<>();
+    Map<UUID, Boolean> groupDecisions = new HashMap<>();
+    return new RelationVisibility(
+        false,
+        cachedDecisions(
+            metricDecisions,
+            reference -> canAccessEntity(securityContext, reference, MetadataOperation.VIEW_BASIC)),
+        cachedDecisions(
+            groupDecisions,
+            reference ->
+                canAccessEntity(securityContext, reference, MetadataOperation.VIEW_BASIC)));
+  }
+
+  /**
+   * Request-scoped authorization cache: one evaluation per referenced entity, falling back to an
+   * uncached evaluation when the reference carries no id. Shared by the metric and metric group
+   * resources and the MCP entity read so every decision cache behaves the same.
+   */
+  public static Predicate<EntityReference> cachedDecisions(
+      Map<UUID, Boolean> decisions, Predicate<EntityReference> decide) {
+    return reference ->
+        reference.getId() == null
+            ? decide.test(reference)
+            : decisions.computeIfAbsent(reference.getId(), id -> decide.test(reference));
+  }
+
+  /**
+   * The request-scoped {@code ViewBasic} decisions for the references a metric or metric group
+   * response carries, each checked against its own entity type. A reference the caller may not
+   * view, or one that no longer resolves, is withheld.
+   */
+  public static Predicate<EntityReference> viewBasicDecisions(
+      Authorizer authorizer, SecurityContext securityContext) {
+    return cachedDecisions(
+        new HashMap<>(), reference -> canViewBasic(authorizer, securityContext, reference));
+  }
+
+  private static boolean canViewBasic(
+      Authorizer authorizer, SecurityContext securityContext, EntityReference reference) {
+    boolean visible = true;
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(reference.getType(), MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(
+              reference.getType(), reference.getId(), reference.getFullyQualifiedName()));
+    } catch (AuthorizationException | EntityNotFoundException | IllegalArgumentException e) {
+      visible = false;
+    }
+    return visible;
+  }
+
+  private Metric sanitizeRelations(SecurityContext securityContext, Metric metric) {
+    RelationVisibility visibility = relationVisibility(securityContext);
+    return visibility.unrestricted()
+        ? metric
+        : repository.sanitizeMetricRelations(
+            metric, visibility.canViewMetric(), visibility.canViewGroup());
+  }
+
+  private ResultList<Metric> sanitizeRelations(
+      SecurityContext securityContext, ResultList<Metric> resultList) {
+    RelationVisibility visibility = relationVisibility(securityContext);
+    if (!visibility.unrestricted()) {
+      resultList.setData(
+          repository.sanitizeMetricRelations(
+              listOrEmpty(resultList.getData()),
+              visibility.canViewMetric(),
+              visibility.canViewGroup()));
+    }
+    return resultList;
+  }
+
+  private Response sanitizeRelations(SecurityContext securityContext, Response response) {
+    RelationVisibility visibility = relationVisibility(securityContext);
+    return visibility.unrestricted()
+        ? response
+        : withRedactedEntity(
+            response,
+            metric ->
+                repository.sanitizeMetricRelations(
+                    metric, visibility.canViewMetric(), visibility.canViewGroup()));
+  }
+
+  /**
+   * Stored snapshots carry the same relation references as reads — the latest version is loaded
+   * with the update fields — so a version history answers the same per-reference check.
+   */
+  @Override
+  protected Optional<UnaryOperator<Metric>> snapshotRedaction(SecurityContext securityContext) {
+    RelationVisibility visibility = relationVisibility(securityContext);
+    return visibility.unrestricted()
+        ? Optional.empty()
+        : Optional.of(
+            metric ->
+                repository.sanitizeMetricRelations(
+                    metric, visibility.canViewMetric(), visibility.canViewGroup()));
   }
 
   @GET
@@ -234,8 +395,10 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     if (!nullOrEmpty(entityStatus)) {
       filter.addQueryParam("entityStatus", entityStatus);
     }
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return sanitizeRelations(
+        securityContext,
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   Response buildBulkOperationResponse(BulkOperationResult result) {
@@ -304,7 +467,9 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
           String includeRelations) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
+    return sanitizeRelations(
+        securityContext,
+        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
   }
 
   @GET
@@ -376,7 +541,9 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
               schema = @Schema(type = "string", example = "owners:non-deleted,followers:all"))
           @QueryParam("includeRelations")
           String includeRelations) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations);
+    return sanitizeRelations(
+        securityContext,
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include, includeRelations));
   }
 
   @GET
@@ -454,7 +621,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Valid CreateMetric create) {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     MetricAuthorization.authorizeMetricCreate(authorizer, securityContext, metric);
-    return create(uriInfo, securityContext, metric);
+    return sanitizeRelations(securityContext, create(uriInfo, securityContext, metric));
   }
 
   @PUT
@@ -478,7 +645,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Valid CreateMetric create) {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     preauthorizeHierarchyUpdate(securityContext, metric);
-    return createOrUpdate(uriInfo, securityContext, metric);
+    return sanitizeRelations(securityContext, createOrUpdate(uriInfo, securityContext, metric));
   }
 
   private void preauthorizeHierarchyUpdate(SecurityContext securityContext, Metric metric) {
@@ -730,6 +897,34 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
+  // The PATCH response answers with the same relation fields as a read, so it answers the same
+  // per-reference check.
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    return sanitizeRelations(
+        securityContext,
+        super.patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader));
+  }
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    return sanitizeRelations(
+        securityContext,
+        super.patchInternal(uriInfo, securityContext, fqn, patch, changeSource, ifMatchHeader));
+  }
+
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -809,7 +1004,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return updateVoteInternal(securityContext, id, request);
+    return sanitizeRelations(securityContext, updateVoteInternal(securityContext, id, request));
   }
 
   @DELETE
@@ -840,6 +1035,17 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @Override
+  public Response delete(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    return sanitizeRelations(
+        securityContext, super.delete(uriInfo, securityContext, id, recursive, hardDelete));
+  }
+
   @DELETE
   @Path("/async/{id}")
   @Operation(
@@ -866,6 +1072,18 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @Override
+  public Response deleteByIdAsync(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    return sanitizeRelations(
+        securityContext,
+        super.deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete));
   }
 
   @DELETE
@@ -899,6 +1117,17 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
+  @Override
+  public Response deleteByName(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      boolean recursive,
+      boolean hardDelete) {
+    return sanitizeRelations(
+        securityContext, super.deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete));
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
@@ -918,7 +1147,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return sanitizeRelations(
+        securityContext, restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   @PUT

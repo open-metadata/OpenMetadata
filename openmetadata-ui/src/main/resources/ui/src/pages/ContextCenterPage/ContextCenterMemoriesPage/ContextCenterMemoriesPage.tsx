@@ -1072,7 +1072,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       className="tw:max-w-64"
                       color="secondary"
                       data-testid="author-filter-button"
-                      iconLeading={<User01 className="tw:shrink-0" size={14} />}
+                      iconLeading={User01}
                       iconTrailing={ChevronDown}
                       size="md">
                       {selectedAuthor?.label ?? allAuthorsLabel}
