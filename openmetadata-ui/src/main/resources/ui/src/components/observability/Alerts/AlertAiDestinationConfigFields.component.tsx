@@ -18,6 +18,7 @@ import {
   AccordionPanel,
   BadgeWithButton,
   Button,
+  ButtonUtility,
   Checkbox,
   Input,
   Label,
@@ -35,8 +36,9 @@ import {
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
+import { debounce, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { DESTINATION_TYPE_BASED_PLACEHOLDERS } from '../../../constants/Alerts.constants';
 import { EMAIL_REG_EX } from '../../../constants/regex.constants';
@@ -46,16 +48,23 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedWebhookConfig } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import {
+  clearMaskedSecrets,
+  withAuthType,
+} from '../../../utils/Alerts/AlertsUtilPure';
 import {
   ALERT_AI_FORM_CLASS_NAMES,
   ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER,
 } from './AlertAiFormFields.constants';
-import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
+import {
+  AlertAiDestinationItemProps,
+  AlertAiFormValue,
+} from './AlertAiFormFields.interface';
 import {
   getStringArrayValue,
   getValidationPath,
   isWebhookDestination,
+  setValueAtPath,
   updateAlertAiValue,
   WebhookDestinationType,
 } from './AlertAiFormFieldsPureUtils';
@@ -236,7 +245,7 @@ const TeamUserSelectInput = ({
   const focusDropdown = useCallback((element: HTMLDivElement | null) => {
     dropdownRef.current = element;
     // The portal can mount after the open-state change; focusing without scrolling keeps
-    // an ancestor scroll from dismissing the non-modal popover.
+    // the drawer from jumping when the picker opens.
     element?.querySelector('input')?.focus({ preventScroll: true });
   }, []);
 
@@ -244,24 +253,49 @@ const TeamUserSelectInput = ({
     if (!isDropdownOpen) {
       return undefined;
     }
+    const closeDropdown = () => {
+      setIsDropdownOpen(false);
+      setSearchText('');
+    };
     // Capture phase: a parent stopping propagation must not keep the picker open.
-    const handleOutsidePointerDown = (e: PointerEvent) => {
+    // Also used for focus moving elsewhere, which react-aria's blur close handled.
+    const handleOutsideInteraction = (e: Event) => {
       const target = e.target as Node;
       if (
         !dropdownRef.current?.contains(target) &&
         !triggerRef.current?.contains(target)
       ) {
-        setIsDropdownOpen(false);
-        setSearchText('');
+        closeDropdown();
       }
     };
-    document.addEventListener('pointerdown', handleOutsidePointerDown, true);
+    // react-aria's close-on-scroll is ignored below, so close on a scroll the user
+    // starts outside the picker; otherwise the portalled popover would stay put
+    // while the form moves under it. Programmatic settling scrolls fire neither event.
+    const handleOutsideUserScroll = (e: Event) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) {
+        closeDropdown();
+      }
+    };
+    // On the document so Escape works from the search box, options or trigger.
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.isComposing) {
+        closeDropdown();
+      }
+    };
+    const listeners: [string, EventListener][] = [
+      ['pointerdown', handleOutsideInteraction],
+      ['focusin', handleOutsideInteraction],
+      ['wheel', handleOutsideUserScroll],
+      ['touchmove', handleOutsideUserScroll],
+      ['keydown', handleEscape as EventListener],
+    ];
+    listeners.forEach(([type, listener]) =>
+      document.addEventListener(type, listener, true)
+    );
 
     return () =>
-      document.removeEventListener(
-        'pointerdown',
-        handleOutsidePointerDown,
-        true
+      listeners.forEach(([type, listener]) =>
+        document.removeEventListener(type, listener, true)
       );
   }, [isDropdownOpen]);
 
@@ -352,12 +386,11 @@ const TeamUserSelectInput = ({
         isOpen={isDropdownOpen}
         placement="bottom left"
         triggerRef={triggerRef}
-        onOpenChange={(isOpen) => {
-          setIsDropdownOpen(isOpen);
-          if (!isOpen) {
-            setSearchText('');
-          }
-        }}>
+        // `isNonModal` makes react-aria close the popover on any ancestor scroll,
+        // so a drawer still settling after a destination is added closed the
+        // picker right after it opened. The listeners above own dismissal, so
+        // like core TreeSelect only react-aria's open request is honoured.
+        onOpenChange={(isOpen) => isOpen && setIsDropdownOpen(true)}>
         <div
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
           ref={focusDropdown}>
@@ -480,7 +513,7 @@ interface KeyValueListProps {
   isViewOnly?: boolean;
   name: number;
   onChange: (entries: { key: string; value: string }[]) => void;
-  type: keyof Pick<ModifiedWebhookConfig, 'headers' | 'queryParams'>;
+  type: 'headers' | 'queryParams';
   value: { key: string; value: string }[];
 }
 
@@ -512,13 +545,11 @@ const KeyValueList = ({
             : t('label.query-parameter-plural')}
         </Typography>
         {!isViewOnly && (
-          <Button
-            aria-label={t('label.add')}
-            color="secondary"
+          <ButtonUtility
             data-testid={`add-${testIdPrefix}-button-${name}`}
-            iconLeading={Plus}
-            size="xs"
-            onPress={() => onChange([...entries, { key: '', value: '' }])}
+            icon={Plus}
+            tooltip={t('label.add')}
+            onClick={() => onChange([...entries, { key: '', value: '' }])}
           />
         )}
       </div>
@@ -543,13 +574,12 @@ const KeyValueList = ({
             ))}
           </div>
           {!isViewOnly && (
-            <Button
-              aria-label={t('label.remove')}
-              color="secondary"
+            <ButtonUtility
               data-testid={`remove-${testIdPrefix}-button-${name}-${index}`}
-              iconLeading={Trash01}
-              size="xs"
-              onPress={() => onChange(entries.filter((_, i) => i !== index))}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove')}
+              onClick={() => onChange(entries.filter((_, i) => i !== index))}
             />
           )}
         </div>
@@ -612,6 +642,25 @@ const WebhookDestinationFields = ({
 }) => {
   const { t } = useTranslation();
 
+  const advancedConfigId = `advanced-config-${name}`;
+  const [advancedConfigKeys, setAdvancedConfigKeys] = useState<Set<Key>>(
+    () => new Set()
+  );
+
+  // A new URL or token URL sends the secrets somewhere else, so the hidden ones are emptied
+  // and the advanced configuration opens on them, where the form asks for each one again.
+  const changeWhereItSends = (path: string[], nextValue: string) => {
+    const config = destination?.config ?? {};
+    const cleared = clearMaskedSecrets(config) ?? {};
+    updateDestinationConfig(
+      [],
+      setValueAtPath(cleared as AlertAiFormValue, path, nextValue)
+    );
+    if (!isEqual(cleared, config)) {
+      setAdvancedConfigKeys(new Set([advancedConfigId]));
+    }
+  };
+
   return (
     <>
       <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
@@ -624,9 +673,7 @@ const WebhookDestinationFields = ({
           placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[destinationType]}
           size="sm"
           value={destination?.config?.endpoint ?? ''}
-          onChange={(nextValue) =>
-            updateDestinationConfig(['endpoint'], nextValue)
-          }
+          onChange={(nextValue) => changeWhereItSends(['endpoint'], nextValue)}
         />
       </div>
       <div
@@ -634,8 +681,10 @@ const WebhookDestinationFields = ({
           ALERT_AI_FORM_CLASS_NAMES.field,
           ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
         )}>
-        <Accordion>
-          <AccordionItem id={`advanced-config-${name}`}>
+        <Accordion
+          expandedKeys={advancedConfigKeys}
+          onExpandedChange={setAdvancedConfigKeys}>
+          <AccordionItem id={advancedConfigId}>
             <AccordionHeader>
               <Typography
                 as="span"
@@ -657,8 +706,11 @@ const WebhookDestinationFields = ({
                   size="sm"
                   onSelectionChange={(key) =>
                     updateDestinationConfig(
-                      ['authType', 'type'],
-                      key ? String(key) : Type.None
+                      [],
+                      withAuthType(
+                        destination?.config,
+                        (key ? String(key) : Type.None) as Type
+                      ) as AlertAiFormValue
                     )
                   }>
                   {renderSelectItem}
@@ -695,10 +747,7 @@ const WebhookDestinationFields = ({
                       size="sm"
                       value={destination?.config?.authType?.tokenUrl ?? ''}
                       onChange={(nextValue) =>
-                        updateDestinationConfig(
-                          ['authType', 'tokenUrl'],
-                          nextValue
-                        )
+                        changeWhereItSends(['authType', 'tokenUrl'], nextValue)
                       }
                     />
                     <PasswordInput

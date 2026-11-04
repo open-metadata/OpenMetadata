@@ -104,7 +104,12 @@ export const openTeamTab = async (
   page: Page,
   tabName: RegExp
 ): Promise<void> => {
-  await page.getByRole('tab', { name: tabName }).click();
+  // Scoped: route-cached pages (e.g. /my-data's summary panel) stay mounted and
+  // render same-named tabs.
+  await page
+    .getByTestId('team-detail')
+    .getByRole('tab', { name: tabName })
+    .click();
 };
 
 /** Open the Users list panel from the Members landing. */

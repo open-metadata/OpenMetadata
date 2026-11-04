@@ -188,13 +188,18 @@ export const moveFileToRoot = async (driveFileId: string): Promise<void> => {
 
 export const uploadDriveFile = async (
   file: File,
-  folderFqn?: string
+  folderFqn?: string,
+  domainFqn?: string
 ): Promise<ContextFile> => {
   const formData = new FormData();
   formData.append('file', file);
 
   if (folderFqn) {
     formData.append('folder', folderFqn);
+  }
+
+  if (domainFqn) {
+    formData.append('domain', domainFqn);
   }
 
   const response = await APIClient.post<FormData, AxiosResponse<ContextFile>>(

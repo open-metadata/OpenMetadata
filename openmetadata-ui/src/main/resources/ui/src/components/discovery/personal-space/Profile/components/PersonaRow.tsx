@@ -53,8 +53,6 @@ const mergeFetchedPersonas =
 interface PersonaRowProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
-  // Overrides the default admin-only rule (e.g. per-user EditAll permission).
-  canEdit?: boolean;
   // Overrides the first-person description used on your own profile.
   description?: string;
 }
@@ -62,7 +60,6 @@ interface PersonaRowProps {
 const PersonaRow: React.FC<PersonaRowProps> = ({
   userData,
   updateUserDetails,
-  canEdit: canEditProp,
   description,
 }) => {
   const { t } = useTranslation();
@@ -70,7 +67,7 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
   const { isAdminUser } = useAuth();
   // Persona assignment is admin-managed (like teams/roles); users pick their
   // own default persona in DefaultPersonaRow, not the assignment here.
-  const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
+  const canEdit = Boolean(isAdminUser) && !userData.deleted;
 
   const initialPersonaIds = useMemo(
     () => (userData.personas ?? []).map((p) => p.id),

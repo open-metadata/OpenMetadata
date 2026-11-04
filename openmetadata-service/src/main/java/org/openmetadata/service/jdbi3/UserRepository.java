@@ -83,6 +83,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -355,6 +356,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected User createNewEntity(User user) {
+    user.setProfile(ProfileWebhookSecrets.ofANewEntity(user.getProfile()));
+    return super.createNewEntity(user);
+  }
+
+  @Override
   protected boolean isStoragePreparationSideEffecting() {
     return true;
   }
@@ -386,7 +393,19 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void storeEntities(List<User> entities) {
-    storeMany(entities);
+    // A batch insert can be retried after a rollback, so the users keep what was submitted and
+    // copies carry the encrypted profile: a retry would read server ciphertext as submitted.
+    storeMany(entities.stream().map(UserRepository::withNewProfileEncrypted).toList());
+  }
+
+  private static User withNewProfileEncrypted(User user) {
+    User stored = JsonUtils.deepCopy(user, User.class);
+    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
+  }
+
+  @Override
+  protected User forChangeEvent(User entity) {
+    return ProfileWebhookSecrets.masked(entity);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -498,7 +517,14 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public EntityRepository<User>.EntityUpdater getUpdater(
       User original, User updated, Operation operation, ChangeSource changeSource) {
+    // Before the diff, so the change description and the stored row carry ciphertext only.
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new UserUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void validatePatch(User original, User updated, JsonPatch patch) {
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override
@@ -912,7 +938,7 @@ public class UserRepository extends EntityRepository<User> {
     // back would erase them -- for a bot, that means its token.
     UUID userId = getByEmail(null, currentEmail, EntityUtil.Fields.EMPTY_FIELDS).getId();
     if (checkEmailAlreadyExists(normalizedNewEmail)
-        && !normalizedNewEmail.equalsIgnoreCase(currentEmail)) {
+        && !SecurityUtil.sameIdentifier(normalizedNewEmail, currentEmail)) {
       throw new IllegalArgumentException(
           String.format("Email %s is already used by another account", normalizedNewEmail));
     }
@@ -1562,7 +1588,9 @@ public class UserRepository extends EntityRepository<User> {
     /**
      * The import endpoints authorize {@code EDIT_ALL} on users, not administrator, so anyone who
      * can manage a team could otherwise hand themselves {@code isAdmin} or any role straight from
-     * the spreadsheet - the escalation the PATCH and PUT paths already reject.
+     * the spreadsheet - the escalation the PATCH and PUT paths already reject. A row carries the
+     * flag whole, so one for an existing admin would revoke it just as easily: the flag is
+     * admin-only in both directions.
      *
      * <p>Keyed off {@code importedBy} rather than a {@code SecurityContext} because the async
      * import ({@code PUT /v1/users/importAsync}) runs the rows on a background thread where no
@@ -1573,7 +1601,7 @@ public class UserRepository extends EntityRepository<User> {
       if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
         return;
       }
-      if (Boolean.TRUE.equals(user.getIsAdmin())) {
+      if (Boolean.TRUE.equals(user.getIsAdmin()) || isStoredAdmin(user)) {
         importFailure(printer, privilegedFieldRequiresAdmin(5, "isAdmin"), csvRecord);
         processRecord = false;
         return;
@@ -1582,6 +1610,11 @@ public class UserRepository extends EntityRepository<User> {
         importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
         processRecord = false;
       }
+    }
+
+    private static boolean isStoredAdmin(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsAdmin());
     }
 
     public static String privilegedFieldRequiresAdmin(int field, String fieldName) {

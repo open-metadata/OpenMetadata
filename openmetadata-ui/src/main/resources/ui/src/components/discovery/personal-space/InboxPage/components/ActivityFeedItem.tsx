@@ -201,15 +201,14 @@ const getThreadButtonLabel = (
     : t('label.number-reply-plural', { number: count });
 };
 
-// The footer's text buttons: 16px icons in the reaction smiley's color, like
-// the smiley between them, and tighter padding, which alone spaces the row.
-const FOOTER_BUTTON_CLASS =
-  'tw:px-2 tw:*:data-icon:size-4 tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover';
+// The footer's text buttons: 16px icons, like the reaction smiley between
+// them, and tighter padding, which alone spaces the row.
+const FOOTER_BUTTON_CLASS = 'tw:px-2';
 
 // A toggle (Like, the replies thread) reads brand while it is on: its text and
 // icon, without the link underline a link-colored button draws on hover.
 const TOGGLE_ON_CLASS =
-  'tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-fg-brand-primary tw:hover:*:data-icon:text-fg-brand-primary';
+  'tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600';
 
 // A liked card fills its thumb. Every prop passes through: the Button sizes
 // and colors its icon by the `data-icon` it sets.

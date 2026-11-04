@@ -36,6 +36,12 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
 
 import MembersAddTeamForm from './MembersAddTeamForm';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 describe('MembersAddTeamForm', () => {
   it('renders form container and footer buttons', () => {
     render(<MembersAddTeamForm onCancel={jest.fn()} onSave={jest.fn()} />);
