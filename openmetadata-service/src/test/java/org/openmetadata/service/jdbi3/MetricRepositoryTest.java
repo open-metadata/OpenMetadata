@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -46,9 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Predicate;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -802,17 +802,28 @@ class MetricRepositoryTest {
   }
 
   @Test
-  void platformWideExportNarrowsRowsToTheSubjectDomains() throws IOException {
+  void platformWideExportAppliesViewPermissionsAndDomainIsolation() throws IOException {
     Metric own = exportedMetric("campaign_clicks", "Marketing", "Clicks per campaign");
     Metric foreign =
         exportedMetric(
             "ceo_bonus_pool", "Finance", "Bonus pool of the executive board, 4.2M in FY26");
+    Metric denied = exportedMetric("restricted_campaign", "Marketing", "Restricted campaign");
     SubjectContext erin = domainRestrictedSubject("Marketing");
     SubjectContext admin = adminSubject();
     try (RepositoryFixture fixture = repositoryFixture();
-        MockedStatic<SubjectContext> subjectContext = mockStatic(SubjectContext.class)) {
+        MockedStatic<SubjectContext> subjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       MetricRepository repository = Mockito.spy(fixture.repository());
-      Mockito.doReturn(List.of(own, foreign))
+      Authorizer authorizer = mockAuthorizer(entity);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      Mockito.doReturn(List.of(own, foreign, denied))
+          .when(repository)
+          .get(any(), anyList(), any(Fields.class), eq(Include.ALL));
+      doThrow(new AuthorizationException("ViewAll denied"))
+          .when(authorizer)
+          .authorizeActor(
+              any(), any(), argThat(context -> denied.getId().equals(context.getEntity().getId())));
+      Mockito.doReturn(List.of(own, foreign, denied))
           .when(repository)
           .listAll(any(Fields.class), any(ListFilter.class));
       subjectContext.when(() -> SubjectContext.getSubjectContext("erin")).thenReturn(erin);
@@ -824,10 +835,12 @@ class MetricRepositoryTest {
           restrictedCsv.contains("ceo_bonus_pool"),
           "a domain-confined subject must not see other domains' metrics in the export");
       assertFalse(restrictedCsv.contains("Bonus pool of the executive board"));
+      assertFalse(restrictedCsv.contains("restricted_campaign"));
 
       String adminCsv = repository.exportToCsv("*", "admin", false);
       assertTrue(adminCsv.contains("campaign_clicks"));
       assertTrue(adminCsv.contains("ceo_bonus_pool"));
+      assertTrue(adminCsv.contains("restricted_campaign"));
       assertTrue(adminCsv.contains("Bonus pool of the executive board, 4.2M in FY26"));
     }
   }
@@ -837,8 +850,14 @@ class MetricRepositoryTest {
     Metric metric = exportedMetric("campaign_clicks", "Marketing", "Clicks per campaign");
     SubjectContext plain = unrestrictedSubject();
     try (RepositoryFixture fixture = repositoryFixture();
-        MockedStatic<SubjectContext> subjectContext = mockStatic(SubjectContext.class)) {
+        MockedStatic<SubjectContext> subjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       MetricRepository repository = Mockito.spy(fixture.repository());
+      mockAuthorizer(entity);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      Mockito.doReturn(List.of(metric))
+          .when(repository)
+          .get(any(), anyList(), any(Fields.class), eq(Include.ALL));
       Mockito.doReturn(List.of(metric))
           .when(repository)
           .listAll(any(Fields.class), any(ListFilter.class));
