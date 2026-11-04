@@ -17,6 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -43,6 +47,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
@@ -215,6 +223,36 @@ class AIContextFinderTest {
         "a visible hit still routes to an asset a hidden hit also points at");
     verify(repository, never())
         .findTo(hiddenMetricId, Entity.METRIC, Relationship.APPLIED_TO, null);
+  }
+
+  @Test
+  void find_usesTheBackendNeutralVectorServiceWhenTheOpenSearchSingletonIsNull() {
+    Map<String, Object> hit =
+        Map.of(
+            "entityType", "glossaryTerm",
+            "fullyQualifiedName", "Business.BounceRate",
+            "name", "BounceRate",
+            "description", "Share of visits that leave after a single page.");
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(1L, List.of(hit)));
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<OpenSearchVectorService> openSearch =
+            mockStatic(OpenSearchVectorService.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      // Elasticsearch deployments never create the OpenSearch singleton.
+      openSearch.when(OpenSearchVectorService::getInstance).thenReturn(null);
+
+      AIContextFinder.FoundContext found = new AIContextFinder().find("bounce rate", 5);
+
+      assertEquals(
+          List.of("Business.BounceRate"),
+          found.items().stream().map(KnowledgeItem::getFullyQualifiedName).toList());
+    }
   }
 
   @Test

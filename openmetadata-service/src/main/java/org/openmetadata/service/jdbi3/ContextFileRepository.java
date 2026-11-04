@@ -303,10 +303,16 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public class ContextFileUpdater extends EntityUpdater {
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
+      keepStoredContent(original, updated);
       // Consolidated edits still need distinct timestamps for conditional processing writes.
       if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
         updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
       }
+    }
+
+    private static void keepStoredContent(ContextFile original, ContextFile updated) {
+      updated.setAssetId(original.getAssetId());
+      updated.setHeadContentId(original.getHeadContentId());
     }
 
     @Override

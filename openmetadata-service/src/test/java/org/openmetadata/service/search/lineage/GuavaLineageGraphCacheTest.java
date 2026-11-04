@@ -62,6 +62,24 @@ public class GuavaLineageGraphCacheTest {
     assertEquals(100, cached.get().getNodes().size());
   }
 
+  /**
+   * Each request filters the graph for its caller in place, so a graph read from the cache must not
+   * be the stored one: what one caller removes is still there for the next.
+   */
+  @Test
+  public void testAGraphReadFromTheCacheIsTheReadersOwn() {
+    LineageCacheKey key =
+        LineageCacheKey.fromRequest(
+            new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3));
+    SearchLineageResult stored = createMockResult(10);
+    cache.put(key, stored);
+
+    cache.get(key).orElseThrow().getNodes().clear();
+    stored.getNodes().clear();
+
+    assertEquals(10, cache.get(key).orElseThrow().getNodes().size());
+  }
+
   @Test
   public void testCacheInvalidation() {
     SearchLineageRequest request =

@@ -35,6 +35,12 @@ import { mockTableEntityDetails } from './mocks/TableSummary.mock';
 import { mockTagEntityDetails } from './mocks/TagSummary.mock';
 import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 const mockHandleClosePanel = jest.fn();
 
 jest.mock('../../../utils/EntityLinkUtils', () => ({

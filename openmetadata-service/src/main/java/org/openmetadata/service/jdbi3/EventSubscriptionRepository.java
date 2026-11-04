@@ -319,7 +319,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     // the rest is encrypted before the diff, so the change description and the stored row carry
     // ciphertext only.
     DestinationIds.forgetIdsNotIssuedHere(original, updated);
-    DestinationSecretGuards.requireServedChannelUnchanged(original, updated);
+    DestinationSecretGuards.requireStoredSecretsStaySecret(original, updated);
     DestinationSecrets.restore(original, updated);
     if (operation != Operation.SOFT_DELETE) {
       DestinationSecretGuards.requireFreshSecretsOnAMovedTarget(original, updated);
