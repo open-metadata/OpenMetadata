@@ -65,11 +65,14 @@ final class OntologyResourceAccess {
             : new ResourceContext<>(Entity.ONTOLOGY, ontologyId, null));
   }
 
+  /** A move or copy reads or removes its {@code from} field, so that field counts as touched. */
   static boolean touchesContent(final JsonPatch patch) {
     return patch.toJsonArray().stream()
         .map(JsonValue::asJsonObject)
-        .map(operation -> operation.getString("path", ""))
-        .anyMatch(path -> CONTENT_FIELDS.contains(firstSegment(path)));
+        .anyMatch(
+            operation ->
+                CONTENT_FIELDS.contains(firstSegment(operation.getString("path", "")))
+                    || CONTENT_FIELDS.contains(firstSegment(operation.getString("from", ""))));
   }
 
   private static String firstSegment(final String path) {

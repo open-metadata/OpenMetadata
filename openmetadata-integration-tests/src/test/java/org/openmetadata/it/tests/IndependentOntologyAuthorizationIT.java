@@ -33,6 +33,7 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateOntology;
+import org.openmetadata.schema.api.data.CreateOntologyAxiom;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.InstantiateOntologyPattern;
 import org.openmetadata.schema.api.data.OntologyBulkOperation;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
@@ -57,9 +59,13 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.type.OntologyEditLock;
+import org.openmetadata.schema.type.OntologyExpression;
+import org.openmetadata.schema.type.OntologyExpressionKind;
+import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -194,6 +200,81 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void movingContentOutOfAGuardedFieldNeedsTheContentRight(final TestNamespace ns) {
+    final User renamer =
+        createUserWithOperations(
+            ns,
+            "renamer",
+            List.of(
+                MetadataOperation.EDIT_DISPLAY_NAME,
+                MetadataOperation.EDIT_DESCRIPTION,
+                MetadataOperation.VIEW_ALL));
+    final Ontology ontology = createOntologyWith(ns, "moveOut", List.of(), List.of());
+    final OntologyConcept concept =
+        declareClass(ontology, "Moved", URI.create(ontology.getNamespace() + "Moved"));
+    final String path = "/v1/ontologyConcepts/" + concept.getId();
+
+    assertEquals(
+        403,
+        patch(
+            renamer,
+            path,
+            "[{\"op\":\"move\",\"from\":\"/description\",\"path\":\"/displayName\"}]"));
+    assertEquals(
+        403,
+        patch(
+            renamer,
+            path,
+            "[{\"op\":\"copy\",\"from\":\"/description\",\"path\":\"/displayName\"}]"));
+    assertEquals(
+        concept.getDescription(),
+        SdkClients.adminClient()
+            .ontologyConcepts()
+            .get(concept.getId().toString())
+            .getDescription());
+  }
+
+  @Test
+  void axiomDescriptionEditsNeedTheContentRight(final TestNamespace ns) {
+    final User consumer = createUser(ns, "axiomConsumer", "DataConsumer");
+    final User editor = createEditAllUser(ns, "axiomEditor");
+    final Ontology ontology = createOntologyWith(ns, "axiomEdits", List.of(), List.of());
+    final URI subject = URI.create(ontology.getNamespace() + "Child");
+    final URI parent = URI.create(ontology.getNamespace() + "Parent");
+    declareClass(ontology, "Child", subject);
+    declareClass(ontology, "Parent", parent);
+    final OntologyAxiom axiom =
+        SdkClients.adminClient()
+            .ontologyAxioms()
+            .create(
+                new CreateOntologyAxiom()
+                    .withName(ns.shortPrefix("axiom"))
+                    .withDisplayName("Child is a Parent")
+                    .withDescription("Original axiom text")
+                    .withOntology(ontology.getFullyQualifiedName())
+                    .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
+                    .withSubjectIri(subject)
+                    .withExpressions(
+                        List.of(
+                            new OntologyExpression()
+                                .withKind(OntologyExpressionKind.NAMED_CLASS)
+                                .withClassIri(parent)))
+                    .withProvenance(RelationProvenance.MANUAL));
+    final String path = "/v1/ontologyAxioms/" + axiom.getId();
+    final String describe =
+        "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Rewritten axiom text\"}]";
+
+    assertEquals(403, patch(consumer, path, describe));
+    assertEquals(
+        "Original axiom text",
+        SdkClients.adminClient().ontologyAxioms().get(axiom.getId().toString()).getDescription());
+    assertEquals(200, patch(editor, path, describe));
+    assertEquals(
+        "Rewritten axiom text",
+        SdkClients.adminClient().ontologyAxioms().get(axiom.getId().toString()).getDescription());
+  }
+
+  @Test
   void userDeniedViewCannotReadTheWorkingDraftValidation(final TestNamespace ns) {
     final String prefix = ns.shortPrefix("noView");
     final var admin = SdkClients.adminClient();
@@ -323,6 +404,14 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
   }
 
   private static User createEditAllUser(final TestNamespace ns, final String base) {
+    return createUserWithOperations(
+        ns,
+        base,
+        List.of(MetadataOperation.EDIT_ALL, MetadataOperation.CREATE, MetadataOperation.VIEW_ALL));
+  }
+
+  private static User createUserWithOperations(
+      final TestNamespace ns, final String base, final List<MetadataOperation> operations) {
     final OpenMetadataClient admin = SdkClients.adminClient();
     final String name = ns.shortPrefix(base);
     final Policy policy =
@@ -339,11 +428,7 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
                                     .withName("EditEverything")
                                     .withEffect(Rule.Effect.ALLOW)
                                     .withResources(List.of("All"))
-                                    .withOperations(
-                                        List.of(
-                                            MetadataOperation.EDIT_ALL,
-                                            MetadataOperation.CREATE,
-                                            MetadataOperation.VIEW_ALL))))));
+                                    .withOperations(operations)))));
     final Role role =
         ns.trackRoot(
             Entity.ROLE,

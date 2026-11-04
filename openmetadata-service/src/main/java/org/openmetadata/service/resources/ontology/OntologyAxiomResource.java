@@ -162,6 +162,8 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       final JsonPatch patch) {
+    OntologyResourceAccess.requireEditForContentPatch(
+        authorizer, securityContext, Entity.ONTOLOGY_AXIOM, id, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 

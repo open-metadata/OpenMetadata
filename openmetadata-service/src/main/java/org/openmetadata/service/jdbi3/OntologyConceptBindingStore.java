@@ -98,9 +98,10 @@ public final class OntologyConceptBindingStore {
     return dao.ontologyConceptBindingDAO().find(conceptId, assetId);
   }
 
-  /** The bindings of one asset across concepts, in concept id order. */
-  public List<BindingRow> forAsset(final UUID assetId, final int limit) {
-    return dao.ontologyConceptBindingDAO().listForAsset(assetId, limit);
+  /** One page of an asset's bindings in concept id order, after the given concept. */
+  public List<BindingRow> forAssetAfter(final UUID assetId, final UUID after, final int limit) {
+    return dao.ontologyConceptBindingDAO()
+        .listForAssetAfter(assetId, after == null ? FIRST_PAGE : after.toString(), limit);
   }
 
   public List<BindingRow> page(final UUID conceptId, final UUID after, final int limit) {

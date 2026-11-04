@@ -43,6 +43,30 @@ class OntologyResourceAccessTest {
   }
 
   @Test
+  void movingOrCopyingOutOfAContentFieldIsAContentEdit() {
+    for (final String field : List.of("/description", "/tags", "/tags/0")) {
+      assertTrue(
+          OntologyResourceAccess.touchesContent(
+              Json.createPatchBuilder().move("/displayName", field).build()),
+          "move from " + field);
+      assertTrue(
+          OntologyResourceAccess.touchesContent(
+              Json.createPatchBuilder().copy("/displayName", field).build()),
+          "copy from " + field);
+    }
+  }
+
+  @Test
+  void movingOrCopyingBetweenOtherFieldsIsNotAContentEdit() {
+    assertFalse(
+        OntologyResourceAccess.touchesContent(
+            Json.createPatchBuilder().move("/displayName", "/extension/note").build()));
+    assertFalse(
+        OntologyResourceAccess.touchesContent(
+            Json.createPatchBuilder().copy("/displayName", "/name").build()));
+  }
+
+  @Test
   void draftReadsNeedEditAllWhileViewAloneIsNotEnough() {
     final SecurityContext context = Mockito.mock(SecurityContext.class);
     final ResourceContextInterface ontology = Mockito.mock(ResourceContextInterface.class);

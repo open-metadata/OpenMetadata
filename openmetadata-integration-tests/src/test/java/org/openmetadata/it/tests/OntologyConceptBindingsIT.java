@@ -200,6 +200,33 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void anAssetListsEveryVisibleLinkEvenWhenHiddenConceptsComeFirstPastOneHundredRows(
+      TestNamespace ns) {
+    final var live = createOntology(ns, "liveLinks");
+    final var archived = createOntology(ns, "archivedLinks");
+    final var table = table(ns);
+    final var visible = new HashSet<java.util.UUID>();
+    for (int index = 0; index < 70; index++) {
+      final var concept = declareClass(live, "Live" + index, URI.create("urn:Live" + index));
+      put(admin(), concept, association(table, null), 0L);
+      visible.add(concept.getId());
+    }
+    for (int index = 0; index < 60; index++) {
+      final var concept = declareClass(archived, "Gone" + index, URI.create("urn:Gone" + index));
+      put(admin(), concept, association(table, null), 0L);
+    }
+    admin().ontologies().delete(archived.getId().toString(), Map.of("recursive", "true"));
+
+    final var links = conceptsBoundTo(admin(), "table", table);
+
+    assertEquals(
+        visible,
+        links.getLinks().stream()
+            .map(link -> link.getConcept().getId())
+            .collect(Collectors.toSet()));
+  }
+
+  @Test
   void aReaderDeniedTheAssetIsRefusedTheLinks(TestNamespace ns) {
     final var ontology = createOntology(ns);
     final var concept = declareClass(ontology, "Customer", URI.create("urn:Customer"));
@@ -587,6 +614,11 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
   }
 
   private static OntologyAssetBinding association(Table table, OntologyProperty property) {
+    if (property == null) {
+      return new OntologyAssetBinding()
+          .withAssetId(table.getId())
+          .withAssetType(OntologyBindingAssetType.TABLE);
+    }
     return new OntologyAssetBinding()
         .withAssetId(table.getId())
         .withAssetType(OntologyBindingAssetType.TABLE)

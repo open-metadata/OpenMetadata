@@ -135,6 +135,14 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
     return findRetainedReleaseForUpdate(ontologyId) != null;
   }
 
+  /** Releases of one ontology that were activated at least once, including ones since replaced. */
+  @SqlQuery(
+      "SELECT json FROM ontology_release_entity WHERE ontologyId = :ontologyId "
+          + "AND (deleted IS NULL OR deleted = false) AND id IN ("
+          + "SELECT releaseId FROM ontology_release_event "
+          + "WHERE ontologyId = :ontologyId AND eventType = 'ACTIVATED')")
+  List<String> listPublished(@BindUUID("ontologyId") UUID ontologyId);
+
   @SqlQuery(
       "SELECT json FROM ontology_release_event WHERE releaseId = :releaseId "
           + "AND eventType = 'ACTIVATED' ORDER BY createdAt, id LIMIT 1")

@@ -19,6 +19,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
+import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.api.tasks.ResolveTask;
@@ -249,6 +250,46 @@ public class IndependentOntologyActivationIT extends BaseOntologyApprovalIT {
 
     assertEquals(
         again.getId(), activate(SdkClients.adminClient(), ontology, again, 0).getActiveReleaseId());
+  }
+
+  @Test
+  void aSecondDraftCapturedFromTheSameBaseCannotPublishTheVersionTheFirstTook(TestNamespace ns) {
+    final var client = SdkClients.adminClient();
+    final var ontology = unreviewedOntology(ns, "twin");
+    final var first = captureBumped(ontology);
+    declareClass(ontology, "Twin", java.net.URI.create(ontology.getNamespace() + "Twin"));
+    final var second = captureBumped(ontology);
+    assertEquals("0.1.0", first.getSemanticVersion());
+    assertEquals("0.1.0", second.getSemanticVersion());
+
+    activate(client, ontology, first, 0);
+    final var refused =
+        assertThrows(OpenMetadataException.class, () -> activate(client, ontology, second, 1));
+
+    assertEquals(409, refused.getStatusCode());
+    assertTrue(
+        refused.getMessage().contains("Version 0.1.0 is already published"), refused.getMessage());
+    assertEquals(first.getId(), state(ontology).getActiveReleaseId());
+    assertEquals(EntityStatus.DRAFT, current(second).getEntityStatus());
+  }
+
+  @Test
+  void captureAfterARollbackSuggestsAVersionNoReleaseHasPublished(TestNamespace ns) {
+    final var client = SdkClients.adminClient();
+    final var ontology = unreviewedOntology(ns, "rolled");
+    final var first = captureBumped(ontology);
+    activate(client, ontology, first, 0);
+    declareClass(ontology, "Next", java.net.URI.create(ontology.getNamespace() + "Next"));
+    final var second = captureBumped(ontology);
+    assertEquals("0.2.0", second.getSemanticVersion());
+    activate(client, ontology, second, 1);
+    activate(client, ontology, first, 2);
+    declareClass(ontology, "Later", java.net.URI.create(ontology.getNamespace() + "Later"));
+
+    final var third = captureBumped(ontology);
+
+    assertEquals("0.3.0", third.getSemanticVersion());
+    assertEquals(third.getId(), activate(client, ontology, third, 3).getActiveReleaseId());
   }
 
   @Test
@@ -493,6 +534,17 @@ public class IndependentOntologyActivationIT extends BaseOntologyApprovalIT {
     assertTrue(
         refused.getMessage().contains("A rejection requires a reason"), refused.getMessage());
     assertEquals(EntityStatus.IN_REVIEW, current(draft).getEntityStatus());
+  }
+
+  private static OntologyRelease captureBumped(Ontology ontology) {
+    final var service = SdkClients.adminClient().ontologies();
+    final var state = service.state(ontology.getId());
+    return service.capture(
+        ontology.getId(),
+        new CaptureOntologyRelease()
+            .withExpectedWorkingRevision(state.getWorkingRevision())
+            .withExpectedLatestReleaseRevision(state.getLastReleaseRevision())
+            .withVersionBump(CaptureOntologyRelease.VersionBump.MINOR));
   }
 
   private static Ontology unreviewedOntology(TestNamespace ns, String name) {
