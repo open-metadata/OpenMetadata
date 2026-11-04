@@ -167,7 +167,14 @@ export const registerVisualScenarios = (group: string) => {
             // Selecting a far-right tab can still be scrolling after its panel
             // mounts; otherwise fast generation can approve a clipped label.
             await selectedTab.scrollIntoViewIfNeeded();
-            await expect(selectedTab).toBeInViewport({ ratio: 1 });
+            const bounds = await selectedTab.boundingBox();
+            if (!bounds || bounds.width <= 0)
+              throw new Error('The selected tab has no visible layout bounds.');
+            // Chromium rounds the clipping edge of a horizontal scroller to CSS pixels.
+            // Allow half a pixel of rounding, independent of the tab's width.
+            await expect(selectedTab).toBeInViewport({
+              ratio: 1 - 0.5 / bounds.width,
+            });
           }
           for (const missing of scene.absent ?? [])
             await expect(locate(page, missing)).toHaveCount(0);
