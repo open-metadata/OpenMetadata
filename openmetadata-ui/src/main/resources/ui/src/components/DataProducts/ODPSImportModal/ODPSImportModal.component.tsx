@@ -60,20 +60,6 @@ const extractOdpsProductId = (yamlContent: string): string | undefined => {
   return typeof productId === 'string' ? productId.trim() : undefined;
 };
 
-// Mirrors ODPSConverter.sanitizeEntityNameOrNull: the backend falls back to this
-// slug when no product matches the raw productID.
-const MAX_ENTITY_NAME_LENGTH = 64;
-const trimUnderscores = (value: string) => value.replace(/^_+|_+$/g, '');
-const sanitizeProductId = (productId: string): string => {
-  const slug = trimUnderscores(
-    productId.replace(/[^a-zA-Z0-9_\-.]+/g, '_').replace(/_+/g, '_')
-  );
-
-  return slug.length > MAX_ENTITY_NAME_LENGTH
-    ? trimUnderscores(slug.substring(0, MAX_ENTITY_NAME_LENGTH))
-    : slug;
-};
-
 const ODPSImportModal = ({
   open,
   existingDataProduct,
@@ -160,7 +146,7 @@ const ODPSImportModal = ({
     if (existingDataProduct?.name) {
       const yamlProductId = extractOdpsProductId(yamlContent);
       // Export writes the product's FQN as productID; a hand-written YAML may use
-      // the name, or a value that sanitizes to it (the backend's fallback match).
+      // the name. Only an exact match is accepted.
       const existingName =
         existingDataProduct.fullyQualifiedName ?? existingDataProduct.name;
       // An unreadable productID can't be verified against this product, so treat
@@ -170,11 +156,12 @@ const ODPSImportModal = ({
 
         return;
       }
-      const matchesCurrentProduct =
-        [existingDataProduct.fullyQualifiedName, existingDataProduct.name]
-          .filter(Boolean)
-          .includes(yamlProductId) ||
-        sanitizeProductId(yamlProductId) === existingDataProduct.name;
+      const matchesCurrentProduct = [
+        existingDataProduct.fullyQualifiedName,
+        existingDataProduct.name,
+      ]
+        .filter(Boolean)
+        .includes(yamlProductId);
       if (!matchesCurrentProduct) {
         showErrorToast(
           t('message.odps-yaml-name-mismatch', {
