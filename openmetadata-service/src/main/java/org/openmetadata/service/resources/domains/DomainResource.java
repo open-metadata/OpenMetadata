@@ -45,6 +45,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.DomainStyles;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.DomainRepository;
+import org.openmetadata.service.jdbi3.DomainStyleReader;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.limits.Limits;
@@ -91,6 +93,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainMapper mapper = new DomainMapper();
   private final TaskAboutVisibility taskAboutVisibility;
+  private final DomainStyleReader styleReader = new DomainStyleReader(Entity.getCollectionDAO());
   static final String FIELDS =
       "tags,children,childrenCount,owners,experts,extension,followers,votes,certification";
 
@@ -660,6 +663,31 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, true, true);
+  }
+
+  @GET
+  @Path("/styles")
+  @Operation(
+      operationId = "listDomainStyles",
+      summary = "List domain and data product styles",
+      description =
+          "Get the colour and icon of every domain and data product that has a style. Clients draw"
+              + " domain and data product chips from the id their references hold.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Styles of the styled domains and data products",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DomainStyles.class)))
+      })
+  public DomainStyles listStyles(@Context SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
+    return styleReader.listStyles();
   }
 
   @GET
