@@ -104,7 +104,11 @@ export const openTeamTab = async (
   page: Page,
   tabName: RegExp
 ): Promise<void> => {
-  await page.getByRole('tab', { name: tabName }).click();
+  // The profile sidebar can expose a tab with the same name as the team pane.
+  await page
+    .getByTestId('team-detail')
+    .getByRole('tab', { name: tabName })
+    .click();
 };
 
 /** Open the Users list panel from the Members landing. */

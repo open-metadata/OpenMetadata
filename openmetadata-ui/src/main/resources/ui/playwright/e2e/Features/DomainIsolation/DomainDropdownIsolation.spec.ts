@@ -129,9 +129,10 @@ test('Restricted user sees only their own domains in the navbar dropdown', async
 
   await openDomainDropdown(restrictedUserPage);
 
+  // Resetting the scope still limits the domain list to this user's permissions.
   await expect(
     restrictedUserPage.getByTestId('tree-node-All Domains')
-  ).toHaveCount(0);
+  ).toBeVisible();
   await expect(
     restrictedUserPage.getByTestId(
       `tree-node-${ownedDomainA.responseData.fullyQualifiedName}`

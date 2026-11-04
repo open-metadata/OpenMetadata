@@ -658,7 +658,9 @@ test.describe('AI Profile Team Detail', () => {
       const team = await makeTeam(apiContext);
       await openCreatedTeam(page, team);
 
-      const tab = page.getByRole('tab', { name: /Custom Properties/ });
+      const tab = page
+        .getByTestId('team-detail')
+        .getByRole('tab', { name: /Custom Properties/ });
 
       await expect(tab).toBeVisible();
 

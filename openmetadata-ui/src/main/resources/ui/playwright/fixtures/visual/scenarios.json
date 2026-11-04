@@ -3940,7 +3940,7 @@
       "testId": "ontology-studio-shell"
     },
     "ready": {
-      "testId": "ontology-create-form"
+      "testId": "ontology-create-dialog"
     },
     "actions": [
       {
@@ -3950,6 +3950,16 @@
       {
         "action": "click",
         "testId": "ontology-create"
+      }
+    ],
+    "disabled": [
+      {
+        "testId": "ontology-create-submit"
+      }
+    ],
+    "inViewport": [
+      {
+        "testId": "ontology-create-submit"
       }
     ]
   },
@@ -3961,7 +3971,7 @@
       "testId": "ontology-studio-shell"
     },
     "ready": {
-      "testId": "ontology-create-form"
+      "testId": "ontology-create-dialog"
     },
     "actions": [
       {
@@ -3973,10 +3983,28 @@
         "testId": "ontology-create"
       },
       {
-        "action": "click",
-        "role": "button",
-        "name": "Save"
+        "action": "fill",
+        "testId": "ontology-create-name",
+        "value": "VisualOntology"
+      },
+      {
+        "action": "fill",
+        "testId": "ontology-create-prefix",
+        "value": "invalid prefix"
       }
+    ],
+    "disabled": [
+      {
+        "testId": "ontology-create-submit"
+      }
+    ],
+    "inViewport": [
+      {
+        "testId": "ontology-create-submit"
+      }
+    ],
+    "containsText": [
+      "Start with a letter, digit, or underscore. Then use letters, digits, dots, hyphens, or underscores."
     ]
   },
   {
@@ -8753,7 +8781,29 @@
         "testId": "add-custom-property-btn"
       },
       {
-        "action": "click",
+        "action": "fill",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "TemporaryName"
+      },
+      {
+        "action": "fill",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": ""
+      },
+      {
+        "action": "press",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "Tab"
+      }
+    ],
+    "disabled": [
+      {
         "testId": "custom-property-save"
       }
     ]
@@ -8782,7 +8832,15 @@
         "value": "invalid/name"
       },
       {
-        "action": "click",
+        "action": "press",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "Tab"
+      }
+    ],
+    "disabled": [
+      {
         "testId": "custom-property-save"
       }
     ]
@@ -9603,6 +9661,13 @@
         "testId": "add-custom-property-btn"
       },
       {
+        "action": "fill",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "VisualInvalidConfiguration"
+      },
+      {
         "action": "click",
         "testId": "custom-property-type"
       },
@@ -9612,7 +9677,26 @@
         "name": "Enum"
       },
       {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Temporary"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-enum-config",
+        "value": "Enter"
+      },
+      {
         "action": "click",
+        "role": "button",
+        "name": "Remove Temporary",
+        "within": "custom-property-enum-config"
+      }
+    ],
+    "disabled": [
+      {
         "testId": "custom-property-save"
       }
     ]
@@ -9634,6 +9718,13 @@
         "testId": "add-custom-property-btn"
       },
       {
+        "action": "fill",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "VisualInvalidConfiguration"
+      },
+      {
         "action": "click",
         "testId": "custom-property-type"
       },
@@ -9644,6 +9735,28 @@
       },
       {
         "action": "click",
+        "testId": "custom-property-entity-ref-config"
+      },
+      {
+        "action": "click",
+        "role": "option",
+        "name": "Table"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-entity-ref-config",
+        "value": "Escape"
+      },
+      {
+        "action": "click",
+        "role": "button",
+        "name": "Remove Table",
+        "within": "custom-property-entity-ref-config"
+      }
+    ],
+    "disabled": [
+      {
         "testId": "custom-property-save"
       }
     ]
@@ -9665,6 +9778,13 @@
         "testId": "add-custom-property-btn"
       },
       {
+        "action": "fill",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "VisualInvalidConfiguration"
+      },
+      {
         "action": "click",
         "testId": "custom-property-type"
       },
@@ -9674,7 +9794,26 @@
         "name": "Table"
       },
       {
+        "action": "fill",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Temporary"
+      },
+      {
+        "action": "press",
+        "role": "combobox",
+        "within": "custom-property-columns",
+        "value": "Enter"
+      },
+      {
         "action": "click",
+        "role": "button",
+        "name": "Remove Temporary",
+        "within": "custom-property-columns"
+      }
+    ],
+    "disabled": [
+      {
         "testId": "custom-property-save"
       }
     ]
@@ -9696,6 +9835,13 @@
         "testId": "add-custom-property-btn"
       },
       {
+        "action": "fill",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "VisualInvalidConfiguration"
+      },
+      {
         "action": "click",
         "testId": "custom-property-type"
       },
@@ -9715,9 +9861,10 @@
         "role": "combobox",
         "within": "custom-property-columns",
         "value": "Enter"
-      },
+      }
+    ],
+    "disabled": [
       {
-        "action": "click",
         "testId": "custom-property-save"
       }
     ]
@@ -9737,6 +9884,13 @@
       {
         "action": "click",
         "testId": "add-custom-property-btn"
+      },
+      {
+        "action": "fill",
+        "role": "textbox",
+        "name": "Name",
+        "within": "custom-property-name",
+        "value": "VisualInvalidConfiguration"
       },
       {
         "action": "click",
@@ -9794,9 +9948,10 @@
         "role": "combobox",
         "within": "custom-property-columns",
         "value": "Enter"
-      },
+      }
+    ],
+    "disabled": [
       {
-        "action": "click",
         "testId": "custom-property-save"
       }
     ]
@@ -9905,7 +10060,7 @@
     "ready": {
       "testId": "message-card",
       "has": {
-        "text": "{\"id\": 1, \"first_name\": \"L\u00e9vy\", \"country\": \"ES\"}"
+        "text": "{\"id\": 1, \"first_name\": \"Lévy\", \"country\": \"ES\"}"
       }
     }
   },

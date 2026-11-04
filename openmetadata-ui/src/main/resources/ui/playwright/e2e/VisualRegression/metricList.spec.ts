@@ -1020,7 +1020,13 @@ for (const scene of [
             if (scene === 'definition-validation') {
               await dialog.getByRole('textbox', { name: /^Code\b/ }).fill('');
               await dialog.getByTestId('metric-definition-save').click();
-              await expect(dialog).toContainText('Code is required');
+              // Expressions are optional; Other still requires a custom unit.
+              await expect(
+                dialog.getByRole('textbox', { name: /^Code\b/ })
+              ).toHaveValue('');
+              await expect(
+                dialog.getByRole('textbox', { name: /^Code\b/ })
+              ).not.toHaveAttribute('aria-invalid', 'true');
               await expect(dialog).toContainText(
                 'Measurement Unit is required'
               );

@@ -27,9 +27,9 @@ import { waitForTaskListResponse } from '../../../utils/task';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 // The navbar pick is saved on the user (defaultDomain) and applied on load, so tests switch
-// domains as a throwaway admin to keep the pick out of parallel tests. Returns the task count
-// the reloaded page requests for the new selection; the waiter is armed only after the save and
-// matches the expected `domain` param, so a count request left over from before can't satisfy it.
+// domains as a throwaway admin to keep the pick out of parallel tests. Wait for the conversation
+// list, not the entity header's task count, which has its own scope. Matching the new domain
+// and excluding count requests prevents an old or badge-only response from satisfying the wait.
 const switchDomain = async (
   apiContext: APIRequestContext,
   page: Page,
@@ -39,21 +39,22 @@ const switchDomain = async (
     ? setPersistedDomain(apiContext, domain.id ?? '')
     : clearPersistedDomain(apiContext));
   const expectedDomain = domain?.fullyQualifiedName ?? null;
-  const taskCount = page.waitForResponse((response) => {
+  const conversations = page.waitForResponse((response) => {
     const url = new URL(response.url());
 
     return (
       response.request().method() === 'GET' &&
-      url.pathname.endsWith('/api/v1/tasks/count') &&
+      url.pathname.endsWith('/api/v1/conversations') &&
+      !url.searchParams.has('limit') &&
       url.searchParams.get('domain') === expectedDomain
     );
   });
   await page.reload();
 
-  return taskCount;
+  return conversations;
 };
 
-test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
+test.describe('Domain Filtering - Conversations Refetch on Domain Switch', () => {
   const domainA = new Domain();
   const domainB = new Domain();
   const tableInDomainA = new TableClass();

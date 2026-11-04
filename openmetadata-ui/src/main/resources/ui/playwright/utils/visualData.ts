@@ -235,7 +235,12 @@ export const installVisualBootstrap = async (
         allowedDomains: ['all'],
         useRolesFromProvider: false,
       },
-      rdf: { rdfEnabled: true, basePath: '/rdf', aiEnabled: false },
+      rdf: {
+        rdfEnabled: true,
+        basePath: '/rdf',
+        baseUri: 'https://metadata.example.test/ontology/',
+        aiEnabled: false,
+      },
       customUiThemePreference: {},
       // These pages intentionally exercise their unsaved/default form values.
       // New setting types need an explicit fixture instead of an implicit {}.
@@ -591,6 +596,12 @@ export const installVisualData = async (
       return;
     }
 
+    if (path === 'ontologies/reviews') {
+      // This unpublished catalog has no release reviews for the current user.
+      await route.fulfill({ json: { data: [], paging: { total: 0 } } });
+
+      return;
+    }
     if (/^ontologies\/[^/]+\/state$/.test(path)) {
       await route.fulfill({
         json: {
