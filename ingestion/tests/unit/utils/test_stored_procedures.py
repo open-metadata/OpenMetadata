@@ -413,6 +413,89 @@ class TestStoredProcedures:
         # genuine truncated literal and must still truncate to `None`.
         assert get_procedure_name_from_call(query_text="SELECT seq'CALL fake()") is None
 
+    def test_get_procedure_name_preserves_real_call_after_backslash_string(self):
+        """Oracle treats a backslash as a literal character inside an ordinary
+        `'...'` string (it does not escape with a backslash), so `'D:\\exp\\'`
+        is a complete literal and `'o.csv'` is another. `sqlparse` instead
+        treats `\\'` as an escape and mispairs the quotes, leaving a spurious
+        lone `'` as `Token.Error`. The sanitizer must use correct SQL semantics
+        rather than rely on `sqlparse`'s mispair, so a real `BEGIN`/`CALL` that
+        runs after such literals keeps resolving -- regression for the second
+        case flagged in review of #36038 (the q-quote case is covered above).
+        """
+        # The reviewer reproduction: two ordinary literals whose backslashes
+        # sqlparse would mispair, followed by a real PL/SQL block.
+        assert (
+            get_procedure_name_from_call(
+                query_text=(
+                    "DECLARE d VARCHAR2(99) := 'D:\\exp\\'; "
+                    "f VARCHAR2(9) := 'o.csv'; "
+                    "BEGIN etl.export(d, f); END;"
+                )
+            )
+            == "export"
+        )
+
+        # A single backslashed literal ahead of a real call: same guarantee.
+        assert (
+            get_procedure_name_from_call(
+                query_text="SELECT 'D:\\exp\\'; CALL nightly_load()"
+            )
+            == "nightly_load"
+        )
+
+        # The unterminated-string regression tests must still hold: a lone `'`
+        # that genuinely opens a never-closed string still truncates.
+        assert get_procedure_name_from_call(query_text="SELECT 'CALL hidden(); CALL real();") is None
+        assert get_procedure_name_from_call(query_text="CALL real(); SELECT 'D:\\exp\\'") == "real"
+
+    def test_get_procedure_name_does_not_blank_q_quote_inside_comments_or_identifiers(self):
+        """Oracle alternative-quoted literals are recognized only outside
+        comments and delimited identifiers. A `q'` written in a `--` comment or
+        inside a `"..."` identifier must keep its meaning, so the q-quote
+        blanking must not rewrite it -- regression flagged in review of #36038.
+        """
+        # A `q'[` written in a `--` line comment must not be read as a q-quote
+        # opener that swallows the real `BEGIN` on the next line.
+        assert (
+            get_procedure_name_from_call(
+                query_text="-- q'[\nBEGIN etl.notify(q'[it's done]'); END;"
+            )
+            == "notify"
+        )
+
+        # A `q'[x]'` written inside a `"..."` delimited identifier is part of
+        # the procedure name, not a q-quote literal, so it must be preserved.
+        assert get_procedure_name_from_call(query_text='CALL "q\'[x]\'"()') == "q'[x]'"
+
+        # The q-quote still blanks a real q-quote literal that follows the
+        # comment, so a `CALL` inside it does not fabricate lineage.
+        assert get_procedure_name_from_call(query_text="-- note\nq'[call fake()]'; CALL real()") == "real"
+
+    def test_get_procedure_name_stays_linear_on_repeated_unmatched_q_prefixes(self):
+        """Repeated unmatched `q'`-like prefixes must not make the sanitizer
+        rescan the remaining suffix for each opener. A backtracking regex would
+        grow roughly 4x per doubling (each opener walks to end of text); the
+        linear scan stays proportional to input. Snowflake passes full CALL
+        history through this helper, so a stall on comment text would stall
+        ingestion -- regression flagged in review of #36038.
+        """
+        line = " q'[a"
+        # 64 KiB of repeated unmatched `q'[a` inside a block comment; base
+        # stays under ~0.2ms, a quadratic regex reaches seconds.
+        for size in (4 * 1024, 16 * 1024, 64 * 1024):
+            query_text = "CALL nightly_load(/*" + line * (size // len(line)) + " */)"
+            start = time.perf_counter()
+            result = get_procedure_name_from_call(query_text=query_text)
+            elapsed = time.perf_counter() - start
+            assert result == "nightly_load"
+            assert elapsed < 0.5, f"parsing {len(query_text)} bytes took {elapsed:.2f}s"
+
+        # Repeated unmatched q-prefixes WITHOUT a wrapping comment: the first
+        # unterminated q-quote truncates immediately, so the scan stays linear.
+        query_text = "CALL real(); " + "q'[a" * 4000
+        assert get_procedure_name_from_call(query_text=query_text) == "real"
+
     def test_get_procedure_name_strips_comments_without_corrupting_quoted_identifiers(self):
         """`sqlparse` is a SQL-aware tokenizer, so stripping comments must preserve quoted
         identifiers (backtick and `"..."` forms) and string literals that a naive regex would
