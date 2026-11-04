@@ -16,12 +16,12 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
 import type { MembersInlineEntityTabProps } from './MembersTeamDetail.types';
 
@@ -36,6 +36,8 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   available,
   entityLabel,
   entityPluralLabel,
+  entityDescription,
+  emptyIcon,
   tableTestId,
   addButtonTestId,
   addSelectTestId,
@@ -49,9 +51,9 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box direction="col" gap={3}>
+    <Box direction="col">
       {isAdding && (
-        <Card variant="muted">
+        <Card className="tw:m-4">
           <Card.Content className="tw:flex tw:flex-col tw:gap-4">
             <Typography
               className="tw:text-primary"
@@ -83,14 +85,14 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               )}
             </Autocomplete>
             <Box direction="row" gap={3} justify="end">
-              <Button color="tertiary" size="sm" onPress={onCancelAdd}>
+              <Button color="tertiary" size="xs" onPress={onCancelAdd}>
                 {t('label.cancel')}
               </Button>
               <Button
                 color="primary"
                 isDisabled={selectedNew.length === 0}
                 isLoading={isSavingInline}
-                size="sm"
+                size="xs"
                 onPress={onConfirmAdd}>
                 {t('label.save')}
               </Button>
@@ -98,19 +100,9 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
           </Card.Content>
         </Card>
       )}
-      {canEditAll && !isAdding && (
-        <Box align="center" className="tw:pb-3" direction="row" justify="end">
-          <Button
-            color="primary"
-            data-testid={addButtonTestId}
-            size="sm"
-            onPress={onStartAdd}>
-            {t('label.add-entity', { entity: entityLabel })}
-          </Button>
-        </Box>
-      )}
       <Table
         columns={columns}
+        containerClassName="tw:rounded-none tw:border-0"
         data-testid={tableTestId}
         dataSource={dataSource}
         locale={{
@@ -119,11 +111,12 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               align="center"
               className="tw:min-h-32 tw:relative"
               justify="center">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 description={t(
                   'message.adding-new-entity-is-easy-just-give-it-a-spin',
                   { entity: entityLabel }
                 )}
+                icon={emptyIcon}
                 title={t('label.no-entity-found', {
                   entity: entityPluralLabel,
                 })}
@@ -132,8 +125,38 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
           ),
         }}
         pagination={false}
+        renderToolbar={() => (
+          <Box
+            align="center"
+            className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
+            direction="row"
+            gap={4}
+            justify="between">
+            <Box className="tw:min-w-0" direction="col" gap={1}>
+              <Typography
+                className="tw:text-primary"
+                size="text-sm"
+                weight="medium">
+                {entityPluralLabel}
+              </Typography>
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {entityDescription}
+              </Typography>
+            </Box>
+            {canEditAll && !isAdding && (
+              <Button
+                color="primary"
+                data-testid={addButtonTestId}
+                size="xs"
+                onPress={onStartAdd}>
+                {t('label.add-entity', { entity: entityLabel })}
+              </Button>
+            )}
+          </Box>
+        )}
         rowKey="id"
         size="small"
+        variant="muted"
       />
     </Box>
   );

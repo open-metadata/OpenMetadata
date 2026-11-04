@@ -227,6 +227,7 @@ public final class CachedSearchLayer {
     appendField(sb, "d", String.valueOf(request.getDeleted()));
     appendField(sb, "h", String.valueOf(request.getIsHierarchy()));
     appendField(sb, "ag", String.valueOf(request.getIncludeAggregations()));
+    appendField(sb, "hl", String.valueOf(request.getIncludeHighlights()));
     appendField(sb, "ex", String.valueOf(request.getExplain()));
     appendField(sb, "tt", String.valueOf(request.getTrackTotalHits()));
     appendField(sb, "dom", domainsKey(request));

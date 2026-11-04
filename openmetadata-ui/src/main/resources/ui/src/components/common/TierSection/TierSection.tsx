@@ -16,6 +16,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
@@ -142,11 +143,11 @@ const TierSection: React.FC<TierSectionProps> = ({
             />
           </div>
         ) : (
-          <span className="no-data-placeholder">
+          <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
             {t('label.no-entity-assigned', {
               entity: t('label.tier'),
             })}
-          </span>
+          </Typography>
         )}
       </div>
     ),
@@ -166,7 +167,9 @@ const TierSection: React.FC<TierSectionProps> = ({
   return (
     <div className="tier-section">
       <div className="tier-header">
-        <Typography className="tier-title">{t('label.tier')}</Typography>
+        <Typography size="text-xs" weight="semibold">
+          {t('label.tier')}
+        </Typography>
         {canShowEditButton && (
           <TierCard
             currentTier={displayTier?.tagFQN}

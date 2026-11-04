@@ -38,7 +38,7 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   actionButton: 'tw:h-9 tw:w-fit tw:min-w-[112px]',
   advancedConfigHeader: 'tw:flex tw:items-center tw:gap-2',
   alertDescriptionCard:
-    'tw:min-h-[137px] tw:rounded-xl tw:border tw:border-secondary tw:p-[18px]',
+    'tw:rounded-xl tw:border tw:border-secondary tw:p-[18px]',
   autocompleteField:
     'tw:[&_[role=group]>div>span]:min-w-0 tw:[&_[role=group]>div>span]:max-w-full',
   card: 'tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3',
@@ -68,12 +68,11 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   sectionRequiredMarker: 'tw:ml-0.5 tw:text-error-primary',
   sectionRoot: 'tw:w-full tw:items-stretch tw:gap-1.5',
   teamUserHint: 'tw:mt-1 tw:text-sm tw:text-fg-error-secondary',
-  teamUserSelectDropdown:
-    'tw:absolute tw:z-50 tw:mt-1 tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:p-2 tw:shadow-lg',
   teamUserSelectEmptyText: 'tw:p-2 tw:text-center tw:text-tertiary',
   teamUserSelectOptionButton:
     'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-start tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:text-left tw:hover:bg-secondary',
   teamUserSelectOptionLabel: 'tw:truncate tw:text-primary',
+  teamUserSelectOptionRow: 'tw:flex tw:min-w-0 tw:items-center tw:gap-2',
   teamUserSelectOptions: 'tw:mt-2 tw:max-h-48 tw:overflow-y-auto',
   teamUserSelectRoot: 'tw:relative tw:w-full',
   teamUserSelectSkeletonWrapper: 'tw:space-y-1 tw:p-2',

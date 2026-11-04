@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sampler.partition import get_partition_details
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -86,6 +87,7 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
     tablePartition: TablePartition | None  # noqa: N815
     tableProfilerConfig: TableProfilerConfig | None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery  # noqa: N815
@@ -95,6 +97,7 @@ class MockTable(BaseModel):
 
 
 class MockRedshiftTable(BaseModel):
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
     tablePartition: TablePartition | None  # noqa: N815
     tableProfilerConfig: TableProfilerConfig | None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.Redshift  # noqa: N815

@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import Column, Integer, MetaData, String, Table, event
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import FailureThreshold, ThresholdUnit
@@ -64,10 +64,14 @@ def build_test_case(parameter_values, compute_passed_failed_row_count=False, ent
 
 
 def build_validator(validator_class, parameter_values, compute_passed_failed_row_count=False):
-    """Build a validator whose only live dependency is its test case"""
-    return validator_class(
-        MagicMock(), build_test_case(parameter_values, compute_passed_failed_row_count), EXECUTION_DATE
-    )
+    """Build a validator whose only live dependencies are its test case and the declared column
+
+    A set validator parses its values in the column's declared type, so the runner declares the
+    table; nothing is ever queried.
+    """
+    runner = MagicMock()
+    runner.dataset = Table("users", MetaData(), Column("nickname", String), Column("age", Integer))
+    return validator_class(runner, build_test_case(parameter_values, compute_passed_failed_row_count), EXECUTION_DATE)
 
 
 @contextmanager

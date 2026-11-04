@@ -23,6 +23,7 @@ import {
 import { Settings01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { toString } from 'lodash';
 import { PagingWithoutTotal } from 'Models';
 import React, {
   FC,
@@ -79,6 +80,7 @@ import {
 } from '../../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getServiceVersionPath } from '../../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -86,9 +88,11 @@ import {
   shouldTestConnection,
 } from '../../../utils/ServicePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { HeaderVersionButton } from '../../common/HeaderVersionButton/HeaderVersionButton.component';
 import Loader from '../../common/Loader/Loader';
 import TestConnection from '../../common/TestConnection/TestConnection';
 import DataModelTable from '../../Dashboard/DataModel/DataModels/DataModelsTable';
@@ -101,6 +105,7 @@ import { useSlotInset } from '../hooks/useSlotInset';
 import {
   getConnectionsRootBreadcrumb,
   getServiceCategoryBreadcrumb,
+  getServiceListPath,
 } from './connectionsBreadcrumb.utils';
 import {
   fetchServiceChildren,
@@ -112,6 +117,8 @@ import {
   ServiceFilesTab,
   ServiceSpreadsheetsTab,
 } from './ServiceDriveAssetTabs';
+import { ServiceFollowButton } from './ServiceFollowButton';
+import { useActiveAnnouncements } from './useActiveAnnouncements';
 import {
   DATA_ASSETS_TAB_KEY,
   useServiceAssetCounts,
@@ -467,8 +474,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   );
 
   const onUpdateDomain = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      const domains = Array.isArray(domain) ? domain : [domain];
+    async (domain: EntityReference | EntityReference[] | undefined) => {
+      const selectedDomains = domain ?? [];
+      const domains = Array.isArray(selectedDomains)
+        ? selectedDomains
+        : [selectedDomains];
       await saveUpdatedServiceData({
         ...serviceDetails,
         domains: domains as unknown as typeof serviceDetails.domains,
@@ -496,15 +506,6 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       await saveUpdatedServiceData({ ...serviceDetails, tags: updatedTags });
     },
     [saveUpdatedServiceData, serviceDetails]
-  );
-
-  // DataAssetsTab's data products section saves the service itself; only mirror the result here.
-  const handleDataProductsChange = useCallback(
-    (dataProducts: EntityReference[]) =>
-      setServiceDetails(
-        (previous) => ({ ...previous, dataProducts } as ServicesType)
-      ),
-    []
   );
 
   const onDataProductUpdate = useCallback(
@@ -568,6 +569,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [serviceCategory]
   );
 
+  const isDatabaseService =
+    serviceCategory === ServiceCategory.DATABASE_SERVICES;
+
+  const { announcements, refetch: refetchAnnouncements } =
+    useActiveAnnouncements(
+      serviceEntityType,
+      serviceDetails.fullyQualifiedName ?? ''
+    );
+
   const { showModal } = useEntityExportModalProvider();
 
   const supportsImportExport = useMemo(
@@ -578,6 +588,18 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const handleImportClick = useCallback(() => {
     navigate(getEntityImportPath(serviceEntityType, decodedFqn));
   }, [navigate, serviceEntityType, decodedFqn]);
+
+  // As Context Center articles: the service's version route shows that version beside the
+  // version history, and closing it returns here.
+  const handleVersionClick = useCallback(() => {
+    void navigate(
+      getServiceVersionPath(
+        serviceCategory ?? '',
+        decodedFqn,
+        toString(serviceDetails.version)
+      )
+    );
+  }, [navigate, serviceCategory, decodedFqn, serviceDetails.version]);
 
   const handleExportClick = useCallback(() => {
     showModal({
@@ -592,8 +614,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     []
   );
 
-  const handleCloseAnnouncementDrawer = useCallback(
-    () => setIsAnnouncementDrawerOpen(false),
+  const handleCloseAnnouncementDrawer = useCallback(() => {
+    setIsAnnouncementDrawerOpen(false);
+    // The drawer may have added, edited or removed one; the banner shows the active ones.
+    void refetchAnnouncements();
+  }, [refetchAnnouncements]);
+
+  const handleFollowersChange = useCallback(
+    (followers: EntityReference[]) =>
+      setServiceDetails((prev) => ({ ...prev, followers })),
     []
   );
 
@@ -607,9 +636,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
+  // The service is gone (or, soft-deleted, out of the default list): land on the list it was in
+  // rather than on whatever page came before.
   const afterServiceDeleteAction = useCallback(() => {
-    navigate(-1);
-  }, [navigate]);
+    void navigate(getServiceListPath(serviceCategory));
+  }, [navigate, serviceCategory]);
 
   // Both are keyed on the route's service, so moving to another service reloads it.
   useEffect(() => {
@@ -839,6 +870,21 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       <PageLayout.PageHeader
         actions={
           <>
+            {/* As classic: only database services take followers, and a deleted one none. */}
+            {isDatabaseService && !isServiceDeleted && serviceDetails.id ? (
+              <ServiceFollowButton
+                followers={serviceDetails.followers ?? []}
+                serviceId={serviceDetails.id}
+                serviceName={getEntityName(serviceDetails)}
+                onFollowersChange={handleFollowersChange}
+              />
+            ) : null}
+            {serviceDetails.version === undefined ? null : (
+              <HeaderVersionButton
+                version={toString(serviceDetails.version)}
+                onClick={handleVersionClick}
+              />
+            )}
             {pluginActions.map((action) =>
               action.component ? (
                 <action.component key={action.key} {...extensionContext} />
@@ -986,7 +1032,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         }
         meta={
           <DataAssetHeaderDetailsRow
-            canEditDomains={headerEditFlags.canEditAll}
+            canEditDomains={headerEditFlags.canEditDomains}
             canEditOwners={headerEditFlags.canEditOwners}
             canEditTier={headerEditFlags.canEditTier}
             domains={
@@ -1024,6 +1070,12 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           // so an empty slot costs no dead space. Applies to every tab because they all render into
           // this container.
           style={{ paddingBottom: footerInset || undefined }}>
+          <AnnouncementsWidgetV3Body
+            announcements={announcements}
+            className="tw:mb-4"
+            testId="entity-header-announcements"
+            onItemClick={handleOpenAnnouncementDrawer}
+          />
           {isOfferedTab(DATA_ASSETS_TAB_KEY) && (
             <DataAssetsTab
               currentPage={currentPage}
@@ -1039,7 +1091,6 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               setIsServiceLoading={setIsServiceLoading}
               showDeleted={showDeleted}
               onDataProductUpdate={onDataProductUpdate}
-              onDataProductsChange={handleDataProductsChange}
               onDescriptionUpdate={onDescriptionUpdate}
               onShowDeletedChange={handleShowDeletedChange}
             />

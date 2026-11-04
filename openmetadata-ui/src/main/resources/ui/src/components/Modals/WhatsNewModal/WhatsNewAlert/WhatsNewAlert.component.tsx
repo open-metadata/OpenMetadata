@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -172,9 +171,8 @@ const WhatsNewAlert = () => {
                 </div>
               </Box>
               <Box className="layout-column tw:block tw:flex-[0_0_48px]">
-                <Icon
-                  className="whats-new-alert-close"
-                  component={CloseIcon}
+                <CloseIcon
+                  className="whats-new-alert-close tw:size-3.5 tw:shrink-0"
                   onClick={handleCancel}
                 />
               </Box>

@@ -241,6 +241,51 @@ class TestStoredProcedures:
 
         assert get_procedure_name_from_call(query_text="/* begin schema.proc(); end; */") is None
 
+    def test_get_procedure_name_ignores_unterminated_block_comment(self):
+        """`sqlparse.lexer.tokenize` only recognizes a block comment as a
+        `tokens.Comment` when its `/*` has a matching `*/`. A statement that ends
+        inside an open `/*` -- e.g. Oracle's `gv$sql.sql_text`, which carries
+        only the first 1000 chars of a statement -- leaves the would-be comment
+        text intact, so the leftmost `re.search` matches a `CALL`/`BEGIN`
+        written inside it instead of the statement that actually executed,
+        fabricating lineage for a commented-out procedure (or dropping the real
+        row when the commented name resolves to nothing).
+
+        Regression test for the unterminated `/*` gap left by the comment
+        sanitizer added in baec43e (#35087): the closed form `/* ... */` was
+        handled, but an unterminated `/*` running to end-of-text was not.
+        """
+        # The terse reproduction: a closed comment is stripped (real call wins),
+        # while the same text with the `*/` removed is a single unterminated
+        # comment, so a CALL inside it must never be returned.
+        assert get_procedure_name_from_call(query_text="/* CALL hidden(); */\nCALL real();") == "real"
+        assert get_procedure_name_from_call(query_text="/* CALL hidden(); CALL real();") is None
+
+        # A CALL inside an unterminated comment shadows every line after it (it
+        # is all commented), so neither the commented name nor the trailing text
+        # may match.
+        assert get_procedure_name_from_call(query_text="/* CALL old_daily_refresh();\nCALL nightly_load();") is None
+
+        # A real invocation that runs BEFORE the unterminated comment keeps its
+        # lineage: truncating only the open tail leaves the executed statement.
+        assert get_procedure_name_from_call(query_text="CALL nightly_load(); /* CALL old();") == "nightly_load"
+
+        # Only an unterminated comment is present -> nothing to extract.
+        assert get_procedure_name_from_call(query_text="/* CALL nightly_load()") is None
+        assert get_procedure_name_from_call(query_text="/* begin schema.proc(); end;") is None
+
+        # The PL/SQL `BEGIN ... END;` form inside the unterminated comment must
+        # not match either.
+        assert get_procedure_name_from_call(query_text="/* BEGIN schema.fake(); END; CALL real();") is None
+
+        # Oracle's 1000-char SQL_TEXT cap cutting a long leading block comment:
+        # the surviving fragment holds only the commented interior, so no real
+        # invocation is fabricated; intact, the same statement resolves to the
+        # executed call. (The closed comment is blanked by the token pass.)
+        long_comment = "/* " + "CALL legacy_load(); " * 80  # ~1.5KB, no closing */
+        assert get_procedure_name_from_call(query_text=long_comment) is None
+        assert get_procedure_name_from_call(query_text=long_comment + " */\nCALL daily_etl_v2();") == "daily_etl_v2"
+
     def test_get_procedure_name_strips_comments_without_corrupting_quoted_identifiers(self):
         """`sqlparse` is a SQL-aware tokenizer, so stripping comments must preserve quoted
         identifiers (backtick and `"..."` forms) and string literals that a naive regex would
@@ -260,6 +305,13 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="CALL proc('has -- inside')") == "proc"
 
         assert get_procedure_name_from_call(query_text="CALL schema.proc('a/*b*/c')") == "proc"
+
+        # A `/*` inside a delimited identifier is part of the name, not a
+        # comment, so the unterminated-comment truncation must skip quoted
+        # spans and keep resolving the real procedure.
+        assert get_procedure_name_from_call(query_text='CALL schema."weird/*x".proc(1)') == "proc"
+
+        assert get_procedure_name_from_call(query_text="CALL `weird/*x`()") == "weird/*x"
 
     def test_get_procedure_name_ignores_identifiers_that_start_with_the_keyword(self):
         """A word boundary before the keyword is not enough. `call_center` and `begin_date` both

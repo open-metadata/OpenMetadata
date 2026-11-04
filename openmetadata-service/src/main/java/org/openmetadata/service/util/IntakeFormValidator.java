@@ -23,6 +23,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,12 +51,15 @@ public final class IntakeFormValidator {
   private IntakeFormValidator() {}
 
   /**
-   * Validate the entity against org-configured intake-form required fields, if any.
+   * Validate the entity against org-configured intake-form required fields, if any. A workflow
+   * moving the entity between stages is not an edit the form gates, so its writes are not checked:
+   * an asset created before a field became required can still be approved or rejected.
    *
    * @throws IllegalArgumentException if any intake-form required field is unset.
    */
   public static void validate(EntityInterface<?> entity, String entityType) {
-    IntakeForm form = loadIntakeForm(entityType);
+    IntakeForm form =
+        EntityStatusWorkflows.isWorkflowChange(entity) ? null : loadIntakeForm(entityType);
     if (form == null) return;
 
     List<String> intakeMissing = checkIntakeFormRequiredFields(entity, form);

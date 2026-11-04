@@ -69,7 +69,10 @@ const InfoWidget: FC<{
       </Typography>
       {action}
     </Box>
-    {children}
+    {/* min-w-0 lets long values (owner names, emails) truncate inside the card. */}
+    <Box className="tw:w-full tw:min-w-0 tw:overflow-hidden" direction="col">
+      {children}
+    </Box>
   </Card>
 );
 
@@ -511,6 +514,9 @@ const OwnerField: FC<MembersTeamInfoWidgetsProps> = ({
           <UserTeamSelectableList
             hasPermission
             owner={owners}
+            // As a plain inline box the trigger span's line box is taller than
+            // the icon button, which lifts it off-centre in the widget header.
+            triggerClassName="tw:inline-flex"
             onUpdate={(next) => void onPatch({ ...team, owners: next })}>
             <EditPencil
               dataTestId="edit-owners"
@@ -569,7 +575,7 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
 
   return (
     <Box
-      className="tw:flex-wrap tw:px-8 tw:pb-6"
+      className="tw:flex-wrap tw:px-8"
       data-testid="team-info-widgets"
       direction="row"
       gap={4}>

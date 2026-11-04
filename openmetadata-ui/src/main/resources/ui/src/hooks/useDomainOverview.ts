@@ -17,9 +17,11 @@ import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { SORT_ORDER } from '../enums/common.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Domain } from '../generated/entity/domains/domain';
+import { EntityReference } from '../generated/entity/type';
 import { getAllDomainsWithAssetsCount } from '../rest/domainAPI';
 import { searchQuery } from '../rest/searchAPI';
 import { getEntityName } from '../utils/EntityNameUtils';
+import Fqn from '../utils/Fqn';
 
 export const DOMAIN_OVERVIEW_QUERY_KEY = ['landingPage', 'widgets', 'domains'];
 const TTL_MS = 5 * 60 * 1000;
@@ -63,6 +65,36 @@ export const fqnQueryFilter = (fqns: string[]) => ({
   },
 });
 
+/**
+ * Top-level domains only. The Domains page lists sub-domains under their
+ * parent, not beside it, and a root's asset count already includes its
+ * sub-domains' — so counting both would disagree with that page twice over.
+ * ADR:2026-10-16-landing-overview-cards-match-the-pages-they-open
+ */
+export const ROOT_DOMAIN_CLAUSE = {
+  bool: { must_not: [{ exists: { field: 'parent' } }] },
+};
+
+/** A domain FQN with no parent segment, e.g. `Finance`, not `Finance.Payroll`. */
+const isRootDomainFqn = (fqn: string): boolean => Fqn.split(fqn).length === 1;
+
+type QueryFilter = { query: Record<string, unknown> };
+
+/** ANDs a scope clause (e.g. {@link ROOT_DOMAIN_CLAUSE}) into a bucket filter. */
+const withScope = (
+  queryFilter: QueryFilter | undefined,
+  scope: Record<string, unknown> | undefined
+): QueryFilter | undefined =>
+  scope
+    ? {
+        query: {
+          bool: {
+            must: [scope, ...(queryFilter ? [queryFilter.query] : [])],
+          },
+        },
+      }
+    : queryFilter;
+
 /** FQNs whose count is zero — every entity is in the map, empty ones included. */
 export const emptyFqnsOf = (counts: Record<string, number>): string[] =>
   Object.entries(counts)
@@ -104,7 +136,8 @@ export const fetchOverviewPage = async (
   searchIndex: SearchIndex.DOMAIN | SearchIndex.DATA_PRODUCT,
   filter: OverviewFilter,
   emptyFqns: string[],
-  order: OverviewOrder = OverviewOrder.NAME
+  order: OverviewOrder = OverviewOrder.NAME,
+  scope?: Record<string, unknown>
 ): Promise<OverviewPage> => {
   if (filter === OverviewFilter.EMPTY && emptyFqns.length === 0) {
     return { sources: [] };
@@ -121,7 +154,7 @@ export const fetchOverviewPage = async (
     pageNumber: 1,
     pageSize: OVERVIEW_PAGE_SIZE,
     query: '',
-    queryFilter,
+    queryFilter: withScope(queryFilter, scope),
     searchIndex,
     // Never relevance: an empty query ranks by boosts like tier and votes, so a
     // new entity could never reach the page however the card then sorts it.
@@ -133,13 +166,14 @@ export const fetchOverviewPage = async (
 
 /** How many entities have no owner, across the estate — a count, so no rows. */
 export const fetchUnownedCount = async (
-  searchIndex: SearchIndex.DOMAIN | SearchIndex.DATA_PRODUCT
+  searchIndex: SearchIndex.DOMAIN | SearchIndex.DATA_PRODUCT,
+  scope?: Record<string, unknown>
 ): Promise<number> => {
   const response = await searchQuery({
     pageNumber: 1,
     pageSize: 0,
     query: '',
-    queryFilter: UNOWNED_QUERY_FILTER,
+    queryFilter: withScope(UNOWNED_QUERY_FILTER, scope),
     searchIndex,
   });
 
@@ -150,7 +184,8 @@ export interface DomainSummary {
   id: string;
   name: string;
   fullyQualifiedName: string;
-  ownerName?: string;
+  /** Every owner, users and teams alike; empty when the domain has none. */
+  owners: EntityReference[];
   assetCount: number;
 }
 
@@ -171,7 +206,8 @@ export interface DomainOverview {
 }
 
 /**
- * Domains with their asset counts, and the size of each ownership bucket.
+ * Top-level domains with their asset counts, and the size of each ownership
+ * bucket — scoped as the Domains page is, so the two agree.
  *
  * The counts come from `/domains/assets/counts`, which returns the whole map in
  * one call — the same source the OSS Domains widget uses, so the numbers agree
@@ -189,14 +225,23 @@ export const useDomainOverview = (
         staleTime: TTL_MS,
       },
       {
-        queryFn: () => fetchUnownedCount(SearchIndex.DOMAIN),
+        queryFn: () =>
+          fetchUnownedCount(SearchIndex.DOMAIN, ROOT_DOMAIN_CLAUSE),
         queryKey: [...DOMAIN_OVERVIEW_QUERY_KEY, 'unowned'],
         staleTime: TTL_MS,
       },
     ],
   });
 
-  const counts = countsQuery.data;
+  // The map lists every domain; only the roots are the card's.
+  const counts = useMemo(
+    () =>
+      countsQuery.data &&
+      Object.fromEntries(
+        Object.entries(countsQuery.data).filter(([fqn]) => isRootDomainFqn(fqn))
+      ),
+    [countsQuery.data]
+  );
   const emptyFqns = useMemo(() => emptyFqnsOf(counts ?? {}), [counts]);
   const needsCounts = filter === OverviewFilter.EMPTY;
 
@@ -207,7 +252,14 @@ export const useDomainOverview = (
     // loads, instead of dropping the card back to its first-load skeleton —
     // which unmounted the chips mid-interaction and lost their focus.
     placeholderData: keepPreviousData,
-    queryFn: () => fetchOverviewPage(SearchIndex.DOMAIN, filter, emptyFqns),
+    queryFn: () =>
+      fetchOverviewPage(
+        SearchIndex.DOMAIN,
+        filter,
+        emptyFqns,
+        OverviewOrder.NAME,
+        ROOT_DOMAIN_CLAUSE
+      ),
     queryKey: [
       ...DOMAIN_OVERVIEW_QUERY_KEY,
       'list',
@@ -230,9 +282,7 @@ export const useDomainOverview = (
           fullyQualifiedName: source.fullyQualifiedName ?? '',
           id: source.id,
           name: getEntityName(source),
-          ownerName: source.owners?.length
-            ? getEntityName(source.owners[0])
-            : undefined,
+          owners: source.owners ?? [],
         };
       }),
     [listData, counts]

@@ -13,8 +13,14 @@
 import { Input } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isEqual, isUndefined } from 'lodash';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -30,16 +36,17 @@ import { EntityChildren } from '../../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { NODE_INSET_FILL_CLASS } from '../CustomNode.constants';
 import { NodeChildrenProps } from './NodeChildren.interface';
 import VirtualColumnList from './VirtualColumnList.component';
 
 const NodeChildren = ({
   node,
-  isConnectable,
   isChildrenListExpanded,
   isOnlyShowColumnsWithLineageFilterActive,
   onColumnHover,
   onColumnSelect,
+  onColumnLineageEdit,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const {
@@ -48,11 +55,9 @@ const NodeChildren = ({
     columnsHavingLineage,
     selectedColumn,
     isCreatingEdge,
-    isEditMode,
   } = useLineageStore();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
-  const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,14 +65,14 @@ const NodeChildren = ({
     return Boolean(
       isDQEnabled && entityType === EntityType.TABLE && node.testSuite
     );
-  }, [isDQEnabled, entityType]);
+  }, [isDQEnabled, entityType, node.testSuite]);
 
   const supportsColumns = useMemo(() => {
     return (
       node &&
       LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
     );
-  }, [node.entityType]);
+  }, [node]);
 
   const { children: entityChildren, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
@@ -92,46 +97,29 @@ const NodeChildren = ({
     return currentNodeColumnsWithLineage;
   }, [currentNodeColumnsWithLineage]);
 
-  const handleSearchChange = useCallback(
-    (searchQuery: string) => {
-      setSearchValue(searchQuery);
-      const currentNodeColumnsToSearch =
-        isOnlyShowColumnsWithLineageFilterActive && !isEditMode
-          ? stableColumnsWithLineage
-          : entityChildren;
-
-      if (searchQuery.trim() === '') {
-        setFilteredColumns(currentNodeColumnsToSearch);
-      } else {
-        const currentNodeMatchedColumns = currentNodeColumnsToSearch.filter(
-          (column) =>
-            getEntityName(column)
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase())
-        );
-        setFilteredColumns(currentNodeMatchedColumns);
-      }
-    },
-    [
-      entityChildren,
-      stableColumnsWithLineage,
-      isEditMode,
-      isOnlyShowColumnsWithLineageFilterActive,
-    ]
-  );
-
-  useEffect(() => {
-    if (!isEmpty(entityChildren)) {
-      if (isOnlyShowColumnsWithLineageFilterActive && !isEditMode) {
-        setFilteredColumns(stableColumnsWithLineage);
-      } else {
-        setFilteredColumns(entityChildren);
-      }
+  const filteredColumns = useMemo(() => {
+    const columnsToSearch = isOnlyShowColumnsWithLineageFilterActive
+      ? stableColumnsWithLineage
+      : entityChildren;
+    const query = searchValue.trim().toLowerCase();
+    if (!query) {
+      return columnsToSearch;
     }
+    const findMatches = (columns: EntityChildren) =>
+      columns.filter((column) =>
+        getEntityName(column).toLowerCase().includes(query)
+      );
+    const matches = findMatches(columnsToSearch);
+
+    // With the lineage filter on, a column without lineage would be
+    // unfindable, so fall back to searching every column of the node.
+    return matches.length === 0 && isOnlyShowColumnsWithLineageFilterActive
+      ? findMatches(entityChildren)
+      : matches;
   }, [
     entityChildren,
+    searchValue,
     stableColumnsWithLineage,
-    isEditMode,
     isOnlyShowColumnsWithLineageFilterActive,
   ]);
 
@@ -157,17 +145,13 @@ const NodeChildren = ({
     } else {
       setIsLoading(false);
     }
-  }, [node, showDataObservabilitySummary, summary]);
+  }, [fetchTestSuiteSummary, node, showDataObservabilitySummary, summary]);
 
   const pageSize = useMemo(() => {
-    return isOnlyShowColumnsWithLineageFilterActive || isEditMode
+    return isOnlyShowColumnsWithLineageFilterActive
       ? filteredColumns.length
       : LINEAGE_CHILD_ITEMS_PER_PAGE;
-  }, [
-    isOnlyShowColumnsWithLineageFilterActive,
-    isEditMode,
-    filteredColumns.length,
-  ]);
+  }, [isOnlyShowColumnsWithLineageFilterActive, filteredColumns.length]);
 
   // No need to render if there's no children
   if (entityChildren.length === 0) {
@@ -182,38 +166,37 @@ const NodeChildren = ({
       <div
         className={classNames(
           'column-container',
+          NODE_INSET_FILL_CLASS,
           selectedColumn && 'any-column-selected',
           isCreatingEdge && 'creating-edge'
         )}
         data-testid="column-container">
         <div className="search-box">
-          {/* The field sits inside a React Flow node; a click must not select the node. */}
-          <div role="presentation" onClick={(e) => e.stopPropagation()}>
-            <Input
-              aria-label={t('label.search-entity', {
-                entity: childrenHeading,
-              })}
-              icon={Search}
-              inputDataTestId="search-column-input"
-              placeholder={t('label.search-entity', {
-                entity: childrenHeading,
-              })}
-              value={searchValue}
-              onChange={handleSearchChange}
-            />
-          </div>
+          <Input
+            aria-label={t('label.search-entity', {
+              entity: childrenHeading,
+            })}
+            icon={Search}
+            inputDataTestId="search-column-input"
+            placeholder={t('label.search-entity', {
+              entity: childrenHeading,
+            })}
+            value={searchValue}
+            onChange={setSearchValue}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          />
 
           <section className="m-t-md" id="table-columns">
             <div className="rounded-4 overflow-hidden">
               <VirtualColumnList
                 flatItems={filteredColumns}
-                isConnectable={isConnectable}
                 isLoading={isLoading}
                 nodeId={node.id}
                 pageSize={pageSize}
                 showDataObservabilitySummary={showDataObservabilitySummary}
                 summary={summary}
                 onColumnHover={onColumnHover}
+                onColumnLineageEdit={onColumnLineageEdit}
                 onColumnSelect={onColumnSelect}
               />
             </div>

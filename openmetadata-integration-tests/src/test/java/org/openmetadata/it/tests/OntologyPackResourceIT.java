@@ -14,7 +14,6 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -76,11 +75,9 @@ public class OntologyPackResourceIT {
 
     assertEquals(4, result.getConceptCount());
     assertEquals(4, result.getImportResults().getFirst().getTermsCreated());
-    assertNotNull(result.getInstallation());
-    assertEquals("fibo", result.getInstallation().getPackId());
-    assertFalse(glossary.getOntologyConfiguration().getReadOnly());
-    assertEquals(
-        "fibo", glossary.getOntologyConfiguration().getInstalledPacks().getFirst().getPackId());
+    assertEquals("fibo", result.getPackId());
+    assertEquals(Set.of("foundations"), Set.copyOf(result.getModuleIds()));
+    assertNotNull(glossary.getId());
     assertEquals(
         "Financial Concept",
         SdkClients.adminClient()

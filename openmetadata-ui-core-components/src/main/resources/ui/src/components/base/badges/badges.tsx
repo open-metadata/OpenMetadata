@@ -226,25 +226,38 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
       // since `href` is only ever set when `Component` is `AriaLink`.
       className={cx(
         colors.common,
+        // Never wider than its container: a long label truncates instead of spilling out of it.
+        'tw:max-w-full',
         sizes[type][size],
         colors.styles[color].root,
         bordered && 'tw:outline-1 tw:-outline-offset-1',
-        // A linked badge must look identical to a non-linked one — no
-        // browser default underline/link color, and it must inherit the
-        // badge's own text color rather than react-aria-components' link styles.
-        href && 'tw:text-inherit tw:no-underline',
+        // A linked badge must look identical to a non-linked one: no underline,
+        // and the color root's text class sets its color. `tw:text-inherit` here
+        // would win the tailwind-merge conflict and drop that color.
+        href && 'tw:no-underline',
         className
       )}
       data-testid={dataTestId}
       href={href as never}
       style={style}>
-      {children}
+      {typeof children === 'string' ? (
+        <span className="tw:min-w-0 tw:truncate">{children}</span>
+      ) : (
+        children
+      )}
     </Component>
   );
 
   if (tooltip) {
     return (
-      <Tooltip placement={tooltipPlacement} title={tooltip}>
+      // A badge is decorative: a span trigger keeps it out of the tab order and
+      // never nests a button inside a clickable parent. min-w-0/max-w-full let
+      // the trigger shrink with the row so a long label still truncates.
+      <Tooltip
+        excludeTriggerFromTabOrder
+        placement={tooltipPlacement}
+        title={tooltip}
+        triggerClassName="tw:inline-flex tw:min-w-0 tw:max-w-full">
         {badge}
       </Tooltip>
     );

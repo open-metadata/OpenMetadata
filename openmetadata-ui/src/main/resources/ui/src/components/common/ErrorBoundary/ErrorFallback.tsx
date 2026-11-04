@@ -11,63 +11,112 @@
  *  limitations under the License.
  */
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-
+import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as OmUpgradeIcon } from '../../../assets/svg/om-upgrade.svg';
 import { ERROR500 } from '../../../constants/constants';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { t } from '../../../utils/i18next/LocalUtil';
+
+const getErrorMessage = (error: unknown) =>
+  typeof error === 'object' && error !== null && 'message' in error
+    ? String(error.message ?? '')
+    : String(error ?? '');
 
 const ErrorFallback: React.FC<FallbackProps> = ({
   error,
   resetErrorBoundary,
 }) => {
   const navigate = useNavigate();
+  // This boundary wraps App, so it sits outside the ThemeProvider; read the
+  // theme off the class the provider left on the root element instead.
+  const theme = document.documentElement.classList.contains('dark-mode')
+    ? 'dark'
+    : 'light';
+
+  const errorMessage = getErrorMessage(error);
+  const errorName =
+    typeof error === 'object' && error !== null && 'name' in error
+      ? error.name
+      : undefined;
 
   const isChunkLoadError =
-    error?.name === 'ChunkLoadError' ||
-    error.message?.startsWith('Loading chunk') || // Legacy Webpack
-    error.message
-      ?.toLowerCase()
+    errorName === 'ChunkLoadError' ||
+    errorMessage.startsWith('Loading chunk') || // Legacy Webpack
+    errorMessage
+      .toLowerCase()
       .includes('failed to fetch dynamically imported module') || // Vite
-    error.message?.toLowerCase().includes('importing a module script failed'); // Vite (Safari)
+    errorMessage.toLowerCase().includes('importing a module script failed'); // Vite (Safari)
 
-  const message = isChunkLoadError
-    ? t('message.please-refresh-the-page')
-    : error.message;
+  if (!isChunkLoadError) {
+    return (
+      <Box
+        align="center"
+        className="tw:h-full tw:px-8 tw:py-12 tw:text-center"
+        direction="col"
+        gap={6}
+        justify="center">
+        <Box align="center" direction="col" gap={2}>
+          <Typography size="display-xs" weight="semibold">
+            {ERROR500}
+          </Typography>
+          <Typography as="p" color="secondary" size="text-sm">
+            {errorMessage}
+          </Typography>
+        </Box>
+        <Button color="primary" onPress={resetErrorBoundary}>
+          {t('label.home')}
+        </Button>
+      </Box>
+    );
+  }
 
-  const title = isChunkLoadError
-    ? t('message.look-like-upgraded-om')
-    : ERROR500;
-
-  const handleReset = () => {
-    if (isChunkLoadError) {
-      navigate(0);
-    } else {
-      resetErrorBoundary();
-    }
-  };
-
+  // Figma 15445:5396 / 15445:5451.
   return (
     <Box
       align="center"
-      className="tw:h-full tw:px-8 tw:py-12 tw:text-center"
-      direction="col"
-      gap={6}
+      className="tw:h-full tw:overflow-y-auto tw:bg-secondary tw:p-8"
+      data-testid="upgrade-screen"
       justify="center">
-      <OmUpgradeIcon />
-      <Box align="center" direction="col" gap={2}>
-        <Typography size="display-xs" weight="semibold">
-          {title}
-        </Typography>
-        <Typography as="p" color="secondary" size="text-sm">
-          {message}
-        </Typography>
+      <Box
+        align="center"
+        className="tw:w-full tw:max-w-full tw:text-center tw:md:w-fit"
+        direction="col"
+        gap={9}>
+        <img
+          alt={t('message.look-like-upgraded-om')}
+          className="tw:w-full tw:max-w-100"
+          src={brandClassBase.getUpgradeScreenImg(theme)}
+        />
+        <Box align="center" direction="col" gap={10}>
+          <Box align="center" direction="col" gap={4}>
+            {/* not-prose: .prose h1 rules would override the size and weight. */}
+            <Typography
+              as="h1"
+              className="not-prose tw:m-0 tw:text-primary tw:lg:whitespace-nowrap"
+              size="display-xs"
+              weight="bold">
+              {`${t('message.look-like-upgraded-om')} ✨`}
+            </Typography>
+            <Typography
+              as="p"
+              className="tw:max-w-109 tw:text-tertiary"
+              size="text-md">
+              {t('message.brand-updated-refresh-page')}
+            </Typography>
+          </Box>
+          <Button
+            className="tw:h-12.5 tw:gap-2.5 tw:rounded-md tw:px-5 tw:text-lg"
+            color="primary"
+            data-testid="refresh-page-btn"
+            iconLeading={RefreshCw01}
+            size="xl"
+            onPress={() => navigate(0)}>
+            {t('label.refresh-page')}
+          </Button>
+        </Box>
       </Box>
-      <Button color="primary" onPress={handleReset}>
-        {isChunkLoadError ? t('label.refresh') : t('label.home')}
-      </Button>
     </Box>
   );
 };

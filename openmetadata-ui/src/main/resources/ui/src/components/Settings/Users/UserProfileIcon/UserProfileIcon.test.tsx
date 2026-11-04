@@ -211,7 +211,6 @@ describe('UserProfileIcon', () => {
     personaLabels = screen.getAllByTestId('persona-label');
 
     expect(personaLabels).toHaveLength(3);
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
   });
 
   it('should handle persona selection', async () => {
@@ -262,7 +261,7 @@ describe('UserProfileIcon', () => {
     await openDropdown();
 
     expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId('persona-label').length).toBeGreaterThan(0);
   });
 
   it('should update dropdown labels when language changes', async () => {

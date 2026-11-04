@@ -17,9 +17,10 @@
 export interface LlmConfiguration {
     /**
      * Fully-qualified class name of the AiProvider implementation that backs Context Center
-     * memory extraction. When unset (or the class is not on the classpath), the built-in
-     * LLM-backed provider is used. Set this to select an alternate backend (e.g. an agent
-     * platform).
+     * memory extraction and, when the provider supplies one, glossary-term derivation from
+     * published memories. When unset (or the class is not on the classpath), the built-in
+     * LLM-backed provider is used; it extracts memories but derives no glossary terms. Set this
+     * to select an alternate backend (e.g. an agent platform).
      */
     aiProviderClass?: string;
     anthropic?:       Anthropic;
@@ -48,13 +49,8 @@ export interface LlmConfiguration {
      * OpenMetadata, so it is opt-in.
      */
     memoryExtractionEnabled?: boolean;
-    /**
-     * Whether published context memories may be used to derive reviewable ontology glossary
-     * drafts. Requires LLM completion and RDF AI to be enabled separately.
-     */
-    ontologyMemoryDerivationEnabled?: boolean;
-    openai?:                          LlmConfigurationOpenai;
-    provider?:                        LlmProvider;
+    openai?:                  LlmConfigurationOpenai;
+    provider?:                LlmProvider;
 }
 
 export interface Anthropic {

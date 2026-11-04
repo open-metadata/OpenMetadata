@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.page import Page
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
@@ -50,9 +51,6 @@ from metadata.generated.schema.entity.services.connections.database.couchbaseCon
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeType,
 )
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeType,
-)
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseType,
 )
@@ -64,6 +62,9 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 )
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBType,
+)
+from metadata.generated.schema.entity.services.connections.database.neo4jConnection import (
+    Neo4jType,
 )
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceType,
@@ -100,22 +101,6 @@ DEFAULT_DASHBOARD = "default"
 BUILDER_PASSWORD_ATTR = "password"
 TIMEDELTA = "timedelta"
 COMPLEX_COLUMN_SEPARATOR = "_##"
-
-ES_SOURCE_TO_ES_OBJ_ARGS = {
-    "caCerts": "ca_certs",
-    "regionName": "region_name",
-    "timeout": "timeout",
-    "useAwsCredentials": "use_AWS_credentials",
-    "useSSL": "use_ssl",
-    "verifyCerts": "verify_certs",
-}
-
-ES_SOURCE_IGNORE_KEYS = {
-    "searchIndexMappingLanguage",
-    "batchSize",
-    "recreateIndex",
-    "type",
-}
 
 QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
 
@@ -167,6 +152,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "searchIndex": SearchIndex,
     "mlmodel": MlModel,
     "container": Container,
+    "page": Page,
     # AI Governance Entities
     "llmModel": LLMModel,
     "mcpServer": McpServer,
@@ -198,11 +184,11 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DatalakeType.Datalake.value,
     BigtableType.BigTable.value,
     CouchbaseType.Couchbase.value,
-    DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
     MongoDBType.MongoDB.value,
+    Neo4jType.Neo4j.value,
     SalesforceType.Salesforce.value,
     SapErpType.SapErp.value,
     SasType.SAS.value,

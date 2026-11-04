@@ -92,12 +92,12 @@ describe('LeftPanelContainer', () => {
     ]);
   });
 
-  it('applies left panel padding in edit mode', () => {
+  it('drops the edit grid container padding in edit mode', () => {
     render(<LeftPanelContainer {...commonProps} isEditView />);
 
     expect(screen.getByTestId('react-grid-layout')).toHaveAttribute(
       'data-container-padding',
-      '16,16'
+      '0,0'
     );
   });
 

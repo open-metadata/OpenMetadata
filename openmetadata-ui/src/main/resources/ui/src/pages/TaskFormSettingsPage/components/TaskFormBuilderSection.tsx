@@ -24,22 +24,21 @@
  *  limitations under the License.
  */
 
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Autocomplete,
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
+  Checkbox,
   Input,
   Select,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { List } from '@openmetadata/ui-core-components/icons';
-import { Checkbox } from 'antd';
+import { List, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Key, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import {
   buildDesignerSchema,
@@ -154,7 +153,7 @@ const TaskFormBuilderSection = ({
         <Button
           color="secondary"
           data-testid={`${testIdPrefix}-add-field`}
-          iconLeading={<PlusOutlined />}
+          iconLeading={Plus}
           onClick={() => onChange([...fields, createEmptyDesignerField()])}>
           {t('label.add-field')}
         </Button>
@@ -186,7 +185,7 @@ const TaskFormBuilderSection = ({
                       <Button
                         color="tertiary-destructive"
                         data-testid={`${testIdPrefix}-field-remove-${index}`}
-                        iconLeading={<DeleteOutlined />}
+                        iconLeading={Trash01}
                         size="xs"
                         onClick={() =>
                           onChange(
@@ -331,27 +330,27 @@ const TaskFormBuilderSection = ({
                         gap={6}
                         itemClassName="layout-space-item">
                         <Checkbox
-                          checked={field.required}
                           data-testid={`${testIdPrefix}-field-required-${index}`}
+                          isSelected={field.required}
+                          label={<>{t('label.required')}</>}
                           onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              required: event.target.checked,
+                              required: event,
                             }))
-                          }>
-                          {t('label.required')}
-                        </Checkbox>
+                          }
+                        />
                         <Checkbox
-                          checked={field.hidden}
                           data-testid={`${testIdPrefix}-field-hidden-${index}`}
+                          isSelected={field.hidden}
+                          label={<>{t('label.hidden')}</>}
                           onChange={(event) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              hidden: event.target.checked,
+                              hidden: event,
                             }))
-                          }>
-                          {t('label.hidden')}
-                        </Checkbox>
+                          }
+                        />
                       </Box>
                     </div>
                   </Card.Content>
@@ -360,9 +359,9 @@ const TaskFormBuilderSection = ({
             })
           ) : (
             <Box className="tw:relative tw:min-h-40">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 data-testid={`${testIdPrefix}-empty`}
-                icon={<List className="tw:text-secondary" />}
+                icon={<List />}
                 title={t('message.no-fields-configured')}
               />
             </Box>

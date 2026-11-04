@@ -10,14 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
@@ -30,6 +23,7 @@ import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import CustomControlsComponent from './CustomControls.component';
+import LineageConfigModal from './LineageConfigModal';
 
 const mockOnExportClick = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
@@ -60,8 +54,6 @@ const mockDefaultStoreState = {
   isDQEnabled: false,
   setLineageConfig: mockOnLineageConfigUpdate,
   lineageConfig: {},
-  toggleEditMode: jest.fn(),
-  isEditMode: false,
   platformView: LineagePlatformView.None,
   sceneBand: undefined as LineageBand | undefined,
   nodes: [] as unknown[],
@@ -285,68 +277,12 @@ describe('CustomControls', () => {
     expect(screen.getByLabelText('label.full-screen-view')).toBeInTheDocument();
   });
 
-  it('opens and dismisses the edit tooltip with the real core trigger', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
+  it('does not render the Edit Lineage button', () => {
+    render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
     });
 
-    const button = screen.getByRole('button', { name: 'label.edit-entity' });
-
-    expect(button.parentElement?.closest('button')).toBeNull();
-
-    fireEvent.mouseMove(document);
-    await user.hover(button);
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'label.edit-entity'
-    );
-
-    await user.unhover(button);
-    await waitFor(() =>
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
-    );
-  });
-
-  it('shows the zoom-in hint when hovering the disabled Layer edit button', async () => {
-    const store = useLineageStore as unknown as jest.Mock;
-    store.mockReturnValue({ ...store(), sceneBand: LineageBand.Layer });
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<CustomControlsComponent {...defaultProps} hasEditAccess />, {
-      wrapper: Wrapper,
-    });
-    const button = screen.getByRole('button', { name: 'label.edit-entity' });
-
-    expect(button).toBeDisabled();
-    expect(button.parentElement?.closest('button')).toBeNull();
-
-    fireEvent.mouseMove(document);
-    await user.hover(button);
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'label.zoom-in'
-    );
-
-    await user.unhover(button);
-    await waitFor(() =>
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
-    );
-
-    const trigger = screen.getByRole('group', { name: 'label.edit-entity' });
-
-    expect(trigger).toHaveAttribute('tabindex', '0');
-
-    fireEvent.keyDown(document, { key: 'Tab' });
-    act(() => trigger.focus());
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'label.zoom-in'
-    );
-
-    act(() => trigger.blur());
-    await waitFor(() =>
-      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
-    );
+    expect(screen.queryByTestId('edit-lineage')).not.toBeInTheDocument();
   });
 
   it('shows LineageSearchSelect by default in lineage mode', () => {
@@ -355,7 +291,7 @@ describe('CustomControls', () => {
     });
 
     expect(screen.getByTestId('lineage-search-select')).toBeInTheDocument();
-    expect(screen.queryByTestId('lineage-time-filter')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lineage-time-filter')).toBeInTheDocument();
   });
 
   it('shows SearchBar when in impact analysis mode', () => {
@@ -488,6 +424,46 @@ describe('CustomControls', () => {
     await waitFor(() => {
       expect(mockOnLineageConfigUpdate).toHaveBeenCalledWith(mockLineageConfig);
     });
+  });
+
+  it.each([
+    ['lineage', true],
+    ['impact_analysis', false],
+  ])(
+    'offers the temp-table switch only where temp tables are drawn (%s)',
+    (mode, offered) => {
+      (useCustomLocation as jest.Mock).mockImplementation(() => ({
+        search: `?mode=${mode}&depth=3&dir=downstream`,
+      }));
+      render(<CustomControlsComponent {...defaultProps} />, {
+        wrapper: Wrapper,
+      });
+
+      expect(LineageConfigModal).toHaveBeenLastCalledWith(
+        expect.objectContaining({ showTempTablesToggle: offered }),
+        expect.anything()
+      );
+    }
+  );
+
+  it('does not update the lineage config when the dialog saves it unchanged', async () => {
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({ lineageConfig: { ...mockLineageConfig } })
+    );
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByTestId('lineage-config'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('lineage-config-modal')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(mockOnLineageConfigUpdate).not.toHaveBeenCalled();
   });
 
   it('toggles fullscreen mode when fullscreen button is clicked', () => {

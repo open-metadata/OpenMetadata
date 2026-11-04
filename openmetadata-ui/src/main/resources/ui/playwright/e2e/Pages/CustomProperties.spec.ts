@@ -248,7 +248,7 @@ const BASIC_PROPERTIES = [
   'Duration',
   'Email',
   'Number',
-  'Sql Query',
+  'SQL Query',
   'Time Interval',
   'Timestamp',
   'Hyperlink',
@@ -1002,10 +1002,6 @@ pickEntityMatrix(
 
           await openCustomPropertiesTab(page);
 
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
-
           await getCustomPropertyEditButton(
             page.getByTestId(`custom-property-${durationPropertyName}-card`)
           ).click();
@@ -1108,10 +1104,6 @@ pickEntityMatrix(
             await mainEntity.visitEntityPage(page);
 
             await openCustomPropertiesTab(page);
-
-            await page.locator('.ant-skeleton-active').waitFor({
-              state: 'detached',
-            });
 
             await setValueForProperty({
               page,
@@ -3383,10 +3375,6 @@ pickEntityMatrix(
 
           await openCustomPropertiesTab(page);
 
-          await page
-            .locator('.ant-skeleton-active')
-            .waitFor({ state: 'detached' })
-            .catch(() => {});
           await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
@@ -3402,9 +3390,6 @@ pickEntityMatrix(
 
           const customPropertiesTab = page.getByTestId('custom_properties');
           await customPropertiesTab.click();
-          await page.locator('.ant-skeleton-active').waitFor({
-            state: 'detached',
-          });
 
           await expect(page.getByText(dashboardPropertyValue)).toBeVisible();
         });
@@ -3430,7 +3415,6 @@ pickEntityMatrix(
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3442,7 +3426,14 @@ pickEntityMatrix(
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',
@@ -3533,10 +3524,6 @@ pickEntityMatrix(
 
           await openCustomPropertiesTab(page);
 
-          await page
-            .locator('.ant-skeleton-active')
-            .waitFor({ state: 'detached' })
-            .catch(() => {});
           await waitForAllLoadersToDisappear(page);
 
           await setValueForProperty({
@@ -3569,7 +3556,6 @@ pickEntityMatrix(
             { exact: true }
           );
           await customPropertyOption.click();
-          await expect(page.locator('.ant-dropdown:visible')).toBeHidden();
 
           const fieldPanel = page.getByTestId(
             `field-configuration-panel-extension.${pipelineSearchPropertyName}`
@@ -3581,7 +3567,14 @@ pickEntityMatrix(
           );
           await expect(customPropertyBadge).toBeVisible();
 
-          await fieldPanel.click();
+          // A newly added field opens on its own; a second click on its
+          // header would close it again.
+          const collapsedFieldHeader = fieldPanel.locator(
+            'button[aria-expanded="false"]'
+          );
+          if (await collapsedFieldHeader.isVisible()) {
+            await collapsedFieldHeader.click();
+          }
           await setSliderValue(
             page,
             'field-weight-slider',

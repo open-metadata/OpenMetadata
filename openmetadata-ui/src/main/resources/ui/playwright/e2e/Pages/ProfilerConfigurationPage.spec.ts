@@ -71,7 +71,7 @@ const selectDataType = async (page: Page, index: number, value: string) => {
 const selectMetrics = async (page: Page, index: number, labels: string[]) => {
   await page
     .getByTestId(`profiler-metrics-${index}`)
-    .getByRole('textbox')
+    .getByRole('combobox')
     .click();
   if (labels.some((label) => label !== 'All')) {
     await page

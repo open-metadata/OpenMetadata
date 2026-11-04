@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityStatus;
@@ -27,6 +28,7 @@ public class VectorSearchQueryBuilder {
   private static final String ANY = "__ANY__";
   private static final String NONE = "__NONE__";
   public static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
+  public static final int ES_MAX_KNN_NUM_CANDIDATES = 10_000;
 
   /**
    * Consulted only for its engine-independent predicates ({@code isSubjectResolvable}) and field
@@ -139,7 +141,7 @@ public class VectorSearchQueryBuilder {
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
     appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
     sb.append("]"); // close must array
-    appendMemoryVisibilityFilter(sb, parameters.subjectContext(), readableAnchorIds);
+    appendMemoryVisibilityFilter(sb, parameters, readableAnchorIds);
     sb.append("}}"); // close bool and filter
 
     sb.append("}}}"); // close embedding, knn, query
@@ -192,9 +194,12 @@ public class VectorSearchQueryBuilder {
       int numCandidatesMultiplier,
       Set<String> readableAnchorIds) {
     // Compute in long to avoid int overflow when k * numCandidatesMultiplier exceeds
-    // Integer.MAX_VALUE; clamp to Integer.MAX_VALUE so num_candidates is always positive.
+    // Integer.MAX_VALUE; clamp to Elasticsearch's engine maximum of 10,000 so any admitted k
+    // (MAX_K = 10_000) yields a valid request — Elasticsearch rejects num_candidates above
+    // 10,000 with a 400.
     long candidatesLong = (long) parameters.k() * (long) numCandidatesMultiplier;
-    int numCandidates = (int) Math.max(100, Math.min(candidatesLong, (long) Integer.MAX_VALUE));
+    int numCandidates =
+        (int) Math.max(100, Math.min(candidatesLong, (long) ES_MAX_KNN_NUM_CANDIDATES));
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")
@@ -214,7 +219,7 @@ public class VectorSearchQueryBuilder {
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
     appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
     sb.append("]");
-    appendMemoryVisibilityFilter(sb, parameters.subjectContext(), readableAnchorIds);
+    appendMemoryVisibilityFilter(sb, parameters, readableAnchorIds);
     sb.append("}}");
     sb.append("}}");
     return sb.toString();
@@ -230,10 +235,11 @@ public class VectorSearchQueryBuilder {
    * "no filter" and each call site opts into {@code buildOrgWideOnlyFilter}: this builder serves
    * callers that pass no identity at all, so the safe default lives here rather than in call-site
    * discipline. Unknown subject means org-wide memories only; admins still see only Approved
-   * memories in normal search.
+   * memories in normal search, plus their own pending ones when the filters ask for them.
    */
   private static void appendMemoryVisibilityFilter(
-      StringBuilder sb, SubjectContext subjectContext, Set<String> readableAnchorIds) {
+      StringBuilder sb, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
+    SubjectContext subjectContext = parameters.subjectContext();
     boolean enforceVisibility = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
     // A sibling `filter` array rather than another `must` entry: a security constraint must not
     // contribute to the relevance score, and keeping it out of `must` also keeps the
@@ -271,6 +277,12 @@ public class VectorSearchQueryBuilder {
       sb.append("]}}");
     }
     sb.append("]}}");
+    // Branch 4, last so the others keep their place: the subject's own pending memories, asked for.
+    List<ContextMemoryStatus> ownerStatuses =
+        ContextMemorySearchVisibility.ownerStatuses(parameters.filters());
+    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) && !ownerStatuses.isEmpty()) {
+      appendOwnMemoriesInBranch(sb, subjectContext.user(), ownerStatuses);
+    }
     sb.append("]}}]");
   }
 
@@ -299,16 +311,8 @@ public class VectorSearchQueryBuilder {
     }
     if (subjectContext != null) {
       User user = subjectContext.user();
-      // ignore_unmapped mirrors QueryBuilderFactory#nestedQuery, and is not optional: a KNN query
-      // spans an alias of many indices, and OpenSearch fails the whole request with a 400 if any of
-      // them does not map `owners` as nested. Without it a single such index breaks search outright
-      // for every non-admin caller.
-      sb.append(",{\"nested\":{\"path\":\"")
-          .append(ContextMemorySearchVisibility.FIELD_OWNERS)
-          .append("\",\"ignore_unmapped\":true,\"query\":")
-          .append(
-              termClause(ContextMemorySearchVisibility.FIELD_OWNERS_ID, user.getId().toString()))
-          .append("}}");
+      sb.append(',');
+      appendOwnedBy(sb, user);
       sb.append(",{\"bool\":{\"must\":[")
           .append(
               termClause(
@@ -325,6 +329,35 @@ public class VectorSearchQueryBuilder {
       }
     }
     sb.append("]}}");
+  }
+
+  /** Mirrors {@code ContextMemorySearchVisibility#withOwnMemoriesIn}, as a branch of its own. */
+  private static void appendOwnMemoriesInBranch(
+      StringBuilder sb, User user, List<ContextMemoryStatus> ownerStatuses) {
+    sb.append(",{\"bool\":{\"must\":[")
+        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
+        .append(',');
+    appendOwnedBy(sb, user);
+    sb.append(',');
+    appendFlat(
+        sb,
+        ContextMemoryIndex.FIELD_STATUS,
+        ownerStatuses.stream().map(ContextMemoryStatus::value).toList());
+    sb.append("]}}");
+  }
+
+  /**
+   * ignore_unmapped mirrors QueryBuilderFactory#nestedQuery, and is not optional: a KNN query spans
+   * an alias of many indices, and OpenSearch fails the whole request with a 400 if any of them does
+   * not map `owners` as nested. Without it a single such index breaks search outright for every
+   * caller whose query carries an owner clause.
+   */
+  private static void appendOwnedBy(StringBuilder sb, User user) {
+    sb.append("{\"nested\":{\"path\":\"")
+        .append(ContextMemorySearchVisibility.FIELD_OWNERS)
+        .append("\",\"ignore_unmapped\":true,\"query\":")
+        .append(termClause(ContextMemorySearchVisibility.FIELD_OWNERS_ID, user.getId().toString()))
+        .append("}}");
   }
 
   /** Mirrors {@code ContextMemorySearchVisibility#anchoredToClause}. */

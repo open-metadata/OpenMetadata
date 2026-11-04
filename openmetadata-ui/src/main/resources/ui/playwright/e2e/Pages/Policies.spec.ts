@@ -32,6 +32,7 @@ import {
   PolicyRulesType,
 } from '../../support/access-control/PoliciesClass';
 import {
+  chooseSelectOption,
   closeFirstPopupAlert,
   descriptionBox,
   fillDescriptionBox,
@@ -62,15 +63,21 @@ const addRule = async (
     .nth(descriptionIndex)
     .fill(ruleDescription);
 
-  // Select "All" resources, then the first operation for them
+  // Select "All" resources, then all operations for them. The form's mount-time
+  // resource/function fetches rebuild these options, so a plain click can hold a
+  // detached option; chooseSelectOption reopens and retries.
   const resources = page.getByTestId('resources');
-  await resources.getByRole('combobox').click();
-  await page.getByRole('option', { name: 'All', exact: true }).click();
+  await chooseSelectOption(
+    resources,
+    page.getByRole('option', { name: 'All', exact: true })
+  );
   await resources.getByRole('combobox').press('Escape');
 
   const operations = page.getByTestId('operations');
-  await operations.getByRole('combobox').click();
-  await page.getByRole('option', { name: 'All', exact: true }).click();
+  await chooseSelectOption(
+    operations,
+    page.getByRole('option', { name: 'All', exact: true })
+  );
   await operations.getByRole('combobox').press('Escape');
 
   // Typing the condition validates it, so the listener goes up first.

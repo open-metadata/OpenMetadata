@@ -14,12 +14,18 @@ import com.auth0.jwk.SigningKeyNotFoundException;
 import com.auth0.jwk.UrlJwkProvider;
 import java.lang.reflect.Field;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -39,6 +45,31 @@ class MultiUrlJwkProviderTest {
       instance.set(null, null);
     } catch (Exception e) {
       // Ignore if field doesn't exist
+    }
+  }
+
+  @Test
+  void tokenWithoutAKeyIdIsUnauthenticatedRatherThanAServerError() {
+    try (MockedStatic<JWTTokenGenerator> mockedStatic = mockStatic(JWTTokenGenerator.class)) {
+      mockLocalSigningKey(mockedStatic);
+      MultiUrlJwkProvider provider = new MultiUrlJwkProvider(List.of());
+
+      AuthenticationException thrown =
+          assertThrows(AuthenticationException.class, () -> provider.get(null));
+
+      assertEquals(401, thrown.getResponse().getStatus());
+    }
+  }
+
+  @Test
+  void keySetThatIsNotAKeySetIsAServerErrorRatherThanAnUnknownKey(@TempDir Path directory)
+      throws Exception {
+    Path notAKeySet = Files.writeString(directory.resolve("jwks.json"), "{\"keys\":\"none\"}");
+    try (MockedStatic<JWTTokenGenerator> mockedStatic = mockStatic(JWTTokenGenerator.class)) {
+      mockLocalSigningKey(mockedStatic);
+      MultiUrlJwkProvider provider = new MultiUrlJwkProvider(List.of(notAKeySet.toUri().toURL()));
+
+      assertThrows(UnhandledServerException.class, () -> provider.get("provider-key"));
     }
   }
 
@@ -110,11 +141,7 @@ class MultiUrlJwkProviderTest {
         MockedConstruction<UrlJwkProvider> mockedConstruction =
             mockConstruction(
                 UrlJwkProvider.class,
-                (mock, context) -> {
-                  when(mock.get(EXTERNAL_KID)).thenReturn(externalJwk);
-                  when(mock.get(UNKNOWN_KID))
-                      .thenThrow(new SigningKeyNotFoundException("Not found", null));
-                })) {
+                (mock, context) -> when(mock.getAll()).thenReturn(List.of(externalJwk)))) {
 
       JWTTokenGenerator mockGenerator = mock(JWTTokenGenerator.class);
       when(mockGenerator.getJWKSResponse()).thenReturn(jwksResponse);
@@ -156,15 +183,9 @@ class MultiUrlJwkProviderTest {
                 UrlJwkProvider.class,
                 (mock, context) -> {
                   URL url = (URL) context.arguments().get(0);
-                  if (url.toString().contains("provider1")) {
-                    when(mock.get("external-1")).thenReturn(externalJwk1);
-                    when(mock.get("external-2"))
-                        .thenThrow(new SigningKeyNotFoundException("Not in provider1", null));
-                  } else if (url.toString().contains("provider2")) {
-                    when(mock.get("external-1"))
-                        .thenThrow(new SigningKeyNotFoundException("Not in provider2", null));
-                    when(mock.get("external-2")).thenReturn(externalJwk2);
-                  }
+                  Jwk published =
+                      url.toString().contains("provider1") ? externalJwk1 : externalJwk2;
+                  when(mock.getAll()).thenReturn(List.of(published));
                 })) {
 
       JWTTokenGenerator mockGenerator = mock(JWTTokenGenerator.class);
@@ -233,11 +254,7 @@ class MultiUrlJwkProviderTest {
         MockedConstruction<UrlJwkProvider> mockedConstruction =
             mockConstruction(
                 UrlJwkProvider.class,
-                (mock, context) -> {
-                  when(mock.get(EXTERNAL_KID)).thenReturn(externalJwk);
-                  when(mock.get(LOCAL_KID))
-                      .thenThrow(new SigningKeyNotFoundException("Not found in external", null));
-                })) {
+                (mock, context) -> when(mock.getAll()).thenReturn(List.of(externalJwk)))) {
 
       JWTTokenGenerator mockGenerator = mock(JWTTokenGenerator.class);
       when(mockGenerator.getJWKSResponse()).thenReturn(jwksResponse);
@@ -252,5 +269,41 @@ class MultiUrlJwkProviderTest {
       assertNotNull(result);
       assertEquals(EXTERNAL_KID, result.getId());
     }
+  }
+
+  /**
+   * A deployment configured only through the environment never had the provider's key set written
+   * into publicKeyUrls, yet its users now present the provider's ID tokens.
+   */
+  @Test
+  void providerKeySetIsTriedWhenNoConfiguredUrlHasTheKey(@TempDir Path directory) throws Exception {
+    KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+    generator.initialize(2048);
+    RSAPublicKey providerKey = (RSAPublicKey) generator.generateKeyPair().getPublic();
+    Path keySet =
+        Files.writeString(
+            directory.resolve("jwks.json"), KeySetServer.keySetJson("provider-key", providerKey));
+    URL keySetUrl = keySet.toUri().toURL();
+
+    try (MockedStatic<JWTTokenGenerator> mockedStatic = mockStatic(JWTTokenGenerator.class)) {
+      mockLocalSigningKey(mockedStatic);
+      MultiUrlJwkProvider provider = new MultiUrlJwkProvider(List.of(), () -> List.of(keySetUrl));
+
+      RSAPublicKey resolved = (RSAPublicKey) provider.get("provider-key").getPublicKey();
+      assertEquals(providerKey.getModulus(), resolved.getModulus());
+    }
+  }
+
+  private static void mockLocalSigningKey(MockedStatic<JWTTokenGenerator> mockedStatic) {
+    JWKSKey localKey = mock(JWKSKey.class);
+    when(localKey.getKid()).thenReturn(LOCAL_KID);
+    when(localKey.getKty()).thenReturn("RSA");
+    when(localKey.getN()).thenReturn("test-n");
+    when(localKey.getE()).thenReturn("AQAB");
+    JWKSResponse localKeySet = mock(JWKSResponse.class);
+    when(localKeySet.getJwsKeys()).thenReturn(List.of(localKey));
+    JWTTokenGenerator localGenerator = mock(JWTTokenGenerator.class);
+    when(localGenerator.getJWKSResponse()).thenReturn(localKeySet);
+    mockedStatic.when(JWTTokenGenerator::getInstance).thenReturn(localGenerator);
   }
 }

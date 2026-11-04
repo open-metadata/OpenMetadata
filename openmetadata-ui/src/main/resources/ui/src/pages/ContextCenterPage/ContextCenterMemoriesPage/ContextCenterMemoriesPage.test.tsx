@@ -22,6 +22,7 @@ import { Link, MemoryRouter, useLocation } from 'react-router-dom';
 import { CreateMemoryModalProps } from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.interface';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import {
+  deleteContextMemory,
   getContextMemoryById,
   getContextMemoryByName,
   getListContextMemories,
@@ -67,7 +68,7 @@ jest.mock('../../../rest/miscAPI', () => ({
 
 jest.mock('../../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
-  default: { getContainerClassName: jest.fn().mockReturnValue('') },
+  default: { getPageContainerClassName: jest.fn().mockReturnValue('') },
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -101,12 +102,19 @@ jest.mock(
     __esModule: true,
     default: jest
       .fn()
-      .mockImplementation(({ canEdit, canDelete }) => (
+      .mockImplementation(({ canEdit, canDelete, onDeleteMemory }) => (
         <div
           data-can-delete={String(Boolean(canDelete))}
           data-can-edit={String(Boolean(canEdit))}
-          data-testid="memories-view"
-        />
+          data-testid="memories-view">
+          <button
+            aria-label="delete"
+            data-testid="mock-delete-memory"
+            onClick={() =>
+              onDeleteMemory?.({ id: 'memory-1', title: 'Test Memory' })
+            }
+          />
+        </div>
       )),
   })
 );
@@ -281,7 +289,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: 'Approved,Unprocessed',
+            statuses: 'Approved,Unprocessed,Draft',
             offset: 0,
           })
         );
@@ -293,13 +301,13 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             offset: 0,
           })
         );
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             limit: 0,
             offset: 0,
           })
@@ -310,7 +318,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             author: 'user-1',
           })
         );
@@ -323,7 +331,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             q: 'missing glossary fact',
             assets: 'asset-1',
             author: 'user-1',
@@ -336,11 +344,11 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             q: 'missing glossary fact',
             assets: 'asset-1',
             author: 'user-1',
-            sortBy: 'usageCount',
+            sortBy: 'appliedCount',
           })
         );
       });
@@ -372,11 +380,31 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Unprocessed,Rejected',
+          statuses: 'Approved,Unprocessed,Draft,Rejected',
           author: 'other-user',
         })
       );
     });
+  });
+
+  it('activates a count card from the keyboard', async () => {
+    renderPage();
+
+    const card = screen.getByTestId('memory-count-card-created-by-me');
+
+    expect(card).toHaveAttribute('role', 'button');
+    expect(card).toHaveAttribute('tabIndex', '0');
+    expect(card).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.keyDown(card, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({ author: 'user-1' })
+      );
+    });
+
+    expect(card).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('keeps the typed author results when the menu-open search resolves after them', async () => {
@@ -602,5 +630,23 @@ describe('ContextCenterMemoriesPage — needs review', () => {
     await screen.findByTestId('memory-reviews');
 
     expect(screen.queryByTestId('memory-search')).not.toBeInTheDocument();
+  });
+});
+
+describe('ContextCenterMemoriesPage — delete', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ Delete: true });
+  });
+
+  it('hard deletes the memory the permanent-delete modal confirms', async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('mock-delete-memory'));
+    fireEvent.click(await screen.findByTestId('confirm-button'));
+
+    await waitFor(() =>
+      expect(deleteContextMemory).toHaveBeenCalledWith('memory-1', true)
+    );
   });
 });

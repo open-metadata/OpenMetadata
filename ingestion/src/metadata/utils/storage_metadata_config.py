@@ -47,7 +47,10 @@ from metadata.generated.schema.metadataIngestion.storage.storageMetadataS3Config
     StorageMetadataS3Config,
 )
 from metadata.readers.file.config_source_factory import get_reader
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -167,7 +170,7 @@ def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
         )
 
         set_google_credentials(gcp_credentials=config.securityConfig)
-        gcs_client = Client()
+        gcs_client = Client(credentials=get_gcp_impersonate_credentials_or_none(config.securityConfig))
         reader = get_reader(
             config_source=GCSConfig(securityConfig=config.securityConfig),
             client=gcs_client,

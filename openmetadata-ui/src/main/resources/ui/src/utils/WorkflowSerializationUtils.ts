@@ -88,10 +88,30 @@ export const deserializePeriodicBatchFilters = (
   return dataAssetFilters;
 };
 
+// Older workflows saved the per-entity-type filter map as a JSON string; the server still reads
+// that form, so read it here too.
+const toFilterMap = (
+  filter: Record<string, string> | string | undefined
+): Record<string, string> | undefined => {
+  if (typeof filter !== 'string') {
+    return filter;
+  }
+  try {
+    const parsed: unknown = JSON.parse(filter);
+
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, string>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const deserializeEventBasedFilters = (
-  filterObj: Record<string, string> | undefined,
+  filter: Record<string, string> | string | undefined,
   entityTypes: string[]
 ): string => {
+  const filterObj = toFilterMap(filter);
   if (!filterObj || typeof filterObj !== 'object') {
     return '';
   }

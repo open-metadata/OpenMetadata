@@ -13,20 +13,6 @@
 @import (reference) '../../styles/variables.less';
 
 .learning-resource-form-drawer {
-  .ant-drawer-header {
-    padding: @padding-md @padding-lg;
-    border-bottom: 1px solid @border-color-1;
-  }
-
-  .ant-drawer-header-title {
-    flex: 1;
-  }
-
-  .ant-drawer-body {
-    padding: var(--om-space-20);
-    background-color: var(--tw-color-bg-primary);
-  }
-
   .drawer-title-container {
     display: flex;
     justify-content: space-between;
@@ -54,11 +40,6 @@
     }
   }
 
-  .ant-drawer-footer {
-    border-top: 1px solid @border-color-1;
-    padding: @padding-md @padding-lg;
-  }
-
   .drawer-footer {
     display: flex;
     justify-content: flex-end;
@@ -67,144 +48,7 @@
 }
 
 .learning-resource-form {
-  .ant-form-item {
-    margin-bottom: var(--om-space-20);
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .ant-form-item-label {
-    padding-bottom: @padding-xs;
-    padding-left: 0;
-    padding-inline-start: 0;
-
-    > label {
-      color: @grey-700;
-      font-family: @font-family;
-      font-size: var(--om-font-size-sm);
-      font-style: normal;
-      font-weight: @font-medium;
-      line-height: 20px;
-    }
-  }
-
-  .form-item-required {
-    .ant-form-item-label {
-      > label::after {
-        content: '*';
-        color: @error-color;
-        margin-left: var(--om-space-2);
-      }
-    }
-  }
-
-  .ant-input,
-  .ant-input-affix-wrapper,
-  .ant-input-textarea,
-  .ant-select-selector,
-  .ant-picker {
-    border-radius: var(--om-radius-lg);
-    border: 1px solid @grey-300;
-    background: var(--tw-color-bg-primary);
-    box-shadow: @button-box-shadow-default;
-
-    &:hover,
-    &:focus,
-    &.ant-input-affix-wrapper-focused {
-      border-color: @grey-300;
-      box-shadow: @button-box-shadow-default;
-    }
-  }
-
-  .ant-select-single .ant-select-selector,
-  .ant-select-multiple .ant-select-selector {
-    border-radius: var(--om-radius-lg);
-    border: 1px solid @grey-300;
-    background: var(--tw-color-bg-primary);
-    box-shadow: @button-box-shadow-default;
-
-    &:hover,
-    &:focus {
-      border-color: @grey-300;
-      box-shadow: @button-box-shadow-default;
-    }
-  }
-
-  .ant-select-focused:not(.ant-select-disabled).ant-select:not(
-      .ant-select-customize-input
-    )
-    .ant-select-selector {
-    border-color: @grey-300;
-    box-shadow: @button-box-shadow-default;
-  }
-
-  .ant-input:not(.ant-input-textarea),
-  .ant-input-affix-wrapper,
-  .ant-picker {
-    min-height: 44px;
-    height: 44px;
-    padding: 0 @padding-md;
-  }
-
-  .ant-select-single .ant-select-selector {
-    height: 44px;
-    padding: 0 @padding-md;
-    display: flex;
-    align-items: center;
-  }
-
-  .ant-select-multiple .ant-select-selector {
-    min-height: 44px;
-    padding: var(--om-space-4) @padding-md;
-    align-items: center;
-  }
-
   .form-item-type {
     max-width: 50%;
-
-    .ant-select-single .ant-select-selector {
-      height: 40px;
-      min-height: 40px;
-      display: flex;
-      align-items: center;
-
-      .ant-select-selection-item,
-      .ant-select-selection-placeholder {
-        display: flex;
-        align-items: center;
-        line-height: 1;
-      }
-
-      .ant-select-selection-search {
-        align-self: center;
-      }
-    }
-  }
-
-  .form-item-description .ant-input {
-    min-height: 77px;
-    height: 77px;
-    padding: @padding-sm;
-    border-radius: var(--om-radius-lg);
-    box-shadow: @button-box-shadow-default;
-  }
-
-  .ant-input-textarea-show-count::after {
-    margin-top: @margin-xs;
-  }
-
-  .ant-select-selection-item,
-  .ant-select-item-option-content {
-    :is(.ant-space, .layout-space) {
-      display: flex;
-      align-items: center;
-
-      :is(.ant-space-item, .layout-space-item) {
-        display: flex;
-        align-items: center;
-      }
-    }
   }
 }

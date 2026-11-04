@@ -44,6 +44,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
 } from '../../../utils/dateTime';
+import { selectDomainFromNavbar } from '../../../utils/domain';
 import { setDomain } from '../../../utils/domainPicker';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -51,6 +52,7 @@ import {
   pickGlossaryTermInField,
   removeGlossaryTermChip,
 } from '../../../utils/glossaryPicker';
+import { loginAsIsolatedAdmin } from '../../../utils/isolatedDomainUser';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
@@ -62,6 +64,7 @@ import {
 } from '../../../utils/testCases';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
+import { enableAiAppMode } from '../../Utils/appMode';
 
 // Test data for tags and glossary terms
 const testClassification = new ClassificationClass();
@@ -986,7 +989,7 @@ test.describe(
       }
     });
 
-    test('TestCase filters', async ({ page }) => {
+    test('TestCase filters', async ({ page, browser }) => {
       test.setTimeout(360000);
 
       const { apiContext, afterAction } = await getApiContext(page);
@@ -1099,17 +1102,19 @@ test.describe(
         }
       };
 
+      let isolatedAdmin:
+        | Awaited<ReturnType<typeof loginAsIsolatedAdmin>>
+        | undefined;
+
       try {
         await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
         await page.click('[data-testid="test-cases"]');
         await waitForAllLoadersToDisappear(page);
 
-        // get all the filters
+        // get all the filters; Last Run is already on by default, so clicking it would hide it
         await page.click('[data-testid="advanced-filter"]');
         await page.getByTestId('advanced-filter-option-testPlatforms').click();
-        await page.click('[data-testid="advanced-filter"]');
-        await page.getByTestId('advanced-filter-option-lastRunRange').click();
         await page.click('[data-testid="advanced-filter"]');
         await page.getByTestId('advanced-filter-option-serviceName').click();
         await page.click('[data-testid="advanced-filter"]');
@@ -1417,59 +1422,41 @@ test.describe(
           page.getByTestId('advanced-filter-option-tier')
         ).not.toBeVisible();
 
-        // Apply domain globally
-        await page.getByTestId('domain-dropdown').click();
+        // Apply domain globally. The pick is saved on the user, so make it as a throwaway admin;
+        // picking as the shared admin would narrow every concurrent spec's lists.
+        isolatedAdmin = await loginAsIsolatedAdmin(browser);
+        const domainPage = isolatedAdmin.page;
+        await sidebarClick(domainPage, SidebarItem.DATA_QUALITY);
+        await selectDomainFromNavbar(domainPage, domain.responseData);
 
-        // Wait for the domain select dropdown to be visible
-        await page.getByTestId('domain-dropdown-search').waitFor({
-          state: 'visible',
-        });
-
-        // Search for the domain and wait for API response
-        const domainSearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*${encodeURIComponent(
-            domain.responseData.name
-          )}*&index=domain*`
-        );
-
-        await page
-          .getByTestId('domain-dropdown-search')
-          .fill(domain.responseData.name);
-
-        await domainSearchResponse;
-
-        await page
-          .getByTestId(`tree-node-${domain.responseData.fullyQualifiedName}`)
-          .click();
-
-        await sidebarClick(page, SidebarItem.DATA_QUALITY);
-
-        await page.click('[data-testid="test-cases"]');
-        await waitForAllLoadersToDisappear(page);
-        await verifyFilterTestCase(page);
-        await verifyFilter2TestCase(page, true);
-        await visitDataQualityTab(page, filterTable1);
-        const searchTestCase = page.waitForResponse(
+        await domainPage.click('[data-testid="test-cases"]');
+        await waitForAllLoadersToDisappear(domainPage);
+        await verifyFilterTestCase(domainPage);
+        await verifyFilter2TestCase(domainPage, true);
+        await visitDataQualityTab(domainPage, filterTable1);
+        const searchTestCase = domainPage.waitForResponse(
           (url) =>
             url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
             url.url().includes(testCases[0])
         );
-        await page
+        await domainPage
           .getByTestId('table-profiler-container')
           .getByRole('textbox', { name: 'Search test case' })
           .fill(testCases[0]);
         await searchTestCase;
 
         await expect(
-          page.locator(`[data-testid="${testCases[0]}"]`)
+          domainPage.locator(`[data-testid="${testCases[0]}"]`)
         ).toBeVisible();
         await expect(
-          page.locator(`[data-testid="${testCases[1]}"]`)
+          domainPage.locator(`[data-testid="${testCases[1]}"]`)
         ).not.toBeVisible();
         await expect(
-          page.locator(`[data-testid="${testCases[2]}"]`)
+          domainPage.locator(`[data-testid="${testCases[2]}"]`)
         ).not.toBeVisible();
       } finally {
+        // Deleting the isolated admin also drops its saved pick.
+        await isolatedAdmin?.afterAction();
         await filterTable1.delete(apiContext);
         await domain.delete(apiContext);
         await afterAction();
@@ -1794,6 +1781,76 @@ test.describe(
         await tooltipTable.delete(apiContext);
         await afterAction();
       }
+    });
+  }
+);
+
+test.describe(
+  'Test Cases Last Run filter',
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`] },
+  () => {
+    const isTestCaseList = (url: string) =>
+      url.includes('/api/v1/dataQuality/testCases/search/list');
+
+    test('Classic mode shows Last Run as All time and clears back to it', async ({
+      page,
+    }) => {
+      await page.goto('/data-quality/test-cases');
+      await waitForAllLoadersToDisappear(page);
+      const lastRun = page.getByTestId('date-picker-menu');
+
+      await expect(lastRun).toContainText('All time');
+
+      const filteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && r.url().includes('startTimestamp')
+      );
+      await lastRun.click();
+      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
+      expect((await filteredList).status()).toBe(200);
+
+      await expect(lastRun).toContainText('Last 7 days');
+
+      const unfilteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && !r.url().includes('startTimestamp')
+      );
+      await page.getByTestId('clear-date-picker').click();
+      expect((await unfilteredList).status()).toBe(200);
+
+      await expect(lastRun).toContainText('All time');
+    });
+
+    test('AI mode shows Last Run as All time and clears back to it', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await page.goto('/observability/data-quality/test-cases');
+      await waitForAllLoadersToDisappear(page);
+      const lastRun = page
+        .getByRole('group', { name: 'Date range picker' })
+        .getByRole('button');
+
+      await expect(lastRun).toHaveText('Last Run: All time');
+
+      const filteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && r.url().includes('startTimestamp')
+      );
+      await lastRun.click();
+      await page
+        .getByRole('button', { name: 'This week', exact: true })
+        .click();
+      await page.getByRole('button', { name: 'Apply', exact: true }).click();
+      expect((await filteredList).status()).toBe(200);
+
+      await expect(lastRun).not.toHaveText('Last Run: All time');
+      await expect(page.getByTestId('clear-date-filter')).toBeVisible();
+
+      const unfilteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && !r.url().includes('startTimestamp')
+      );
+      await page.getByTestId('clear-date-filter').click();
+      expect((await unfilteredList).status()).toBe(200);
+
+      await expect(lastRun).toHaveText('Last Run: All time');
     });
   }
 );

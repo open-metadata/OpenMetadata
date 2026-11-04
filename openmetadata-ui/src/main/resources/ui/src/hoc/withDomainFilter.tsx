@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { InternalAxiosRequestConfig } from 'axios';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  SKIP_DOMAIN_FILTER_HEADER,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import type { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
+import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
   QueryFieldInterface,
@@ -53,29 +58,92 @@ const collectMustClauses = (
   return mustArray;
 };
 
+// Reference data searched by pickers (tags, owners, team members) is never narrowed to the
+// selected domain, or a pick would hide the people and tags an asset can be given.
+const UNSCOPED_SEARCH_INDEXES = new Set<string>([
+  SearchIndex.TAG,
+  SearchIndex.USER,
+  SearchIndex.TEAM,
+]);
+
+// A search may name several indexes, as a comma-joined string or an array (e.g. owner pickers
+// search "team,user"); it stays unscoped only when every index it names is unscoped.
+const isUnscopedSearch = (index?: string | string[]) => {
+  const indexes = (Array.isArray(index) ? index : (index ?? '').split(','))
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return (
+    indexes.length > 0 &&
+    indexes.every((name) => UNSCOPED_SEARCH_INDEXES.has(name))
+  );
+};
+
+/**
+ * The navbar domain a request should be scoped to, or `undefined` when none is
+ * selected or scoping is off (product tour, domain pages, auth calls).
+ */
+const getRequestDomain = (): string | undefined => {
+  const { activeDomain } = useDomainStore.getState();
+  const currentPath = getPathNameFromWindowLocation();
+  // A product tour shows every user the same recorded pages, whatever domain
+  // they have selected. Off while the tour is recorded too, so the recorded
+  // requests are the ones the tour sends.
+  const isUnscopedPage =
+    isProductTourRunning() ||
+    ['/domain', '/auth/logout', '/auth/refresh'].some((path) =>
+      currentPath.startsWith(path)
+    );
+
+  return activeDomain === DEFAULT_DOMAIN_VALUE || isUnscopedPage
+    ? undefined
+    : activeDomain;
+};
+
+// The Data Quality dashboard batches its reports into one POST, so each item
+// is scoped here the way a GET would be, unless the page scoped it itself.
+const DQ_REPORT_BATCH_PATH = '/dataQualityReport/batch';
+
+const withDomainOnReportBatch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  const body = config.data as DataQualityReportBatchRequest | undefined;
+  if (body?.requests) {
+    config.data = {
+      ...body,
+      requests: body.requests.map((request) => ({
+        ...request,
+        domain: request.domain || activeDomain,
+      })),
+    };
+  }
+
+  return config;
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
-  const isGetRequest = config.method === 'get';
-  const activeDomain = useDomainStore.getState().activeDomain;
-  const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-  const currentPath = getPathNameFromWindowLocation();
+  if (config.headers?.[SKIP_DOMAIN_FILTER_HEADER]) {
+    delete config.headers[SKIP_DOMAIN_FILTER_HEADER];
 
-  const shouldNotIntercept = [
-    '/domain',
-    '/auth/logout',
-    '/auth/refresh',
-  ].reduce((prev, curr) => {
-    return prev || currentPath.startsWith(curr);
-  }, false);
-
-  if (shouldNotIntercept) {
     return config;
   }
 
-  if (isGetRequest && hasActiveDomain) {
+  const activeDomain = getRequestDomain();
+
+  if (
+    activeDomain &&
+    config.method === 'post' &&
+    config.url?.includes(DQ_REPORT_BATCH_PATH)
+  ) {
+    return withDomainOnReportBatch(config, activeDomain);
+  }
+
+  if (config.method === 'get' && activeDomain) {
     if (config.url?.includes('/search/query')) {
-      if (config.params?.index === SearchIndex.TAG) {
+      if (isUnscopedSearch(config.params?.index)) {
         return config;
       }
 

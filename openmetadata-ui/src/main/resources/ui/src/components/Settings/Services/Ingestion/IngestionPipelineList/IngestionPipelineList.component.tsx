@@ -343,6 +343,9 @@ export const IngestionPipelineList = ({
         <IngestionListTable
           enableActions={false}
           extraTableProps={{
+            // The row checkbox sits mid-row, so the values are centred with it
+            // instead of TableV2's default top alignment.
+            cellClassName: 'tw:p-2 tw:align-middle',
             rowSelection,
             onChange: handleTableChange,
           }}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Button,
@@ -90,11 +89,10 @@ const AuthMechanism: FC<Props> = ({
     if (!JWTTokenExpiresAt) {
       return (
         <>
-          <Icon
-            alt="warning"
-            className="align-middle"
-            component={IconError}
-            style={{ fontSize: '16px' }}
+          <IconError
+            aria-label="warning"
+            className="tw:align-middle tw:size-4 tw:shrink-0"
+            role="img"
           />
           <Typography className="align-middle">
             {t('message.token-has-no-expiry')}
@@ -115,7 +113,7 @@ const AuthMechanism: FC<Props> = ({
           inline
           align="center"
           className={`layout-space layout-space-horizontal ${classNames(
-            'w-full justify-between ant-space-authMechanism',
+            'w-full justify-between auth-mechanism-space',
             isSCIMBot && 'm-t-xs'
           )}`}
           gap={2}
@@ -132,7 +130,7 @@ const AuthMechanism: FC<Props> = ({
             <CopyToClipboardButton copyText={JWTToken} />
           ) : (
             <CopyIcon
-              className="m-t-xs cursor-pointer"
+              className="tw:mt-2 tw:cursor-pointer"
               onClick={() => navigator.clipboard.writeText(JWTToken)}
             />
           )}

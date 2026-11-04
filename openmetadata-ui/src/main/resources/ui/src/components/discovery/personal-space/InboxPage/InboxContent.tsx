@@ -14,9 +14,12 @@
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
+import {
+  INBOX_ACTIVITY_FILTER_PARAM,
+  PERSONAL_SPACE_ROUTES,
+} from '../personalSpace.constants';
 import {
   DEFAULT_INBOX_DATE_PRESET,
   getDefaultInboxDateRange,
@@ -24,6 +27,7 @@ import {
   getInboxTabBadge,
   InboxDateRange,
   INBOX_DATE_RANGE_OPTIONS,
+  parseActivityFilter,
 } from './inbox.utils';
 import InboxPage from './InboxPage';
 import ActivityTab from './tabs/ActivityTab';
@@ -43,6 +47,7 @@ const InboxContent: React.FC = () => {
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   // Sub-tab derived from path so it's deep-linkable.
   const selectedTab: InboxTabKey =
     pathname === PERSONAL_SPACE_ROUTES.INBOX_TASKS ? 'tasks' : DEFAULT_TAB;
@@ -114,6 +119,9 @@ const InboxContent: React.FC = () => {
       <Box className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col" direction="col">
         <ActivityTab
           dateRange={dateRange}
+          initialFilter={parseActivityFilter(
+            searchParams.get(INBOX_ACTIVITY_FILTER_PARAM)
+          )}
           isFiltered={isDateFiltered}
           onDatePresetChange={handleDatePresetChange}
         />
@@ -123,8 +131,10 @@ const InboxContent: React.FC = () => {
   return (
     <InboxPage
       content={
+        // Framed like the header card above it, so the content reads as a card
+        // of its own rather than running into the page.
         <Box
-          className="ai-inbox-content tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+          className="ai-inbox-content tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
           data-testid="inbox-content"
           direction="col">
           {content}

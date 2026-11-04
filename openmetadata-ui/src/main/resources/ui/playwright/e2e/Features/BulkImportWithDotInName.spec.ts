@@ -231,7 +231,7 @@ test.describe(
         });
         await page.click('[data-testid="import-button-title"]');
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        const fileInput = page.getByTestId('upload-file-input');
         await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
         await startCsvPreviewAndWaitForGrid(page);
@@ -334,7 +334,7 @@ test.describe(
         });
         await page.click('[data-testid="import-button-title"]');
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        const fileInput = page.getByTestId('upload-file-input');
         await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
         await startCsvPreviewAndWaitForGrid(page);
@@ -417,7 +417,7 @@ test.describe(
         });
         await page.click('[data-testid="import-button-title"]');
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        const fileInput = page.getByTestId('upload-file-input');
         await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
         await startCsvPreviewAndWaitForGrid(page);
@@ -509,7 +509,7 @@ test.describe(
         });
         await page.click('[data-testid="import-button-title"]');
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        const fileInput = page.getByTestId('upload-file-input');
         await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
         await startCsvPreviewAndWaitForGrid(page);
@@ -603,7 +603,7 @@ test.describe(
         });
         await page.click('[data-testid="import-button-title"]');
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        const fileInput = page.getByTestId('upload-file-input');
         await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
         await startCsvPreviewAndWaitForGrid(page);
@@ -679,7 +679,7 @@ test.describe(
         });
         await page.click('[data-testid="import-button-title"]');
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        const fileInput = page.getByTestId('upload-file-input');
         await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
         await startCsvPreviewAndWaitForGrid(page);
@@ -798,7 +798,7 @@ test.describe(
         });
         await page.click('[data-testid="import-button-title"]');
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        const fileInput = page.getByTestId('upload-file-input');
         await fileInput?.setInputFiles([`downloads/${databaseName}.csv`]);
 
         await startCsvPreviewAndWaitForGrid(page);
@@ -907,7 +907,7 @@ test.describe(
         });
         await page.click('[data-testid="import-button-title"]');
 
-        const fileInput = page.getByTestId('upload-file-widget');
+        const fileInput = page.getByTestId('upload-file-input');
         await fileInput?.setInputFiles([`downloads/${schemaName}.csv`]);
 
         await startCsvPreviewAndWaitForGrid(page);

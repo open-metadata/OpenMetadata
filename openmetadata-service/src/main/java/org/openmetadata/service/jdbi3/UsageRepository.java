@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.util.EntityUtil.getLatestUsage;
 
 import jakarta.ws.rs.core.Response;
 import java.sql.ResultSet;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.EntityUsage;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -146,9 +148,17 @@ public class UsageRepository {
       return;
     }
     try {
-      // updateEntity reloads with only the index's required reindex fields (not "*"), so
-      // this is a single bounded reload + index — cheap enough to run inline per report.
-      search.updateEntity(Entity.getEntityReferenceById(entityType, entityId, Include.ALL));
+      // Patch only usageSummary. A full updateEntity re-indexes with no change description,
+      // which makes the table column sync delete and rebuild every column doc on each report —
+      // hundreds of MiB per report on wide tables (#35866). Read the summary from the DAO: an
+      // entity read here would return the request-cached copy loaded before the usage insert.
+      EntityReference ref = Entity.getEntityReferenceById(entityType, entityId, Include.ALL);
+      search.updateEntityFieldInSearch(
+          entityType,
+          entityId.toString(),
+          ref.getFullyQualifiedName(),
+          FIELD_USAGE_SUMMARY,
+          JsonUtils.getMap(getLatestUsage(dao.usageDAO(), entityId)));
     } catch (Exception e) {
       // A search-index hiccup must not fail the usage write, which is already committed.
       LOG.warn("Failed to update search index with usage for {} {}", entityType, entityId, e);

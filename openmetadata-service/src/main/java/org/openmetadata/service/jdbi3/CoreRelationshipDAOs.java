@@ -143,6 +143,11 @@ public interface CoreRelationshipDAOs {
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlQuery(
+        "SELECT id FROM entity_extension WHERE extension = :extension AND id > :after ORDER BY id LIMIT :limit")
+    List<String> listExtensionIds(
+        @Bind("extension") String extension, @Bind("after") String after, @Bind("limit") int limit);
+
+    @SqlQuery(
         "SELECT extension FROM entity_extension WHERE id = :id AND extension "
             + "LIKE CONCAT (:extensionPrefix, '.%')")
     List<String> getExtensionNames(
