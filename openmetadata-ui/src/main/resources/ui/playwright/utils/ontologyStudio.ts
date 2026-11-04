@@ -45,6 +45,23 @@ export async function findOntologyInScopeMenu(
   return page.getByTestId(`ontology-scope-${ontology.id}`);
 }
 
+/** The query picker lists 20 ontologies at a time; Show more reveals the rest until the fixture's row is on screen. */
+export async function findOntologyInQueryPicker(
+  page: Page,
+  ontology: Pick<Ontology, 'id'>
+) {
+  const option = page.getByTestId(
+    `ontology-query-picker-option-${ontology.id}`
+  );
+  const showMore = page.getByTestId('ontology-query-picker-show-more');
+  await expect(page.getByTestId('ontology-query-picker')).toBeVisible();
+  while ((await option.count()) === 0 && (await showMore.count()) > 0) {
+    await showMore.click();
+  }
+
+  return option;
+}
+
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
   if ((await scopeMenu.getAttribute('aria-expanded')) !== 'true') {

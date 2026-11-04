@@ -22,6 +22,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { fillCodeEditor } from '../../utils/codeEditor';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { findOntologyInQueryPicker } from '../../utils/ontologyStudio';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
@@ -415,9 +416,7 @@ test.describe(
       await expect(
         page.getByTestId('ontology-query-picker-description')
       ).toContainText('one ontology at a time');
-      const option = page.getByTestId(
-        `ontology-query-picker-option-${fixture.ontology.id}`
-      );
+      const option = await findOntologyInQueryPicker(page, fixture.ontology);
       await expect(
         option.getByTestId('ontology-query-picker-counts')
       ).toHaveText('2 concepts · 0 properties', { timeout: 30_000 });
