@@ -618,10 +618,10 @@
     {
       "_comment": "The query builder's JsonLogic/Elasticsearch save and load pipeline, shared by workflow conditions, advanced search and data contract semantics.",
       "sources": ["openmetadata-ui/src/main/resources/ui/src/utils/queryBuilder/**"],
-      "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Features/Workflows/**/*.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]

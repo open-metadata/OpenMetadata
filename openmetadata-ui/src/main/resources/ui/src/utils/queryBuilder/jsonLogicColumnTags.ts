@@ -11,22 +11,18 @@
  *  limitations under the License.
  */
 
+import { asPair, isObject, singleEntry } from './jsonLogicNegation';
+import { isVar } from './jsonLogicTierVar';
+
 // The Column Tags group is keyed `columns.tags`, but JsonLogic cannot follow a dotted var through the `columns` list,
 // so it is saved as `some(columns, some(tags, cond))` and folded back to `some(columns.tags, cond)` on load.
 
 const COLUMN_TAGS_VAR = 'columns.tags';
 
-const isObject = (node: unknown): node is Record<string, unknown> =>
-  typeof node === 'object' && node !== null && !Array.isArray(node);
+const someArgs = (node: unknown): [unknown, unknown] | undefined => {
+  const [operator, args] = singleEntry(node) ?? [];
 
-const isVar = (node: unknown, name: string): boolean =>
-  isObject(node) && Object.keys(node).length === 1 && node.var === name;
-
-const someArgs = (node: unknown): unknown[] | undefined => {
-  const args =
-    isObject(node) && Object.keys(node).length === 1 ? node.some : undefined;
-
-  return Array.isArray(args) && args.length === 2 ? args : undefined;
+  return operator === 'some' ? asPair(args) : undefined;
 };
 
 const mapTree = (
