@@ -55,6 +55,21 @@
                 }
               },
               "properties": {
+                "shardedTables": {
+                  "title": "Sharded Tables",
+                  "description": "BigQuery daily shard grouping. Omitted configuration remains disabled.",
+                  "javaType": "org.openmetadata.schema.metadataIngestion.BigQueryShardedTables",
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "title": "Group Sharded Tables",
+                      "description": "Group BigQuery daily shards into a stable logical table using the newest shard for columns and execution.",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
                 "type": {
                   "description": "Pipeline type",
                   "$ref": "#/definitions/sourceConfig/properties/config/oneOf/0/definitions/databaseMetadataConfigType",
@@ -15014,7 +15029,8 @@
                               "^db_.*",
                               "^guest$",
                               "^information_schema$",
-                              "^sys$"
+                              "^sys$",
+                              "^_rsc$"
                             ]
                           }
                         },
@@ -15044,6 +15060,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsQueryComment": {
+                          "title": "Supports Query Comment",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
                         "supportsDatabase": {
                           "title": "Supports Database",
@@ -17256,11 +17276,14 @@
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/15"
                         },
                         "packageConnection": {
-                          "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+                          "title": "SSIS Projects Location (Local Path, S3 Bucket or Azure Blob Container)",
                           "description": "Underlying storage connection",
                           "oneOf": [
                             {
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/7/properties/config/oneOf/0"
+                            },
+                            {
+                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/7/properties/config/oneOf/1"
                             },
                             {
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/5/properties/config/oneOf/2/definitions/localProjectsPath"

@@ -394,7 +394,7 @@ public interface KnowledgeAssetDAOs {
           getTableName(),
           getNameHashColumn(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause));
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause));
     }
 
     @Override
@@ -448,7 +448,7 @@ public interface KnowledgeAssetDAOs {
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause),
           limit,
           beforeName,
           beforeId);
@@ -504,7 +504,7 @@ public interface KnowledgeAssetDAOs {
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause),
           limit,
           afterName,
           afterId);
@@ -522,8 +522,12 @@ public interface KnowledgeAssetDAOs {
       }
     }
 
-    private String getKnowledgePageWhereClause(String knowledgePageQueryClause) {
-      return nullOrEmpty(knowledgePageQueryClause) ? "WHERE TRUE" : knowledgePageQueryClause;
+    // Keeps the filter's domain condition (e.g. the navbar pick), which the base list adds itself.
+    private String getKnowledgePageWhereClause(ListFilter filter, String knowledgePageQueryClause) {
+      String where =
+          nullOrEmpty(knowledgePageQueryClause) ? "WHERE TRUE" : knowledgePageQueryClause;
+      String domainCondition = filter.getDomainCondition(getTableName());
+      return nullOrEmpty(domainCondition) ? where : where + " AND " + domainCondition;
     }
 
     private String getKnowledgePageTypeQuery(String clause, String type) {

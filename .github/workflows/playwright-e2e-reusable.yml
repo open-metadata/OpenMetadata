@@ -572,7 +572,7 @@ jobs:
             "$BUILD_TOOLCHAIN"
 
       - name: Upload OpenMetadata distribution
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: openmetadata-distribution
           overwrite: true
@@ -692,7 +692,7 @@ jobs:
             "$RUNNER_TEMP/playwright-selection/selection.json"
 
       - name: Upload Playwright selection
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-selection
           path: ${{ runner.temp }}/playwright-selection/selection.json
@@ -927,7 +927,7 @@ jobs:
             --config=playwright/browser-helper-tests.config.ts
 
       - name: Upload browser helper failure diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         # Failure-only, so a green run uploads nothing. Without this the traces
         # and results.json the container just wrote are discarded with it.
         if: ${{ !inputs.ref && (failure() || cancelled()) }}
@@ -1039,7 +1039,7 @@ jobs:
             > "$RUNNER_TEMP/playwright-plans/quarantine-inventory.json"
 
       - name: Upload shard plans
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -1095,7 +1095,7 @@ jobs:
 
       - name: Upload restored seeded fixture
         if: ${{ steps.validate-fixture.outputs.usable == 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
@@ -1383,7 +1383,7 @@ jobs:
       - name: Upload fixture-state failure diagnostics
         if: ${{ failure() && needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-fixture-state-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -1427,7 +1427,7 @@ jobs:
 
       - name: Upload seeded fixture
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
@@ -1519,7 +1519,7 @@ jobs:
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
 
       - name: Upload ingestion image
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-ingestion-image
           path: ${{ env.INGESTION_CACHE_DIR }}
@@ -2212,7 +2212,7 @@ jobs:
       # Uploaded on merge_group too: the blob carries the traces the merged HTML
       # report links to, the only way to debug a queue failure or retry pass.
       - name: Upload Playwright blob report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         continue-on-error: true
         with:
@@ -2224,7 +2224,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload failure-only test results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -2235,7 +2235,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload timing and request metrics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         with:
@@ -2269,7 +2269,7 @@ jobs:
       # sees the current attempt's uploads.
       - name: Upload results JSON for summary
         id: upload-results-json
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) }}
         continue-on-error: true
         with:
@@ -2296,7 +2296,7 @@ jobs:
       # the retry when both are present within the same attempt.
       - name: Retry upload results JSON for summary
         if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) && steps.upload-results-json.outcome == 'failure' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         continue-on-error: true
         with:
           name: playwright-results-json-${{ matrix.shardId }}-a${{ github.run_attempt }}-retry
@@ -2343,7 +2343,7 @@ jobs:
           fi
 
       - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
