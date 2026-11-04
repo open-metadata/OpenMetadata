@@ -15,6 +15,7 @@ package org.openmetadata.service.security.auth;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.unboundid.ldap.sdk.Filter;
@@ -163,7 +164,7 @@ final class TestLoginCredentialHandler {
     }
     SearchResultEntry entry = entries.getFirst();
     String directoryEmail = entry.getAttributeValue(emailAttribute);
-    if (directoryEmail == null || !directoryEmail.equalsIgnoreCase(email)) {
+    if (!sameIdentifier(directoryEmail, email)) {
       throw credentialFailure(
           String.format("Entry '%s' has no matching %s attribute.", entry.getDN(), emailAttribute));
     }

@@ -18,6 +18,7 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -28,8 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
@@ -111,6 +110,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { revokeEditPermissions } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -210,6 +210,7 @@ const TagPage = () => {
   const {
     permissions: tagPermissions,
     canEditAll: tagCanEditAll,
+    canEditDomains: tagCanEditDomains,
     error: tagPermissionsError,
   } = useEntityPermissions(
     ResourceEntity.TAG,
@@ -288,13 +289,20 @@ const TagPage = () => {
     if (tagItem) {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
+      if (!isEditable) {
+        return {
+          editTagsPermission: false,
+          disabledAwarePermissions: revokeEditPermissions(tagPermissions),
+        };
+      }
+
       return {
-        editTagsPermission: isEditable && tagCanEditAll,
+        editTagsPermission: tagCanEditAll,
         disabledAwarePermissions: {
           ...tagPermissions,
-          EditOwners:
-            isEditable && (tagCanEditAll || tagPermissions.EditOwners),
-          EditAll: isEditable && tagCanEditAll,
+          EditOwners: tagCanEditAll || tagPermissions.EditOwners,
+          EditDomains: tagCanEditDomains,
+          EditAll: tagCanEditAll,
         },
       };
     }
@@ -308,7 +316,7 @@ const TagPage = () => {
     // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
     // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
     // (Task 8 Batches 3–4) of fixing missing deps in passing.
-  }, [tagPermissions, tagCanEditAll, tagItem]);
+  }, [tagPermissions, tagCanEditAll, tagCanEditDomains, tagItem]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
@@ -516,7 +524,7 @@ const TagPage = () => {
                 description={t('message.rename-entity', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={EditIcon}
+                icon={Edit01}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -585,7 +593,7 @@ const TagPage = () => {
                     entityType: t('label.tag-lowercase'),
                   }
                 )}
-                icon={IconDelete}
+                icon={Trash01}
                 id="delete-button"
                 name={t('label.delete')}
               />

@@ -83,17 +83,17 @@ const NextPreviousWithOffset = ({
       <Button
         color="secondary-brand"
         data-testid="next"
+        iconTrailing={ArrowRight}
         isDisabled={nextButtonDisabled || isLoading}
         onClick={onNextHandler}>
-        <Typography> {t('label.next')}</Typography>
-        <ArrowRight className="tw:shrink-0 tw:ml-2" size={14} />
+        <Typography>{t('label.next')}</Typography>
       </Button>
       {onShowSizeChange && (
         <Dropdown.Root>
           <Button
             color="secondary"
             data-testid="page-size-change-button"
-            iconTrailing={<ChevronDown className="tw:shrink-0" size={14} />}
+            iconTrailing={ChevronDown}
             isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
           </Button>

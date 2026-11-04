@@ -44,6 +44,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.alerting.AlertLimits;
+import org.openmetadata.service.alerting.channel.DestinationIds;
 import org.openmetadata.service.alerting.channel.DestinationSecretGuards;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
@@ -62,8 +63,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
   private static final String FIELD_ENABLED = "enabled";
-  private static final String AMBIGUOUS_DESTINATION =
-      "More than one destination is stored with id %s; provide its actual values to test it";
 
   public EventSubscriptionRepository() {
     super(
@@ -241,9 +240,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void storeEntity(EventSubscription entity, boolean update) {
-    // Ensure all destinations have unique IDs before storage (handles all operations: POST, PUT,
-    // PATCH)
-    ensureDestinationIds(entity);
+    // A created alert's destinations are all new; an update's new ones are those it sent no id for.
+    if (update) {
+      ensureDestinationIds(entity);
+    } else {
+      DestinationIds.assignNew(entity.getDestinations());
+    }
     store(entity, update);
   }
 
@@ -252,7 +254,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     List<String> fqns = new ArrayList<>(entities.size());
     List<String> jsons = new ArrayList<>(entities.size());
     for (EventSubscription entity : entities) {
-      ensureDestinationIds(entity);
+      DestinationIds.assignNew(entity.getDestinations());
       // Batch inserts can be retried after a rollback; keep the submitted values unchanged so
       // server-produced ciphertext is not mistaken for caller-supplied ciphertext on retry.
       EventSubscription stored = JsonUtils.deepCopy(entity, EventSubscription.class);
@@ -291,21 +293,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   /** A destination as stored, and the alert it belongs to. */
   public record StoredDestination(UUID alertId, SubscriptionDestination destination) {}
 
-  /**
-   * The stored destination with this id, whichever alert holds it. A request may set a
-   * destination's id, so more than one may hold it; then none is chosen for the caller.
-   */
+  /** The stored destination with this id, and the alert that holds it: ids are the server's. */
   public Optional<StoredDestination> findDestination(UUID destinationId) {
-    List<StoredDestination> found =
-        daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
-            .map(json -> JsonUtils.readValue(json, EventSubscription.class))
-            .flatMap(alert -> storedDestinations(alert, destinationId))
-            .limit(2)
-            .toList();
-    if (found.size() > 1) {
-      throw new BadRequestException(AMBIGUOUS_DESTINATION.formatted(destinationId));
-    }
-    return found.stream().findFirst();
+    return daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+        .map(json -> JsonUtils.readValue(json, EventSubscription.class))
+        .flatMap(alert -> storedDestinations(alert, destinationId))
+        .findFirst();
   }
 
   private static Stream<StoredDestination> storedDestinations(
@@ -325,6 +318,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     // alert meet before the diff and the store. A secret sent back as read is the stored one, and
     // the rest is encrypted before the diff, so the change description and the stored row carry
     // ciphertext only.
+    DestinationIds.forgetIdsNotIssuedHere(original, updated);
     DestinationSecretGuards.requireServedChannelUnchanged(original, updated);
     DestinationSecrets.restore(original, updated);
     if (operation != Operation.SOFT_DELETE) {
@@ -346,6 +340,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @Override
   protected void validatePatch(
       EventSubscription original, EventSubscription updated, JsonPatch patch) {
+    DestinationIds.forgetIdsNotIssuedHere(original, updated);
     DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, updated, patch);
     DestinationSecretGuards.requireUnwrittenSecretsStayProtected(original, updated, patch);
   }

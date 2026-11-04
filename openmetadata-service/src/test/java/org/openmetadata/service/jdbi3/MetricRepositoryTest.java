@@ -174,6 +174,35 @@ class MetricRepositoryTest {
   }
 
   @Test
+  void groupInDomainPickScansEachGroupsMembersOncePerRequest() {
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity =
+            mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      MetricGroupRepository groups = mock(MetricGroupRepository.class);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC_GROUP)).thenReturn(groups);
+      UUID groupId = UUID.randomUUID();
+      when(groups.hasVisibleMemberMatching(
+              org.mockito.ArgumentMatchers.eq(groupId),
+              org.mockito.ArgumentMatchers.isNull(),
+              org.mockito.ArgumentMatchers.any()))
+          .thenReturn(true);
+      EntityReference group = new EntityReference().withId(groupId).withType(Entity.METRIC_GROUP);
+
+      java.util.function.Predicate<EntityReference> inPick =
+          fixture.repository().groupInDomainPick(java.util.Optional.empty(), metric -> true);
+
+      // The hierarchy tests a group for its own row and again for each of its metrics.
+      assertTrue(inPick.test(group));
+      assertTrue(inPick.test(group));
+      verify(groups, org.mockito.Mockito.times(1))
+          .hasVisibleMemberMatching(
+              org.mockito.ArgumentMatchers.eq(groupId),
+              org.mockito.ArgumentMatchers.isNull(),
+              org.mockito.ArgumentMatchers.any());
+    }
+  }
+
+  @Test
   void metricWithoutReviewersStartsInDraftWhenALifecyclePlaybookOwnsItsStage() {
     try (RepositoryFixture fixture = repositoryFixture()) {
       fixture.repository().stageOwnership = new PlaybookStageOwnership();
