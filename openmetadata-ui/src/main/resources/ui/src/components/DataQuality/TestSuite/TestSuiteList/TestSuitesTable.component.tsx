@@ -164,6 +164,7 @@ export const TestSuitesTable = ({
           isCompactView={false}
           maxVisibleOwners={4}
           owners={record.owners}
+          placeholderVariant="cell"
           showLabel={false}
         />
       </Table.Cell>

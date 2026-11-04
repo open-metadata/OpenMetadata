@@ -1362,6 +1362,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}
+              placeholderVariant="cell"
               showLabel={false}
             />
           );

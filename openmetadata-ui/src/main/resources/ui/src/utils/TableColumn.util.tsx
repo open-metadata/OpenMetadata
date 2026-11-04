@@ -83,6 +83,7 @@ export const ownerTableObject = <
         isCompactView={false}
         maxVisibleOwners={4}
         owners={owners ?? []}
+        placeholderVariant="cell"
         showLabel={false}
       />
     ),

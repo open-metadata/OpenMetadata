@@ -66,6 +66,39 @@ describe('Owner empty placeholder', () => {
     );
   });
 
+  it('sets a table-cell placeholder at body size in the subtle tone', () => {
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[]}
+        placeholderVariant="cell"
+        showLabel={false}
+      />
+    );
+
+    const placeholder = screen.getByTestId('owner-empty-placeholder');
+
+    expect(placeholder).toHaveClass('tw:text-sm', 'tw:text-quaternary');
+    expect(placeholder).not.toHaveClass('tw:text-xs', 'tw:font-medium');
+  });
+
+  it('lets a header with no edit selector opt into the header value type', () => {
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[]}
+        placeholderVariant="header"
+        showLabel={false}
+      />
+    );
+
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveClass(
+      'tw:text-sm',
+      'tw:font-medium',
+      'tw:text-secondary'
+    );
+  });
+
   it('keeps the de-emphasised placeholder when there is no label row', () => {
     render(<Owner isCompactView={false} owners={[]} showLabel={false} />);
 

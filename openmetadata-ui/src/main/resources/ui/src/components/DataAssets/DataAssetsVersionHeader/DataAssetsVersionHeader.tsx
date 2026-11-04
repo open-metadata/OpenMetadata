@@ -119,6 +119,7 @@ function DataAssetsVersionHeader({
                 isCompactView={false}
                 ownerDisplayName={ownerDisplayName}
                 owners={currentVersionData?.owners ?? ownerRef}
+                placeholderVariant="header"
                 showLabel={false}
               />
               <Divider

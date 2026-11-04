@@ -17,7 +17,15 @@ import { Popover, PopoverTrigger } from '../popover/popover';
 import { OwnerAvatarStack } from './owner-avatar-stack';
 import { OwnerChip } from './owner-chip';
 import { toOwnerRefs } from './owner-utils';
-import type { OwnerProps } from './owner.types';
+import type { OwnerPlaceholderVariant, OwnerProps } from './owner.types';
+
+// `header` is the type of the other page-header values (Domains, Tier,
+// Email…); `cell` is a table row's body size in the subtle tone.
+const PLACEHOLDER_CLASSES: Record<OwnerPlaceholderVariant, string> = {
+  header: 'tw:text-sm tw:font-medium tw:text-secondary',
+  cell: 'tw:text-sm tw:text-quaternary',
+  subtle: 'tw:text-xs tw:text-quaternary',
+};
 
 /**
  * Unified Owner display and edit component.
@@ -38,6 +46,7 @@ export const Owner = ({
   showDashPlaceholder = false,
   placeHolder,
   ownerDisplayName,
+  placeholderVariant,
   className,
   hasPermission,
   selectorContent,
@@ -96,14 +105,11 @@ export const Owner = ({
               {selectorContent}
             </div>
           )}
-          {/* With an edit selector this is a page-header field, beside other
-              fields' values (Domains, Tier, Email…), so it takes their value
-              type rather than the de-emphasised placeholder. */}
           <span
             className={
-              selectorContent
-                ? 'tw:text-sm tw:font-medium tw:text-secondary'
-                : 'tw:text-quaternary tw:text-xs'
+              PLACEHOLDER_CLASSES[
+                placeholderVariant ?? (selectorContent ? 'header' : 'subtle')
+              ]
             }
             data-testid="owner-empty-placeholder">
             {showDashPlaceholder ? '--' : placeHolder ?? t('label.no-owners')}

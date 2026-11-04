@@ -39,6 +39,8 @@ export interface OwnerAvatarStackProps {
   showOverflowHeadings?: boolean;
 }
 
+export type OwnerPlaceholderVariant = 'subtle' | 'cell' | 'header';
+
 export interface OwnerProps {
   /**
    * Owner refs to display. Accepts raw refs (the app's EntityReference shape) —
@@ -61,6 +63,15 @@ export interface OwnerProps {
   placeHolder?: string;
   /** Override display names keyed by owner id. */
   ownerDisplayName?: Map<string, ReactNode>;
+  /**
+   * Type of the empty placeholder in the non-compact view, so it matches the
+   * empty values beside it:
+   * - `header`: a page-header field, in the header value type. Default when
+   *   `selectorContent` is set.
+   * - `cell`: a table cell, at the row's body size.
+   * - `subtle`: de-emphasised, for cards and panels. Default otherwise.
+   */
+  placeholderVariant?: OwnerPlaceholderVariant;
   className?: string;
   hasPermission?: boolean;
   /**
