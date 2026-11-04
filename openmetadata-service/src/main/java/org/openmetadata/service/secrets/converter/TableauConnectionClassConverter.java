@@ -3,13 +3,14 @@ package org.openmetadata.service.secrets.converter;
 import java.util.List;
 import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
+import org.openmetadata.schema.security.credentials.TableauConnectedAppAuth;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 
 public class TableauConnectionClassConverter extends ClassConverter {
   private static final List<Class<?>> CONNECTION_CLASSES =
-      List.of(BasicAuth.class, AccessTokenAuth.class);
+      List.of(BasicAuth.class, AccessTokenAuth.class, TableauConnectedAppAuth.class);
 
   private static final List<Class<?>> SSL_SOURCE_CLASSES = List.of(ValidateSSLClientConfig.class);
 

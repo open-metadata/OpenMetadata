@@ -6715,6 +6715,42 @@
                                 "personalAccessTokenSecret"
                               ],
                               "additionalProperties": false
+                            },
+                            {
+                              "title": "TableauConnectedAppAuth",
+                              "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                              "properties": {
+                                "clientId": {
+                                  "title": "Client ID",
+                                  "description": "Client ID of the Tableau connected app.",
+                                  "type": "string"
+                                },
+                                "secretId": {
+                                  "title": "Secret ID",
+                                  "description": "ID of the connected app secret.",
+                                  "type": "string"
+                                },
+                                "secretValue": {
+                                  "title": "Secret Value",
+                                  "description": "Value of the connected app secret.",
+                                  "type": "string",
+                                  "format": "password"
+                                },
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "clientId",
+                                "secretId",
+                                "secretValue",
+                                "username"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },
@@ -19314,6 +19350,9 @@
                             },
                             {
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/1"
+                            },
+                            {
+                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/2"
                             }
                           ]
                         },

@@ -1,9 +1,12 @@
 """Unit tests for Tableau test-connection checks."""
 
 import socket
+import time
 from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
+import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import HTTPError, SSLError
 from tableauserverclient.server.endpoint.exceptions import (
     FailedSignInError,
@@ -29,10 +32,28 @@ from metadata.ingestion.source.dashboard.tableau.connection import (
     TABLEAU_ERRORS,
     TableauChecks,
     TableauConnection,
+    build_server_config,
     get_connection,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.tableau.connection"
+
+CONNECTED_APP = {
+    "clientId": "3d6e1b5c-client",
+    "secretId": "9a2f7c4e-secret",
+    "secretValue": "connected-app-secret-value-of-44-characters!",
+    "username": "api-user@example.com",
+}
+# Every scope a call of the dashboard or pipeline connector needs, measured on Tableau Cloud.
+CONNECTED_APP_SCOPES = [
+    "tableau:content:read",
+    "tableau:users:read",
+    "tableau:server:read",
+    "tableau:flows:read",
+    "tableau:flow_runs:read",
+    "tableau:jobs:read",
+    "tableau:tasks:read",
+]
 
 
 def _server_error(code: str) -> ServerResponseError:
@@ -334,3 +355,63 @@ def test_a_failing_sign_out_does_not_break_close():
 
     client.sign_out.assert_called_once_with()
     assert mock_get.call_count == 1
+
+
+def _connected_app_config() -> TableauConnectionConfig:
+    return TableauConnectionConfig(
+        hostPort="https://tableau.example.com",
+        siteName="MarketingTeam",
+        authType=CONNECTED_APP,
+    )
+
+
+def _connected_app_claims(auth: TSC.JWTAuth) -> dict:
+    return jwt.decode(auth.jwt, CONNECTED_APP["secretValue"], algorithms=["HS256"], audience="tableau")
+
+
+def test_a_connected_app_signs_in_with_a_direct_trust_jwt():
+    signed_after = time.time()
+
+    auth = build_server_config(_connected_app_config())
+
+    assert isinstance(auth, TSC.JWTAuth)
+    assert auth.site_id == "MarketingTeam"
+    assert auth.isUat is False
+    header = jwt.get_unverified_header(auth.jwt)
+    assert (header["alg"], header["kid"], header["iss"]) == ("HS256", "9a2f7c4e-secret", "3d6e1b5c-client")
+    claims = _connected_app_claims(auth)
+    assert claims["iss"] == "3d6e1b5c-client"
+    assert claims["sub"] == "api-user@example.com"
+    assert claims["aud"] == "tableau"
+    assert claims["scp"] == CONNECTED_APP_SCOPES
+    # Five minutes, inside Tableau Cloud's 10-minute cap; exp is whole seconds.
+    assert 299 <= claims["exp"] - signed_after <= 301
+
+
+def test_each_connected_app_sign_in_gets_its_own_jti():
+    config = _connected_app_config()
+
+    first = _connected_app_claims(build_server_config(config))["jti"]
+    second = _connected_app_claims(build_server_config(config))["jti"]
+
+    assert first
+    assert first != second
+
+
+def test_a_401_names_the_connected_app_scopes():
+    # Tableau answers a call outside the JWT's scopes with the same 401002 as bad credentials.
+    error = FailedSignInError("401002", "Unauthorized Access", "Invalid authentication credentials were provided.")
+
+    diagnosis = TABLEAU_ERRORS.classify(error)
+
+    assert diagnosis.title == "Authentication failed"
+    assert "connected app" in diagnosis.remediation
+    assert all(scope in diagnosis.remediation for scope in CONNECTED_APP_SCOPES)
+
+
+def test_unresolvable_owners_name_the_connected_app_users_scope():
+    # The owner lookup swallows the 401, so a token without the users scope surfaces here.
+    diagnosis = TABLEAU_ERRORS.classify(TableauOwnersNotFound("nope"))
+
+    assert diagnosis.title == "Owner information not available"
+    assert "tableau:users:read" in diagnosis.remediation

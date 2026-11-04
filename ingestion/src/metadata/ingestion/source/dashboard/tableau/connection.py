@@ -15,8 +15,11 @@ Source connection handler
 from __future__ import annotations
 
 import traceback
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
+import jwt
 import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import SSLError
 from tableauserverclient.server.endpoint.exceptions import (
@@ -45,6 +48,9 @@ from metadata.generated.schema.security.credentials.accessTokenAuth import (
     AccessTokenAuth,
 )
 from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
+from metadata.generated.schema.security.credentials.tableauConnectedAppAuth import (
+    TableauConnectedAppAuth,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.tableau.client import (
@@ -71,6 +77,27 @@ logger = ingestion_logger()
 METADATA_API_DOC = (
     "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
     "#enable-the-tableau-metadata-api-for-tableau-server"
+)
+
+# The calls the dashboard and pipeline connectors make need exactly these, measured on Tableau Cloud
+# (ADR:2026-11-04-tableau-connected-apps-sign-in-with-a-direct-trust-jwt).
+# ponytail: fixed scope set; a site that must grant fewer needs a config field.
+CONNECTED_APP_SCOPES = [
+    "tableau:content:read",
+    "tableau:users:read",
+    "tableau:server:read",
+    "tableau:flows:read",
+    "tableau:flow_runs:read",
+    "tableau:jobs:read",
+    "tableau:tasks:read",
+]
+# The JWT only has to last until sign-in; the session it buys outlives it. Tableau Cloud allows 10 minutes.
+CONNECTED_APP_JWT_LIFETIME = timedelta(minutes=5)
+# Tableau answers a call outside the token's scopes with the same 401002 as bad credentials.
+CONNECTED_APP_401_HINT = (
+    "For a connected app, check the client ID, secret ID, secret value and username, and that the app is "
+    "enabled. A call outside the token's scopes also gets a 401; OpenMetadata requests "
+    f"{', '.join(CONNECTED_APP_SCOPES)}."
 )
 
 
@@ -100,7 +127,7 @@ TABLEAU_ERRORS = ErrorPack(
         "Authentication failed",
         fix="Tableau rejected the credentials (401). Check the Personal Access Token name and "
         "secret (or the username and password) and that it has not expired, and that the Site "
-        "Name matches the site those credentials belong to.",
+        f"Name matches the site those credentials belong to. {CONNECTED_APP_401_HINT}",
     ),
     when(http_status(403, extract=_status_of)).diagnose(
         "Insufficient permissions",
@@ -132,7 +159,8 @@ TABLEAU_ERRORS = ErrorPack(
     when(Matchers.exception(TableauOwnersNotFound)).diagnose(
         "Owner information not available",
         fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
-        "disable owner ingestion in the service configuration.",
+        "disable owner ingestion in the service configuration. A connected app's token also needs "
+        "the tableau:users:read scope.",
     ),
     when(Matchers.exception(TableauUpstreamTablesRedacted)).diagnose(
         "Source table names are hidden from this account",
@@ -213,7 +241,7 @@ def set_verify_ssl(
 
 def build_server_config(
     connection: TableauConnectionConfig | TableauPipelineConnection,
-) -> TSC.TableauAuth | TSC.PersonalAccessTokenAuth:
+) -> TSC.TableauAuth | TSC.PersonalAccessTokenAuth | TSC.JWTAuth:
     """
     Build client configuration
     Args:
@@ -234,6 +262,23 @@ def build_server_config(
             personal_access_token=connection.authType.personalAccessTokenSecret.get_secret_value(),
             site_id=connection.siteName if connection.siteName else "",
         )
+    elif isinstance(connection.authType, TableauConnectedAppAuth):
+        # Direct trust accepts only HS256 tokens signed with the connected app's secret value.
+        token = jwt.encode(
+            {
+                "iss": connection.authType.clientId,
+                "sub": connection.authType.username,
+                "aud": "tableau",
+                "exp": datetime.now(timezone.utc) + CONNECTED_APP_JWT_LIFETIME,
+                "jti": str(uuid.uuid4()),
+                "scp": CONNECTED_APP_SCOPES,
+            },
+            connection.authType.secretValue.get_secret_value(),
+            algorithm="HS256",
+            headers={"kid": connection.authType.secretId, "iss": connection.authType.clientId},
+        )
+        # site_id must be a keyword: JWTAuth's second positional parameter is isUat.
+        tableau_auth = TSC.JWTAuth(jwt=token, site_id=connection.siteName if connection.siteName else "")
     else:
         raise ValueError("Unsupported authentication type")  # noqa: TRY004
 

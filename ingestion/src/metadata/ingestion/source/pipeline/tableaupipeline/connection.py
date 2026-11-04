@@ -45,6 +45,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.tableauPipel
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.tableau.connection import (
+    CONNECTED_APP_401_HINT,
     METADATA_API_DOC,
     TABLEAU_ERRORS,
     build_server_config,
@@ -88,7 +89,8 @@ TABLEAU_PIPELINE_ERRORS = ErrorPack(
     when(Matchers.exception(FailedSignInError)).diagnose(
         "Authentication failed",
         fix="Tableau rejected the sign-in. Check the Personal Access Token name and secret (or the username "
-        "and password), that the token has not expired, and that the Site Name matches the site they belong to.",
+        "and password), that the token has not expired, and that the Site Name matches the site they belong to. "
+        f"{CONNECTED_APP_401_HINT}",
     ),
     when(Matchers.exception(EndpointUnavailableError)).diagnose(
         "REST API version too old",

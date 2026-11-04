@@ -23,6 +23,7 @@ from pydantic import ValidationError
 from requests.adapters import HTTPAdapter
 from tableauserverclient import (
     Filter,
+    JWTAuth,
     Pager,
     PersonalAccessTokenAuth,
     RequestOptions,
@@ -116,7 +117,7 @@ class TableauPipelineClient:
 
     def __init__(
         self,
-        tableau_server_auth: PersonalAccessTokenAuth | TableauAuth,
+        tableau_server_auth: PersonalAccessTokenAuth | TableauAuth | JWTAuth,
         config: TableauPipelineConnection,
         verify_ssl: bool | str | None,
         ssl_manager: SSLManager | None = None,

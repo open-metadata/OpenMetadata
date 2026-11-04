@@ -19,6 +19,7 @@ from collections.abc import Callable, Iterable
 import validators
 from cachetools import LRUCache
 from tableauserverclient import (
+    JWTAuth,
     Pager,
     PersonalAccessTokenAuth,
     ProjectItem,
@@ -110,7 +111,7 @@ class TableauClient:
 
     def __init__(
         self,
-        tableau_server_auth: PersonalAccessTokenAuth | TableauAuth,
+        tableau_server_auth: PersonalAccessTokenAuth | TableauAuth | JWTAuth,
         config,
         verify_ssl: bool | str,
         pagination_limit: int,
