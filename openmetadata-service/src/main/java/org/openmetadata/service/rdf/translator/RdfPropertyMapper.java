@@ -1651,11 +1651,6 @@ public class RdfPropertyMapper {
 
   private Resource createTypeResource(String entityType, Model model) {
     String curieOrUri = getRdfType(entityType);
-    if (nullOrEmpty(curieOrUri)) {
-      // A blank type node would be a new resource on every write, which a live write can neither
-      // match nor delete.
-      throw new IllegalArgumentException("No RDF type is defined for entity type " + entityType);
-    }
     if (curieOrUri.startsWith("http://") || curieOrUri.startsWith("https://")) {
       return model.createResource(curieOrUri);
     }

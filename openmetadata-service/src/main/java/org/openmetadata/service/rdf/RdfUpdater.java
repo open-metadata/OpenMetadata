@@ -73,15 +73,11 @@ public final class RdfUpdater {
       RdfRepository.initialize(config);
       // The queue writes through its own view: a paused write is held back at once and retried,
       // and its failures stay the queue's.
-      final RdfRepository repository =
-          RdfRepository.getInstance().forDelivery(RdfWriteDelivery.QUEUED);
-      // An earlier attempt of a redelivered write may still be applying in Fuseki, where a read
-      // cannot see it, so its entity writes replace the projection instead of diffing against it.
-      final RdfRepository redelivery = repository.replacingEntityWrites();
       writer =
           new RdfLiveWriter(
               store,
-              (command, redelivered) -> command.apply(redelivered ? redelivery : repository),
+              liveWriteApplication(
+                  RdfRepository.getInstance().forDelivery(RdfWriteDelivery.QUEUED)),
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueueAll;
       liveWriteStore = store;
@@ -92,6 +88,16 @@ public final class RdfUpdater {
       startStorageMaintenance(maintenanceConfig, store);
       LOG.info("RDF updater initialized with durable, ordered live writes");
     }
+  }
+
+  /**
+   * Applies queued writes through {@code repository}. An earlier attempt of a redelivered write may
+   * still be applying in Fuseki, where a read cannot see it, so its entity writes replace the
+   * projection instead of diffing against it.
+   */
+  static RdfLiveWriter.Application liveWriteApplication(final RdfRepository repository) {
+    final RdfRepository redelivery = repository.replacingEntityWrites();
+    return (command, redelivered) -> command.apply(redelivered ? redelivery : repository);
   }
 
   private static RdfStorageMaintenanceConfig maintenanceConfig(final RdfConfiguration config) {

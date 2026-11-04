@@ -1320,13 +1320,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private Model readForEntityWrite(String query) {
     Query parsed = QueryFactory.create(query);
     try {
-      return runWithTimeout(
-          () -> {
-            try (QueryExecution execution = connection.query(parsed)) {
-              return execution.execConstruct();
-            }
-          },
-          OPERATION_READ_ENTITY);
+      final Model stored =
+          runWithTimeout(
+              () -> {
+                try (QueryExecution execution = connection.query(parsed)) {
+                  return execution.execConstruct();
+                }
+              },
+              OPERATION_READ_ENTITY);
+      // An unchanged write sends no update, so this read is its only proof Fuseki answers.
+      recordSuccess();
+      return stored;
     } catch (RuntimeException failure) {
       if (isCircuitBreakerFailure(failure)) {
         recordFailure();

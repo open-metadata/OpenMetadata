@@ -68,6 +68,8 @@ class CompactionBlockedWriteTest {
         assertThrows(RuntimeException.class, () -> storage().executeSparqlUpdate(UPDATE));
 
     assertTrue(RdfStorageMaintenanceException.find(failure).isPresent(), failure::toString);
+    // The held write may still apply once Fuseki's writer frees, so its retry must replace.
+    assertTrue(RdfStorageMaintenanceException.find(failure).orElseThrow().isRequestPending());
   }
 
   @Test
