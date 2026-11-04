@@ -26,6 +26,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { findOntologyInQueryPicker } from '../../utils/ontologyStudio';
 
 const armQueryLibraryResponses = (page: Page) => [
   page.waitForResponse(
@@ -388,9 +389,7 @@ test.describe(
               .click();
             if (scope === 'aggregate') {
               const libraryResponses = armQueryLibraryResponses(page);
-              await shell
-                .getByTestId('ontology-query-picker-option-' + owner.id)
-                .click();
+              await (await findOntologyInQueryPicker(page, owner)).click();
               await expectLoadedNativeLibrary(
                 page,
                 await Promise.all(libraryResponses)

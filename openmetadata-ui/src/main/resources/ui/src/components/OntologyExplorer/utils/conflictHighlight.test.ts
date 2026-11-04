@@ -47,4 +47,34 @@ describe('conflict highlight', () => {
       conflictEdgeKey({ from: 'b', to: 'a' })
     );
   });
+
+  it('highlights the subclass edges from a class up to two disjoint ancestors that are not its direct parents', () => {
+    const subClassOf = (from: string, to: string) => ({
+      from,
+      to,
+      relationType: 'subClassOf',
+    });
+    const { edgeKeys, nodeIds } = buildConflictHighlight(
+      [{ conceptIds: ['C', 'A', 'B'] }],
+      [
+        subClassOf('C', 'P'),
+        subClassOf('C', 'Q'),
+        subClassOf('P', 'A'),
+        subClassOf('Q', 'B'),
+        subClassOf('A', 'Top'),
+        subClassOf('D', 'P'),
+        { from: 'C', to: 'Other', relationType: 'relatedTo' },
+      ]
+    );
+
+    expect([...nodeIds]).toEqual(['C']);
+    expect([...edgeKeys].sort()).toEqual(
+      [
+        conflictEdgeKey({ from: 'C', to: 'P' }),
+        conflictEdgeKey({ from: 'C', to: 'Q' }),
+        conflictEdgeKey({ from: 'P', to: 'A' }),
+        conflictEdgeKey({ from: 'Q', to: 'B' }),
+      ].sort()
+    );
+  });
 });

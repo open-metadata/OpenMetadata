@@ -36,10 +36,37 @@ const LABEL_KEYS = [
   'fullyQualifiedName',
 ];
 
-type Leaves = Map<string, string>;
+/**
+ * `key` is what two snapshots are compared by, so it holds every structured
+ * value. `text` is what the reader sees. `detailed` adds identities, and is
+ * shown only when two different values would otherwise read the same.
+ */
+interface Leaf {
+  key: string;
+  text: string;
+  detailed: string;
+}
+
+type Leaves = Map<string, Leaf>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const withoutBookkeeping = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(withoutBookkeeping);
+  }
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !IGNORED_FIELDS.has(key))
+        .sort(([first], [second]) => first.localeCompare(second))
+        .map(([key, child]) => [key, withoutBookkeeping(child)])
+    );
+  }
+
+  return value;
+};
 
 const itemLabel = (item: unknown): string | undefined => {
   if (!isRecord(item)) {
@@ -52,15 +79,39 @@ const itemLabel = (item: unknown): string | undefined => {
   return key ? String(item[key]) : undefined;
 };
 
+// A label that holds the separator is quoted so ['a, b'] never reads as ['a', 'b'].
+const listText = (labels: string[]) =>
+  labels
+    .map((label) => (label.includes(', ') ? JSON.stringify(label) : label))
+    .join(', ');
+
+const itemDetail = (item: unknown, label: string) => {
+  if (!isRecord(item)) {
+    return label;
+  }
+  const identity =
+    typeof item.id === 'string'
+      ? item.id
+      : JSON.stringify(withoutBookkeeping(item));
+
+  return `${label} (${identity})`;
+};
+
 const collect = (value: unknown, path: string, leaves: Leaves) => {
   if (value === null || value === undefined || value === '') {
     return;
   }
   if (Array.isArray(value)) {
     const labels = value.map(itemLabel);
-    if (labels.every((label) => label !== undefined)) {
+    if (labels.every((label): label is string => label !== undefined)) {
       if (labels.length) {
-        leaves.set(path, labels.join(', '));
+        leaves.set(path, {
+          key: JSON.stringify(withoutBookkeeping(value)),
+          text: listText(labels),
+          detailed: listText(
+            labels.map((label, index) => itemDetail(value[index], label))
+          ),
+        });
       }
 
       return;
@@ -72,13 +123,14 @@ const collect = (value: unknown, path: string, leaves: Leaves) => {
     return;
   }
   if (isRecord(value)) {
-    Object.entries(value).forEach(([key, child]) =>
-      collect(child, `${path}.${key}`, leaves)
-    );
+    Object.entries(value)
+      .filter(([key]) => !IGNORED_FIELDS.has(key))
+      .forEach(([key, child]) => collect(child, `${path}.${key}`, leaves));
 
     return;
   }
-  leaves.set(path, String(value));
+  const text = String(value);
+  leaves.set(path, { key: `${typeof value}:${text}`, text, detailed: text });
 };
 
 const flatten = (payload: unknown): Leaves => {
@@ -105,10 +157,16 @@ export const diffMemberFields = (
   const next = flatten(after);
 
   return [...new Set([...previous.keys(), ...next.keys()])]
-    .filter((field) => previous.get(field) !== next.get(field))
-    .map((field) => ({
-      field,
-      before: previous.get(field),
-      after: next.get(field),
-    }));
+    .filter((field) => previous.get(field)?.key !== next.get(field)?.key)
+    .map((field) => {
+      const old = previous.get(field);
+      const current = next.get(field);
+      const needsIdentity = old?.text === current?.text;
+
+      return {
+        field,
+        before: needsIdentity ? old?.detailed : old?.text,
+        after: needsIdentity ? current?.detailed : current?.text,
+      };
+    });
 };

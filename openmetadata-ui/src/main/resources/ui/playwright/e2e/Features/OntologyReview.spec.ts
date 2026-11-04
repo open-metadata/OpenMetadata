@@ -35,7 +35,10 @@ import {
   uuid,
 } from '../../utils/common';
 import { MEMORIES_API } from '../../utils/ContextCenterUtil';
-import { readNodePositions } from '../../utils/ontologyStudio';
+import {
+  findOntologyInScopeMenu,
+  readNodePositions,
+} from '../../utils/ontologyStudio';
 import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
@@ -86,7 +89,7 @@ const approveReview = async (page: Page, task: Task) => {
 const selectOntology = async (page: Page, ontology: Ontology) => {
   const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
   await scopeMenu.click();
-  const node = page.getByTestId(`ontology-scope-${ontology.id}`);
+  const node = await findOntologyInScopeMenu(page, ontology);
   await expect(node).toBeVisible();
   await node.click();
   await expect(scopeMenu).toHaveAttribute(

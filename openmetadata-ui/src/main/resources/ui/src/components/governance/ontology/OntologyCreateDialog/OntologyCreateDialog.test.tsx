@@ -324,6 +324,23 @@ describe('OntologyCreateDialog', () => {
     expect(mockCreateOntology).not.toHaveBeenCalled();
   });
 
+  it('asks for an ID when the display name has no Latin letters or digits, and accepts one', async () => {
+    const user = userEvent.setup();
+    await renderDialog();
+    await user.type(nameInput(), 'Клиенты');
+
+    expect(screen.getByText('message.ontology-name-id-required')).toBeVisible();
+    expect(createButton()).toBeDisabled();
+
+    await openAdvanced(user);
+    await user.type(screen.getByTestId('ontology-create-id'), 'clients');
+
+    expect(
+      screen.queryByText('message.ontology-name-id-required')
+    ).not.toBeInTheDocument();
+    expect(createButton()).toBeEnabled();
+  });
+
   it('says a 301 character name is too long and sends nothing', async () => {
     const user = userEvent.setup();
     await renderDialog();

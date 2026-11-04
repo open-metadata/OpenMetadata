@@ -27,7 +27,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import classNames from 'classnames';
-import { ButtonHTMLAttributes, ReactNode, useState } from 'react';
+import { ButtonHTMLAttributes, ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
@@ -65,6 +65,7 @@ interface OntologyStudioScopeMenuProps {
   readonly onRetry?: () => void;
 }
 
+const ROWS_PER_PAGE = 20;
 const SECTION_HEADER_CLASS =
   'tw:px-4 tw:pt-2 tw:pb-1 tw:text-xs tw:font-semibold tw:tracking-wide tw:text-tertiary tw:uppercase';
 const ROW_CLASS = [
@@ -168,10 +169,19 @@ const OntologyStudioScopeMenu = ({
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Ontology>();
-  const conceptCounts = useOntologyConceptCounts(ontologies, isOpen);
+  const [shown, setShown] = useState(ROWS_PER_PAGE);
+  const matchingOntologies = useMemo(
+    () => filterOntologies(ontologies, query),
+    [ontologies, query]
+  );
+  const visibleOntologies = useMemo(
+    () => matchingOntologies.slice(0, shown),
+    [matchingOntologies, shown]
+  );
+  // Counts cost one request per row, so only the rows on screen are counted.
+  const conceptCounts = useOntologyConceptCounts(visibleOntologies, isOpen);
   const termLabel = t('label.term-plural').toLocaleLowerCase();
   const selectedKey = getScopeKey(scope);
-  const visibleOntologies = filterOntologies(ontologies, query);
   const allOntologiesLabel = t('label.all-entity', {
     entity: t('label.ontology-plural').toLocaleLowerCase(),
   });
@@ -182,6 +192,7 @@ const OntologyStudioScopeMenu = ({
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     setQuery('');
+    setShown(ROWS_PER_PAGE);
     onOpenChange?.(open);
   };
 
@@ -401,7 +412,16 @@ const OntologyStudioScopeMenu = ({
               })}
           {renderOntologyRows()}
         </ul>
-        {query.trim() && visibleOntologies.length === 0 ? (
+        {matchingOntologies.length > shown ? (
+          <MenuButton
+            className="tw:w-full tw:justify-center tw:text-tertiary"
+            data-testid="ontology-scope-show-more"
+            role="menuitem"
+            onPress={() => setShown((count) => count + ROWS_PER_PAGE)}>
+            {t('label.show-more')}
+          </MenuButton>
+        ) : null}
+        {query.trim() && matchingOntologies.length === 0 ? (
           <div
             className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary"
             data-testid="ontology-scope-no-match">

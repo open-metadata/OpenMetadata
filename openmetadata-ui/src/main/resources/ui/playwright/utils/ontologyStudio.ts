@@ -35,6 +35,42 @@ export interface GraphTermRef {
 
 export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
 
+/** The scope menu lists 20 ontologies at a time, so a fixture on a shared backend is found by searching for it. */
+export async function findOntologyInScopeMenu(
+  page: Page,
+  ontology: Pick<Ontology, 'id' | 'name'>
+) {
+  await page.getByTestId('ontology-scope-search').fill(ontology.name);
+
+  return page.getByTestId(`ontology-scope-${ontology.id}`);
+}
+
+/** The query picker lists 20 ontologies at a time; Show more reveals the rest until the fixture's row is on screen. */
+export async function findOntologyInQueryPicker(
+  page: Page,
+  ontology: Pick<Ontology, 'id'>
+) {
+  const option = page.getByTestId(
+    `ontology-query-picker-option-${ontology.id}`
+  );
+  const showMore = page.getByTestId('ontology-query-picker-show-more');
+  await expect(page.getByTestId('ontology-query-picker')).toBeVisible();
+  await expect
+    .poll(
+      async () => {
+        if ((await option.count()) === 0 && (await showMore.count()) > 0) {
+          await showMore.click();
+        }
+
+        return option.count();
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(1);
+
+  return option;
+}
+
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
   if ((await scopeMenu.getAttribute('aria-expanded')) !== 'true') {

@@ -73,7 +73,7 @@ import {
   isSameWorkingState,
   nextSemanticVersion,
   resolveBump,
-  suggestWorkingVersion,
+  resolveVersionChoice,
   type VersionEditorState,
 } from './OntologyReleasePanel.utils';
 import OntologyReleaseReviewers from './OntologyReleaseReviewers';
@@ -316,8 +316,8 @@ const OntologyReleasePanel = ({
     !displayed.isFetching,
   ].every(Boolean);
   const baseVersion = versionBase.data?.semanticVersion;
-  const workingChanges = getWorkingChanges(working.data);
-  const suggestion = suggestWorkingVersion(workingChanges, baseVersion);
+  const { suggestion, isPickRequired: isVersionPickRequired } =
+    resolveVersionChoice(working.data, baseVersion, versionBump);
   const visibleMembers = filterMemberChanges(
     changes.data?.data ?? [],
     changeFilter,
@@ -337,6 +337,7 @@ const OntologyReleasePanel = ({
     !versionBase.isFetching,
     Boolean(currentStage?.unpublishedChanges),
     changedSinceRejection(),
+    !isVersionPickRequired,
   ].every(Boolean);
   const metadata = { versionBump: bump, releaseNotes };
   const retryChanges = () => {
@@ -770,7 +771,7 @@ const OntologyReleasePanel = ({
       )}
       {working.data && (
         <OntologyReleaseChangeFilters
-          counts={countChangesByKind(workingChanges)}
+          counts={countChangesByKind(getWorkingChanges(working.data))}
           filter={changeFilter}
           rowCounts={countRowsByFilter(
             working.data.groups ?? [],
@@ -828,8 +829,9 @@ const OntologyReleasePanel = ({
     versionBase.isSuccess && (
       <OntologyVersionEditor
         baseVersion={baseVersion}
-        bump={bump}
+        bump={isVersionPickRequired ? undefined : bump}
         isDisabled={!canWrite}
+        isPickRequired={isVersionPickRequired}
         notes={releaseNotes}
         suggestion={suggestion}
         onBumpChange={(value) =>

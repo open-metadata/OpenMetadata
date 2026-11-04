@@ -51,7 +51,9 @@ import {
   nativeLibraryOntologyRequest,
   resolveNativeLibraryTarget,
 } from './OntologyNativeLibraryDetail.utils';
-import OntologyNativePackReview from './OntologyNativePackReview';
+import OntologyNativePackReview, {
+  useNativePackReview,
+} from './OntologyNativePackReview';
 
 export interface NativeLibraryCompletion {
   ontology: Ontology;
@@ -205,8 +207,16 @@ const OntologyNativeLibraryDetail = ({
       });
   }, [canEditTarget, isPermissionLoading, pack.id, phase, t, apply]);
 
+  const review = useNativePackReview(
+    targetId === 'new' ? undefined : targetId,
+    pack.id,
+    selectedModuleIds
+  );
   const isInstallDisabled = () => {
     if (isBusy || !selectedModuleIds.length) {
+      return true;
+    }
+    if (targetId !== 'new' && !review.isSuccess) {
       return true;
     }
     if (targetId === 'new' && !target) {
@@ -399,13 +409,7 @@ const OntologyNativeLibraryDetail = ({
                 </Card>
               ))}
             </Box>
-            {targetId !== 'new' && (
-              <OntologyNativePackReview
-                moduleIds={selectedModuleIds}
-                ontologyId={targetId}
-                packId={pack.id}
-              />
-            )}
+            {targetId !== 'new' && <OntologyNativePackReview review={review} />}
             {renderInstallActions()}
             {error && <Alert variant="error">{error}</Alert>}
             {apply.status.kind === 'blocked' && (

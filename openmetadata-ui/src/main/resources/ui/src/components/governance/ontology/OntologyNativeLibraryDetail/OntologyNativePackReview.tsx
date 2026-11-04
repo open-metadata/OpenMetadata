@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { Alert, Button } from '@openmetadata/ui-core-components';
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { reviewNativeOntologyPack } from '../../../../rest/ontologyAPI';
 import OntologyNativeImportItems from '../OntologyReleaseExportModal/OntologyNativeImportItems';
 import {
@@ -19,28 +21,53 @@ import {
   initialSelection,
 } from '../OntologyReleaseExportModal/OntologyNativeImportPanel.utils';
 
+type PackReviewQuery = UseQueryResult<
+  Awaited<ReturnType<typeof reviewNativeOntologyPack>>
+>;
+
 interface OntologyNativePackReviewProps {
-  readonly moduleIds: readonly string[];
-  readonly ontologyId: string;
-  readonly packId: string;
+  readonly review: PackReviewQuery;
 }
 
-/** What installing the chosen modules into an existing ontology would do, item by item, with any clash it adds. */
-const OntologyNativePackReview = ({
-  moduleIds,
-  ontologyId,
-  packId,
-}: OntologyNativePackReviewProps) => {
-  const review = useQuery({
-    enabled: moduleIds.length > 0,
+export const useNativePackReview = (
+  ontologyId: string | undefined,
+  packId: string,
+  moduleIds: readonly string[]
+) =>
+  useQuery({
+    enabled: Boolean(ontologyId) && moduleIds.length > 0,
     gcTime: 0,
     queryKey: ['ontology-pack-review', ontologyId, packId, [...moduleIds]],
     retry: false,
     queryFn: () =>
-      reviewNativeOntologyPack(ontologyId, packId, {
+      reviewNativeOntologyPack(ontologyId as string, packId, {
         moduleIds: [...moduleIds],
       }),
   });
+
+/** What installing the chosen modules into an existing ontology would do, item by item, with any clash it adds. */
+const OntologyNativePackReview = ({
+  review,
+}: OntologyNativePackReviewProps) => {
+  const { t } = useTranslation();
+  if (review.isError) {
+    return (
+      <Alert
+        data-testid="ontology-library-pack-review-error"
+        rightContent={
+          <Button
+            color="secondary"
+            data-testid="ontology-library-pack-review-retry"
+            size="sm"
+            onPress={() => void review.refetch()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
+        {t('message.ontology-pack-review-failed')}
+      </Alert>
+    );
+  }
   const summary = review.data?.summary;
   if (!summary || importItemsOf(summary).length === 0) {
     return null;

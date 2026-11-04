@@ -20,6 +20,7 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { findOntologyInScopeMenu } from '../../utils/ontologyStudio';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
 const ONTOLOGIES = '/api/v1/ontologies';
@@ -491,7 +492,7 @@ test.describe(
 
         await page.getByTestId('ontology-scope-menu-trigger').click();
         await expect(
-          page.getByTestId(`ontology-scope-${created[0].id}`)
+          await findOntologyInScopeMenu(page, created[0])
         ).toBeVisible();
       } finally {
         for (const ontology of created) {

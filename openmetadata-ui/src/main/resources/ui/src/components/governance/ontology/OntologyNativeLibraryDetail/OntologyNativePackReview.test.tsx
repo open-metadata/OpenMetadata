@@ -11,20 +11,31 @@
  *  limitations under the License.
  */
 
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import {
   Kind,
   Status,
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import { reviewNativeOntologyPack } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
-import OntologyNativePackReview from './OntologyNativePackReview';
+import OntologyNativePackReview, {
+  useNativePackReview,
+} from './OntologyNativePackReview';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
   reviewNativeOntologyPack: jest.fn(),
 }));
 
+const Harness = () => (
+  <OntologyNativePackReview
+    review={useNativePackReview('sales-id', 'fhir', ['core'])}
+  />
+);
+const renderReview = () => renderWithQueryClient(<Harness />);
+
 describe('OntologyNativePackReview', () => {
+  beforeEach(() => jest.clearAllMocks());
+
   it('lists each definition the pack adds with the clash reason on its rule', async () => {
     (reviewNativeOntologyPack as jest.Mock).mockResolvedValue({
       changeSet: { operations: [] },
@@ -49,13 +60,7 @@ describe('OntologyNativePackReview', () => {
       },
     });
 
-    renderWithQueryClient(
-      <OntologyNativePackReview
-        moduleIds={['core']}
-        ontologyId="sales-id"
-        packId="fhir"
-      />
-    );
+    renderReview();
 
     expect(await screen.findByText('Patient')).toBeVisible();
     expect(
@@ -74,16 +79,42 @@ describe('OntologyNativePackReview', () => {
       summary: { items: [] },
     });
 
-    const { container } = renderWithQueryClient(
-      <OntologyNativePackReview
-        moduleIds={['core']}
-        ontologyId="sales-id"
-        packId="fhir"
-      />
-    );
+    const { container } = renderReview();
 
     await waitFor(() => expect(reviewNativeOntologyPack).toHaveBeenCalled());
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows an error with a retry when the review fails, and lists the items once a retry succeeds', async () => {
+    (reviewNativeOntologyPack as jest.Mock)
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce({
+        changeSet: { operations: [] },
+        summary: {
+          items: [
+            {
+              id: 'concept:https://example.org/Patient',
+              kind: Kind.Concept,
+              label: 'Patient',
+              status: Status.New,
+              conceptIds: [],
+            },
+          ],
+        },
+      });
+
+    renderReview();
+
+    expect(
+      await screen.findByText('message.ontology-pack-review-failed')
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-library-pack-review-retry'));
+
+    expect(await screen.findByText('Patient')).toBeVisible();
+    expect(
+      screen.queryByText('message.ontology-pack-review-failed')
+    ).not.toBeInTheDocument();
   });
 });
