@@ -371,6 +371,11 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
     return null;
   }
 
+  /** One batch of the announcements {@code filter} matches, without their fields. */
+  public List<Announcement> listBatch(ListFilter filter, int limit, int offset) {
+    return JsonUtils.readObjects(dao.listAfter(filter, limit, offset), Announcement.class);
+  }
+
   /**
    * The entity each announcement with an entityLink is about, keyed by announcement id, read from
    * the edge stored at creation: it follows the entity by id, so it survives a rename that leaves the

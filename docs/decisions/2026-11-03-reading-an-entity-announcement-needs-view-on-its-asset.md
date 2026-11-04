@@ -35,7 +35,9 @@ announcement is still broadcast whole.
 ## Consequences
 
 A list page can hold fewer rows than `limit`; its cursors are unchanged, so a client keeps paging.
-Its `paging.total` counts only the announcements the caller may view across every page, so a badge
-built from it matches what the caller can load. For a non-admin that count reads every announcement
-the filter matches and resolves their assets in one more batched pass; announcements are few, and
-admins skip it. Resolving the linked entities costs one batched relationship read per page.
+On the first page (no `before`/`after`), `paging.total` counts only the announcements the caller may
+view, so a badge built from it matches what the caller can load. For a non-admin that reads the
+filter's matches in batches of 500 and checks at most the first 10,000; matches past that cap are
+counted unchecked, so the total can only overstate. Later pages only subtract what they hid, so paging
+stays bounded by `limit`. Admins skip all of it. Resolving the linked entities costs one batched
+relationship read per page or batch.

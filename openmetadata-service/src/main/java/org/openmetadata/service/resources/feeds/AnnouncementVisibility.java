@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
@@ -34,7 +35,6 @@ import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * An entity announcement is shown on its asset, so reading one needs the ViewBasic that asset
@@ -66,23 +66,48 @@ public final class AnnouncementVisibility {
     }
   }
 
+  /** Rows read per batch when counting the visible total of a first page. */
+  static final int TOTAL_SCAN_BATCH = 500;
+
+  /** Matches checked for the visible total; any past it are counted unchecked. */
+  static final int TOTAL_SCAN_CAP = 10_000;
+
   /**
-   * Leaves out of {@code page} the announcements on assets the caller may not view, and counts its
-   * total over every visible match of {@code filter}, so hidden ones on other pages are not counted.
+   * Leaves out of {@code page} the announcements on assets the caller may not view. On the first
+   * page the total counts only visible matches, up to {@link #TOTAL_SCAN_CAP}; later pages only
+   * subtract what they hid, which keeps paging cheap.
    */
   public static ResultList<Announcement> filterVisible(
       ResultList<Announcement> page,
       ListFilter filter,
+      boolean firstPage,
       Authorizer authorizer,
       SecurityContext securityContext) {
     if (!isAdmin(securityContext)) {
-      page.setData(filterVisible(page.getData(), authorizer, securityContext));
-      if (page.getPaging() != null) {
-        List<Announcement> matches = repository().listAll(Fields.EMPTY_FIELDS, filter);
-        page.getPaging().setTotal(filterVisible(matches, authorizer, securityContext).size());
+      List<Announcement> visible = filterVisible(page.getData(), authorizer, securityContext);
+      int hidden = page.getData().size() - visible.size();
+      page.setData(visible);
+      Paging paging = page.getPaging();
+      if (paging != null && paging.getTotal() != null) {
+        paging.setTotal(
+            firstPage
+                ? visibleTotal(filter, paging.getTotal(), authorizer, securityContext)
+                : Math.max(paging.getTotal() - hidden, visible.size()));
       }
     }
     return page;
+  }
+
+  private static int visibleTotal(
+      ListFilter filter, int total, Authorizer authorizer, SecurityContext securityContext) {
+    int checked = Math.min(total, TOTAL_SCAN_CAP);
+    int visible = 0;
+    for (int offset = 0; offset < checked; offset += TOTAL_SCAN_BATCH) {
+      List<Announcement> batch =
+          repository().listBatch(filter, Math.min(TOTAL_SCAN_BATCH, checked - offset), offset);
+      visible += filterVisible(batch, authorizer, securityContext).size();
+    }
+    return visible + (total - checked);
   }
 
   /** The announcements on assets the caller may view, with one check per asset type. */

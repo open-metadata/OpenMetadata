@@ -367,11 +367,10 @@ class FeedAccessAuthzIT {
             MetadataOperation.VIEW_BASIC,
             "matchAnyTag('PII.Sensitive')");
 
-    JsonNode first = announcementPage(denied, domain, null);
-    JsonNode second =
-        announcementPage(denied, domain, first.path("paging").path("after").asText(null));
-    assertEquals(1, first.path("paging").path("total").asInt(), "first page total");
-    assertEquals(1, second.path("paging").path("total").asInt(), "second page total");
+    assertEquals(
+        1,
+        announcementPage(denied, domain, null).path("paging").path("total").asInt(),
+        "first page total counts only viewable announcements");
     assertEquals(
         2,
         announcementPage(SdkClients.adminClient(), domain, null)

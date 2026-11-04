@@ -161,6 +161,7 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
     return viewableOnly(
         securityContext,
         filter,
+        before == null && after == null,
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -378,8 +379,12 @@ public class AnnouncementResource extends EntityResource<Announcement, Announcem
   }
 
   private ResultList<Announcement> viewableOnly(
-      SecurityContext securityContext, ListFilter filter, ResultList<Announcement> page) {
-    return AnnouncementVisibility.filterVisible(page, filter, authorizer, securityContext);
+      SecurityContext securityContext,
+      ListFilter filter,
+      boolean firstPage,
+      ResultList<Announcement> page) {
+    return AnnouncementVisibility.filterVisible(
+        page, filter, firstPage, authorizer, securityContext);
   }
 
   private Announcement getAnnouncement(CreateAnnouncement create, String userName) {
