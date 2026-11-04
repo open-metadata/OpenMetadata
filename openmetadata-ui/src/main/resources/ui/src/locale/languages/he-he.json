@@ -1118,6 +1118,7 @@
     "duplicate": "שכפל",
     "duplicate-plural": "כפילויות",
     "duration": "משך זמן",
+    "duration-in-minute": "{{duration}} דק'",
     "duration-with-timeout": "{{duration}} (תם הזמן)",
     "dynamic": "דינמי",
     "dynamic-assertion": "אסרציה דינמית",

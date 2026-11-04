@@ -1118,6 +1118,7 @@
     "duplicate": "Kopya",
     "duplicate-plural": "Yinelenenler",
     "duration": "Süre",
+    "duration-in-minute": "{{duration}} dk",
     "duration-with-timeout": "{{duration}} (zaman aşımı)",
     "dynamic": "Dinamik",
     "dynamic-assertion": "Dinamik Beyan",

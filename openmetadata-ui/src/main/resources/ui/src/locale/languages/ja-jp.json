@@ -1118,6 +1118,7 @@
     "duplicate": "重複",
     "duplicate-plural": "重複",
     "duration": "所要時間",
+    "duration-in-minute": "{{duration}} 分",
     "duration-with-timeout": "{{duration}}（タイムアウト）",
     "dynamic": "動的",
     "dynamic-assertion": "動的アサーション",

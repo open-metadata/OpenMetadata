@@ -1118,6 +1118,7 @@
     "duplicate": "Duplicera",
     "duplicate-plural": "Dubbletter",
     "duration": "Varaktighet",
+    "duration-in-minute": "{{duration}} min",
     "duration-with-timeout": "{{duration}} (tidsgräns överskriden)",
     "dynamic": "Dynamisk",
     "dynamic-assertion": "Dynamisk assertion",

@@ -1118,6 +1118,7 @@
     "duplicate": "डुप्लिकेट",
     "duplicate-plural": "डुप्लिकेट",
     "duration": "कालावधी",
+    "duration-in-minute": "{{duration}} मिनिटे",
     "duration-with-timeout": "{{duration}} (वेळ संपली)",
     "dynamic": "गतिमान",
     "dynamic-assertion": "डायनॅमिक अॅसर्शन",

@@ -1118,6 +1118,7 @@
     "duplicate": "복제",
     "duplicate-plural": "중복",
     "duration": "기간",
+    "duration-in-minute": "{{duration}}분",
     "duration-with-timeout": "{{duration}} (시간 초과)",
     "dynamic": "동적",
     "dynamic-assertion": "동적 단언",

@@ -1118,6 +1118,7 @@
     "duplicate": "复制",
     "duplicate-plural": "重复项",
     "duration": "持续时间",
+    "duration-in-minute": "{{duration}} 分钟",
     "duration-with-timeout": "{{duration}}（超时）",
     "dynamic": "动态",
     "dynamic-assertion": "动态断言",

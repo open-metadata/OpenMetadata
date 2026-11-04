@@ -1118,6 +1118,7 @@
     "duplicate": "تکراری",
     "duplicate-plural": "موارد تکراری",
     "duration": "مدت زمان",
+    "duration-in-minute": "{{duration}} دقیقه",
     "duration-with-timeout": "{{duration}} (پایان مهلت)",
     "dynamic": "Dinâmico",
     "dynamic-assertion": "ادعای پویا",

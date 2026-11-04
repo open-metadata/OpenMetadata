@@ -1118,6 +1118,7 @@
     "duplicate": "Duplikat",
     "duplicate-plural": "Duplikate",
     "duration": "Dauer",
+    "duration-in-minute": "{{duration}} Min.",
     "duration-with-timeout": "{{duration}} (Zeitüberschreitung)",
     "dynamic": "Dynamisch",
     "dynamic-assertion": "Dynamische Assertion",

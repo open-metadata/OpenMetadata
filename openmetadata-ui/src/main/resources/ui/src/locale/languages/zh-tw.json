@@ -1118,6 +1118,7 @@
     "duplicate": "重複",
     "duplicate-plural": "重複項",
     "duration": "持續時間",
+    "duration-in-minute": "{{duration}} 分鐘",
     "duration-with-timeout": "{{duration}}（逾時）",
     "dynamic": "動態",
     "dynamic-assertion": "動態斷言",

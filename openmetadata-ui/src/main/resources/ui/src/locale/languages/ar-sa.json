@@ -1118,6 +1118,7 @@
     "duplicate": "تكرار",
     "duplicate-plural": "مكررات",
     "duration": "المدة",
+    "duration-in-minute": "{{duration}} دقيقة",
     "duration-with-timeout": "{{duration}} (انتهت المهلة)",
     "dynamic": "ديناميكي",
     "dynamic-assertion": "تأكيد ديناميكي",

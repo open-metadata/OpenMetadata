@@ -1118,6 +1118,7 @@
     "duplicate": "ซ้ำกัน",
     "duplicate-plural": "ข้อมูลซ้ำ",
     "duration": "ระยะเวลา",
+    "duration-in-minute": "{{duration}} นาที",
     "duration-with-timeout": "{{duration}} (หมดเวลา)",
     "dynamic": "ไดนามิก",
     "dynamic-assertion": "การยืนยันแบบไดนามิก",

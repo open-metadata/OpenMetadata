@@ -1118,6 +1118,7 @@
     "duplicate": "Дубликат",
     "duplicate-plural": "Дубликаты",
     "duration": "Длительность",
+    "duration-in-minute": "{{duration}} мин",
     "duration-with-timeout": "{{duration}} (тайм-аут)",
     "dynamic": "Динамический",
     "dynamic-assertion": "Динамическое утверждение",
