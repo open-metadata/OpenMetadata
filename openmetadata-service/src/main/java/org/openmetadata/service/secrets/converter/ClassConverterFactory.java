@@ -25,11 +25,9 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
-import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
-import org.openmetadata.schema.security.credentials.TableauConnectedAppAuth;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.common.SSLCertPaths;
 import org.openmetadata.schema.services.common.SSLCertValues;
@@ -289,11 +287,9 @@ public final class ClassConverterFactory {
                   TableauPipelineConnection.class,
                   Map.of(
                       "authType",
-                          List.of(
-                              BasicAuth.class,
-                              AccessTokenAuth.class,
-                              TableauConnectedAppAuth.class),
-                      "sslConfig", List.of(ValidateSSLClientConfig.class)))));
+                      TableauConnectionClassConverter.CONNECTION_CLASSES,
+                      "sslConfig",
+                      List.of(ValidateSSLClientConfig.class)))));
 
   static {
     Map<Class<?>, ClassConverter> converters =

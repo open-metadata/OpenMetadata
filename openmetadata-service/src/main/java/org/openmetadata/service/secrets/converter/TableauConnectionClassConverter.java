@@ -9,7 +9,8 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 
 public class TableauConnectionClassConverter extends ClassConverter {
-  private static final List<Class<?>> CONNECTION_CLASSES =
+  /** Every Tableau authType, shared with the TableauPipelineConnection entry in the factory. */
+  static final List<Class<?>> CONNECTION_CLASSES =
       List.of(BasicAuth.class, AccessTokenAuth.class, TableauConnectedAppAuth.class);
 
   private static final List<Class<?>> SSL_SOURCE_CLASSES = List.of(ValidateSSLClientConfig.class);

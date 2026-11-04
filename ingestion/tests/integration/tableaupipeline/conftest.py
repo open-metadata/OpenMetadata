@@ -21,11 +21,9 @@ run unmodified against a live OpenMetadata server.
 import json
 import re
 import time
-import xml.etree.ElementTree as ET
 from collections.abc import Iterator
 from urllib.parse import parse_qs, urlparse
 
-import jwt
 import pytest
 import requests
 from requests.adapters import HTTPAdapter
@@ -56,17 +54,12 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ...utils.tableau_connected_app import CONNECTED_APP, PAT, sign_in  # noqa: TID252
+
 TABLEAU_HOST = "tableau-it.example.com"
 PIPELINE_SERVICE = "tableau_pipeline_it"
 DB_SERVICE = "tableau_pipeline_it_warehouse"
 NS = 'xmlns="http://tableau.com/api"'
-PAT = {"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"}
-CONNECTED_APP = {
-    "clientId": "it-client",
-    "secretId": "it-secret",
-    "secretValue": "integration-connected-app-secret-of-44-chars",
-    "username": "api-user",
-}
 WAREHOUSE_TABLES = ("orders", "sales_clean", "customers", "orders_clean", "customers_clean")
 SEARCH_INDEX_TIMEOUT_SECONDS = 60
 
@@ -220,7 +213,7 @@ class FakeTableauSite:
                 "<restApiVersion>3.23</restApiVersion></serverInfo></tsResponse>"
             )
         elif path.endswith("/auth/signin"):
-            status, body = self._sign_in(request.body)
+            status, body = sign_in(request.body)
         elif path.endswith("/auth/signout"):
             status = 204
         elif path.endswith("/flows/runs"):
@@ -262,33 +255,6 @@ class FakeTableauSite:
         response.url = request.url
         response.request = request
         return response
-
-    @staticmethod
-    def _sign_in(body: bytes) -> tuple[int, str]:
-        """Accepts a PAT as is; a connected-app JWT only if it is the direct trust token Tableau accepts."""
-        token = ET.fromstring(body).find("credentials").get("jwt")
-        if token:
-            try:
-                header = jwt.get_unverified_header(token)
-                jwt.decode(
-                    token,
-                    CONNECTED_APP["secretValue"],
-                    algorithms=["HS256"],
-                    audience="tableau",
-                    issuer=CONNECTED_APP["clientId"],
-                    options={"require": ["exp", "jti", "sub", "scp"]},
-                )
-            except jwt.InvalidTokenError:
-                header = {}
-            if (header.get("kid"), header.get("iss")) != (CONNECTED_APP["secretId"], CONNECTED_APP["clientId"]):
-                return 401, (
-                    f'<tsResponse {NS}><error code="401001"><summary>Signin Error</summary>'
-                    "<detail>Invalid connected app token</detail></error></tsResponse>"
-                )
-        return 200, (
-            f'<tsResponse {NS}><credentials token="t"><site id="site-it" contentUrl="it"/>'
-            '<user id="api-user"/></credentials></tsResponse>'
-        )
 
     @staticmethod
     def _page(element: str, items: list[str]) -> str:
@@ -358,14 +324,20 @@ def _create_tables(metadata, database: Database, schema_name: str, names: tuple[
     return tables
 
 
+@pytest.fixture(scope="module", params=[PAT, CONNECTED_APP], ids=["pat", "connected_app"])
+def auth_type(request) -> dict:
+    return request.param
+
+
 @pytest.fixture(scope="module")
 def warehouse_tables(metadata, auth_type) -> Iterator[dict[str, Table]]:
     """A MySQL service as OpenMetadata files it: one `default` database, with
     each MySQL database as a schema. `staging` holds an `orders` too and is
     indexed first, so a search for `orders` in any schema finds it first.
 
-    Rebuilt for each auth type: the server keeps one lineage edge per table pair,
-    so a run over the previous run's tables would read that run's pipeline on it."""
+    Rebuilt for each auth type: hard-deleting the previous run's pipeline service
+    leaves each table-to-table edge pointing at its deleted pipeline, and the next
+    run's edge for the same pair does not replace that reference."""
     service = metadata.create_or_update(
         CreateDatabaseServiceRequest(
             name=DB_SERVICE,
@@ -380,11 +352,6 @@ def warehouse_tables(metadata, auth_type) -> Iterator[dict[str, Table]]:
     tables = _create_tables(metadata, database, "warehouse", WAREHOUSE_TABLES)
     yield {**tables, "staging.orders": staging["orders"]}
     metadata.delete(entity=DatabaseService, entity_id=service.id, recursive=True, hard_delete=True)
-
-
-@pytest.fixture(scope="module", params=[PAT, CONNECTED_APP], ids=["pat", "connected_app"])
-def auth_type(request) -> dict:
-    return request.param
 
 
 @pytest.fixture(scope="module")

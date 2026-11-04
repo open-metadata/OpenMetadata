@@ -33,7 +33,8 @@ credentials that sign in as a chosen user without that user's password. On Table
   parameter is `isUat`.
 - The scope set and the five-minute lifetime are module constants
   (`CONNECTED_APP_SCOPES`, `CONNECTED_APP_JWT_LIFETIME`), not configuration.
-- The test-connection hints for a 401 and for unresolved owners name the connected app scopes.
+- A connected-app connection gets its own test-connection error pack: a 401 names the app's checks and the
+  scopes, and unresolved owners name `tableau:users:read`. Basic and PAT connections keep their hints.
 - The supported floor is Tableau Cloud and Tableau Server 2023.3, per Tableau's documentation:
   Server 2022.3 to 2023.2 accepts connected app tokens for the REST API but not the Metadata API,
   so data models and lineage are missing. Server was not tested live.

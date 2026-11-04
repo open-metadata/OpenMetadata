@@ -49,6 +49,12 @@ from metadata.ingestion.source.pipeline.tableaupipeline.connection import (
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.service_spec import ServiceSpec
 
+from ....utils.tableau_connected_app import (  # noqa: TID252
+    CONNECTED_APP,
+    CONNECTED_APP_SCOPES,
+    connected_app_claims,
+)
+
 CONNECTION_MODULE = "metadata.ingestion.source.pipeline.tableaupipeline.connection"
 TEST_CONNECTION_DEFINITION = (
     Path(__file__).parents[5]
@@ -58,10 +64,12 @@ TEST_CONNECTION_DEFINITION = (
 
 def _config(**overrides) -> TableauPipelineConnectionConfig:
     return TableauPipelineConnectionConfig(
-        hostPort="https://tableau.example.com",
-        authType={"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
-        siteName="MarketingTeam",
-        **overrides,
+        **{
+            "hostPort": "https://tableau.example.com",
+            "authType": {"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
+            "siteName": "MarketingTeam",
+            **overrides,
+        }
     )
 
 
@@ -107,43 +115,29 @@ def test_get_connection_signs_in_with_the_pat_and_ssl_mode():
 
 
 def test_a_pipeline_connection_signs_in_with_a_direct_trust_jwt():
-    config = TableauPipelineConnectionConfig(
-        hostPort="https://tableau.example.com",
-        authType={
-            "clientId": "3d6e1b5c-client",
-            "secretId": "9a2f7c4e-secret",
-            "secretValue": "connected-app-secret-value-of-44-characters!",
-            "username": "api-user@example.com",
-        },
-        siteName="MarketingTeam",
-    )
-    signed_after = time.time()
+    config = _config(authType=CONNECTED_APP)
 
-    first, second = build_server_config(config), build_server_config(config)
+    started = time.time()
+    first = build_server_config(config)
+    finished = time.time()
+    second = build_server_config(config)
 
     assert isinstance(first, TSC.JWTAuth)
     assert first.site_id == "MarketingTeam"
     assert first.isUat is False
     header = jwt.get_unverified_header(first.jwt)
-    assert (header["alg"], header["kid"], header["iss"]) == ("HS256", "9a2f7c4e-secret", "3d6e1b5c-client")
-    claims, second_claims = (
-        jwt.decode(auth.jwt, "connected-app-secret-value-of-44-characters!", algorithms=["HS256"], audience="tableau")
-        for auth in (first, second)
+    assert (header["alg"], header["kid"], header["iss"]) == (
+        "HS256",
+        CONNECTED_APP["secretId"],
+        CONNECTED_APP["clientId"],
     )
-    assert claims["iss"] == "3d6e1b5c-client"
-    assert claims["sub"] == "api-user@example.com"
+    claims = connected_app_claims(first.jwt)
+    assert claims["iss"] == CONNECTED_APP["clientId"]
+    assert claims["sub"] == CONNECTED_APP["username"]
     assert claims["aud"] == "tableau"
-    assert claims["scp"] == [
-        "tableau:content:read",
-        "tableau:users:read",
-        "tableau:server:read",
-        "tableau:flows:read",
-        "tableau:flow_runs:read",
-        "tableau:jobs:read",
-        "tableau:tasks:read",
-    ]
-    assert 299 <= claims["exp"] - signed_after <= 301
-    assert claims["jti"] != second_claims["jti"]
+    assert claims["scp"] == CONNECTED_APP_SCOPES
+    assert started + 299 < claims["exp"] <= finished + 300
+    assert claims["jti"] != connected_app_claims(second.jwt)["jti"]
 
 
 def test_get_connection_wraps_client_failures():
@@ -239,15 +233,25 @@ def test_tableau_errors_are_diagnosed(error, title):
     assert TABLEAU_PIPELINE_ERRORS.classify(error).title == title
 
 
-def test_a_rejected_flow_call_names_the_connected_app_scopes():
-    # TSC raises FailedSignInError for any 401, so a flow call outside the JWT's scopes lands here.
-    error = FailedSignInError("401002", "Unauthorized Access", "Invalid authentication credentials were provided.")
+# TSC raises FailedSignInError for any 401, so a flow call outside the JWT's scopes lands here.
+SCOPE_REJECTION = FailedSignInError(
+    "401002", "Unauthorized Access", "Invalid authentication credentials were provided."
+)
 
-    diagnosis = TABLEAU_PIPELINE_ERRORS.classify(error)
+
+def test_a_rejected_flow_call_names_the_connected_app_checks_and_scopes():
+    diagnosis = TableauPipelineConnection(_config(authType=CONNECTED_APP)).checks().errors.classify(SCOPE_REJECTION)
 
     assert diagnosis.title == "Authentication failed"
     assert "connected app" in diagnosis.remediation
     assert "tableau:flows:read" in diagnosis.remediation
+
+
+def test_a_pat_pipeline_connection_keeps_the_pat_hint():
+    remediation = TableauPipelineConnection(_config()).checks().errors.classify(SCOPE_REJECTION).remediation
+
+    assert "connected app" not in remediation
+    assert "tableau:" not in remediation
 
 
 def test_certificate_temp_files_are_removed_when_sign_in_fails():

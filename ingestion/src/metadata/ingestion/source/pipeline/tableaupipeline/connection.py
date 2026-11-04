@@ -42,10 +42,13 @@ from metadata.core.connections.test_connection.checks.rest import (
 from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
     TableauPipelineConnection as TableauPipelineConnectionConfig,
 )
+from metadata.generated.schema.security.credentials.tableauConnectedAppAuth import (
+    TableauConnectedAppAuth,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.tableau.connection import (
-    CONNECTED_APP_401_HINT,
+    CONNECTED_APP_REJECTED,
     METADATA_API_DOC,
     TABLEAU_ERRORS,
     build_server_config,
@@ -89,8 +92,7 @@ TABLEAU_PIPELINE_ERRORS = ErrorPack(
     when(Matchers.exception(FailedSignInError)).diagnose(
         "Authentication failed",
         fix="Tableau rejected the sign-in. Check the Personal Access Token name and secret (or the username "
-        "and password), that the token has not expired, and that the Site Name matches the site they belong to. "
-        f"{CONNECTED_APP_401_HINT}",
+        "and password), that the token has not expired, and that the Site Name matches the site they belong to.",
     ),
     when(Matchers.exception(EndpointUnavailableError)).diagnose(
         "REST API version too old",
@@ -123,6 +125,11 @@ TABLEAU_PIPELINE_ERRORS = ErrorPack(
         doc=METADATA_API_DOC,
     ),
 ).including(TABLEAU_ERRORS)
+
+# TSC raises FailedSignInError for every 401, including a call outside the connected app token's scopes.
+TABLEAU_PIPELINE_CONNECTED_APP_ERRORS = ErrorPack(
+    when(Matchers.exception(FailedSignInError)).diagnose("Authentication failed", fix=CONNECTED_APP_REJECTED),
+).including(TABLEAU_PIPELINE_ERRORS)
 
 
 def get_connection(connection: TableauPipelineConnectionConfig) -> TableauPipelineClient:
@@ -157,10 +164,9 @@ class TableauPipelineChecks:
     without them.
     """
 
-    errors = TABLEAU_PIPELINE_ERRORS
-
-    def __init__(self, server: Borrowed[TableauPipelineClient]) -> None:
+    def __init__(self, server: Borrowed[TableauPipelineClient], connected_app: bool = False) -> None:
         self._server = server
+        self.errors = TABLEAU_PIPELINE_CONNECTED_APP_ERRORS if connected_app else TABLEAU_PIPELINE_ERRORS
 
     @check(PipelineStep.GetPipelines)
     def get_pipelines(self) -> Evidence:
@@ -217,4 +223,7 @@ class TableauPipelineConnection(BaseConnection[TableauPipelineConnectionConfig, 
         return client
 
     def checks(self) -> ChecksProvider:
-        return TableauPipelineChecks(server=self.borrow())
+        return TableauPipelineChecks(
+            server=self.borrow(),
+            connected_app=isinstance(self.service_connection.authType, TableauConnectedAppAuth),
+        )

@@ -66,6 +66,8 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
 
 if TYPE_CHECKING:
+    from tableauserverclient.models import Credentials
+
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
@@ -94,10 +96,10 @@ CONNECTED_APP_SCOPES = [
 # The JWT only has to last until sign-in; the session it buys outlives it. Tableau Cloud allows 10 minutes.
 CONNECTED_APP_JWT_LIFETIME = timedelta(minutes=5)
 # Tableau answers a call outside the token's scopes with the same 401002 as bad credentials.
-CONNECTED_APP_401_HINT = (
-    "For a connected app, check the client ID, secret ID, secret value and username, and that the app is "
-    "enabled. A call outside the token's scopes also gets a 401; OpenMetadata requests "
-    f"{', '.join(CONNECTED_APP_SCOPES)}."
+CONNECTED_APP_REJECTED = (
+    "Tableau rejected the connected app's token (401). Check the client ID, secret ID, secret value and "
+    "username, that the connected app is enabled, and that the Site Name matches the site it belongs to. "
+    f"A call outside the token's scopes is rejected the same way; OpenMetadata requests {', '.join(CONNECTED_APP_SCOPES)}."
 )
 
 
@@ -127,7 +129,7 @@ TABLEAU_ERRORS = ErrorPack(
         "Authentication failed",
         fix="Tableau rejected the credentials (401). Check the Personal Access Token name and "
         "secret (or the username and password) and that it has not expired, and that the Site "
-        f"Name matches the site those credentials belong to. {CONNECTED_APP_401_HINT}",
+        "Name matches the site those credentials belong to.",
     ),
     when(http_status(403, extract=_status_of)).diagnose(
         "Insufficient permissions",
@@ -159,8 +161,7 @@ TABLEAU_ERRORS = ErrorPack(
     when(Matchers.exception(TableauOwnersNotFound)).diagnose(
         "Owner information not available",
         fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
-        "disable owner ingestion in the service configuration. A connected app's token also needs "
-        "the tableau:users:read scope.",
+        "disable owner ingestion in the service configuration.",
     ),
     when(Matchers.exception(TableauUpstreamTablesRedacted)).diagnose(
         "Source table names are hidden from this account",
@@ -182,6 +183,18 @@ TABLEAU_ERRORS = ErrorPack(
         "https://<server>/#/site/MarketingTeam/home enter 'MarketingTeam'.",
     ),
 ).including(NETWORK_ERRORS)
+
+# A connected app has no PAT or password to check, and its token's scopes can be what Tableau refused.
+TABLEAU_CONNECTED_APP_ERRORS = ErrorPack(
+    when(http_status(401, extract=_status_of)).diagnose("Authentication failed", fix=CONNECTED_APP_REJECTED),
+    # The owner lookup swallows the 401, so a token without the users scope surfaces here instead.
+    when(Matchers.exception(TableauOwnersNotFound)).diagnose(
+        "Owner information not available",
+        fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
+        "disable owner ingestion in the service configuration. The connected app's token also needs "
+        "the tableau:users:read scope.",
+    ),
+).including(TABLEAU_ERRORS)
 
 
 def get_connection(connection: TableauConnectionConfig) -> TableauClient:
@@ -241,7 +254,7 @@ def set_verify_ssl(
 
 def build_server_config(
     connection: TableauConnectionConfig | TableauPipelineConnection,
-) -> TSC.TableauAuth | TSC.PersonalAccessTokenAuth | TSC.JWTAuth:
+) -> Credentials:
     """
     Build client configuration
     Args:
@@ -263,19 +276,20 @@ def build_server_config(
             site_id=connection.siteName if connection.siteName else "",
         )
     elif isinstance(connection.authType, TableauConnectedAppAuth):
+        app = connection.authType
         # Direct trust accepts only HS256 tokens signed with the connected app's secret value.
         token = jwt.encode(
             {
-                "iss": connection.authType.clientId,
-                "sub": connection.authType.username,
+                "iss": app.clientId,
+                "sub": app.username,
                 "aud": "tableau",
                 "exp": datetime.now(timezone.utc) + CONNECTED_APP_JWT_LIFETIME,
                 "jti": str(uuid.uuid4()),
                 "scp": CONNECTED_APP_SCOPES,
             },
-            connection.authType.secretValue.get_secret_value(),
+            app.secretValue.get_secret_value(),
             algorithm="HS256",
-            headers={"kid": connection.authType.secretId, "iss": connection.authType.clientId},
+            headers={"kid": app.secretId, "iss": app.clientId},
         )
         # site_id must be a keyword: JWTAuth's second positional parameter is isUat.
         tableau_auth = TSC.JWTAuth(jwt=token, site_id=connection.siteName if connection.siteName else "")
@@ -292,10 +306,9 @@ class TableauChecks:
     credentials or an unreachable server fail there and the rest are skipped.
     """
 
-    errors = TABLEAU_ERRORS
-
-    def __init__(self, server: Borrowed[TableauClient]) -> None:
+    def __init__(self, server: Borrowed[TableauClient], connected_app: bool = False) -> None:
         self._server = server
+        self.errors = TABLEAU_CONNECTED_APP_ERRORS if connected_app else TABLEAU_ERRORS
 
     @check(DashboardStep.ServerInfo)
     def server_info(self) -> Evidence:
@@ -370,4 +383,7 @@ class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
         return client
 
     def checks(self) -> ChecksProvider:
-        return TableauChecks(server=self.borrow())
+        return TableauChecks(
+            server=self.borrow(),
+            connected_app=isinstance(self.service_connection.authType, TableauConnectedAppAuth),
+        )
