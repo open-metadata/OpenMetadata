@@ -107,6 +107,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
       '@openmetadata/ui-core-components'
     ).MUTED_TABLE_SURFACE_CLASSES,
     Button,
+    ButtonUtility: ({
+      icon: _icon,
+      size: _size,
+      ...props
+    }: HTMLAttributes<HTMLButtonElement> & {
+      icon?: unknown;
+      size?: string;
+    }) => <button {...props} />,
     Dropdown: {
       Root: ({ children }: { children: ReactNode }) => <>{children}</>,
       Popover: ({ children }: { children: ReactNode }) => <>{children}</>,
