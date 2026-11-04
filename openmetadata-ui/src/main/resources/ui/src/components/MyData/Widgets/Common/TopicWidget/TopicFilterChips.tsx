@@ -146,8 +146,7 @@ const TopicFilterChips: React.FC<TopicFilterChipsProps> = ({
               )}
             />
             {/* Semibold digits stand at cap height and read as raised against
-              a mostly lowercase label, so the count stays medium weight with
-              6px between them. */}
+              a mostly lowercase label, so the count is medium weight. */}
             <span className="tw:flex tw:items-baseline tw:gap-1.5 tw:text-xs">
               <span className="tw:text-text-secondary">{chip.label}</span>
               <span
