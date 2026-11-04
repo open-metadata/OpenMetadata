@@ -14,6 +14,7 @@ package org.openmetadata.service.rdf.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -64,6 +65,7 @@ class EntityWriteCircuitBreakerTest {
   @Test
   void anUnchangedWriteAfterTimedOutReadsClosesTheBreakerAgain() {
     final JenaFusekiStorage storage = storage();
+    assertEquals(RdfEntityWriteResult.UNCHANGED, writeEmptyProjection(storage));
     timeOutWrites(storage, 4);
     assertEquals(RdfEntityWriteResult.UNCHANGED, writeEmptyProjection(storage));
 
@@ -75,7 +77,9 @@ class EntityWriteCircuitBreakerTest {
   private void timeOutWrites(final JenaFusekiStorage storage, final int count) {
     unresponsive = true;
     for (int attempt = 0; attempt < count; attempt++) {
-      assertThrows(RuntimeException.class, () -> writeEmptyProjection(storage));
+      final RuntimeException failure =
+          assertThrows(RuntimeException.class, () -> writeEmptyProjection(storage));
+      assertTrue(JenaFusekiStorage.isTimeoutFailure(failure), failure::toString);
     }
     unresponsive = false;
   }
@@ -92,7 +96,7 @@ class EntityWriteCircuitBreakerTest {
             .withBaseUri(URI.create("https://open-metadata.org/"))
             .withRemoteEndpoint(
                 URI.create("http://localhost:" + server.getAddress().getPort() + "/openmetadata"))
-            .withRequestTimeoutMs(300)
+            .withRequestTimeoutMs(1000)
             .withWriteMaxRetries(0),
         delayMs -> {});
   }

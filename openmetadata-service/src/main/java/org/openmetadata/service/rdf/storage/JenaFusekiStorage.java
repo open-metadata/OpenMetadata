@@ -1306,6 +1306,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
               .plan(entityUri, entityModel, strategy);
       if (plan.sendsUpdate()) {
         sendEntityUpdate(plan.update());
+      } else {
+        // Nothing was sent, so the write's read is its only proof Fuseki answers.
+        recordSuccess();
       }
       recordEntityWrite(plan.result());
       LOG.debug("Stored entity {} in graph {}: {}", entityId, KNOWLEDGE_GRAPH, plan.result());
@@ -1320,17 +1323,13 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private Model readForEntityWrite(String query) {
     Query parsed = QueryFactory.create(query);
     try {
-      final Model stored =
-          runWithTimeout(
-              () -> {
-                try (QueryExecution execution = connection.query(parsed)) {
-                  return execution.execConstruct();
-                }
-              },
-              OPERATION_READ_ENTITY);
-      // An unchanged write sends no update, so this read is its only proof Fuseki answers.
-      recordSuccess();
-      return stored;
+      return runWithTimeout(
+          () -> {
+            try (QueryExecution execution = connection.query(parsed)) {
+              return execution.execConstruct();
+            }
+          },
+          OPERATION_READ_ENTITY);
     } catch (RuntimeException failure) {
       if (isCircuitBreakerFailure(failure)) {
         recordFailure();
