@@ -59,6 +59,28 @@ describe('usePaging (integration)', () => {
     expect(result.current.handlePageSizeChange).toBe(firstHandlePageSizeChange);
   });
 
+  it('keeps handlePageChange stable across a page change', () => {
+    const { result } = renderHook(() => usePaging(), { wrapper });
+
+    const firstHandlePageChange = result.current.handlePageChange;
+
+    act(() => result.current.handlePageChange(2));
+
+    expect(result.current.currentPage).toBe(2);
+    expect(result.current.handlePageChange).toBe(firstHandlePageChange);
+  });
+
+  it('applies a functional page update to the latest page', () => {
+    const { result } = renderHook(() => usePaging(), { wrapper });
+
+    const initialHandlePageChange = result.current.handlePageChange;
+
+    act(() => result.current.handlePageChange(3));
+    act(() => initialHandlePageChange((page) => page + 1));
+
+    expect(result.current.currentPage).toBe(4);
+  });
+
   it('saves a grid size to the grid preference, leaving the list one alone', () => {
     const { result } = renderHook(() => usePaging(undefined, GRID_SIZES), {
       wrapper: wrapperAt('/connections'),

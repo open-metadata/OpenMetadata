@@ -301,7 +301,10 @@ export const SelectableList = ({
       </div>
 
       {/* List body */}
-      <div className="tw:relative">
+      <div
+        className="tw:relative"
+        data-testid="selectable-list-body"
+        style={{ minHeight: height }}>
         {(fetching || updating) && (
           <div className="tw:flex tw:items-center tw:justify-center tw:py-4">
             <Loader size="small" />

@@ -372,6 +372,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       List<AuthRequest> authRequests)
       throws IOException {
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    EntityUtil.addNavbarDomainFilter(securityContext, searchListFilter, entityType);
     ResultList<T> resultList =
         repository.listFromSearchWithOffset(
             uriInfo,
@@ -1033,6 +1034,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    repository.validateRestore(id);
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     if (response == null) {
@@ -1089,6 +1091,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       }
       throw notDeleted;
     }
+    repository.validateRestore(id);
     String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();

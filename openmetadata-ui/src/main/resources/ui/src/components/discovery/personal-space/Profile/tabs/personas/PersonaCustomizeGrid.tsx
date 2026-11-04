@@ -13,7 +13,7 @@
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
-import { getCustomizePageCategories } from '../../../../../../utils/Persona/PersonaUtils';
+import { getCustomizePageCategoryCards } from '../../../../../../utils/Persona/PersonaUtils';
 import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 
@@ -24,7 +24,7 @@ interface PersonaCustomizeGridProps {
 const PersonaCustomizeGrid = ({
   onSelectCategory,
 }: PersonaCustomizeGridProps) => {
-  const categories = useMemo(() => getCustomizePageCategories(), []);
+  const categories = useMemo(() => getCustomizePageCategoryCards(), []);
 
   return (
     <Box

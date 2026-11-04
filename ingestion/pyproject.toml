@@ -179,6 +179,11 @@ metadata = [
 ]
 
 [tool.coverage.report]
+# Imported test modules can live outside the package and disappear between CI jobs.
+include = [
+    "src/metadata/*",
+    "*/site-packages/metadata/*",
+]
 omit = [
     "*__init__*",
     "*/generated/*",

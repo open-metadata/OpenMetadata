@@ -1,7 +1,7 @@
 # An alert destination's endpoint, header values and credentials are encrypted at rest, masked in every response, and restored from the stored alert when the mask is sent back
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret); v6 2026-10-29 (a receivers list is a target; a template send resolves masks as a test send does)
+- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL); v3 2026-10-27 (a stored secret does not follow a moved target; a destination keeps its served channel); v4 2026-10-27 (a PATCH that moves a target must itself write every secret, since a row stored in plaintext reads as entered); v5 2026-10-28 (a PATCH may not carry a stored value into a channel that does not name it a secret); v6 2026-10-29 (a receivers list is a target; a template send resolves masks as a test send does); v7 2026-11-03 (an id the alert does not store, or one the request repeats, is matched by position)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`, `EventSubscriptionResourceIT#test_patchCannotCarryAStoredSecretIntoAChannelThatDoesNotMaskIt`, `EventSubscriptionResourceIT#test_receiversCannotRedirectStoredCredentials`, `TemplateTestSendIT`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
@@ -27,8 +27,10 @@ mask back, decrypt only at the point of use.
   a configuration is read to send (`WebhookConfigRules.stored` / `submitted`), and masks them with
   `PasswordEntityMasker.PASSWORD_MASK` in every response of `EventSubscriptionResource` and of the
   MCP tools — for every caller, bots included — including version history and change descriptions.
-- A request that sends the mask back keeps the stored value: by destination id, or, for a PUT that
-  carries no ids, by position when type and channel match. A plaintext secret equal to what the
+- A request that sends the mask back keeps the stored value: by a destination id this alert
+  stores, or, for a destination sent without one (v7:2026-11-03: or with an id the alert does not
+  store, or that the request repeats, since destination ids are the server's), by position when
+  type and channel match. A plaintext secret equal to what the
   stored ciphertext decrypts to keeps the stored ciphertext, so re-sending a configuration changes
   nothing. A mask with no stored value, ciphertext that is not the stored value, and a PATCH `copy`
   or `move` of a stored secret into another field are refused with 400.
