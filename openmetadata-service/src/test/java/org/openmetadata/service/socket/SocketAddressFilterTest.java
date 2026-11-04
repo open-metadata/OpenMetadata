@@ -234,11 +234,10 @@ class SocketAddressFilterTest {
   private void mockTokenClaims(String username, String sessionId) {
     Claim usernameClaim = mock(Claim.class);
     Claim sessionClaim = mock(Claim.class);
-    when(usernameClaim.asString()).thenReturn(username);
     when(sessionClaim.asString()).thenReturn(sessionId);
     when(jwtFilter.validateJwtAndGetClaims("token"))
         .thenReturn(Map.of("sub", usernameClaim, JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
-    when(jwtFilter.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+    when(jwtFilter.resolveTokenUserName(eq("token"), any())).thenReturn(username);
   }
 
   private UserSession activeSession(String sessionId, String username) {

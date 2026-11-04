@@ -521,6 +521,42 @@ class JwtFilterTest {
     verify(context).setSecurityContext(any(SecurityContext.class));
   }
 
+  /**
+   * The default principal order reads the email first, yet a token OpenMetadata minted names the
+   * account it was minted for: the local part of its email can belong to another account
+   * (ADR:2026-11-03-an-openmetadata-token-resolves-to-the-account-it-names).
+   */
+  @Test
+  void anOpenMetadataTokenResolvesToTheAccountItNames() throws Exception {
+    String token =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer(OM_ISSUER)
+            .withExpiresAt(Date.from(Instant.now().plus(10, ChronoUnit.MINUTES)))
+            .withSubject("admin_ab12")
+            .withClaim("username", "admin_ab12")
+            .withClaim("email", "admin@attacker.example")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+            .sign(algorithm);
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProviderForKeyId(OM_KEY_ID),
+            List.of("email", "preferred_username", "sub"),
+            OM_ISSUER,
+            false);
+
+    try (MockedStatic<JWTTokenGenerator> generator =
+        mockStatic(JWTTokenGenerator.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      JWTTokenGenerator instance = mock(JWTTokenGenerator.class);
+      when(instance.getIssuer()).thenReturn(OM_ISSUER);
+      when(instance.getKid()).thenReturn(OM_KEY_ID);
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(instance);
+
+      assertEquals(
+          "admin_ab12", filter.getCatalogSecurityContext(token).getUserPrincipal().getName());
+    }
+  }
+
   private static String mcpAccessToken() {
     return JWT.create()
         .withKeyId(OM_KEY_ID)

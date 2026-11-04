@@ -130,8 +130,7 @@ class EntityDAOTest {
   @ParameterizedTest
   @EnumSource(ConnectionType.class)
   void updateTargetFQNHashPrefix_bindsEntityNames(ConnectionType database) {
-    dao(database, CollectionDAO.TagUsageDAO.class)
-        .updateTargetFQNHashPrefix(1, OLD_FQN, NEW_FQN);
+    dao(database, CollectionDAO.TagUsageDAO.class).updateTargetFQNHashPrefix(1, OLD_FQN, NEW_FQN);
 
     assertEquals(
         List.of(
@@ -144,8 +143,7 @@ class EntityDAOTest {
   @ParameterizedTest
   @EnumSource(ConnectionType.class)
   void renameByToFQNPrefix_bindsEntityNames(ConnectionType database) {
-    dao(database, CollectionDAO.FieldRelationshipDAO.class)
-        .renameByToFQNPrefix(OLD_FQN, NEW_FQN);
+    dao(database, CollectionDAO.FieldRelationshipDAO.class).renameByToFQNPrefix(OLD_FQN, NEW_FQN);
 
     assertEquals(
         List.of(
