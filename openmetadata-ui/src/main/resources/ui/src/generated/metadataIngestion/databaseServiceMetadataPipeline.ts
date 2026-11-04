@@ -121,6 +121,10 @@ export interface DatabaseServiceMetadataPipeline {
      */
     schemaFilterPattern?: FilterPattern;
     /**
+     * BigQuery daily shard grouping. Omitted configuration remains disabled.
+     */
+    shardedTables?: BigQueryShardedTables;
+    /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?: FilterPattern;
@@ -223,6 +227,19 @@ export interface OwnerConfiguration {
      * owner(s).
      */
     table?: { [key: string]: string[] | string } | string;
+}
+
+/**
+ * BigQuery daily shard grouping. Omitted configuration remains disabled.
+ *
+ * Group native daily shard tables into stable logical families.
+ */
+export interface BigQueryShardedTables {
+    /**
+     * Group BigQuery daily shards into a stable logical table using the newest shard for
+     * columns and execution.
+     */
+    enabled?: boolean;
 }
 
 /**

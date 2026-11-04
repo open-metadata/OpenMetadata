@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor } from '@testing-library/react';
 import {
   MOCK_SQL_TEST_CASE,
   MOCK_TEST_CASE,
@@ -18,6 +18,26 @@ import {
 import { getEpochMillisForPastDays } from '../../../../utils/date-time/DateTimeUtils';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummary from './TestSummary';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactElement } from 'react';
+import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
+
+jest.mock('../../../../rest/tableAPI', () => ({
+  getTableDetailsByFQN: jest.fn(),
+}));
+
+const render = (ui: ReactElement) => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+};
 
 const mockProps: TestSummaryProps = {
   data: MOCK_TEST_CASE[1],
@@ -77,9 +97,49 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 describe('TestSummary component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      tableType: 'Regular',
+    });
     mockGetListTestCaseResults.mockResolvedValue({ data: [] });
     mockGetTestCaseDimensionResultsByFqn.mockResolvedValue({ data: [] });
     mockUseRequiredParams.mockReturnValue({});
+  });
+
+  it('uses the latest recorded quality source, not the current representative', async () => {
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      tableType: 'Sharded',
+      tableSharding: { representative: { tableName: 'events_20260103' } },
+    });
+    mockGetListTestCaseResults.mockResolvedValue({
+      data: [
+        {
+          timestamp: 2,
+          evaluationScope: {
+            executionSource: {
+              databaseName: 'demo_db',
+              schemaName: 'demo_schema',
+              tableName: 'events_20260102',
+            },
+          },
+        },
+        {
+          timestamp: 1,
+          evaluationScope: {
+            executionSource: {
+              databaseName: 'demo_db',
+              schemaName: 'demo_schema',
+              tableName: 'events_20260101',
+            },
+          },
+        },
+      ],
+    });
+    render(<TestSummary {...mockProps} />);
+
+    expect(
+      await screen.findByText('demo_db.demo_schema.events_20260102')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/events_20260103/)).not.toBeInTheDocument();
   });
 
   it('Component should render', async () => {
@@ -149,6 +209,9 @@ describe('TestSummary component', () => {
     });
 
     jest.clearAllMocks();
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      tableType: 'Regular',
+    });
     mockUseRequiredParams.mockReturnValue({ dimensionKey: 'new-key' });
     rerender(<TestSummary {...mockProps} />);
 
@@ -221,6 +284,9 @@ describe('TestSummary component', () => {
     const newDateRange = { startTs: 1234567890, endTs: 1234567899 };
 
     jest.clearAllMocks();
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      tableType: 'Regular',
+    });
     datePickerProps.handleDateRangeChange(newDateRange);
 
     await waitFor(() => {

@@ -54,6 +54,7 @@ import {
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
+import { ProfileExecutionSource } from '../../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import { useTableProfiler } from '../TableProfilerProvider';
 import './custom-metric-graphs.style.less';
@@ -65,6 +66,8 @@ import {
 const CustomMetricGraphs = ({
   customMetricsGraphData,
   isLoading,
+  profiles,
+  isSharded,
   customMetrics,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
@@ -276,6 +279,13 @@ const CustomMetricGraphs = ({
                         content={
                           <CustomDQTooltip
                             dateTimeFormatter={formatDateTimeLong}
+                            footer={(timestamp) => (
+                              <ProfileExecutionSource
+                                isSharded={isSharded}
+                                profiles={profiles}
+                                timestamp={timestamp}
+                              />
+                            )}
                             timeStampKey="timestamp"
                             valueFormatter={(value) => tooltipFormatter(value)}
                           />

@@ -19,6 +19,7 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,9 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.DimensionValue;
+import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
+import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -64,6 +68,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -2184,34 +2189,47 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("tcrs_cascade_delete"))
-            .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "100")
-            .create();
+    List<UUID> testCaseIds = new ArrayList<>();
+    List<UUID> statusIds = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      TestCase testCase =
+          TestCaseBuilder.create(client)
+              .name(ns.prefix("tcrs_cascade_delete_" + i))
+              .forTable(table)
+              .testDefinition("tableRowCountToEqual")
+              .parameter("value", "100")
+              .create();
+      testCaseIds.add(testCase.getId());
 
-    // Writes a TEST_CASE --PARENT_OF--> testCaseResolutionStatus row. testCaseResolutionStatus
-    // is a time-series entity (registered in ENTITY_TS_REPOSITORY_MAP, not
-    // ENTITY_REPOSITORY_MAP), so the bulk hard-delete cascade used to throw
-    // EntityRepositoryNotFound the moment it walked PARENT_OF children of a test case.
-    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
-    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
-    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
-    client.testCaseResolutionStatuses().create(newStatus);
-
-    String testCaseId = testCase.getId().toString();
+      CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+      newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+      newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+      var status = client.testCaseResolutionStatuses().create(newStatus);
+      statusIds.add(status.getId());
+      assertEquals(
+          1, countRowsById("test_case_resolution_status_time_series", status.getId().toString()));
+    }
 
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
     params.put("recursive", "true");
     client.tables().delete(table.getId().toString(), params);
 
-    assertThrows(
-        Exception.class,
-        () -> getEntity(testCaseId),
-        "Test case should be deleted along with its resolution-status children");
+    for (UUID testCaseId : testCaseIds) {
+      assertEquals(0, countRowsById("test_case", testCaseId.toString()));
+    }
+    Awaitility.await("incident children reaped after ancestor deletion")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              for (UUID statusId : statusIds) {
+                assertEquals(
+                    0,
+                    countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+                    "Ancestor deletion must eventually remove incident history");
+                assertEquals(0, countRelationshipsTo(statusId));
+              }
+            });
   }
 
   @Test
@@ -2246,8 +2264,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     params.put("recursive", "true");
     client.testCases().delete(testCase.getId().toString(), params);
 
-    // TestCaseRepository.deleteChildren fires the resolution-status cleanup on a background virtual
-    // thread (AsyncService), so poll rather than assert synchronously right after delete returns.
     Awaitility.await("resolution-status children reaped after hard delete")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
@@ -5712,5 +5728,48 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private void refreshSearchIndex(Rest5Client searchClient, String indexName) throws Exception {
     Request request = new Request("POST", "/" + indexName + "/_refresh");
     searchClient.performRequest(request);
+  }
+
+  @Test
+  void post_testCaseResultWithEvaluationScope_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_evaluation_scope"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    long timestamp = System.currentTimeMillis();
+    TestCaseEvaluationScope scope =
+        new TestCaseEvaluationScope()
+            .withExecutionSource(
+                new TableExecutionSource()
+                    .withDatabaseName("demo_project")
+                    .withSchemaName("demo_dataset")
+                    .withTableName("events_20260101")
+                    .withShardDate("2026-01-01"));
+
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(timestamp);
+    create.setTestCaseStatus(TestCaseStatus.Failed);
+    create.setResult("failed");
+    create.setEvaluationScope(scope);
+    create.setDimensionResults(
+        List.of(
+            new TestCaseDimensionResult()
+                .withId(UUID.randomUUID())
+                .withTestCaseResultId(UUID.randomUUID())
+                .withTimestamp(timestamp)
+                .withDimensionKey("channel=web")
+                .withDimensionValues(
+                    List.of(new DimensionValue().withName("channel").withValue("web")))
+                .withTestCaseStatus(TestCaseStatus.Failed)));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    assertEquals(
+        scope,
+        listTestCaseResults(testCase.getFullyQualifiedName()).getFirst().getEvaluationScope());
   }
 }

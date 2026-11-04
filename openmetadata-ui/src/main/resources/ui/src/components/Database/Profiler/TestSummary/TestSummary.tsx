@@ -11,16 +11,22 @@
  *  limitations under the License.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual, pick } from 'lodash';
+import { isEmpty, isEqual, maxBy, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
+import { TableType } from '../../../../generated/entity/data/table';
 import {
   TestCaseDimensionResult,
   TestCaseResult,
 } from '../../../../generated/tests/testCase';
+import {
+  tableQueryFn,
+  tableQueryKey,
+} from '../../../../rest/queries/tableQuery';
 import {
   getListTestCaseResults,
   getTestCaseDimensionResultsByFqn,
@@ -31,16 +37,25 @@ import {
   getEpochMillisForPastDays,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../../common/Loader/Loader';
+import { ExecutionSource } from '../../../observability/profiler/ExecutionSource/ExecutionSource';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import './test-summary.less';
 import TestSummaryGraph from './TestSummaryGraph';
 
 const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
+  const tableFqn = getEntityFQN(data.entityLink ?? '');
+  const { data: table } = useQuery({
+    queryKey: tableQueryKey(tableFqn, ''),
+    queryFn: tableQueryFn(tableFqn, ''),
+    enabled: Boolean(tableFqn),
+  });
+  const isSharded = table?.tableType === TableType.Sharded;
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
   const defaultRange = useMemo(
     () => ({
@@ -109,6 +124,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
 
     return (
       <TestSummaryGraph
+        isSharded={isSharded}
         selectedTimeRange={selectedTimeRange}
         testCaseFqn={data.fullyQualifiedName ?? ''}
         testCaseName={data.name}
@@ -117,7 +133,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
         testDefinitionName={data.testDefinition.name}
       />
     );
-  }, [isGraphLoading, data, results, selectedTimeRange]);
+  }, [isGraphLoading, data, results, selectedTimeRange, isSharded]);
 
   useEffect(() => {
     if (dateRangeObject) {
@@ -133,6 +149,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     return <Loader />;
   }
 
+  const executionSource = maxBy<TestCaseResult | TestCaseDimensionResult>(
+    results,
+    'timestamp'
+  )?.evaluationScope?.executionSource;
+
   return (
     <Row data-testid="test-summary-container" gutter={[0, 16]}>
       <Col className="d-flex justify-end" span={24}>
@@ -143,6 +164,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
           handleSelectedTimeRange={handleSelectedTimeRange}
         />
       </Col>
+      {(isSharded || executionSource) && (
+        <Col span={24}>
+          <ExecutionSource isSharded={isSharded} source={executionSource} />
+        </Col>
+      )}
       <Col data-testid="graph-container" span={24}>
         {getGraph}
       </Col>

@@ -20,6 +20,9 @@ from typing import Dict, Set, Type  # noqa: UP035
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator,
 )
+from metadata.data_quality.validations.runtime_param_setter.evaluation_scope_params_setter import (
+    EvaluationScopeParamsSetter,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
@@ -123,5 +126,5 @@ class RuntimeParameterSetterFactory:
                 table_entity,
                 sampler,
             )
-            for setter in setter_classes
+            for setter in setter_classes | {EvaluationScopeParamsSetter}
         }

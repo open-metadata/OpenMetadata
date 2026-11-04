@@ -605,7 +605,7 @@ class OpenMetadata(
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
-        include = f"&include={include}" if include else ""
+        include = f"{'&' if fields_str else '?'}include={include}" if include else ""
         try:
             resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}{include}")
             if not resp:
