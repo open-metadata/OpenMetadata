@@ -6031,9 +6031,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       daoCollection
           .fieldRelationshipDAO()
           .deleteAllByPrefix(entityInterface.getFullyQualifiedName(), entityType);
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+      if (supportsTags) {
+        daoCollection
+            .tagUsageDAO()
+            .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+      }
     }
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
@@ -6090,9 +6092,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void entitySpecificCleanup(T entityInterface) {}
 
   /**
-   * Whether a hard delete removes the FQN-keyed rows under this entity: tag labels of it and its
-   * nested parts, and field relationships. Those rows are keyed by FQN alone, which is unique only
-   * within a type, so only types that carry such rows run the delete
+   * Whether a hard delete removes the FQN-keyed rows under this entity: its field relationships,
+   * and for a taggable type the tag labels of it and its nested parts. Those rows are keyed by FQN
+   * alone, which is unique only within a type, so only types that carry such rows run the delete,
+   * and tag labels, whose table records no type, are removed only for taggable types
    * (ADR:2026-11-03-a-hard-delete-removes-only-rows-of-the-deleted-entity).
    */
   protected boolean shouldCleanupFqnDependents() {
@@ -8733,7 +8736,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         for (T entity : entities) {
           String fqn = entity.getFullyQualifiedName();
           daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn, entityType);
-          daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
+          if (supportsTags) {
+            daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
+          }
         }
       }
     }

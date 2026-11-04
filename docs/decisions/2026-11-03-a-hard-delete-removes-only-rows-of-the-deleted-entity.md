@@ -1,7 +1,8 @@
 # A hard delete removes only rows of the deleted entity
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-04 (deleting a type leaves `tag_usage`
+  alone)
 - **Deciders:** Mohit Yadav
 - **Guard:** `HardDeleteCleanupIT`, `EntityRepositoryRestoreTest`
 - **Related:** open-metadata/openmetadata-collate#8018
@@ -15,7 +16,9 @@ therefore covers only the rows the deleted entity's type can own.
 ## Decision
 - The FQN-prefix cleanup runs only for types that carry such rows: taggable types, and `type`,
   whose custom property definitions are field relationships under its name
-  (`EntityRepository.shouldCleanupFqnDependents()` defaults to `supportsTags`).
+  (`EntityRepository.shouldCleanupFqnDependents()` defaults to `supportsTags`). Of the two tables,
+  `tag_usage` is cleaned only for taggable types, so deleting a type removes its field
+  relationships and no tag labels.
 - `field_relationship` rows of type `type` are removed only when a type is deleted.
 - No delete removes labels by tag FQN alone; tags and glossary terms remove their own labels,
   bound to their source, in `postDelete`.

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.CreateType;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -26,6 +27,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.type.Column;
@@ -47,56 +49,40 @@ public class HardDeleteCleanupIT {
 
   @Test
   void deletingAUserNamedLikeAServiceKeepsTheServicesTags(TestNamespace ns) {
-    OpenMetadataClient admin = SdkClients.adminClient();
     String sharedName = "hd_svc_" + UUID.randomUUID().toString().substring(0, 8);
-    DatabaseService service =
-        ns.trackRoot(
-            Entity.DATABASE_SERVICE,
-            admin
-                .databaseServices()
-                .create(
-                    new CreateDatabaseService()
-                        .withName(sharedName)
-                        .withServiceType(DatabaseServiceType.Postgres)
-                        .withConnection(
-                            new DatabaseConnection()
-                                .withConfig(
-                                    new PostgresConnection()
-                                        .withHostPort("localhost:5432")
-                                        .withUsername("reader")))));
-    Database database =
-        admin
-            .databases()
-            .create(
-                new CreateDatabase().withName("db").withService(service.getFullyQualifiedName()));
-    DatabaseSchema schema =
-        admin
-            .databaseSchemas()
-            .create(
-                new CreateDatabaseSchema()
-                    .withName("sch")
-                    .withDatabase(database.getFullyQualifiedName()));
-    Table table =
-        admin
-            .tables()
-            .create(
-                new CreateTable()
-                    .withName("customers")
-                    .withDatabaseSchema(schema.getFullyQualifiedName())
-                    .withTags(List.of(classificationTag(PERSONAL_TAG)))
-                    .withColumns(
-                        List.of(
-                            new Column()
-                                .withName("email")
-                                .withDataType(ColumnDataType.STRING)
-                                .withTags(List.of(classificationTag(PERSONAL_TAG))))));
+    Table table = createTaggedTable(ns, sharedName);
     User namesake = createUserNamed(sharedName);
 
-    admin.users().delete(namesake.getId().toString(), Map.of("hardDelete", "true"));
+    SdkClients.adminClient()
+        .users()
+        .delete(namesake.getId().toString(), Map.of("hardDelete", "true"));
 
-    Table reloaded = admin.tables().get(table.getId().toString(), "tags,columns");
-    assertEquals(List.of(PERSONAL_TAG), tagFqns(reloaded.getTags()));
-    assertEquals(List.of(PERSONAL_TAG), tagFqns(reloaded.getColumns().get(0).getTags()));
+    assertKeepsItsTags(table);
+  }
+
+  @Test
+  void deletingATypeNamedLikeAServiceKeepsTheServicesTags(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String sharedName = "hdType" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+    Table table = createTaggedTable(ns, sharedName);
+    Type namesake =
+        admin
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/metadata/types",
+                new CreateType()
+                    .withName(sharedName)
+                    .withCategory(Category.Field)
+                    .withDescription("Field type named like a service")
+                    .withSchema(typeByName(admin, "integer").getSchema()),
+                Type.class);
+
+    admin
+        .getHttpClient()
+        .execute(HttpMethod.DELETE, "/v1/metadata/types/" + namesake.getId(), null, Type.class);
+
+    assertKeepsItsTags(table);
   }
 
   @Test
@@ -130,6 +116,57 @@ public class HardDeleteCleanupIT {
         JsonUtils.readValue(chartWithProperties, Type.class).getCustomProperties().stream()
             .anyMatch(property -> propertyName.equals(property.getName())),
         "The chart custom property must survive deleting a user named " + typeName);
+  }
+
+  private static Table createTaggedTable(TestNamespace ns, String serviceName) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService service =
+        ns.trackRoot(
+            Entity.DATABASE_SERVICE,
+            admin
+                .databaseServices()
+                .create(
+                    new CreateDatabaseService()
+                        .withName(serviceName)
+                        .withServiceType(DatabaseServiceType.Postgres)
+                        .withConnection(
+                            new DatabaseConnection()
+                                .withConfig(
+                                    new PostgresConnection()
+                                        .withHostPort("localhost:5432")
+                                        .withUsername("reader")))));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase().withName("db").withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName("sch")
+                    .withDatabase(database.getFullyQualifiedName()));
+    return admin
+        .tables()
+        .create(
+            new CreateTable()
+                .withName("customers")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTags(List.of(classificationTag(PERSONAL_TAG)))
+                .withColumns(
+                    List.of(
+                        new Column()
+                            .withName("email")
+                            .withDataType(ColumnDataType.STRING)
+                            .withTags(List.of(classificationTag(PERSONAL_TAG))))));
+  }
+
+  private static void assertKeepsItsTags(Table table) {
+    Table reloaded =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "tags,columns");
+    assertEquals(List.of(PERSONAL_TAG), tagFqns(reloaded.getTags()));
+    assertEquals(List.of(PERSONAL_TAG), tagFqns(reloaded.getColumns().get(0).getTags()));
   }
 
   private static User createUserNamed(String name) {

@@ -87,7 +87,8 @@ public class TypeRepository extends EntityRepository<Type> {
     }
   }
 
-  // A type's custom property definitions are field relationships under its name.
+  // A type's custom property definitions are field relationships under its name. A type carries no
+  // tag labels, so its delete leaves tag_usage alone.
   @Override
   protected boolean shouldCleanupFqnDependents() {
     return true;
