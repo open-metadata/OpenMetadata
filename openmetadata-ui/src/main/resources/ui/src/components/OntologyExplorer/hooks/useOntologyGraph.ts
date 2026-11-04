@@ -2284,6 +2284,9 @@ export function useOntologyGraph({
           containerRef.current.offsetHeight
         );
         previousSize = containerViewportSize(container);
+        // Resizing moves every node on screen without a transform event, so the
+        // published client positions would go stale and clicks would miss.
+        writeGraphSnapshot();
         scheduleTransformWork();
         if (studioMode && !renderCancelled) {
           // Opening the concept panel narrows the canvas: a graph that was
@@ -2293,7 +2296,7 @@ export function useOntologyGraph({
             wasWhole && !graphFitsViewport(graph, previousSize)
               ? fitViewWithMinZoom(graph)
               : revealHiddenNode(graph, container, focusNodeIdRef.current);
-          settle.catch(() => {
+          settle.then(writeGraphSnapshot).catch(() => {
             // the graph may be destroyed while the panel animates
           });
         }
