@@ -498,9 +498,7 @@ test.describe(
       await updateDescription(page, description, false, undefined, 'tables');
 
       await expect(
-        page
-          .getByTestId('asset-description-container')
-          .getByText(description)
+        page.getByTestId('asset-description-container').getByText(description)
       ).toBeVisible();
       await expect(
         page
