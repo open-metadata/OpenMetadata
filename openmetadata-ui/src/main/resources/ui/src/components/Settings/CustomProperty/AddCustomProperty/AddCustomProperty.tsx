@@ -56,6 +56,8 @@ interface AddCustomPropertyProps {
   onSubmit?: (data: CustomProperty) => void;
   loading?: boolean;
   entityType?: EntityType;
+  /** The entity type already loaded by the caller; skips fetching it again. */
+  typeDetail?: Type;
   open?: boolean;
   onClose?: () => void;
 }
@@ -72,6 +74,7 @@ const AddCustomProperty = ({
   onSubmit,
   loading,
   entityType: entityTypeProp,
+  typeDetail: typeDetailProp,
   open,
   onClose,
   onCancel,
@@ -87,7 +90,12 @@ const AddCustomProperty = ({
   const entityType = entityTypeProp ?? entityTypeParam;
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [typeDetail, setTypeDetail] = useState<Type>();
+  const [fetchedTypeDetail, setTypeDetail] = useState<Type>();
+  const typeDetail = typeDetailProp ?? fetchedTypeDetail;
+  const existingNames = useMemo(
+    () => typeDetail?.customProperties?.map(({ name }) => name),
+    [typeDetail]
+  );
   const [propertyTypes, setPropertyTypes] = useState<Type[]>([]);
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -173,10 +181,10 @@ const AddCustomProperty = ({
   const submit = form.handleSubmit(handleFormSubmit);
 
   useEffect(() => {
-    if (entityType) {
+    if (entityType && !typeDetailProp) {
       fetchTypeDetail(entityType);
     }
-  }, [entityType]);
+  }, [entityType, typeDetailProp]);
 
   useEffect(() => {
     fetchPropertyType();
@@ -200,6 +208,7 @@ const AddCustomProperty = ({
         onSubmit={submit}>
         <CustomPropertyFormFields
           descriptionKey={descriptionKey}
+          existingNames={existingNames}
           form={form}
           propertyTypes={propertyTypes}
           typeAddon={

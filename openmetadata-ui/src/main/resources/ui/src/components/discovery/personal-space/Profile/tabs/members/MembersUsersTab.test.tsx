@@ -100,6 +100,12 @@ describe('MembersUsersTab', () => {
     expect(screen.queryByTestId('add-user')).not.toBeInTheDocument();
   });
 
+  it('hides the add-user affordance for non-group teams such as departments', () => {
+    render(<MembersUsersTab {...baseProps} isGroupType={false} />);
+
+    expect(screen.queryByTestId('add-user')).not.toBeInTheDocument();
+  });
+
   it('renders pagination only when there is more than one page', () => {
     const { rerender } = render(<MembersUsersTab {...baseProps} />);
 

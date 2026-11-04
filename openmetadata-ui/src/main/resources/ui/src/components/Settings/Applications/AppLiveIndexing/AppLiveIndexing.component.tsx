@@ -166,7 +166,6 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
 
   return (
     <Table
-      bordered
       columns={columns}
       dataSource={records}
       loading={isLoading}
@@ -191,6 +190,7 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
       }}
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}
       size="small"
+      variant="muted"
     />
   );
 };

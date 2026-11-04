@@ -120,7 +120,10 @@ import {
   sidebarClick,
 } from '../../utils/sidebar';
 import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomPropertiesPageObject';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
+import {
+  RightPanelPageObject,
+  RIGHT_PANEL_TAB,
+} from '../PageObject/Explore/RightPanelPageObject';
 import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -248,7 +251,7 @@ const BASIC_PROPERTIES = [
   'Duration',
   'Email',
   'Number',
-  'Sql Query',
+  'SQL Query',
   'Time Interval',
   'Timestamp',
   'Hyperlink',
@@ -3697,7 +3700,7 @@ pickEntityMatrix(
         rightPanel.setEntityConfig(mainEntity);
         // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
         test.skip(
-          !rightPanel.isTabAvailable('custom property'),
+          !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
           `Custom Property tab not available for ${entity.name}`
         );
         const fqn = getEntityFqn(mainEntity);
@@ -3726,7 +3729,7 @@ pickEntityMatrix(
         rightPanel.setEntityConfig(mainEntity);
         // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
         test.skip(
-          !rightPanel.isTabAvailable('custom property'),
+          !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
           `Custom Property tab not available for ${entity.name}`
         );
         const fqn = getEntityFqn(mainEntity);
@@ -3756,7 +3759,7 @@ pickEntityMatrix(
         rightPanel.setEntityConfig(mainEntity);
         // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
         test.skip(
-          !rightPanel.isTabAvailable('custom property'),
+          !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
           `Custom Property tab not available for ${entity.name}`
         );
         const fqn = getEntityFqn(mainEntity);
@@ -3788,7 +3791,7 @@ pickEntityMatrix(
         rightPanel.setEntityConfig(mainEntity);
         // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
         test.skip(
-          !rightPanel.isTabAvailable('custom property'),
+          !rightPanel.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES),
           `Custom Property tab not available for ${entity.name}`
         );
         const fqn = getEntityFqn(mainEntity);

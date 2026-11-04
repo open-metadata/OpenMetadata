@@ -506,6 +506,10 @@ export const getDomainDiff = (
   };
 };
 
+// Same label the entity header shows: a custom tier's FQN segment is a slug (`pw-tier-…`).
+const getTierLabel = (tier?: Pick<TagLabel, 'tagFQN' | 'displayName'>) =>
+  tier?.displayName || (tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '');
+
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
   owners?: EntityReference[],
@@ -535,11 +539,11 @@ export const getCommonExtraInfoForVersionDetails = (
 
   if (!isUndefined(newTier) || !isUndefined(oldTier)) {
     tierDisplayName = getDiffValue(
-      oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '',
-      newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? ''
+      getTierLabel(oldTier),
+      getTierLabel(newTier)
     );
   } else if (tier?.tagFQN) {
-    tierDisplayName = tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
+    tierDisplayName = getTierLabel(tier);
   }
 
   const extraInfo = {

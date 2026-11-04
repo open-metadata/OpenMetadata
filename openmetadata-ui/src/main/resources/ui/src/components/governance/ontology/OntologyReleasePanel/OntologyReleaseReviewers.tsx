@@ -124,7 +124,9 @@ const OntologyReleaseReviewers = ({
   const { settings, lock } = model;
   const editable = view.kind === 'ready' && model.canEditSettings && !saving;
   const hasTeam = settings.reviewers.some((entry) => entry.type === 'team');
-  const options = availableReviewerOptions(search.options, model);
+  // Clearing the input after a pick reopens React Aria's list while it still
+  // has items, and the pick stays in them until the save returns.
+  const options = saving ? [] : availableReviewerOptions(search.options, model);
   const searchUnavailable = [
     search.isFetching,
     search.isPlaceholderData,
@@ -213,13 +215,25 @@ const OntologyReleaseReviewers = ({
   const renderReviewerSearch = () => (
     <>
       <Select.ComboBox
+        // Focus opens the list before the first search returns. Closing it then
+        // for being empty races text typed right after the focus (Chrome runs
+        // the input first), and that text no longer reopens it, so stay open
+        // while a search is pending. Not while saving: the pick clears the
+        // text and starts a search, which must not reopen the list.
+        allowsEmptyCollection={
+          !saving && (searchText !== '' || search.isFetching)
+        }
         disabledKeys={
           searchUnavailable ? options.map((option) => option.id) : []
         }
         emptyState={searchEmptyState()}
         hint={lockHint}
         inputValue={searchText}
-        isDisabled={!editable || hasTeam}
+        // The save marks the publication busy, which clears canEditSettings.
+        // Disabling the focused input then blurs it, and the focus restored
+        // after the save reopens the list over the dialog; stay read-only.
+        isDisabled={(!editable && !saving) || hasTeam}
+        isReadOnly={saving}
         items={options}
         label={t('label.add-reviewer')}
         selectedKey={null}

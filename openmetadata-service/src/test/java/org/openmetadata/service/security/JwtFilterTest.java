@@ -455,48 +455,26 @@ class JwtFilterTest {
 
   @Test
   void allowedEmailDomainsApplyToLegacyProviderTokens() {
-    JwtFilter legacyWithAllowList =
-        new JwtFilter(
-            jwkProvider,
-            List.of("sub", "email"),
-            "openmetadata.org",
-            false,
-            null,
-            null,
-            List.of("openmetadata.org"),
-            VERIFIER);
+    JwtFilter legacyWithAllowList = legacyFilterAllowing("openmetadata.org");
 
-    // A token that carries an email outside the allowed domains is rejected.
     ContainerRequestContext outsider =
         createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
     assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(outsider));
 
-    // A token with no email runs as sam@openmetadata.org, an allowed domain, so a deployment whose
-    // first principal claim is a bare username keeps working instead of being locked out on
-    // upgrade.
-    String subjectOnly =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .sign(algorithm);
-    ContainerRequestContext noEmail = createRequestContextWithJwt(subjectOnly);
-    legacyWithAllowList.filter(noEmail);
-    verify(noEmail, times(1)).setSecurityContext(any());
+    ContainerRequestContext insider =
+        createRequestContextWithJwt(legacyProviderJwt("sam@openmetadata.org"));
+    legacyWithAllowList.filter(insider);
+    verify(insider, times(1)).setSecurityContext(any());
   }
 
-  /** With no email, the address the legacy flow builds must still be in an allowed domain. */
+  /**
+   * A bare principal claim says nothing about the account's email domain. Checking the address the
+   * legacy flow builds from it, {@code sam@principalDomain}, would wave through any token the
+   * provider issues without an email, so the allowlist refuses it instead.
+   */
   @Test
-  void aBareClaimOutsideTheAllowedDomainsIsRejected() {
-    JwtFilter principalDomainOutsideAllowList =
-        new JwtFilter(
-            jwkProvider,
-            List.of("sub", "email"),
-            "contractor.example",
-            false,
-            null,
-            null,
-            List.of("openmetadata.org"),
-            VERIFIER);
+  void aProviderTokenWithoutAnEmailIsRefusedWhileEmailDomainsAreRestricted() {
+    JwtFilter legacyWithAllowList = legacyFilterAllowing("openmetadata.org");
     String subjectOnly =
         JWT.create()
             .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
@@ -504,9 +482,51 @@ class JwtFilterTest {
             .sign(algorithm);
     ContainerRequestContext context = createRequestContextWithJwt(subjectOnly);
 
-    assertThrows(
-        AuthenticationException.class, () -> principalDomainOutsideAllowList.filter(context));
+    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(context));
     verify(context, never()).setSecurityContext(any());
+  }
+
+  /** The account is named after the first principal claim, but its email can sit in a later one. */
+  @Test
+  void anEmailInALaterPrincipalClaimIsTheOneChecked() {
+    JwtFilter legacyWithAllowList = legacyFilterAllowing("openmetadata.org");
+    String usernameThenEmail =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim("email", "sam@gmail.com")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(usernameThenEmail);
+
+    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(context));
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  /** Without an email-domain allowlist, a provider token naming only a username still signs in. */
+  @Test
+  void aProviderTokenWithoutAnEmailSignsInWhenNoDomainsAreRestricted() {
+    String subjectOnly =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(subjectOnly);
+
+    jwtFilter.filter(context);
+
+    verify(context, times(1)).setSecurityContext(any());
+  }
+
+  private static JwtFilter legacyFilterAllowing(String allowedEmailDomain) {
+    return new JwtFilter(
+        jwkProvider,
+        List.of("sub", "email"),
+        "openmetadata.org",
+        false,
+        null,
+        null,
+        List.of(allowedEmailDomain),
+        VERIFIER);
   }
 
   @Test
@@ -765,6 +785,56 @@ class JwtFilterTest {
     double checks =
         registry.find("om.credential.checks").counters().stream().mapToDouble(Counter::count).sum();
     assertEquals(1.0, checks);
+  }
+
+  @ParameterizedTest
+  @EnumSource(EntryPoint.class)
+  void storedCollisionIdentityWithoutPrincipalDomainStillChecksRevocation(EntryPoint entryPoint) {
+    String userName = "admin_ab12";
+    String token =
+        generator
+            .generateJWTToken(
+                userName,
+                Set.of(),
+                false,
+                "admin@attacker.example",
+                3600,
+                false,
+                ServiceTokenType.PERSONAL_ACCESS)
+            .getJWTToken();
+    credentials.withPats(Map.of(userName, List.of(token)));
+    JwtFilter filter =
+        new JwtFilter(
+            OpenMetadataSigningKey.keyLookup(), List.of("sub", "email"), null, false, VERIFIER);
+
+    entryPoint.authenticate(filter, token);
+    credentials.revoke(userName);
+
+    AuthenticationException rejected =
+        assertThrows(AuthenticationException.class, () -> entryPoint.authenticate(filter, token));
+    assertEquals(INVALID_PAT, rejected.getMessage());
+  }
+
+  @Test
+  void locallySignedTokenFromPreviousIssuerRetainsStoredEmail() {
+    String userName = "admin_ab12";
+    String email = "admin@attacker.example";
+    String token =
+        JWT.create()
+            .withKeyId(OpenMetadataSigningKey.KEY_ID)
+            .withIssuer("previous-issuer")
+            .withExpiresAt(inOneDay())
+            .withClaim("sub", userName)
+            .withClaim("email", email)
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(OpenMetadataSigningKey.signingAlgorithm());
+    credentials.withPats(Map.of(userName, List.of(token)));
+
+    CatalogPrincipal principal =
+        (CatalogPrincipal) omFilter.getCatalogSecurityContext(token).getUserPrincipal();
+
+    assertEquals(userName, principal.getName());
+    assertEquals(email, principal.getEmail());
   }
 
   /** OpenMetadata never issues these: each one is rejected even when its token is stored. */
@@ -1107,8 +1177,12 @@ class JwtFilterTest {
       enforcingFilter.filter(context);
     }
 
-    verify(context, times(1))
-        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    CatalogPrincipal principal = (CatalogPrincipal) securityContext.getValue().getUserPrincipal();
+    assertEquals("asmith", principal.getName());
+    assertEquals("asmith@intermedia.com", principal.getEmail());
   }
 
   @Test

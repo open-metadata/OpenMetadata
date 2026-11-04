@@ -64,11 +64,13 @@ export const getTableVersion = async (id: string, version?: string) => {
 
 export const getTableDetailsByFQN = async (
   fqn: string,
-  params?: ListParams
+  params?: ListParams,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<Table>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
+      signal,
       params: {
         ...params,
         include: params?.include ?? Include.All,

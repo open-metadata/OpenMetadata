@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.lang.reflect.InvocationTargetException;
@@ -160,6 +161,35 @@ class MetricRepositoryTest {
           EntityStatus.DRAFT,
           fixture.repository().initialEntityStatus(askingToSkipReview),
           "a metric with reviewers cannot be created already approved");
+    }
+  }
+
+  @Test
+  void groupInDomainPickScansEachGroupsMembersOncePerRequest() {
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity =
+            mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      MetricGroupRepository groups = mock(MetricGroupRepository.class);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC_GROUP)).thenReturn(groups);
+      UUID groupId = UUID.randomUUID();
+      when(groups.hasVisibleMemberMatching(
+              org.mockito.ArgumentMatchers.eq(groupId),
+              org.mockito.ArgumentMatchers.isNull(),
+              org.mockito.ArgumentMatchers.any()))
+          .thenReturn(true);
+      EntityReference group = new EntityReference().withId(groupId).withType(Entity.METRIC_GROUP);
+
+      java.util.function.Predicate<EntityReference> inPick =
+          fixture.repository().groupInDomainPick(java.util.Optional.empty(), metric -> true);
+
+      // The hierarchy tests a group for its own row and again for each of its metrics.
+      assertTrue(inPick.test(group));
+      assertTrue(inPick.test(group));
+      verify(groups, org.mockito.Mockito.times(1))
+          .hasVisibleMemberMatching(
+              org.mockito.ArgumentMatchers.eq(groupId),
+              org.mockito.ArgumentMatchers.isNull(),
+              org.mockito.ArgumentMatchers.any());
     }
   }
 
@@ -444,6 +474,58 @@ class MetricRepositoryTest {
 
       assertNull(metricWithDeletedGroup.getMetricGroup());
       assertEquals(activeGroup, metricWithActiveGroup.getMetricGroup());
+    }
+  }
+
+  @Test
+  void parentHydrationReturnsASoftDeletedParentInsteadOfFailingThePage() {
+    final UUID parentId = UUID.randomUUID();
+    final EntityReference deletedParent =
+        new EntityReference().withId(parentId).withType(Entity.METRIC).withDeleted(true);
+    final Metric child = new Metric().withId(UUID.randomUUID());
+    final Metric root = new Metric().withId(UUID.randomUUID());
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture
+              .relationshipDAO()
+              .findFromBatch(
+                  List.of(child.getId().toString(), root.getId().toString()),
+                  Relationship.CONTAINS.ordinal(),
+                  Entity.METRIC,
+                  NON_DELETED))
+          .thenReturn(
+              List.of(
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(parentId.toString())
+                      .toId(child.getId().toString())
+                      .build()));
+      entity
+          .when(() -> Entity.getEntityReferencesByIds(Entity.METRIC, List.of(parentId), ALL))
+          .thenReturn(List.of(deletedParent));
+
+      fixture.repository().setFieldsInBulk(new Fields(Set.of("parent")), List.of(child, root));
+
+      assertEquals(deletedParent, child.getParent());
+      assertNull(root.getParent());
+    }
+  }
+
+  @Test
+  void parentHydrationOfAPageWithoutParentsLeavesThemUnset() {
+    final Metric root = new Metric().withId(UUID.randomUUID());
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      when(fixture
+              .relationshipDAO()
+              .findFromBatch(
+                  List.of(root.getId().toString()),
+                  Relationship.CONTAINS.ordinal(),
+                  Entity.METRIC,
+                  NON_DELETED))
+          .thenReturn(List.of());
+
+      fixture.repository().setFieldsInBulk(new Fields(Set.of("parent")), List.of(root));
+
+      assertNull(root.getParent());
     }
   }
 
