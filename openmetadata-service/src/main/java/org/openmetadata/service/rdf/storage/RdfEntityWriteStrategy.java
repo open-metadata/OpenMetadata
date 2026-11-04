@@ -15,20 +15,18 @@ package org.openmetadata.service.rdf.storage;
 
 /**
  * How {@link RdfStorageInterface#storeEntity} makes the stored projection of an entity match a new
- * one. Both end in the same graph; they differ in what they write and in what they assume about
- * the store.
+ * one. Both end in the same graph; they differ in what they read and what they write.
  */
 public enum RdfEntityWriteStrategy {
   /**
-   * Reads what the store holds now and writes only the triples that differ, or nothing at all.
-   * Assumes no earlier write of the entity can still be applying in the store, because the read
-   * would not see it.
+   * Reads what the store holds now and writes only the triples that differ, or nothing at all, then
+   * reads a changed projection back and replaces it whole if a write queued ahead of it interfered.
    */
   DIFFERENCE,
 
   /**
    * Deletes every triple the entity's projection owns and inserts the new projection, evaluated
-   * when the store applies the write. Correct whatever an earlier, abandoned write left behind.
+   * when the store applies the write. Needs no read, which is what journal replay wants.
    */
   REPLACE
 }

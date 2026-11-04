@@ -5,7 +5,7 @@
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** `RdfEntityWritePlannerTest`, `RdfOwnedResourcesTest`, `RdfEntityDiffWriteIT`,
   `EntityWriteCircuitBreakerTest`, `InferenceInvalidatingRdfStorageTest`,
-  `AssertedGraphTrackingRdfStorageTest`
+  `AssertedGraphTrackingRdfStorageTest`, `RdfMutationReplayTest`
 - **Related:** #36671, #36437,
   ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule
 
@@ -41,7 +41,9 @@ rewrite also left the previous list's cells behind.
   6.2.0), so once the update has returned every write queued before it has committed, and the
   read-back sees them. A replacement evaluates its delete when Fuseki applies it, so it leaves the
   projection regardless. Nothing outside the write marks it uncertain, so no queue state, restart or
-  server boundary is involved.
+  server boundary is involved. A write that fails after its update may have committed, for example
+  when the read-back times out; it marks inference results stale anyway, because its retry finds
+  the projection stored and reports nothing changed.
 - Bulk reindex writes, relationship writes and the rebuild journal are unchanged: journal replay
   replaces, because a read and a read-back per replayed write would spend the promotion's replay
   budget. The journal keeps the full projection, because the rebuild dataset is projected on its own.

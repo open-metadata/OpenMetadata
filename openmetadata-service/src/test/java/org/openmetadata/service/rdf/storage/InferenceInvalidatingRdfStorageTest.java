@@ -61,6 +61,24 @@ class InferenceInvalidatingRdfStorageTest {
   }
 
   @Test
+  void anEntityWriteThatFailedMayHaveChangedTheGraphSoRulesAreDirty() {
+    final RdfStorageInterface delegate = mock(RdfStorageInterface.class);
+    final InferenceDirtyMarker dirtyMarker = mock(InferenceDirtyMarker.class);
+    final UUID id = UUID.randomUUID();
+    final Model model = ModelFactory.createDefaultModel();
+    when(delegate.storeEntity("table", id, model, RdfEntityWriteStrategy.DIFFERENCE))
+        .thenThrow(new IllegalStateException("read-back timed out after the update committed"))
+        .thenReturn(RdfEntityWriteResult.UNCHANGED);
+    final InferenceInvalidatingRdfStorage storage =
+        new InferenceInvalidatingRdfStorage(delegate, dirtyMarker);
+
+    assertThrows(IllegalStateException.class, () -> storage.storeEntity("table", id, model));
+    assertEquals(RdfEntityWriteResult.UNCHANGED, storage.storeEntity("table", id, model));
+
+    verify(dirtyMarker).markAllDirty();
+  }
+
+  @Test
   void leavesDirtyStateUntouchedWhenMutationFails() {
     final RdfStorageInterface delegate = mock(RdfStorageInterface.class);
     final InferenceDirtyMarker dirtyMarker = mock(InferenceDirtyMarker.class);
