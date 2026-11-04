@@ -140,6 +140,15 @@ public final class ConnectionSecretsGuard {
 
   private static boolean retargetsWithStoredSecret(
       JsonNode incoming, JsonNode stored, JsonNode maskedIncoming, JsonNode maskedStored) {
+    if (incoming.isArray() || stored.isArray()) {
+      for (int i = 0; i < Math.max(incoming.size(), stored.size()); i++) {
+        if (retargetsWithStoredSecret(
+            incoming.path(i), stored.path(i), maskedIncoming.path(i), maskedStored.path(i))) {
+          return true;
+        }
+      }
+      return false;
+    }
     return nonExemptFieldChanged(maskedIncoming, maskedStored)
         && keepsStoredSecret(maskedIncoming, incoming, stored);
   }

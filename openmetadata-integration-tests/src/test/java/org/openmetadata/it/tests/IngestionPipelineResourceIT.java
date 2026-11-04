@@ -39,6 +39,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
@@ -1954,6 +1955,82 @@ public class IngestionPipelineResourceIT
     assertTrue(
         failure.getMessage().contains(ConnectionSecretsGuard.SECRETS_REQUIRED),
         failure.getMessage());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"PUT", "PATCH"})
+  void retargetingOneServiceConnectionPreservesTheOtherConnectionsSecret(
+      HttpMethod method, TestNamespace ns) {
+    String ownerName = "sourceowner" + ns.uniqueShortId();
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(ownerName).withEmail(ownerName + "@test.com"));
+    OpenMetadataClient asOwner =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns)
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withOwners(List.of(owner.getEntityReference()))
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        JsonUtils.readValue(
+                            """
+                            {"type":"TestSuite","serviceConnections":[
+                              {"serviceName":"first","serviceConnection":{"config":
+                                {"type":"Mysql","username":"user","hostPort":"first:3306",
+                                 "authType":{"password":"first-secret"}}}},
+                              {"serviceName":"second","serviceConnection":{"config":
+                                {"type":"Mysql","username":"user","hostPort":"second:3306",
+                                 "authType":{"password":"second-secret"}}}}
+                            ]}
+                            """,
+                            Object.class)));
+    IngestionPipeline pipeline = createEntity(request);
+    SourceConfig masked = asOwner.ingestionPipelines().get(pipeline.getId()).getSourceConfig();
+    String first = "/config/serviceConnections/0/serviceConnection/config";
+    String second = "/config/serviceConnections/1/serviceConnection/config";
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        JsonUtils.valueToTree(masked).at(first + "/authType/password").asText());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        JsonUtils.valueToTree(masked).at(second + "/authType/password").asText());
+    SourceConfig retargeted =
+        JsonUtils.applyPatch(
+            masked,
+            Json.createPatchBuilder()
+                .replace(first + "/hostPort", "elsewhere:3306")
+                .replace(first + "/authType/password", "entered-again")
+                .build(),
+            SourceConfig.class);
+
+    if (method == HttpMethod.PUT) {
+      asOwner
+          .getHttpClient()
+          .execute(
+              method,
+              INGESTION_PIPELINES_PATH,
+              request.withSourceConfig(retargeted),
+              IngestionPipeline.class);
+    } else {
+      asOwner.ingestionPipelines().patch(pipeline.getId(), replace("/sourceConfig", retargeted));
+    }
+
+    SourceConfig saved =
+        SdkClients.ingestionBotClient()
+            .ingestionPipelines()
+            .get(pipeline.getId())
+            .getSourceConfig();
+    assertEquals("elsewhere:3306", JsonUtils.valueToTree(saved).at(first + "/hostPort").asText());
+    assertEquals(
+        "entered-again", JsonUtils.valueToTree(saved).at(first + "/authType/password").asText());
+    assertEquals("second:3306", JsonUtils.valueToTree(saved).at(second + "/hostPort").asText());
+    assertEquals(
+        "second-secret", JsonUtils.valueToTree(saved).at(second + "/authType/password").asText());
   }
 
   private static Stream<Arguments> protectedPipelineSources() {
