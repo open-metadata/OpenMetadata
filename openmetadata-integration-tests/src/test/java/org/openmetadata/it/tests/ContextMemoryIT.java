@@ -579,7 +579,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
 
   @Test
   void pendingListsAndTotalsAreRestrictedToTheOwnerAndAdmin(TestNamespace ns) {
-    String title = ns.prefix("pending-list");
+    String title = "Refund policy " + ns.uniqueShortId();
     var anchor = ShortStackFactory.table(ns);
     EntityReference anchorRef = new EntityReference().withId(anchor.getId()).withType(Entity.TABLE);
     EntityReference reader =
@@ -615,7 +615,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         params.setLimit(limit);
         if (searchBacked) {
           params.setOffset(0);
-          params.addQueryParam("q", title);
+          params.addQueryParam("q", "refund");
           params.addQueryParam("assets", anchor.getId().toString());
           params.addQueryParam("statuses", "Approved,Unprocessed,Draft");
         } else {
