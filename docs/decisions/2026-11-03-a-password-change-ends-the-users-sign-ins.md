@@ -1,9 +1,10 @@
 # A password change ends the user's sign-ins and keeps personal access tokens
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-04 (a refresh token is replaced in one
+  statement)
 - **Deciders:** Mohit Yadav
-- **Guard:** `PasswordChangeIT`
+- **Guard:** `PasswordChangeIT`, `RefreshTokenRotationTest`
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
@@ -20,6 +21,11 @@ ops command, `UserRepository.endSignIns` runs:
 
 Personal access tokens and bot tokens stay. They are credentials of their own, revoked through
 their own endpoints.
+
+A refresh replaces its refresh token with the new one in a single `UPDATE` keyed by the old token,
+for basic and LDAP sign-ins alike. Only the request whose update changed the row gets new tokens,
+so a refresh token is used once, and a refresh whose token was deleted while the request ran, as
+`endSignIns` deletes it, issues nothing.
 
 ## Consequences
 A user who changes their own password signs in again everywhere, including the browser that made the

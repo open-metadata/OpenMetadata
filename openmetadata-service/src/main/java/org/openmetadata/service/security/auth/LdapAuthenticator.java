@@ -678,14 +678,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       throw new AuthenticationException("Refresh token expired. Please login again.");
     }
 
-    // just delete the existing token
-    tokenRepository.deleteToken(requestRefreshToken);
-    // we use rotating refresh token , generate new token
+    // Used once, as in BasicAuthenticator: a token deleted while this request ran is not renewed.
     RefreshToken newRefreshToken =
         TokenUtil.getRefreshTokenForLDAP(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
-
+    if (!tokenRepository.replaceToken(requestRefreshToken, newRefreshToken)) {
+      throw new AuthenticationException("Refresh token is no longer valid. Please login again.");
+    }
     return newRefreshToken;
   }
 
