@@ -212,7 +212,7 @@ export const getTimezoneOptions = (current?: string): string[] => {
 
   return Array.from(
     new Set(['UTC', ...zones, ...(current ? [current] : [])])
-  ).sort();
+  ).sort((a, b) => a.localeCompare(b));
 };
 
 /**

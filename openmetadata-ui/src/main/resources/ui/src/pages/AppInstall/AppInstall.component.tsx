@@ -78,9 +78,8 @@ const AppInstall = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingLoading, setIsSavingLoading] = useState(false);
   const [scheduleValue, setScheduleValue] = useState<string>();
-  const [timezoneValue, setTimezoneValue] = useState<string>(
-    getBrowserTimezone
-  );
+  const [timezoneValue, setTimezoneValue] =
+    useState<string>(getBrowserTimezone);
   // `undefined` is a valid on-demand selection, so initialization needs its own flag.
   const isScheduleInitialized = useRef(false);
   const [isScheduleValid, setIsScheduleValid] = useState(true);

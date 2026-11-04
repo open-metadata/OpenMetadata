@@ -37,8 +37,8 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
   );
   // An app without a stored zone runs at the server default; it stays unset
   // unless the user picks a zone, so saving unchanged cannot move it.
-  const [timezoneValue, setTimezoneValue] = useState<string | undefined>(
-    () => getAppScheduleTimezone(appData.appSchedule)
+  const [timezoneValue, setTimezoneValue] = useState<string | undefined>(() =>
+    getAppScheduleTimezone(appData.appSchedule)
   );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
 

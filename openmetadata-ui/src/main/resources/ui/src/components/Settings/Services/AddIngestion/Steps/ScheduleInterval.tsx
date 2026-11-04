@@ -104,7 +104,7 @@ const TimezoneSelect = ({
   disabled?: boolean;
   items: CronSelectOption[];
   value?: string;
-  onChange: (timezone: string) => void;
+  onChange: (timezone?: string) => void;
 }) => {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = useState(value ?? '');
@@ -126,10 +126,9 @@ const TimezoneSelect = ({
 
   const handleSelectionChange = useCallback(
     (key: Key | null) => {
-      if (key !== null) {
-        onChange(String(key));
-        setInputValue(String(key));
-      }
+      const zone = key === null ? undefined : String(key);
+      onChange(zone);
+      setInputValue(zone ?? '');
     },
     [onChange]
   );
@@ -137,6 +136,7 @@ const TimezoneSelect = ({
   return (
     <div data-testid="timezone-container">
       <ComboBox
+        allowClear
         allowsEmptyCollection
         data-testid="timezone-select"
         inputValue={inputValue}
@@ -144,11 +144,11 @@ const TimezoneSelect = ({
         items={filteredItems}
         label={t('label.timezone')}
         placeholder={t('label.default')}
-        selectedKey={value ?? null}
         shortcut={false}
         size="sm"
-        onInputChange={setInputValue}
-        onSelectionChange={handleSelectionChange}>
+        value={value ?? null}
+        onChange={handleSelectionChange}
+        onInputChange={setInputValue}>
         {(item) => (
           <Select.Item id={item.id} key={item.id} textValue={item.label}>
             {item.label}

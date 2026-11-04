@@ -26,7 +26,11 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
+import {
+  selectOnDemandSchedule,
+  selectScheduleTimezone,
+  selectScheduleType,
+} from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -275,6 +279,32 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('app-run-config-close').click();
 
       await expect(configDialog).not.toBeVisible();
+    });
+
+    await test.step('Schedule the application in a timezone', async () => {
+      await page.click('[data-testid="edit-button"]');
+      await selectScheduleType(page);
+      await selectScheduleTimezone(page, 'Asia/Tokyo');
+
+      const deployResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/apps') &&
+          !response.url().includes('/status') &&
+          response.request().method() !== 'GET'
+      );
+      await page
+        .getByTestId('update-schedule-modal')
+        .getByTestId('deploy-button')
+        .click();
+      const savedApp = await (await deployResponse).json();
+
+      expect(savedApp.appSchedule.timezone).toBe('Asia/Tokyo');
+
+      await toastNotification(page, 'Schedule saved successfully');
+
+      await expect(page.getByTestId('schedule-timezone')).toHaveText(
+        'Asia/Tokyo'
+      );
     });
 
     await test.step('Edit application', async () => {

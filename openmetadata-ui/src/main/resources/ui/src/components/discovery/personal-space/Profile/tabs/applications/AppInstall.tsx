@@ -235,7 +235,7 @@ const AppInstall: FC<AppInstallProps> = ({
     useState<Record<string, unknown>>();
   const [ingestionRunner, setIngestionRunner] = useState<EntityReference>();
   const [scheduleValue, setScheduleValue] = useState<string>();
-  const [timezoneValue, setTimezoneValue] = useState<string>(
+  const [timezoneValue, setTimezoneValue] = useState<string | undefined>(
     getBrowserTimezone
   );
   const [isScheduleValid, setIsScheduleValid] = useState(true);

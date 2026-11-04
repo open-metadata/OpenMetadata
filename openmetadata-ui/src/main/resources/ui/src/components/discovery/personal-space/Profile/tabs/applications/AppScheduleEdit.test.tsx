@@ -43,7 +43,9 @@ jest.mock(
         onValidityChange,
       }: ScheduleIntervalStubProps) => (
         <>
-          <button onClick={() => onChange('0 12 * * 3')}>Change schedule</button>
+          <button onClick={() => onChange('0 12 * * 3')}>
+            Change schedule
+          </button>
           <button onClick={() => onTimezoneChange('Asia/Tokyo')}>
             Change timezone
           </button>

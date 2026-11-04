@@ -99,21 +99,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   ComboBox: ({
     items,
-    selectedKey,
-    onSelectionChange,
+    value,
+    onChange,
     inputValue,
     onInputChange,
     isDisabled,
     label,
+    allowClear,
     ...rest
   }: {
     items?: { id: string; label: string }[];
-    selectedKey?: string | null;
-    onSelectionChange?: (key: string) => void;
+    value?: string | null;
+    onChange?: (key: string | null) => void;
     inputValue?: string;
     onInputChange?: (value: string) => void;
     isDisabled?: boolean;
     label?: string;
+    allowClear?: boolean;
   } & Record<string, unknown>) => (
     <>
       <input
@@ -127,14 +129,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         aria-label={label}
         data-testid={rest['data-testid'] as string}
         disabled={isDisabled}
-        value={selectedKey ?? ''}
-        onChange={(event) => onSelectionChange?.(event.target.value)}>
+        value={value ?? ''}
+        onChange={(event) => onChange?.(event.target.value)}>
         {(items ?? []).map((item) => (
           <option key={item.id} value={item.id}>
             {item.label}
           </option>
         ))}
       </select>
+      {allowClear && (
+        <button
+          data-testid="combobox-clear"
+          type="button"
+          onClick={() => onChange?.(null)}>
+          clear
+        </button>
+      )}
     </>
   ),
   Grid: Object.assign(
@@ -670,6 +680,20 @@ describe('ScheduleInterval', () => {
     expect(onTimezoneChange).toHaveBeenCalledWith('Asia/Tokyo');
   });
 
+  it('should hand the zone back to the server default when the picker is cleared', async () => {
+    const onTimezoneChange = jest.fn();
+    await renderComponent({
+      value: '0 0 * * *',
+      timezone: 'Europe/Tallinn',
+      onTimezoneChange,
+    });
+
+    fireEvent.click(screen.getByTestId('combobox-clear'));
+
+    expect(onTimezoneChange).toHaveBeenCalledWith(undefined);
+    expect(screen.getByTestId('timezone-select-input')).toHaveValue('');
+  });
+
   it('should narrow the timezone list to the typed text and show all zones again for the selected one', async () => {
     await renderComponent({
       value: '0 0 * * *',
@@ -677,9 +701,9 @@ describe('ScheduleInterval', () => {
       onTimezoneChange: jest.fn(),
     });
 
-    const allOptions = screen.getByTestId('timezone-select').querySelectorAll(
-      'option'
-    ).length;
+    const allOptions = screen
+      .getByTestId('timezone-select')
+      .querySelectorAll('option').length;
 
     expect(allOptions).toBeGreaterThan(100);
 

@@ -126,7 +126,7 @@ const ScheduleIntervalStep = forwardRef<
   const timezone = form.watch('timezone');
 
   const handleTimezoneChange = useCallback(
-    (value: string) => form.setValue('timezone', value, { shouldDirty: true }),
+    (value?: string) => form.setValue('timezone', value, { shouldDirty: true }),
     [form]
   );
 
