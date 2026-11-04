@@ -18,31 +18,41 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -51,7 +61,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
+import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
@@ -65,6 +77,7 @@ class RdfLiveWriteTest {
   private Table currentEntity;
   private LineageDetails currentLineageDetails;
   private boolean lineageEdgeExists = true;
+  private final Set<UUID> softDeleted = new HashSet<>();
   private final RdfRepository repository = repository();
 
   @AfterEach
@@ -162,6 +175,60 @@ class RdfLiveWriteTest {
   }
 
   @Test
+  void additionsReplayedAfterAnEndWasSoftDeletedLeaveTheEdgeOut() {
+    final UUID live = UUID.randomUUID();
+    final UUID deleted = UUID.randomUUID();
+    softDeleted.add(deleted);
+    final EntityRelationship contains =
+        new EntityRelationship()
+            .withFromId(live)
+            .withToId(deleted)
+            .withFromEntity(Entity.TABLE)
+            .withToEntity(Entity.TABLE)
+            .withRelationshipType(Relationship.CONTAINS);
+
+    replay(RdfLiveWrite.RelationshipChange.capture(contains, false));
+    replay(RdfLiveWrite.RelationshipChange.capture(lineage(deleted, live), false));
+    replay(new RdfLiveWrite.GlossaryRelationChange(live, deleted, "broader", false));
+
+    assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  @Test
+  void lineageRefreshedAfterAnEndWasSoftDeletedRemovesTheEdge() {
+    final UUID from = UUID.randomUUID();
+    final UUID to = UUID.randomUUID();
+    final RdfLiveWrite addition = RdfLiveWrite.RelationshipChange.capture(lineage(from, to), false);
+    replay(addition);
+    assertFalse(dataset.getNamedModel(GRAPH).isEmpty());
+
+    softDeleted.add(to);
+    replay(addition);
+
+    assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  @Test
+  void lineageDetailsLeaveOutASoftDeletedPipeline() {
+    final UUID pipeline = UUID.randomUUID();
+    currentLineageDetails =
+        new LineageDetails()
+            .withSqlQuery("insert into target select * from source")
+            .withPipeline(new EntityReference().withId(pipeline).withType(Entity.PIPELINE));
+    softDeleted.add(pipeline);
+
+    replay(
+        RdfLiveWrite.RelationshipChange.capture(
+            lineage(UUID.randomUUID(), UUID.randomUUID()), false));
+
+    final Model graph = dataset.getNamedModel(GRAPH);
+    final Resource pipelineResource = graph.createResource(BASE + "entity/pipeline/" + pipeline);
+    assertFalse(graph.isEmpty());
+    assertFalse(graph.contains(pipelineResource, null, (RDFNode) null));
+    assertFalse(graph.contains(null, null, pipelineResource));
+  }
+
+  @Test
   void replayedGlossaryRelationsPreserveTypedPredicatesAndBothDirectionRemoval() {
     final UUID from = UUID.randomUUID();
     final UUID to = UUID.randomUUID();
@@ -190,10 +257,21 @@ class RdfLiveWriteTest {
     final RdfLiveWrite command = new RdfLiveWrite.EntityDelete(Entity.TABLE, UUID.randomUUID());
     assertThrows(
         RuntimeException.class,
-        () -> RdfProjectionHealth.withDurableRecovery(() -> replay(command)));
+        () -> command.apply(repository.forDelivery(RdfWriteDelivery.QUEUED)));
     assertFalse(RdfProjectionHealth.isDegraded());
     RdfProjectionHealth.markDegraded();
     assertTrue(RdfProjectionHealth.isDegraded());
+  }
+
+  @Test
+  void aPipelineRunIsReplayedFromItsStoredStatus() {
+    final UUID pipelineId = UUID.randomUUID();
+    final PipelineRepository pipelines = mock(PipelineRepository.class);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.PIPELINE)).thenReturn(pipelines);
+      replay(new RdfLiveWrite.PipelineExecution(pipelineId, 1_793_200_000_000L));
+    }
+    verify(pipelines).writePipelineExecutionToRdf(repository, pipelineId, 1_793_200_000_000L);
   }
 
   @Test
@@ -259,7 +337,10 @@ class RdfLiveWriteTest {
             (fromId, toId) ->
                 lineageEdgeExists
                     ? Optional.of(new RdfProjectionLoaders.StoredLineageEdge(currentLineageDetails))
-                    : Optional.empty()));
+                    : Optional.empty(),
+            () -> new OntologyActiveGraph(Entity.getCollectionDAO()),
+            (type, ids) ->
+                ids.stream().filter(id -> !softDeleted.contains(id)).collect(Collectors.toSet())));
   }
 
   private static EntityRelationship lineage(final UUID fromId, final UUID toId) {

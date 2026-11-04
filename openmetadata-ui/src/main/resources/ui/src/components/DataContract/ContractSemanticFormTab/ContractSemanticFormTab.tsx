@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   FieldTypes,
   FormField,
   FormItemLabel,
@@ -23,14 +24,17 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus as PlusIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  Plus as PlusIcon,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -42,7 +46,6 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import QueryBuilder from '../../common/QueryBuilder/QueryBuilder';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
@@ -141,7 +144,7 @@ export const ContractSemanticFormTab: React.FC<{
 
   const renderCardTitle = (index: number) => (
     <div className="semantic-form-item-title-container">
-      <div className="tw:flex tw:items-center tw:gap-6">
+      <Box align="center" gap={6}>
         <FormField control={form.control} name={`semantics.${index}.enabled`}>
           {({ field }) => (
             <Toggle
@@ -153,33 +156,34 @@ export const ContractSemanticFormTab: React.FC<{
             />
           )}
         </FormField>
-        <div className="tw:flex tw:min-w-0 tw:flex-col">
+        <Box className="tw:min-w-0" direction="col">
           <Typography className="semantic-form-item-title">
             {semantics?.[index]?.name || t('label.untitled')}
           </Typography>
           <Typography ellipsis className="semantic-form-item-description">
             {semantics?.[index]?.description || t('label.no-description')}
           </Typography>
-        </div>
-      </div>
-      <div className="tw:flex tw:items-center tw:gap-2">
-        <EditIconButton
-          newLook
+        </Box>
+      </Box>
+      <Box align="center" gap={3}>
+        <ButtonUtility
           className="edit-expand-button"
+          color="secondary"
           data-testid={`edit-semantic-${index}`}
-          size="middle"
+          icon={Edit01}
+          size="sm"
+          tooltip={t('label.edit')}
           onClick={() => setEditingKey(index)}
         />
-        <Button
-          aria-label={t('label.delete')}
-          className="delete-expand-button"
+        <ButtonUtility
           color="secondary-destructive"
           data-testid={`delete-semantic-${index}`}
-          iconLeading={DeleteIcon}
+          icon={Trash01}
           size="sm"
-          onPress={() => handleDeleteSemantic(index)}
+          tooltip={t('label.delete')}
+          onClick={() => handleDeleteSemantic(index)}
         />
-      </div>
+      </Box>
     </div>
   );
 

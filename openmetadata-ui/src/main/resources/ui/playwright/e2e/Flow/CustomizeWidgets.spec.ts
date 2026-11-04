@@ -34,6 +34,7 @@ import {
   addKpi,
   deleteKpiRequest,
   deleteSeededKpisOnChart,
+  openDataInsightTab,
 } from '../../utils/dataInsight';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
@@ -313,7 +314,7 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
     await waitForAllLoadersToDisappear(page);
 
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-    await page.getByRole('link', { name: 'KPIs', exact: true }).click();
+    await openDataInsightTab(page, 'kpi');
 
     await page.getByTestId('add-kpi-btn').click();
     const createdKpi = await addKpi(page, {

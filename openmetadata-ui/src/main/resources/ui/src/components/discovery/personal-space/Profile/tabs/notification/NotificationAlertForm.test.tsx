@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
 import NotificationAlertForm from './NotificationAlertForm';
 
 const mockT = (key: string) => key;
@@ -40,9 +47,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('../../../../../../rest/alertsAPI', () => ({
-  getResourceFunctions: jest.fn().mockResolvedValue({
-    data: [{ name: 'table', supportedFilters: [] }],
-  }),
   getAlertsFromName: jest.fn().mockResolvedValue({
     id: 'alert-1',
     name: 'test-alert',
@@ -55,7 +59,7 @@ jest.mock('../../../../../../rest/alertsAPI', () => ({
 
 // Asking the server what the sources support is tested with the hook itself.
 jest.mock('../../../../../../hooks/useAlertSelection', () => ({
-  useAlertSelection: jest.fn().mockReturnValue({ support: {} }),
+  useAlertSelection: jest.fn(),
 }));
 
 jest.mock('../../../../../../utils/AlertsClassBase', () => ({
@@ -153,16 +157,32 @@ jest.mock(
 describe('NotificationAlertForm', () => {
   const mockOnNavigate = jest.fn();
 
+  beforeEach(() => {
+    (useAlertSelection as jest.Mock).mockReturnValue({
+      support: {},
+      ready: true,
+    });
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should render AlertAiForm after loading', async () => {
-    const { getResourceFunctions } = jest.requireMock(
-      '../../../../../../rest/alertsAPI'
-    );
-    getResourceFunctions.mockResolvedValue({ data: [] });
+  it('shows the loader until the server has answered for the sources', async () => {
+    (useAlertSelection as jest.Mock).mockReturnValue({
+      support: {},
+      ready: false,
+    });
 
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('alert-ai-form')).not.toBeInTheDocument();
+  });
+
+  it('should render AlertAiForm after loading', async () => {
     await act(async () => {
       render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
     });
@@ -188,11 +208,25 @@ describe('NotificationAlertForm', () => {
       render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
     });
 
-    await waitFor(async () => {
-      const cancelBtn = screen.getByTestId('cancel-btn');
-      cancelBtn.click();
+    fireEvent.click(await screen.findByTestId('cancel-btn'));
 
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('returns to the alert detail when cancel is clicked in edit mode', async () => {
+    await act(async () => {
+      render(
+        <NotificationAlertForm fqn="test-alert" onNavigate={mockOnNavigate} />
+      );
     });
+
+    fireEvent.click(await screen.findByTestId('cancel-btn'));
+
+    expect(mockOnNavigate).toHaveBeenCalledWith({
+      type: 'detail',
+      fqn: 'test-alert',
+      name: 'Test Alert',
+    });
+    expect(mockOnNavigate).not.toHaveBeenCalledWith({ type: 'list' });
   });
 });

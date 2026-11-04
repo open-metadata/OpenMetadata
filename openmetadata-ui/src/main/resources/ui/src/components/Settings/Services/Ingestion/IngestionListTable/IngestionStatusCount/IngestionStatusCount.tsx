@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Badge, Box } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useMemo } from 'react';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
-import { STATUS_BADGE_COLOR } from './IngestionStatusCount.constants';
+import { STATUS_TILE_CLASS } from './IngestionStatusCount.constants';
 import { IngestionStatusCountProps } from './IngestionStatusCount.interface';
 
 function IngestionStatusCount({
@@ -29,15 +30,18 @@ function IngestionStatusCount({
   return (
     <Box align="center" gap={2} wrap="nowrap">
       {records.map((record) => (
-        <Badge
-          color={STATUS_BADGE_COLOR[record.type]}
+        <div
+          className={classNames(
+            'tw:flex tw:h-12 tw:min-w-15.5 tw:flex-col tw:items-center tw:justify-center tw:rounded-xl tw:px-3 tw:py-1.5',
+            STATUS_TILE_CLASS[record.type]
+          )}
           data-testid={`${record.type}-count`}
-          key={`${record.label}-${runId}`}
-          size="sm"
-          type="pill-color">
-          <span className="tw:font-semibold">{record.value}</span>&nbsp;
-          {record.label}
-        </Badge>
+          key={`${record.label}-${runId}`}>
+          <span className="tw:text-sm tw:font-bold">{record.value}</span>
+          <span className="tw:text-xs tw:font-medium tw:leading-4">
+            {record.label}
+          </span>
+        </div>
       ))}
     </Box>
   );

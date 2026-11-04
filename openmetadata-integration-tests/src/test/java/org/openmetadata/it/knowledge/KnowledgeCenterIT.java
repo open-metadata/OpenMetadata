@@ -6,12 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -35,6 +39,7 @@ import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
 import org.openmetadata.sdk.test.util.TestNamespace;
 import org.openmetadata.sdk.test.util.TestNamespaceExtension;
+import org.openmetadata.service.Entity;
 
 @ExtendWith(TestNamespaceExtension.class)
 public class KnowledgeCenterIT {
@@ -425,6 +430,65 @@ public class KnowledgeCenterIT {
               boolean found =
                   result.getData().stream().anyMatch(p -> page.getId().equals(p.getId()));
               assertTrue(found, "Followed page should appear in sorted list");
+            });
+  }
+
+  @Test
+  void testArticleCustomPropertyIsStoredOnCreateAndPatch(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propertyName = "articleCp" + ns.uniqueShortId();
+    CustomPropertyTestSupport.registerStringProperty(client, Entity.PAGE, propertyName);
+    try {
+      Page page =
+          createPage(
+              rest,
+              buildCreateRequest(ns.prefix("articleWithExtension"), getOrganizationRef())
+                  .withExtension(Map.of(propertyName, "initial")));
+      assertEquals(
+          "initial", extensionValue(getPage(rest, page.getId(), "extension"), propertyName));
+
+      String original = JsonUtils.pojoToJson(page);
+      page.withExtension(Map.of(propertyName, "patched"));
+      patchPage(rest, page.getId(), original, page);
+
+      assertEquals(
+          "patched", extensionValue(getPage(rest, page.getId(), "extension"), propertyName));
+      awaitArticleFoundByCustomProperty(rest, page.getId(), propertyName, "patched");
+    } finally {
+      CustomPropertyTestSupport.removeProperty(client, Entity.PAGE, propertyName);
+    }
+  }
+
+  private Object extensionValue(Page page, String propertyName) {
+    return CustomPropertyTestSupport.extensionValue(page.getExtension(), propertyName);
+  }
+
+  // Custom-property search reads the nested customPropertiesTyped field through the dataAsset
+  // alias, so an article is only found when the page index maps that field as nested.
+  private void awaitArticleFoundByCustomProperty(
+      RestClient rest, UUID pageId, String propertyName, String value) {
+    String queryFilter =
+        """
+        {"query":{"nested":{"path":"customPropertiesTyped","query":{"bool":{"must":[
+        {"term":{"customPropertiesTyped.name":"%s"}},
+        {"term":{"customPropertiesTyped.stringValue":"%s"}}]}}}}}"""
+            .formatted(propertyName, value);
+    String path =
+        "v1/search/query?q=*&index=dataAsset&size=10&query_filter="
+            + URLEncoder.encode(queryFilter, StandardCharsets.UTF_8);
+    await()
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              try (Response response = rest.rawGet(path)) {
+                String body = response.readEntity(String.class);
+                assertEquals(200, response.getStatus(), "Search failed: " + body);
+                assertTrue(
+                    body.contains(pageId.toString()),
+                    "Article " + pageId + " not found by custom property " + propertyName);
+              }
             });
   }
 }

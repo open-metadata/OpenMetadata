@@ -1,7 +1,7 @@
 # dbt's catalogMapping maps a manifest database to the database it is ingested under
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial)
+- **Revisions:** v1 2026-10-14 (initial); v2 2026-10-16 (query lineage)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `TestCatalogMapping` in `ingestion/tests/unit/test_dbt.py`
 - **Related:** issue #34633; PR #35020 (earlier, inference-based approach)
@@ -29,6 +29,10 @@ with the manifest database.
 Upstreams are recorded under the FQN of the table that was found, and the domain, data products and
 custom properties read from `meta.openmetadata` are keyed by it, so lineage, dbt tests, exposures and
 governance metadata follow the resolved table rather than the FQN built from the manifest.
+
+Query lineage parses the model's compiled SQL, which names its sources by the catalog too, so the
+mapped catalogs in its three-part table names are swapped for their databases before parsing;
+otherwise column lineage would never find the source tables.
 
 The `metadata ingest-dbt` CLI accepts the same map as `openmetadata_catalog_mapping` in the dbt
 project's `vars`.

@@ -60,7 +60,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -72,7 +71,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
@@ -101,10 +100,9 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
-import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
@@ -141,10 +139,13 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
+  private static final String IS_FIRST_TIME_USER_FIELD = "isFirstTimeUser";
+  // lastLoginTime and lastActivityTime are loaded so a PATCH or a soft delete writes them back
+  // instead of clearing them; a PUT keeps them in UserUpdater.
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences,lastLoginTime,lastActivityTime";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences,lastLoginTime,lastActivityTime";
   private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
@@ -190,7 +191,16 @@ public class UserRepository extends EntityRepository<User> {
   // however usernames , emails cannot be case-sensitive
   @Override
   public void setFullyQualifiedName(User user) {
-    user.setFullyQualifiedName(quoteName(user.getName().toLowerCase()));
+    user.setFullyQualifiedName(quoteName(canonicalUserName(user.getName())));
+  }
+
+  /**
+   * The one place a user name becomes the form stored in the FQN and its {@code nameHash}. It keeps
+   * the default-locale {@code toLowerCase()} the stored hashes were computed with, so changing it
+   * would orphan existing rows.
+   */
+  public static String canonicalUserName(String userName) {
+    return userName.toLowerCase();
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
@@ -345,33 +355,38 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public void storeEntity(User user, boolean update) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+  protected boolean isStoragePreparationSideEffecting() {
+    return true;
+  }
+
+  @Override
+  protected User prepareForStorage(User user) {
+    final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
       secretsManager.encryptAuthenticationMechanism(
           user.getName(), user.getAuthenticationMechanism());
     }
+    return user;
+  }
 
+  @Override
+  public void storeEntity(User user, boolean update) {
     store(user, update);
+    // A new user has no other stored credential, so only a JWT mechanism is worth a hint;
+    // storeEntities (bulk import) skips it because one hint per row would publish one Redis
+    // message per row.
+    if (!update && carriesJwt(user.getAuthenticationMechanism())) {
+      Credentials.changed(user.getName());
+    }
+  }
+
+  private static boolean carriesJwt(AuthenticationMechanism mechanism) {
+    return mechanism != null && mechanism.getAuthType() == AuthenticationMechanism.AuthType.JWT;
   }
 
   @Override
   public void storeEntities(List<User> entities) {
-    List<String> fqns = new ArrayList<>(entities.size());
-    List<String> jsons = new ArrayList<>(entities.size());
-
-    for (User user : entities) {
-      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-      if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
-        secretsManager.encryptAuthenticationMechanism(
-            user.getName(), user.getAuthenticationMechanism());
-      }
-
-      fqns.add(user.getFullyQualifiedName());
-      jsons.add(serializeForStorage(user));
-    }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    storeMany(entities);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -397,7 +412,7 @@ public class UserRepository extends EntityRepository<User> {
     // Updates only the lastActivityTime field in the JSON using JSON_SET
     // This method is used for immediate updates (e.g., in tests)
     // For production use, UserActivityTracker should be used for batch updates
-    String fqn = quoteName(userName.toLowerCase());
+    String fqn = quoteName(canonicalUserName(userName));
 
     LOG.debug(
         "Updating lastActivityTime for user: {} (fqn: {}) to: {}", userName, fqn, lastActivityTime);
@@ -423,7 +438,7 @@ public class UserRepository extends EntityRepository<User> {
 
     for (Map.Entry<String, Long> entry : userActivityMap.entrySet()) {
       // User FQNs are stored with quoteName applied, so we must match that format
-      String fqn = quoteName(entry.getKey().toLowerCase());
+      String fqn = quoteName(canonicalUserName(entry.getKey()));
       String fqnHash = FullyQualifiedName.buildHash(fqn);
 
       nameHashes.add(fqnHash);
@@ -602,6 +617,10 @@ public class UserRepository extends EntityRepository<User> {
 
   protected void entitySpecificCleanup(User entityInterface) {
     TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), USER);
+    CollectionDAO transactionDAO = RepositoryTransactionContext.currentDAO();
+    (transactionDAO == null ? daoCollection : transactionDAO)
+        .getTokenDAO()
+        .deleteAllForUser(entityInterface.getId());
   }
 
   /* Validate if the user is already part of the given team */
@@ -831,13 +850,10 @@ public class UserRepository extends EntityRepository<User> {
    * Fields an authentication flow must load before it mutates a user and PUTs it back. {@code
    * createOrUpdate} compares the whole entity against the stored one, so any field {@link
    * #clearFields} nulls and the caller did not ask for is recorded as a deletion and erased --
-   * that is the user's profile, their authentication mechanism, personas and domains. The two
-   * login timestamps are added on top of the update fields because they live in the stored JSON
-   * but are not part of the PUT field set.
+   * that is the user's profile, their authentication mechanism, personas and domains.
    */
   public Fields getAuthUpdateFields() {
     Set<String> fields = new HashSet<>(putFields.getFieldList());
-    fields.addAll(Set.of("lastLoginTime", "lastActivityTime"));
     return new Fields(fields);
   }
 
@@ -893,7 +909,7 @@ public class UserRepository extends EntityRepository<User> {
     // back would erase them -- for a bot, that means its token.
     UUID userId = getByEmail(null, currentEmail, EntityUtil.Fields.EMPTY_FIELDS).getId();
     if (checkEmailAlreadyExists(normalizedNewEmail)
-        && !normalizedNewEmail.equalsIgnoreCase(currentEmail)) {
+        && !SecurityUtil.sameIdentifier(normalizedNewEmail, currentEmail)) {
       throw new IllegalArgumentException(
           String.format("Email %s is already used by another account", normalizedNewEmail));
     }
@@ -1543,7 +1559,9 @@ public class UserRepository extends EntityRepository<User> {
     /**
      * The import endpoints authorize {@code EDIT_ALL} on users, not administrator, so anyone who
      * can manage a team could otherwise hand themselves {@code isAdmin} or any role straight from
-     * the spreadsheet - the escalation the PATCH and PUT paths already reject.
+     * the spreadsheet - the escalation the PATCH and PUT paths already reject. A row carries the
+     * flag whole, so one for an existing admin would revoke it just as easily: the flag is
+     * admin-only in both directions.
      *
      * <p>Keyed off {@code importedBy} rather than a {@code SecurityContext} because the async
      * import ({@code PUT /v1/users/importAsync}) runs the rows on a background thread where no
@@ -1554,7 +1572,7 @@ public class UserRepository extends EntityRepository<User> {
       if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
         return;
       }
-      if (Boolean.TRUE.equals(user.getIsAdmin())) {
+      if (Boolean.TRUE.equals(user.getIsAdmin()) || isStoredAdmin(user)) {
         importFailure(printer, privilegedFieldRequiresAdmin(5, "isAdmin"), csvRecord);
         processRecord = false;
         return;
@@ -1563,6 +1581,11 @@ public class UserRepository extends EntityRepository<User> {
         importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
         processRecord = false;
       }
+    }
+
+    private static boolean isStoredAdmin(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsAdmin());
     }
 
     public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
@@ -1653,27 +1676,20 @@ public class UserRepository extends EntityRepository<User> {
     testCaseResolutionStatusRepository.cleanUpAssignees(user.getFullyQualifiedName());
   }
 
+  /**
+   * Every delete path runs this, including the bulk soft delete that removes a deleted bot's user
+   * without calling {@link #postDelete}, so the credential change is announced and the user's MCP
+   * grants end here.
+   */
   @Override
   protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
     DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(entity, deletedBy);
-    try {
-      Runnable finishCredentialDelete =
-          Boolean.TRUE.equals(entity.getIsBot())
-              ? BotTokenCache.denyToken(entity.getName())
-              : UserTokenCache.denyToken(entity.getName());
-      return () -> {
-        try (parentLifecycle) {
-          finishCredentialDelete.run();
-        }
-      };
-    } catch (RuntimeException | Error failure) {
-      try {
-        parentLifecycle.close();
-      } catch (RuntimeException | Error closeFailure) {
-        failure.addSuppressed(closeFailure);
+    return () -> {
+      try (parentLifecycle) {
+        Credentials.changed(entity.getName());
+        daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(entity.getName());
       }
-      throw failure;
-    }
+    };
   }
 
   @Override
@@ -1684,8 +1700,11 @@ public class UserRepository extends EntityRepository<User> {
     if (hardDelete) {
       // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
       userPreferencesRepository.delete(entity.getId());
+      // A soft delete can be restored, so the user's tasks must survive it. A permanent delete
+      // removes only the suggestions they created; their other tasks stay.
+      // ADR:2026-10-22-deleting-a-user-removes-only-their-suggestions-on-hard-delete
+      deleteSuggestionTasksForUser(entity);
     }
-    deleteSuggestionTasksForUser(entity);
 
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1703,16 +1722,7 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   protected void postRestore(User entity) {
     super.postRestore(entity);
-    String userName = entity.getName();
-    boolean isBot = Boolean.TRUE.equals(entity.getIsBot());
-    PostCommitActionQueue.runOrDefer(
-        () -> {
-          if (isBot) {
-            BotTokenCache.reloadToken(userName);
-          } else {
-            UserTokenCache.reloadToken(userName);
-          }
-        });
+    Credentials.changed(entity.getName());
   }
 
   /**
@@ -1750,21 +1760,18 @@ public class UserRepository extends EntityRepository<User> {
                     event.getNumberOfRetryAttempts() + 1,
                     MAX_TASK_CLEANUP_RETRIES));
     String creatorId = entity.getId().toString();
-    String category = TaskCategory.MetadataUpdate.value();
+    String type = TaskEntityType.Suggestion.value();
     // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
     // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
     // and its cache-invalidate hook — without explicit eviction the next GET on a
     // previously-read task returns the stale cached row even though the DB row is gone.
     // FQN is required because tasks expose both GET /v1/tasks/{id}
-    // (EntityRepository.CACHE_WITH_ID-keyed) and
-    // GET /v1/tasks/name/{taskId} (EntityRepository.CACHE_WITH_NAME-keyed); dropping only by id
-    // would
-    // leave a
-    // by-name reader pinned to a stale entry.
+    // (EntityRepository.CACHE_WITH_ID-keyed) and GET /v1/tasks/name/{taskId}
+    // (EntityRepository.CACHE_WITH_NAME-keyed); dropping only by id would leave a by-name reader
+    // pinned to a stale entry.
     List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
-        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
-    retry.executeRunnable(
-        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndType(creatorId, type);
+    retry.executeRunnable(() -> daoCollection.taskDAO().deleteByCreatorAndType(creatorId, type));
     if (!tasksToInvalidate.isEmpty()) {
       invalidateTaskCacheForIds(tasksToInvalidate);
     }
@@ -1822,39 +1829,55 @@ public class UserRepository extends EntityRepository<User> {
     PostCommitActionQueue.runOrDefer(evict);
   }
 
+  /**
+   * A user is assigned the domains an update sends, deleted ones dropped; the domains its teams
+   * give it are inherited and never written. Only a bot's PUT keeps a non-empty assignment.
+   */
+  @Override
+  protected List<EntityReference> writtenDomains(
+      final User original, final User updated, final Operation operation, final boolean byBot) {
+    final boolean botKeepsStored =
+        operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+    return botKeepsStored
+        ? null
+        : filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
+            .filter(domain -> domain.getInherited() == null || !domain.getInherited())
+            .collect(Collectors.toList());
+  }
+
+  /**
+   * Filter domain references to remove deleted domains, then populate valid ones.
+   * This prevents EntityNotFoundException when domains are deleted between updates.
+   */
+  private static List<EntityReference> filterValidDomains(List<EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return domains;
+    }
+
+    // First filter out deleted domains, then populate valid references
+    List<EntityReference> validDomains =
+        domains.stream()
+            .filter(
+                domain -> {
+                  try {
+                    Entity.getEntityReference(domain, ALL);
+                    return true;
+                  } catch (EntityNotFoundException e) {
+                    LOG.warn(
+                        "Removing deleted domain {} from user update",
+                        domain.getFullyQualifiedName());
+                    return false;
+                  }
+                })
+            .collect(Collectors.toList());
+
+    return EntityUtil.populateEntityReferences(validDomains);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    /**
-     * Filter domain references to remove deleted domains, then populate valid ones.
-     * This prevents EntityNotFoundException when domains are deleted between updates.
-     */
-    private List<EntityReference> filterValidDomains(List<EntityReference> domains) {
-      if (domains == null || domains.isEmpty()) {
-        return domains;
-      }
-
-      // First filter out deleted domains, then populate valid references
-      List<EntityReference> validDomains =
-          domains.stream()
-              .filter(
-                  domain -> {
-                    try {
-                      Entity.getEntityReference(domain, ALL);
-                      return true;
-                    } catch (EntityNotFoundException e) {
-                      LOG.warn(
-                          "Removing deleted domain {} from user update",
-                          domain.getFullyQualifiedName());
-                      return false;
-                    }
-                  })
-              .collect(Collectors.toList());
-
-      return EntityUtil.populateEntityReferences(validDomains);
     }
 
     /**
@@ -1891,6 +1914,12 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
+      // The server records these on login and on each request, and a PUT body never carries them,
+      // so a PUT keeps the stored values instead of clearing them
+      // (ADR:2026-10-30-user-writes-keep-login-and-activity-times).
+      if (operation.isPut()) {
+        keepServerRecordedTimes();
+      }
       compareAndUpdate(
           "lastLoginTime",
           () ->
@@ -1901,6 +1930,7 @@ public class UserRepository extends EntityRepository<User> {
                   false,
                   objectMatch,
                   false));
+      compareAndUpdate(IS_FIRST_TIME_USER_FIELD, this::updateIsFirstTimeUser);
 
       compareAndUpdate("roles", () -> updateRoles(original, updated));
       compareAndUpdate("teams", () -> updateTeams(original, updated));
@@ -1942,6 +1972,30 @@ public class UserRepository extends EntityRepository<User> {
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
     }
 
+    private void keepServerRecordedTimes() {
+      if (updated.getLastLoginTime() == null) {
+        updated.setLastLoginTime(original.getLastLoginTime());
+      }
+      if (updated.getLastActivityTime() == null) {
+        updated.setLastActivityTime(original.getLastActivityTime());
+      }
+    }
+
+    private void updateIsFirstTimeUser() {
+      if (operation.isPut()) {
+        // CreateUser does not carry isFirstTimeUser; PUT must not make a returning user first-time
+        updated.setIsFirstTimeUser(original.getIsFirstTimeUser());
+      } else {
+        recordChange(
+            IS_FIRST_TIME_USER_FIELD,
+            original.getIsFirstTimeUser(),
+            updated.getIsFirstTimeUser(),
+            false,
+            objectMatch,
+            false);
+      }
+    }
+
     private void updateAllowImpersonation() {
       if (operation.isPut()) {
         // CreateUser does not carry allowImpersonation; PUT must not wipe the stored grant
@@ -1972,21 +2026,15 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     protected void updateDomains() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
+      List<EntityReference> updatedDomains =
+          writtenDomains(original, updated, operation, updatedByBot());
+      if (updatedDomains == null) {
         updated.setDomains(original.getDomains());
         return;
       }
 
       List<EntityReference> origDomains =
           filterValidDomains(listOrEmptyMutable(original.getDomains()));
-      // Skip domains inherited from teams,they are handled in setInheritedFields().
-      List<EntityReference> updatedDomains =
-          filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
-              .filter(domain -> domain.getInherited() == null || !domain.getInherited())
-              .collect(Collectors.toList());
       updated.setDomains(updatedDomains);
 
       // Remove Domains for the user
@@ -2028,13 +2076,16 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
 
-      // Update users and userCount in team search index
-      Stream.concat(added.stream(), deleted.stream())
-          .forEach(
-              teamRef -> {
-                EntityInterface<?> team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntityIndex(team);
-              });
+      // The teams' user counts changed. Rebuild their documents from full reads: a team read with
+      // only its id and user count would blank the owners and domains in its document. There is
+      // no retry locator, because the rebuild files a retry for each document it fails to write.
+      List<EntityReference> changedTeams = Stream.concat(added.stream(), deleted.stream()).toList();
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.updateEntitiesByReference(changedTeams),
+          "reindexChangedTeams",
+          null,
+          null,
+          Entity.TEAM);
     }
 
     private List<EntityReference> findAddedTeams(
@@ -2166,16 +2217,34 @@ public class UserRepository extends EntityRepository<User> {
           true);
     }
 
+    private static boolean storedMechanismChanged(
+        AuthenticationMechanism original, AuthenticationMechanism updated) {
+      if (original == null || updated == null) {
+        return original != null || updated != null;
+      }
+      return !JsonUtils.areEquals(original, updated);
+    }
+
     private void updateAuthenticationMechanism(User original, User updated) {
       AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
-      if (origAuthMechanism == null && updatedAuthMechanism != null) {
+      if (updatedAuthMechanism == null) {
+        // CreateUser and CSV rows never carry a person's mechanism, so its absence means "keep it".
+        // Dropping it would erase the stored password, and the admin seeding at startup would then
+        // reset the admin account to its default password.
+        updated.setAuthenticationMechanism(origAuthMechanism);
+        return;
+      }
+      if (origAuthMechanism == null) {
         recordChange(
             AUTH_MECHANISM_FIELD, original.getAuthenticationMechanism(), "new-encrypted-value");
       } else if (origAuthMechanism != null
           && updatedAuthMechanism != null
           && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
         recordChange(AUTH_MECHANISM_FIELD, "old-encrypted-value", "new-encrypted-value");
+      }
+      if (storedMechanismChanged(origAuthMechanism, updatedAuthMechanism)) {
+        Credentials.changed(updated.getName());
       }
     }
   }

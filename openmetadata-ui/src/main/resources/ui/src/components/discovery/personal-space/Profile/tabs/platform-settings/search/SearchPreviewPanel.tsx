@@ -13,9 +13,9 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   Input,
   PaginationCardWithControls,
+  TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
@@ -28,6 +28,7 @@ import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../../../../../constants/Sear
 import { SearchSettings } from '../../../../../../../generated/configuration/searchSettings';
 import { searchPreview } from '../../../../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import ExploreSearchCard from '../../../../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../../../../SearchedData/SearchedData.interface';
 import { SettingsSkeleton } from '../SettingsFormLayout';
@@ -130,9 +131,9 @@ const SearchPreviewPanel = ({
     if (hits.length === 0) {
       return (
         <div className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="search-preview-empty"
-            icon={<Search className="tw:text-quaternary" />}
+            icon={<Search />}
             title={t('message.no-data-available')}
           />
         </div>
@@ -193,16 +194,20 @@ const SearchPreviewPanel = ({
         {renderResults()}
       </Box>
       {total > pageSize && (
-        <PaginationCardWithControls
-          page={page}
-          pageSize={pageSize}
-          total={Math.ceil(total / pageSize)}
-          onPageChange={setPage}
-          onPageSizeChange={(next) => {
-            setPageSize(next);
-            setPage(1);
-          }}
-        />
+        // The pager is a card footer with no top edge; with no table above it,
+        // the card frame supplies the full outline.
+        <TableCard.Root variant="muted">
+          <PaginationCardWithControls
+            page={page}
+            pageSize={pageSize}
+            total={Math.ceil(total / pageSize)}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next);
+              setPage(1);
+            }}
+          />
+        </TableCard.Root>
       )}
     </Box>
   );

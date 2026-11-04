@@ -22,7 +22,6 @@ import { navigateToOntologyStudio } from '../../utils/ontologyStudio';
 
 const TARGET_GLOSSARY = `pw_fibo_${uuid().replaceAll('-', '')}`;
 const FIBO_VERSION = '2025Q1-om1';
-const SHA_256 = /^[a-f0-9]{64}$/;
 
 const isInstallResult = (value: unknown): value is OntologyPackInstallResult =>
   typeof value === 'object' &&
@@ -31,9 +30,8 @@ const isInstallResult = (value: unknown): value is OntologyPackInstallResult =>
   value.packId === 'fibo' &&
   'version' in value &&
   value.version === FIBO_VERSION &&
-  'installation' in value &&
-  typeof value.installation === 'object' &&
-  value.installation !== null;
+  'moduleIds' in value &&
+  Array.isArray(value.moduleIds);
 
 const isGlossary = (value: unknown): value is Glossary =>
   typeof value === 'object' &&
@@ -61,9 +59,7 @@ const loadInstalledGlossary = async (
   apiContext: APIRequestContext
 ): Promise<Glossary | undefined> => {
   const response = await apiContext.get(
-    `/api/v1/glossaries/name/${encodeURIComponent(
-      TARGET_GLOSSARY
-    )}?fields=ontologyConfiguration`
+    `/api/v1/glossaries/name/${encodeURIComponent(TARGET_GLOSSARY)}`
   );
   const body: unknown = response.ok() ? await response.json() : undefined;
 
@@ -81,7 +77,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
     }
   });
 
-  test('installs a dependency-aware FIBO pack with durable provenance and opens its graph', async ({
+  test('imports a dependency-aware FIBO vocabulary and opens its glossary graph', async ({
     browser,
   }) => {
     test.setTimeout(EXTENDED_TEST_TIMEOUT);
@@ -104,23 +100,23 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
       await page.getByTestId('ontology-pack-details-fibo').click();
       await expect(page.getByTestId('ontology-pack-detail')).toBeVisible();
       await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '8'
+        '8 Concepts'
       );
       await expect(
         page.getByTestId('ontology-pack-relationship-count')
-      ).toHaveText('6');
+      ).toHaveText('6 Relations');
 
       await page.getByTestId('ontology-module-foundations').click();
       await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '0'
+        '0 Concepts'
       );
       await page.getByTestId('ontology-module-business-entities').click();
       await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-        '8'
+        '8 Concepts'
       );
       await expect(
         page.getByTestId('ontology-pack-relationship-count')
-      ).toHaveText('6');
+      ).toHaveText('6 Relations');
 
       await page
         .getByTestId('ontology-pack-target-glossary')
@@ -148,35 +144,30 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
         throw new Error('Ontology pack install response is not valid');
       }
 
-      expect(installBody.installation?.modules).toHaveLength(2);
-      expect(
-        installBody.installation?.modules.every((module) =>
-          SHA_256.test(module.sha256)
-        )
-      ).toBe(true);
+      expect(installBody.moduleIds).toHaveLength(2);
+      expect(installBody).toMatchObject({
+        targetGlossaryName: TARGET_GLOSSARY,
+        dryRun: false,
+        conceptCount: 8,
+        relationshipCount: 6,
+        importResults: [{ termsCreated: 8 }],
+      });
+      expect(installBody).not.toHaveProperty('installation');
       await expect(
         page
           .getByTestId('ontology-pack-detail')
           .getByText('Ontology pack installed')
       ).toBeVisible();
-      await expect(page.getByText(`Installed · ${FIBO_VERSION}`)).toBeVisible();
 
       await expect
-        .poll(() => loadInstalledGlossary(apiContext), {
-          message: 'Installed glossary provenance was not persisted',
+        .poll(async () => (await loadInstalledGlossary(apiContext))?.name, {
+          message: 'Imported glossary was not persisted',
           timeout: 30_000,
         })
-        .toMatchObject({
-          ontologyConfiguration: {
-            installedPacks: [
-              {
-                packId: 'fibo',
-                version: FIBO_VERSION,
-              },
-            ],
-            readOnly: false,
-          },
-        });
+        .toBe(TARGET_GLOSSARY);
+      expect(await loadInstalledGlossary(apiContext)).not.toHaveProperty(
+        'ontologyConfiguration'
+      );
 
       await page.getByTestId('ontology-pack-open-graph').click();
       await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
@@ -184,18 +175,9 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
         'true'
       );
       await expect(
-        page.getByTestId('ontology-glossary-menu-trigger')
+        page.getByTestId('ontology-scope-menu-trigger')
       ).toContainText(TARGET_GLOSSARY);
       await expect(page.getByTestId('ontology-explorer')).toBeVisible();
-
-      await page.getByTestId('ontology-library-trigger').click();
-      await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
-        'Installed'
-      );
-      await page.getByTestId('ontology-pack-fibo').click();
-      await expect(page.getByTestId('ontology-pack-detail')).toContainText(
-        `Installed · ${FIBO_VERSION}`
-      );
     } finally {
       await afterAction();
     }

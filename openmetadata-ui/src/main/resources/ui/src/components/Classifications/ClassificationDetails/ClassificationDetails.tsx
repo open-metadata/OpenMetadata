@@ -13,7 +13,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Owner,
   PageHeader,
   Tooltip,
@@ -84,6 +83,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -718,7 +718,7 @@ const ClassificationDetails = forwardRef(
     function renderTagsPanel() {
       return isEmpty(tags) && !isLoading ? (
         <Box className="tw:relative tw:min-h-[360px]">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               createPermission
                 ? [

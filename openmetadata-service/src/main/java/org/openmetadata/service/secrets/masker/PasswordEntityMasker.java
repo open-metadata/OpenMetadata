@@ -74,7 +74,7 @@ public class PasswordEntityMasker extends EntityMasker {
 
   public void maskIngestionPipeline(IngestionPipeline ingestionPipeline) {
     if (ingestionPipeline != null) {
-      IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
+      IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline);
       try {
         maskPasswordFields(ingestionPipeline);
       } catch (Exception e) {
@@ -133,7 +133,7 @@ public class PasswordEntityMasker extends EntityMasker {
       IngestionPipeline ingestionPipeline, IngestionPipeline originalIngestionPipeline) {
     if (ingestionPipeline != null && originalIngestionPipeline != null) {
       IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
-      IngestionPipelineBuilder.addDefinedConfig(originalIngestionPipeline);
+      IngestionPipelineBuilder.addDefinedConfigForRead(originalIngestionPipeline);
       try {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalIngestionPipeline, NEW_KEY, passwordsMap);

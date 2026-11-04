@@ -892,6 +892,35 @@ const getStudioBorderColor = (
     ? STUDIO_EDGE_BORDER_BY_COLOR[relationColor.toLowerCase()]
     : undefined;
 
+let flattenContext: CanvasRenderingContext2D | null | undefined;
+
+// Dark-mode `utility-*-50` badge tokens are translucent, which lets edges strike
+// through the label; composite them over the node surface so the badge is opaque.
+const flattenOntoSurface = (
+  color: string,
+  getColor: (cssVar: string, fallback: string) => string
+): string => {
+  if (
+    /^(#[0-9a-f]{6}$|rgb\()/i.test(color) ||
+    typeof document === 'undefined'
+  ) {
+    return color;
+  }
+  flattenContext ??= document
+    .createElement('canvas')
+    .getContext('2d', { willReadFrequently: true });
+  if (!flattenContext) {
+    return color;
+  }
+  flattenContext.fillStyle = getColor(NODE_FILL_DEFAULT, '#ffffff');
+  flattenContext.fillRect(0, 0, 1, 1);
+  flattenContext.fillStyle = color;
+  flattenContext.fillRect(0, 0, 1, 1);
+  const [r, g, b] = flattenContext.getImageData(0, 0, 1, 1).data;
+
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
 const getEdgeLabelBackgroundFill = (
   studioMode: boolean,
   meta: RelationMeta | null | undefined,
@@ -902,7 +931,7 @@ const getEdgeLabelBackgroundFill = (
   }
 
   return meta
-    ? getColor(meta.background, '#fafafa')
+    ? flattenOntoSurface(getColor(meta.background, '#fafafa'), getColor)
     : getColor(EDGE_LABEL_BG_FILL, '#EFF1F8');
 };
 

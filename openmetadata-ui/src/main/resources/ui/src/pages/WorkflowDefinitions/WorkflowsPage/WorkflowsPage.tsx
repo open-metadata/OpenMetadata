@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Input,
   PageLayout,
   SlideoutMenu,
@@ -33,6 +32,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../../components/common/Loader/Loader';
@@ -48,6 +50,7 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { Paging } from '../../../generated/type/paging';
@@ -86,6 +89,7 @@ const WorkflowsPage = () => {
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState<AxiosError>();
   const navigate = useNavigate();
   const allowCreateWorkflow = useMemo(
     () => workflowClassBase.getCapabilities().allowCreateWorkflow,
@@ -174,6 +178,7 @@ const WorkflowsPage = () => {
     ) => {
       try {
         setLoading(true);
+        setLoadError(undefined);
 
         const params: WorkflowDefinitionsParams = {
           limit: pageSize,
@@ -193,7 +198,7 @@ const WorkflowsPage = () => {
         setPaging(res.paging || { total: 0 });
         setCurrentPage(page);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        setLoadError(error as AxiosError);
       } finally {
         setLoading(false);
       }
@@ -293,7 +298,7 @@ const WorkflowsPage = () => {
 
   const emptyPlaceholder = (
     <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           allowCreateWorkflow
             ? [
@@ -310,10 +315,72 @@ const WorkflowsPage = () => {
         description={t('message.workflow-empty-description')}
         features={emptyStateFeatures}
         title={t('message.put-your-data-operations-on-autopilot')}
-        variant="features"
       />
     </Box>
   );
+
+  const renderContent = () => {
+    if (loadError) {
+      return (
+        <Box className="tw:relative tw:flex-1 tw:min-h-0">
+          {loadError.response?.status === ClientErrors.FORBIDDEN ? (
+            <PermissionPlaceholder
+              permissionValue={t('label.view-entity', {
+                entity: t('label.workflow-plural'),
+              })}
+            />
+          ) : (
+            <SomethingWentWrongPlaceholder
+              title={t('server.entity-fetch-error', {
+                entity: t('label.workflow-plural'),
+              })}
+              onReload={() => getWorkflows()}
+            />
+          )}
+        </Box>
+      );
+    }
+
+    if (isWorkflowsEmpty) {
+      return (
+        <>
+          <WorkflowsPageSection />
+          {emptyPlaceholder}
+        </>
+      );
+    }
+
+    return (
+      <div
+        className={classNames('tw:flex tw:flex-1 tw:min-h-0 tw:flex-col', {
+          'tw:mx-2': isAiMode,
+        })}>
+        <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:pt-4">
+          <WorkflowsPageSection />
+          <WorkflowList
+            total={paging.total}
+            workflows={workflows}
+            onWorkflowClick={onWorkflowClick}
+          />
+          <div className="tw:py-3" data-testid="workflows-pagination">
+            <NextPrevious
+              currentPage={currentPage}
+              isLoading={loading}
+              pageSize={pageSize}
+              pageSizeOptions={[
+                PAGE_SIZE_BASE,
+                PAGE_SIZE_MEDIUM,
+                PAGE_SIZE_LARGE,
+              ]}
+              paging={paging}
+              pagingHandler={handlePageChange}
+              onShowSizeChange={setPageSize}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <PageLayoutV1
@@ -362,40 +429,7 @@ const WorkflowsPage = () => {
           </div>
         )}
 
-        {isWorkflowsEmpty ? (
-          <>
-            <WorkflowsPageSection />
-            {emptyPlaceholder}
-          </>
-        ) : (
-          <div
-            className={classNames('tw:flex tw:flex-1 tw:min-h-0 tw:flex-col', {
-              'tw:mx-2': isAiMode,
-            })}>
-            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:pt-4">
-              <WorkflowsPageSection />
-              <WorkflowList
-                workflows={workflows}
-                onWorkflowClick={onWorkflowClick}
-              />
-            </div>
-            <div className="tw:py-3" data-testid="workflows-pagination">
-              <NextPrevious
-                currentPage={currentPage}
-                isLoading={loading}
-                pageSize={pageSize}
-                pageSizeOptions={[
-                  PAGE_SIZE_BASE,
-                  PAGE_SIZE_MEDIUM,
-                  PAGE_SIZE_LARGE,
-                ]}
-                paging={paging}
-                pagingHandler={handlePageChange}
-                onShowSizeChange={setPageSize}
-              />
-            </div>
-          </div>
-        )}
+        {renderContent()}
       </div>
 
       <SlideoutMenu

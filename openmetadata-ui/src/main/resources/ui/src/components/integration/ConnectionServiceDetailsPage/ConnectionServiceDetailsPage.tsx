@@ -474,8 +474,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   );
 
   const onUpdateDomain = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      const domains = Array.isArray(domain) ? domain : [domain];
+    async (domain: EntityReference | EntityReference[] | undefined) => {
+      const selectedDomains = domain ?? [];
+      const domains = Array.isArray(selectedDomains)
+        ? selectedDomains
+        : [selectedDomains];
       await saveUpdatedServiceData({
         ...serviceDetails,
         domains: domains as unknown as typeof serviceDetails.domains,
@@ -503,15 +506,6 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       await saveUpdatedServiceData({ ...serviceDetails, tags: updatedTags });
     },
     [saveUpdatedServiceData, serviceDetails]
-  );
-
-  // DataAssetsTab's data products section saves the service itself; only mirror the result here.
-  const handleDataProductsChange = useCallback(
-    (dataProducts: EntityReference[]) =>
-      setServiceDetails(
-        (previous) => ({ ...previous, dataProducts } as ServicesType)
-      ),
-    []
   );
 
   const onDataProductUpdate = useCallback(
@@ -1097,7 +1091,6 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               setIsServiceLoading={setIsServiceLoading}
               showDeleted={showDeleted}
               onDataProductUpdate={onDataProductUpdate}
-              onDataProductsChange={handleDataProductsChange}
               onDescriptionUpdate={onDescriptionUpdate}
               onShowDeletedChange={handleShowDeletedChange}
             />

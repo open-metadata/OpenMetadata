@@ -26,7 +26,7 @@ import {
   getCsvAsyncJob,
   getCsvAsyncJobResult,
 } from '../../../rest/csvAPI';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { isCsvJobOwned } from '../../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import {
@@ -70,7 +70,7 @@ jest.mock('../../../rest/csvAPI', () => ({
 }));
 
 jest.mock('../../../utils/Export/ExportUtils', () => ({
-  downloadFile: jest.fn(),
+  downloadCsv: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -456,7 +456,7 @@ describe('EntityExportModalProvider component', () => {
     );
 
     await waitFor(() =>
-      expect(downloadFile).toHaveBeenCalledWith(
+      expect(downloadCsv).toHaveBeenCalledWith(
         'name\nmetric_one',
         expect.stringContaining('.csv')
       )
@@ -492,7 +492,7 @@ describe('EntityExportModalProvider component', () => {
     );
 
     await waitFor(() =>
-      expect(downloadFile).toHaveBeenCalledWith(
+      expect(downloadCsv).toHaveBeenCalledWith(
         'name\nmetric_one',
         expect.stringContaining('.csv')
       )

@@ -23,6 +23,9 @@ from datetime import datetime
 from functools import cached_property
 from typing import Any
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -188,6 +191,23 @@ class DbtSource(DbtServiceSource):
             for catalog, database in (self.source_config.catalogMapping or {}).items()
             if catalog and database
         }
+
+    def _map_catalogs_in_sql(self, sql: str) -> str:
+        """
+        Swap each mapped catalog in the three-part table names of compiled SQL for the database
+        it is ingested under, so query lineage looks the tables up where they really are.
+        See ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names.
+        """
+        if not self.catalog_mapping:
+            return sql
+        # one pass over all catalogs, so a mapped database that is also a key is not mapped again
+        catalogs = "|".join(re.escape(catalog) for catalog in sorted(self.catalog_mapping, key=len, reverse=True))
+        return re.sub(
+            rf'(?<![\w."`])("?)({catalogs})\1(?=\s*\.\s*(?:"[^"]+"|[\w$]+)\s*\.)',
+            lambda match: f'"{self.catalog_mapping[match.group(2).casefold()]}"',
+            sql,
+            flags=re.IGNORECASE,
+        )
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -855,26 +875,23 @@ class DbtSource(DbtServiceSource):
     def _search_table(self, fqn_search_string: str | None, *, literal_table_name: bool = False) -> Table | None:
         if not fqn_search_string:
             return None
+        parts = fqn.split(fqn_search_string)
+        if len(parts) != 4:
+            return None
+        table_name = parts[3]
         if literal_table_name:
             # A source identifier can contain search metacharacters; choosing the first
             # wildcard match would attach its metadata and lineage to an arbitrary table.
-            parts = fqn.split(fqn_search_string)
-            parts[-1] = parts[-1].replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
-            fqn_search_string = fqn._build(*parts)
-        table_entities = get_entity_from_es_result(
-            entity_list=self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-                fields="sourceHash",
-            ),
-            fetch_multiple_entities=True,
+            table_name = table_name.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
+        entities = get_table_binding_resolution(self.metadata, parts[0]).resolve(
+            TableReference(parts[1], parts[2], table_name),
+            service_name=parts[0],
+            fields=("sourceHash",),
+            lookup=TableLookup.FIRST_MATCH,
         )
-
-        if not table_entities:
-            return None
-
-        logger.debug("Found table entities from %s: %d entities", fqn_search_string, len(table_entities))
-        return next(iter(filter(None, table_entities)), None) if table_entities else None
+        if len(entities) > 1:
+            self.status.warning(fqn_search_string, "Ambiguous dbt metadata attachment; resolved multiple tables")
+        return entities[0] if len(entities) == 1 else None
 
     def _get_table_entity_in_mapped_database(self, table_fqn: str, *, literal_table_name: bool = False) -> Table | None:
         """
@@ -1385,9 +1402,40 @@ class DbtSource(DbtServiceSource):
         to_entity: Table = data_model_link.table_entity
         logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
 
+        wildcard_targets = {}
+        try:
+            for upstream in data_model_link.datamodel.upstream or []:
+                parts = fqn.split(upstream)
+                if len(parts) == 4 and "*" in parts[3]:
+                    matches = get_table_binding_resolution(self.metadata, parts[0]).resolve(
+                        TableReference(parts[1], parts[2], parts[3]), service_name=parts[0], lookup=TableLookup.SEARCH
+                    )
+                    if matches:
+                        wildcard_targets[upstream] = matches
+        except Exception as exc:
+            self.status.warning(
+                model_str(to_entity.fullyQualifiedName), f"dbt lineage incomplete; preserving prior lineage: {exc}"
+            )
+            return
+
         resolved = data_model_link.upstream_table_ids
         for upstream_node in data_model_link.datamodel.upstream or []:
             try:
+                if upstream_node in wildcard_targets:
+                    for upstream_table in wildcard_targets[upstream_node]:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=AddLineageRequest(
+                                    edge=EntitiesEdge(
+                                        fromEntity=EntityReference(id=upstream_table.id, type="table"),
+                                        toEntity=EntityReference(id=to_entity.id, type="table"),
+                                        lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
+                                    )
+                                ),
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    continue
                 from_id = resolved.get(upstream_node)
                 if from_id is None:
                     from_entity = self._get_table_entity(table_fqn=upstream_node)
@@ -1448,7 +1496,7 @@ class DbtSource(DbtServiceSource):
                     *source_elements[-3:]
                 )
                 query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
-                query = f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
+                query = f"create table {query_fqn} as {self._map_catalogs_in_sql(data_model_link.datamodel.sql.root)}"
                 connection_type = str(self.config.serviceConnection.root.config.type.value)
                 dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
                 lineages = get_lineage_by_query(

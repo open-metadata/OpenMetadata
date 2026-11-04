@@ -16,6 +16,7 @@ from metadata.data_quality.validations.models import (
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 
@@ -24,6 +25,8 @@ class RuleLibrarySqlExpressionParamsSetter(RuntimeParameterSetter):
     """Set runtime parameters for the rule library sql expression test."""
 
     def get_parameters(self, test_case) -> RuleLibrarySqlExpressionRuntimeParameters:
+        if self.table_entity.tableType == TableType.Sharded:
+            raise ValueError("Rule-library SQL is not supported for sharded tables yet")
         test_definition = self.ometa_client.get_by_name(
             entity=TestDefinition,
             fqn=test_case.testDefinition.fullyQualifiedName,

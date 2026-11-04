@@ -32,6 +32,7 @@ import {
 import { verifyBundleSuitePageLoaded } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+import { enableAiAppMode } from '../Utils/appMode';
 
 const table = new TableClass();
 
@@ -268,98 +269,217 @@ test(
   }
 );
 
-test.describe('Bulk remove test cases from a bundle suite', () => {
-  let bulkRemoveTable: TableClass;
-  let bulkRemoveSuite: BundleTestSuiteClass;
-  let testCaseNames: string[];
+const SUITE_APP_MODES = [
+  {
+    label: 'Classic',
+    suitePathPrefix: '/test-suites',
+    openApp: redirectToHomePage,
+  },
+  {
+    label: 'AI',
+    suitePathPrefix: '/observability/test-suites',
+    openApp: enableAiAppMode,
+  },
+];
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    bulkRemoveTable = new TableClass();
-    bulkRemoveSuite = new BundleTestSuiteClass();
-    await bulkRemoveTable.create(apiContext);
-    const testCases = [
-      await bulkRemoveTable.createTestCase(apiContext),
-      await bulkRemoveTable.createTestCase(apiContext),
-      await bulkRemoveTable.createTestCase(apiContext),
-    ];
-    testCaseNames = testCases.map((testCase) => testCase.name as string);
-    await bulkRemoveSuite.createBundleTestSuite(apiContext);
-    const addResponse = await bulkRemoveSuite.addTestCases(
-      apiContext,
-      testCases.map((testCase) => testCase.id as string)
-    );
-    expect(addResponse.status()).toBe(200);
-    await afterAction();
-  });
+for (const { label, suitePathPrefix, openApp } of SUITE_APP_MODES) {
+  test.describe(`Search test cases inside a bundle suite (${label} mode)`, () => {
+    let searchTable: TableClass;
+    let searchSuite: BundleTestSuiteClass;
+    let testCaseNames: string[];
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await bulkRemoveSuite.delete(apiContext);
-    await bulkRemoveTable.delete(apiContext);
-    await afterAction();
-  });
-
-  test('removes the selected test cases and keeps the rest', async ({
-    page,
-  }) => {
-    const suiteFqn =
-      bulkRemoveSuite.bundleTestSuiteResponseData.fullyQualifiedName ?? '';
-    const [keptName, ...removedNames] = testCaseNames;
-    const testCaseTable = page.getByTestId('test-case-table');
-    const testCaseRow = (name: string) =>
-      testCaseTable.locator('tbody tr[data-key]').filter({ hasText: name });
-
-    await test.step('Open the bundle suite', async () => {
-      const listResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list*'
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      searchTable = new TableClass();
+      searchSuite = new BundleTestSuiteClass();
+      await searchTable.create(apiContext);
+      const testCases = [
+        await searchTable.createTestCase(apiContext),
+        await searchTable.createTestCase(apiContext),
+      ];
+      testCaseNames = testCases.map((testCase) => testCase.name as string);
+      await searchSuite.createBundleTestSuite(apiContext);
+      const addResponse = await searchSuite.addTestCases(
+        apiContext,
+        testCases.map((testCase) => testCase.id as string)
       );
-      await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`, {
-        waitUntil: 'domcontentloaded',
+      expect(addResponse.status()).toBe(200);
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await searchSuite.delete(apiContext);
+      await searchTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('finds a test case by an upper-cased part of its name', async ({
+      page,
+    }) => {
+      const suiteFqn =
+        searchSuite.bundleTestSuiteResponseData.fullyQualifiedName ?? '';
+      const [matchName, otherName] = testCaseNames;
+      // `case_<uuid>`: the uuid makes it unique to this test case, and the
+      // `case` prefix guarantees letters, so upper-casing it always proves
+      // the search is case-insensitive (a uuid alone can be all digits).
+      const upperCaseQuery = matchName.slice(-13).toUpperCase();
+
+      await test.step('Open the bundle suite', async () => {
+        await openApp(page);
+        const listResponse = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list*'
+        );
+        await page.goto(`${suitePathPrefix}/${encodeURIComponent(suiteFqn)}`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await listResponse;
+        await expect(page.getByTestId(matchName)).toBeVisible();
+        await expect(page.getByTestId(otherName)).toBeVisible();
       });
-      await listResponse;
-      await verifyBundleSuitePageLoaded(page, suiteFqn, 3);
-    });
 
-    await test.step('Select two test cases', async () => {
-      for (const name of removedNames) {
-        await testCaseRow(name).locator('label[slot="selection"]').click();
-      }
+      await test.step('Search shows only the matching test case', async () => {
+        const searchResponse = page.waitForResponse((response) => {
+          const responseUrl = new URL(response.url());
 
-      await expect(page.getByText('2 test case(s) selected')).toBeVisible();
-      await expect(
-        page.getByTestId('add-selected-to-bundle-suite')
-      ).not.toBeVisible();
-    });
+          return (
+            responseUrl.pathname.includes(
+              '/api/v1/dataQuality/testCases/search/list'
+            ) && responseUrl.searchParams.get('q') === upperCaseQuery
+          );
+        });
+        await page
+          .getByTestId('test-suite-test-case-search')
+          .fill(upperCaseQuery);
+        await searchResponse;
 
-    await test.step('Remove them from the suite', async () => {
-      await page.getByTestId('bulk-remove-test-cases').click();
-
-      const removeResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/logicalTestCases/bulk/remove') &&
-          response.request().method() === 'POST'
-      );
-      await page.getByRole('dialog').getByTestId('save-button').click();
-
-      expect((await removeResponse).status()).toBe(200);
-      await toastNotification(
-        page,
-        'Test cases were removed from the test suite successfully.'
-      );
-    });
-
-    await test.step('Only the unselected test case remains', async () => {
-      for (const name of removedNames) {
-        await expect(testCaseRow(name)).toHaveCount(0);
-      }
-      await expect(testCaseRow(keptName)).toHaveCount(1);
-      await expect(
-        page.getByTestId('test-cases').getByTestId('count')
-      ).toHaveText('1');
-      await expect(
-        page.getByTestId('bulk-remove-test-cases')
-      ).not.toBeVisible();
+        await expect(page.getByTestId(matchName)).toBeVisible();
+        await expect(page.getByTestId(otherName)).toHaveCount(0);
+      });
     });
   });
-});
+}
+
+for (const { label, suitePathPrefix, openApp } of SUITE_APP_MODES) {
+  test.describe(`Bulk remove test cases from a bundle suite (${label} mode)`, () => {
+    let bulkRemoveTable: TableClass;
+    let bulkRemoveSuite: BundleTestSuiteClass;
+    let testCaseNames: string[];
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      bulkRemoveTable = new TableClass();
+      bulkRemoveSuite = new BundleTestSuiteClass();
+      await bulkRemoveTable.create(apiContext);
+      const testCases = [
+        await bulkRemoveTable.createTestCase(apiContext),
+        await bulkRemoveTable.createTestCase(apiContext),
+        await bulkRemoveTable.createTestCase(apiContext),
+      ];
+      testCaseNames = testCases.map((testCase) => testCase.name as string);
+      await bulkRemoveSuite.createBundleTestSuite(apiContext);
+      const addResponse = await bulkRemoveSuite.addTestCases(
+        apiContext,
+        testCases.map((testCase) => testCase.id as string)
+      );
+      expect(addResponse.status()).toBe(200);
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await bulkRemoveSuite.delete(apiContext);
+      await bulkRemoveTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('removes the selected test cases and keeps the rest', async ({
+      page,
+    }) => {
+      const suiteFqn =
+        bulkRemoveSuite.bundleTestSuiteResponseData.fullyQualifiedName ?? '';
+      const [keptName, ...removedNames] = testCaseNames;
+      const testCaseTable = page.getByTestId('test-case-table');
+      const testCaseRow = (name: string) =>
+        testCaseTable.locator('tbody tr[data-key]').filter({ hasText: name });
+
+      await test.step('Open the bundle suite', async () => {
+        await openApp(page);
+        const listResponse = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list*'
+        );
+        await page.goto(`${suitePathPrefix}/${encodeURIComponent(suiteFqn)}`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await listResponse;
+        await verifyBundleSuitePageLoaded(page, suiteFqn, 3);
+      });
+
+      await test.step('Select two test cases', async () => {
+        // Measured against the search box, which sits in the same header row as
+        // the selection bar, so page scrolling does not affect the offset.
+        const searchBox = page.getByTestId('test-suite-test-case-search');
+        const rowOffsetFromSearch = async () => {
+          const [row, search] = await Promise.all([
+            testCaseRow(keptName).boundingBox(),
+            searchBox.boundingBox(),
+          ]);
+
+          if (!row || !search) {
+            throw new Error('The row or the search box has no bounding box');
+          }
+
+          return row.y - search.y;
+        };
+        const offsetBeforeSelection = await rowOffsetFromSearch();
+
+        for (const name of removedNames) {
+          await testCaseRow(name).locator('label[slot="selection"]').click();
+        }
+
+        await expect(page.getByText('2 test case(s) selected')).toBeVisible();
+        await expect(
+          page.getByTestId('add-selected-to-bundle-suite')
+        ).not.toBeVisible();
+        // The bar joins the header row instead of inserting a row above the
+        // table, so selecting must not push the rows down.
+        expect(await rowOffsetFromSearch()).toBe(offsetBeforeSelection);
+      });
+
+      await test.step('Remove them from the suite', async () => {
+        await page.getByTestId('bulk-remove-test-cases').click();
+
+        const confirmButton = page
+          .getByRole('dialog')
+          .getByTestId('save-button');
+
+        await expect(confirmButton).toHaveClass(/tw:bg-error-solid/);
+
+        const removeResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/logicalTestCases/bulk/remove') &&
+            response.request().method() === 'POST'
+        );
+        await confirmButton.click();
+
+        expect((await removeResponse).status()).toBe(200);
+        await toastNotification(
+          page,
+          'Test cases were removed from the test suite successfully.'
+        );
+      });
+
+      await test.step('Only the unselected test case remains', async () => {
+        for (const name of removedNames) {
+          await expect(testCaseRow(name)).toHaveCount(0);
+        }
+        await expect(testCaseRow(keptName)).toHaveCount(1);
+        // The badge renders differently per mode; anchor on the trailing count.
+        await expect(page.getByTestId('test-cases')).toHaveText(/(^|\D)1$/);
+        await expect(
+          page.getByTestId('bulk-remove-test-cases')
+        ).not.toBeVisible();
+      });
+    });
+  });
+}

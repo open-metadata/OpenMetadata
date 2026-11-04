@@ -13,6 +13,10 @@
 
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import {
+  APP_MODE_SIDEBAR_DEFAULT_NAV_KEYS,
+  COLLATE_APP_MODE_SIDEBAR_DEFAULT_VISIBLE_NAV_KEYS,
+} from '../../../constant/sidebar';
 import { installServerLoadReducers } from '../../../support/fixtures/serverLoad';
 import { test as base } from '../../../support/fixtures/userPages';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
@@ -133,19 +137,7 @@ const saveAppModeSidebarCustomization = async (page: Page) => {
   );
 };
 
-// The OSS modules in `navOrder`. All of them fit within the default visible
-// count, so the default layout renders every one directly and nothing under
-// "More".
-const DEFAULT_NAV_KEYS = [
-  'home',
-  'explore',
-  'lineage',
-  'connections',
-  'observability',
-  'govern',
-  'marketplace',
-  'context-center',
-];
+const IS_OSS = Boolean(process.env.PLAYWRIGHT_IS_OSS);
 
 const toNavigationItem = (id: string) => ({
   id,
@@ -169,9 +161,9 @@ const seedSidebarWithContextCenterUnderMore = async (
       entityType: 'Page',
       data: {
         askCollateSidebar: [
-          ...DEFAULT_NAV_KEYS.filter((key) => key !== 'context-center').map(
-            toNavigationItem
-          ),
+          ...APP_MODE_SIDEBAR_DEFAULT_NAV_KEYS.filter(
+            (key) => key !== 'context-center'
+          ).map(toNavigationItem),
           {
             ...toNavigationItem('more'),
             children: [toNavigationItem('context-center')],
@@ -215,10 +207,11 @@ test.describe(
       });
     });
 
-    // The empty default "More" group renders no trigger. This locks the
-    // shipped default order/visibility; the editor -> live round-trip is
-    // covered by the hide tests, and the tree serialization by the Jest specs.
-    test('the default persona sidebar shows every default item visible in order, with no More trigger', async ({
+    // In OSS the default "More" group is empty and renders no trigger; Collate
+    // overflows into it. This locks the shipped default order/visibility; the
+    // editor -> live round-trip is covered by the hide tests, and the tree
+    // serialization by the Jest specs.
+    test('the default persona sidebar shows the default visible items in order', async ({
       userPage,
     }) => {
       test.slow();
@@ -237,8 +230,14 @@ test.describe(
           )
         );
 
-      expect(visibleItemKeys).toEqual(DEFAULT_NAV_KEYS);
-      await expect(userPage.getByTestId('ask-nav-item-more')).toHaveCount(0);
+      expect(visibleItemKeys).toEqual(
+        IS_OSS
+          ? APP_MODE_SIDEBAR_DEFAULT_NAV_KEYS
+          : COLLATE_APP_MODE_SIDEBAR_DEFAULT_VISIBLE_NAV_KEYS
+      );
+      await expect(userPage.getByTestId('ask-nav-item-more')).toHaveCount(
+        IS_OSS ? 0 : 1
+      );
     });
 
     // The "More" node is a normal, hideable item. Hiding it removes the whole

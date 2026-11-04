@@ -16,3 +16,51 @@
     list-style: auto;
   }
 }
+
+// RapiDoc derives its palette from hex attributes once, in JS, and writes it
+// to `:host { --bg: … }` inside its shadow root. A declaration on the host
+// element from the outer document wins over `:host`, so these mappings retheme
+// it from the app tokens and follow .dark-mode without a re-render.
+#doc-container rapi-doc {
+  --font-regular: var(--tw-font-body);
+  --font-mono: var(--tw-font-mono);
+
+  --bg: var(--tw-color-bg-primary);
+  --bg2: var(--tw-color-bg-secondary);
+  --bg3: var(--tw-color-bg-tertiary);
+  --light-bg: var(--tw-color-bg-quaternary);
+  --fg: var(--tw-color-text-primary);
+  --fg2: var(--tw-color-text-secondary);
+  --fg3: var(--tw-color-text-tertiary);
+  --light-fg: var(--tw-color-text-quaternary);
+  --selection-bg: var(--tw-color-text-secondary);
+  --selection-fg: var(--tw-color-bg-secondary);
+
+  --border-color: var(--tw-color-border-primary);
+  --light-border-color: var(--tw-color-border-secondary);
+  --code-border-color: var(--tw-color-border-secondary);
+  --input-bg: var(--tw-color-bg-primary);
+  --placeholder-color: var(--tw-color-text-placeholder);
+  --hover-color: var(--tw-color-bg-primary_hover);
+
+  --light-red: var(--tw-color-utility-error-50);
+  --light-pink: var(--tw-color-utility-pink-50);
+  --light-green: var(--tw-color-utility-success-50);
+  --light-blue: var(--tw-color-utility-blue-50);
+  --light-orange: var(--tw-color-utility-orange-50);
+  --light-yellow: var(--tw-color-utility-warning-50);
+
+  --nav-bg-color: var(--tw-color-bg-secondary);
+  --nav-text-color: var(--tw-color-text-secondary);
+  --nav-hover-bg-color: var(--tw-color-bg-primary_hover);
+  --nav-hover-text-color: var(--tw-color-text-primary);
+  --nav-accent-color: var(--tw-color-bg-brand-solid);
+  --nav-accent-text-color: var(--tw-color-text-primary_on-brand);
+
+  --code-bg: var(--tw-color-bg-secondary);
+  --code-fg: var(--tw-color-text-secondary);
+  --inline-code-fg: var(--tw-color-utility-pink-700);
+  --code-property-color: var(--tw-color-utility-pink-600);
+  --code-keyword-color: var(--tw-color-utility-blue-600);
+  --code-operator-color: var(--tw-color-utility-orange-600);
+}
