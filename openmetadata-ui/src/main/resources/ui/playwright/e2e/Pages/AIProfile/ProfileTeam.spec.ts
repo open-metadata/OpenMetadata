@@ -235,13 +235,17 @@ test.describe('AI Profile Team Detail', () => {
   }) => {
     const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
-    await openCreatedTeam(page, team);
-
-    const teamUsers = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/users?')
+    // A Group team has no Teams tab, so the detail opens on Users and fetches
+    // them on mount — listen before navigating or the response is missed.
+    const teamUsers = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users?') &&
+        new URL(response.url()).searchParams.get('team') ===
+          team.responseData.name
     );
-    await openTeamTab(page, /Users/);
+    await openCreatedTeam(page, team);
     await teamUsers;
+    await expect(page.getByTestId('team-users-table')).toBeVisible();
 
     await addUserToTeam(
       page,
@@ -658,7 +662,9 @@ test.describe('AI Profile Team Detail', () => {
       const team = await makeTeam(apiContext);
       await openCreatedTeam(page, team);
 
-      const tab = page.getByRole('tab', { name: /Custom Properties/ });
+      const tab = page
+        .getByTestId('team-detail')
+        .getByRole('tab', { name: /Custom Properties/ });
 
       await expect(tab).toBeVisible();
 
