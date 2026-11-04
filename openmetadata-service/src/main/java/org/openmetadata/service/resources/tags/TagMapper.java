@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.tags;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
+import static org.openmetadata.service.util.EntityUtil.getEntityReferenceByName;
 
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -14,7 +15,8 @@ public class TagMapper implements EntityMapper<Tag, CreateTag> {
     return copy(new Tag(), create, user)
         .withStyle(create.getStyle())
         .withParent(getEntityReference(TAG, create.getParent()))
-        .withClassification(getEntityReference(CLASSIFICATION, create.getClassification()))
+        // Resolved here, so the create is authorized against the stored classification
+        .withClassification(getEntityReferenceByName(CLASSIFICATION, create.getClassification()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive())
         .withRecognizers(create.getRecognizers())

@@ -1,0 +1,3 @@
+-- The MySQL user-name indexes of the MCP grant tables are added by the 2.0.9 Java migration, see
+-- org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes and
+-- ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration.
