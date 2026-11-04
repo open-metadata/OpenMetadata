@@ -119,6 +119,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PolicyDeniedException;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -311,14 +312,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   protected abstract void createEntity(CSVPrinter resultsPrinter, List<CSVRecord> csvRecords)
       throws IOException;
 
-  /**
-   * Authorizes one imported row against the entity it targets, with the check a direct create or
-   * update of that entity faces. Called by both {@code createEntity} overloads once the stored
-   * match has been resolved and before rules and preparation run, so an unauthorized row fails like
-   * any other row error. Entity types whose import needs no per-row authorization keep the default
-   * no-op; entity types whose rows can name entities beyond the one the import endpoint was
-   * authorized against must override it.
-   */
+  /** Additional entity-specific checks before the shared row-target check and preparation. */
   protected void authorizeRow(T original, T entity) {}
 
   public final String exportCsv(T entity) throws IOException {
@@ -1536,6 +1530,11 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     }
   }
 
+  /** Only successful preceding rows can supply an unpersisted authorization destination. */
+  protected final EntityInterface<?> getCreatedEntity(String fqn) {
+    return createdByImport.get(createdKey(fqn));
+  }
+
   // Column rows are written as one PATCH of their table, so they are checked as that PATCH. A table
   // this import created was authorized with its columns; another type with the same FQN was not.
   private void authorizeColumnPatch(TableUpdateContext context, Supplier<JsonPatch> patch) {
@@ -1547,8 +1546,12 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     }
   }
 
-  private void authorize(OperationContext operation, ResourceContextInterface resource) {
-    importAuthorizer().authorizeActor(ChangeActor.recorded(importedBy, null), operation, resource);
+  protected final void authorize(OperationContext operation, ResourceContextInterface resource) {
+    importAuthorizer()
+        .authorizeActor(
+            ChangeActor.recorded(importedBy, ImpersonationContext.getImpersonatedBy()),
+            operation,
+            resource);
   }
 
   private Authorizer importAuthorizer() {

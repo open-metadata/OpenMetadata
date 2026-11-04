@@ -90,8 +90,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.metrics.MetricResource;
-import org.openmetadata.service.security.ChangeActor;
-import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -702,43 +700,18 @@ public class MetricRepository extends EntityRepository<Metric> {
       super(METRIC, HEADERS, user);
     }
 
-    /**
-     * A row may name any metric, not just the one the import path was authorized against, so each
-     * row takes the checks a direct write of its target faces: EditAll on the stored metric for an
-     * update, Create for a new one, and — when the row moves the metric in the hierarchy — EditAll
-     * on the subtree being moved and on each new parent/metric group destination, exactly what
-     * POST, PUT and PATCH authorize. Without this, an owner of one metric could rewrite every other
-     * metric, and a domain-confined user could write metrics outside their domains, through an
-     * import that PATCH and POST would refuse.
-     */
     @Override
     protected void authorizeRow(Metric original, Metric entity) {
-      MetricRepository repository = (MetricRepository) Entity.getEntityRepository(METRIC);
-      if (original == null) {
-        authorizeRowTarget(
-            new OperationContext(METRIC, MetadataOperation.CREATE),
-            new CreateResourceContext<>(METRIC, entity));
-      } else {
-        // By id, not by the pre-resolved match: findMatchForImport returns the entity without
-        // relationship fields, and a pre-resolved ResourceContext never re-loads them, so
-        // domain-conditioned rules would see no domains and fail open. The id-based context
-        // resolves itself with the bounded security attributes the policy engine expects.
-        authorizeRowTarget(
-            new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
-            new ResourceContext<>(METRIC, original.getId(), original.getFullyQualifiedName()));
+      if (!checksRowWrites()) {
+        return;
       }
-      authorizeHierarchyChange(repository, original, entity);
-    }
-
-    // Through the configured authorizer, as the import's domain check is, so a deployment that
-    // replaces it (e.g. NoopAuthorizer) decides row writes the same way it decides the request.
-    private void authorizeRowTarget(OperationContext operation, ResourceContextInterface resource) {
-      Entity.getAuthorizer()
-          .authorizeActor(ChangeActor.recorded(importedBy, null), operation, resource);
+      authorizeHierarchyChange(
+          (MetricRepository) Entity.getEntityRepository(METRIC), original, entity);
     }
 
     private void authorizeHierarchyChange(
         MetricRepository repository, Metric original, Metric entity) {
+      resolveImportHierarchy(entity);
       // The stored match carries no relationship fields (findMatchForImport returns the storage
       // JSON without parent/metricGroup), so comparing against it would treat every membership as
       // changed: a row clearing an existing parent would skip the subtree checks a PATCH move
@@ -755,17 +728,51 @@ public class MetricRepository extends EntityRepository<Metric> {
       }
       if (stored != null) {
         for (EntityReference metric : repository.hierarchySubtree(stored.getId())) {
-          authorizeRowTarget(
+          authorize(
               new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
               new ResourceContext<>(METRIC, metric.getId(), metric.getFullyQualifiedName()));
         }
       }
       for (EntityReference destination : hierarchyDestinations(stored, entity)) {
-        authorizeRowTarget(
+        authorize(
             new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
-            new ResourceContext<>(
-                destination.getType(), destination.getId(), destination.getFullyQualifiedName()));
+            destinationContext(repository, destination));
       }
+    }
+
+    private void resolveImportHierarchy(Metric entity) {
+      if (entity.getParent() != null) {
+        Metric parent = importParent(entity.getParent().getFullyQualifiedName());
+        entity.setParent(parent.getEntityReference());
+        entity.setMetricGroup(
+            effectiveHierarchyGroup(
+                entity.getParent(), entity.getMetricGroup(), parent.getMetricGroup()));
+      }
+    }
+
+    private Metric importParent(String fqn) {
+      if (Boolean.TRUE.equals(importResult.getDryRun())
+          && getCreatedEntity(fqn) instanceof Metric pending) {
+        return pending;
+      }
+      return getEntityWithDependencyResolution(METRIC, fqn, FIELD_METRIC_GROUP, NON_DELETED);
+    }
+
+    private ResourceContextInterface destinationContext(
+        MetricRepository repository, EntityReference destination) {
+      if (Boolean.TRUE.equals(importResult.getDryRun())
+          && METRIC.equals(destination.getType())
+          && getCreatedEntity(destination.getFullyQualifiedName()) instanceof Metric pending) {
+        return new ResourceContext<>(METRIC, pending, repository) {
+          @Override
+          public List<TagLabel> getTags() {
+            // Reloading tags would erase a dry-run parent's policy attributes: it is not stored.
+            return Entity.getEntityTags(METRIC, pending);
+          }
+        };
+      }
+      return new ResourceContext<>(
+          destination.getType(), destination.getId(), destination.getFullyQualifiedName());
     }
 
     @Override

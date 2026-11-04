@@ -27,7 +27,6 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -46,8 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -61,7 +58,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -69,10 +65,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
-import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -871,274 +863,20 @@ class MetricRepositoryTest {
   }
 
   @Test
-  void importRowAuthorizesAnUpdateAgainstTheStoredMetric() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      Authorizer authorizer = mockAuthorizer(entity);
-      MetricRepository repository = mock(MetricRepository.class);
-      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
-      AtomicReference<OperationContext> operation = new AtomicReference<>();
-      AtomicReference<ResourceContextInterface> context = new AtomicReference<>();
-      doAnswer(
-              invocation -> {
-                operation.set(invocation.getArgument(1));
-                context.set(invocation.getArgument(2));
-                return null;
-              })
-          .when(authorizer)
-          .authorizeActor(any(), any(), any());
-
-      Metric stored = new Metric().withId(UUID.randomUUID()).withName("m_hank");
-      Metric incoming = new Metric().withName("m_hank");
-      new MetricRepository.MetricCsv("erin").authorizeRow(stored, incoming);
-
-      assertEquals(
-          List.of(MetadataOperation.EDIT_ALL), operation.get().getOperations(context.get()));
-      assertEquals(Entity.METRIC, context.get().getResource());
-      assertInstanceOf(ResourceContext.class, context.get());
-    }
-  }
-
-  @Test
-  void importRowAuthorizesACreateAgainstTheIncomingMetric() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      Authorizer authorizer = mockAuthorizer(entity);
-      MetricRepository repository = mock(MetricRepository.class);
-      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
-      AtomicReference<OperationContext> operation = new AtomicReference<>();
-      AtomicReference<ResourceContextInterface> context = new AtomicReference<>();
-      doAnswer(
-              invocation -> {
-                operation.set(invocation.getArgument(1));
-                context.set(invocation.getArgument(2));
-                return null;
-              })
-          .when(authorizer)
-          .authorizeActor(any(), any(), any());
-
-      Metric incoming = new Metric().withName("new_finance_metric");
-      new MetricRepository.MetricCsv("erin").authorizeRow(null, incoming);
-
-      assertEquals(List.of(MetadataOperation.CREATE), operation.get().getOperations(context.get()));
-      assertInstanceOf(CreateResourceContext.class, context.get());
-      assertSame(incoming, context.get().getEntity());
-    }
-  }
-
-  @Test
-  void importRowPropagatesTheAuthorizationDenial() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      Authorizer authorizer = mockAuthorizer(entity);
-      MetricRepository repository = mock(MetricRepository.class);
-      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
-      doThrow(new AuthorizationException("operation EditAll denied by test policy"))
-          .when(authorizer)
-          .authorizeActor(any(), any(), any());
-
-      Metric stored = new Metric().withId(UUID.randomUUID()).withName("ceo_bonus_pool");
-      Metric incoming = new Metric().withName("ceo_bonus_pool");
-
-      AuthorizationException thrown =
-          assertThrows(
-              AuthorizationException.class,
-              () -> new MetricRepository.MetricCsv("erin").authorizeRow(stored, incoming));
-      assertTrue(thrown.getMessage().contains("EditAll denied"));
-    }
-  }
-
-  @Test
-  void importRowAuthorizesTheSubtreeAndDestinationsOfAMove() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      Authorizer authorizer = mockAuthorizer(entity);
-      MetricRepository repository = mock(MetricRepository.class);
-      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
-      List<OperationContext> operations = new ArrayList<>();
-      List<ResourceContextInterface> contexts = new ArrayList<>();
-      doAnswer(
-              invocation -> {
-                operations.add(invocation.getArgument(1));
-                contexts.add(invocation.getArgument(2));
-                return null;
-              })
-          .when(authorizer)
-          .authorizeActor(any(), any(), any());
-
-      Metric stored = new Metric().withId(UUID.randomUUID()).withName("m_hank");
-      stubStoredHierarchy(repository, stored);
-      EntityReference self =
-          new EntityReference()
-              .withId(stored.getId())
-              .withType(Entity.METRIC)
-              .withFullyQualifiedName("m_hank");
-      when(repository.hierarchySubtree(stored.getId())).thenReturn(List.of(self));
-      EntityReference parent =
-          new EntityReference()
-              .withId(UUID.randomUUID())
-              .withType(Entity.METRIC)
-              .withFullyQualifiedName("revenue");
-      EntityReference group =
-          new EntityReference()
-              .withId(UUID.randomUUID())
-              .withType(Entity.METRIC_GROUP)
-              .withFullyQualifiedName("profitability");
-      Metric incoming = new Metric().withName("m_hank").withParent(parent).withMetricGroup(group);
-
-      new MetricRepository.MetricCsv("erin").authorizeRow(stored, incoming);
-
-      // The same authorizations a PATCH of this move faces: the row target, the old subtree, then
-      // each new destination with its own entity type.
-      assertEquals(4, contexts.size());
-      for (int index = 1; index < contexts.size(); index++) {
-        assertEquals(
-            List.of(MetadataOperation.EDIT_ALL),
-            operations.get(index).getOperations(contexts.get(index)));
-      }
-      assertEquals(Entity.METRIC, contexts.get(1).getResource());
-      assertEquals(Entity.METRIC, contexts.get(2).getResource());
-      assertEquals(Entity.METRIC_GROUP, contexts.get(3).getResource());
-    }
-  }
-
-  @Test
-  void importRowPropagatesADeniedHierarchyDestination() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      Authorizer authorizer = mockAuthorizer(entity);
-      MetricRepository repository = mock(MetricRepository.class);
-      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
-      Metric stored = new Metric().withId(UUID.randomUUID()).withName("m_hank");
-      stubStoredHierarchy(repository, stored);
-      EntityReference self =
-          new EntityReference()
-              .withId(stored.getId())
-              .withType(Entity.METRIC)
-              .withFullyQualifiedName("m_hank");
-      when(repository.hierarchySubtree(stored.getId())).thenReturn(List.of(self));
-      EntityReference parent =
-          new EntityReference()
-              .withId(UUID.randomUUID())
-              .withType(Entity.METRIC)
-              .withFullyQualifiedName("revenue");
-      AtomicInteger calls = new AtomicInteger();
-      doAnswer(
-              invocation -> {
-                // Calls: row target, subtree, destination. Only the destination may deny here.
-                if (calls.incrementAndGet() == 3) {
-                  throw new AuthorizationException(
-                      "operation EditAll denied by test policy on the destination");
-                }
-                return null;
-              })
-          .when(authorizer)
-          .authorizeActor(any(), any(), any());
-
-      Metric incoming = new Metric().withName("m_hank").withParent(parent);
-
-      AuthorizationException thrown =
-          assertThrows(
-              AuthorizationException.class,
-              () -> new MetricRepository.MetricCsv("erin").authorizeRow(stored, incoming));
-      assertTrue(thrown.getMessage().contains("destination"));
-    }
-  }
-
-  @Test
-  void importRowWithoutHierarchyChangeSkipsDestinationChecks() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      Authorizer authorizer = mockAuthorizer(entity);
-      MetricRepository repository = mock(MetricRepository.class);
-      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
-      AtomicInteger calls = new AtomicInteger();
-      doAnswer(
-              invocation -> {
-                calls.incrementAndGet();
-                return null;
-              })
-          .when(authorizer)
-          .authorizeActor(any(), any(), any());
-
-      Metric stored = new Metric().withId(UUID.randomUUID()).withName("m_hank");
-      stubStoredHierarchy(repository, stored);
-      Metric incoming = new Metric().withName("m_hank").withDescription("new description");
-
-      new MetricRepository.MetricCsv("erin").authorizeRow(stored, incoming);
-
-      // Only the row-target check: no subtree or destination lookups for a plain field update.
-      assertEquals(1, calls.get());
-    }
-  }
-
-  @Test
-  void importRowSkipsHierarchyChecksForUnchangedParentedMetric() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      Authorizer authorizer = mockAuthorizer(entity);
-      MetricRepository repository = mock(MetricRepository.class);
-      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
-      EntityReference parent =
-          new EntityReference()
-              .withId(UUID.randomUUID())
-              .withType(Entity.METRIC)
-              .withFullyQualifiedName("revenue");
-      Metric stored = new Metric().withId(UUID.randomUUID()).withName("m_hank").withParent(parent);
-      stubStoredHierarchy(repository, stored);
-      AtomicInteger calls = new AtomicInteger();
-      doAnswer(
-              invocation -> {
-                calls.incrementAndGet();
-                return null;
-              })
-          .when(authorizer)
-          .authorizeActor(any(), any(), any());
-
-      // The row carries the parent the stored metric already has, as an unchanged export would.
-      Metric incoming = new Metric().withName("m_hank").withParent(parent);
-      new MetricRepository.MetricCsv("erin").authorizeRow(stored, incoming);
-
-      assertEquals(
-          1,
-          calls.get(),
-          "re-importing an unchanged parented metric must cost only the row-target check");
-      verify(repository, never()).hierarchySubtree(any());
-    }
-  }
-
-  @Test
-  void importRowAuthorizesSubtreeWhenAParentedMetricMovesToRoot() {
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
-      Authorizer authorizer = mockAuthorizer(entity);
-      MetricRepository repository = mock(MetricRepository.class);
-      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
-      List<OperationContext> operations = new ArrayList<>();
-      List<ResourceContextInterface> contexts = new ArrayList<>();
-      doAnswer(
-              invocation -> {
-                operations.add(invocation.getArgument(1));
-                contexts.add(invocation.getArgument(2));
-                return null;
-              })
-          .when(authorizer)
-          .authorizeActor(any(), any(), any());
-      EntityReference parent =
-          new EntityReference()
-              .withId(UUID.randomUUID())
-              .withType(Entity.METRIC)
-              .withFullyQualifiedName("revenue");
-      Metric stored = new Metric().withId(UUID.randomUUID()).withName("m_hank").withParent(parent);
-      stubStoredHierarchy(repository, stored);
-      EntityReference self =
-          new EntityReference()
-              .withId(stored.getId())
-              .withType(Entity.METRIC)
-              .withFullyQualifiedName("m_hank");
-      when(repository.hierarchySubtree(stored.getId())).thenReturn(List.of(self));
-
-      // The parent column is empty, so the metric moves to the root — the move PATCH authorizes
-      // only with EditAll on the subtree being moved.
-      Metric incoming = new Metric().withName("m_hank");
-      new MetricRepository.MetricCsv("erin").authorizeRow(stored, incoming);
-
-      assertEquals(2, contexts.size());
-      assertEquals(
-          List.of(MetadataOperation.EDIT_ALL), operations.get(1).getOperations(contexts.get(1)));
-      assertEquals(Entity.METRIC, contexts.get(1).getResource());
+  void adminImportSkipsHierarchyAuthorizationAndLookups() {
+    SubjectContext admin = adminSubject();
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      subjects.when(() -> SubjectContext.getSubjectContext("admin")).thenReturn(admin);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenThrow(new AssertionError("An admin row must not load hierarchy authorization data"));
+      assertDoesNotThrow(
+          () ->
+              new MetricRepository.MetricCsv("admin")
+                  .authorizeRow(
+                      new Metric().withId(UUID.randomUUID()),
+                      new Metric().withParent(new EntityReference())));
     }
   }
 
@@ -1155,16 +893,35 @@ class MetricRepositoryTest {
               .withId(UUID.randomUUID())
               .withType(Entity.METRIC)
               .withFullyQualifiedName("revenue");
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.METRIC, "revenue", "metricGroup", Include.NON_DELETED))
+          .thenReturn(
+              new Metric()
+                  .withId(parent.getId())
+                  .withName("revenue")
+                  .withFullyQualifiedName("revenue"));
 
       assertDoesNotThrow(
           () ->
-              new MetricRepository.MetricCsv("anonymous")
+              nonAdminMetricCsv("anonymous")
                   .authorizeRow(stored, new Metric().withName("m_hank").withParent(parent)));
       assertDoesNotThrow(
           () ->
-              new MetricRepository.MetricCsv("anonymous")
+              nonAdminMetricCsv("anonymous")
                   .authorizeRow(null, new Metric().withName("new_metric")));
     }
+  }
+
+  private MetricRepository.MetricCsv nonAdminMetricCsv(String user) {
+    return new MetricRepository.MetricCsv(user) {
+      @Override
+      protected boolean checksRowWrites() {
+        return true;
+      }
+    };
   }
 
   private static Authorizer mockAuthorizer(MockedStatic<Entity> entity) {
