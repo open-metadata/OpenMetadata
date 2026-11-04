@@ -60,6 +60,7 @@ def test_filter_without_configured_pattern_keeps_nameless_entities():
     assert _filter(FilterPattern(excludes=["^tomato$"]), "")
     assert not filter_by_project(FilterPattern(includes=[], excludes=[]), None)
 
+
 def test_filter_server_compatible_no_pattern_keeps_everything():
     assert _filter_server_compatible(None, "anything") is False
     assert _filter_server_compatible(FilterPattern(), "anything") is False
