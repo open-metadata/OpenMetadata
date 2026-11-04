@@ -14,7 +14,7 @@ import { isNodeSelection, type Editor } from '@tiptap/core';
 import {
   BubbleMenu as CoreBubbleMenu,
   BubbleMenuProps as CoreBubbleMenuProps,
-} from '@tiptap/react';
+} from '@tiptap/react/menus';
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
