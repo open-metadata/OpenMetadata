@@ -635,7 +635,7 @@ public class MetricRepository extends EntityRepository<Metric> {
       throws IOException {
     List<Metric> metrics =
         "*".equals(name)
-            ? listAll(getFields("*"), new ListFilter(NON_DELETED))
+            ? retainViewableForExport(listAll(getFields("*"), new ListFilter(NON_DELETED)), user)
             : List.of(getByName(null, name, getFields("*")));
     return new MetricCsv(user).exportCsv(metrics, callback);
   }

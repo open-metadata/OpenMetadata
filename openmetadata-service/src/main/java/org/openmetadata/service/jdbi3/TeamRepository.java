@@ -65,6 +65,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -131,6 +132,10 @@ public class TeamRepository extends EntityRepository<Team> {
       "profile,users,defaultRoles,defaultPersona,parents,children,policies,teamType,email,domains";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private static final String DEFAULT_PERSONA = "defaultPersona";
+  // A multi-parent team is listed under every parent while the hierarchy response stays within
+  // this many nodes per team (ADR:2026-11-03-a-team-with-several-parents-is-expanded-once).
+  private static final int HIERARCHY_NODES_PER_TEAM = 10;
+  private static final int MIN_HIERARCHY_NODES = 1000;
   private Team organization = null;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -615,14 +620,34 @@ public class TeamRepository extends EntityRepository<Team> {
     Team team = getByName(null, teamName, getFields("id,teamType"));
     validateAllRefUsers(request.getAssets());
     validateDirectUserAddition(team, request.getAssets());
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
+    BulkOperationResult result =
+        bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true, userName);
+    evictCachedSubjectsUnlessDryRun(request);
+    return result;
   }
 
   public BulkOperationResult bulkRemoveAssets(
       String teamName, BulkAssets request, String userName) {
     Team team = getByName(null, teamName, getFields("id"));
     validateAllRefUsers(request.getAssets());
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
+    BulkOperationResult result =
+        bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false, userName);
+    evictCachedSubjectsUnlessDryRun(request);
+    return result;
+  }
+
+  private static void evictCachedSubjectsUnlessDryRun(BulkAssets request) {
+    if (!Boolean.TRUE.equals(request.getDryRun())) {
+      evictCachedSubjects();
+    }
+  }
+
+  /**
+   * Members carry the team's policies, default roles and ownership through their cached subject, so
+   * every membership write drops it, as the team updater does for a change to users.
+   */
+  private static void evictCachedSubjects() {
+    UserRepository.evictNowAndAfterCommit(SubjectCache::invalidateAll);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {
@@ -995,10 +1020,49 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    return hierarchyMap.values().stream()
-        .filter(node -> !childIds.contains(node.getId()))
-        .sorted(Comparator.comparing(TeamHierarchy::getName))
-        .collect(Collectors.toList());
+    List<TeamHierarchy> roots =
+        hierarchyMap.values().stream()
+            .filter(node -> !childIds.contains(node.getId()))
+            .sorted(Comparator.comparing(TeamHierarchy::getName))
+            .toList();
+    long nodeBudget =
+        Math.max(MIN_HIERARCHY_NODES, (long) HIERARCHY_NODES_PER_TEAM * hierarchyMap.size());
+    return expandHierarchy(roots, nodeBudget);
+  }
+
+  /**
+   * Lists each team with its subtree under every parent until {@code nodeBudget} nodes are listed;
+   * after that a team already expanded elsewhere is listed without children.
+   */
+  static List<TeamHierarchy> expandHierarchy(List<TeamHierarchy> roots, long nodeBudget) {
+    AtomicLong remaining = new AtomicLong(nodeBudget);
+    Set<UUID> expanded = new HashSet<>();
+    return roots.stream().map(root -> expandNode(root, remaining, expanded)).toList();
+  }
+
+  private static TeamHierarchy expandNode(
+      TeamHierarchy node, AtomicLong remaining, Set<UUID> expanded) {
+    boolean withinBudget = remaining.decrementAndGet() > 0;
+    boolean firstExpansion = expanded.add(node.getId());
+    TeamHierarchy copy = copyWithoutChildren(node);
+    if (firstExpansion || withinBudget) {
+      listOrEmpty(node.getChildren())
+          .forEach(child -> copy.getChildren().add(expandNode(child, remaining, expanded)));
+    }
+    return copy;
+  }
+
+  private static TeamHierarchy copyWithoutChildren(TeamHierarchy node) {
+    return new TeamHierarchy()
+        .withId(node.getId())
+        .withTeamType(node.getTeamType())
+        .withName(node.getName())
+        .withDisplayName(node.getDisplayName())
+        .withHref(node.getHref())
+        .withFullyQualifiedName(node.getFullyQualifiedName())
+        .withIsJoinable(node.getIsJoinable())
+        .withChildren(new ArrayList<>())
+        .withDescription(node.getDescription());
   }
 
   private List<EntityReference> getUsers(Team team) {
@@ -1318,6 +1382,9 @@ public class TeamRepository extends EntityRepository<Team> {
         .ifPresent(
             ids ->
                 bulkRemoveToRelationship(teamId, ids, Entity.TEAM, Entity.USER, Relationship.HAS));
+    if (!addedUserIds.isEmpty() || !removedUserIds.isEmpty()) {
+      evictCachedSubjects();
+    }
     reindexMembership(team, Stream.concat(addedUserIds.stream(), removedUserIds.stream()).toList());
 
     setFieldsInternal(team, new EntityUtil.Fields(allowedFields, USERS_FIELD));
@@ -1350,6 +1417,7 @@ public class TeamRepository extends EntityRepository<Team> {
     EntityReference user = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED);
 
     deleteRelationship(teamId, Entity.TEAM, userId, Entity.USER, Relationship.HAS);
+    evictCachedSubjects();
     reindexMembership(team, List.of(userId));
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(team.getVersion());
@@ -1653,17 +1721,21 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     private List<Team> listTeams(
-        TeamRepository repository, String parentTeam, List<Team> teams, Fields fields) {
-      // Export the entire hierarchy of teams
+        TeamRepository repository,
+        String parentTeam,
+        List<Team> teams,
+        Set<UUID> visited,
+        Fields fields) {
+      // Export the entire hierarchy of teams, visiting each team once
       final ListFilter filter =
           new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
-      List<Team> list = repository.listAll(fields, filter);
-      if (nullOrEmpty(list)) {
-        return teams;
-      }
+      List<Team> list =
+          listOrEmpty(repository.listAll(fields, filter)).stream()
+              .filter(teamEntry -> visited.add(teamEntry.getId()))
+              .toList();
       teams.addAll(list);
       for (Team teamEntry : list) {
-        listTeams(repository, teamEntry.getFullyQualifiedName(), teams, fields);
+        listTeams(repository, teamEntry.getFullyQualifiedName(), teams, visited, fields);
       }
       return teams;
     }
@@ -1675,8 +1747,10 @@ public class TeamRepository extends EntityRepository<Team> {
     public String exportCsv(CsvExportProgressCallback callback) throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
-      return exportCsv(
-          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields), callback);
+      List<Team> teams =
+          listTeams(
+              repository, team.getFullyQualifiedName(), new ArrayList<>(), new HashSet<>(), fields);
+      return exportCsv(retainViewableForExport(teams, importedBy), callback);
     }
   }
 
@@ -2023,6 +2097,7 @@ public class TeamRepository extends EntityRepository<Team> {
       return;
     }
 
+    Set<String> explored = new HashSet<>();
     for (EntityReference parentRef : team.getParents()) {
       // 1. Self Check by Name (since ID might be new)
       if (parentRef.getName().equals(team.getName())) {
@@ -2035,7 +2110,8 @@ public class TeamRepository extends EntityRepository<Team> {
           team.getName(),
           parentRef.getName(),
           dryRunCreatedEntities,
-          new HashSet<>(Set.of(team.getName())));
+          new HashSet<>(Set.of(team.getName())),
+          explored);
     }
   }
 
@@ -2043,12 +2119,17 @@ public class TeamRepository extends EntityRepository<Team> {
       String originalTeamName,
       String currentParentName,
       Map<String, Team> dryRunMap,
-      Set<String> visited) {
+      Set<String> visited,
+      Set<String> explored) {
     if (visited.contains(currentParentName)) {
       throw new IllegalArgumentException(
           String.format(
               "Circular reference detected in CSV: Team '%s' participates in a loop involving '%s'.",
               originalTeamName, currentParentName));
+    }
+    // A parent reached again through another team has had its ancestors checked already
+    if (!explored.add(currentParentName)) {
+      return;
     }
     visited.add(currentParentName);
 
@@ -2058,14 +2139,14 @@ public class TeamRepository extends EntityRepository<Team> {
     if (parentTeamInCsv != null) {
       for (EntityReference grandParent : listOrEmpty(parentTeamInCsv.getParents())) {
         checkCircularReferenceInDryRun(
-            originalTeamName, grandParent.getName(), dryRunMap, new HashSet<>(visited));
+            originalTeamName, grandParent.getName(), dryRunMap, new HashSet<>(visited), explored);
       }
     } else {
       Team dbTeam = findByNameOrNull(currentParentName, Include.NON_DELETED);
       if (dbTeam != null) {
         for (EntityReference parent : listOrEmpty(dbTeam.getParents())) {
           checkCircularReferenceInDryRun(
-              originalTeamName, parent.getName(), dryRunMap, new HashSet<>(visited));
+              originalTeamName, parent.getName(), dryRunMap, new HashSet<>(visited), explored);
         }
       }
     }

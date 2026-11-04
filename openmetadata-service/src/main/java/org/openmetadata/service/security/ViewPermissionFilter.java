@@ -25,7 +25,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 /**
  * Decides which of many entity references the caller may {@link MetadataOperation#VIEW_BASIC}, for
  * responses that mix entities the caller asked about with others they did not: lineage neighbours,
- * activity feeds.
+ * activity feeds, the rows of a CSV export.
  *
  * <p>Each reference is checked with the same {@code authorize} call a direct read gets, so a
  * decision here can never diverge from one on the entity itself. {@code authorize} rather than
@@ -47,8 +47,6 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
  */
 @Slf4j
 public class ViewPermissionFilter {
-  private static final List<MetadataOperation> VIEW_BASIC = List.of(MetadataOperation.VIEW_BASIC);
-
   private final Authorizer authorizer;
 
   public ViewPermissionFilter(Authorizer authorizer) {
@@ -57,26 +55,30 @@ public class ViewPermissionFilter {
 
   /** Ids of the {@code references} the caller may view. Never throws. */
   public Set<UUID> viewableIds(SecurityContext securityContext, List<EntityReference> references) {
-    Set<UUID> viewable = new HashSet<>();
-    bucketByType(references)
-        .forEach((type, refs) -> addViewableFromBucket(securityContext, type, refs, viewable));
-    return viewable;
+    return viewableIds(requestCheck(securityContext, MetadataOperation.VIEW_BASIC), references);
+  }
+
+  /**
+   * Ids of the {@code references} {@code userName} may perform {@code operation} on, for work that
+   * runs without the request's security context (e.g. an asynchronous export). Never throws.
+   */
+  public Set<UUID> viewableIds(
+      String userName, MetadataOperation operation, List<EntityReference> references) {
+    AccessCheck check =
+        (reference, resource) ->
+            authorizer.authorizeActor(
+                ChangeActor.recorded(userName, null),
+                new OperationContext(reference.getType(), operation),
+                resource);
+    return viewableIds(check, references);
   }
 
   /** Whether the caller may view one reference. Never throws; anything but a clear allow denies. */
   public boolean canView(SecurityContext securityContext, EntityReference reference) {
-    if (reference == null || reference.getType() == null) {
-      return false;
-    }
-    ResourceContext<?> context;
-    try {
-      context = lazyContext(reference);
-    } catch (RuntimeException e) {
-      LOG.debug("Hiding reference {}: {}", reference.getId(), e.getMessage());
-      return false;
-    }
-    return authorizeQuietly(
-        securityContext, reference.getType(), VIEW_BASIC, reference.getId(), context);
+    return reference != null
+        && reference.getType() != null
+        && authorizeQuietly(
+            requestCheck(securityContext, MetadataOperation.VIEW_BASIC), reference, null);
   }
 
   /**
@@ -93,11 +95,13 @@ public class ViewPermissionFilter {
     if (rows.isEmpty()) {
       return rows;
     }
+    AccessCheck check = requestCheck(securityContext, operations.toArray(MetadataOperation[]::new));
     BulkFieldHydrator hydrator = tagHydrator(repository, rows);
     List<T> permitted = new ArrayList<>(rows.size());
     for (T row : rows) {
       ResourceContext<T> context = new ResourceContext<>(entityType, row, repository, hydrator);
-      if (authorizeQuietly(securityContext, entityType, operations, row.getId(), context)) {
+      if (authorizeQuietly(
+          check, new EntityReference().withId(row.getId()).withType(entityType), context)) {
         permitted.add(row);
       }
     }
@@ -114,15 +118,31 @@ public class ViewPermissionFilter {
       String resource,
       List<MetadataOperation> operations,
       ResourceContextInterface context) {
-    return authorizeQuietly(securityContext, resource, operations, resource, context);
+    return authorizeQuietly(
+        requestCheck(securityContext, operations.toArray(MetadataOperation[]::new)),
+        new EntityReference().withType(resource),
+        context);
+  }
+
+  private Set<UUID> viewableIds(AccessCheck check, List<EntityReference> references) {
+    Set<UUID> viewable = new HashSet<>();
+    bucketByType(references)
+        .forEach((type, refs) -> addViewableFromBucket(check, type, refs, viewable));
+    return viewable;
+  }
+
+  // OperationContext is stateful - it drops operations as they are satisfied - so each decision
+  // needs its own.
+  private AccessCheck requestCheck(
+      SecurityContext securityContext, MetadataOperation... operations) {
+    return (reference, resource) ->
+        authorizer.authorize(
+            securityContext, new OperationContext(reference.getType(), operations), resource);
   }
 
   /** One batch load and one hydrator per entity type, so cost scales with types, not references. */
   private <T extends EntityInterface<?>> void addViewableFromBucket(
-      SecurityContext securityContext,
-      String entityType,
-      List<EntityReference> refs,
-      Set<UUID> viewable) {
+      AccessCheck check, String entityType, List<EntityReference> refs, Set<UUID> viewable) {
     EntityRepository<T> repository = repositoryOrNull(entityType);
     if (repository == null) {
       return;
@@ -131,7 +151,7 @@ public class ViewPermissionFilter {
     BulkFieldHydrator hydrator = tagHydrator(repository, entities);
     for (T entity : entities) {
       ResourceContext<T> context = new ResourceContext<>(entityType, entity, repository, hydrator);
-      if (authorizeQuietly(securityContext, entityType, VIEW_BASIC, entity.getId(), context)) {
+      if (authorizeQuietly(check, entity.getEntityReference(), context)) {
         viewable.add(entity.getId());
       }
     }
@@ -178,24 +198,20 @@ public class ViewPermissionFilter {
    * caller's request.
    */
   private boolean authorizeQuietly(
-      SecurityContext securityContext,
-      String entityType,
-      List<MetadataOperation> operations,
-      Object checked,
-      ResourceContextInterface context) {
+      AccessCheck check, EntityReference reference, ResourceContextInterface resolved) {
     boolean viewable = false;
     try {
-      authorizer.authorize(
-          securityContext,
-          // OperationContext is stateful - it drops operations as they are satisfied - so each
-          // decision needs its own.
-          new OperationContext(entityType, operations.toArray(new MetadataOperation[0])),
-          context);
+      check.authorize(reference, resolved != null ? resolved : lazyContext(reference));
       viewable = true;
     } catch (RuntimeException e) {
-      LOG.debug("Hiding {}: {}", checked, e.getMessage());
+      LOG.debug("Hiding reference {}: {}", reference.getId(), e.getMessage());
     }
     return viewable;
+  }
+
+  @FunctionalInterface
+  private interface AccessCheck {
+    void authorize(EntityReference reference, ResourceContextInterface resource);
   }
 
   private static ResourceContext<?> lazyContext(EntityReference reference) {
