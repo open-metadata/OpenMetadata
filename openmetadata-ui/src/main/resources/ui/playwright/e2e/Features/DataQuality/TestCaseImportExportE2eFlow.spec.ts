@@ -25,7 +25,8 @@ import {
 } from '../../../utils/testCases';
 import { test as base } from '../../fixtures/pages';
 
-// Importing a new CSV row requires Create separately from editing existing rows.
+// A CSV import authorizes each row as its REST write, so the new rows this flow
+// imports need Create on testCase (ADR:2026-11-02-a-csv-import-authorizes-each-row-as-its-own-write).
 const TEST_CASE_EDIT_ALL_RULES = [
   {
     name: `test-case-e2e-edit-${uuid()}`,
