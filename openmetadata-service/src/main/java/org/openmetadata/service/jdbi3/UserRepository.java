@@ -83,6 +83,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -355,6 +356,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected User createNewEntity(User user) {
+    user.setProfile(ProfileWebhookSecrets.ofANewEntity(user.getProfile()));
+    return super.createNewEntity(user);
+  }
+
+  @Override
   protected boolean isStoragePreparationSideEffecting() {
     return true;
   }
@@ -386,7 +393,19 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void storeEntities(List<User> entities) {
-    storeMany(entities);
+    // A batch insert can be retried after a rollback, so the users keep what was submitted and
+    // copies carry the encrypted profile: a retry would read server ciphertext as submitted.
+    storeMany(entities.stream().map(UserRepository::withNewProfileEncrypted).toList());
+  }
+
+  private static User withNewProfileEncrypted(User user) {
+    User stored = JsonUtils.deepCopy(user, User.class);
+    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
+  }
+
+  @Override
+  protected User forChangeEvent(User entity) {
+    return ProfileWebhookSecrets.masked(entity);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -498,7 +517,14 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public EntityRepository<User>.EntityUpdater getUpdater(
       User original, User updated, Operation operation, ChangeSource changeSource) {
+    // Before the diff, so the change description and the stored row carry ciphertext only.
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new UserUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void validatePatch(User original, User updated, JsonPatch patch) {
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override
@@ -702,7 +728,7 @@ public class UserRepository extends EntityRepository<User> {
         getLoggedInUserByNameAndEmail(
             uriInfo, context.getUserPrincipal().getName(), email, Fields.EMPTY_FIELDS);
     List<EntityReference> teams = getTeams(user);
-    return getGroupTeams(teams);
+    return getGroupTeams(teams, new HashSet<>());
   }
 
   public User getLoggedInUserByNameAndEmail(
@@ -742,15 +768,18 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
+  private List<EntityReference> getGroupTeams(List<EntityReference> teams, Set<UUID> visited) {
     Set<EntityReference> result = new HashSet<>();
     for (EntityReference t : teams) {
+      if (!visited.add(t.getId())) {
+        continue;
+      }
       Team team = Entity.getEntity(Entity.TEAM, t.getId(), "teamType", Include.ALL);
       if (TeamType.GROUP.equals(team.getTeamType())) {
         result.add(t);
       } else {
         List<EntityReference> children = getTeamChildren(team.getId());
-        result.addAll(getGroupTeams(children));
+        result.addAll(getGroupTeams(children, visited));
       }
     }
     return new ArrayList<>(result);
@@ -1614,8 +1643,9 @@ public class UserRepository extends EntityRepository<User> {
         UserRepository userRepository,
         String parentTeam,
         List<User> users,
+        Set<UUID> visitedTeams,
         Fields fields) {
-      // Export the users by listing users for the entire team hierarchy
+      // Export the users by listing users for the entire team hierarchy, visiting each team once
       ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("team", parentTeam);
 
       // Add users for the given team
@@ -1627,7 +1657,10 @@ public class UserRepository extends EntityRepository<User> {
       filter = new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
       List<Team> teamList = teamRepository.listAll(Fields.EMPTY_FIELDS, filter);
       for (Team teamEntry : teamList) {
-        listUsers(teamRepository, userRepository, teamEntry.getName(), users, fields);
+        if (visitedTeams.add(teamEntry.getId())) {
+          listUsers(
+              teamRepository, userRepository, teamEntry.getName(), users, visitedTeams, fields);
+        }
       }
       return users;
     }
@@ -1636,8 +1669,15 @@ public class UserRepository extends EntityRepository<User> {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = userRepository.getFields("roles,teams");
-      return exportCsv(
-          listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields));
+      List<User> users =
+          listUsers(
+              teamRepository,
+              userRepository,
+              team.getName(),
+              new ArrayList<>(),
+              new HashSet<>(),
+              fields);
+      return exportCsv(retainViewableForExport(users, importedBy));
     }
 
     private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord csvRecord, String user)

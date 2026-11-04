@@ -17,6 +17,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v209.WorkflowRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
@@ -27,6 +28,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        McpGrantUserNameIndexes.STEP_NAME,
+        () -> McpGrantUserNameIndexes.addOnMySql(handle));
     // `migrate` runs data migrations before it starts Flowable, and this step deploys workflows.
     runOnce(
         migrationDAO,

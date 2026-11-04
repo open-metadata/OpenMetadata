@@ -345,6 +345,93 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testConfiguredLabelsAndAnnotationsOnCronOMJob() {
+    String podLabels = "app.kubernetes.io/instance=argocd-app,app.kubernetes.io/component=x";
+    String podAnnotations =
+        "argocd.argoproj.io/compare-options=IgnoreExtraneous,"
+            + "argocd.argoproj.io/sync-options=Prune=false";
+    K8sPipelineClient clientWithMetadata =
+        createClientWithParams(
+            Map.of(
+                "useOMJobOperator",
+                "true",
+                "podLabels",
+                podLabels,
+                "podAnnotations",
+                podAnnotations));
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    CronOMJob cronOMJob = clientWithMetadata.buildCronOMJob(pipeline);
+
+    Map<String, String> labels = cronOMJob.getMetadata().getLabels();
+    assertEquals("argocd-app", labels.get("app.kubernetes.io/instance"));
+    assertEquals("ingestion", labels.get("app.kubernetes.io/component"));
+    Map<String, String> annotations = cronOMJob.getMetadata().getAnnotations();
+    assertEquals("IgnoreExtraneous", annotations.get("argocd.argoproj.io/compare-options"));
+    assertEquals("Prune=false", annotations.get("argocd.argoproj.io/sync-options"));
+
+    OMJob.OMJobSpec omJobSpec = cronOMJob.getSpec().getOmJobSpec();
+    for (OMJob.OMJobPodSpec pod :
+        List.of(omJobSpec.getMainPodSpec(), omJobSpec.getExitHandlerSpec())) {
+      assertEquals("argocd-app", pod.getLabels().get("app.kubernetes.io/instance"));
+      assertEquals("ingestion", pod.getLabels().get("app.kubernetes.io/component"));
+      assertEquals(
+          "IgnoreExtraneous", pod.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    }
+  }
+
+  @Test
+  void testConfiguredLabelsAndAnnotationsOnPlainCronJobResources() throws Exception {
+    K8sPipelineClient plainClient =
+        createClientWithParams(
+            Map.of(
+                "useOMJobOperator",
+                "false",
+                "podLabels",
+                "app.kubernetes.io/instance=argocd-app",
+                "podAnnotations",
+                "argocd.argoproj.io/compare-options=IgnoreExtraneous"));
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    when(coreApi.readNamespacedConfigMap(any(), eq(NAMESPACE))).thenReturn(readConfigMapRequest);
+    when(readConfigMapRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedConfigMap(eq(NAMESPACE), any()))
+        .thenReturn(createConfigMapRequest);
+    when(createConfigMapRequest.execute()).thenReturn(new V1ConfigMap());
+    when(coreApi.readNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(readSecretRequest);
+    when(readSecretRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedSecret(eq(NAMESPACE), any())).thenReturn(createSecretRequest);
+    when(createSecretRequest.execute()).thenReturn(new V1Secret());
+    when(batchApi.readNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(readCronJobRequest);
+    when(readCronJobRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(batchApi.createNamespacedCronJob(eq(NAMESPACE), any())).thenReturn(createCronJobRequest);
+    when(createCronJobRequest.execute()).thenReturn(new V1CronJob());
+
+    plainClient.deployPipeline(pipeline, testService);
+
+    ArgumentCaptor<V1ConfigMap> configMapCaptor = ArgumentCaptor.forClass(V1ConfigMap.class);
+    ArgumentCaptor<V1Secret> secretCaptor = ArgumentCaptor.forClass(V1Secret.class);
+    ArgumentCaptor<V1CronJob> cronJobCaptor = ArgumentCaptor.forClass(V1CronJob.class);
+    verify(coreApi).createNamespacedConfigMap(eq(NAMESPACE), configMapCaptor.capture());
+    verify(coreApi).createNamespacedSecret(eq(NAMESPACE), secretCaptor.capture());
+    verify(batchApi).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
+
+    V1CronJob cronJob = cronJobCaptor.getValue();
+    List<V1ObjectMeta> allMetadata =
+        List.of(
+            configMapCaptor.getValue().getMetadata(),
+            secretCaptor.getValue().getMetadata(),
+            cronJob.getMetadata(),
+            cronJob.getSpec().getJobTemplate().getMetadata(),
+            cronJob.getSpec().getJobTemplate().getSpec().getTemplate().getMetadata());
+    for (V1ObjectMeta metadata : allMetadata) {
+      assertEquals("argocd-app", metadata.getLabels().get("app.kubernetes.io/instance"));
+      assertEquals(
+          "IgnoreExtraneous", metadata.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    }
+  }
+
+  @Test
   void testBuildCronOMJobWithCustomTimezone() {
     K8sPipelineClient clientWithOMJob = createClientWithUseOMJobOperator(true);
     IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
@@ -1265,6 +1352,51 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testConfiguredLabelsAndAnnotationsOnAutomationAndApplicationJobs() throws Exception {
+    K8sPipelineClient clientWithMetadata =
+        createClientWithParams(
+            Map.of(
+                "useOMJobOperator",
+                "false",
+                "podLabels",
+                "app.kubernetes.io/instance=argocd-app,app.kubernetes.io/component=x",
+                "podAnnotations",
+                "argocd.argoproj.io/compare-options=IgnoreExtraneous"));
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    clientWithMetadata.runAutomationsWorkflow(createTestWorkflow("Nightly Cleanup"));
+
+    ArgumentCaptor<V1Job> workflowJobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), workflowJobCaptor.capture());
+    assertConfiguredMetadataOnJobAndPod(workflowJobCaptor.getValue(), "automation");
+
+    reset(batchApi, createJobRequest);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    clientWithMetadata.runApplicationFlow(createTestApplication("Query Runner"));
+
+    ArgumentCaptor<V1Job> applicationJobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), applicationJobCaptor.capture());
+    assertConfiguredMetadataOnJobAndPod(applicationJobCaptor.getValue(), "application");
+  }
+
+  private static void assertConfiguredMetadataOnJobAndPod(V1Job job, String builtInComponent) {
+    for (V1ObjectMeta metadata :
+        List.of(job.getMetadata(), job.getSpec().getTemplate().getMetadata())) {
+      assertEquals("argocd-app", metadata.getLabels().get("app.kubernetes.io/instance"));
+      assertEquals(
+          builtInComponent,
+          metadata.getLabels().get("app.kubernetes.io/component"),
+          "a built-in label wins over the configured value for the same key");
+      assertEquals(
+          "IgnoreExtraneous", metadata.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    }
+  }
+
+  @Test
   void testRunAutomationAndApplicationFlowsSurfaceApiFailures() throws Exception {
     when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
     when(createJobRequest.execute()).thenThrow(new ApiException(500, "job create failed"));
@@ -1916,13 +2048,17 @@ class K8sPipelineClientTest {
   }
 
   private K8sPipelineClient createClientWithUseOMJobOperator(boolean enabled) {
+    return createClientWithParams(Map.of("useOMJobOperator", Boolean.toString(enabled)));
+  }
+
+  private K8sPipelineClient createClientWithParams(Map<String, String> extraParams) {
     Parameters params = new Parameters();
     params.setAdditionalProperty("namespace", NAMESPACE);
     params.setAdditionalProperty("inCluster", "false");
     params.setAdditionalProperty("skipInit", "true");
     params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
     params.setAdditionalProperty("serviceAccountName", "test-sa");
-    params.setAdditionalProperty("useOMJobOperator", Boolean.toString(enabled));
+    extraParams.forEach(params::setAdditionalProperty);
 
     PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
     config.setEnabled(true);

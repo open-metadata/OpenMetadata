@@ -37,6 +37,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
@@ -103,6 +104,8 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
             mockStatic(LineageEdgePipelineCleanupMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
+            mockStatic(McpGrantUserNameIndexes.class);
         // v206, v207 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -136,6 +139,7 @@ class IngestionPipelineMigrationEntryPointTest {
             () ->
                 org.openmetadata.service.migration.utils.v207.MigrationUtil
                     .addMcpConsentColumnsOnMySql(handle));
+        grantUserNameIndexes.verify(() -> McpGrantUserNameIndexes.addOnMySql(handle));
       }
       // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));

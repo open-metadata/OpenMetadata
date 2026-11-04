@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mockStatic;
 import java.lang.reflect.Field;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -29,6 +30,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v209.WorkflowRedeployMigration;
 
 class WorkflowRedeployEntryPointTest {
@@ -39,12 +41,20 @@ class WorkflowRedeployEntryPointTest {
       String database, Function<MigrationFile, MigrationProcessImpl> createMigration)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
+    Handle handle = mock(Handle.class);
+    setField(migration, "handle", handle);
     setField(migration, "migrationDAO", mock(MigrationDAO.class));
 
     try (MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
             mockStatic(WorkflowRedeployMigration.class);
+        MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
+            mockStatic(McpGrantUserNameIndexes.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class)) {
       migration.runDataMigration();
+
+      if ("MySQL".equals(database)) {
+        grantUserNameIndexes.verify(() -> McpGrantUserNameIndexes.addOnMySql(handle));
+      }
 
       // `migrate` runs before Flowable starts, so the step that deploys workflows starts it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
