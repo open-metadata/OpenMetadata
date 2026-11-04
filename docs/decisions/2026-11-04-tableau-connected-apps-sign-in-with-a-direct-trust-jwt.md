@@ -20,8 +20,9 @@ credentials that sign in as a chosen user without that user's password. On Table
   `tableau:tasks:read`. With only `tableau:content:read`, the owner, flow, flow run, job and task
   calls fail with `401002 "Invalid authentication credentials were provided."`, the same answer as
   bad credentials.
-- Each client signs in once, and the session it gets outlives the token, so the token is never
-  reused.
+- Each client signs in once, and the session it gets outlives the token. The pipeline client's
+  transport retries a sign-in that Tableau answers with 429 or 5xx, re-sending the same token, which
+  Tableau accepts only until it expires.
 
 ## Decision
 - A new `authType`, `TableauConnectedAppAuth` (`clientId`, `secretId`, `secretValue`, `username`),

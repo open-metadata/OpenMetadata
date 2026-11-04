@@ -40,6 +40,7 @@ from .....utils.tableau_connected_app import (  # noqa: TID252
     CONNECTED_APP,
     CONNECTED_APP_SCOPES,
     PAT,
+    SCOPE_REJECTION,
     connected_app_claims,
 )
 
@@ -390,17 +391,12 @@ def test_each_connected_app_sign_in_gets_its_own_jti():
     assert first != second
 
 
-# Tableau answers a call outside the JWT's scopes with the same 401002 as bad credentials.
-SCOPE_REJECTION = FailedSignInError(
-    "401002", "Unauthorized Access", "Invalid authentication credentials were provided."
-)
-
-
 def test_a_connected_app_401_names_the_app_checks_and_scopes():
     diagnosis = TableauConnection(_connected_app_config()).checks().errors.classify(SCOPE_REJECTION)
 
     assert diagnosis.title == "Authentication failed"
     assert "connected app" in diagnosis.remediation
+    assert "clock" in diagnosis.remediation
     assert all(scope in diagnosis.remediation for scope in CONNECTED_APP_SCOPES)
 
 

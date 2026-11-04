@@ -16,6 +16,7 @@ token must carry, and Tableau's sign-in answer for the fake sites of the integra
 import xml.etree.ElementTree as ET
 
 import jwt
+from tableauserverclient.server.endpoint.exceptions import FailedSignInError
 
 NS = 'xmlns="http://tableau.com/api"'
 PAT = {"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"}
@@ -35,6 +36,11 @@ CONNECTED_APP_SCOPES = [
     "tableau:jobs:read",
     "tableau:tasks:read",
 ]
+
+# Tableau answers a call outside the JWT's scopes with the same 401002 as bad credentials.
+SCOPE_REJECTION = FailedSignInError(
+    "401002", "Unauthorized Access", "Invalid authentication credentials were provided."
+)
 
 
 def connected_app_claims(token: str) -> dict:

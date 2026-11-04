@@ -98,7 +98,8 @@ CONNECTED_APP_JWT_LIFETIME = timedelta(minutes=5)
 # Tableau answers a call outside the token's scopes with the same 401002 as bad credentials.
 CONNECTED_APP_REJECTED = (
     "Tableau rejected the connected app's token (401). Check the client ID, secret ID, secret value and "
-    "username, that the connected app is enabled, and that the Site Name matches the site it belongs to. "
+    "username, that the connected app is enabled, that the Site Name matches the site it belongs to, and "
+    "that the clock of the host running the ingestion is correct. "
     f"A call outside the token's scopes is rejected the same way; OpenMetadata requests {', '.join(CONNECTED_APP_SCOPES)}."
 )
 CONNECTED_APP_METADATA_API_FLOOR = (

@@ -52,6 +52,7 @@ from metadata.ingestion.source.pipeline.tableaupipeline.service_spec import Serv
 from ....utils.tableau_connected_app import (  # noqa: TID252
     CONNECTED_APP,
     CONNECTED_APP_SCOPES,
+    SCOPE_REJECTION,
     connected_app_claims,
 )
 
@@ -233,13 +234,8 @@ def test_tableau_errors_are_diagnosed(error, title):
     assert TABLEAU_PIPELINE_ERRORS.classify(error).title == title
 
 
-# TSC raises FailedSignInError for a 401 with a Tableau error body, so a flow call outside the JWT's scopes lands here.
-SCOPE_REJECTION = FailedSignInError(
-    "401002", "Unauthorized Access", "Invalid authentication credentials were provided."
-)
-
-
 def test_a_rejected_flow_call_names_the_connected_app_checks_and_scopes():
+    # TSC raises FailedSignInError for a 401 with a Tableau error body, so a flow call outside the scopes lands here.
     diagnosis = TableauPipelineConnection(_config(authType=CONNECTED_APP)).checks().errors.classify(SCOPE_REJECTION)
 
     assert diagnosis.title == "Authentication failed"
