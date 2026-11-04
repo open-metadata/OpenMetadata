@@ -104,13 +104,20 @@ class SessionServiceTest {
     when(repository.updateIfVersion(any(UserSession.class), eq(3L))).thenReturn(true);
     User user = new User().withId(UUID.randomUUID()).withName("jane").withEmail("jane@x.com");
 
-    UserSession recorded = sessionService.recordPendingUser(pending, user).orElseThrow();
+    String code = sessionService.recordPendingUser(pending, user).orElseThrow();
 
+    ArgumentCaptor<UserSession> stored = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository).updateIfVersion(stored.capture(), eq(3L));
+    UserSession recorded = stored.getValue();
     assertEquals(SessionStatus.PENDING, recorded.getStatus());
     assertEquals(user.getId().toString(), recorded.getUserId());
     assertEquals("jane", recorded.getUsername());
     assertNull(recorded.getState());
     assertEquals(4L, recorded.getVersion());
+    assertNotEquals(code, recorded.getNonce(), "only the code's hash is stored");
+    assertTrue(sessionService.isCompletionCode(recorded, code));
+    assertFalse(sessionService.isCompletionCode(recorded, code + "x"));
+    assertFalse(sessionService.isCompletionCode(recorded, null));
   }
 
   @Test

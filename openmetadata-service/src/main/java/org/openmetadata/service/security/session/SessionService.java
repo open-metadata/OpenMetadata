@@ -5,6 +5,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.dropwizard.lifecycle.Managed;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -18,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.fernet.Fernet;
@@ -334,18 +337,38 @@ public class SessionService implements Managed {
   }
 
   /**
-   * Attaches the account an identity provider vouched for to a pending login, for the browser that
-   * started the login to complete. The state it matched is cleared, so one answer is used once.
+   * Attaches the account an identity provider vouched for to a pending login and returns the
+   * one-time code that completes it. The code goes back only to the browser that delivered the
+   * answer, and completing the login takes it together with the cookie of the browser that started
+   * the login, so only a browser that did both completes it. Only the code's hash is stored. The
+   * state it matched is cleared, so one answer is used once.
    */
-  public Optional<UserSession> recordPendingUser(UserSession pendingSession, User user) {
+  public Optional<String> recordPendingUser(UserSession pendingSession, User user) {
+    String completionCode = SessionIdGenerator.newSessionId();
     return updatePendingSession(
-        pendingSession,
-        builder ->
-            builder
-                .state(null)
-                .userId(user.getId().toString())
-                .username(user.getName())
-                .email(user.getEmail()));
+            pendingSession,
+            builder ->
+                builder
+                    .state(null)
+                    .nonce(completionCodeHash(completionCode))
+                    .userId(user.getId().toString())
+                    .username(user.getName())
+                    .email(user.getEmail()))
+        .map(recorded -> completionCode);
+  }
+
+  /** Whether {@code code} is the one-time code {@link #recordPendingUser} issued for the login. */
+  public boolean isCompletionCode(UserSession pendingSession, String code) {
+    String stored = pendingSession.getNonce();
+    return !nullOrEmpty(stored)
+        && !nullOrEmpty(code)
+        && MessageDigest.isEqual(
+            stored.getBytes(StandardCharsets.UTF_8),
+            completionCodeHash(code).getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static String completionCodeHash(String code) {
+    return DigestUtils.sha256Hex(code);
   }
 
   private Optional<UserSession> updatePendingSession(

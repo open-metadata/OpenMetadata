@@ -22,13 +22,15 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
 
 /**
- * The ACS answers a valid SAML response with a redirect here. This same-site GET carries the
- * browser's session cookie, so the login completes only in the browser that started it
+ * The ACS answers a valid SAML response with a redirect here that carries a one-time code. This
+ * same-site GET also carries the browser's session cookie, so the login completes only in the
+ * browser that both started it and delivered the response
  * (ADR:2026-11-03-a-saml-login-completes-in-the-browser-that-started-it).
  */
 @WebServlet(SamlLoginCompletionServlet.PATH)
 public class SamlLoginCompletionServlet extends HttpServlet {
   public static final String PATH = "/api/v1/saml/complete";
+  public static final String CODE_PARAMETER = "code";
 
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) {

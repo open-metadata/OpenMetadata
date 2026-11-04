@@ -366,13 +366,15 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
               : getOrCreateUser(username, email, displayName, teamsFromClaim);
 
       // The IdP's POST can come from any browser, so it only attaches the account to the pending
-      // login; the browser holding that login's cookie completes it on a same-site GET
+      // login. A same-site GET completes it, and only with both that login's cookie and the code
+      // this answer redirects with
       // (ADR:2026-11-03-a-saml-login-completes-in-the-browser-that-started-it).
-      if (sessionService.recordPendingUser(pendingSession, user).isEmpty()) {
-        throw new AuthenticationException("SAML login is no longer pending");
-      }
+      String completionCode =
+          sessionService
+              .recordPendingUser(pendingSession, user)
+              .orElseThrow(() -> new AuthenticationException("SAML login is no longer pending"));
       resp.setStatus(HttpServletResponse.SC_SEE_OTHER);
-      resp.setHeader("Location", completionLocation(req, pendingSession));
+      resp.setHeader("Location", completionLocation(req, pendingSession, completionCode));
 
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid SAML redirect URI in callback", e);
@@ -388,11 +390,14 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   /**
-   * The completion page on the origin the login returns to, which is where it started: the pending
-   * session's cookie is host-only, and the ACS may be served under another host name.
+   * The completion page, with the login's one-time code, on the origin the login returns to, which
+   * is where it started: the pending session's cookie is host-only, and the ACS may be served under
+   * another host name.
    */
-  private String completionLocation(HttpServletRequest req, UserSession pendingSession) {
+  private String completionLocation(
+      HttpServletRequest req, UserSession pendingSession, String completionCode) {
     String path = req.getContextPath() + SamlLoginCompletionServlet.PATH;
+    String query = SamlLoginCompletionServlet.CODE_PARAMETER + "=" + completionCode;
     try {
       URI callback = new URI(requireSamlRedirectUri(pendingSession.getRedirectUri()));
       if (callback.getScheme() != null && callback.getHost() != null) {
@@ -402,23 +407,26 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
                 callback.getHost(),
                 callback.getPort(),
                 path,
-                null,
+                query,
                 null)
             .toString();
       }
     } catch (URISyntaxException e) {
       LOG.warn("Could not derive the SAML completion origin from the login's redirect URI", e);
     }
-    return path;
+    return path + "?" + query;
   }
 
   /**
-   * Finishes a SAML login in the browser that started it: the pending session comes from this
-   * request's own cookie, and the ACS must already have attached the account the identity provider
-   * vouched for. A browser without that cookie signs nobody in, and its own cookie is left alone.
+   * Finishes a SAML login in the browser that started it and delivered the identity provider's
+   * answer: the pending session comes from this request's own cookie, the ACS must already have
+   * attached the account the identity provider vouched for, and the request must carry the one-time
+   * code that answer redirected with. A browser missing either signs nobody in, and its own cookie
+   * is left alone.
    */
   public void completeLogin(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      String completionCode = req.getParameter(SamlLoginCompletionServlet.CODE_PARAMETER);
       // Read from the store, not this server's cache: the ACS that attached the account may have
       // run on another server.
       UserSession pendingSession =
@@ -427,6 +435,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
               .filter(session -> session.getStatus() == SessionStatus.PENDING)
               .filter(session -> !session.isExpired(System.currentTimeMillis()))
               .filter(session -> !nullOrEmpty(session.getUserId()))
+              .filter(session -> sessionService.isCompletionCode(session, completionCode))
               .orElse(null);
       if (pendingSession == null) {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No SAML login to complete");

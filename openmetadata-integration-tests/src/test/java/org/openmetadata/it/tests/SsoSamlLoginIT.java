@@ -39,8 +39,9 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.service.security.saml.MockSamlIdp;
 
 /**
- * A SAML login completes only in the browser that started it, and only with the identity provider's
- * answer to that login's own request (ADR:2026-11-03-a-saml-login-completes-in-the-browser-that-started-it).
+ * A SAML login completes only in the browser that both started it and delivered the identity
+ * provider's answer, and only with the answer to that login's own request
+ * (ADR:2026-11-03-a-saml-login-completes-in-the-browser-that-started-it).
  */
 @Isolated
 @Execution(ExecutionMode.SAME_THREAD)
@@ -74,7 +75,22 @@ class SsoSamlLoginIT {
   }
 
   @Test
-  void aResponsePostedFromAnotherBrowserSignsNobodyInThere(TestNamespace ns) {
+  void theBrowserThatStartedAndAnsweredALoginCompletesIt(TestNamespace ns) {
+    SsoBrowser browser = new SsoBrowser();
+    PendingSamlLogin login = startLogin(browser);
+    String response =
+        idp.signedResponse(email(ns, "self"), acsUrl(), SP_ENTITY_ID, login.requestId());
+
+    HttpResponse<String> acs = postToAcs(browser, response, login.relayState());
+    assertEquals(303, acs.statusCode(), acs.body());
+
+    HttpResponse<String> completed = browser.get(location(acs));
+    assertEquals(302, completed.statusCode(), completed.body());
+    assertTrue(location(completed).contains("id_token="), location(completed));
+  }
+
+  @Test
+  void aLoginAnsweredInAnotherBrowserSignsNobodyIn(TestNamespace ns) {
     SsoBrowser starter = new SsoBrowser();
     PendingSamlLogin login = startLogin(starter);
     String response =
@@ -87,11 +103,11 @@ class SsoSamlLoginIT {
     assertEquals(
         SsoServer.SAML_COMPLETE_PATH, URI.create(location(acs)).getPath(), "ACS hands off");
     assertTrue(other.cookies().value(SESSION_COOKIE).isEmpty(), "No session for the poster");
-    assertEquals(401, other.get(SsoServer.url(SsoServer.SAML_COMPLETE_PATH)).statusCode());
-
-    HttpResponse<String> completed = starter.get(SsoServer.url(SsoServer.SAML_COMPLETE_PATH));
-    assertEquals(302, completed.statusCode(), completed.body());
-    assertTrue(location(completed).contains("id_token="), location(completed));
+    assertEquals(401, other.get(location(acs)).statusCode(), "The poster lacks the cookie");
+    assertEquals(
+        401,
+        starter.get(SsoServer.url(SsoServer.SAML_COMPLETE_PATH)).statusCode(),
+        "The starter lacks the code");
   }
 
   @Test

@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -387,25 +388,79 @@ class SamlAuthServletHandlerTest {
             .withId(UUID.randomUUID())
             .withName("saml-user")
             .withEmail("saml-user@example.com");
-    UserSession login =
-        loginServer
-            .recordPendingState(
-                loginServer.createPendingSession(
-                    request, response, "saml", "https://example.com/callback", null, null, null),
-                "request-id")
+    UserSession login = startLogin(loginServer);
+    String code =
+        acsServer
+            .recordPendingUser(acsServer.getPendingSessionById(login.getId()).orElseThrow(), user)
             .orElseThrow();
-    acsServer
-        .recordPendingUser(acsServer.getPendingSessionById(login.getId()).orElseThrow(), user)
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, login.getId())});
+    when(request.getParameter("code")).thenReturn(code);
+
+    try {
+      completeAs(user, loginServer);
+    } finally {
+      Fernet.getInstance().setFernetKey((String) null);
+    }
+
+    verify(response)
+        .sendRedirect(
+            "https://example.com/callback"
+                + "#id_token=session-jwt&email=saml-user%40example.com&name=");
+    assertEquals(SessionStatus.EXPIRED, store.findById(login.getId()).orElseThrow().getStatus());
+  }
+
+  /**
+   * The cookie names the browser that started the login, and the code reaches only the browser the
+   * ACS answered, so the login completes where both are present and nowhere else.
+   */
+  @Test
+  void completeLogin_needsTheCodeTheAcsRedirectedWith() throws Exception {
+    Fernet.getInstance().setFernetKey(FERNET_KEY);
+    InMemorySessionStore store = new InMemorySessionStore();
+    SessionService sessions = new SessionService(authConfig, store);
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("saml-user")
+            .withEmail("saml-user@example.com");
+    UserSession login = startLogin(sessions);
+    sessions
+        .recordPendingUser(sessions.getPendingSessionById(login.getId()).orElseThrow(), user)
         .orElseThrow();
     when(request.getCookies())
         .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, login.getId())});
+
+    try {
+      for (String code : new String[] {null, "", "another-code"}) {
+        when(request.getParameter("code")).thenReturn(code);
+        completeAs(user, sessions);
+      }
+    } finally {
+      Fernet.getInstance().setFernetKey((String) null);
+    }
+
+    verify(response, times(3)).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(response, never()).sendRedirect(anyString());
+    assertEquals(SessionStatus.PENDING, store.findById(login.getId()).orElseThrow().getStatus());
+  }
+
+  private UserSession startLogin(SessionService sessions) {
+    return sessions
+        .recordPendingState(
+            sessions.createPendingSession(
+                request, response, "saml", "https://example.com/callback", null, null, null),
+            "request-id")
+        .orElseThrow();
+  }
+
+  private void completeAs(User user, SessionService sessions) {
     UserRepository userRepository = mock(UserRepository.class);
     when(userRepository.get(any(), eq(user.getId()), any())).thenReturn(user);
     JWTTokenGenerator tokenGenerator = mock(JWTTokenGenerator.class);
     when(tokenGenerator.generateJWTTokenForSession(
             any(), any(), anyBoolean(), any(), anyLong(), any(), any()))
         .thenReturn(new JWTAuthMechanism().withJWTToken("session-jwt"));
-
     try (MockedStatic<Entity> entity = mockStatic(Entity.class);
         MockedStatic<JWTTokenGenerator> jwt = mockStatic(JWTTokenGenerator.class);
         MockedStatic<SamlSettingsHolder> samlSettingsHolder =
@@ -416,18 +471,9 @@ class SamlAuthServletHandlerTest {
       samlSettingsHolder
           .when(SamlSettingsHolder::getInstance)
           .thenReturn(mock(SamlSettingsHolder.class));
-
-      new SamlAuthServletHandler(authConfig, authorizerConfig, loginServer)
+      new SamlAuthServletHandler(authConfig, authorizerConfig, sessions)
           .completeLogin(request, response);
-    } finally {
-      Fernet.getInstance().setFernetKey((String) null);
     }
-
-    verify(response)
-        .sendRedirect(
-            "https://example.com/callback"
-                + "#id_token=session-jwt&email=saml-user%40example.com&name=");
-    assertEquals(SessionStatus.EXPIRED, store.findById(login.getId()).orElseThrow().getStatus());
   }
 
   @Test
