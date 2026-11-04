@@ -21,6 +21,7 @@ import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyReleaseEvent;
 import org.openmetadata.schema.type.OntologyReleaseEvent.EventType;
@@ -52,9 +53,14 @@ public class IndependentOntologyReviewNoticeIT extends BaseOntologyApprovalIT {
     assertEquals("reviewDecision", notice.getFieldName());
     assertEquals(release.getId(), notice.getEntity().getId());
     assertEquals(SharedEntities.get().USER1.getId(), notice.getActor().getId());
-    assertTrue(
-        notice.getSummary().contains(" approved ")
-            && notice.getSummary().contains(release.getName()),
+    final User reviewer = SharedEntities.get().USER1;
+    final String reviewerName =
+        reviewer.getDisplayName() == null ? reviewer.getName() : reviewer.getDisplayName();
+    assertEquals(
+        reviewerName
+            + " approved release #"
+            + release.getReleaseRevision()
+            + ": Ontology review decision",
         notice.getSummary());
   }
 
