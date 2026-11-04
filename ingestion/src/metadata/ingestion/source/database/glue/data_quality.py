@@ -62,8 +62,16 @@ from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
 )
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.database.glue.connection import DATA_QUALITY_PERMISSIONS
-from metadata.ingestion.source.database.glue.models import DataQualityResult, DataQualityRuleResult
+from metadata.ingestion.source.database.glue.connection import (
+    DATA_QUALITY_PERMISSIONS,
+    TABLE_NAME_MAX_LENGTH,
+    GlueFilters,
+)
+from metadata.ingestion.source.database.glue.models import (
+    DataQualityResult,
+    DataQualityRuleResult,
+    GlueDataQualityTable,
+)
 from metadata.utils import fqn
 from metadata.utils.entity_link import get_entity_link
 from metadata.utils.filters import filter_by_fqn
@@ -338,6 +346,8 @@ class GlueDataQualityMixin:
     status: Status
     service_connection: GlueConnection
     context: Any
+    glue_filters: GlueFilters
+    schema_catalog_id_map: dict[str, str]
 
     def yield_glue_data_quality(self) -> Iterable[Either]:
         config: GlueDataQualityConfiguration | None = self.service_connection.dataQualityConfig
@@ -387,9 +397,14 @@ class GlueDataQualityMixin:
             logger.debug(f"Skipping Glue Data Quality result {result.ResultId}: no ruleset or run time")
             return
         if filter_by_fqn(run.config.rulesetFilterPattern, scope):
-            if scope not in run.filtered:
-                run.filtered.add(scope)
-                self.status.filter(scope, "Glue Data Quality ruleset filtered out")
+            self._report_filtered(run, scope, "Glue Data Quality ruleset filtered out")
+            return
+        if self._excluded_by_pipeline_filters(result):
+            # The pipeline never ingests these tables, so the results cannot resolve; failing
+            # them would mark a pipeline scoped on purpose as failed.
+            self._report_filtered(
+                run, _evaluated_target(result), "Glue Data Quality result on a table the pipeline filters out"
+            )
             return
 
         table = self._resolve_dq_table(result, run)
@@ -503,15 +518,36 @@ class GlueDataQualityMixin:
             # cluster database for Redshift Spectrum), so unless configured it is left to a search.
             database = config.targetDatabaseName or "*"
             return fqn._build(config.targetServiceName, database, source.DatabaseName, source.TableName)
+        # Name the table exactly as GlueSource ingested it, or the lookup misses it.
         return fqn.build(
             self.metadata,
             entity_type=Table,
             service_name=self.context.get().database_service,
-            database_name=self.service_connection.databaseName or source.CatalogId,
+            database_name=self.service_connection.databaseName or self._catalog_id(source),
             schema_name=source.DatabaseName,
-            table_name=source.TableName,
+            table_name=source.TableName[:TABLE_NAME_MAX_LENGTH],
             skip_es_search=True,
         )
+
+    def _catalog_id(self, source: GlueDataQualityTable) -> str | None:
+        """CatalogId is optional in a result; the schema's own catalog is what ingestion used."""
+        return source.CatalogId or self.schema_catalog_id_map.get(source.DatabaseName)
+
+    def _excluded_by_pipeline_filters(self, result: DataQualityResult) -> bool:
+        """Whether the pipeline's database, schema or table filters leave the evaluated
+        Glue table out. Mapped ETL results name their table explicitly, so they are kept."""
+        source = result.DataSource.table if result.DataSource else None
+        if source is None:
+            return False
+        database = {"Name": source.DatabaseName, "CatalogId": self._catalog_id(source)}
+        return self.glue_filters.excludes_database(database) or self.glue_filters.excludes_table(
+            database, source.TableName
+        )
+
+    def _report_filtered(self, run: _RunState, target: str, reason: str) -> None:
+        if target not in run.filtered:
+            run.filtered.add(target)
+            self.status.filter(target, reason)
 
     @staticmethod
     def _mapped_etl_table(result: DataQualityResult, config: GlueDataQualityConfiguration) -> str | None:
@@ -525,10 +561,10 @@ class GlueDataQualityMixin:
 
     def _fetch_dq_table(self, table_fqn: str, config: GlueDataQualityConfiguration) -> Table | str:
         if config.targetServiceName and "*" in fqn.split(table_fqn):
-            hits = self.metadata.search_in_any_service(
-                entity_type=Table, fqn_search_string=table_fqn, fetch_multiple_entities=True
-            )
-            found: list[Table] = hits if isinstance(hits, list) else [hits] if hits else []
+            # A failed search must surface as itself: reported as "not found", it would be
+            # cached and drop every result for the table this run.
+            hits = self.metadata.es_search_from_fqn(entity_type=Table, fqn_search_string=table_fqn, raise_on_error=True)
+            found = [table for table in hits or [] if table is not None]
             if len(found) > 1:
                 # Attaching to the first hit would put the test cases on an arbitrary table.
                 matches = ", ".join(sorted(model_str(table.fullyQualifiedName) for table in found))

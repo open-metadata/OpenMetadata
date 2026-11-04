@@ -134,10 +134,11 @@ class GlueSource(
         self.metadata = metadata
         self.service_connection = cast("GlueConnection", self.config.serviceConnection.root.config)  # pyright: ignore[reportOptionalMemberAccess]
         self._connection = create_connection(self.service_connection)
-        # The startup test connection must probe what this pipeline ingests, not the connection's defaults.
-        cast("GlueClientConnection", self._connection).scope_to(
-            GlueFilters.of_pipeline(self.service_connection, self.source_config, self.config.serviceName)
+        self.glue_filters = GlueFilters.of_pipeline(
+            self.service_connection, self.source_config, self.config.serviceName
         )
+        # The startup test connection must probe what this pipeline ingests, not the connection's defaults.
+        cast("GlueClientConnection", self._connection).scope_to(self.glue_filters)
         self.glue = cast("BaseConnection", self._connection).client
 
         self.schema_description_map = {}

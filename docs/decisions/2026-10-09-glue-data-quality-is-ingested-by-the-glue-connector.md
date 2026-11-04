@@ -29,10 +29,18 @@ another system, and its `TestPlatform` enum had no value for Glue.
    - **Test definitions:** one per DQDL rule type, named `glue<RuleType>`. A column rule applied
      to a whole table gets the suffix `Table`.
    - **Test cases:** one per rule, named `<ruleset>_<RuleType>_<sha1(rule)[:8]>`. The name is keyed
-     on the rule text, not on Glue's positional `Rule_N`.
+     on the rule text, not on Glue's positional `Rule_N`. `<ruleset>` is the result's
+     `RulesetName`, else its `EvaluationContext`, else its `JobName` (ETL job results carry no
+     ruleset name), with every run of characters outside `A-Za-z0-9_-` replaced by `_`.
    - **Ruleset score:** each ruleset also gets a `<ruleset>_score` test case.
    - **Status:** PASS → `Success`, FAIL → `Failed`, ERROR → `Aborted`.
-   - **Result timestamp:** the run's `CompletedOn`.
+   - **Result timestamp:** the run's `CompletedOn`, else its `StartedOn`.
+4. **Scope:** a result on a Glue catalog table is imported only when the pipeline's
+   `databaseFilterPattern`, `schemaFilterPattern` and `tableFilterPattern` keep that table, the
+   same scope the metadata ingestion and its test connection use
+   (ADR:2026-10-27-glue-test-connection-probes-what-ingestion-reads). A result outside that scope
+   is reported as filtered, not as a failure. `etlJobMappings` name their table explicitly and
+   are not filtered.
 
 ## Consequences
 

@@ -69,8 +69,10 @@ def _paginator(pages: list[dict]) -> MagicMock:
     return paginator
 
 
-def _checks(client=None, **filters: FilterPattern) -> GlueChecks:
-    return GlueChecks(catalog=Borrowed.of(client), filters=GlueFilters(**filters))
+def _checks(client=None, *, include_data_quality: bool = True, **filters: FilterPattern) -> GlueChecks:
+    return GlueChecks(
+        catalog=Borrowed.of(client), filters=GlueFilters(**filters), include_data_quality=include_data_quality
+    )
 
 
 def _check_names() -> set[str]:
@@ -689,6 +691,23 @@ def test_get_data_quality_results_warns_when_no_ruleset_has_run():
 
     assert evidence.caveat is not None
     assert "No Data Quality results visible" in evidence.caveat.title
+
+
+@pytest.mark.parametrize("include_data_quality", [False, True])
+def test_data_quality_step_reads_aws_only_when_data_quality_ingestion_is_enabled(include_data_quality):
+    client = MagicMock()
+    client.list_data_quality_results.return_value = {"Results": [{"ResultId": "dqresult-1"}]}
+    config = GlueConnectionConfig.model_validate(
+        {"awsConfig": {"awsRegion": "us-east-1"}, "dataQualityConfig": {"includeDataQuality": include_data_quality}}
+    )
+
+    with patch.object(GlueConnection, "_get_client", return_value=client):
+        evidence = GlueConnection(config).checks().get_data_quality_results()
+
+    assert client.list_data_quality_results.called is include_data_quality
+    assert evidence.caveat is None
+    if not include_data_quality:
+        assert evidence.summary == "Data Quality ingestion is disabled"
 
 
 def test_get_data_quality_results_failure_reports_the_command_it_ran():

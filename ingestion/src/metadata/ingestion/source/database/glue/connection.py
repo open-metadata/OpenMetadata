@@ -354,9 +354,12 @@ class GlueChecks:
 
     errors = GLUE_ERRORS
 
-    def __init__(self, catalog: Borrowed[Any], filters: GlueFilters | None = None) -> None:
+    def __init__(
+        self, catalog: Borrowed[Any], filters: GlueFilters | None = None, include_data_quality: bool = False
+    ) -> None:
         self._catalog = catalog
         self._filters = filters or GlueFilters()
+        self._include_data_quality = include_data_quality
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
@@ -368,6 +371,9 @@ class GlueChecks:
 
     @check(DatabaseStep.GetDataQualityResults)
     def get_data_quality_results(self) -> Evidence:
+        # Services that never enabled Data Quality may lack the permission; probing would warn them for nothing.
+        if not self._include_data_quality:
+            return Evidence(summary="Data Quality ingestion is disabled")
         return list_data_quality_results(self._catalog.client)
 
 
@@ -384,7 +390,9 @@ class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
         self._filters = filters
 
     def checks(self) -> ChecksProvider:
+        data_quality = self.service_connection.dataQualityConfig
         return GlueChecks(
             catalog=self.borrow(),
             filters=self._filters or GlueFilters.of(self.service_connection),
+            include_data_quality=bool(data_quality and data_quality.includeDataQuality),
         )

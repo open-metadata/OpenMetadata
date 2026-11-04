@@ -46,6 +46,7 @@ from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
 )
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.glue.data_quality import (
     GlueDataQualityClient,
     ParsedRule,
@@ -152,7 +153,7 @@ class FakeOpenMetadata:
         self.tables = {model_str(table.fullyQualifiedName): table for table in tables or [make_table()]}
         self.test_cases: dict[str, TestCase] = {}
         self.existing_results: dict[str, list[TestCaseResult]] = {}
-        self.search_in_any_service = MagicMock(return_value=None)
+        self.es_search_from_fqn = MagicMock(return_value=None)
 
     def get_by_name(self, entity, fqn, fields=None):
         if entity is Table:
@@ -181,9 +182,12 @@ def fake_glue(*results: dict) -> MagicMock:
     return glue
 
 
-def build_source(metadata: FakeOpenMetadata, glue: MagicMock, **dq_config) -> GlueSource:
+def build_source(
+    metadata: FakeOpenMetadata, glue: MagicMock, source_config: dict | None = None, **dq_config
+) -> GlueSource:
     config = deepcopy(GLUE_CONFIG)
     config["source"]["serviceConnection"]["config"]["dataQualityConfig"].update(dq_config)
+    config["source"]["sourceConfig"]["config"].update(source_config or {})
     with patch.object(GlueSource, "test_connection"):
         source = GlueSource.create(
             OpenMetadataWorkflowConfig.model_validate(config).source.model_dump(),
@@ -367,12 +371,12 @@ class TestYieldGlueDataQuality:
     def test_target_service_resolves_table_by_search(self):
         athena_fqn = "athena.awsdatacatalog.sales.orders"
         metadata = FakeOpenMetadata(tables=[make_table(athena_fqn)])
-        metadata.search_in_any_service.return_value = [metadata.tables[athena_fqn]]
+        metadata.es_search_from_fqn.return_value = [metadata.tables[athena_fqn]]
         rights, lefts = run(build_source(metadata, fake_glue(CATALOG_RESULT), targetServiceName="athena"))
 
         assert lefts == []
-        metadata.search_in_any_service.assert_called_once_with(
-            entity_type=Table, fqn_search_string="athena.*.sales.orders", fetch_multiple_entities=True
+        metadata.es_search_from_fqn.assert_called_once_with(
+            entity_type=Table, fqn_search_string="athena.*.sales.orders", raise_on_error=True
         )
         assert all(athena_fqn in c.entityLink.root for c in of_type(rights, CreateTestCaseRequest))
 
@@ -387,7 +391,7 @@ class TestYieldGlueDataQuality:
     def test_target_service_with_several_matching_tables_is_reported_not_guessed(self):
         fqns = ["spectrum.dev.sales.orders", "spectrum.prod.sales.orders"]
         metadata = FakeOpenMetadata(tables=[make_table(f) for f in fqns])
-        metadata.search_in_any_service.return_value = list(metadata.tables.values())
+        metadata.es_search_from_fqn.return_value = list(metadata.tables.values())
         rights, lefts = run(build_source(metadata, fake_glue(CATALOG_RESULT), targetServiceName="spectrum"))
 
         assert of_type(rights, CreateTestCaseRequest) == []
@@ -406,7 +410,7 @@ class TestYieldGlueDataQuality:
         rights, lefts = run(source)
 
         assert lefts == []
-        metadata.search_in_any_service.assert_not_called()
+        metadata.es_search_from_fqn.assert_not_called()
         links = [c.entityLink.root for c in of_type(rights, CreateTestCaseRequest)]
         assert links
         assert all("spectrum.prod.sales.orders" in link for link in links)
@@ -504,3 +508,72 @@ class TestYieldGlueDataQuality:
         run(source)
 
         assert source.status.filtered == [{"orders ruleset": "Glue Data Quality ruleset filtered out"}]
+
+    @pytest.mark.parametrize(
+        "pipeline_filter",
+        [
+            {"databaseFilterPattern": {"includes": [CATALOG_ID]}},
+            {"schemaFilterPattern": {"includes": ["sales"]}},
+            {"tableFilterPattern": {"excludes": ["leads"]}},
+        ],
+    )
+    def test_result_on_a_table_the_pipeline_filters_out_is_skipped_not_failed(self, pipeline_filter):
+        leads = {"DatabaseName": "marketing", "TableName": "leads", "CatalogId": "999999999999"}
+        out_of_scope = {**CATALOG_RESULT, "ResultId": "dqresult-leads", "DataSource": {"GlueTable": leads}}
+        next_run = {
+            **out_of_scope,
+            "ResultId": "dqresult-leads-2",
+            "CompletedOn": datetime(2026, 10, 2, tzinfo=timezone.utc),
+        }
+        source = build_source(
+            FakeOpenMetadata(), fake_glue(CATALOG_RESULT, out_of_scope, next_run), source_config=pipeline_filter
+        )
+        rights, lefts = run(source)
+
+        assert lefts == []
+        assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
+        assert source.status.filtered == [
+            {"Glue table [marketing.leads]": "Glue Data Quality result on a table the pipeline filters out"}
+        ]
+
+    def test_long_table_name_resolves_to_the_name_ingestion_stored(self):
+        long_name = "orders_" + "x" * 150
+        stored_fqn = f"{SERVICE}.{CATALOG_ID}.sales.{long_name[:128]}"
+        glue_table = {"DatabaseName": "sales", "TableName": long_name, "CatalogId": CATALOG_ID}
+        result = {**CATALOG_RESULT, "DataSource": {"GlueTable": glue_table}}
+        rights, lefts = run(build_source(FakeOpenMetadata(tables=[make_table(stored_fqn)]), fake_glue(result)))
+
+        assert lefts == []
+        results = of_type(rights, OMetaTestCaseResultsSample)
+        assert len(results) == 3
+        assert all(r.test_case_name.startswith(f"{stored_fqn}.") for r in results)
+
+    def test_result_without_catalog_id_uses_the_catalog_its_schema_was_ingested_from(self):
+        result = {**CATALOG_RESULT, "DataSource": {"GlueTable": {"DatabaseName": "sales", "TableName": "orders"}}}
+        source = build_source(FakeOpenMetadata(), fake_glue(result))
+        source.schema_catalog_id_map["sales"] = CATALOG_ID
+        rights, lefts = run(source)
+
+        assert lefts == []
+        assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
+
+    def test_failed_search_is_reported_as_itself_and_retried_for_the_next_result(self):
+        athena_fqn = "athena.awsdatacatalog.sales.orders"
+        metadata = FakeOpenMetadata(tables=[make_table(athena_fqn)])
+        metadata.es_search_from_fqn.side_effect = [RuntimeError("search is unavailable"), [metadata.tables[athena_fqn]]]
+        next_run = {
+            **CATALOG_RESULT,
+            "ResultId": "dqresult-next",
+            "CompletedOn": datetime(2026, 10, 2, tzinfo=timezone.utc),
+        }
+        rights, lefts = run(build_source(metadata, fake_glue(CATALOG_RESULT, next_run), targetServiceName="athena"))
+
+        (error,) = lefts
+        assert "search is unavailable" in error.error
+        assert "not found" not in error.error
+        assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
+
+
+def test_data_quality_runs_after_every_inherited_post_process_step():
+    inherited = DatabaseServiceTopology.model_fields["root"].default.post_process
+    assert GlueSource.topology.root.post_process == [*inherited, "yield_glue_data_quality"]

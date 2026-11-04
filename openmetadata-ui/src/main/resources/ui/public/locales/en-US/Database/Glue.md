@@ -120,6 +120,7 @@ Imports <a href="https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.ht
 - Every DQDL rule becomes a test case under the `AWSGlue` platform. A single-column rule (e.g. `IsComplete "id"`) is attached to its column; every other rule is attached to the table.
 - Every evaluation run becomes a test case result, with its status, the evaluation message and the evaluated metrics.
 - Each ruleset also gets a `<ruleset>_score` test case holding the Glue score, and a logical test suite that groups its test cases.
+- Only results on tables the ingestion's database, schema and table filter patterns keep are imported; the others are reported as filtered.
 
 The results appear in the table's Data Observability tab and on the Data Quality page.
 $$
