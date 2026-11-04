@@ -35,6 +35,7 @@ import {
   SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../../constants/Teams.constants';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getWebhookIcon } from '../../../../../../utils/TeamUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
@@ -584,6 +585,7 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
   onPatch,
 }) => {
   const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
 
   // The root Organization has no meaningful team type or default persona to set;
   // both only apply to a specific team.
@@ -599,7 +601,13 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
       <OwnerField canEdit={canEdit} team={team} onPatch={onPatch} />
       {!isOrganization && <TypeField team={team} />}
       {!isOrganization && (
-        <PersonaField canEdit={canEdit} team={team} onPatch={onPatch} />
+        // Members inherit the default persona, so only admins set it
+        // (ADR:2026-11-03-only-admins-assign-personas).
+        <PersonaField
+          canEdit={canEdit && Boolean(isAdminUser)}
+          team={team}
+          onPatch={onPatch}
+        />
       )}
       <EmailField canEdit={canEdit} team={team} onPatch={onPatch} />
       <SubscriptionField canEdit={canEdit} team={team} onPatch={onPatch} />
