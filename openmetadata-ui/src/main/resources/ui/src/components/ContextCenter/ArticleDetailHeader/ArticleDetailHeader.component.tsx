@@ -403,8 +403,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <Owner
               hasPermission={false}
               isCompactView={false}
+              labelVariant="cell"
               owners={owners}
-              placeholderVariant="cell"
               showLabel={false}
             />
           </div>

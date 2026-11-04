@@ -117,9 +117,9 @@ function DataAssetsVersionHeader({
               )}
               <Owner
                 isCompactView={false}
+                labelVariant="header"
                 ownerDisplayName={ownerDisplayName}
                 owners={currentVersionData?.owners ?? ownerRef}
-                placeholderVariant="header"
                 showLabel={false}
               />
               <Divider

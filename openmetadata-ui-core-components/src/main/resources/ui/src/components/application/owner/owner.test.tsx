@@ -152,8 +152,8 @@ describe('Owner empty placeholder', () => {
     render(
       <Owner
         isCompactView={false}
+        labelVariant="cell"
         owners={[]}
-        placeholderVariant="cell"
         showLabel={false}
       />
     );
@@ -169,8 +169,8 @@ describe('Owner empty placeholder', () => {
     render(
       <Owner
         isCompactView={false}
+        labelVariant="header"
         owners={[]}
-        placeholderVariant="header"
         showLabel={false}
       />
     );
@@ -182,12 +182,12 @@ describe('Owner empty placeholder', () => {
     );
   });
 
-  it('applies the placeholder variant in the inline editable layout', () => {
+  it('applies the label variant in the inline editable layout', () => {
     render(
       <Owner
         isCompactView={false}
+        labelVariant="cell"
         owners={[]}
-        placeholderVariant="cell"
         selectorContent={<button type="button">edit</button>}
         showLabel={false}
       />

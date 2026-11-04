@@ -39,7 +39,7 @@ export interface OwnerAvatarStackProps {
   showOverflowHeadings?: boolean;
 }
 
-export type OwnerPlaceholderVariant = 'subtle' | 'cell' | 'header';
+export type OwnerLabelVariant = 'subtle' | 'cell' | 'header';
 
 export interface OwnerProps {
   /**
@@ -72,13 +72,14 @@ export interface OwnerProps {
   /** Override display names keyed by owner id. */
   ownerDisplayName?: Map<string, ReactNode>;
   /**
-   * Type of the empty placeholder, so it matches the empty values beside it:
+   * Style of the label shown when there are no owners (`--`, or the
+   * `placeHolder` empty state), so it matches the values beside it:
    * - `header`: a page-header field, in the header value type. Default in
    *   the labelled column layout when `selectorContent` is set.
    * - `cell`: a table cell, at the row's body size.
    * - `subtle`: de-emphasised, for cards and panels. Default otherwise.
    */
-  placeholderVariant?: OwnerPlaceholderVariant;
+  labelVariant?: OwnerLabelVariant;
   className?: string;
   hasPermission?: boolean;
   /**

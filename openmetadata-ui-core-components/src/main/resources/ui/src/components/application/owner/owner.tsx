@@ -18,15 +18,15 @@ import { Popover, PopoverTrigger } from '../popover/popover';
 import { OwnerAvatarStack } from './owner-avatar-stack';
 import { OwnerChip } from './owner-chip';
 import { toOwnerRefs } from './owner-utils';
-import type { OwnerPlaceholderVariant, OwnerProps } from './owner.types';
+import type { OwnerLabelVariant, OwnerProps } from './owner.types';
 
 const EMPTY_OWNERS_TEXT = '--';
 
 // `header` is the type of the other page-header values (Domains, Tier,
 // Email…); `cell` is a table row's body size in the subtle tone. Typography's
 // `color` prop has no quaternary or `text-secondary`, so those stay classes.
-const PLACEHOLDER_STYLES: Record<
-  OwnerPlaceholderVariant,
+const LABEL_VARIANT_STYLES: Record<
+  OwnerLabelVariant,
   { size: 'text-xs' | 'text-sm'; weight: 'regular' | 'medium'; color: string }
 > = {
   header: { size: 'text-sm', weight: 'medium', color: 'tw:text-secondary' },
@@ -39,14 +39,14 @@ const OwnerEmptyPlaceholder = ({
   variant,
 }: {
   text: string;
-  variant: OwnerPlaceholderVariant;
+  variant: OwnerLabelVariant;
 }) => (
   <Typography
     as="span"
-    className={PLACEHOLDER_STYLES[variant].color}
+    className={LABEL_VARIANT_STYLES[variant].color}
     data-testid="owner-empty-placeholder"
-    size={PLACEHOLDER_STYLES[variant].size}
-    weight={PLACEHOLDER_STYLES[variant].weight}>
+    size={LABEL_VARIANT_STYLES[variant].size}
+    weight={LABEL_VARIANT_STYLES[variant].weight}>
     {text}
   </Typography>
 );
@@ -80,7 +80,7 @@ export const Owner = ({
   showDashPlaceholder = false,
   placeHolder,
   ownerDisplayName,
-  placeholderVariant,
+  labelVariant,
   className,
   hasPermission,
   selectorContent,
@@ -113,7 +113,7 @@ export const Owner = ({
           {namedEmptyText && <NoOwnerIcon />}
           <OwnerEmptyPlaceholder
             text={emptyText}
-            variant={placeholderVariant ?? 'subtle'}
+            variant={labelVariant ?? 'subtle'}
           />
           {selectorContent}
         </div>
@@ -148,9 +148,7 @@ export const Owner = ({
           {/* Under a label, `placeHolder` is that label, not the empty text. */}
           <OwnerEmptyPlaceholder
             text={showLabel ? EMPTY_OWNERS_TEXT : emptyText}
-            variant={
-              placeholderVariant ?? (selectorContent ? 'header' : 'subtle')
-            }
+            variant={labelVariant ?? (selectorContent ? 'header' : 'subtle')}
           />
         </div>
       );
@@ -173,7 +171,7 @@ export const Owner = ({
         {namedEmptyText && <NoOwnerIcon />}
         <OwnerEmptyPlaceholder
           text={emptyText}
-          variant={placeholderVariant ?? 'subtle'}
+          variant={labelVariant ?? 'subtle'}
         />
       </div>
     );

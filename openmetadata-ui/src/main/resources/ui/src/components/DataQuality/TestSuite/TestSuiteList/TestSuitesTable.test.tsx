@@ -296,7 +296,7 @@ describe('TestSuitesTable component', () => {
     expect(
       jest.requireMock('@openmetadata/ui-core-components').Owner
     ).toHaveBeenCalledWith(
-      expect.objectContaining({ placeholderVariant: 'cell' }),
+      expect.objectContaining({ labelVariant: 'cell' }),
       expect.anything()
     );
   });

@@ -456,8 +456,8 @@ const TeamsInfo = ({
         </div>
         <Owner
           isCompactView={false}
+          labelVariant="header"
           owners={owners ?? []}
-          placeholderVariant="header"
           showLabel={false}
         />
       </Box>

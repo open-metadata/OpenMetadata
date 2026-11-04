@@ -67,16 +67,16 @@ export const EmptyPlaceholderVariants: Story = {
         <Owner
           showDashPlaceholder
           isCompactView={false}
+          labelVariant="header"
           owners={[]}
-          placeholderVariant="header"
         />
       </div>
       <div className="tw:flex tw:items-center tw:gap-8">
         <span className="tw:text-sm tw:text-quaternary">No description</span>
         <Owner
           isCompactView={false}
+          labelVariant="cell"
           owners={[]}
-          placeholderVariant="cell"
           showLabel={false}
         />
       </div>
@@ -84,8 +84,8 @@ export const EmptyPlaceholderVariants: Story = {
         <span className="tw:text-xs tw:text-quaternary">No Domains</span>
         <Owner
           isCompactView={false}
+          labelVariant="subtle"
           owners={[]}
-          placeholderVariant="subtle"
           showLabel={false}
         />
       </div>
