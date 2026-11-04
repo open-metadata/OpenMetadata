@@ -54,7 +54,8 @@ describe('Owner empty placeholder', () => {
       'tw:font-medium',
       'tw:text-secondary'
     );
-    expect(placeholder).not.toHaveClass('tw:text-xs', 'tw:text-quaternary');
+    expect(placeholder).not.toHaveClass('tw:text-xs');
+    expect(placeholder).not.toHaveClass('tw:text-quaternary');
   });
 
   it('keeps the de-emphasised placeholder under a label with no edit selector', () => {
@@ -79,7 +80,8 @@ describe('Owner empty placeholder', () => {
     const placeholder = screen.getByTestId('owner-empty-placeholder');
 
     expect(placeholder).toHaveClass('tw:text-sm', 'tw:text-quaternary');
-    expect(placeholder).not.toHaveClass('tw:text-xs', 'tw:font-medium');
+    expect(placeholder).not.toHaveClass('tw:text-xs');
+    expect(placeholder).not.toHaveClass('tw:font-medium');
   });
 
   it('lets a header with no edit selector opt into the header value type', () => {
@@ -97,6 +99,23 @@ describe('Owner empty placeholder', () => {
       'tw:font-medium',
       'tw:text-secondary'
     );
+  });
+
+  it('applies the placeholder variant in the inline editable layout', () => {
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[]}
+        placeholderVariant="cell"
+        selectorContent={<button type="button">edit</button>}
+        showLabel={false}
+      />
+    );
+
+    const placeholder = screen.getByTestId('owner-empty-placeholder');
+
+    expect(placeholder).toHaveClass('tw:text-sm', 'tw:text-quaternary');
+    expect(placeholder).not.toHaveClass('tw:text-xs');
   });
 
   it('keeps the de-emphasised placeholder when there is no label row', () => {

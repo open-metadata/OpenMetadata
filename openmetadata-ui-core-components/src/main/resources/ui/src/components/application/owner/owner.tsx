@@ -76,7 +76,9 @@ export const Owner = ({
               data-testid="no-owner-icon"
             />
           )}
-          <span className="tw:text-quaternary tw:text-xs">
+          <span
+            className={PLACEHOLDER_CLASSES[placeholderVariant ?? 'subtle']}
+            data-testid="owner-empty-placeholder">
             {showDashPlaceholder ? '--' : placeHolder ?? t('label.no-owners')}
           </span>
           {selectorContent}

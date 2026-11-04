@@ -66,8 +66,8 @@ export interface OwnerProps {
   /**
    * Type of the empty placeholder in the non-compact view, so it matches the
    * empty values beside it:
-   * - `header`: a page-header field, in the header value type. Default when
-   *   `selectorContent` is set.
+   * - `header`: a page-header field, in the header value type. Default in
+   *   the labelled column layout when `selectorContent` is set.
    * - `cell`: a table cell, at the row's body size.
    * - `subtle`: de-emphasised, for cards and panels. Default otherwise.
    */
