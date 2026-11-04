@@ -20,6 +20,10 @@ import {
   PaginationPageDefault,
   PaginationPageMinimalCenter,
 } from '../components/application/pagination/pagination';
+import {
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_PAGE_SIZE_OPTIONS,
+} from '../components/application/pagination/pagination.constants';
 
 const meta = {
   title: 'Components/Pagination',
@@ -113,7 +117,7 @@ export const ButtonGroup: StoryObj = {
 export const CardWithControls: StoryObj = {
   render: () => {
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const totalPages = Math.max(Math.ceil(TOTAL_ITEMS / pageSize), 1);
 
     return (
@@ -121,6 +125,7 @@ export const CardWithControls: StoryObj = {
         <PaginationCardWithControls
           page={page}
           pageSize={pageSize}
+          pageSizeOptions={DEFAULT_PAGE_SIZE_OPTIONS}
           total={totalPages}
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
