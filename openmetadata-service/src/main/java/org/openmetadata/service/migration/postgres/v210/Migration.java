@@ -54,6 +54,7 @@ import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMig
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
@@ -118,6 +119,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         CreationAuditMigration.STEP_NAME,
         () -> backfillCreationAudit(handle, POSTGRES));
+    // Task field paths take one format from 2.1 on; every stored description, tag and suggestion
+    // task is rewritten into it, so readers never parse a legacy path. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        TaskFieldPathMigration.STEP_NAME,
+        () -> TaskFieldPathMigration.migrate(handle, POSTGRES));
     runOnce(
         migrationDAO,
         getVersion(),
