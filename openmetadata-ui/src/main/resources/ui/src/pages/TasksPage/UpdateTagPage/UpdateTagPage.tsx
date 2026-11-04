@@ -49,12 +49,12 @@ import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import { fetchEntityDetail } from '../../../utils/TaskEntityFetchUtils';
 import {
   getColumnObjectByPath,
-  getTagTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskFieldColumns,
   getTaskMessage,
 } from '../../../utils/TaskFieldUtils';
+import { buildTaskFieldPath } from '../../../utils/TaskFieldPathUtils';
 import {
   applyTaskFormSchemaDefaults,
   getResolvedTaskFormSchema,
@@ -143,7 +143,7 @@ const UpdateTag = () => {
   };
 
   const getFieldPath = () => {
-    return getTagTaskFieldPath(field, value);
+    return buildTaskFieldPath(field, value, 'tags');
   };
 
   const onCreateTask = async (formValues: {

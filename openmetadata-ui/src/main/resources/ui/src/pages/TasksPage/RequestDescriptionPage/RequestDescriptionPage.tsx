@@ -45,11 +45,11 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import { fetchEntityDetail } from '../../../utils/TaskEntityFetchUtils';
 import {
-  getDescriptionTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskMessage,
 } from '../../../utils/TaskFieldUtils';
+import { buildTaskFieldPath } from '../../../utils/TaskFieldPathUtils';
 import {
   applyTaskFormSchemaDefaults,
   getResolvedTaskFormSchema,
@@ -110,7 +110,7 @@ const RequestDescription = () => {
   };
 
   const getTaskAbout = () => {
-    return getDescriptionTaskFieldPath(field, value);
+    return buildTaskFieldPath(field, value, 'description');
   };
 
   const onCreateTask = async (formValues: {

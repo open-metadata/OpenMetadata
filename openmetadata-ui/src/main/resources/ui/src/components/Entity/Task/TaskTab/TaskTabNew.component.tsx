@@ -99,7 +99,7 @@ import {
   formatDate,
   formatIsoDuration,
 } from '../../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../../utils/EntityLink';
+import { getTaskFieldName } from '../../../../utils/TaskFieldPathUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
@@ -608,13 +608,8 @@ export const TaskTabNew = ({
   }, [task.assignees]);
 
   const taskColumnLabel = useMemo(
-    () =>
-      fieldPath
-        ? EntityLink.getTableColumnName(
-            `<#E::${task.about?.type}::${task.about?.fullyQualifiedName}::${fieldPath}>`
-          ) ?? ''
-        : '',
-    [fieldPath, task.about]
+    () => getTaskFieldName(fieldPath),
+    [fieldPath]
   );
 
   const taskColumnName = useMemo(() => {

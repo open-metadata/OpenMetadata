@@ -56,7 +56,7 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../utils/EntityLink';
+import { getTaskFieldName } from '../../../utils/TaskFieldPathUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getErrorText } from '../../../utils/StringUtils';
@@ -177,11 +177,7 @@ const TaskFeedCardFromTask = ({
   );
 
   const taskColumnName = useMemo(() => {
-    const columnName = fieldPath
-      ? EntityLink.getTableColumnName(
-          `<#E::${entityType}::${entityFQN}::${fieldPath}>`
-        ) ?? ''
-      : '';
+    const columnName = getTaskFieldName(fieldPath);
 
     if (columnName) {
       return (
@@ -192,7 +188,7 @@ const TaskFeedCardFromTask = ({
     }
 
     return null;
-  }, [entityFQN, entityType, fieldPath, t]);
+  }, [fieldPath, t]);
 
   const handleTaskLinkClick = () => {
     navigate(getTaskDetailPathFromTask(task));

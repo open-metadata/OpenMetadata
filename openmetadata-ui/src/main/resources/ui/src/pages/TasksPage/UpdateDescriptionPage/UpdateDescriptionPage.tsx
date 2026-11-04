@@ -48,12 +48,12 @@ import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import { fetchEntityDetail } from '../../../utils/TaskEntityFetchUtils';
 import {
   getColumnObjectByPath,
-  getDescriptionTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskFieldColumns,
   getTaskMessage,
 } from '../../../utils/TaskFieldUtils';
+import { buildTaskFieldPath } from '../../../utils/TaskFieldPathUtils';
 import {
   applyTaskFormSchemaDefaults,
   getResolvedTaskFormSchema,
@@ -138,7 +138,7 @@ const UpdateDescription = () => {
   };
 
   const getTaskAbout = () => {
-    return getDescriptionTaskFieldPath(field, value);
+    return buildTaskFieldPath(field, value, 'description');
   };
 
   const onCreateTask = async (formValues: {
