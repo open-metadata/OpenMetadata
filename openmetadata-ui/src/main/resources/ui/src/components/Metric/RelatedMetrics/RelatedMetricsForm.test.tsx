@@ -102,18 +102,12 @@ describe('RelatedMetricsForm', () => {
 
     fireEvent.click(screen.getByTestId('saveRelatedMetrics'));
 
-    expect(screen.getByTestId('saveRelatedMetrics')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('saveRelatedMetrics')).toBeDisabled();
     expect(screen.getByTestId('cancelRelatedMetrics')).toBeDisabled();
 
     resolveSubmit();
     await waitFor(() =>
-      expect(screen.getByTestId('saveRelatedMetrics')).not.toHaveAttribute(
-        'aria-disabled',
-        'true'
-      )
+      expect(screen.getByTestId('saveRelatedMetrics')).not.toBeDisabled()
     );
     fireEvent.click(screen.getByTestId('cancelRelatedMetrics'));
 

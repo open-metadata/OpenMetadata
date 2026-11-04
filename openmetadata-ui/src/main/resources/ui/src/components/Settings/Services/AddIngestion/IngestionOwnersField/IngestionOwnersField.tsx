@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { HintText, Label, Owner } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  HintText,
+  Label,
+  Owner,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -19,10 +25,6 @@ import { EntityReference } from '../../../../../generated/entity/type';
 import { useEntityRules } from '../../../../../hooks/useEntityRules';
 import { toOwnerRefs } from '../../../../../utils/Owner/ownerConversionUtils';
 import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../../../common/WidgetActionButton/WidgetActionButton';
 
 interface IngestionOwnersFieldProps {
   owners: EntityReference[];
@@ -65,16 +67,18 @@ const IngestionOwnersField = ({
             owner={owners}
             onUpdate={onChange}>
             {isEmpty(owners) ? (
-              <WidgetPlusButton
+              <ButtonUtility
                 data-testid="add-owner"
-                title={t('label.add-entity', {
+                icon={Plus}
+                tooltip={t('label.add-entity', {
                   entity: t('label.owner-plural'),
                 })}
               />
             ) : (
-              <WidgetEditButton
+              <ButtonUtility
                 data-testid="edit-owner"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.owner-plural'),
                 })}
               />
