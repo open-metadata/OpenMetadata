@@ -1,0 +1,296 @@
+name: Merge Gate
+# Turns every finished CI (ci.yml) run into the `merge-gate` commit status: for a
+# merge-queue entry it decides from the run's own evidence (see
+# .github/scripts/merge_gate.py and .github/merge-gate/policy.json); for a PR head it
+# mirrors the run. Runs the default branch's code only — never the code under test —
+# and treats the run's artifacts as data.
+#
+# vars.MERGE_GATE_MODE: unset (default) runs no job, so merging this changes nothing;
+# shadow posts `merge-gate (shadow)`, required by nothing; enforce posts `merge-gate`;
+# strict posts `merge-gate` with no forgiveness and no re-runs, which is the kill
+# switch. A dispatch decides one run in the mode it names, whatever the variable says.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  # A missed workflow_run delivery must not leave an entry waiting for the queue's
+  # 240-minute check timeout.
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: CI run id to decide
+        required: true
+      mode:
+        description: Gate mode for this decision
+        type: choice
+        options: [shadow, enforce, strict]
+        default: shadow
+      dry_run:
+        description: Decide and report only; post nothing
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  # One decision per commit at a time; never cancelled, since a cancelled decision
+  # is a missing status.
+  group: merge-gate-${{ github.event.workflow_run.head_sha || inputs.run_id || 'sweep' }}
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    name: decide
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' &&
+        contains(fromJSON('["shadow","enforce","strict"]'), vars.MERGE_GATE_MODE) &&
+        contains(fromJSON('["merge_group","pull_request"]'), github.event.workflow_run.event)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # deployment: false — the job reads the ci-ai key for the triage call without
+    # recording a deployment; the environment's branch policy still limits it to main.
+    # The environment must have no reviewers or wait timer: every decision runs here.
+    environment:
+      name: ci-ai
+      deployment: false
+    permissions:
+      contents: read
+      actions: write
+      statuses: write
+      checks: read
+    steps:
+      # In enforce mode the ruleset pins `merge-gate` to this App, so no other
+      # workflow — including one a PR changed — can post it.
+      - name: Gate App token
+        id: app
+        if: ${{ vars.MERGE_GATE_APP_ID != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MERGE_GATE_APP_ID }}
+          private-key: ${{ secrets.MERGE_GATE_APP_KEY }}
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      # Triage reads unexplained failures; it needs the SDK and its answer cache only
+      # when it is on.
+      - name: Install the triage client
+        if: ${{ contains(fromJSON('["shadow","on"]'), vars.CI_AI_TRIAGE_MODE) }}
+        run: pip install --quiet anthropic
+      - name: Restore the triage cache
+        if: ${{ contains(fromJSON('["shadow","on"]'), vars.CI_AI_TRIAGE_MODE) }}
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/ci-ai-triage-cache.json
+          key: ci-ai-triage-v1-${{ github.run_id }}
+          restore-keys: ci-ai-triage-v1-
+      - name: Decide
+        id: decide
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.CI_AI_ANTHROPIC_API_KEY }}
+          CI_AI_TRIAGE_MODE: ${{ vars.CI_AI_TRIAGE_MODE || 'off' }}
+          CI_AI_TRIAGE_MODEL: ${{ vars.CI_AI_TRIAGE_MODEL }}
+          CI_AI_TRIAGE_EFFORT: ${{ vars.CI_AI_TRIAGE_EFFORT }}
+          CI_AI_DAILY_TRIAGE_MAX: ${{ vars.CI_AI_DAILY_TRIAGE_MAX }}
+          CI_AI_TRIAGE_CACHE: ${{ runner.temp }}/ci-ai-triage-cache.json
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          MERGE_GATE_MODE: ${{ inputs.mode || vars.MERGE_GATE_MODE || 'shadow' }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          SLACK_CHANNEL: ${{ vars.MQ_SLACK_CHANNEL }}
+        run: |
+          options=(--out "$RUNNER_TEMP/gate/decision.json")
+          [ "$DRY_RUN" = "true" ] && options+=(--dry-run)
+          python3 .github/scripts/merge_gate.py "${options[@]}" auto --run-id "$RUN_ID"
+          # A held entry waits for a person until the queue's 240-minute timeout. The
+          # message carries only the PR number and links: evidence text is never echoed.
+          python3 - "$RUNNER_TEMP/gate/decision.json" <<'PY'
+          import json, os, sys
+          payload = json.load(open(sys.argv[1]))
+          decision, context = payload.get("decision") or {}, payload.get("context") or {}
+          pr = context.get("pr")
+          if not (decision.get("alert") and isinstance(pr, int) and os.environ["MERGE_GATE_MODE"] != "shadow"
+                  and os.environ["DRY_RUN"] != "true" and os.environ.get("SLACK_CHANNEL")):
+              sys.exit(0)
+          server, repo = os.environ["GITHUB_SERVER_URL"], os.environ["GITHUB_REPOSITORY"]
+          gate_run = f"{server}/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          text = (f":warning: merge-gate is holding <{server}/{repo}/pull/{pr}|PR #{pr}>: its infrastructure "
+                  f"failure persisted after re-runs. <{gate_run}|Gate decision> · <{server}/{repo}/actions/runs/{os.environ['RUN_ID']}|CI run>")
+          json.dump({"channel": os.environ["SLACK_CHANNEL"], "text": text}, open(os.path.join(os.environ["RUNNER_TEMP"], "slack.json"), "w"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write("alert=true\n")
+          PY
+      - name: Alert CI owners
+        if: ${{ steps.decide.outputs.alert == 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/slack.json
+      - name: Upload the decision
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: merge-gate-decision-${{ github.event.workflow_run.id || inputs.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/gate/decision.json
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Check for a triage cache
+        id: triage-cache
+        if: ${{ always() }}
+        run: if [ -f "$RUNNER_TEMP/ci-ai-triage-cache.json" ]; then echo "present=yes" >> "$GITHUB_OUTPUT"; fi
+      - name: Save the triage cache
+        if: ${{ always() && steps.triage-cache.outputs.present == 'yes' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/ci-ai-triage-cache.json
+          key: ci-ai-triage-v1-${{ github.run_id }}
+      - name: Explain an ejection
+        if: ${{ success() && vars.CI_AI_MODE != '' && vars.CI_AI_MODE != 'off' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DECISION: ${{ runner.temp }}/gate/decision.json
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+        run: |
+          read -r verdict pr < <(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print((d.get("decision") or {}).get("verdict","-"), (d.get("context") or {}).get("pr","-"))' "$DECISION")
+          if [ "$verdict" = "fail" ] && [ "$pr" != "-" ]; then
+            gh workflow run ci-ai-explain.yml --repo "$REPO" -f pr="$pr" -f gate_run_id="$GITHUB_RUN_ID" -f ci_run_id="$RUN_ID"
+          fi
+
+  # Every verified test goes on the ledger (a parent control from an ejected entry is
+  # still reusable on the same parent), and every forgiven failure becomes a tracked
+  # flake with an owner and a fix proposal, never silence. Its own job: the ledger
+  # write needs `contents: write`, which the decision job does not get. No concurrency
+  # group: GitHub keeps one pending job per group and cancels the rest, which would
+  # drop records in a burst; the ledger retries its own write conflicts.
+  record:
+    name: record
+    needs: decide
+    if: ${{ needs.decide.result == 'success' && (github.event.workflow_run.event == 'merge_group' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # For the gate App's key only; see the decide job.
+    environment:
+      name: ci-ai
+      deployment: false
+    permissions:
+      contents: write
+      issues: write
+      actions: read
+    steps:
+      # A ledger record can stand in for a parent control, so once pushes to the
+      # ledger branch are limited to the gate App, only this job can write one
+      # (ADR:2026-10-13-a-queue-failure-is-forgiven-only-when-the-same-run-proves-it-is-not-the-entrys).
+      - name: Gate App token
+        id: app
+        if: ${{ vars.MERGE_GATE_APP_ID != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MERGE_GATE_APP_ID }}
+          private-key: ${{ secrets.MERGE_GATE_APP_KEY }}
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: merge-gate-decision-${{ github.event.workflow_run.id || inputs.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/gate
+      - name: Download the run's verification
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          pattern: verify-*
+          run-id: ${{ github.event.workflow_run.id || inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/verify
+      # Tests that passed only on an in-job re-run left their job green; their
+      # outcome.json still lists them as flaky.
+      - name: Download the run's test outcomes
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          pattern: evidence-*
+          run-id: ${{ github.event.workflow_run.id || inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/evidence
+      - name: Record verified tests and forgiven failures
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          # A dispatched dry run posts nothing anywhere: no ledger record, no issue.
+          MERGE_GATE_REGISTRY: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'dry-run' || vars.MERGE_GATE_REGISTRY || 'dry-run' }}
+        run: |
+          python3 .github/scripts/merge_gate_registry.py record \
+            --decision "$RUNNER_TEMP/gate/decision.json" --verify-dir "$RUNNER_TEMP/verify" \
+            --evidence-dir "$RUNNER_TEMP/evidence"
+
+  sweep:
+    name: sweep
+    if: ${{ github.event_name == 'schedule' && contains(fromJSON('["shadow","enforce","strict"]'), vars.MERGE_GATE_MODE) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # deployment: false — the job reads the ci-ai key for the triage call without
+    # recording a deployment; the environment's branch policy still limits it to main.
+    # The environment must have no reviewers or wait timer: every decision runs here.
+    environment:
+      name: ci-ai
+      deployment: false
+    permissions:
+      contents: read
+      actions: write
+      statuses: write
+      checks: read
+    steps:
+      - name: Gate App token
+        id: app
+        if: ${{ vars.MERGE_GATE_APP_ID != '' }}
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.MERGE_GATE_APP_ID }}
+          private-key: ${{ secrets.MERGE_GATE_APP_KEY }}
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      # Triage reads unexplained failures; it needs the SDK and its answer cache only
+      # when it is on.
+      - name: Install the triage client
+        if: ${{ contains(fromJSON('["shadow","on"]'), vars.CI_AI_TRIAGE_MODE) }}
+        run: pip install --quiet anthropic
+      - name: Restore the triage cache
+        if: ${{ contains(fromJSON('["shadow","on"]'), vars.CI_AI_TRIAGE_MODE) }}
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}/ci-ai-triage-cache.json
+          key: ci-ai-triage-v1-${{ github.run_id }}
+          restore-keys: ci-ai-triage-v1-
+      - name: Decide runs without a status
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          MERGE_GATE_MODE: ${{ vars.MERGE_GATE_MODE || 'shadow' }}
+          ANTHROPIC_API_KEY: ${{ secrets.CI_AI_ANTHROPIC_API_KEY }}
+          CI_AI_TRIAGE_MODE: ${{ vars.CI_AI_TRIAGE_MODE || 'off' }}
+          CI_AI_TRIAGE_MODEL: ${{ vars.CI_AI_TRIAGE_MODEL }}
+          CI_AI_TRIAGE_EFFORT: ${{ vars.CI_AI_TRIAGE_EFFORT }}
+          CI_AI_DAILY_TRIAGE_MAX: ${{ vars.CI_AI_DAILY_TRIAGE_MAX }}
+          CI_AI_TRIAGE_CACHE: ${{ runner.temp }}/ci-ai-triage-cache.json
+        run: python3 .github/scripts/merge_gate.py --out "$RUNNER_TEMP/gate/sweep.json" sweep
+      - name: Check for a triage cache
+        id: triage-cache
+        if: ${{ always() }}
+        run: if [ -f "$RUNNER_TEMP/ci-ai-triage-cache.json" ]; then echo "present=yes" >> "$GITHUB_OUTPUT"; fi
+      - name: Save the triage cache
+        if: ${{ always() && steps.triage-cache.outputs.present == 'yes' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}/ci-ai-triage-cache.json
+          key: ci-ai-triage-v1-${{ github.run_id }}

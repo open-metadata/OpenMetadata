@@ -40,6 +40,26 @@ on:
         required: false
         type: boolean
         default: false
+      python-versions:
+        description: JSON list of Python versions for the unit and integration matrices
+        required: false
+        type: string
+        default: '["3.10", "3.11", "3.12"]'
+      verify_failures:
+        description: >-
+          After an integration shard fails, re-run only its failed tests in the
+          shard's still-running environment and upload the result for the merge gate.
+        required: false
+        type: boolean
+        default: false
+      concurrency_group_suffix:
+        description: >-
+          Appended to the spaCy job's concurrency group. ci.yml's shadow run passes one:
+          GitHub keeps a single pending job per group and cancels the one before, so a
+          third caller would cancel py-tests' or py-tests-postgres' job for the same PR.
+        required: false
+        type: string
+        default: ""
 
 env:
   # matrix can't use 'env'. When updating it, update it for both jobs.
@@ -76,7 +96,7 @@ jobs:
           persist-credentials: false
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        if: ${{ contains(fromJSON('["pull_request", "pull_request_target", "merge_group"]'), github.event_name) }}
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
@@ -176,7 +196,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     concurrency:
-      group: spacy-model-${{ github.event.pull_request.number || github.ref }}
+      group: spacy-model-${{ github.event.pull_request.number || github.ref }}${{ inputs.concurrency_group_suffix }}
       cancel-in-progress: false
     steps:
       - name: Restore spaCy model wheel
@@ -215,7 +235,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py-version: ["3.10", "3.11", "3.12"]
+        py-version: ${{ fromJSON(inputs.python-versions) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -332,7 +352,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py-version: ["3.10", "3.11", "3.12"]
+        py-version: ${{ fromJSON(inputs.python-versions) }}
         # shard-3 is the catch-all and is deliberately the lightest, so new directories land
         # in slack rather than on the critical path. Moving one OUT of shard-1 or shard-2
         # means removing its --ignore too, or it runs nowhere.
@@ -462,6 +482,37 @@ jobs:
             --report-glob 'ingestion/junit/test-results-*.xml' \
             --diagnostic-glob 'ingestion/integration-test-run.log' \
             --output ingestion/ci-diagnostics/outcome.json
+
+      # Merge-gate evidence only: re-run just the failed tests while the shard's
+      # services are still up. Never changes the job's result.
+      - name: Verify failures in place
+        if: ${{ failure() && inputs.verify_failures && steps.integration-tests.outcome == 'failure' }}
+        continue-on-error: true
+        timeout-minutes: 20
+        env:
+          VERIFY_PYTEST_ARGS: -c pyproject.toml
+          TESTCONTAINERS_RYUK_DISABLED: true
+        shell: bash
+        run: |
+          source env/bin/activate
+          work="$RUNNER_TEMP/py-verify"
+          python .github/scripts/verify_failures.py select --suite python \
+            --evidence-dir ingestion/ci-diagnostics --out "$work/targets.json"
+          python .github/scripts/verify_failures.py run --targets "$work/targets.json" \
+            --side entry --work "$work/entry" --out "$work/entry.json"
+          python .github/scripts/verify_failures.py document --targets "$work/targets.json" \
+            --entry "$work/entry.json" --run-id "$GITHUB_RUN_ID" \
+            --run-attempt "$GITHUB_RUN_ATTEMPT" --parent-sha "" --out "$work/out/verify.json" || true
+
+      - name: Upload failure verification
+        if: ${{ always() && inputs.verify_failures && steps.integration-tests.outcome == 'failure' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: verify-python-${{ matrix.shard.name }}-${{ matrix.py-version }}-a${{ github.run_attempt }}
+          path: ${{ runner.temp }}/py-verify/out/verify.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload coverage artifact
         if: ${{ inputs.run-coverage && matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}

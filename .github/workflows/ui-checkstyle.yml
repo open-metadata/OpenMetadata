@@ -31,12 +31,19 @@ on:
       - reopened
       - ready_for_review
       - labeled
+  # ci.yml runs this workflow as one of its stages; see docs/ci.md.
+  workflow_call:
+    inputs:
+      concurrency_group_suffix:
+        description: Appended to the concurrency group, so a caller's run never cancels this workflow's own run for the same PR
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: ui-checkstyle-${{ github.head_ref || github.run_id }}
+  group: ui-checkstyle-${{ github.head_ref || github.run_id }}${{ inputs.concurrency_group_suffix }}
   cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 env:

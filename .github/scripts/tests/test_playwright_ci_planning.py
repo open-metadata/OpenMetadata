@@ -2360,7 +2360,7 @@ def test_basic_project_excludes_dedicated_state_specs():
         "name: 'Ingestion'", 1
     )[0]
 
-    assert "testIgnore: dedicatedStateTestIgnore" in basic_project
+    assert "testIgnore: [...dedicatedStateTestIgnore" in basic_project
     assert "'**/SearchSettings.spec.ts'" in playwright_config
     assert "'**/SearchSeparation/**'" in playwright_config
     assert "'**/*AfterReindex.spec.ts'" in playwright_config
@@ -2396,7 +2396,7 @@ def test_search_rbac_state_setup_maps_only_to_search_rbac():
     assert mapping["specs"] == ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
 
 
-def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
+def test_search_impact_mapping_includes_the_project_that_runs_schema_search():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
     )
@@ -2410,10 +2410,11 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
         SCRIPTS.parents[1]
         / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts"
     ).read_text()
+    # Untagged since #33930, it runs in the default project rather than Ingestion.
+    project = "Ingestion" if "tag: '@ingestion'" in schema_search else "chromium"
 
     assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
-    assert "Ingestion" in mapping["projects"]
-    assert "tag: '@ingestion'" in schema_search
+    assert project in mapping["projects"]
 
 
 def test_scheduler_impact_mapping_covers_shared_consumers():
@@ -2802,7 +2803,12 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "playwright-results-json-*/results.json" in coverage_step
     assert "evaluate_playwright_performance.py" not in coverage_step
     assert "evaluate_playwright_performance.py" in performance_step
-    assert "if: ${{ always() && !cancelled() }}" in summary_job
+    # Playwright runs only in the merge queue; on a PR the required summary is skipped,
+    # which GitHub counts as passing.
+    assert (
+        "if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}"
+        in summary_job
+    )
     assert "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
     assert "await renderPlaywrightSummary({ github, context, core });" in summary_job
     summary_script = summary_job.split("          script: |\n", 1)[1].split(

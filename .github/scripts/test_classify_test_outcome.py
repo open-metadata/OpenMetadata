@@ -226,3 +226,40 @@ def test_cli_fails_closed_when_a_successful_step_has_no_results(tmp_path: Path) 
     result = json.loads(output.read_text(encoding="utf-8"))
     assert completed.returncode == 1
     assert result["classification"] == "missing_results"
+
+
+def test_a_test_that_passed_only_on_rerun_is_passed_and_listed_flaky(
+    tmp_path: Path,
+) -> None:
+    report = write_report(
+        tmp_path / "TEST-rerun.xml",
+        '<testsuite tests="2" failures="0" errors="0" skipped="0">'
+        '<testcase classname="LineageIT" name="flaky">'
+        '<flakyFailure message="expected 3 but was 2"/></testcase>'
+        '<testcase classname="LineageIT" name="steady"/>'
+        "</testsuite>",
+    )
+
+    result = CLASSIFIER.classify_outcome("success", 0, [report], [])
+
+    assert result["classification"] == "passed"
+    assert result["failedTests"] == []
+    assert [(t["id"], t["type"], t["message"]) for t in result["flakyTests"]] == [
+        ("LineageIT#flaky", "flakyFailure", "expected 3 but was 2")
+    ]
+
+
+def test_a_test_that_failed_every_rerun_is_failed_not_flaky(tmp_path: Path) -> None:
+    report = write_report(
+        tmp_path / "TEST-rerun.xml",
+        '<testsuite tests="1" failures="1" errors="0" skipped="0">'
+        '<testcase classname="LineageIT" name="broken">'
+        '<failure message="boom"/><rerunFailure message="boom"/></testcase>'
+        "</testsuite>",
+    )
+
+    result = CLASSIFIER.classify_outcome("failure", 1, [report], [])
+
+    assert result["classification"] == "test_failure"
+    assert result["flakyTests"] == []
+    assert result["failedTests"][0]["id"] == "LineageIT#broken"

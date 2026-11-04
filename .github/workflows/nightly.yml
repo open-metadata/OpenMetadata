@@ -1,0 +1,35 @@
+name: Nightly
+# Breadth the queue no longer runs on every entry: the Redis cache profile and the
+# Python 3.11/3.12 legs. Dispatches the existing workflows instead of copying them.
+# Off during the shadow period (vars.CI_NIGHTLY_ENABLED), when the old triggers still
+# cover these suites.
+
+on:
+  schedule:
+    - cron: '15 1 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  dispatch:
+    name: dispatch / ${{ matrix.workflow }}
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.CI_NIGHTLY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    strategy:
+      fail-fast: false
+      matrix:
+        workflow:
+          - integration-tests-postgres-elasticsearch-redis.yml
+          - py-tests.yml
+          - py-tests-postgres.yml
+    steps:
+      - name: Dispatch on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WORKFLOW: ${{ matrix.workflow }}
+        run: gh workflow run "$WORKFLOW" --repo "$REPO" --ref main

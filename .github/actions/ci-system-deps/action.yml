@@ -1,0 +1,49 @@
+name: CI system dependencies
+description: >-
+  The apt packages and ANTLR CLI the Java test jobs need, installed with every
+  fetch bounded and retried. The hosted runners' Azure apt mirror intermittently
+  blackholes connections; unbounded, apt falls back to archive.ubuntu.com and can
+  hang until the job timeout with no output.
+runs:
+  using: composite
+  steps:
+    - name: Install Ubuntu dependencies
+      shell: bash
+      run: |
+        sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null <<'APTCONF'
+        Acquire::Retries "3";
+        Acquire::http::Timeout "30";
+        Acquire::https::Timeout "30";
+        Acquire::http::No-Cache "true";
+        APTCONF
+        # The whole retry budget stays inside the caller's step timeout, so a
+        # truncated retry can still say why it gave up.
+        APT_BUDGET=600
+        APT_DEADLINE=$((SECONDS + APT_BUDGET))
+        apt_retry() {
+          local limit=$1; shift
+          local i remaining
+          for i in 1 2 3; do
+            remaining=$((APT_DEADLINE - SECONDS))
+            if [ "$remaining" -le 30 ]; then
+              echo "::error::apt-get $1 gave up: exhausted the ${APT_BUDGET}s apt budget"
+              return 1
+            fi
+            if [ "$limit" -gt "$remaining" ]; then
+              limit=$remaining
+            fi
+            if sudo timeout "$limit" apt-get "$@"; then
+              return 0
+            fi
+            if [ "$i" -lt 3 ]; then
+              echo "::warning::apt-get $1 failed or hung (attempt $i/3); retrying in 10s"
+              sleep 10
+            fi
+          done
+          echo "::error::apt-get $1 failed after 3 attempts"
+          return 1
+        }
+        apt_retry 240 update
+        apt_retry 300 install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev \
+          build-essential libssl-dev libffi-dev libevent-dev jq
+        sudo make install_antlr_cli

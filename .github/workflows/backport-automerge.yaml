@@ -43,6 +43,10 @@ permissions:
 
 jobs:
   automerge:
+    # check_suite fires for every suite on every branch (1,190 jobs on 2026-10-12);
+    # only backport branches can pass the provenance gate below, so only they start
+    # a runner. The gate still decides.
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.check_suite.head_branch, 'backport/') }}
     runs-on: ubuntu-latest
     # `check_suite: completed` can fire more than once for the same commit, so
     # two runs could both see green and both try to merge. Serialise per commit
