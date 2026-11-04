@@ -158,6 +158,8 @@ describe('EntityMarkdownLink', () => {
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', 'https://example.com');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   // In AI mode a team link is `<current search>#members/teams/<fqn>`: it must
@@ -250,6 +252,7 @@ describe('EntityMarkdownLink', () => {
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '#invalid-format');
+    expect(link).not.toHaveAttribute('target');
   });
 
   it('should render regular link for unknown entity type', () => {
