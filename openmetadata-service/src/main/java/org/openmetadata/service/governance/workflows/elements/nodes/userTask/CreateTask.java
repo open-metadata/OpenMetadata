@@ -563,7 +563,7 @@ public class CreateTask implements TaskListener {
           withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
       updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
       updatedTask.setPayload(
-          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
+          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload(), false));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -654,7 +654,9 @@ public class CreateTask implements TaskListener {
     }
     task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
     task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
-    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
+    task.setPayload(
+        applyProposedChangesIfApproval(
+            taskType, entity, task.getPayload(), priorApprovalPayload == null));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -1045,14 +1047,16 @@ public class CreateTask implements TaskListener {
    * {@code proposedChanges} map computed from the target entity's change description, merged
    * against any existing {@code proposedChanges} on the prior payload (set-cancellation). Returns
    * the payload unchanged for non-approval task types or when the entity carries no change
-   * description.
+   * description. A task that opens an approval cycle (no open approval to supersede) starts from
+   * the entity's stored change: the workflow sets the status before the task exists, and that write
+   * lands in the same version as the edit under review, so the latest hop alone would be the status.
    */
   static Object applyProposedChangesIfApproval(
-      TaskEntityType taskType, EntityInterface entity, Object payload) {
+      TaskEntityType taskType, EntityInterface entity, Object payload, boolean opensCycle) {
     if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
       return payload;
     }
-    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload);
+    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload, opensCycle);
   }
 
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {

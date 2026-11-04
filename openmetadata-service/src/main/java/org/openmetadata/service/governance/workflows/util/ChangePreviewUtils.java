@@ -209,8 +209,19 @@ public final class ChangePreviewUtils {
    * merged map is empty (e.g. all changes cancelled out across re-edits).
    */
   public static Object buildProposedChangesPayload(EntityInterface entity, Object existingPayload) {
+    return buildProposedChangesPayload(entity, existingPayload, false);
+  }
+
+  /**
+   * Same as {@link #buildProposedChangesPayload(EntityInterface, Object)} for a task that opens an
+   * approval cycle when {@code opensCycle} is set: the preview starts from the entity's stored
+   * change, which holds the edit that started the run, instead of the entity's latest hop, which
+   * is the workflow's own status write. A task that continues a cycle folds in the latest hop.
+   */
+  public static Object buildProposedChangesPayload(
+      EntityInterface entity, Object existingPayload, boolean opensCycle) {
     if (entity == null) return existingPayload;
-    ChangeDescription changeDescription = pickIncrementalOrFull(entity);
+    ChangeDescription changeDescription = changeToPreview(entity, opensCycle);
     if (hasNoChanges(changeDescription)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(
@@ -250,6 +261,11 @@ public final class ChangePreviewUtils {
           e);
       return existingPayload;
     }
+  }
+
+  private static ChangeDescription changeToPreview(EntityInterface entity, boolean opensCycle) {
+    ChangeDescription stored = entity.getChangeDescription();
+    return opensCycle && !hasNoChanges(stored) ? stored : pickIncrementalOrFull(entity);
   }
 
   /**

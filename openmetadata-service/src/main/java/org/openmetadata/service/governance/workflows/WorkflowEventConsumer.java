@@ -1,10 +1,12 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -12,6 +14,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowVariableHand
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,9 +25,11 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -33,6 +38,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.elements.triggers.impl.FilterEntityImpl;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -215,7 +221,9 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
     Map<String, Object> variables = new HashMap<>();
 
-    if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
+    if (validEventTypes.contains(eventType)
+        && validEntityTypes.contains(entityType)
+        && !changesNoTriggerField(event)) {
       EntityReference entityReference;
       try {
         entityReference =
@@ -248,8 +256,30 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         variables.put(
             getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), event.getUserName());
       }
+
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE),
+          eventType.value());
     }
     return variables;
+  }
+
+  /**
+   * An update whose own change names only fields no workflow triggers on, such as a follow or a
+   * vote, gives a workflow nothing to judge. Its run would read the entity's stored change, which is
+   * an earlier edit's, and judge that edit again.
+   */
+  static boolean changesNoTriggerField(ChangeEvent event) {
+    ChangeDescription change = event.getChangeDescription();
+    List<FieldChange> fields = new ArrayList<>();
+    if (change != null) {
+      fields.addAll(listOrEmpty(change.getFieldsAdded()));
+      fields.addAll(listOrEmpty(change.getFieldsUpdated()));
+      fields.addAll(listOrEmpty(change.getFieldsDeleted()));
+    }
+    return EventType.ENTITY_UPDATED.equals(event.getEventType())
+        && !fields.isEmpty()
+        && fields.stream().noneMatch(field -> FilterEntityImpl.isTriggerField(field.getName()));
   }
 
   private static Map<String, Object> handleTagRecognizerFeedback(ChangeEvent event) {
