@@ -4,8 +4,11 @@
 - **Revisions:** v1 2026-11-04 (initial)
 - **Deciders:** Shailesh Parmar
 - **Guard:** `SystemResourceIT` (`test_patchEntityRule_*`: one rule changes and the rest are kept, a
-  rule added by another writer survives, unknown rule 404, rename/add/remove 400);
-  `SystemSettingItemPatchTest`; `settingConfigAPI.test.ts` (request path, body and content type)
+  rule added by another writer survives, non-admin 403, unknown rule 404, rename/add/remove 400);
+  `SystemRepositoryPatchSettingTest` (`patchSettingItem` writes against the row it read, 412 on a
+  concurrent change); `SystemSettingItemPatchTest`; `settingConfigAPI.test.ts`,
+  `DataAssetRulesPage.test.tsx`, `DataAssetRulesSettings.test.tsx` (the toggle sends the rule PATCH,
+  never the whole list)
 - **Related:** #35639, #35651
 
 ## Context

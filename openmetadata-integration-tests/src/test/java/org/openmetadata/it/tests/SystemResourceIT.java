@@ -3185,12 +3185,14 @@ public class SystemResourceIT {
   }
 
   @Test
-  void test_patchEntityRule_rejectsUnknownRulesAndPatchesThatBreakTheList() throws Exception {
+  void test_patchEntityRule_rejectsNonAdminsUnknownRulesAndPatchesThatBreakTheList()
+      throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Settings original = EntityRulesUtil.getEntityRulesSettings(client);
     final String ruleName = entityRules(original).getFirst().getName();
 
     try {
+      assertPatchFails(SdkClients.user1Client(), ruleName, replaceEnabled(true), 403);
       assertPatchFails(client, "no-such-rule-name", replaceEnabled(true), 404);
       assertPatchFails(
           client, ruleName, "[{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"renamed\"}]", 400);
