@@ -284,8 +284,6 @@ class AutoClassificationProcessor(Processor, ABC):
                 self.disable_classification(err)
                 column_tags = []
                 break
-            except MemoryError:
-                raise
             except Exception as err:
                 self.status.failed(
                     StackTraceError(
