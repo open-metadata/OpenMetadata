@@ -156,8 +156,10 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.TestLoginCallbackPage;
@@ -3130,7 +3132,8 @@ public class SystemResourceIT {
       final SemanticsRule target = originalRules.getFirst();
       final boolean isEnabled = !Boolean.TRUE.equals(target.getEnabled());
 
-      Settings response = patchEntityRule(client, target.getName(), replaceEnabled(isEnabled));
+      Settings response =
+          EntityRulesUtil.patchRule(client, target.getName(), replaceEnabled(isEnabled));
 
       List<SemanticsRule> expected =
           originalRules.stream()
@@ -3169,7 +3172,7 @@ public class SystemResourceIT {
                               .toList()));
       EntityRulesUtil.updateSettings(client, withAddedRule);
 
-      patchEntityRule(
+      EntityRulesUtil.patchRule(
           client, target.getName(), replaceEnabled(!Boolean.TRUE.equals(target.getEnabled())));
 
       List<SemanticsRule> stored = entityRules(EntityRulesUtil.getEntityRulesSettings(client));
@@ -3205,33 +3208,49 @@ public class SystemResourceIT {
     }
   }
 
-  private static Settings patchEntityRule(
-      OpenMetadataClient client, String ruleName, String jsonPatch) throws Exception {
-    String responseJson =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.PATCH,
-                entityRulePath(ruleName),
-                jsonPatch,
-                RequestOptions.builder()
-                    .header("Content-Type", "application/json-patch+json")
-                    .build());
-    return MAPPER.readValue(responseJson, Settings.class);
+  /**
+   * The rule patch writes through {@code replaceSettingIfCurrent} with the JSON it read; a write
+   * that lands in between must turn the stale write into a 412 and keep the newer row.
+   */
+  @Test
+  void test_entityRulesCompareAndSet_rejectsAStaleWriteWith412() {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SystemDAO dao = Entity.getCollectionDAO().systemDAO();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+
+    try {
+      final String expectedJson =
+          dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
+      final EntityRulesSettings concurrent =
+          JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
+      final SemanticsRule changed = concurrent.getEntitySemantics().getLast();
+      changed.setEnabled(!Boolean.TRUE.equals(changed.getEnabled()));
+      final String concurrentJson = JsonUtils.pojoToJson(concurrent);
+      dao.insertSettings(SettingsType.ENTITY_RULES_SETTINGS.value(), concurrentJson);
+
+      final Settings stale =
+          new Settings()
+              .withConfigType(SettingsType.ENTITY_RULES_SETTINGS)
+              .withConfigValue(JsonUtils.readValue(expectedJson, EntityRulesSettings.class));
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> Entity.getSystemRepository().replaceSettingIfCurrent(stale, expectedJson));
+      assertEquals(
+          JsonUtils.readTree(concurrentJson),
+          JsonUtils.readTree(dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value())),
+          "The newer row must survive the rejected stale write");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
   }
 
   private static void assertPatchFails(
       OpenMetadataClient client, String ruleName, String jsonPatch, int expectedStatus) {
     OpenMetadataException error =
         assertThrows(
-            OpenMetadataException.class, () -> patchEntityRule(client, ruleName, jsonPatch));
+            OpenMetadataException.class,
+            () -> EntityRulesUtil.patchRule(client, ruleName, jsonPatch));
     assertEquals(expectedStatus, error.getStatusCode(), jsonPatch);
-  }
-
-  /** Path params decode "%20" but keep "+" literal, so spaces go out as encodeURIComponent sends them. */
-  private static String entityRulePath(String ruleName) {
-    return "/v1/system/settings/entityRulesSettings/rules/"
-        + URLEncoder.encode(ruleName, StandardCharsets.UTF_8).replace("+", "%20");
   }
 
   private static String replaceEnabled(boolean isEnabled) {
