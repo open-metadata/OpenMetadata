@@ -16,6 +16,7 @@ import { isVar } from './jsonLogicTierVar';
 
 // The Column Tags group is keyed `columns.tags`, but JsonLogic cannot follow a dotted var through the `columns` list,
 // so it is saved as `some(columns, some(tags, cond))` and folded back to `some(columns.tags, cond)` on load.
+// ADR:2026-11-04-column-tags-conditions-are-stored-as-a-some-over-columns-of-a-some-over-tags
 
 const COLUMN_TAGS_VAR = 'columns.tags';
 
