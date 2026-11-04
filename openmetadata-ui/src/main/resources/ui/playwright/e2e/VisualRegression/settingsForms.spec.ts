@@ -224,6 +224,10 @@ for (const theme of VISUAL_THEMES) {
       },
     ]) {
       test(`settings-menu-${scene.id}`, async ({ page }) => {
+        // Comparing every datatype-menu viewport can exceed the default minute.
+        if (scene.id === 'profiler-data-type') {
+          test.slow();
+        }
         await prepareVisualTheme(page, theme);
         const form = await openSettings(page, scene.page, scene.form);
         let scope = form;

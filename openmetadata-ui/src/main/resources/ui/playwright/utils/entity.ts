@@ -717,12 +717,17 @@ export const removeTier = async (page: Page, endpoint: string) => {
 
 // The certification picker loads 50 at a time; searching reaches any certification.
 export const searchCertification = async (page: Page, name: string) => {
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=tag&') &&
-      !response.url().includes('q=&')
-  );
+  // A previous debounced query can finish after fill(), so match the requested term.
+  const query = `*${getEncodedFqn(escapeESReservedCharacters(name))}*`;
+  const searchResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'tag' &&
+      url.searchParams.get('q') === query
+    );
+  });
   await page
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
@@ -757,12 +762,9 @@ export const assignCertification = async (
   const hits: { _source: { fullyQualifiedName: string } }[] = (
     await searchResponse.json()
   ).hits.hits;
-  // The picker only lists tags of an enabled Certification classification; an
-  // empty result means a concurrent spec disabled it, so fail here instead of
-  // timing out on a click that can never land.
   expect(
     hits.map((hit) => hit._source.fullyQualifiedName),
-    'Certification tag missing from search — Certification classification disabled by a concurrent spec?'
+    'Certification search did not return the requested tag'
   ).toContain(certification.responseData.fullyQualifiedName);
 
   const patchRequest = page.waitForResponse(
@@ -948,11 +950,9 @@ export const updateDescriptionForChildren = async (
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
     ).toContainText('No Description', { timeout: 10000 });
   } else {
+    // Compact schema rows can render plain text instead of a Markdown paragraph.
     await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('viewer-container')
-        .getByRole('paragraph')
+      page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
     ).toContainText(description);
   }
 };

@@ -53,6 +53,7 @@ import {
   assignGlossaryTerm,
   assignGlossaryTermToChildren,
   assignTag,
+  getEncodedFqn,
   updateDescription,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -1922,22 +1923,22 @@ test.describe('Glossary tests', () => {
 
     try {
       await redirectToHomePage(dataConsumerPage);
-      await dataConsumerPage.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(
-        dataConsumerPage,
-        glossary1.data.displayName,
-        false
+      // Denied resources are omitted from lists; exercise their deep links.
+      const fqn = glossary1.responseData.fullyQualifiedName;
+      const deniedResponse = dataConsumerPage.waitForResponse(
+        (response) =>
+          decodeURIComponent(new URL(response.url()).pathname) ===
+          `/api/v1/glossaries/name/${fqn}`
       );
+      await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
+        waitUntil: 'commit',
+      });
+      expect((await deniedResponse).status()).toBe(403);
+      await expect(dataConsumerPage).toHaveURL(/\/403$/);
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
       ).toBeVisible();
-
-      await expect(
-        dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toContainText(
-        "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
-      );
     } finally {
       await consumerAfterAction();
       await cleanup(apiContext);
@@ -1948,30 +1949,30 @@ test.describe('Glossary tests', () => {
   test('Verify Glossary Term Deny Permission', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    const { dataConsumerUser, glossary1, glossaryTerm1, cleanup } =
+    const { dataConsumerUser, glossaryTerm1, cleanup } =
       await setupGlossaryDenyPermissionTest(apiContext, false);
-    glossary1.data.terms = [glossaryTerm1];
 
     const { page: dataConsumerPage, afterAction: consumerAfterAction } =
       await performUserLogin(browser, dataConsumerUser);
 
     try {
       await redirectToHomePage(dataConsumerPage);
-      await dataConsumerPage.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(dataConsumerPage, glossary1.data.displayName);
-      await dataConsumerPage
-        .getByTestId(glossaryTerm1.data.displayName)
-        .click();
+      // A denied term cannot be opened through its filtered glossary table.
+      const fqn = glossaryTerm1.responseData.fullyQualifiedName;
+      const deniedResponse = dataConsumerPage.waitForResponse(
+        (response) =>
+          decodeURIComponent(new URL(response.url()).pathname) ===
+          `/api/v1/glossaryTerms/name/${fqn}`
+      );
+      await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
+        waitUntil: 'commit',
+      });
+      expect((await deniedResponse).status()).toBe(403);
+      await expect(dataConsumerPage).toHaveURL(/\/403$/);
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
       ).toBeVisible();
-
-      await expect(
-        dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toContainText(
-        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
-      );
     } finally {
       await consumerAfterAction();
       await cleanup(apiContext);
