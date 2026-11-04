@@ -435,3 +435,82 @@ def test_minimal_target_configuration_preserves_client_job_defaults(table_contex
         engine.dispose()
         if client:
             client.close()
+
+
+@pytest.mark.parametrize("warm_pool", [False, True])
+@pytest.mark.parametrize("execution_setting", ["absent", "other_settings", "empty_properties", "properties"])
+def test_target_binding_preserves_effective_client_connection_properties(
+    table_context, monkeypatch, execution_setting, warm_pool
+):
+    from metadata.ingestion.source.database.bigquery.utils import bind_connection_to_table
+
+    requests = []
+
+    def query_and_wait(client, query, **kwargs):
+        requests.append(deepcopy(kwargs["job_config"]))
+        return SimpleNamespace(schema=[], total_rows=0, num_dml_affected_rows=None)
+
+    monkeypatch.setattr("google.cloud.bigquery._job_helpers.query_and_wait", query_and_wait)
+    client_defaults = QueryJobConfig(
+        maximum_bytes_billed=42,
+        connection_properties=[
+            ConnectionProperty(key="time_zone", value="America/Los_Angeles"),
+            ConnectionProperty(key="session_id", value="original-session"),
+            ConnectionProperty(key="dataset_project_id", value="decoy"),
+        ],
+    )
+    client = Client(
+        project="billing-project", credentials=AnonymousCredentials(), default_query_job_config=client_defaults
+    )
+    engine = create_engine(
+        "bigquery://?user_supplied_client=true",
+        connect_args={"client": client, "prefer_bqstorage_client": False},
+    )
+    explicit = None
+    if execution_setting != "absent":
+        explicit = QueryJobConfig(labels={"team": "data-quality"})
+        if execution_setting == "empty_properties":
+            explicit.connection_properties = []
+        elif execution_setting == "properties":
+            explicit.connection_properties = [ConnectionProperty(key="time_zone", value="UTC")]
+        engine = engine.execution_options(job_config=explicit)
+    client_before = client.default_query_job_config.to_api_repr()
+    explicit_before = explicit.to_api_repr() if explicit is not None else None
+    if warm_pool:
+        with engine.connect():
+            pass
+    table, _, metadata = table_context
+    bound = bind_connection_to_table(engine, table, metadata)
+    expected_properties = {
+        "time_zone": "America/Los_Angeles",
+        "session_id": "original-session",
+        "dataset_project_id": "target",
+    }
+    if execution_setting == "empty_properties":
+        expected_properties = {"dataset_project_id": "target"}
+    elif execution_setting == "properties":
+        expected_properties = {"time_zone": "UTC", "dataset_project_id": "target"}
+    try:
+        with bound.connect() as first, bound.connect() as second:
+            first.execute(text("SELECT :limit"), {"limit": 0})
+            second.execute(text("SELECT :limit"), {"limit": 7})
+            first_config = first.get_execution_options()["job_config"]
+            second_config = second.get_execution_options()["job_config"]
+            assert first_config is not second_config
+        assert len(requests) == 2
+        for request in requests:
+            assert {prop.key: prop.value for prop in request.connection_properties} == expected_properties
+            assert request.maximum_bytes_billed == 42
+            if explicit is not None:
+                assert request.labels == {"team": "data-quality"}
+        assert [request.query_parameters[0].value for request in requests] == [0, 7]
+        assert client.default_query_job_config.to_api_repr() == client_before
+        if explicit is not None:
+            assert explicit.to_api_repr() == explicit_before
+            assert engine.get_execution_options()["job_config"] is explicit
+        else:
+            assert "job_config" not in engine.get_execution_options()
+    finally:
+        bound.dispose()
+        engine.dispose()
+        client.close()
