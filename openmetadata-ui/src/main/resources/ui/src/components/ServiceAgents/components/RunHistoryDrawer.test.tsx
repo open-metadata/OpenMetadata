@@ -25,6 +25,13 @@ jest.mock('./RunStepRow.component', () =>
   jest.fn().mockImplementation(() => <p>RunStepRow</p>)
 );
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      options ? `${key}:${JSON.stringify(options)}` : key,
+  }),
+}));
+
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   getUtcOffsetLabel: jest.fn().mockReturnValue('UTC+05:30'),
@@ -175,6 +182,9 @@ describe('RunHistoryDrawer', () => {
 
     expect(oldest).toHaveTextContent('08:10 · 2h 45m');
     expect(middle).toHaveTextContent('08:10 · 42s');
+    expect(
+      screen.getByText(/message\.ran-for-duration:\{"duration":"2h 45m"\}/)
+    ).toBeInTheDocument();
   });
 
   it('should select the latest run when no initialRunId is given', () => {
