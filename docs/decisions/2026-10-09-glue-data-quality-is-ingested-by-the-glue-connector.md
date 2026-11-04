@@ -34,6 +34,9 @@ another system, and its `TestPlatform` enum had no value for Glue.
      ruleset name), with every run of characters outside `A-Za-z0-9_-` replaced by `_`, leading and
      trailing `_` stripped, and `glue` used if nothing is left.
    - **Ruleset score:** each ruleset also gets a `<ruleset>_score` test case.
+   - **Suites:** each ruleset's test cases are grouped in a logical test suite named
+     `AWS Glue DQ - <service> - <ruleset>`, both parts normalized as above. Suite names are
+     global, so the OpenMetadata service name keeps two accounts' same-named rulesets apart.
    - **Status:** PASS → `Success`, FAIL → `Failed`, ERROR → `Aborted`.
    - **Result timestamp:** the run's `CompletedOn`, else its `StartedOn`.
 4. **Scope:** a result on a Glue catalog table is imported only when the pipeline's

@@ -287,6 +287,18 @@ class TestGlueDataQualityClient:
         sizes = [len(c.kwargs["ResultIds"]) for c in glue.batch_get_data_quality_result.call_args_list]
         assert sizes == [100, 100, 50]
 
+    def test_ruleset_descriptions_keep_only_the_named_rulesets(self):
+        glue = MagicMock()
+        glue.list_data_quality_rulesets.return_value = {
+            "Rulesets": [
+                {"Name": "orders ruleset", "Description": "Checks on orders"},
+                {"Name": "other ruleset", "Description": "Not run in this window"},
+            ]
+        }
+        assert GlueDataQualityClient(glue).ruleset_descriptions({"orders ruleset"}) == {
+            "orders ruleset": "Checks on orders"
+        }
+
 
 class TestYieldGlueDataQuality:
     def test_disabled_yields_nothing_and_calls_no_aws_api(self):
@@ -334,9 +346,88 @@ class TestYieldGlueDataQuality:
         rights, _ = run(build_source(metadata, fake_glue(CATALOG_RESULT)))
 
         (suite,) = of_type(rights, OMetaLogicalTestSuiteSample)
-        assert suite.test_suite.displayName == "AWS Glue DQ - orders ruleset"
+        assert suite.test_suite.displayName == f"AWS Glue DQ - {SERVICE} - orders ruleset"
         assert suite.test_suite.description.root == "Checks on the orders table"
         assert [model_str(t.fullyQualifiedName) for t in suite.test_cases] == [score_fqn]
+
+    def test_same_ruleset_name_in_two_services_gets_two_suites(self):
+        names = set()
+        for service in ("dev_glue", "prod_glue"):
+            source = build_source(FakeOpenMetadata(), fake_glue(CATALOG_RESULT))
+            source.context.get().__dict__["database_service"] = service
+            source.metadata.tables = {
+                f"{service}.{CATALOG_ID}.sales.orders": make_table(f"{service}.{CATALOG_ID}.sales.orders")
+            }
+            score_fqn = f"{service}.{CATALOG_ID}.sales.orders.orders_ruleset_score"
+            source.metadata.test_cases[score_fqn] = make_test_case(score_fqn)
+            rights, _ = run(source)
+            names |= {suite.test_suite.name.root for suite in of_type(rights, OMetaLogicalTestSuiteSample)}
+
+        assert names == {"AWS Glue DQ - dev_glue - orders_ruleset", "AWS Glue DQ - prod_glue - orders_ruleset"}
+
+    def test_definition_lookup_that_fails_is_retried_by_the_next_rule_of_its_type(self):
+        metadata = FakeOpenMetadata()
+        lookup = metadata.get_by_name
+        failures = iter([RuntimeError("server unavailable")])
+
+        def flaky_get_by_name(entity, fqn, fields=None):
+            if entity is TestDefinition and (failure := next(failures, None)):
+                raise failure
+            return lookup(entity, fqn, fields)
+
+        metadata.get_by_name = flaky_get_by_name
+        next_run = {
+            **CATALOG_RESULT,
+            "ResultId": "dqresult-next",
+            "CompletedOn": datetime(2026, 10, 2, tzinfo=timezone.utc),
+        }
+        rights, lefts = run(build_source(metadata, fake_glue(CATALOG_RESULT, next_run)))
+
+        assert len(lefts) == 1
+        definitions = {d.name.root for d in of_type(rights, CreateTestDefinitionRequest)}
+        assert definitions == {"glueIsComplete", "glueRowCount", "glueRulesetScore"}
+
+    def test_etl_mapping_with_an_evaluation_context_matches_only_that_node(self):
+        source = build_source(
+            FakeOpenMetadata(),
+            fake_glue(ETL_RESULT),
+            etlJobMappings=[
+                {"jobName": "orders_etl", "evaluationContext": "EvaluateDataQuality_node2", "tableFQN": TABLE_FQN}
+            ],
+        )
+        rights, lefts = run(source)
+
+        assert of_type(rights, CreateTestCaseRequest) == []
+        (error,) = lefts
+        assert "EvaluateDataQuality_node1" in error.error
+
+    def test_result_on_a_data_quality_glue_table_source_resolves_like_a_glue_table(self):
+        result = {
+            **CATALOG_RESULT,
+            "DataSource": {
+                "DataQualityGlueTable": {"DatabaseName": "sales", "TableName": "orders", "CatalogId": CATALOG_ID}
+            },
+        }
+        rights, lefts = run(build_source(FakeOpenMetadata(), fake_glue(result)))
+
+        assert lefts == []
+        assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
+
+    def test_result_without_catalog_id_resolves_through_the_schemas_ingestion_listed(self):
+        glue = fake_glue(
+            {**CATALOG_RESULT, "DataSource": {"GlueTable": {"DatabaseName": "sales", "TableName": "orders"}}}
+        )
+        glue.get_paginator.return_value.paginate.return_value = [
+            {"DatabaseList": [{"Name": "sales", "CatalogId": CATALOG_ID}]}
+        ]
+        source = build_source(FakeOpenMetadata(), glue)
+        source.context.get().__dict__["database"] = CATALOG_ID
+        assert list(source.get_database_schema_names()) == ["sales"]
+
+        rights, lefts = run(source)
+
+        assert lefts == []
+        assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
 
     def test_etl_result_uses_configured_mapping(self):
         source = build_source(

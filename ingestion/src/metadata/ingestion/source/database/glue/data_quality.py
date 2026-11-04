@@ -83,7 +83,7 @@ from metadata.utils.lru_cache import LRUCache
 from metadata.utils.time_utils import datetime_to_timestamp
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Collection, Iterable, Iterator
 
     from metadata.generated.schema.entity.services.connections.database.glue.glueDataQualityConfig import (
         GlueDataQualityConfiguration,
@@ -331,12 +331,14 @@ class GlueDataQualityClient:
             logger.debug(f"Glue Data Quality results no longer available: {missing}")
         yield from response.get("Results", [])
 
-    def ruleset_descriptions(self) -> LRUCache[str]:
-        descriptions: LRUCache[str] = LRUCache(CACHE_SIZE)
-        for ruleset in self._paginate("list_data_quality_rulesets", "Rulesets", MaxResults=LIST_PAGE_SIZE):
-            if ruleset.get("Description"):
-                descriptions.put(ruleset["Name"], ruleset["Description"])
-        return descriptions
+    def ruleset_descriptions(self, names: Collection[str]) -> dict[str, str]:
+        """Descriptions of the named rulesets only, so the result is bounded by this run's
+        suites rather than by every ruleset in the region."""
+        return {
+            ruleset["Name"]: ruleset["Description"]
+            for ruleset in self._paginate("list_data_quality_rulesets", "Rulesets", MaxResults=LIST_PAGE_SIZE)
+            if ruleset.get("Description") and ruleset["Name"] in names
+        }
 
 
 @dataclass
@@ -483,9 +485,10 @@ class GlueDataQualityMixin:
             return
 
         if definition not in run.definitions:
-            run.definitions.put(definition, True)
+            # Marked only once handled: after a failed lookup the next rule of the type must retry it.
             if not self.metadata.get_by_name(entity=TestDefinition, fqn=definition):
                 yield Either(left=None, right=_definition_request(definition, entity_type))
+            run.definitions.put(definition, True)
 
         if self.metadata.get_by_name(entity=TestCase, fqn=test_case_fqn, fields=TEST_CASE_FIELDS):
             existing = self.metadata.get_test_case_results(test_case_fqn, run.start_ts, run.end_ts) or []
@@ -609,11 +612,13 @@ class GlueDataQualityMixin:
             return
 
         try:
-            descriptions = client.ruleset_descriptions()
+            descriptions = client.ruleset_descriptions(suites.keys())
         except Exception as exc:
             logger.warning(f"Could not list Glue Data Quality rulesets, using default suite descriptions: {exc}")
-            descriptions = LRUCache(CACHE_SIZE)
+            descriptions = {}
 
+        # Suites are global; the service keeps two accounts' same-named rulesets apart.
+        service = self.context.get().database_service
         for scope, test_case_fqns in suites.items():
             test_cases = [
                 test_case
@@ -622,13 +627,13 @@ class GlueDataQualityMixin:
             ]
             if not test_cases:
                 continue
-            description: str | None = descriptions.get(scope) if scope in descriptions else None
+            description = descriptions.get(scope)
             yield Either(
                 left=None,
                 right=OMetaLogicalTestSuiteSample(
                     test_suite=CreateTestSuiteRequest(
-                        name=TestSuiteEntityName(f"AWS Glue DQ - {safe_name(scope)}"),
-                        displayName=f"AWS Glue DQ - {scope}",
+                        name=TestSuiteEntityName(f"AWS Glue DQ - {safe_name(service)} - {safe_name(scope)}"),
+                        displayName=f"AWS Glue DQ - {service} - {scope}",
                         description=Markdown(description or f"Test cases of AWS Glue Data Quality ruleset [{scope}]."),
                     ),
                     test_cases=test_cases,
