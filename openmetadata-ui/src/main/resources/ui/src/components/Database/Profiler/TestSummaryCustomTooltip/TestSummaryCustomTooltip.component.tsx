@@ -25,6 +25,7 @@ import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { TableExecutionSource } from '../../../../generated/type/tableExecutionSource';
 import { getIncidentDetails } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
   convertSecondsToHumanReadableFormat,
@@ -32,6 +33,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { ExecutionSource } from '../../../observability/profiler/ExecutionSource/ExecutionSource';
 import './test-summary-custom-tooltip.less';
 
 const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
@@ -42,9 +44,11 @@ const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
   'passedRows',
   'failedRows',
   'boundArea',
+  'executionSource',
 ] as const;
 
 interface TestSummaryCustomTooltipProps {
+  isSharded?: boolean;
   active?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -53,7 +57,7 @@ interface TestSummaryCustomTooltipProps {
 
 const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
   const { t } = useTranslation();
-  const { active, onMouseEnter, onMouseLeave, payload = [] } = props;
+  const { active, isSharded, onMouseEnter, onMouseLeave, payload = [] } = props;
 
   const state = useMemo(() => {
     if (payload.length === 0) {
@@ -141,6 +145,15 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
       <div className="test-summary-tooltip-container">
         <div className="tooltip-date-time">{formattedDateTime}</div>
         <Divider className="tooltip-separator" />
+        <ExecutionSource
+          copyable={false}
+          isSharded={isSharded}
+          source={
+            payload[0].payload.executionSource as
+              | TableExecutionSource
+              | undefined
+          }
+        />
         <ul data-testid="test-summary-tooltip-container">
           <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
             <Typography as="span" className="flex items-center text-grey-muted">

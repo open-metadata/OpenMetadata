@@ -12,6 +12,7 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
+import { cloneElement, ReactElement } from 'react';
 import '../../../../test/unit/mocks/recharts.mock';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
@@ -108,3 +109,59 @@ describe('ProfilerDetailsCard Test', () => {
     expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 });
+
+it.each([true, false])(
+  'shows historical chart provenance without using the latest shard (%s)',
+  (isSharded) => {
+    jest.requireMock('recharts').Surface = ({
+      children,
+    }: {
+      children: React.ReactNode;
+    }) => <svg>{children}</svg>;
+    jest.requireMock('recharts').Tooltip = jest.fn(
+      ({ content }: { content: ReactElement }) =>
+        cloneElement(content, {
+          active: true,
+          payload: [
+            {
+              payload: { timestamp: 1 },
+              value: 10,
+              name: 'rows',
+              dataKey: 'rows',
+            },
+          ],
+        })
+    );
+    render(
+      <ProfilerDetailsCard
+        {...mockProps}
+        isSharded={isSharded}
+        profiles={[
+          {
+            timestamp: 1,
+            executionSource: {
+              databaseName: 'demo_db',
+              schemaName: 'demo_schema',
+              tableName: 'events_20260101',
+            },
+          },
+          {
+            timestamp: 2,
+            executionSource: {
+              databaseName: 'demo_db',
+              schemaName: 'demo_schema',
+              tableName: 'events_20260102',
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260101')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('demo_db.demo_schema.events_20260102')
+    ).not.toBeInTheDocument();
+  }
+);

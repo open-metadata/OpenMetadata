@@ -11,8 +11,35 @@
  *  limitations under the License.
  */
 import { queryByAttribute, render, screen } from '@testing-library/react';
+import { ReactElement, ReactNode } from 'react';
 import { useTableProfiler } from '../TableProfilerProvider';
 import CustomMetricGraphs from './CustomMetricGraphs.component';
+
+jest.mock('recharts', () => ({
+  ...jest.requireActual('recharts'),
+  ResponsiveContainer: ({
+    children,
+    id,
+  }: {
+    children: ReactNode;
+    id?: string;
+  }) => <div id={id}>{children}</div>,
+  ComposedChart: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+  Tooltip: ({ content }: { content: ReactElement }) =>
+    jest.requireActual('react').cloneElement(content, {
+      active: true,
+      payload: [
+        {
+          payload: { timestamp: 1701584699297 },
+          value: 1387,
+          name: 'count',
+          dataKey: 'count',
+        },
+      ],
+    }),
+}));
 
 const mockProps = {
   customMetricsGraphData: {
@@ -150,4 +177,40 @@ describe('CustomMetricGraphs', () => {
     expect(await screen.findByText(name)).toBeInTheDocument();
     expect(screen.queryByText(name2)).not.toBeInTheDocument();
   });
+});
+
+it('shows the recorded source for the hovered custom metric', () => {
+  const first = mockProps.customMetricsGraphData.CountOfFRAddress[0];
+  const latest = mockProps.customMetricsGraphData.CountOfFRAddress[1];
+  render(
+    <CustomMetricGraphs
+      {...mockProps}
+      isSharded
+      profiles={[
+        {
+          timestamp: first.timestamp,
+          executionSource: {
+            databaseName: 'demo_db',
+            schemaName: 'demo_schema',
+            tableName: 'events_20260101',
+          },
+        },
+        {
+          timestamp: latest.timestamp,
+          executionSource: {
+            databaseName: 'demo_db',
+            schemaName: 'demo_schema',
+            tableName: 'events_20260102',
+          },
+        },
+      ]}
+    />
+  );
+
+  expect(
+    screen.getByText('demo_db.demo_schema.events_20260101')
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText('demo_db.demo_schema.events_20260102')
+  ).not.toBeInTheDocument();
 });

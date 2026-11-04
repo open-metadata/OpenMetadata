@@ -24,6 +24,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -45,6 +46,8 @@ import org.openmetadata.service.notifications.recipients.strategy.RecipientResol
  */
 @Slf4j
 public class OwnerRecipientResolver implements RecipientResolutionStrategy {
+
+  private static final String TASK_FIELDS = "about,createdBy";
 
   private final UserRecipientResolver userResolver;
   private final TeamRecipientResolver teamResolver;
@@ -69,6 +72,10 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
           return Collections.emptySet();
         }
         return resolveOwnersFromThread(thread, destination);
+      }
+
+      if (Entity.TASK.equalsIgnoreCase(entityType)) {
+        return resolveOwnersFromTask(AlertsRuleEvaluator.getTask(event), destination);
       }
 
       // Standard handling for other entities
@@ -101,6 +108,11 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
         return resolveOwnersFromThread(thread, destination);
       }
 
+      if (Entity.TASK.equalsIgnoreCase(entityType)) {
+        Task task = Entity.getEntity(Entity.TASK, entityId, TASK_FIELDS, Include.NON_DELETED);
+        return resolveOwnersFromTask(task, destination);
+      }
+
       // Standard handling for other entities
       EntityInterface entity =
           Entity.getEntity(
@@ -124,13 +136,13 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       return recipients;
     }
 
-    // 1. Thread owner is the creator - fetch user by name
+    // 1. Thread owner is the creator, unless a bot - fetch user by name
     if (thread.getCreatedBy() != null) {
       try {
         User creator =
             Entity.getEntityByName(
                 Entity.USER, thread.getCreatedBy(), "id,profile,email", Include.NON_DELETED);
-        if (creator != null) {
+        if (creator != null && !Boolean.TRUE.equals(creator.getIsBot())) {
           addIfResolved(recipients, Recipient.fromUser(creator, destination.getType()));
         }
       } catch (Exception e) {
@@ -139,23 +151,43 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
     }
 
     // 2. Also resolve owners from the parent entity (what the thread is about)
-    if (thread.getEntityRef() != null) {
-      try {
-        EntityInterface parentEntity =
-            Entity.getEntity(
-                thread.getEntityRef().getType(),
-                thread.getEntityRef().getId(),
-                "owners",
-                Include.NON_DELETED);
-        if (parentEntity != null && parentEntity.getOwners() != null) {
-          recipients.addAll(resolveEntityReferences(parentEntity.getOwners(), destination));
-        }
-      } catch (Exception e) {
-        LOG.debug("Failed to resolve parent entity owners for thread", e);
-      }
+    recipients.addAll(resolveOwnersOfSubject(thread.getEntityRef(), destination));
+    return recipients;
+  }
+
+  /**
+   * A task has no owners of its own: its owners are its creator, unless a bot, and the owners of
+   * the entity it is about, the same as for a thread.
+   */
+  private @NotNull Set<Recipient> resolveOwnersFromTask(
+      Task task, SubscriptionDestination destination) {
+    Set<Recipient> recipients = new HashSet<>();
+
+    if (task == null) {
+      return recipients;
     }
 
+    if (task.getCreatedBy() != null) {
+      recipients.addAll(
+          userResolver.resolvePeople(List.of(task.getCreatedBy().getId()), destination));
+    }
+    recipients.addAll(resolveOwnersOfSubject(task.getAbout(), destination));
     return recipients;
+  }
+
+  private @NotNull Set<Recipient> resolveOwnersOfSubject(
+      EntityReference subject, SubscriptionDestination destination) {
+    if (subject == null) {
+      return Collections.emptySet();
+    }
+    try {
+      EntityInterface entity =
+          Entity.getEntity(subject.getType(), subject.getId(), "owners", Include.NON_DELETED);
+      return resolveOwnersFromEntity(entity, destination);
+    } catch (Exception e) {
+      LOG.debug("Failed to resolve owners of {} {}", subject.getType(), subject.getId(), e);
+      return Collections.emptySet();
+    }
   }
 
   private @NotNull Set<Recipient> resolveOwnersFromEntity(

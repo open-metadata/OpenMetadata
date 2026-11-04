@@ -11,14 +11,20 @@
  *  limitations under the License.
  */
 import { startCase, uniqBy } from 'lodash';
+import { ReactNode } from 'react';
 import { Surface } from 'recharts';
 import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
 import { getEntryFormattedValue } from '../DataInsightPureUtils';
 import { formatDate } from '../date-time/DateTimeUtils';
 
-export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
+export const CustomDQTooltip = (
+  props: DataInsightChartTooltipProps & {
+    footer?: (timestamp: number) => ReactNode;
+  }
+) => {
   const {
     active,
+    footer,
     dateTimeFormatter = formatDate,
     isPercentage,
     payload = [],
@@ -72,6 +78,7 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
             );
           })}
         </div>
+        {footer?.(Number(payload[0].payload[timeStampKey]))}
       </div>
     );
   }

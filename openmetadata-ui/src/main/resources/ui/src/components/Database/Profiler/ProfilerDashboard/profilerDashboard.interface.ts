@@ -24,6 +24,7 @@ import { TestSuite } from '../../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { ProfileExecutionSourceProps } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 
 export type MetricChartType = {
   information: {
@@ -38,7 +39,8 @@ export type MetricChartType = {
   data: Record<string, string | number | undefined>[];
 };
 
-export interface ProfilerDetailsCardProps {
+export interface ProfilerDetailsCardProps
+  extends Pick<ProfileExecutionSourceProps, 'profiles' | 'isSharded'> {
   showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
@@ -104,11 +106,19 @@ export type TestCaseAction = {
   action: 'UPDATE' | 'DELETE' | 'RESTORE' | 'UPDATE_STATUS';
 };
 
+import { TableExecutionSource } from '../../../../generated/type/tableExecutionSource';
+
 export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
   data: Record<
     string,
-    string | number | undefined | Task | Thread | number[]
+    | string
+    | number
+    | undefined
+    | Task
+    | Thread
+    | number[]
+    | TableExecutionSource
   >[];
 };
 
