@@ -49,7 +49,8 @@ def test_failed_model_operation_has_actionable_sanitized_error(monkeypatch, load
     assert error.requested_language == "en"
     assert error.effective_language == "en"
     assert error.phase == phase
-    assert error.__cause__ is not None
+    assert error.__cause__ is (download_error if phase == "download" else loads[-1])
+    assert presidio_utils.download.call_count == (0 if phase == "local_load" else 1)
     assert f"Cause type: {type(error.__cause__).__name__}" in str(error)
     assert "metadata install-classification-models --languages en" in str(error)
     assert "secret" not in str(error)
@@ -121,6 +122,32 @@ def test_successful_downloader_exit_still_verifies_the_model(monkeypatch):
         presidio_utils.load_nlp_engine(classification_language=ClassificationLanguage.en)
 
     assert failure.value.phase == "reload"
+
+
+@pytest.mark.parametrize("download_error", [None, SystemExit(0)])
+def test_missing_model_is_loaded_downloaded_then_verified(monkeypatch, download_error):
+    operations = []
+
+    def load(model_name):
+        operations.append(("load", model_name))
+        if len(operations) == 1:
+            raise OSError("missing")
+        return object()
+
+    def download(model_name):
+        operations.append(("download", model_name))
+        if download_error is not None:
+            raise download_error
+
+    monkeypatch.setattr(presidio_utils.spacy, "load", load)
+    monkeypatch.setattr(presidio_utils, "download", download)
+
+    assert presidio_utils._load_spacy_model("en_core_web_md") is None
+    assert operations == [
+        ("load", "en_core_web_md"),
+        ("download", "en_core_web_md"),
+        ("load", "en_core_web_md"),
+    ]
 
 
 def test_real_missing_model_with_unavailable_download_is_typed(tmp_path, monkeypatch):

@@ -215,36 +215,43 @@ def _load_spacy_model(
     except MemoryError:
         raise
     except OSError:
-        guidance = f"metadata install-classification-models --languages {language}" if language else None
-        if guidance:
-            logger.warning(
-                "Downloading %s language model for spaCy. To provision it before an offline run, use `%s`.",
-                model_name,
-                guidance,
-            )
-        else:
-            logger.warning(
-                "Downloading %s language model for spaCy. Install this model manually before an offline run; "
-                "run `metadata install-classification-models --help` for supported mapped models.",
-                model_name,
-            )
-        try:
-            download(model_name)
-        except MemoryError:
-            raise
-        except SystemExit as exc:
-            if exc.code:
-                raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
-        except Exception as exc:
-            raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
-        try:
-            _ = spacy.load(model_name)
-        except MemoryError:
-            raise
-        except Exception as exc:
-            raise ClassificationModelLoadError(model_name, requested_language, language, "reload") from exc
+        _download_spacy_model(model_name, requested_language, language)
     except Exception as exc:
         raise ClassificationModelLoadError(model_name, requested_language, language, "local_load") from exc
+    else:
+        return
+
+    try:
+        _ = spacy.load(model_name)
+    except MemoryError:
+        raise
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "reload") from exc
+
+
+def _download_spacy_model(model_name: str, requested_language: str | None, language: str | None) -> None:
+    guidance = f"metadata install-classification-models --languages {language}" if language else None
+    if guidance:
+        logger.warning(
+            "Downloading %s language model for spaCy. To provision it before an offline run, use `%s`.",
+            model_name,
+            guidance,
+        )
+    else:
+        logger.warning(
+            "Downloading %s language model for spaCy. Install this model manually before an offline run; "
+            "run `metadata install-classification-models --help` for supported mapped models.",
+            model_name,
+        )
+    try:
+        download(model_name)
+    except MemoryError:
+        raise
+    except SystemExit as exc:  # NOSONAR -- spaCy's third-party CLI downloader exits on failure; normalize only here.
+        if exc.code:
+            raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
+    except Exception as exc:
+        raise ClassificationModelLoadError(model_name, requested_language, language, "download") from exc
 
 
 def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
@@ -846,7 +853,7 @@ class SeparatorTolerantAuAcnRecognizer(AuAcnRecognizer):
         # check digit = (10 - weighted_sum % 10) % 10.
         # Presidio's upstream uses `10 - remainder` without the outer % 10, so ACNs whose
         # weighted sum is divisible by 10 (check digit = 0) are always rejected.
-        text = re.sub(r"[^0-9]", "", pattern_text)
+        text = re.sub(r"\D", "", pattern_text, flags=re.ASCII)
         if len(text) != 9:
             return False
         digits = [int(c) for c in text]
@@ -1009,7 +1016,7 @@ class ValidatedPlPeselRecognizer(PlPeselRecognizer):
         # check digit = (10 - weighted_sum % 10) % 10.
         # Presidio's upstream omits the complement step, always returning False for valid PESELs
         # whose weighted sum is non-zero.
-        text = re.sub(r"[^0-9]", "", pattern_text)
+        text = re.sub(r"\D", "", pattern_text, flags=re.ASCII)
         if len(text) != 11:
             return False
         digits = [int(c) for c in text]

@@ -161,8 +161,10 @@ def test_factory_only_recovers_typed_model_errors(legacy):
                 assert processor.model_load_failure is error
                 assert len(processor.status.failures) == 1
             else:
-                with pytest.raises(type(error)):
-                    processor_factory.create_pii_processor(Mock(), workflow_config)
+                error_type = type(error)
+                metadata = Mock()
+                with pytest.raises(error_type):
+                    processor_factory.create_pii_processor(metadata, workflow_config)
 
 
 class HealthyClassificationProcessor(AutoClassificationProcessor):
