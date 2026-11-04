@@ -24,6 +24,8 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -266,13 +268,23 @@ public class ListFilter extends Filter<ListFilter> {
    * This is used for authorization checks on the parent entity (e.g., checking VIEW_QUERIES
    * permission on a table when listing queries for that table).
    *
+   * <p>Resolve the parent before authorization so a mismatched type cannot produce an empty context
+   * that skips entity-based policy conditions.
+   *
    * @return ResourceContext for the parent entity, or null if entityId/entityType not specified
+   * @throws EntityNotFoundException if the id does not identify an entity of the requested type
    */
   public ResourceContext<?> getParentResourceContext() {
     String entityId = queryParams.get("entityId");
     String parentEntityType = queryParams.get("entityType");
     if (!nullOrEmpty(entityId) && !nullOrEmpty(parentEntityType)) {
-      return new ResourceContext<>(parentEntityType, java.util.UUID.fromString(entityId), null);
+      ResourceContext<?> parentResourceContext =
+          new ResourceContext<>(parentEntityType, UUID.fromString(entityId), null);
+      if (parentResourceContext.getEntity() == null) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(parentEntityType, entityId));
+      }
+      return parentResourceContext;
     }
     return null;
   }

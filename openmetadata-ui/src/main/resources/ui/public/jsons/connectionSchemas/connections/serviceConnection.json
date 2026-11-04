@@ -8069,6 +8069,15 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                          "^guest$",
+                          "^information_schema$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -8115,6 +8124,14 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^msdb$",
+                          "^model$",
+                          "^tempdb$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -8297,6 +8314,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$",
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -9309,6 +9333,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS(CAT|FUN|IBM|IBMADM|IBMINTERNAL|IBMTS|PROC|PUBLIC|STAT|TOOLS)$",
+                          "^NULLID$",
+                          "^SQLJ$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -9507,6 +9539,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^INFORMATION_SCHEMA$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -11482,6 +11521,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^sys$",
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -11697,6 +11743,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^_impala_builtins$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -11882,6 +11934,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -14986,6 +15045,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -15032,6 +15097,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -16068,6 +16139,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -16752,6 +16830,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -16798,6 +16882,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -18312,6 +18402,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS$",
+                          "^_SYS_(?!BIC$).*"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -18500,6 +18597,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^admin$",
+                          "^local$",
+                          "^config$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -18830,6 +18935,18 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$",
+                          "^system_auth$",
+                          "^system_schema$",
+                          "^system_distributed$",
+                          "^system_traces$",
+                          "^system_views$",
+                          "^system_virtual_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -18971,6 +19088,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^_system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -19301,6 +19424,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^gp_toolkit$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -19347,6 +19477,13 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^template1$",
+                          "^template0$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -19559,6 +19696,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$",
+                          "^__internal_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -20570,6 +20715,39 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^DBC$",
+                          "^SYS_CALENDAR$",
+                          "^SYSLIB$",
+                          "^SYSUDTLIB$",
+                          "^SYSADMIN$",
+                          "^SYSSPATIAL$",
+                          "^SYSTEMFE$",
+                          "^SYSBAR$",
+                          "^SYSJDBC$",
+                          "^SYSXML$",
+                          "^SYSUIF$",
+                          "^TD_SYS.*",
+                          "^TD_SERVER_DB$",
+                          "^TDSTATS$",
+                          "^TDQCD$",
+                          "^TDWM$",
+                          "^TDMAPS$",
+                          "^DBCMNGR$",
+                          "^LOCKLOGSHREDDER$",
+                          "^CRASHDUMPS$",
+                          "^EXTERNAL_AP$",
+                          "^SQLJ$",
+                          "^TDPUSER$",
+                          "^EXTUSER$",
+                          "^PUBLIC$",
+                          "^ALL$",
+                          "^DEFAULT$",
+                          "^CONSOLE$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21062,6 +21240,15 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                          "^guest$",
+                          "^information_schema$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21108,6 +21295,14 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^msdb$",
+                          "^model$",
+                          "^tempdb$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21290,6 +21485,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS$",
+                          "^EXA_STATISTICS$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21559,6 +21761,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^crdb_internal$",
+                          "^pg_extension$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21605,6 +21815,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -45913,6 +46129,15 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                          "^guest$",
+                          "^information_schema$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -45959,6 +46184,14 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^msdb$",
+                          "^model$",
+                          "^tempdb$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -46141,6 +46374,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$",
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -47153,6 +47393,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS(CAT|FUN|IBM|IBMADM|IBMINTERNAL|IBMTS|PROC|PUBLIC|STAT|TOOLS)$",
+                          "^NULLID$",
+                          "^SQLJ$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -47351,6 +47599,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^INFORMATION_SCHEMA$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -49326,6 +49581,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^sys$",
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -49541,6 +49803,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^_impala_builtins$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -49726,6 +49994,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -52830,6 +53105,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -52876,6 +53157,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -53912,6 +54199,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -54596,6 +54890,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -54642,6 +54942,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56156,6 +56462,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS$",
+                          "^_SYS_(?!BIC$).*"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56344,6 +56657,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^admin$",
+                          "^local$",
+                          "^config$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56674,6 +56995,18 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$",
+                          "^system_auth$",
+                          "^system_schema$",
+                          "^system_distributed$",
+                          "^system_traces$",
+                          "^system_views$",
+                          "^system_virtual_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56815,6 +57148,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^_system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -57145,6 +57484,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^gp_toolkit$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -57191,6 +57537,13 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^template1$",
+                          "^template0$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -57403,6 +57756,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$",
+                          "^__internal_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -58414,6 +58775,39 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^DBC$",
+                          "^SYS_CALENDAR$",
+                          "^SYSLIB$",
+                          "^SYSUDTLIB$",
+                          "^SYSADMIN$",
+                          "^SYSSPATIAL$",
+                          "^SYSTEMFE$",
+                          "^SYSBAR$",
+                          "^SYSJDBC$",
+                          "^SYSXML$",
+                          "^SYSUIF$",
+                          "^TD_SYS.*",
+                          "^TD_SERVER_DB$",
+                          "^TDSTATS$",
+                          "^TDQCD$",
+                          "^TDWM$",
+                          "^TDMAPS$",
+                          "^DBCMNGR$",
+                          "^LOCKLOGSHREDDER$",
+                          "^CRASHDUMPS$",
+                          "^EXTERNAL_AP$",
+                          "^SQLJ$",
+                          "^TDPUSER$",
+                          "^EXTUSER$",
+                          "^PUBLIC$",
+                          "^ALL$",
+                          "^DEFAULT$",
+                          "^CONSOLE$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -58906,6 +59300,15 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                          "^guest$",
+                          "^information_schema$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -58952,6 +59355,14 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^msdb$",
+                          "^model$",
+                          "^tempdb$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -59134,6 +59545,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS$",
+                          "^EXA_STATISTICS$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -59403,6 +59821,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^crdb_internal$",
+                          "^pg_extension$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -59449,6 +59875,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
