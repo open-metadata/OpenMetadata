@@ -166,7 +166,7 @@ interface SelectedRunPanelProps {
   action?: ReactNode;
 }
 
-const ACTIONABLE_RUN_STATUSES: RunStatus[] = ['failed', 'partial'];
+const ACTIONABLE_RUN_STATUSES = new Set<RunStatus>(['failed', 'partial']);
 
 const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
   run,
@@ -427,7 +427,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
 
         <SelectedRunPanel
           action={
-            run && ACTIONABLE_RUN_STATUSES.includes(run.status)
+            run && ACTIONABLE_RUN_STATUSES.has(run.status)
               ? renderRunAction?.(agent, run, onClose)
               : undefined
           }
