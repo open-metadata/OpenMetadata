@@ -58,6 +58,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -163,9 +164,9 @@ public class QueryVisibilityPolicyIT {
             Entity.GLOSSARY,
             Entity.DATABASE_SCHEMA,
             Entity.STORED_PROCEDURE)) {
-      ApiException exception =
+      OpenMetadataException exception =
           assertThrows(
-              ApiException.class,
+              OpenMetadataException.class,
               () -> viewer.queries().list(queriesForParent(table, parentType)),
               "A table ID must not authorize query access as " + parentType);
       assertEquals(expectedStatus, exception.getStatusCode());
