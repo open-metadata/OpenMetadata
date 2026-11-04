@@ -431,7 +431,7 @@ const AppearanceConfigSettingsPage = () => {
               gap={4}
               itemClassName="layout-space-item">
               <Button
-                color="link-color"
+                color="secondary"
                 data-testid="cancel-btn"
                 onClick={() => navigate(-1)}>
                 {t('label.cancel')}

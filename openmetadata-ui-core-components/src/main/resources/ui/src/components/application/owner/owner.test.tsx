@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { RouterProvider } from 'react-aria-components';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Owner } from './owner';
 import { setOwnerHrefResolver, setOwnerRenderer } from './owner-renderer';
 
@@ -181,5 +182,127 @@ describe('Owner href resolver (in-app profile link)', () => {
     expect(
       screen.getAllByTestId('owner-link').map((el) => el.getAttribute('href'))
     ).toEqual(['/users/user1', '/users/user2']);
+  });
+
+  // A native hash click bypasses the app router, so the router could not
+  // track the entry (e.g. the settings modal's history). Plain left clicks go
+  // through the RouterProvider; modified clicks keep opening a new tab.
+  it.each([
+    ['a single owner', [owner]],
+    [
+      'a stacked group',
+      [owner, { ...owner, id: 'u2', name: 'user2', displayName: 'User Two' }],
+    ],
+  ])('navigates %s through the router on a plain click only', (_, owners) => {
+    // Hash-only: jsdom can follow a hash change natively, not a page load.
+    setOwnerHrefResolver((o) => `#members/users/${o.name}`);
+    const navigate = vi.fn();
+
+    render(
+      <RouterProvider navigate={navigate}>
+        <Owner isCompactView={false} owners={owners} showLabel={false} />
+      </RouterProvider>
+    );
+    const [link] = screen.getAllByTestId('owner-link');
+    // `detail: 1` makes it a pointer click rather than a virtual one.
+    const click = (modifiers = {}) =>
+      fireEvent.click(link, { detail: 1, ...modifiers });
+
+    click({ metaKey: true });
+    click({ ctrlKey: true });
+    click({ shiftKey: true });
+
+    expect(navigate).not.toHaveBeenCalled();
+
+    click();
+
+    expect(navigate).toHaveBeenCalledWith('#members/users/user1', undefined);
+
+    // The modified clicks followed the hash natively; drop it for later tests.
+    window.history.replaceState(null, '', '/');
+  });
+});
+
+describe('Owner inherited badge', () => {
+  const inheritedUser = {
+    id: 'u1',
+    name: 'user1',
+    type: 'user',
+    inherited: true,
+  };
+  const inheritedTeam = {
+    id: 't1',
+    name: 'team1',
+    type: 'team',
+    inherited: true,
+  };
+  const directUser = { id: 'u2', name: 'user2', type: 'user' };
+
+  afterEach(() => {
+    setOwnerHrefResolver(undefined);
+  });
+
+  it('marks only inherited owners in the compact view', () => {
+    render(<Owner owners={[inheritedUser, directUser]} />);
+
+    expect(screen.getAllByTestId('inherited-owner-icon')).toHaveLength(1);
+  });
+
+  it('marks an inherited team owner in the non-compact view', () => {
+    render(<Owner isCompactView={false} owners={[inheritedTeam]} />);
+
+    expect(screen.getByTestId('inherited-owner-icon')).toBeInTheDocument();
+  });
+
+  it('marks inherited owners inside the non-compact avatar stack', () => {
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[inheritedUser, inheritedTeam, directUser]}
+      />
+    );
+
+    expect(screen.getAllByTestId('inherited-owner-icon')).toHaveLength(2);
+  });
+
+  it('renders no badge when no owner is inherited', () => {
+    render(<Owner isCompactView={false} owners={[directUser]} />);
+
+    expect(
+      screen.queryByTestId('inherited-owner-icon')
+    ).not.toBeInTheDocument();
+  });
+
+  it('names inherited owners as inherited in the stacked avatar links', () => {
+    setOwnerHrefResolver((o) => `/users/${o.name}`);
+
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[inheritedUser, inheritedTeam, directUser]}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: /^user1, \S/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'user2' })).toBeVisible();
+  });
+
+  it('scales the badge with the avatar size', () => {
+    const { unmount } = render(
+      <Owner avatarSize={24} owners={[inheritedUser]} />
+    );
+
+    expect(screen.getByTestId('inherited-owner-icon')).toHaveAttribute(
+      'width',
+      '10'
+    );
+
+    unmount();
+    render(<Owner avatarSize={64} owners={[inheritedUser]} />);
+
+    expect(screen.getByTestId('inherited-owner-icon')).toHaveAttribute(
+      'width',
+      '20'
+    );
   });
 });

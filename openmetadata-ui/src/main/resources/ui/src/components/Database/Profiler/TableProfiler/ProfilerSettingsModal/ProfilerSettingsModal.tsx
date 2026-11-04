@@ -27,7 +27,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  AlertCircle,
+  Plus,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import { lazy, useEffect, useMemo, useState } from 'react';
@@ -56,6 +60,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
+import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import SliderWithInput from '../../../../common/SliderWithInput/SliderWithInput';
 import '../table-profiler.less';
@@ -88,6 +93,10 @@ const ProfilerSettingsModal = ({
   const [storedConfig, setStoredConfig] = useState<TableProfilerConfig>();
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  // The PUT replaces the stored config whole, so saving the DEFAULT_VALUES
+  // left by a failed load would wipe it.
+  const [isFetchFailed, setIsFetchFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const values = useWatch({ control: form.control });
   const includeColumns = useFieldArray({
     control: form.control,
@@ -115,7 +124,7 @@ const ProfilerSettingsModal = ({
           partitionIntervalType &&
           SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[
             partitionIntervalType
-          ].includes(column.dataType)
+          ]?.includes(column.dataType)
         ) {
           items.push({ id: column.name, label: column.name });
         }
@@ -133,6 +142,7 @@ const ProfilerSettingsModal = ({
         const { tableProfilerConfig } = await getTableProfilerConfig(tableId);
         if (active) {
           setStoredConfig(tableProfilerConfig);
+          setIsFetchFailed(false);
           reset(
             tableProfilerConfig
               ? toFormValues(tableProfilerConfig)
@@ -141,6 +151,7 @@ const ProfilerSettingsModal = ({
         }
       } catch (error) {
         if (active) {
+          setIsFetchFailed(true);
           showErrorToast(
             error as AxiosError,
             t('server.fetch-table-profiler-config-error')
@@ -161,7 +172,7 @@ const ProfilerSettingsModal = ({
     return () => {
       active = false;
     };
-  }, [tableId, reset, t]);
+  }, [tableId, reset, t, retryCount]);
 
   const handleCancel = () => {
     reset(storedConfig ? toFormValues(storedConfig) : DEFAULT_VALUES);
@@ -256,48 +267,34 @@ const ProfilerSettingsModal = ({
                   required={isRequired && enablePartition}
                 />
               )}
-              <Box align="center" gap={1}>
-                {searchable ? (
-                  <ProfilerColumnSelect
-                    isDisabled={isDisabled}
-                    isInvalid={fieldState.invalid}
-                    items={completeItems}
-                    label={accessibleLabel}
-                    placeholder={placeholder}
-                    selectedKey={key}
-                    testId={testId}
-                    onBlur={field.onBlur}
-                    onSelectionChange={handleSelection}
-                  />
-                ) : (
-                  <Select
-                    aria-label={accessibleLabel}
-                    className="tw:min-w-0 tw:flex-1"
-                    data-testid={testId}
-                    fontSize="sm"
-                    isDisabled={isDisabled}
-                    isInvalid={fieldState.invalid}
-                    items={completeItems}
-                    placeholder={placeholder}
-                    value={key}
-                    onBlur={field.onBlur}
-                    onChange={handleSelection}>
-                    {content}
-                  </Select>
-                )}
-                {key !== null && !isDisabled && (
-                  <Button
-                    aria-label={`${t('label.clear')} ${accessibleLabel}`}
-                    color="tertiary"
-                    iconLeading={XClose}
-                    size="xs"
-                    onPress={() => {
-                      field.onChange(undefined);
-                      onChange?.();
-                    }}
-                  />
-                )}
-              </Box>
+              {searchable ? (
+                <ProfilerColumnSelect
+                  isDisabled={isDisabled}
+                  isInvalid={fieldState.invalid}
+                  items={completeItems}
+                  label={accessibleLabel}
+                  placeholder={placeholder}
+                  selectedKey={key}
+                  testId={testId}
+                  onBlur={field.onBlur}
+                  onSelectionChange={handleSelection}
+                />
+              ) : (
+                <Select
+                  aria-label={accessibleLabel}
+                  className="tw:min-w-0 tw:flex-1"
+                  data-testid={testId}
+                  fontSize="sm"
+                  isDisabled={isDisabled}
+                  isInvalid={fieldState.invalid}
+                  items={completeItems}
+                  placeholder={placeholder}
+                  value={key}
+                  onBlur={field.onBlur}
+                  onChange={handleSelection}>
+                  {content}
+                </Select>
+              )}
               {fieldState.error && (
                 <HintText isInvalid>{fieldState.error.message}</HintText>
               )}
@@ -344,11 +341,7 @@ const ProfilerSettingsModal = ({
     </FormField>
   );
 
-  const content = isDataLoading ? (
-    <Box align="center" className="profiler-settings-loader" justify="center">
-      <Loader />
-    </Box>
-  ) : (
+  const formContent = (
     <HookForm
       autoComplete="off"
       className="profiler-settings-drawer-content"
@@ -356,13 +349,8 @@ const ProfilerSettingsModal = ({
       id="profiler-setting-form"
       validationBehavior="aria"
       onSubmit={form.handleSubmit(handleSave)}>
-      <Grid
-        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
-        rowGap="4">
-        <Grid.Item
-          className="layout-column"
-          data-testid="profile-sample-container"
-          span={24}>
+      <Grid colGap="4" rowGap="4">
+        <Grid.Item data-testid="profile-sample-container" span={24}>
           <Box
             className="profiler-settings-form"
             data-testid="configure-ingestion-container"
@@ -420,10 +408,7 @@ const ProfilerSettingsModal = ({
             )}
           </Box>
         </Grid.Item>
-        <Grid.Item
-          className="layout-column"
-          data-testid="sql-editor-container"
-          span={24}>
+        <Grid.Item data-testid="sql-editor-container" span={24}>
           <FormField control={form.control} name="profileQuery">
             {({ field }) => (
               <Box direction="col" gap={2}>
@@ -444,10 +429,7 @@ const ProfilerSettingsModal = ({
             )}
           </FormField>
         </Grid.Item>
-        <Grid.Item
-          className="layout-column"
-          data-testid="exclude-column-container"
-          span={24}>
+        <Grid.Item data-testid="exclude-column-container" span={24}>
           <Box direction="col" gap={1}>
             <Typography as="p">{t('message.enable-column-profile')}</Typography>
             <Typography as="p" size="text-xs">
@@ -455,51 +437,36 @@ const ProfilerSettingsModal = ({
             </Typography>
             <FormField control={form.control} name="excludeColumns">
               {({ field }) => (
-                <Box align="center" gap={2}>
-                  <Autocomplete
-                    aria-label={t('label.exclude')}
-                    className="tw:flex-1"
-                    data-testid="exclude-column-select"
-                    icon={null}
-                    items={columnItems}
-                    placeholder={t('label.select-column-plural-to-exclude')}
-                    selectedItems={field.value.map(
-                      (id) =>
-                        columnItems.find((item) => item.id === id) ?? {
-                          id,
-                          label: id,
-                        }
-                    )}
-                    onItemCleared={(id) =>
-                      field.onChange(
-                        field.value.filter((value) => value !== id)
-                      )
-                    }
-                    onItemInserted={(id) =>
-                      field.onChange([...new Set([...field.value, String(id)])])
-                    }>
-                    {(item) => (
-                      <Autocomplete.Item id={item.id} textValue={item.label}>
-                        {item.label}
-                      </Autocomplete.Item>
-                    )}
-                  </Autocomplete>
-                  {field.value.length > 0 && (
-                    <Button
-                      aria-label={t('label.clear')}
-                      color="tertiary"
-                      data-testid="clear-excluded-columns"
-                      iconLeading={XClose}
-                      size="xs"
-                      onPress={() => field.onChange([])}
-                    />
+                <Autocomplete
+                  aria-label={t('label.exclude')}
+                  data-testid="exclude-column-select"
+                  icon={null}
+                  items={columnItems}
+                  placeholder={t('label.select-column-plural-to-exclude')}
+                  selectedItems={field.value.map(
+                    (id) =>
+                      columnItems.find((item) => item.id === id) ?? {
+                        id,
+                        label: id,
+                      }
                   )}
-                </Box>
+                  onItemCleared={(id) =>
+                    field.onChange(field.value.filter((value) => value !== id))
+                  }
+                  onItemInserted={(id) =>
+                    field.onChange([...new Set([...field.value, String(id)])])
+                  }>
+                  {(item) => (
+                    <Autocomplete.Item id={item.id} textValue={item.label}>
+                      {item.label}
+                    </Autocomplete.Item>
+                  )}
+                </Autocomplete>
               )}
             </FormField>
           </Box>
         </Grid.Item>
-        <Grid.Item className="layout-column" span={24}>
+        <Grid.Item span={24}>
           <Box direction="col" gap={2}>
             <Box align="center" gap={2}>
               <Typography as="p" size="text-xs">
@@ -524,10 +491,8 @@ const ProfilerSettingsModal = ({
               direction="col"
               gap={4}>
               {includeColumns.fields.map((row, index) => (
-                <Grid
-                  className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
-                  key={row.id}>
-                  <Grid.Item className="layout-column" span={12}>
+                <Grid colGap="4" key={row.id}>
+                  <Grid.Item span={12}>
                     {selectField({
                       name: `includeColumns.${index}.columnName`,
                       items: columnWithAll,
@@ -536,7 +501,7 @@ const ProfilerSettingsModal = ({
                       searchable: true,
                     })}
                   </Grid.Item>
-                  <Grid.Item className="layout-column" span={12}>
+                  <Grid.Item span={12}>
                     <Box align="start" gap={1}>
                       <Box className="tw:min-w-0 tw:flex-1">
                         <FormField
@@ -567,7 +532,7 @@ const ProfilerSettingsModal = ({
             </Box>
           </Box>
         </Grid.Item>
-        <Grid.Item className="layout-column" span={24}>
+        <Grid.Item span={24}>
           <FormField control={form.control} name="enablePartitioning">
             {({ field }) => (
               <Box align="center" gap={3}>
@@ -587,7 +552,7 @@ const ProfilerSettingsModal = ({
             )}
           </FormField>
         </Grid.Item>
-        <Grid.Item className="layout-column" span={12}>
+        <Grid.Item span={12}>
           {selectField({
             name: 'partitionIntervalType',
             label: t('label.interval-type'),
@@ -602,7 +567,7 @@ const ProfilerSettingsModal = ({
             onChange: resetPartitionFields,
           })}
         </Grid.Item>
-        <Grid.Item className="layout-column" span={12}>
+        <Grid.Item span={12}>
           {selectField({
             name: 'partitionColumnName',
             label: t('label.column-entity', { entity: t('label.name') }),
@@ -617,7 +582,7 @@ const ProfilerSettingsModal = ({
         {partitionIntervalType &&
           TIME_BASED_PARTITION.includes(partitionIntervalType) && (
             <>
-              <Grid.Item className="layout-column" span={12}>
+              <Grid.Item span={12}>
                 {numberField(
                   'partitionInterval',
                   t('label.interval'),
@@ -627,7 +592,7 @@ const ProfilerSettingsModal = ({
                   true
                 )}
               </Grid.Item>
-              <Grid.Item className="layout-column" span={12}>
+              <Grid.Item span={12}>
                 {selectField({
                   name: 'partitionIntervalUnit',
                   label: t('label.interval-unit'),
@@ -645,7 +610,7 @@ const ProfilerSettingsModal = ({
           )}
         {partitionIntervalType === PartitionIntervalTypes.IntegerRange && (
           <>
-            <Grid.Item className="layout-column" span={12}>
+            <Grid.Item span={12}>
               {numberField(
                 'partitionIntegerRangeStart',
                 t('label.start-entity', { entity: t('label.range') }),
@@ -657,7 +622,7 @@ const ProfilerSettingsModal = ({
                 true
               )}
             </Grid.Item>
-            <Grid.Item className="layout-column" span={12}>
+            <Grid.Item span={12}>
               {numberField(
                 'partitionIntegerRangeEnd',
                 t('label.end-entity', { entity: t('label.range') }),
@@ -672,7 +637,7 @@ const ProfilerSettingsModal = ({
           </>
         )}
         {partitionIntervalType === PartitionIntervalTypes.ColumnValue && (
-          <Grid.Item className="layout-column" span={24}>
+          <Grid.Item span={24}>
             <Box direction="col" gap={4}>
               <Box align="center" gap={2}>
                 <Typography as="p" size="text-xs">
@@ -727,6 +692,43 @@ const ProfilerSettingsModal = ({
     </HookForm>
   );
 
+  const renderContent = () => {
+    if (isDataLoading) {
+      return (
+        <Box
+          align="center"
+          className="profiler-settings-loader"
+          justify="center">
+          <Loader />
+        </Box>
+      );
+    }
+    if (isFetchFailed) {
+      return (
+        <Box
+          className="tw:relative tw:min-h-56 tw:w-full"
+          data-testid="profiler-settings-load-error">
+          <SomethingWentWrongPlaceholder
+            actions={[
+              {
+                key: 'retry',
+                color: 'primary',
+                label: t('label.retry'),
+                onPress: () => setRetryCount((count) => count + 1),
+              },
+            ]}
+            icon={<AlertCircle className="tw:text-fg-error-primary" />}
+            title={t('server.fetch-table-profiler-config-error')}
+          />
+        </Box>
+      );
+    }
+
+    return formContent;
+  };
+
+  const content = renderContent();
+
   return (
     <SlideoutMenu
       aria-label={t('label.setting-plural')}
@@ -750,6 +752,7 @@ const ProfilerSettingsModal = ({
           </Button>
           <Button
             form="profiler-setting-form"
+            isDisabled={isFetchFailed}
             isLoading={isLoading}
             type="submit">
             {t('label.save')}

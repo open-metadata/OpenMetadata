@@ -13,6 +13,8 @@
 import { isEqual } from 'lodash';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../generated/entity/type';
+import { getUserPath } from '../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 
 interface TaskOwnershipFlags {
   isOwner: boolean;
@@ -118,3 +120,7 @@ export const computeWorkflowTaskAccess = ({
     showsWorkflowActions: !decidedByAssignees || hasWorkflowAccess,
   };
 };
+
+/** Link to the task creator's profile; build it per render (it reads the mode). */
+export const getTaskCreatorLink = (task: Task): string =>
+  getSettingsLink(getUserPath(task.createdBy?.name ?? ''));

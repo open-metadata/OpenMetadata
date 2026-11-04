@@ -13,7 +13,6 @@
 
 import {
   Box,
-  Button,
   ButtonUtility,
   Skeleton,
   Typography,
@@ -25,7 +24,6 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
@@ -46,15 +44,14 @@ import {
   removeConversationReplyReaction,
 } from '../../../../../rest/conversationsAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import {
-  getFrontEndFormat,
-  MarkdownToHTMLConverter,
-} from '../../../../../utils/FeedUtilsPure';
+import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import CommentComposer, {
+  CommentEditForm,
+} from '../../../../common/CommentComposer/CommentComposer';
 import { formatActivityTime, INBOX_MESSAGE_CLASS } from '../inbox.utils';
 import { useFeedDeleteAccess } from '../useFeedDeleteAccess';
 import AuthorPopover from './AuthorPopover';
-import InboxCommentComposer from './InboxCommentComposer';
 
 // Admins bypass policy evaluation server-side. ConditionalAllow → author
 // only: exact for the default isOwner() rule; an approximation for other
@@ -230,24 +227,12 @@ const ReplyRow = ({
           )}
         </Box>
         {isEditing ? (
-          <Box data-testid="edit-message-editor" direction="col" gap={2}>
-            <ActivityFeedEditorNew
-              focused
-              defaultValue={MarkdownToHTMLConverter.makeHtml(
-                getFrontEndFormat(reply.message)
-              )}
-              onSave={handleEditSave}
-            />
-            <Box align="center" className="tw:justify-end">
-              <Button
-                color="link-gray"
-                data-testid="cancel-edit-message"
-                size="sm"
-                onPress={() => setIsEditing(false)}>
-                {t('label.cancel')}
-              </Button>
-            </Box>
-          </Box>
+          <CommentEditForm
+            message={reply.message}
+            testId="edit-message"
+            onCancel={() => setIsEditing(false)}
+            onSave={handleEditSave}
+          />
         ) : (
           <RichTextEditorPreviewerV1
             className={classNames(INBOX_MESSAGE_CLASS, 'tw:text-sm')}
@@ -313,7 +298,7 @@ const ActivityThread = ({
           />
         ))
       )}
-      <InboxCommentComposer
+      <CommentComposer
         focused={focusComposer}
         placeHolder={t('label.reply-in-conversation')}
         onSave={onReply}

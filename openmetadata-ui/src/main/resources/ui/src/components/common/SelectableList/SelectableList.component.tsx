@@ -301,7 +301,10 @@ export const SelectableList = ({
       </div>
 
       {/* List body */}
-      <div className="tw:relative">
+      <div
+        className="tw:relative"
+        data-testid="selectable-list-body"
+        style={{ minHeight: height }}>
         {(fetching || updating) && (
           <div className="tw:flex tw:items-center tw:justify-center tw:py-4">
             <Loader size="small" />
@@ -313,7 +316,11 @@ export const SelectableList = ({
           </div>
         )}
         {uniqueOptions.length > 0 && (
-          <ul className="tw:p-0 tw:m-0 tw:list-none" ref={containerRef}>
+          <ul
+            className="tw:p-0 tw:m-0 tw:list-none"
+            ref={(element) => {
+              containerRef.current = element;
+            }}>
             <VirtualList
               className="selectable-list-virtual-list tw:px-2 tw:pb-2"
               data={uniqueOptions}

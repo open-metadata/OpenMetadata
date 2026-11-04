@@ -90,8 +90,8 @@ test.describe('Ontology Studio', () => {
     const statsBefore = await stats.innerText();
     const zoomBefore = await readGraphZoom(page);
     await expect(
-      page.getByTestId('ontology-glossary-menu-trigger')
-    ).toHaveAttribute('data-selected-glossary-id', '');
+      page.getByTestId('ontology-scope-menu-trigger')
+    ).toHaveAttribute('data-scope-key', 'glossary:all');
 
     // Once loaded, mode changes must work even when the catalog cannot be fetched again.
     await page.route('**/api/v1/glossaries?*', (route) =>
@@ -137,7 +137,7 @@ test.describe('Ontology Studio', () => {
   });
 
   test('scopes the Studio graph and stats to a glossary', async ({ page }) => {
-    await page.getByTestId('ontology-glossary-menu-trigger').click();
+    await page.getByTestId('ontology-scope-menu-trigger').click();
     await expect(
       page.getByTestId(PageData.glossary.responseData.id)
     ).toBeVisible();
@@ -265,10 +265,10 @@ test.describe('Ontology Studio', () => {
     await page.getByTestId('mode-tab-view').click();
     await expect(searchInput).toHaveValue(PageData.term1.data.name);
     await expect(
-      page.getByTestId('ontology-glossary-menu-trigger')
+      page.getByTestId('ontology-scope-menu-trigger')
     ).toHaveAttribute(
-      'data-selected-glossary-id',
-      PageData.glossary.responseData.id
+      'data-scope-key',
+      `glossary:${PageData.glossary.responseData.id}`
     );
     expect(await readGraphEdges(page)).toEqual(edgesBefore);
 

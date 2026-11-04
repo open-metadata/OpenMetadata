@@ -22,7 +22,13 @@ const ITEMS: SelectItemType[] = [
   { id: 'topic', label: 'Topic' },
 ];
 
-const Example = ({ showTagAvatars }: { showTagAvatars?: boolean }) => {
+const Example = ({
+  showTagAvatars,
+  onItemInserted,
+}: {
+  showTagAvatars?: boolean;
+  onItemInserted?: (key: unknown) => void;
+}) => {
   const selected = useListData<SelectItemType>({ initialItems: [ITEMS[0]] });
 
   return (
@@ -30,7 +36,8 @@ const Example = ({ showTagAvatars }: { showTagAvatars?: boolean }) => {
       items={ITEMS}
       label="Entities"
       selectedItems={selected}
-      showTagAvatars={showTagAvatars}>
+      showTagAvatars={showTagAvatars}
+      onItemInserted={onItemInserted}>
       {(item) => (
         <MultiSelect.Item id={item.id} textValue={item.label}>
           {item.label}
@@ -60,6 +67,31 @@ describe('MultiSelect', () => {
     );
 
     expect(popover?.style.width).toBe('321px');
+  });
+
+  // react-aria commits the focused option when Tab leaves the input; a browser runs queued
+  // microtasks between React's capture and bubble listeners, so this mimics one.
+  it('adds nothing when Tab leaves the input with an option focused', async () => {
+    vi.stubGlobal('queueMicrotask', (task: () => void) => task());
+    const onItemInserted = vi.fn();
+    render(<Example onItemInserted={onItemInserted} />);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.tab();
+
+    expect(onItemInserted).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('adds the focused option on Enter', async () => {
+    const onItemInserted = vi.fn();
+    render(<Example onItemInserted={onItemInserted} />);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+
+    expect(onItemInserted).toHaveBeenCalledTimes(1);
   });
 
   it('shows an avatar on each chip unless told the items are not people', () => {

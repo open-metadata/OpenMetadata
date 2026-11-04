@@ -11,30 +11,32 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   ButtonUtility,
   Grid,
   Skeleton,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { ALERT_EMPTY_STATE_FEATURES } from '../../constants/Alerts.constants';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
-import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -44,7 +46,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import {
@@ -74,6 +76,7 @@ const NotificationListPage = () => {
   const navigate = useNavigate();
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
+  const [alertsError, setAlertsError] = useState<AxiosError>();
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
   const [isDeleting, setIsDeleting] = useState(false);
   const {
@@ -98,6 +101,9 @@ const NotificationListPage = () => {
   >();
   const [alertResourcePermission, setAlertResourcePermission] =
     useState<OperationPermission>();
+  const canCreateAlert = alertResourcePermission
+    ? getDerivedPermissionFlags(alertResourcePermission).canCreate
+    : false;
 
   const fetchAlertPermissionByFqn = async (alertDetails: EventSubscription) => {
     const permission = await getEntityPermissionByFqn(
@@ -156,6 +162,7 @@ const NotificationListPage = () => {
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
       setLoadingCount((count) => count + 1);
+      setAlertsError(undefined);
       try {
         const { data, paging } = await getAllAlerts({
           after: params?.after,
@@ -176,7 +183,8 @@ const NotificationListPage = () => {
 
         handlePagingChange(paging);
         fetchAllAlertsPermission(data);
-      } catch {
+      } catch (error) {
+        setAlertsError(error as AxiosError);
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
@@ -191,7 +199,9 @@ const NotificationListPage = () => {
     fetchAlertResourcePermission();
   }, []);
 
-  useEffect(() => {
+  // Re-requests the page the user is on, so a retry after a failed page 2+
+  // does not show page 1's alerts under the current page number.
+  const fetchCurrentPage = useCallback(() => {
     const { cursorType, cursorValue } = pagingCursor ?? {};
 
     if (cursorType && cursorValue) {
@@ -199,6 +209,10 @@ const NotificationListPage = () => {
     } else {
       fetchAlerts();
     }
+  }, [fetchAlerts, pagingCursor]);
+
+  useEffect(() => {
+    fetchCurrentPage();
   }, [pageSize, pagingCursor]);
 
   const handleAlertDelete = useCallback(async () => {
@@ -243,6 +257,17 @@ const NotificationListPage = () => {
     [paging]
   );
 
+  const handleAddAlert = useCallback(
+    () =>
+      navigate(
+        getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ADD_NOTIFICATION
+        )
+      ),
+    [navigate]
+  );
+
   const columns = useMemo(
     () => [
       {
@@ -254,7 +279,9 @@ const NotificationListPage = () => {
           return (
             record.fullyQualifiedName && (
               <Link
+                className="tw:block tw:max-w-48 tw:truncate"
                 data-testid="alert-name"
+                title={getEntityName(record)}
                 to={getNotificationAlertDetailsPath(record.fullyQualifiedName)}>
                 {getEntityName(record)}
               </Link>
@@ -271,7 +298,11 @@ const NotificationListPage = () => {
           return resources?.join(', ') || '--';
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EventSubscription>({
+        render: (text: string) => (
+          <RichTextEditorPreviewerNew clampByLines markdown={text} />
+        ),
+      }),
       {
         title: t('label.action-plural').toString(),
         dataIndex: 'fullyQualifiedName',
@@ -303,28 +334,28 @@ const NotificationListPage = () => {
           return (
             <div className="d-flex items-center">
               {alertPermission.edit && (
-                <Tooltip arrow placement="bottom" title={t('label.edit')}>
-                  <ButtonUtility
-                    color="tertiary"
-                    data-testid={`alert-edit-${record.name}`}
-                    href={getNotificationAlertsEditPath(fullyQualifiedName)}
-                    icon={EditIcon}
-                    isDisabled={record.provider === ProviderType.System}
-                    size="sm"
-                  />
-                </Tooltip>
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid={`alert-edit-${record.name}`}
+                  href={getNotificationAlertsEditPath(fullyQualifiedName)}
+                  icon={Edit01}
+                  isDisabled={record.provider === ProviderType.System}
+                  size="lg"
+                  tooltip={t('label.edit')}
+                  tooltipPlacement="bottom"
+                />
               )}
               {alertPermission.delete && (
-                <Tooltip arrow placement="bottom" title={t('label.delete')}>
-                  <ButtonUtility
-                    color="tertiary"
-                    data-testid={`alert-delete-${record.name}`}
-                    icon={DeleteIcon}
-                    isDisabled={record.provider === ProviderType.System}
-                    size="sm"
-                    onClick={() => setSelectedAlert(record)}
-                  />
-                </Tooltip>
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid={`alert-delete-${record.name}`}
+                  icon={Trash01}
+                  isDisabled={record.provider === ProviderType.System}
+                  size="lg"
+                  tooltip={t('label.delete')}
+                  tooltipPlacement="bottom"
+                  onClick={() => setSelectedAlert(record)}
+                />
               )}
             </div>
           );
@@ -358,14 +389,7 @@ const NotificationListPage = () => {
                 <Button
                   color="primary"
                   data-testid="create-notification"
-                  onClick={() =>
-                    navigate(
-                      getSettingPath(
-                        GlobalSettingsMenuCategory.NOTIFICATIONS,
-                        GlobalSettingOptions.ADD_NOTIFICATION
-                      )
-                    )
-                  }>
+                  onClick={handleAddAlert}>
                   {t('label.add-entity', { entity: t('label.alert') })}
                 </Button>
               </LimitWrapper>
@@ -384,28 +408,61 @@ const NotificationListPage = () => {
               pagingHandler: onPageChange,
               onShowSizeChange: handlePageSizeChange,
             }}
-            dataSource={alerts}
+            dataSource={alertsError ? [] : alerts}
             loading={Boolean(loadingCount)}
             locale={{
-              emptyText: (
-                <ErrorPlaceHolder
-                  permission
-                  className="p-y-md"
-                  doc={ALERTS_DOCS}
-                  heading={t('label.alert')}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.alert'),
-                  })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() =>
-                    navigate(
-                      getSettingPath(
-                        GlobalSettingsMenuCategory.NOTIFICATIONS,
-                        GlobalSettingOptions.ADD_NOTIFICATION
-                      )
-                    )
-                  }
-                />
+              emptyText: alertsError ? (
+                <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+                  {alertsError.response?.status === ClientErrors.FORBIDDEN ? (
+                    <PermissionPlaceholder
+                      permissionValue={t('label.view-entity', {
+                        entity: t('label.alert-plural'),
+                      })}
+                    />
+                  ) : (
+                    <SomethingWentWrongPlaceholder
+                      onReload={fetchCurrentPage}
+                    />
+                  )}
+                </Box>
+              ) : (
+                <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+                  <FeaturesPlaceholder
+                    actions={
+                      canCreateAlert
+                        ? [
+                            {
+                              key: 'new-alert',
+                              label: t('label.new-entity', {
+                                entity: t('label.alert'),
+                              }),
+                              color: 'primary' as const,
+                              iconLeading: Plus,
+                              onPress: handleAddAlert,
+                            },
+                          ]
+                        : undefined
+                    }
+                    description={t(
+                      'message.observability-alert-empty-description'
+                    )}
+                    features={ALERT_EMPTY_STATE_FEATURES.map(
+                      ({
+                        key,
+                        Icon,
+                        iconClassName,
+                        titleKey,
+                        descriptionKey,
+                      }) => ({
+                        key,
+                        icon: <Icon className={iconClassName} />,
+                        title: t(titleKey),
+                        description: t(descriptionKey),
+                      })
+                    )}
+                    title={t('message.observability-alert-empty-heading')}
+                  />
+                </Box>
               ),
             }}
             pagination={false}

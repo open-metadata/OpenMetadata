@@ -82,7 +82,7 @@ export const useLearningResourceActions = ({
     }
     setIsDeleting(true);
     try {
-      await deleteLearningResource(deletingResource.id);
+      await deleteLearningResource(deletingResource.id, true);
       showSuccessToast(
         t('server.entity-deleted-successfully', {
           entity: t('label.learning-resource'),

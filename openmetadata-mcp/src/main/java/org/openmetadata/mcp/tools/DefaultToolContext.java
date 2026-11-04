@@ -3,6 +3,7 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.mcp.McpUtils.getToolProperties;
 
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.ws.rs.WebApplicationException;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -312,6 +314,26 @@ public class DefaultToolContext {
     return matched;
   }
 
+  /**
+   * The status an exception already carries, when it blames the caller. A {@code SearchException}
+   * reports the engine's 400 for a malformed {@code queryFilter} or a page past the result window,
+   * but its message names no status and no keyword below, so it fell through to 500 and the caller
+   * was told its arguments were fine. Only a 4xx is taken: a carried 500 is often a constructor
+   * default, and the keyword table still tells a timeout from an outage.
+   */
+  private static CategoryMatcher carriedClientStatus(Throwable cursor) {
+    int status =
+        switch (cursor) {
+          case WebServiceException e -> e.getResponse().getStatus();
+          case WebApplicationException e -> e.getResponse().getStatus();
+          default -> 0;
+        };
+    boolean isClientError = status >= STATUS_BAD_REQUEST && status < STATUS_INTERNAL_ERROR;
+    return isClientError
+        ? new CategoryMatcher(meta -> true, categoryForStatus(status), status)
+        : null;
+  }
+
   /** Matches the {@code status line [HTTP/1.1 400 Bad Request]} a search client embeds in its message. */
   private static final Pattern REPORTED_HTTP_STATUS =
       Pattern.compile("status line \\[http/\\d(?:\\.\\d)? (\\d{3})");
@@ -406,7 +428,8 @@ public class DefaultToolContext {
         new ExceptionMeta(
             cursor.getClass().getSimpleName(),
             cursor.getMessage() == null ? "" : cursor.getMessage().toLowerCase(Locale.ROOT));
-    CategoryMatcher reported = reportedStatus(meta.message());
+    CategoryMatcher carried = carriedClientStatus(cursor);
+    CategoryMatcher reported = carried != null ? carried : reportedStatus(meta.message());
     return reported != null
         ? reported
         : CATEGORY_MATCHERS.stream()

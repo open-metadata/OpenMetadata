@@ -15,14 +15,15 @@ import {
   BadgeWithIcon,
   Box,
   Button,
+  ConfirmPopover,
   Dropdown,
-  EmptyPlaceholder,
   FilterSelect,
   Input,
   PaginationCardWithControls,
   Skeleton,
   Table,
   TableCard,
+  TableCardVariant,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -36,7 +37,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { DateTime } from 'luxon';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
@@ -51,6 +52,7 @@ import {
   SystemAnnouncementsListState,
   useDeleteSystemAnnouncement,
 } from '../../../../../hooks/platform/useSystemAnnouncements';
+import { useAnchoredConfirm } from '../../../../../hooks/popover/useAnchoredConfirm';
 import { AnnouncementEntity } from '../../../../../rest/announcementsAPI';
 import {
   ANNOUNCEMENT_STATUS_COLORS,
@@ -60,7 +62,11 @@ import {
   getAnnouncementTypeConfig,
   getAnnouncementTypeLabel,
 } from '../../../../../utils/AnnouncementsUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import AnnouncementDeleteDialog from '../../../../Announcement/AnnouncementDeleteDialog';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
 type ColumnId =
@@ -79,10 +85,17 @@ interface Column {
 }
 
 interface SystemAnnouncementsTableProps {
+  /**
+   * How a row delete is confirmed. The settings modal is already an overlay,
+   * so it confirms in a popover anchored to the row's menu instead of a modal.
+   * @default 'modal'
+   */
+  deleteConfirmation?: 'modal' | 'popover';
   list: SystemAnnouncementsListState;
   onAdd: () => void;
   onDuplicate: (announcement: AnnouncementEntity) => void;
   onEdit: (announcement: AnnouncementEntity) => void;
+  variant?: TableCardVariant;
 }
 
 // Announcements are scheduled by day, so the cell shows the day alone.
@@ -120,16 +133,18 @@ const RowActions = ({
   onEdit,
 }: {
   announcement: AnnouncementEntity;
-  onDelete: (announcement: AnnouncementEntity) => void;
+  /** `trigger` is the row's actions button, to anchor a confirmation to. */
+  onDelete: (announcement: AnnouncementEntity, trigger?: HTMLElement) => void;
   onDuplicate: (announcement: AnnouncementEntity) => void;
   onEdit: (announcement: AnnouncementEntity) => void;
 }) => {
   const { t } = useTranslation();
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
 
   const handlers: Record<RowAction, typeof onEdit> = {
     edit: onEdit,
     duplicate: onDuplicate,
-    delete: onDelete,
+    delete: (row) => onDelete(row, actionsButtonRef.current ?? undefined),
   };
 
   return (
@@ -142,6 +157,7 @@ const RowActions = ({
           isPressed && !isFocusVisible ? 'tw:outline-0' : ''
         }
         data-testid={`announcement-actions-${announcement.name}`}
+        ref={actionsButtonRef}
       />
       <Dropdown.Popover className="tw:w-min">
         <Dropdown.Menu
@@ -180,14 +196,21 @@ const RowActions = ({
  * Duplicate lead, so the same table serves Classic and AI mode.
  */
 const SystemAnnouncementsTable = ({
+  deleteConfirmation = 'modal',
   list,
   onAdd,
   onDuplicate,
   onEdit,
+  variant,
 }: SystemAnnouncementsTableProps) => {
   const { t } = useTranslation();
-  const [pendingDelete, setPendingDelete] = useState<AnnouncementEntity>();
-  const closeDelete = useCallback(() => setPendingDelete(undefined), []);
+  // The modal branch reads the same pending row; only the popover anchors to the pressed menu.
+  const {
+    target: pendingDelete,
+    open: setPendingDelete,
+    close: closeDelete,
+    popoverProps,
+  } = useAnchoredConfirm<AnnouncementEntity>();
   const deleteMutation = useDeleteSystemAnnouncement(closeDelete);
 
   const {
@@ -320,17 +343,17 @@ const SystemAnnouncementsTable = ({
     if (isError) {
       return (
         <div className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
+          <SomethingWentWrongPlaceholder
             actions={[
               {
-                color: 'secondary' as const,
+                color: 'primary' as const,
                 key: 'retry',
                 label: t('label.retry'),
                 onPress: () => refetch(),
               },
             ]}
             data-testid="announcements-error"
-            icon={<AlertCircle className="tw:text-quaternary" />}
+            icon={<AlertCircle />}
             title={t('server.entity-fetch-error', {
               entity: t('label.announcement-plural'),
             })}
@@ -341,16 +364,16 @@ const SystemAnnouncementsTable = ({
 
     return hasFilters ? (
       <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           data-testid="announcements-no-match"
           description={t('message.check-spelling-or-try-different-term')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-results')}
         />
       </div>
     ) : (
       <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={[
             {
               color: 'primary' as const,
@@ -363,7 +386,7 @@ const SystemAnnouncementsTable = ({
           ]}
           data-testid="announcements-empty"
           description={t('message.no-system-announcements-description')}
-          icon={<Announcement02 className="tw:text-quaternary" />}
+          icon={<Announcement02 />}
           title={t('label.no-entity-found', {
             entity: t('label.announcement-plural'),
           })}
@@ -377,7 +400,8 @@ const SystemAnnouncementsTable = ({
       <TableCard.Root
         className="tw:flex tw:flex-col"
         data-testid="system-announcements-table"
-        size="sm">
+        size="sm"
+        variant={variant}>
         <Box
           align="center"
           className="tw:border-b tw:border-subtle tw:px-4 tw:py-3"
@@ -492,14 +516,30 @@ const SystemAnnouncementsTable = ({
         )}
       </TableCard.Root>
 
-      <AnnouncementDeleteDialog
-        isDeleting={deleteMutation.isPending}
-        isOpen={Boolean(pendingDelete)}
-        onCancel={closeDelete}
-        onConfirm={() =>
-          pendingDelete && deleteMutation.mutate(pendingDelete.id)
-        }
-      />
+      {deleteConfirmation === 'popover' ? (
+        pendingDelete && (
+          <ConfirmPopover
+            {...popoverProps}
+            data-testid="announcement-delete-popover"
+            description={t('message.confirm-delete-message')}
+            title={t('label.delete-entity', {
+              entity: getEntityName(pendingDelete),
+            })}
+            onConfirm={async () => {
+              await deleteMutation.mutateAsync(pendingDelete.id);
+            }}
+          />
+        )
+      ) : (
+        <AnnouncementDeleteDialog
+          isDeleting={deleteMutation.isPending}
+          isOpen={Boolean(pendingDelete)}
+          onCancel={closeDelete}
+          onConfirm={() =>
+            pendingDelete && deleteMutation.mutate(pendingDelete.id)
+          }
+        />
+      )}
     </>
   );
 };

@@ -43,7 +43,7 @@ const MyTasksSelectionBar: React.FC<MyTasksSelectionBarProps> = ({
 
   return (
     <div
-      className="tw:sticky tw:-bottom-5 tw:-mx-5 tw:-mb-5 tw:mt-auto tw:flex tw:items-center tw:gap-2 tw:border-t tw:border-secondary tw:bg-primary tw:px-5 tw:py-3 tw:shadow-lg"
+      className="tw:sticky tw:-bottom-5 tw:-mx-5 tw:-mb-5 tw:mt-auto tw:flex tw:items-center tw:gap-2 tw:border-t tw:border-secondary tw:bg-surface tw:px-5 tw:py-3 tw:shadow-lg"
       data-testid="my-tasks-selection-bar">
       <Typography
         className="tw:mr-auto tw:text-text-primary!"

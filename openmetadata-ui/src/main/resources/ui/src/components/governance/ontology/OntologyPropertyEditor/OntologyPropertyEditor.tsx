@@ -13,6 +13,8 @@
 import {
   Box,
   Button,
+  Checkbox,
+  FieldProp,
   FieldTypes,
   FormField,
   getField,
@@ -21,7 +23,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
-import { Fragment, useState } from 'react';
+import { keyBy } from 'lodash';
+import { Fragment, useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -29,10 +32,13 @@ import {
   Kind,
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyProperty,
   patchOntologyProperty,
 } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
@@ -42,6 +48,26 @@ import {
   propertyPatch,
   propertyRequest,
 } from './OntologyPropertyEditor.utils';
+
+const ADVANCED_FIELDS = [
+  'characteristics',
+  'inverse',
+  'disjointWith',
+  'propertyChain',
+  'iri',
+];
+
+const isSelectedItem = (value: { id: string }[], item: { id: string }) =>
+  value.some((selected) => selected.id === item.id);
+
+const toggleSelection = (
+  value: { id: string }[],
+  item: { id: string },
+  checked: boolean
+) =>
+  checked
+    ? [...value, item]
+    : value.filter((selected) => selected.id !== item.id);
 
 interface OntologyPropertyEditorProps {
   ontology: Ontology;
@@ -57,12 +83,22 @@ const OntologyPropertyEditor = ({
   onSaved,
 }: OntologyPropertyEditorProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const form = useForm<OntologyPropertyFormValues>({
     defaultValues: propertyFormValues(property),
   });
+  const markSaved = useOntologyDirtyForm(form.formState.isDirty);
   const literals = useFieldArray({ control: form.control, name: 'enumValues' });
   const kind = form.watch('kind').id;
   const [isSaving, setIsSaving] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const { errors, submitCount } = form.formState;
+  // Reopen only on a new save attempt, so the user can still collapse it.
+  useEffect(() => {
+    if (ADVANCED_FIELDS.some((name) => name in errors)) {
+      setIsAdvancedOpen(true);
+    }
+  }, [submitCount]); // eslint-disable-line react-hooks/exhaustive-deps
   const disabled = !canEdit || isSaving;
   const save = async (values: OntologyPropertyFormValues) => {
     if (!canEdit) {
@@ -71,14 +107,15 @@ const OntologyPropertyEditor = ({
     setIsSaving(true);
     try {
       const request = propertyRequest(values, ontology.fullyQualifiedName);
-      onSaved(
-        property
-          ? await patchOntologyProperty(
-              property.id,
-              propertyPatch(property, request)
-            )
-          : await createOntologyProperty(request)
-      );
+      const saved = property
+        ? await patchOntologyProperty(
+            property.id,
+            propertyPatch(property, request)
+          )
+        : await createOntologyProperty(request);
+      form.reset(propertyFormValues(saved));
+      markSaved();
+      onSaved(saved);
     } catch (error) {
       showErrorToast(
         isAxiosError(error) ? error : t('server.unexpected-error')
@@ -87,6 +124,156 @@ const OntologyPropertyEditor = ({
       setIsSaving(false);
     }
   };
+
+  const renderEnumValues = () =>
+    kind === Kind.Data && (
+      <Box direction="col" gap={3}>
+        <Typography as="h3" weight="semibold">
+          {t('label.enum-value-plural')}
+        </Typography>
+        {literals.fields.map((literal, index) => (
+          <Box direction="col" gap={2} key={literal.id}>
+            <FormField
+              control={form.control}
+              name={`enumValues.${index}.value`}>
+              {({ field }) => (
+                <Input
+                  hideRequiredIndicator
+                  isDisabled={disabled}
+                  label={t('label.value')}
+                  name={field.name}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChange={field.onChange}
+                />
+              )}
+            </FormField>
+            {getField({
+              name: `enumValues.${index}.datatypeIri`,
+              label: t('label.data-type'),
+              type: FieldTypes.TEXT,
+              props: { isDisabled: disabled },
+              rules: {
+                validate: (value: string) =>
+                  !value.trim() ||
+                  isAbsoluteOntologyIri(value.trim()) ||
+                  t('message.invalid-concept-iri'),
+              },
+            })}
+            <Button
+              color="secondary"
+              isDisabled={disabled}
+              onPress={() => literals.remove(index)}>
+              {t('label.remove')}
+            </Button>
+          </Box>
+        ))}
+        <Button
+          color="secondary"
+          isDisabled={disabled || literals.fields.length >= 1000}
+          onPress={() => literals.append({ value: '', datatypeIri: '' })}>
+          {t('label.add-entity', { entity: t('label.value') })}
+        </Button>
+      </Box>
+    );
+
+  const renderCharacteristics = (field?: FieldProp) =>
+    field ? (
+      <FormField control={form.control} name="characteristics">
+        {({ field: { value, onChange } }) => (
+          <Box
+            aria-label={t('label.characteristic-plural')}
+            direction="col"
+            gap={3}
+            role="group">
+            <Typography size="text-sm" weight="medium">
+              {t('label.characteristic-plural')}
+            </Typography>
+            {(field.props?.items ?? []).map((item) => (
+              <Checkbox
+                isDisabled={disabled}
+                isSelected={isSelectedItem(value, item)}
+                key={item.id}
+                label={item.label}
+                onChange={(checked) =>
+                  onChange(toggleSelection(value, item, checked))
+                }
+              />
+            ))}
+          </Box>
+        )}
+      </FormField>
+    ) : null;
+
+  const renderAiForm = () => {
+    const fields = keyBy(
+      propertyFormFields(t, kind, Boolean(property), disabled),
+      'name'
+    );
+    const renderFields = (names: string[]) =>
+      names.map((name) =>
+        fields[name] ? (
+          <Fragment key={name}>{getField(fields[name])}</Fragment>
+        ) : null
+      );
+
+    return (
+      <HookForm
+        data-testid="ontology-property-editor"
+        form={form}
+        onSubmit={form.handleSubmit(save)}>
+        <Box direction="col" gap={5}>
+          <Box direction="col" gap={1}>
+            <Typography color="secondary" size="text-sm">
+              {t('label.in-lowercase')} {getEntityName(ontology)}
+            </Typography>
+            <Typography
+              as="h3"
+              className="not-prose tw:m-0"
+              size="text-lg"
+              weight="semibold">
+              {property
+                ? getEntityName(property)
+                : t('label.new-entity', { entity: t('label.property') })}
+            </Typography>
+          </Box>
+          {renderFields(['name', 'displayName', 'kind', 'domain', 'range'])}
+          {renderEnumValues()}
+          {renderFields(['unit', 'isIdentifier', 'description'])}
+          <details
+            className="tw:border-t tw:border-secondary tw:pt-4"
+            open={isAdvancedOpen}
+            onToggle={(event) => setIsAdvancedOpen(event.currentTarget.open)}>
+            <summary className="tw:cursor-pointer">
+              <Typography as="span" size="text-sm" weight="semibold">
+                {t('label.advanced')}
+              </Typography>
+            </summary>
+            <Box className="tw:mt-4" direction="col" gap={4}>
+              {renderCharacteristics(fields.characteristics)}
+              {renderFields(ADVANCED_FIELDS.slice(1))}
+            </Box>
+          </details>
+          <Box
+            className="tw:border-t tw:border-secondary tw:pt-4"
+            justify="end">
+            <Button
+              color="primary"
+              isDisabled={!canEdit}
+              isLoading={isSaving}
+              size="sm"
+              type="submit">
+              {t('label.save')}
+            </Button>
+          </Box>
+        </Box>
+      </HookForm>
+    );
+  };
+
+  if (isAiMode) {
+    return renderAiForm();
+  }
 
   return (
     <HookForm
@@ -99,56 +286,7 @@ const OntologyPropertyEditor = ({
             <Fragment key={field.name}>{getField(field)}</Fragment>
           )
         )}
-        {kind === Kind.Data && (
-          <Box direction="col" gap={3}>
-            <Typography as="h3" weight="semibold">
-              {t('label.enum-value-plural')}
-            </Typography>
-            {literals.fields.map((literal, index) => (
-              <Box direction="col" gap={2} key={literal.id}>
-                <FormField
-                  control={form.control}
-                  name={`enumValues.${index}.value`}>
-                  {({ field }) => (
-                    <Input
-                      hideRequiredIndicator
-                      isDisabled={disabled}
-                      label={t('label.value')}
-                      name={field.name}
-                      value={field.value}
-                      onBlur={field.onBlur}
-                      onChange={field.onChange}
-                    />
-                  )}
-                </FormField>
-                {getField({
-                  name: `enumValues.${index}.datatypeIri`,
-                  label: t('label.data-type'),
-                  type: FieldTypes.TEXT,
-                  props: { isDisabled: disabled },
-                  rules: {
-                    validate: (value: string) =>
-                      !value.trim() ||
-                      isAbsoluteOntologyIri(value.trim()) ||
-                      t('message.invalid-concept-iri'),
-                  },
-                })}
-                <Button
-                  color="secondary"
-                  isDisabled={disabled}
-                  onPress={() => literals.remove(index)}>
-                  {t('label.remove')}
-                </Button>
-              </Box>
-            ))}
-            <Button
-              color="secondary"
-              isDisabled={disabled || literals.fields.length >= 1000}
-              onPress={() => literals.append({ value: '', datatypeIri: '' })}>
-              {t('label.add-entity', { entity: t('label.value') })}
-            </Button>
-          </Box>
-        )}
+        {renderEnumValues()}
         <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">
           {t('label.save')}
         </Button>

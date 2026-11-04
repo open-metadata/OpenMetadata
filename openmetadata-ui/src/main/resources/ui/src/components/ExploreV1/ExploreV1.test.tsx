@@ -259,6 +259,17 @@ jest.mock('react-router-dom', () => ({
   ),
 }));
 
+jest.mock('../common/DomainFilterChip/DomainFilterChip.component', () => ({
+  DomainFilterChip: () => <div data-testid="domain-filter-chip" />,
+}));
+
+const mockIsAiMode = jest.fn().mockReturnValue(false);
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: () => mockIsAiMode(),
+}));
+
 jest.mock('../Explore/ExploreTree/ExploreTree', () => {
   return jest.fn().mockImplementation(() => <div>ExploreTree</div>);
 });
@@ -436,6 +447,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsAiMode.mockReturnValue(false);
     window.location.search = '';
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
       search: '',
@@ -506,6 +518,21 @@ describe('ExploreV1', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('query-bar-empty-text')).toBeInTheDocument();
   });
+
+  // AI mode shows the chip in its search header instead.
+  it.each([
+    [false, 1],
+    [true, 0],
+  ])(
+    'with AI mode %s, renders %i domain chips under the filters',
+    (isAiMode, count) => {
+      mockIsAiMode.mockReturnValue(isAiMode);
+
+      render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+      expect(screen.queryAllByTestId('domain-filter-chip')).toHaveLength(count);
+    }
+  );
 
   it('uses the query-panel Clear action when a browse filter is active', () => {
     render(

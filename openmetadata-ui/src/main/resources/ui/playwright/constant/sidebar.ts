@@ -85,12 +85,12 @@ export const SIDEBAR_LIST_ITEMS = {
 export const APP_MODE_SIDEBAR_DEFAULT_NAV_KEYS = [
   'home',
   'explore',
-  'lineage',
   'connections',
   'observability',
   'govern',
   'marketplace',
   'context-center',
+  'lineage',
 ];
 
 // Collate app-mode sidebar default visible order; the rest overflow under "More".
@@ -98,11 +98,11 @@ export const COLLATE_APP_MODE_SIDEBAR_DEFAULT_VISIBLE_NAV_KEYS = [
   'chat',
   'home',
   'explore',
-  'lineage',
   'connections',
   'govern',
   'observability',
   'dashboards',
   'automations',
   'marketplace',
+  'context-center',
 ];

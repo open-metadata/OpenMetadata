@@ -340,4 +340,72 @@ test.describe('Platform Lineage page (/lineage)', () => {
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     expect((await refetch).ok()).toBeTruthy();
   });
+
+  test('An empty scene shows the placeholder inside the canvas, below the toolbar', async ({
+    page,
+  }) => {
+    // #35783: the empty state escaped the canvas and drew a narrow column
+    // over the toolbar.
+    // Answer without route.fetch(): the map prefetches adjacent bands, and a
+    // fetch still in flight when the test ends throws "page has been closed",
+    // failing a test whose assertions all passed.
+    await page.route('**/api/v1/lineage/scene?*', (route) => {
+      const params = new URL(route.request().url()).searchParams;
+
+      return route.fulfill({
+        json: {
+          lens: params.get('lens'),
+          band: params.get('band'),
+          nodes: [],
+          edges: [],
+          breadcrumb: [],
+          hiddenNodeCount: 0,
+          sampled: false,
+        },
+      });
+    });
+    await redirectToHomePage(page);
+    const sceneRes = page.waitForResponse((response) =>
+      new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene')
+    );
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    await sceneRes;
+
+    const placeholder = page.getByTestId('empty-placeholder');
+    await expect(placeholder).toBeVisible();
+    await expect(placeholder).toContainText('No lineage data available');
+
+    const canvas = await page.getByTestId('lineage-container').boundingBox();
+    const box = await placeholder.boundingBox();
+    expect(canvas).not.toBeNull();
+    expect(box).not.toBeNull();
+    if (canvas && box) {
+      expect(box.y).toBeGreaterThanOrEqual(canvas.y - 1);
+      expect(box.y + box.height).toBeLessThanOrEqual(
+        canvas.y + canvas.height + 1
+      );
+      expect(box.width).toBeGreaterThan(canvas.width * 0.9);
+    }
+  });
+
+  test('A failed scene request offers a reload that refetches', async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/lineage/scene?*', (route) =>
+      route.fulfill({ status: 500, json: { message: 'Scene unavailable' } })
+    );
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.LINEAGE);
+
+    const placeholder = page.getByTestId('empty-placeholder');
+    await expect(placeholder).toContainText('Something went wrong');
+    const retry = placeholder.getByRole('button', { name: 'Reload' });
+    await expect(retry).toBeVisible();
+
+    const refetch = page.waitForRequest((request) =>
+      new URL(request.url()).pathname.endsWith('/api/v1/lineage/scene')
+    );
+    await retry.click();
+    await refetch;
+  });
 });
