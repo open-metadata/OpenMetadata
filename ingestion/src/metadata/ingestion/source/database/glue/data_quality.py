@@ -420,7 +420,7 @@ class GlueDataQualityMixin:
         if not scope or not finished_at:
             logger.debug(f"Skipping Glue Data Quality result {result.ResultId}: no ruleset or run time")
             return
-        if filter_by_fqn(run.config.rulesetFilterPattern, scope):
+        if filter_by_fqn(run.config.rulesetFilterPattern, result.filter_name or scope):
             self._report_filtered(run, scope, "Glue Data Quality ruleset filtered out")
             return
         if self._skip_out_of_scope(result, run):

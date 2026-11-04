@@ -148,7 +148,7 @@ $$
 $$section
 ### Ruleset Filter Pattern $(id="rulesetFilterPattern")
 
-Regex to only include or exclude Data Quality rulesets by name. For ETL job results without a ruleset name, the pattern is matched against `<job name>_<evaluation context>` (the job and its Data Quality node) instead.
+Regex to only include or exclude Data Quality rulesets by name. For ETL job results without a ruleset name, the pattern is matched against the evaluation context (the job's Data Quality node name) instead.
 $$
 
 $$section

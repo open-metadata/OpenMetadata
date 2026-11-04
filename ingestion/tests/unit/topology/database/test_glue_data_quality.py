@@ -14,7 +14,7 @@ server are faked.
 """
 
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -79,7 +79,8 @@ GLUE_CONFIG = {
                     "awsSecretAccessKey": "aws_secret_access_key",
                     "awsRegion": "us-east-2",
                 },
-                "dataQualityConfig": {"includeDataQuality": True},
+                # Wide enough to hold the fixed-date fixtures; the lookback test sets its own window.
+                "dataQualityConfig": {"includeDataQuality": True, "lookbackDays": 3650},
             },
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -157,6 +158,7 @@ class FakeOpenMetadata:
         self.existing_results: dict[str, list[TestCaseResult]] = {}
         self.es_search_from_fqn = MagicMock(return_value=None)
         self.table_lookups: list[str] = []
+        self.result_windows: list[tuple[int, int]] = []
 
     def get_by_name(self, entity, fqn, fields=None):
         if entity is Table:
@@ -173,7 +175,12 @@ class FakeOpenMetadata:
         raise AssertionError(f"unexpected lookup of {entity}")
 
     def get_test_case_results(self, test_case_fqn, start_ts, end_ts):
-        return self.existing_results.get(test_case_fqn)
+        self.result_windows.append((start_ts, end_ts))
+        return [
+            result
+            for result in self.existing_results.get(test_case_fqn) or []
+            if start_ts <= result.timestamp.root <= end_ts
+        ]
 
 
 def fake_glue(*results: dict) -> MagicMock:
@@ -477,6 +484,37 @@ class TestYieldGlueDataQuality:
         links = [c.entityLink.root for c in of_type(rights, CreateTestCaseRequest)]
         assert links
         assert all(stored_fqn in link for link in links)
+
+    @pytest.mark.parametrize(
+        ("pattern", "imported"),
+        [({"includes": ["EvaluateDataQuality_node1"]}, True), ({"excludes": ["EvaluateDataQuality_node1"]}, False)],
+    )
+    def test_ruleset_filter_matches_an_etl_result_by_its_node_name(self, pattern, imported):
+        source = build_source(
+            FakeOpenMetadata(),
+            fake_glue(ETL_RESULT),
+            etlJobMappings=[{"jobName": "orders_etl", "tableFQN": TABLE_FQN}],
+            rulesetFilterPattern=pattern,
+        )
+        rights, lefts = run(source)
+
+        assert lefts == []
+        assert bool(of_type(rights, OMetaTestCaseResultsSample)) is imported
+
+    def test_lookback_window_bounds_the_glue_listing_and_the_stored_runs_read(self):
+        now = datetime.now(timezone.utc)
+        recent = now - timedelta(days=2)
+        metadata = FakeOpenMetadata()
+        score_fqn = f"{TABLE_FQN}.orders_ruleset_score"
+        metadata.test_cases[score_fqn] = make_test_case(score_fqn)
+        glue = fake_glue({**CATALOG_RESULT, "StartedOn": recent, "CompletedOn": recent})
+        run(build_source(metadata, glue, lookbackDays=3))
+
+        started_after = glue.list_data_quality_results.call_args.kwargs["Filter"]["StartedAfter"]
+        assert abs(now - timedelta(days=3) - started_after) < timedelta(minutes=1)
+        ((start_ts, end_ts),) = metadata.result_windows
+        assert abs(start_ts - started_after.timestamp() * 1000) < 1000
+        assert abs(end_ts - now.timestamp() * 1000) < 60_000
 
     def test_etl_result_uses_configured_mapping(self):
         source = build_source(

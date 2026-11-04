@@ -125,6 +125,11 @@ class DataQualityResult(BaseModel):
     RuleResults: list[DataQualityRuleResult] | None = []
 
     @property
+    def filter_name(self) -> str | None:
+        """What rulesetFilterPattern matches: the ruleset name, else the Data Quality node name."""
+        return self.RulesetName or self.EvaluationContext or self.JobName
+
+    @property
     def scope(self) -> str | None:
         """Groups the rules of one evaluation. An ETL job result may carry no ruleset name, and
         its node name is unique only within its job, so the job name qualifies it."""
