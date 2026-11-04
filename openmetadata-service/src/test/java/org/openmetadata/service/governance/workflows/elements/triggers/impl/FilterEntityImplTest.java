@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -45,6 +46,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
@@ -130,6 +132,32 @@ class FilterEntityImplTest {
     assertTrue(passesFilter(), "A change to a non-excluded field must fire");
   }
 
+  @Test
+  void eventPath_judgesTheChangeOfTheVersionTheEventProduced() {
+    UUID id = UUID.randomUUID();
+    givenEntity(glossary().withId(id).withVersion(0.3).withChangeDescription(changeOf("tags")));
+    givenHistory(id, "0.2", glossary().withId(id).withChangeDescription(changeOf("description")));
+    when(execution.getVariable("global_triggeringVersion")).thenReturn(0.2);
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertFalse(
+        passesFilter(),
+        "The event's own description-only change must not fire, whatever came next");
+  }
+
+  @Test
+  void eventPath_atTheEventsVersion_judgesTheEntitysChange() {
+    givenEntity(glossary().withVersion(0.2).withChangeDescription(changeOf("tags")));
+    when(execution.getVariable("global_triggeringVersion")).thenReturn(0.2);
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "At the event's version the entity's own change is the event's");
+  }
+
   // ---- Change-request path: admitted at submission, routed only to the reviewing workflow ----
 
   @Test
@@ -174,6 +202,14 @@ class FilterEntityImplTest {
                 Entity.getEntity(
                     any(MessageParser.EntityLink.class), anyString(), any(Include.class)))
         .thenReturn(glossary);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void givenHistory(UUID id, String version, Glossary atVersion) {
+    EntityRepository<Glossary> repository = mock(EntityRepository.class);
+    when(repository.getVersion(id, version)).thenReturn(atVersion);
+    mockedEntity.when(() -> Entity.getEntityTypeFromObject(any())).thenReturn("glossary");
+    mockedEntity.when(() -> Entity.getEntityRepository("glossary")).thenReturn(repository);
   }
 
   private void changeRequestFor(String workflowName) {

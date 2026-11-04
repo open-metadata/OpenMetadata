@@ -29,6 +29,10 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: {} }),
 }));
 
+jest.mock('../../../utils/PermissionsUtils', () => ({
+  userPermissions: { hasViewPermissions: () => true },
+}));
+
 jest.mock('../../../utils/UserDataUtils', () => {
   return {
     fetchAllUsers: jest.fn(),
@@ -40,7 +44,7 @@ jest.mock('../../../utils/UserDataUtils', () => {
 
 const mockUseUserProfile = jest.fn().mockReturnValue(['', false, {}]);
 jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
-  useUserProfile: () => mockUseUserProfile(),
+  useUserProfile: (args: unknown) => mockUseUserProfile(args),
 }));
 
 const mockData = {
@@ -82,6 +86,40 @@ describe('Test ProfilePicture component', () => {
 
     expect(queryByTestId('profile-image')).not.toBeInTheDocument();
     expect(avatar).toHaveClass('tw:text-fg-secondary');
+  });
+
+  it('draws the agent icon on a plain circle and fetches no picture for an agent', () => {
+    mockUseUserProfile.mockClear().mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(
+      <>
+        <ProfilePicture {...mockData} />
+        <ProfilePicture
+          isAgent
+          displayName="Glossary Agent"
+          name=""
+          width="20"
+        />
+      </>
+    );
+
+    expect(mockUseUserProfile).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ permission: true })
+    );
+    expect(mockUseUserProfile).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ permission: false })
+    );
+    expect((Avatar as jest.Mock).mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        colorVariant: 'plain',
+        'data-testid': 'agent-avatar',
+        placeholderIcon: expect.any(Function),
+        size: 'xs',
+      })
+    );
   });
 
   it('forwards a defined size straight to the Avatar', () => {

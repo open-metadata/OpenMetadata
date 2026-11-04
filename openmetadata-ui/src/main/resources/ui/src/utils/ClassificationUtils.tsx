@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
@@ -201,16 +202,9 @@ export const getTagsTableColumn = ({
               <ButtonUtility
                 color="tertiary"
                 data-testid="edit-button"
-                icon={
-                  <EditIcon
-                    data-testid="editTagDescription"
-                    height={14}
-                    name="edit"
-                    width={14}
-                  />
-                }
+                icon={<Edit01 data-icon data-testid="editTagDescription" />}
                 isDisabled={disableEditButton}
-                size="xs"
+                size="sm"
                 onClick={() => handleEditTagClick?.(record)}
               />
             </UTTooltip>
@@ -228,7 +222,7 @@ export const getTagsTableColumn = ({
                   id: record.id ?? '',
                 })}
                 isDisabled={disableDeleteButton}
-                size="xs"
+                size="sm"
                 onClick={() => handleActionDeleteTag?.(record)}
               />
             </UTTooltip>
