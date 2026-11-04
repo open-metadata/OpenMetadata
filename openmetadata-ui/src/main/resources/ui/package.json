@@ -273,7 +273,7 @@
     "fs-extra": "^11.4.1",
     "i18next-json-sync": "^3.1.2",
     "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
+    "jest-environment-jsdom": "^30.5.2",
     "jest-junit": "^16.0.0",
     "jest-sonar-reporter": "^2.0.0",
     "less": "4.1.3",
