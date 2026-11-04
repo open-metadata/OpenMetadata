@@ -1196,7 +1196,7 @@ const validateCustomPropertyPanelRow = async (
   const summary = row.getByTestId('property-value');
   const expected = getExpectedRowSummary(propertyType, value);
 
-  await expect(summary).not.toHaveText('Not set');
+  await expect(summary).not.toHaveText('No value yet');
   if (expected) {
     await expect(summary).toContainText(expected);
   }

@@ -1370,6 +1370,60 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void restore_childOfDeletedParent_isRejectedUntilTheParentIsRestored(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("orphan_parent"), ns));
+    Metric child = createChild(ns, "orphan_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    OpenMetadataException rejected =
+        assertThrows(OpenMetadataException.class, () -> restoreEntity(child.getId().toString()));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), rejected.getStatusCode());
+    OpenMetadataException rejectedAsync =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/metrics/restore?async=true",
+                        Map.of("id", child.getId().toString()),
+                        Object.class));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), rejectedAsync.getStatusCode());
+    assertTrue(
+        getEntityIncludeDeleted(child.getId().toString()).getDeleted(),
+        "A rejected restore must leave the child deleted");
+
+    restoreEntity(parent.getId().toString());
+
+    assertFalse(getEntity(child.getId().toString()).getDeleted());
+    assertEquals(1, getWithHierarchy(parent).getChildrenCount());
+  }
+
+  @Test
+  void put_childOfDeletedParent_withoutParent_restoresItAsARoot(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("put_orphan_parent"), ns));
+    Metric child = createChild(ns, "put_orphan_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    Metric restored =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/metrics",
+                new CreateMetric().withName(child.getName()).withDescription("Child metric"),
+                Metric.class);
+
+    assertFalse(restored.getDeleted());
+    assertNull(getWithHierarchy(child).getParent(), "A PUT without a parent restores a root");
+  }
+
+  @Test
   void inactiveContainsEdgeIsExcludedFromHierarchyReads(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("inactive_edge_parent"), ns));
     Metric child = createChild(ns, "inactive_edge_child", parent);

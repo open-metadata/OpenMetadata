@@ -64,7 +64,7 @@ const EntityRightPanelVerticalNav: React.FC<
         {
           key: EntityRightPanelTab.RELATIONS,
           icon: (
-            <RelationsNavIcon className="tw:h-[18px] tw:w-[18px] tw:shrink-0 tw:text-quaternary" />
+            <RelationsNavIcon className="tw:h-[18px] tw:w-[18px] tw:shrink-0" />
           ),
           label: t('label.relation-plural'),
           'data-testid': 'ontology-relations-tab',

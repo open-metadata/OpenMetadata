@@ -116,7 +116,7 @@ class LifeCycleQueryMixin:
             if life_cycle_data:
                 created = self._build_access_details(life_cycle_data.created_at)  # pyright: ignore[reportAttributeAccessIssue]
                 updated = self._build_access_details(life_cycle_data.updated_at)  # pyright: ignore[reportAttributeAccessIssue]
-                # The server keeps each stored aspect when the incoming one is empty or older, so a
+                # The server preserves missing aspects and merges minimum creation / maximum activity, so a
                 # record with neither would be a no-op patch. Placeholder `created` values written by
                 # earlier runs are removed by the 2.1.0 data migration, not by ingestion.
                 if created is not None or updated is not None:
