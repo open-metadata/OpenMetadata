@@ -1864,6 +1864,35 @@ describe('DataQualityTab test', () => {
       expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument();
     });
 
+    it('should keep the test case name in the delete modal while it closes', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      const deleteEntityModalMock = jest.requireMock(
+        '../../../common/DeleteWidget/DeleteEntityModal'
+      ) as jest.Mock;
+      render(
+        <DataQualityTab
+          {...mockProps}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          testCases={[firstRowData]}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId(`action-dropdown-${firstRowData.name}`)
+      );
+      fireEvent.click(await screen.findByTestId(`delete-${firstRowData.name}`));
+      fireEvent.click(await screen.findByText('cancel'));
+
+      await waitFor(() =>
+        expect(deleteEntityModalMock.mock.lastCall?.[0]).toEqual(
+          expect.objectContaining({
+            entityName: getEntityName(firstRowData),
+            visible: false,
+          })
+        )
+      );
+    });
+
     it('should show restore as the only action for a deleted test case', async () => {
       render(
         <DataQualityTab

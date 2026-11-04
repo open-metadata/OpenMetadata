@@ -61,6 +61,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -770,6 +771,20 @@ public class OpenSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     entityManager.updateChildren(indexName, fieldAndValue, updates);
+  }
+
+  @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    return entityManager.updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return entityManager.childUpdateStatus(taskId);
   }
 
   @Override

@@ -286,6 +286,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -2819,14 +2820,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entities;
   }
 
-  public final List<T> listAllForCSV(Fields fields, String parentFqn) {
+  /** Lists the entities below {@code parentFqn} that {@code user} may view, for a CSV export. */
+  public final List<T> listAllForCSV(Fields fields, String parentFqn, String user) {
     ListFilter filter = new ListFilter(NON_DELETED);
     List<String> jsons = listAllByParentFqn(parentFqn, filter);
-    List<T> entities = new ArrayList<>();
+    List<T> all = new ArrayList<>();
     for (String json : jsons) {
-      T entity = JsonUtils.readValue(json, entityClass);
-      entities.add(entity);
+      all.add(JsonUtils.readValue(json, entityClass));
     }
+    List<T> entities = retainViewableForExport(all, user);
     // TODO: Ensure consistent behavior with setFieldsInBulk when all repositories implement it
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
@@ -2834,6 +2836,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       clearFieldsInternal(entity, fields);
     }
     return entities;
+  }
+
+  /**
+   * An export authorizes only the entity named in the request, so each row it writes must also be
+   * one the exporting user may view in full; a new mutable list, as the exports go on to sort it.
+   */
+  public static <E extends EntityInterface<?>> List<E> retainViewableForExport(
+      List<E> entities, String user) {
+    List<E> viewable = new ArrayList<>(listOrEmpty(entities));
+    if (!viewable.isEmpty() && !SubjectContext.getSubjectContext(user).isAdmin()) {
+      Set<UUID> viewableIds =
+          new ViewPermissionFilter(Entity.getAuthorizer())
+              .viewableIds(
+                  user,
+                  MetadataOperation.VIEW_ALL,
+                  viewable.stream().map(EntityInterface::getEntityReference).toList());
+      viewable.removeIf(entity -> !viewableIds.contains(entity.getId()));
+    }
+    return viewable;
   }
 
   /**
