@@ -15,11 +15,12 @@ guessed when the property was missing. One guess wrote a nested column's descrip
 parent (#36615).
 
 ## Decision
-A task's field path is `<container>.<name>[.<child name>...].<property>`, with names quoted as in an
-FQN when they contain a dot, or `description` / `tags` alone for the entity itself. It is the key
-the entity's own change descriptions and change summaries use, for example
-`columns.address.city.description` or `messageSchema.schemaFields."order.id".tags`. A task filed
-without a path is about the entity itself, and the server stores that path written out.
+A task's field path is `<container>.<name>[.<child name>...].<property>`, for example
+`columns.address.city.description`, or `description` / `tags` alone for the entity itself. A name
+that itself contains a dot is quoted, as in an FQN: `columns."order.id".tags` is one field named
+`order.id`, while `columns.order.id.tags` is a field `id` nested in `order`. It is the key the
+entity's own change descriptions and change summaries use. A task filed without a path is about the
+entity itself, and the server stores that path written out.
 
 - The property is always present and must be the one the task changes.
 - The container must be one `ChildFieldResolver` declares for the entity's type.
