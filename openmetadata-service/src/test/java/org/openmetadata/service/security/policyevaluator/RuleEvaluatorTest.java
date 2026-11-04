@@ -823,6 +823,20 @@ class RuleEvaluatorTest {
   }
 
   /**
+   * Case-insensitive matching must not also fold distinct letters: {@code equalsIgnoreCase} equates
+   * a dotless {@code ı} with {@code i}, so a bot named with one would satisfy a rule naming another.
+   */
+  @Test
+  void test_impersonatedByDoesNotFoldDistinctLetters() {
+    try {
+      ImpersonationContext.setImpersonatedBy("mcpappl\u0131cationbot");
+      assertFalse(evaluateExpression("impersonatedBy('McpApplicationBot')"));
+    } finally {
+      ImpersonationContext.clear();
+    }
+  }
+
+  /**
    * Policy authoring runs the same expression with no request behind it. The attribution must not
    * leak into validation, otherwise saving a policy from an impersonated session evaluates
    * differently than saving it from a normal one.

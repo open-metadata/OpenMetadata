@@ -316,16 +316,25 @@ export const useSettingsHash = () => {
     }
   }, []);
 
+  // Merges into the live hash, not this render's `state`: a debounced or async
+  // caller (a search resetting its page) can fire after the user navigated to
+  // another view, and writing the stale tab/subPath would navigate them back.
   const updateParams = useCallback(
     (params: Record<string, string | undefined>) => {
-      if (state.tab) {
-        setHash(state.tab, state.subPath || undefined, {
-          ...state.params,
-          ...params,
-        });
+      const live = parseHash(storeHash);
+      if (
+        !live.tab ||
+        live.tab !== state.tab ||
+        live.subPath !== state.subPath
+      ) {
+        return;
       }
+      setHash(live.tab, live.subPath || undefined, {
+        ...live.params,
+        ...params,
+      });
     },
-    [state.tab, state.subPath, state.params, setHash]
+    [state.tab, state.subPath, setHash]
   );
 
   // In-app navigation to a hash target; shared so panels don't each re-declare
