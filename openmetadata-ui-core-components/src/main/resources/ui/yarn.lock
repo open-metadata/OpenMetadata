@@ -4884,7 +4884,7 @@ i18next-parser@^9.0.0:
   dependencies:
     "@babel/runtime" "^7.26.10"
 
-i18next@^26.3.4:
+i18next@^26.7.1:
   version "26.7.1"
   resolved "https://registry.yarnpkg.com/i18next/-/i18next-26.7.1.tgz#33bc0c45e6be754f0141cbb9289187db27aac485"
   integrity sha512-cX+3RRVczel/V2kCMTACckSGSpqgtWYEA6beXNYVms7dOQiHojdPYHD26lT4IKimNeoGWrLvtPgjftbRvmZJVw==

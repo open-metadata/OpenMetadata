@@ -148,7 +148,7 @@
     "html-react-parser": "^3.0.16",
     "html-to-image": "1.11.13",
     "https-browserify": "^1.0.0",
-    "i18next": "^26.3.4",
+    "i18next": "^26.7.1",
     "i18next-browser-languagedetector": "^6.1.6",
     "input-otp": "^1.4.2",
     "js-yaml": "^5.5.0",
