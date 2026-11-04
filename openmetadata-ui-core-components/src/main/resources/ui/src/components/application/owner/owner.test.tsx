@@ -35,6 +35,45 @@ describe('Owner empty placeholder', () => {
 
     expect(screen.queryByTestId('no-owner-icon')).not.toBeInTheDocument();
   });
+
+  it('sets the labelled header placeholder in the header value type', () => {
+    render(
+      <Owner
+        showDashPlaceholder
+        isCompactView={false}
+        owners={[]}
+        selectorContent={<button type="button">edit</button>}
+      />
+    );
+
+    const placeholder = screen.getByTestId('owner-empty-placeholder');
+
+    expect(placeholder).toHaveTextContent('--');
+    expect(placeholder).toHaveClass(
+      'tw:text-sm',
+      'tw:font-medium',
+      'tw:text-secondary'
+    );
+    expect(placeholder).not.toHaveClass('tw:text-xs', 'tw:text-quaternary');
+  });
+
+  it('keeps the de-emphasised placeholder under a label with no edit selector', () => {
+    render(<Owner isCompactView={false} owners={[]} />);
+
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveClass(
+      'tw:text-xs',
+      'tw:text-quaternary'
+    );
+  });
+
+  it('keeps the de-emphasised placeholder when there is no label row', () => {
+    render(<Owner isCompactView={false} owners={[]} showLabel={false} />);
+
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveClass(
+      'tw:text-xs',
+      'tw:text-quaternary'
+    );
+  });
 });
 
 describe('Owner inline editable mode (non-compact, no label, with selector)', () => {

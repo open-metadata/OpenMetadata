@@ -96,7 +96,16 @@ export const Owner = ({
               {selectorContent}
             </div>
           )}
-          <span className="tw:text-quaternary tw:text-xs">
+          {/* With an edit selector this is a page-header field, beside other
+              fields' values (Domains, Tier, Email…), so it takes their value
+              type rather than the de-emphasised placeholder. */}
+          <span
+            className={
+              selectorContent
+                ? 'tw:text-sm tw:font-medium tw:text-secondary'
+                : 'tw:text-quaternary tw:text-xs'
+            }
+            data-testid="owner-empty-placeholder">
             {showDashPlaceholder ? '--' : placeHolder ?? t('label.no-owners')}
           </span>
         </div>
