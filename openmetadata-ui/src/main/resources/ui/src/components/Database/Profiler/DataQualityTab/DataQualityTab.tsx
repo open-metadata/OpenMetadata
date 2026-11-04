@@ -176,6 +176,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     : NoDataPlaceholder;
   const navigate = useNavigate();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
+  // The modals animate out after selectedTestCase is cleared; keep the last name
+  // so their titles don't flash an empty "" while closing.
+  const [modalTestCaseName, setModalTestCaseName] = useState('');
+  const selectedTestCaseName = getEntityName(selectedTestCase?.data);
+  if (selectedTestCase && selectedTestCaseName !== modalTestCaseName) {
+    setModalTestCaseName(selectedTestCaseName);
+  }
   const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [testCaseStatus, setTestCaseStatus] = useState<
     TestCaseResolutionStatus[]
@@ -1071,7 +1078,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           bodyText={t(
             'message.are-you-sure-you-want-to-remove-child-from-parent',
             {
-              child: getEntityName(selectedTestCase?.data),
+              child: modalTestCaseName,
               parent: getEntityName(removeFromTestSuite.testSuite),
             }
           )}
@@ -1092,7 +1099,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             entityId={selectedTestCase?.data.id ?? ''}
-            entityName={getEntityName(selectedTestCase?.data)}
+            entityName={modalTestCaseName}
             entityType={EntityType.TEST_CASE}
             visible={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}
@@ -1101,10 +1108,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       {!removeFromTestSuite &&
         deletionMode === TEST_CASE_DELETION_MODE.HARD && (
           <DeleteModal
-            entityTitle={getEntityName(selectedTestCase?.data)}
+            entityTitle={modalTestCaseName}
             isDeleting={isDeletingTestCase}
             message={t('message.delete-entity-message', {
-              entity: getEntityName(selectedTestCase?.data),
+              entity: modalTestCaseName,
             })}
             open={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}
@@ -1113,7 +1120,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         )}
       <ConfirmationModal
         bodyText={t('message.are-you-want-to-restore', {
-          entity: getEntityName(selectedTestCase?.data),
+          entity: modalTestCaseName,
         })}
         cancelText={t('label.cancel')}
         confirmText={t('label.restore')}
