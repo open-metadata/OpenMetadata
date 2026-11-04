@@ -310,4 +310,23 @@ class RuleEngineTest {
         false,
         RuleEngine.getInstance().apply(OWNERSHIP_RULE, Map.of("owners", List.of(team, otherTeam))));
   }
+
+  @Test
+  void onlyDataProductsWithoutOwnDomainsWaitForInheritance() {
+    EntityReference dataProduct = ref(Entity.DATA_PRODUCT);
+    EntityReference ownDomain = ref(Entity.DOMAIN);
+    EntityReference inheritedDomain = ref(Entity.DOMAIN).withInherited(true);
+
+    assertTrue(
+        RuleEngine.dependsOnInheritedDomains(new Table().withDataProducts(List.of(dataProduct))));
+    assertTrue(
+        RuleEngine.dependsOnInheritedDomains(
+            new Table()
+                .withDataProducts(List.of(dataProduct))
+                .withDomains(List.of(inheritedDomain))));
+    assertFalse(
+        RuleEngine.dependsOnInheritedDomains(
+            new Table().withDataProducts(List.of(dataProduct)).withDomains(List.of(ownDomain))));
+    assertFalse(RuleEngine.dependsOnInheritedDomains(new Table()));
+  }
 }

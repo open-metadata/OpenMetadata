@@ -1089,6 +1089,52 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         "The table must keep inheriting its schema's domain");
   }
 
+  /** A PUT carrying a data product on a table that takes its domain from its schema. */
+  @Test
+  void test_putOfTableWithDataProductAndInheritedDomainPassesDomainValidation(TestNamespace ns) {
+    Domain domain = createTestDomain(ns, "domain_put_inherited");
+    var schema = createSchemaWithDomain(ns, "schema_put_inherited", domain);
+    DataProduct product = createFinanceDataProduct(ns, "dp_put_inherited", domain);
+    CreateTable request =
+        new CreateTable()
+            .withName(ns.prefix("table_put_inherited"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDataProducts(List.of(product.getFullyQualifiedName()));
+
+    Table created = SdkClients.adminClient().tables().createOrUpdate(request);
+    Table updated =
+        SdkClients.adminClient().tables().createOrUpdate(request.withDescription("updated by PUT"));
+
+    assertEquals(created.getId(), updated.getId());
+    Table stored =
+        SdkClients.adminClient().tables().get(created.getId().toString(), "domains,dataProducts");
+    assertEquals("updated by PUT", stored.getDescription());
+    assertTrue(hasDataProduct(stored.getDataProducts(), product.getId()));
+    assertTrue(
+        stored.getDomains().stream().allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "The PUT must not store the inherited domain as the table's own");
+  }
+
+  @Test
+  void test_putOfTableWithDataProductFromAnotherDomainIsRejected(TestNamespace ns) {
+    Domain domain = createTestDomain(ns, "domain_put_other");
+    Domain other = createTestDomain(ns, "other_put_other");
+    var schema = createSchemaWithDomain(ns, "schema_put_other", domain);
+    DataProduct product = createFinanceDataProduct(ns, "dp_put_other", other);
+    CreateTable request =
+        new CreateTable()
+            .withName(ns.prefix("table_put_other"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withDataProducts(List.of(product.getFullyQualifiedName()));
+
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().tables().createOrUpdate(request));
+    assertTrue(
+        rejected.getMessage().contains("Data Product Domain Validation"), rejected.getMessage());
+  }
+
   /** Inheriting owners onto the patched copy must not store the schema's owner on the table. */
   @Test
   void test_removingDirectOwnerFallsBackToInheritedOwnerWithoutStoringIt(TestNamespace ns)

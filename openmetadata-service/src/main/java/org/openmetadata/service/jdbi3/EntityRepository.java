@@ -1888,7 +1888,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setReviewers(request.getReviewers());
 
-    RuleEngine.getInstance().evaluate(entity);
+    if (!RuleEngine.dependsOnInheritedDomains(entity)) {
+      RuleEngine.getInstance().evaluate(entity);
+    }
     return entity;
   }
 
@@ -4966,6 +4968,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     updated.setImpersonatedBy(impersonatedBy);
     // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
     updated.setId(original.getId());
+    evaluateRulesDeferredUntilInherited(updated);
     Optional<StagedChange> staged =
         admit(original, updated, ChangeActor.recorded(updatedBy, impersonatedBy), Edit.put());
     return staged
@@ -5320,6 +5323,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     ruleFacts.setOwners(inheriting.getOwners());
     ruleFacts.setDomains(inheriting.getDomains());
     return ruleFacts;
+  }
+
+  /** The rules copy() left for now: the entity's parent is attached, so it inherits. */
+  private void evaluateRulesDeferredUntilInherited(final T entity) {
+    if (RuleEngine.dependsOnInheritedDomains(entity)) {
+      RuleEngine.getInstance().evaluate(withInheritedOwnersAndDomains(entity));
+    }
+  }
+
+  // A PUT loads the stored entity without inheritance, so an entity whose domain comes from its
+  // parent shows none here; it only belongs to no domain if it inherits none either.
+  private boolean belongsToNoDomain(final T entity) {
+    return nullOrEmpty(entity.getDomains())
+        && nullOrEmpty(withInheritedOwnersAndDomains(entity).getDomains());
   }
 
   /** An entity the patch leaves with no domain of its own still belongs to its inherited ones. */
@@ -6279,6 +6296,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected T createNewEntity(T entity) {
+    evaluateRulesDeferredUntilInherited(entity);
     setCreationAudit(entity);
     createNewEntityFlush(entity);
     try (var ignored = phase("createPostCreate")) {
@@ -6594,6 +6612,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
+    entities.forEach(this::evaluateRulesDeferredUntilInherited);
     entities.forEach(this::setCreationAudit);
     createManyEntitiesFlush(entities);
     try (var ignored = phase("postCreate")) {
@@ -11971,7 +11990,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         return;
       }
 
-      if (nullOrEmpty(updated.getDomains()) && !nullOrEmpty(updatedDataProducts)) {
+      if (!nullOrEmpty(updatedDataProducts) && belongsToNoDomain(updated)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
       }
