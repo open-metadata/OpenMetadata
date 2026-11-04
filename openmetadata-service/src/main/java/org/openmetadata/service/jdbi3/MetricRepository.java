@@ -1748,6 +1748,20 @@ public class MetricRepository extends EntityRepository<Metric> {
     refreshSearchDocument(metric.getMetricGroup());
   }
 
+  // ADR:2026-11-03-a-metric-is-restored-with-its-parent-never-under-a-deleted-one
+  @Override
+  public void validateRestore(UUID id) {
+    Metric metric = find(id, ALL);
+    EntityReference parent = Boolean.TRUE.equals(metric.getDeleted()) ? getParent(metric) : null;
+    if (parent != null && Boolean.TRUE.equals(parent.getDeleted())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Metric '%s' cannot be restored while its parent '%s' is deleted. Restore '%s' to"
+                  + " bring back the whole hierarchy.",
+              metric.getName(), parent.getName(), parent.getName()));
+    }
+  }
+
   @Override
   protected List<EntityReference> getCountingParents(Metric metric) {
     return metric.getParent() == null ? List.of() : List.of(metric.getParent());

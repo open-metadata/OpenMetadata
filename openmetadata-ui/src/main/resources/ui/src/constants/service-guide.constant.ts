@@ -155,3 +155,4 @@ export const CUSTOM_PROPERTY_CATEGORY = 'CustomProperty';
 export const OPEN_METADATA = 'OpenMetadata';
 export const TEST_CASE_FORM = 'TestCaseForm';
 export const TEST_DEFINITION_FORM = 'TestDefinitionForm';
+export const TEST_SUITE_PIPELINE_FORM = 'TestSuitePipelineForm';

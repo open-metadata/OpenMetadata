@@ -111,6 +111,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { revokeEditPermissions } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -210,6 +211,7 @@ const TagPage = () => {
   const {
     permissions: tagPermissions,
     canEditAll: tagCanEditAll,
+    canEditDomains: tagCanEditDomains,
     error: tagPermissionsError,
   } = useEntityPermissions(
     ResourceEntity.TAG,
@@ -288,13 +290,20 @@ const TagPage = () => {
     if (tagItem) {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
+      if (!isEditable) {
+        return {
+          editTagsPermission: false,
+          disabledAwarePermissions: revokeEditPermissions(tagPermissions),
+        };
+      }
+
       return {
-        editTagsPermission: isEditable && tagCanEditAll,
+        editTagsPermission: tagCanEditAll,
         disabledAwarePermissions: {
           ...tagPermissions,
-          EditOwners:
-            isEditable && (tagCanEditAll || tagPermissions.EditOwners),
-          EditAll: isEditable && tagCanEditAll,
+          EditOwners: tagCanEditAll || tagPermissions.EditOwners,
+          EditDomains: tagCanEditDomains,
+          EditAll: tagCanEditAll,
         },
       };
     }
@@ -308,7 +317,7 @@ const TagPage = () => {
     // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
     // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
     // (Task 8 Batches 3–4) of fixing missing deps in passing.
-  }, [tagPermissions, tagCanEditAll, tagItem]);
+  }, [tagPermissions, tagCanEditAll, tagCanEditDomains, tagItem]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),

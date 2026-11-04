@@ -229,9 +229,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   }, [persona, patchPersona, t]);
 
   const handleUpdateUsers = useCallback(
-    (users: EntityReference[]) => {
-      void patchPersona({ users });
-    },
+    (users: EntityReference[]) => patchPersona({ users }),
     [patchPersona]
   );
 
@@ -392,6 +390,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       return (
         <PersonaUsersTab
           canEdit={canEditAll}
+          personaName={persona ? getEntityName(persona) : ''}
           users={persona?.users ?? []}
           onUsersChange={handleUpdateUsers}
         />

@@ -93,6 +93,14 @@ test.describe('Large Glossary Performance Tests', () => {
     const pagination = page.getByTestId('pagination');
 
     await expect(pagination).toBeVisible();
+
+    // 50 rows overflow the Terms tab panel; a wheel scroll (unlike
+    // scrollIntoView, which also moves overflow-hidden boxes) must bring the
+    // pagination on screen, or the last terms are clipped and unreachable.
+    await page.getByTestId('glossary-terms-table').hover();
+    await page.mouse.wheel(0, 10000);
+
+    await expect(pagination).toBeInViewport({ ratio: 1 });
     await expect(pagination.getByTestId('previous')).toBeDisabled();
     await expect(pagination.getByTestId('next')).toBeEnabled();
 
