@@ -17,6 +17,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 
 public class Migration extends MigrationProcessImpl {
@@ -32,5 +33,10 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         McpGrantUserNameIndexes.STEP_NAME,
         () -> McpGrantUserNameIndexes.addOnMySql(handle));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductDomainContainmentRepair.STEP_NAME,
+        () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
   }
 }
