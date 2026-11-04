@@ -375,9 +375,7 @@ def get_table_entities_from_query(
     if table_entities:
         return table_entities
 
-    # Only a bare name falls back: a schema the query names is the table's, and dropping
-    # it would match every same-named table in the database
-    if schema_fallback and not schema_query:
+    if schema_fallback:
         table_entities = search_table_entities(
             metadata=metadata,
             service_names=service_names,

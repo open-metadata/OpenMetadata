@@ -653,8 +653,12 @@ class HexSource(DashboardServiceSource):
         if cell_lineage is None:
             # Unread is not gone: marking the existing data model as seen keeps this run
             # from deleting it and its lineage. Marking one that doesn't exist is harmless.
-            self._keep_data_model(dashboard_details)
-            return
+            # A project without one still gets one, without columns, for the tables the
+            # query history names, as lineage only links tables to the data model.
+            if not self._history_only_tables(dashboard_details, []) or self._data_model_exists(dashboard_details):
+                self._keep_data_model(dashboard_details)
+                return
+            cell_lineage = []
         try:
             columns = self._data_model_columns(dashboard_details, cell_lineage)
         except Exception as exc:
@@ -663,8 +667,12 @@ class HexSource(DashboardServiceSource):
             logger.warning("Could not read the data model of Hex project %s: %s", dashboard_details.id, exc)
             self._keep_data_model(dashboard_details)
             return
-        # Tables only the query history names still need a data model to link to
-        if not columns and not self._history_only_tables(dashboard_details, cell_lineage):
+        # Tables read by cells that output no columns, or only named by the query history,
+        # still need a data model to link to
+        if not columns and not (
+            any(cell.tables for cell in cell_lineage) or self._history_only_tables(dashboard_details, cell_lineage)
+        ):
+            self._keep_columnless_data_model(dashboard_details)
             return
         cells = [cell for cell in cell_lineage if not cell.failed]
         try:
@@ -689,6 +697,17 @@ class HexSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _keep_columnless_data_model(self, project: Project) -> None:
+        """
+        A data model without columns only links tables the query history named: one whose
+        tables fell out of the history's lookback window is kept, with its lineage
+        """
+        data_model = self.metadata.get_by_name(
+            entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, project), fields=["columns"]
+        )
+        if data_model and not data_model.columns:
+            self._keep_data_model(project)
 
     def _keep_data_model(self, project: Project) -> None:
         self._kept_data_model = project.id

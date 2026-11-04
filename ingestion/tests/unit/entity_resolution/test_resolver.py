@@ -41,11 +41,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableSharding import TableSharding
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.sql_lineage import (
-    get_lineage_by_query,
-    get_table_entities_from_query,
-    search_table_entities,
-)
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query, search_table_entities
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.cell_lineage import ChainedCells
@@ -413,21 +409,6 @@ def test_table_facade_service_priority_and_explicit_schema_fallback(sdk):
     assert ids(TableResolver(EntityResolver(metadata)).resolve(**kwargs, schema_fallback=True)) == [fallback.id]
 
 
-def test_query_schema_fallback_never_drops_a_schema_the_query_names(sdk):
-    metadata, transport = sdk
-    add_bigquery_service(transport)
-    elsewhere = table("my_service.my_db.other_schema.account")
-    transport.entities[elsewhere.fullyQualifiedName.root] = elsewhere
-    transport.hits = [elsewhere.fullyQualifiedName.root]
-    kwargs = {"metadata": metadata, "service_names": "my_service", "database_name": "my_db", "schema_fallback": True}
-    # The query says which schema: a table of the same name in another one isn't it
-    assert get_table_entities_from_query(**kwargs, database_schema="", table_name="my_schema.account") is None
-    # A bare name only has the session's schema, which may not be the table's
-    assert ids(get_table_entities_from_query(**kwargs, database_schema="my_schema", table_name="account")) == [
-        elsewhere.id
-    ]
-
-
 def test_connector_bindings_preserve_priority_and_do_not_leak_normalization(sdk):
     metadata, transport = sdk
     clickhouse = table("first.catalog.my_schema.my_table")
@@ -759,6 +740,23 @@ def add_bigquery_service(transport):
         serviceType="BigQuery",
         connection={"config": {"type": "BigQuery", "credentials": {"gcpConfig": {}}}},
     )
+
+
+def test_hex_query_history_never_drops_a_schema_the_query_names(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    elsewhere = table("my_service.my_db.other_schema.account")
+    transport.entities[elsewhere.fullyQualifiedName.root] = elsewhere
+    transport.hits = [elsewhere.fullyQualifiedName.root]
+    fetcher = HexQueryFetcher(metadata=metadata, lookback_days=7)
+
+    def tables_read(sql):
+        return ids(fetcher._extract_tables_from_query(sql, "my_service", "my_db", "my_schema"))
+
+    # The query says which schema: a table of the same name in another one isn't it
+    assert tables_read("select * from my_db.my_schema.account") == []
+    # A bare name only has the session's schema, which may not be the table's
+    assert tables_read("select * from account") == [elsewhere.id]
 
 
 def test_bigquery_usage_counts_each_execution_once_and_preserves_sql(sdk, tmp_path):

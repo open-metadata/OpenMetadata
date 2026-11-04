@@ -13,8 +13,11 @@
   `test_rate_limited_requests_are_retried`, `test_without_data_connections_an_existing_data_model_is_kept`,
   `test_a_cell_that_stops_parsing_keeps_its_group`, `test_cells_reading_a_broken_cell_keep_their_groups`,
   `test_query_history_adds_the_tables_cells_did_not_resolve`,
-  `test_warehouse_queries_never_link_tables_to_the_dashboard_when_data_models_are_on`,
-  `test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns`)
+  `test_unreadable_cells_with_query_history_get_a_data_model_without_columns`,
+  `test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns`,
+  `test_a_cell_whose_table_gives_no_columns_still_links_it_to_a_data_model`,
+  `test_a_data_model_without_columns_outlives_the_query_history_window`,
+  `test_resolver.py::test_hex_query_history_never_drops_a_schema_the_query_names`)
 - **Related:** #36357
 
 ## Context
@@ -79,7 +82,15 @@ broken cell get no group until it parses, as for the broken cell itself.
 The tables only the warehouse query history named (none of the cells resolved them) were linked
 straight to the dashboard, beside the table -> data model -> dashboard path, and so was every table
 when the project had no data model. Now every table edge goes to the data model; one from the
-query history carries no column lineage, as it can't tell which cell read the table. A project whose
-cells give no columns still gets a data model, without columns, when the query history names tables
-for it. With data models off, or the project's data model filtered out, tables link to the dashboard
-as before. When the cells can't be read and there is no data model yet, the run draws no lineage.
+query history carries no column lineage, as it can't tell which cell read the table.
+
+- A project with tables to link but no columns (cells that read tables yet output none, cells that
+  can't be read, or tables only the query history names) gets a data model without columns.
+- A data model without columns is kept when this run finds no tables for it: the query history only
+  looks back seven days, and a project not run in that window would otherwise lose its lineage.
+- With data models off, or the project's data model filtered out, tables link to the dashboard as
+  before.
+- A query history reference that names a schema resolves only in that schema; only a bare name
+  falls back to any schema of the database. The parser lower-cases names, so a BigQuery reference
+  that misses its exact name takes the one table matching it case-insensitively, and none when
+  several do (BigQuery names are case-sensitive).

@@ -490,16 +490,58 @@ class TestHexCellLineage:
         ]
         assert edges[0].lineageDetails.columnsLineage is None
 
-    def test_warehouse_queries_never_link_tables_to_the_dashboard_when_data_models_are_on(self, make_source):
+    def test_unreadable_cells_with_query_history_get_a_data_model_without_columns(self, make_source):
         source = make_source(None)
         warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
         warehouse_lineage.add_table(ORDERS_TABLE)
         source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
 
+        (request,), edges = run(source)
+
+        assert request.columns == []
+        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
+        ]
+
+    def test_a_cell_whose_table_gives_no_columns_still_links_it_to_a_data_model(self, make_source):
+        source = make_source(
+            [sql_cell("c1", "select * from sales.orders", "orders")], tables=(make_table("orders", {}),)
+        )
+
+        (request,), edges = run(source)
+
+        assert request.columns == []
+        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
+        ]
+
+    def test_a_data_model_without_columns_outlives_the_query_history_window(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        run(source)
+        # A later run whose seven days of query history hold no query of the project
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
         data_models, edges = run(source)
 
+        assert (data_models, edges) == ([], [])
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_a_data_model_whose_cells_are_all_gone_is_not_kept(self, make_source):
+        source = make_source([REVENUE_CELL])
+        run(source)
+        source.client.get_project_cells.return_value = [MARKDOWN_CELL]
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, _ = run(source)
+
         assert data_models == []
-        assert edges == []
+        assert source.datamodel_source_state == set()
 
     def test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns(self, make_source):
         source = make_source([MARKDOWN_CELL])
