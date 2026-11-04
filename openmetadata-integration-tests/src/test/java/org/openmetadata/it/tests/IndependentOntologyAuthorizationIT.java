@@ -249,6 +249,7 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
             .create(
                 new CreateOntologyAxiom()
                     .withName(ns.shortPrefix("axiom"))
+                    .withDisplayName("Child is a Parent")
                     .withDescription("Original axiom text")
                     .withOntology(ontology.getFullyQualifiedName())
                     .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
