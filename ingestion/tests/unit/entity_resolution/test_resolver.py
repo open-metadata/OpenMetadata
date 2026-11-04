@@ -41,7 +41,11 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableSharding import TableSharding
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query, search_table_entities
+from metadata.ingestion.lineage.sql_lineage import (
+    get_lineage_by_query,
+    get_table_entities_from_query,
+    search_table_entities,
+)
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.cell_lineage import ChainedCells
@@ -409,6 +413,21 @@ def test_table_facade_service_priority_and_explicit_schema_fallback(sdk):
     assert ids(TableResolver(EntityResolver(metadata)).resolve(**kwargs, schema_fallback=True)) == [fallback.id]
 
 
+def test_query_schema_fallback_never_drops_a_schema_the_query_names(sdk):
+    metadata, transport = sdk
+    add_bigquery_service(transport)
+    elsewhere = table("my_service.my_db.other_schema.account")
+    transport.entities[elsewhere.fullyQualifiedName.root] = elsewhere
+    transport.hits = [elsewhere.fullyQualifiedName.root]
+    kwargs = {"metadata": metadata, "service_names": "my_service", "database_name": "my_db", "schema_fallback": True}
+    # The query says which schema: a table of the same name in another one isn't it
+    assert get_table_entities_from_query(**kwargs, database_schema="", table_name="my_schema.account") is None
+    # A bare name only has the session's schema, which may not be the table's
+    assert ids(get_table_entities_from_query(**kwargs, database_schema="my_schema", table_name="account")) == [
+        elsewhere.id
+    ]
+
+
 def test_connector_bindings_preserve_priority_and_do_not_leak_normalization(sdk):
     metadata, transport = sdk
     clickhouse = table("first.catalog.my_schema.my_table")
@@ -527,6 +546,26 @@ def test_bigquery_concrete_precedence_and_decorator(sdk):
     assert ids(resolve_bigquery(metadata, "events_20260101")) == [physical.id]
     physical.deleted = True
     assert ids(resolve_bigquery(metadata, "events_20260101")) == [family.id]
+
+
+def test_bigquery_lowercased_reference_resolves_to_its_one_case_variant(sdk):
+    # A query parser that lower-cases names still finds the table BigQuery spells Account
+    metadata, transport = sdk
+    account = table("my_service.my_db.my_schema.Account")
+    other_schema = table("my_service.my_db.other_schema.account")
+    transport.entities = {item.fullyQualifiedName.root: item for item in (account, other_schema)}
+    transport.hits = [account.fullyQualifiedName.root, other_schema.fullyQualifiedName.root]
+    assert ids(resolve_bigquery(metadata, "account")) == [account.id]
+
+
+def test_bigquery_reference_matching_two_case_variants_resolves_to_none(sdk):
+    # BigQuery names are case-sensitive, so which one was meant can't be told
+    metadata, transport = sdk
+    upper = table("my_service.my_db.my_schema.Account")
+    shouting = table("my_service.my_db.my_schema.ACCOUNT")
+    transport.entities = {item.fullyQualifiedName.root: item for item in (upper, shouting)}
+    transport.hits = list(transport.entities)
+    assert resolve_bigquery(metadata, "account") == ()
 
 
 def test_bigquery_placeholder_without_descriptor_is_not_a_family(sdk):

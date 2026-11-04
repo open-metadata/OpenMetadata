@@ -1,7 +1,7 @@
 # A Hex project is one data model with a column group per SQL cell, named by the cell's id
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial) · v2 2026-10-29 (cells reading a broken cell keep their groups)
+- **Revisions:** v1 2026-10-27 (initial) · v2 2026-10-29 (cells reading a broken cell keep their groups) · v3 2026-11-04 (tables link to the data model, never to the dashboard)
 - **Deciders:** Hex connector maintainers (review of the Hex data models PR, #36357)
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_hex_cell_lineage.py`
   (`test_one_data_model_per_project_with_a_struct_per_sql_cell`,
@@ -11,7 +11,10 @@
   `test_a_cell_too_large_to_inline_leaves_its_chained_cells_untraced`,
   `test_cells_past_the_projects_budget_leave_their_chained_cells_untraced`,
   `test_rate_limited_requests_are_retried`, `test_without_data_connections_an_existing_data_model_is_kept`,
-  `test_a_cell_that_stops_parsing_keeps_its_group`, `test_cells_reading_a_broken_cell_keep_their_groups`)
+  `test_a_cell_that_stops_parsing_keeps_its_group`, `test_cells_reading_a_broken_cell_keep_their_groups`,
+  `test_query_history_adds_the_tables_cells_did_not_resolve`,
+  `test_warehouse_queries_never_link_tables_to_the_dashboard_when_data_models_are_on`,
+  `test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns`)
 - **Related:** #36357
 
 ## Context
@@ -70,3 +73,13 @@ as a table and came back with UNKNOWN columns and no lineage. Now a cell that re
 (under the same chaining rules: same connection, or any for dataframe SQL) fails too, and so on down
 the chain, so each keeps its group from the existing data model. A new project's cells chained on a
 broken cell get no group until it parses, as for the broken cell itself.
+
+## Amendment: tables link to the data model, never to the dashboard (v3, 2026-11-04)
+
+The tables only the warehouse query history named (none of the cells resolved them) were linked
+straight to the dashboard, beside the table -> data model -> dashboard path, and so was every table
+when the project had no data model. Now every table edge goes to the data model; one from the
+query history carries no column lineage, as it can't tell which cell read the table. A project whose
+cells give no columns still gets a data model, without columns, when the query history names tables
+for it. With data models off, or the project's data model filtered out, tables link to the dashboard
+as before. When the cells can't be read and there is no data model yet, the run draws no lineage.

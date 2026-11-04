@@ -155,6 +155,14 @@ def _resolve_scoped_reference(resolver, service: str, reference: TableReference,
     exact = resolver.resolve(plan)
     if exact:
         return exact
+    if not wildcard and include not in ("all", "deleted"):
+        # Query parsers lower-case names BigQuery keeps case-sensitive. Only a single
+        # match is taken: Account and ACCOUNT can both exist, and either could be meant
+        variants = resolver.resolve(
+            replace(plan, tiers=(ResolutionTier((FqnCandidate(name, FqnLookupMode.CASE_INSENSITIVE_EXACT),)),))
+        )
+        if len(variants) == 1:
+            return variants
     parsed = parse_shard_name(reference.table)
     if not parsed or service == "*":
         return ()

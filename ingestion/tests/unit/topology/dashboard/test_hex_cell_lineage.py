@@ -473,8 +473,11 @@ class TestHexCellLineage:
         # Columns are still known from the SQL, only their source tables are missing
         assert [child.name.root for child in data_models[0].columns[0].children] == ["region", "revenue", "segment"]
 
-    def test_unreadable_cells_fall_back_to_the_warehouse_queries(self, make_source):
-        source = make_source(None)
+    def test_unreadable_cells_link_the_warehouse_queries_to_the_existing_data_model(self, make_source):
+        source = make_source([REVENUE_CELL])
+        run(source)
+        source.client.get_project_cells.return_value = None
+        source._cell_lineage = None
         warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
         warehouse_lineage.add_table(ORDERS_TABLE)
         source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
@@ -483,8 +486,36 @@ class TestHexCellLineage:
 
         assert data_models == []
         assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
-            ("snowflake_prod.prod.sales.orders", "dashboard")
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
         ]
+        assert edges[0].lineageDetails.columnsLineage is None
+
+    def test_warehouse_queries_never_link_tables_to_the_dashboard_when_data_models_are_on(self, make_source):
+        source = make_source(None)
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+
+        data_models, edges = run(source)
+
+        assert data_models == []
+        assert edges == []
+
+    def test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+
+        (request,), (edge,) = run(source)
+
+        assert request.columns == []
+        assert request.sql is None
+        assert (edge.fromEntity.fullyQualifiedName, edge.toEntity.type) == (
+            "snowflake_prod.prod.sales.orders",
+            "dashboardDataModel",
+        )
+        assert edge.lineageDetails.columnsLineage is None
 
     def test_cells_are_fetched_once_per_project(self, make_source):
         source = make_source([REVENUE_CELL])
@@ -632,9 +663,11 @@ class TestHexCellLineage:
 
         _, edges = run(source)
 
-        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
-            ("snowflake_prod.prod.sales.orders", "dashboard")
-        ]
+        # Node level only: the query history doesn't say which cell read the table
+        assert [
+            (edge.fromEntity.fullyQualifiedName, edge.toEntity.type, edge.lineageDetails.columnsLineage)
+            for edge in edges
+        ] == [("snowflake_prod.prod.sales.orders", "dashboardDataModel", None)]
 
     def test_names_are_made_valid_column_names(self, make_source):
         cell = REVENUE_CELL.model_copy(
