@@ -281,6 +281,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts"
       ]
@@ -459,6 +460,7 @@
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/GlobalPageSize.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
@@ -1909,6 +1911,7 @@
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
@@ -2020,14 +2023,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/support/entity/ingestion/KafkaIngestionClass.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AutoPilot.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/ingestion/MetabaseIngestionClass.ts"
       ],
       "specs": [
@@ -2132,6 +2127,7 @@
         "playwright/e2e/Pages/ExploreTree.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Search/ExploreSearchCounts.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
       ]
@@ -2489,6 +2485,7 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/OntologyAuthoringSafety.spec.ts",
@@ -2566,6 +2563,7 @@
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRightPanel.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/TeamAssetsRightPanel.spec.ts"
       ]
@@ -2742,6 +2740,7 @@
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
@@ -3184,6 +3183,7 @@
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
@@ -3339,6 +3339,7 @@
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/TaskFormSettings.spec.ts",
@@ -3469,6 +3470,7 @@
         "playwright/e2e/Pages/DataInsight.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
         "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
@@ -3622,6 +3624,7 @@
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
@@ -3942,6 +3945,7 @@
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -4134,7 +4138,6 @@
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts",
-        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/DataInsightSettings.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts"
@@ -4287,6 +4290,7 @@
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
@@ -4880,6 +4884,7 @@
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
@@ -4943,6 +4948,7 @@
         "playwright/e2e/Flow/AlertSeveralSources.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
@@ -4953,6 +4959,7 @@
         "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
@@ -5189,6 +5196,7 @@
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductDomainMigration.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/DataProductRename.spec.ts",
@@ -5510,6 +5518,7 @@
         "playwright/e2e/Features/ContextCenterMemoryReview.spec.ts",
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
@@ -6243,6 +6252,7 @@
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
         "playwright/e2e/Features/PersonaOverviewCardWidgets.spec.ts"
@@ -8997,6 +9007,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     },
@@ -13178,6 +13189,7 @@
         "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
@@ -13532,6 +13544,7 @@
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -13801,6 +13814,7 @@
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",
@@ -13838,6 +13852,7 @@
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
@@ -13935,6 +13950,7 @@
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
+        "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
         "playwright/e2e/Features/PersonaAppLayout.spec.ts",

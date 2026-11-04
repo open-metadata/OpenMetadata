@@ -389,6 +389,7 @@ export type SearchRequest<
   SI extends SearchIndex | SearchIndex[],
   TIncludeFields extends SearchSourceFields<SI> = SearchSourceFields<SI>
 > = {
+  signal?: AbortSignal;
   pageNumber?: number;
   pageSize?: number;
   searchIndex?: SI;

@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation;
@@ -36,6 +37,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -48,6 +50,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
@@ -61,6 +64,9 @@ public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
   public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
+  // A login body is an email and a password, so a larger one is refused before it is parsed.
+  // ADR:2026-11-02-password-login-bodies-are-capped-at-16-kib
+  public static final int MAX_LOGIN_BODY_BYTES = 16 * 1024;
 
   private SecurityUtil() {}
 
@@ -548,6 +554,37 @@ public final class SecurityUtil {
     response.setCharacterEncoding("UTF-8");
     response.getOutputStream().print(message);
     response.getOutputStream().flush();
+  }
+
+  /**
+   * Reads the login request of the basic and LDAP login endpoints, which need no credentials.
+   * Reads at most one byte past {@link #MAX_LOGIN_BODY_BYTES} and returns null for a longer body,
+   * which the handlers answer as an invalid request.
+   */
+  public static LoginRequest parseLoginRequest(HttpServletRequest req) throws IOException {
+    if (!"POST".equalsIgnoreCase(req.getMethod())) {
+      // GET requests are not supported for security reasons
+      throw new IllegalArgumentException("GET method not supported for login. Use POST method.");
+    }
+    byte[] body = req.getInputStream().readNBytes(MAX_LOGIN_BODY_BYTES + 1);
+    return body.length > MAX_LOGIN_BODY_BYTES ? null : readLoginRequest(body);
+  }
+
+  private static LoginRequest readLoginRequest(byte[] body) {
+    LoginRequest loginRequest =
+        JsonUtils.readValue(new String(body, StandardCharsets.UTF_8), LoginRequest.class);
+
+    // Decode base64 password as per existing api/v1/users/login behavior
+    if (loginRequest.getPassword() != null) {
+      byte[] decodedBytes;
+      try {
+        decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+      } catch (Exception ex) {
+        throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
+      }
+      loginRequest.withPassword(new String(decodedBytes));
+    }
+    return loginRequest;
   }
 
   public static void writeErrorResponse(HttpServletResponse response, int status, String message)

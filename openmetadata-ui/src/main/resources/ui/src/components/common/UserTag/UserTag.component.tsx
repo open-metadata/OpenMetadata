@@ -30,6 +30,7 @@ export const UserTag = ({
   className,
   isTeam = false,
   avatarType = 'solid',
+  truncateName = false,
 }: UserTags) => {
   if (isUndefined(id) && isUndefined(name)) {
     return null;
@@ -52,6 +53,7 @@ export const UserTag = ({
       className={classNames(
         {
           bordered: bordered,
+          'tw:min-w-0': truncateName,
         },
         'user-tag',
         UserTagSize[size],
@@ -64,7 +66,12 @@ export const UserTag = ({
         name={id}
         width={toString(width[size])}
       />
-      <span className={fontSizes[size]}>{name}</span>
+      <span
+        className={classNames(fontSizes[size], {
+          'tw:truncate': truncateName,
+        })}>
+        {name}
+      </span>
       {closable && (
         <ButtonUtility
           data-testid="close-icon"

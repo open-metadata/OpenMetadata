@@ -33,6 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -47,6 +48,7 @@ import org.openmetadata.service.migration.utils.v210.DataContractEntityReference
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
+import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
@@ -63,6 +65,9 @@ class IngestionPipelineMigrationEntryPointTest {
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    EventSubscriptionDAO eventSubscriptionDAO = mock(EventSubscriptionDAO.class);
+    when(collectionDAO.eventSubscriptionDAO()).thenReturn(eventSubscriptionDAO);
+    when(eventSubscriptionDAO.listAllEventsSubscriptions()).thenReturn(List.of());
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     when(handle.createQuery(anyString()).mapTo(String.class).list()).thenReturn(List.of());
     setField(migration, "handle", handle);
@@ -97,6 +102,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
             mockStatic(GlossaryAutomationReviewMigration.class);
+        MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
+            mockStatic(LineageEdgePipelineCleanupMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
         MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
             mockStatic(WorkflowRedeployMigration.class);
@@ -138,6 +145,8 @@ class IngestionPipelineMigrationEntryPointTest {
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
+      lineageEdgeCleanup.verify(
+          () -> LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(collectionDAO));
       workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
     }
   }
