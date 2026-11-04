@@ -24,5 +24,6 @@
     "clientCertificate",
     "clientKeyCertificate",
     "rootCertificate"
-  ]
+  ],
+  "additionalProperties": false
 }

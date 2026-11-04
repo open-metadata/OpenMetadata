@@ -157,6 +157,7 @@ final class SchemaClassConverter {
       JsonSchemaRepository.Ref oneOf, Object value) {
     return SCHEMAS
         .closestSecretBranch(oneOf, value)
+        .filter(branch -> SCHEMAS.hasRequiredProperties(branch, value))
         .flatMap(branch -> convertLeniently(SCHEMAS.javaClass(branch), value));
   }
 
@@ -165,7 +166,10 @@ final class SchemaClassConverter {
       Object typed = JsonUtils.convertValueLenient(value, branchClass);
       return Optional.of(ClassConverterFactory.getConverter(branchClass).convert(typed));
     } catch (RuntimeException e) {
-      LOG.debug("Cannot convert value as {}", branchClass.getSimpleName(), e);
+      LOG.debug(
+          "Cannot convert value as {}; cause: {}",
+          branchClass.getSimpleName(),
+          e.getClass().getName());
       return Optional.empty();
     }
   }

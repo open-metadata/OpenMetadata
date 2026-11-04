@@ -24,6 +24,8 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -221,6 +223,87 @@ class ConnectionSecretsGuardTest {
             ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
                 storageManifest("https://elsewhere.example", PASSWORD_MASK),
                 storageManifest("https://s3.amazonaws.com", STORED_TOKEN)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"serviceConnections", "appConfig", "appPrivateConfig"})
+  void aPipelineSourcePointedElsewhereCannotKeepItsMaskedSecret(String source) {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                pipeline(source, "https://elsewhere.example", PASSWORD_MASK),
+                pipeline(source, "https://original.example", STORED_TOKEN)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"serviceConnections", "appConfig", "appPrivateConfig"})
+  void aPipelineSourcePointedElsewhereCannotKeepItsStoredSecret(String source) {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                pipeline(source, "https://elsewhere.example", STORED_TOKEN),
+                pipeline(source, "https://original.example", STORED_TOKEN)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"serviceConnections", "appConfig", "appPrivateConfig"})
+  void aPipelineSourcePointedElsewhereAcceptsAReenteredSecret(String source) {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                pipeline(source, "https://elsewhere.example", "entered-again"),
+                pipeline(source, "https://original.example", STORED_TOKEN)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"serviceConnections", "appConfig", "appPrivateConfig"})
+  void anUnchangedPipelineSourceKeepsItsMaskedSecret(String source) {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                pipeline(source, "https://original.example", PASSWORD_MASK),
+                pipeline(source, "https://original.example", STORED_TOKEN)));
+  }
+
+  private static IngestionPipeline pipeline(String source, String target, String secret) {
+    Object config =
+        switch (source) {
+          case "serviceConnections" -> List.of(
+              Map.of(
+                  "serviceName",
+                  "mysql",
+                  "serviceConnection",
+                  Map.of("config", mysql(target, secret))));
+          case "appConfig" -> Map.of(
+              "clientId",
+              target,
+              "clientSecret",
+              "client-secret",
+              "signingSecret",
+              "signing-secret",
+              "botToken",
+              secret);
+          case "appPrivateConfig" -> Map.of(
+              "waiiInstance",
+              target,
+              "collateURL",
+              "https://collate.example",
+              "token",
+              secret,
+              "limits",
+              Map.of("actions", Map.of()));
+          default -> throw new IllegalArgumentException(source);
+        };
+    boolean testSuite = "serviceConnections".equals(source);
+    return new IngestionPipeline()
+        .withName("guard")
+        .withPipelineType(testSuite ? PipelineType.TEST_SUITE : PipelineType.APPLICATION)
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(
+                    Map.of("type", testSuite ? "TestSuite" : "Application", source, config)));
   }
 
   private static IngestionPipeline dbt(String url, String token, boolean updateDescriptions) {

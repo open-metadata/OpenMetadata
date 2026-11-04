@@ -26,5 +26,4 @@ export interface CertificatePath {
      * Root Certificate.
      */
     rootCertificate: string;
-    [property: string]: any;
 }
