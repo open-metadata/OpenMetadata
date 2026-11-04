@@ -319,6 +319,48 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void dataStewardEditsOntologyContentButNotGlossaryScope(final TestNamespace ns) throws Exception {
+    final User steward = createUser(ns, "steward", "DataSteward");
+    final Ontology ontology = createOntologyWith(ns, "stewardEdits", List.of(), List.of());
+    final OntologyConcept concept =
+        declareClass(ontology, "Stewarded", URI.create(ontology.getNamespace() + "Stewarded"));
+    final String describe =
+        "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Steward rewrite\"}]";
+
+    final HttpResponse<String> patched =
+        send(
+            token(steward),
+            "PATCH",
+            "/v1/ontologyConcepts/" + concept.getId(),
+            describe,
+            "application/json-patch+json");
+    assertEquals(200, patched.statusCode());
+    assertEquals("Steward rewrite", JsonUtils.readTree(patched.body()).get("description").asText());
+    assertEquals(
+        "Steward rewrite",
+        SdkClients.adminClient()
+            .ontologyConcepts()
+            .get(concept.getId().toString())
+            .getDescription());
+
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final String bulkName = ns.prefix("StewardBulk") + UUID.randomUUID();
+    final String lock =
+        json(
+            new AcquireOntologyEditLock()
+                .withResourceType(Entity.GLOSSARY)
+                .withResourceId(glossary.getId())
+                .withSessionId("steward-session")
+                .withLeaseSeconds(60));
+    assertEquals(
+        403, status(steward, "POST", "/v1/ontology/bulk", json(bulkRequest(glossary, bulkName))));
+    assertEquals(403, status(steward, "POST", "/v1/ontologyEditLocks/acquire", lock));
+    assertFalse(
+        body(adminToken(), "GET", "/v1/ontologyChangeSets?limit=1000", null).contains(bulkName),
+        "A denied bulk request left a draft behind");
+  }
+
+  @Test
   void dataConsumerCannotStartGlossaryDraftsOrLocks(final TestNamespace ns) throws Exception {
     final User consumer = createUser(ns, "drafter", "DataConsumer");
     final Glossary glossary = GlossaryTestFactory.createSimple(ns);

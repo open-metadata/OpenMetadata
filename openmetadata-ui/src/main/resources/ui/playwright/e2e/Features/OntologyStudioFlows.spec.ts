@@ -225,13 +225,25 @@ test.describe(
         test.slow();
         const api = await getWorkerAdminAPIContext();
         const suffix = uuid();
+        // Four random letters keep the 8-character prefix unique per run, so
+        // no number is appended and the digit is the only thing that differs.
+        const letters = [...suffix.slice(0, 4)]
+          .map((digit) => String.fromCodePoint(97 + Number.parseInt(digit, 16)))
+          .join('');
+        const stem = `zq${letters}`;
+        const { baseUri } = await okJson<{ baseUri: string }>(
+          await api.get('/api/v1/rdf/status'),
+          'Read the RDF base URI'
+        );
+        const ontologyIri = (prefix: string) =>
+          `${baseUri.replace(/\/+$/, '')}/onto/${prefix}`;
         const taken = await okJson<Ontology>(
           await api.post('/api/v1/ontologies', {
             data: {
               name: `pw_p1_taken_${suffix}`,
-              displayName: `Qzx Flow 37973 ${suffix}`,
-              iri: `urn:pw_p1_taken_${suffix}`,
-              namespace: `urn:pw_p1_taken_${suffix}:`,
+              displayName: `${stem} 1`,
+              iri: ontologyIri(`${stem}1`),
+              namespace: `${ontologyIri(`${stem}1`)}#`,
             },
           }),
           'Create the taken ontology'
@@ -252,7 +264,7 @@ test.describe(
             }
           });
 
-          await name.fill(`qzx flow 37973 ${suffix}`);
+          await name.fill(`${stem.toUpperCase()} 1`);
           await expect(dialog).toContainText('already exists');
           await expect(submit).toBeDisabled();
           await attachStudioShot(page, testInfo, `p1-create-errors-${mode}`);
@@ -262,7 +274,7 @@ test.describe(
           await expect(submit).toBeDisabled();
           expect(posts).toBe(0);
 
-          await name.fill(`Qzx Flow 38000 ${suffix}`);
+          await name.fill(`${stem} 2`);
           await expect(dialog).not.toContainText('already exists');
           await expect(submit).toBeEnabled();
           const response = page.waitForResponse((candidate) =>
@@ -274,8 +286,10 @@ test.describe(
             'Create the digits-only difference'
           );
           created.push(digits);
-          expect(digits.namespace).not.toBe(taken.namespace);
-          expect(digits.iri).not.toBe(taken.iri);
+          expect(taken.iri).toBe(ontologyIri(`${stem}1`));
+          expect(taken.namespace).toBe(`${ontologyIri(`${stem}1`)}#`);
+          expect(digits.iri).toBe(ontologyIri(`${stem}2`));
+          expect(digits.namespace).toBe(`${ontologyIri(`${stem}2`)}#`);
           await expect(page).toHaveURL(
             new RegExp(`[?&]ontology=${digits.id}(?:&|$)`)
           );
