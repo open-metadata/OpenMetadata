@@ -62,7 +62,6 @@ from metadata.ingestion.models.tests_data import (
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.glue.connection import (
     DATA_QUALITY_PERMISSIONS,
-    TABLE_NAME_MAX_LENGTH,
     GlueFilters,
 )
 from metadata.ingestion.source.database.glue.models import (
@@ -357,6 +356,10 @@ class GlueDataQualityMixin:
     glue_filters: GlueFilters
     schema_catalog_ids: dict[str, set[str]]
 
+    if TYPE_CHECKING:
+        # Declared for type checking only: defined here, it would shadow GlueSource's implementation.
+        def standardize_table_name(self, _: str, table: str) -> str: ...
+
     def yield_glue_data_quality(self) -> Iterable[Either]:
         config: GlueDataQualityConfiguration | None = self.service_connection.dataQualityConfig
         if not config or not config.includeDataQuality:
@@ -518,7 +521,7 @@ class GlueDataQualityMixin:
             service_name=self.context.get().database_service,
             database_name=self.service_connection.databaseName or self._catalog_of(source),
             schema_name=source.DatabaseName,
-            table_name=source.TableName[:TABLE_NAME_MAX_LENGTH],
+            table_name=self.standardize_table_name(source.DatabaseName, source.TableName),
             skip_es_search=True,
         )
 

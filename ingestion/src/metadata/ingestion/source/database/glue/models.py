@@ -126,8 +126,13 @@ class DataQualityResult(BaseModel):
 
     @property
     def scope(self) -> str | None:
-        """Groups the rules of one evaluation: ETL job results carry no ruleset name."""
-        return self.RulesetName or self.EvaluationContext or self.JobName
+        """Groups the rules of one evaluation. An ETL job result may carry no ruleset name, and
+        its node name is unique only within its job, so the job name qualifies it."""
+        if self.RulesetName:
+            return self.RulesetName
+        if self.JobName and self.EvaluationContext:
+            return f"{self.JobName}_{self.EvaluationContext}"
+        return self.EvaluationContext or self.JobName
 
     @property
     def finished_at(self) -> datetime | None:

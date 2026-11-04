@@ -30,8 +30,8 @@ another system, and its `TestPlatform` enum had no value for Glue.
      to a whole table gets the suffix `Table`.
    - **Test cases:** one per rule, named `<ruleset>_<RuleType>_<sha1(rule)[:8]>`. The name is keyed
      on the rule text, not on Glue's positional `Rule_N`. `<ruleset>` is the result's
-     `RulesetName`, else its `EvaluationContext`, else its `JobName` (ETL job results carry no
-     ruleset name), with every run of characters outside `A-Za-z0-9_-` replaced by `_`, leading and
+     `RulesetName`, else `<JobName>_<EvaluationContext>` (an ETL job result may carry no ruleset
+     name, and a node name is unique only within its job), else whichever of the two is set, with every run of characters outside `A-Za-z0-9_-` replaced by `_`, leading and
      trailing `_` stripped, and `glue` used if nothing is left. When that changes the name, or it
      is longer than 100 characters, it is cut to 100 characters and `_<sha1(name)[:8]>` of the raw
      name is appended, so two rulesets never share a test case history.

@@ -156,9 +156,11 @@ class FakeOpenMetadata:
         self.test_cases: dict[str, TestCase] = {}
         self.existing_results: dict[str, list[TestCaseResult]] = {}
         self.es_search_from_fqn = MagicMock(return_value=None)
+        self.table_lookups: list[str] = []
 
     def get_by_name(self, entity, fqn, fields=None):
         if entity is Table:
+            self.table_lookups.append(fqn)
             return self.tables.get(fqn)
         if entity is TestCase:
             test_case = self.test_cases.get(fqn)
@@ -184,9 +186,14 @@ def fake_glue(*results: dict) -> MagicMock:
 
 
 def build_source(
-    metadata: FakeOpenMetadata, glue: MagicMock, source_config: dict | None = None, **dq_config
+    metadata: FakeOpenMetadata,
+    glue: MagicMock,
+    source_config: dict | None = None,
+    connection: dict | None = None,
+    **dq_config,
 ) -> GlueSource:
     config = deepcopy(GLUE_CONFIG)
+    config["source"]["serviceConnection"]["config"].update(connection or {})
     config["source"]["serviceConnection"]["config"]["dataQualityConfig"].update(dq_config)
     config["source"]["sourceConfig"]["config"].update(source_config or {})
     with patch.object(GlueSource, "test_connection"):
@@ -402,6 +409,36 @@ class TestYieldGlueDataQuality:
 
         assert lefts == []
         assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
+
+    def test_two_etl_jobs_with_a_same_named_node_keep_separate_histories(self):
+        backfill = {**ETL_RESULT, "ResultId": "dqresult-backfill", "JobName": "orders_backfill"}
+        backfill["RuleResults"] = [{**ETL_RESULT["RuleResults"][0], "Result": "PASS"}]
+        mappings = [{"jobName": job, "tableFQN": TABLE_FQN} for job in ("orders_etl", "orders_backfill")]
+        rights, lefts = run(build_source(FakeOpenMetadata(), fake_glue(ETL_RESULT, backfill), etlJobMappings=mappings))
+
+        assert lefts == []
+        statuses = {
+            r.test_case_name.rsplit(".", 1)[-1]: r.test_case_results.testCaseStatus
+            for r in of_type(rights, OMetaTestCaseResultsSample)
+            if "IsUnique" in r.test_case_name
+        }
+        assert len(statuses) == 2
+        assert sorted(statuses.values(), key=str) == sorted([TestCaseStatus.Aborted, TestCaseStatus.Success], key=str)
+
+    def test_database_name_replaces_the_catalog_in_the_table_fqn(self):
+        result = {**CATALOG_RESULT, "DataSource": {"GlueTable": {"DatabaseName": "sales", "TableName": "orders"}}}
+        stored_fqn = f"{SERVICE}.analytics.sales.orders"
+        source = build_source(
+            FakeOpenMetadata(tables=[make_table(stored_fqn)]),
+            fake_glue(result),
+            connection={"databaseName": "analytics"},
+        )
+        rights, lefts = run(source)
+
+        assert lefts == []
+        links = [c.entityLink.root for c in of_type(rights, CreateTestCaseRequest)]
+        assert links
+        assert all(stored_fqn in link for link in links)
 
     def test_etl_result_uses_configured_mapping(self):
         source = build_source(
@@ -648,10 +685,13 @@ class TestYieldGlueDataQuality:
         ]
 
     def test_flushes_the_sink_before_resolving_any_table(self):
-        records = list(build_source(FakeOpenMetadata(), fake_glue(CATALOG_RESULT)).yield_glue_data_quality())
+        metadata = FakeOpenMetadata()
+        records = build_source(metadata, fake_glue(CATALOG_RESULT)).yield_glue_data_quality()
 
-        assert isinstance(records[0].right, Barrier)
-        assert not any(isinstance(record.right, Barrier) for record in records[1:])
+        assert isinstance(next(records).right, Barrier)
+        assert metadata.table_lookups == []
+        assert not any(isinstance(record.right, Barrier) for record in records)
+        assert metadata.table_lookups == [TABLE_FQN]
 
     def test_malformed_result_fails_alone_and_the_run_continues(self):
         null_metric = {
