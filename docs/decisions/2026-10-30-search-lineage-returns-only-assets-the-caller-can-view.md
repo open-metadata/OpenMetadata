@@ -1,12 +1,12 @@
 # Search lineage returns only the assets the caller can view
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial); v2 2026-10-30 (cached graphs, entity-count pages, async exports)
+- **Revisions:** v1 2026-10-30 (initial); v2 2026-10-30 (cached graphs, entity-count pages, async exports); v3 2026-11-03 (the cache hands out copies)
 - **Deciders:** Mohit Yadav
 - **Guard:** `SubResourceAuthorizationIT` (`lineageSearch_leavesOutNeighboursTheCallerCannotView`,
   `lineageAsyncExport_keepsTheImpersonationItWasRequestedUnder`,
   `lineageByEntityCount_keepsANodeWhoseLinkToTheRootIsOnAnotherPage`, `platformLineage_isAdminOnly`);
-  `SearchLineagePermissionFilterTest`
+  `SearchLineagePermissionFilterTest`; `GuavaLineageGraphCacheTest.testAGraphReadFromTheCacheIsTheReadersOwn`
 - **Related:** open-metadata/openmetadata-collate#7795
 
 ## Context
@@ -43,3 +43,11 @@ sees.
 - **Async exports run as they were requested.** The job keeps the bot a request was made on behalf
   of, and the export runs under that impersonation, so a rule such as
   `isImpersonated() && matchAnyTag(...)` holds for the export as it did for the request.
+
+## Amendment (v3, 2026-11-03)
+
+- **The cache hands every reader its own graph.** `GuavaLineageGraphCache` stores a graph
+  serialized and deserializes it on each hit, with the graph's FQNs kept beside it for
+  invalidation. Every filter that prunes a graph in place, the domain filter included, therefore
+  prunes the caller's copy. The permission filter no longer copies the graph itself; v2's "the
+  caller's view is a copy" now holds at the cache.

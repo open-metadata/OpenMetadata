@@ -3,7 +3,9 @@ package org.openmetadata.service.alerting.content.template.handlebars.helpers;
 import com.github.jknack.handlebars.Handlebars;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
@@ -30,10 +32,11 @@ public class HasFieldInChangesHelper implements HandlebarsHelper {
     handlebars.registerHelper(
         getName(),
         (context, options) -> {
-          // Context should be ChangeGroups from groupEventChanges helper
-          if (!(context instanceof ChangeGroups groups)) {
+          // Context should be the groups returned by the groupEventChanges helper
+          if (!(context instanceof Map<?, ?> || context instanceof ChangeGroups)) {
             return false;
           }
+          ChangeGroups groups = JsonUtils.convertValue(context, ChangeGroups.class);
 
           // First parameter should be the field name to search for
           if (options.params == null || options.params.length == 0) {

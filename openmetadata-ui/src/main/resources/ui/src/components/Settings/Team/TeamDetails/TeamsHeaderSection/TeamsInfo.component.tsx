@@ -434,13 +434,20 @@ const TeamsInfo = ({
         entityId={id ?? ''}
         entityType={EntityType.TEAM}
         hasPermission={hasEditDomainPermission}
+        labelClassName="text-primary"
       />
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
-      <Owner
-        hasPermission={hasEditOwnerPermission}
-        isCompactView={false}
-        owners={owners ?? []}
-        selectorContent={
+      {/* The label is drawn here, not by Owner, so it takes this header's
+          label colour like Email, Type and Persona beside it. */}
+      <Box
+        align="start"
+        className="layout-space layout-space-horizontal d-flex flex-col"
+        gap={2}
+        itemClassName="layout-space-item">
+        <div className="d-flex gap-2">
+          <Typography className="text-primary" weight="medium">
+            {t('label.owner-plural')}
+          </Typography>
           <UserTeamSelectableList
             hasPermission={Boolean(hasEditOwnerPermission)}
             multiple={{
@@ -450,8 +457,14 @@ const TeamsInfo = ({
             owner={owners}
             onUpdate={updateOwner}
           />
-        }
-      />
+        </div>
+        <Owner
+          isCompactView={false}
+          labelVariant="header"
+          owners={owners ?? []}
+          showLabel={false}
+        />
+      </Box>
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
       {emailRender}
 

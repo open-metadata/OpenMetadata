@@ -34,7 +34,7 @@ export const Glossary: FC<Props> = ({
     {...props}>
     <rect
       height={16}
-      rx={3}
+      rx={2.5}
       stroke="currentColor"
       strokeWidth={1.3}
       width={12}
@@ -42,7 +42,7 @@ export const Glossary: FC<Props> = ({
       y={2}
     />
     <path
-      d="M13.174 9.489a.5.5 0 0 1-.854.353l-.88-.88a.5.5 0 0 0-.707 0l-.88.88A.5.5 0 0 1 9 9.49V2.696A.696.696 0 0 1 9.696 2h2.782a.696.696 0 0 1 .696.696z"
+      d="M9 2.696v6.793a.5.5 0 0 0 .854.353l.88-.88a.5.5 0 0 1 .707 0l.88.88a.5.5 0 0 0 .853-.353V2.696A.696.696 0 0 0 12.478 2H9.696A.696.696 0 0 0 9 2.696"
       stroke="currentColor"
       strokeWidth={1.3}
     />

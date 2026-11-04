@@ -156,7 +156,7 @@ const TeamsSubscription = ({
       gap={2}
       itemClassName="layout-space-item">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
-        <Typography className="right-panel-label text-sm font-medium subscription-label">
+        <Typography className="text-primary" weight="medium">
           {`${t('label.subscription')}`}
         </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
