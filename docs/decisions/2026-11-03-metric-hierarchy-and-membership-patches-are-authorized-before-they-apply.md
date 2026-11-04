@@ -4,6 +4,7 @@
 - **Revisions:** v1 2026-11-03 (initial)
 - **Deciders:** karanh37
 - **Guard:** `MetricResourceTest#metricPatchRejectsOperationsOnTheDocumentRoot`,
+  `#metricPatchRejectsCopyingARelationIntoAnotherField`,
   `#hierarchyPatchIsAuthorizedOnTheMetricBeforeItIsSimulated`;
   `MetricGroupResourceTest#patchIsAuthorizedOnTheGroupBeforeItIsSimulated`,
   `#patchAddressingMembersRequiresViewOnEveryMember`,
@@ -23,6 +24,10 @@ authorized on one load could be applied by the repository to a different member 
 - Metric, metric group and task PATCH authorize the patch itself (the same check `patchInternal`
   makes) before loading the entity or simulating the patch.
 - A metric PATCH operation whose `path` is the document root (`""`) is rejected with 400.
+- A metric PATCH `copy` or `move` whose `from` is the document root, or reads `parent`,
+  `metricGroup`, `children` or `relatedMetrics` into a different field, is rejected with 400.
+  Responses hide the relation references the caller may not view, and an operation is authorized
+  by its `path` only. Moves within one relation field, such as reordering `relatedMetrics`, pass.
 - A metric group PATCH that addresses members (any `path` or `from` that is `""`, `/metrics` or
   below it) requires VIEW_BASIC on every current member. The repository receives it with a leading
   `test` of `/metrics` against the members it was authorized on. If they changed, the request fails
@@ -34,7 +39,8 @@ authorized on one load could be applied by the repository to a different member 
 ## Consequences
 - A refused caller gets 403 where an unapplicable patch used to give 400 or 404.
 - Two simultaneous member edits on one group can give one of them a 412.
-- Clients must patch named fields of a metric, not replace the whole document.
+- Clients must patch named fields of a metric, not replace the whole document, and can't copy a
+  relation's value into another field.
 - An agent moves metrics or edits group membership through the REST API, or the bulk membership
   endpoints, not MCP.
 - To revisit, the per-metric authorization would have to move to where the repository compares

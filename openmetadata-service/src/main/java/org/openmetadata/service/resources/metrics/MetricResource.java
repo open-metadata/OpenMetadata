@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -116,6 +117,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   static final String FIELDS =
       "owners,experts,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts,parent,children,childrenCount,metricGroup";
   private static final String ROOT_METRICS_PARENT = "null";
+  private static final List<String> RELATION_FIELDS =
+      List.of("parent", "metricGroup", "children", "relatedMetrics");
 
   public MetricResource(Authorizer authorizer, Limits limits) {
     super(Entity.METRIC, authorizer, limits);
@@ -1007,6 +1010,12 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       throw new IllegalArgumentException(
           "A metric patch operation must name a field; the document root can't be patched");
     }
+    if (copiesRelationElsewhere(patch)) {
+      throw new IllegalArgumentException(
+          "A metric patch can't copy or move a value out of the document root or out of "
+              + String.join(", ", RELATION_FIELDS)
+              + " into another field");
+    }
     Set<String> fields = JsonUtils.extractPatchedFields(patch);
     if (fields.contains("assets")) {
       throw new IllegalArgumentException(
@@ -1025,6 +1034,29 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   private static boolean patchesDocumentRoot(JsonPatch patch) {
     return patch.toJsonArray().stream()
         .anyMatch(operation -> "".equals(operation.asJsonObject().getString("path", null)));
+  }
+
+  // Responses drop the relation references the caller may not view, but a copy/move is authorized
+  // by its target path only (e.g. copy /parent/description into /description needs
+  // EditDescription).
+  private static boolean copiesRelationElsewhere(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonValue::asJsonObject)
+        .filter(operation -> operation.containsKey("from"))
+        .anyMatch(
+            operation -> {
+              String from = operation.getString("from", "");
+              String fromField = topLevelField(from);
+              return from.isEmpty()
+                  || (RELATION_FIELDS.contains(fromField)
+                      && !fromField.equals(topLevelField(operation.getString("path", ""))));
+            });
+  }
+
+  private static String topLevelField(String pointer) {
+    String stripped = pointer.startsWith("/") ? pointer.substring(1) : pointer;
+    int slash = stripped.indexOf('/');
+    return slash < 0 ? stripped : stripped.substring(0, slash);
   }
 
   // The PATCH response answers with the same relation fields as a read, so it answers the same

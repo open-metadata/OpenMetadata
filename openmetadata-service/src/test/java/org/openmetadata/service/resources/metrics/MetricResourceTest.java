@@ -211,6 +211,30 @@ class MetricResourceTest {
   }
 
   @Test
+  void metricPatchRejectsCopyingARelationIntoAnotherField() {
+    for (String from :
+        List.of(
+            "/parent/description",
+            "/metricGroup/name",
+            "/relatedMetrics/0/description",
+            "/children/0/name",
+            "")) {
+      jakarta.json.JsonPatch copy = Json.createPatchBuilder().copy("/description", from).build();
+      jakarta.json.JsonPatch move = Json.createPatchBuilder().move("/displayName", from).build();
+      assertThrows(
+          IllegalArgumentException.class, () -> MetricResource.validateMetricPatch(copy), from);
+      assertThrows(
+          IllegalArgumentException.class, () -> MetricResource.validateMetricPatch(move), from);
+    }
+    // Reordering within a relation (as jsonpatch diff tools emit) and copying plain fields still
+    // pass.
+    MetricResource.validateMetricPatch(
+        Json.createPatchBuilder().move("/relatedMetrics/0", "/relatedMetrics/1").build());
+    MetricResource.validateMetricPatch(
+        Json.createPatchBuilder().copy("/displayName", "/description").build());
+  }
+
+  @Test
   void metricPatchRejectsOperationsOnTheDocumentRoot() {
     jakarta.json.JsonObject wholeMetric =
         Json.createObjectBuilder()
