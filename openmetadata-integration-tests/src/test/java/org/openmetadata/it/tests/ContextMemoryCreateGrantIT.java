@@ -77,6 +77,24 @@ public class ContextMemoryCreateGrantIT {
     assertEquals(List.of(author.getId()), ownerIds(posted));
     assertEquals(List.of(author.getId()), ownerIds(put));
     assertEquals("orders.amount_eur, in euros.", edited.getAnswer());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, posted.getEntityStatus());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, put.getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.UNPROCESSED, memories.get(posted.getId().toString()).getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.UNPROCESSED, memories.get(put.getId().toString()).getEntityStatus());
+
+    ContextMemory putAgain =
+        memories.put(
+            anchoredMemory(ns, "put", anchor).withAnswer("Updated, still awaiting review."));
+    assertEquals(ContextMemoryStatus.UNPROCESSED, putAgain.getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.UNPROCESSED, memories.get(put.getId().toString()).getEntityStatus());
+    assertThrows(
+        ForbiddenException.class,
+        () -> memories.patch(posted.getId(), replace("/entityStatus", "Approved")));
+    assertEquals(
+        ContextMemoryStatus.UNPROCESSED, memories.get(posted.getId().toString()).getEntityStatus());
   }
 
   @Test
