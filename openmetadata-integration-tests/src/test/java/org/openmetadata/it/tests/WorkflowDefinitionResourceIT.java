@@ -7635,8 +7635,10 @@ public class WorkflowDefinitionResourceIT {
   }
 
   // A table no edit has changed has no change description. An update that leaves it that way (an
-  // edit undone within the same session, or a follow) is not a create: the trigger filter and the
-  // change check must judge it, not wave it through.
+  // edit undone within the same session, or a follow) is not a create, and the trigger filter must
+  // not wave it through. A follow on a table with an earlier edit starts no run either: its run
+  // would
+  // judge that edit again and replace its open approval.
   @Test
   void test_updateThatLeavesNoChangeDescriptionIsJudgedNotTreatedAsCreate(TestNamespace ns)
       throws Exception {
@@ -7644,20 +7646,25 @@ public class WorkflowDefinitionResourceIT {
     Table undone = untouchedTable(admin, ns, "undone");
     Table followed = untouchedTable(admin, ns, "followed");
     Table changed = untouchedTable(admin, ns, "changed");
-    DeployedWorkflow workflow = deployTargetTagWorkflow(admin, List.of(undone, followed, changed));
+    Table sentinel = untouchedTable(admin, ns, "sentinel");
+    DeployedWorkflow workflow =
+        deployTargetTagWorkflow(admin, List.of(undone, followed, changed, sentinel));
 
     admin.tables().patch(undone.getId(), MAPPER.readTree(REMOVE_FIRST_TAG));
     admin.tables().patch(undone.getId(), MAPPER.readTree(tagAddPatch("PII.Sensitive")));
-    admin
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PUT,
-            "/v1/tables/%s/followers".formatted(followed.getId()),
-            admin.users().getByName("admin").getId(),
-            RequestOptions.builder().build());
+    follow(admin, followed);
     // A real change still reaches approval, so the workflow is live while the others are judged.
     admin.tables().patch(changed.getId(), MAPPER.readTree(tagAddPatch(TARGET_TAG)));
     awaitWorkflowTask(workflow, changed);
+    UUID openApproval = workflowTasks(workflow, changed).getFirst().getId();
+
+    // Events reach workflows in order: once the sentinel's later edit has its approval, the follow
+    // before it has been handled, and the open approval on the changed table must be the same one.
+    follow(admin, changed);
+    admin.tables().patch(sentinel.getId(), MAPPER.readTree(tagAddPatch(TARGET_TAG)));
+    awaitWorkflowTask(workflow, sentinel);
+    assertEquals(
+        List.of(openApproval), workflowTasks(workflow, changed).stream().map(Task::getId).toList());
 
     // A run that opens an approval waits on it; one the filter stops finishes. Each event starts
     // one.
@@ -7750,6 +7757,16 @@ public class WorkflowDefinitionResourceIT {
               assertEquals(1, open.size());
               assertEquals(fields, previewedFields(open.getFirst()));
             });
+  }
+
+  private void follow(OpenMetadataClient admin, Table table) throws Exception {
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/tables/%s/followers".formatted(table.getId()),
+            admin.users().getByName("admin").getId(),
+            RequestOptions.builder().build());
   }
 
   private record DeployedWorkflow(UUID id, String name) {}

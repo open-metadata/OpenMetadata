@@ -5,6 +5,7 @@
 - **Deciders:** yan-3005
 - **Guard:** `FilterEntityImplTest#eventPath_judgesTheChangeOfTheVersionTheEventProduced`,
   `FilterEntityImplTest#eventPath_updateThatLeftNoChange_doesNotFire`,
+  `WorkflowEventConsumerTest#changesNoTriggerField_followOrVote_true_editOrCreate_false`,
   `WorkflowDefinitionResourceIT#test_updateThatLeavesNoChangeDescriptionIsJudgedNotTreatedAsCreate`
 - **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v210)
 
@@ -49,4 +50,8 @@ The event consumer also puts the event type on the trigger signal as `global_tri
 When the change to judge is missing, the trigger filter passes only a `Created` event, or a run
 that carries no event type (one started before this change). The `checkChangeDescription` node is
 left as it is: the filter gates every event-triggered run, so no workflow needs redeploying.
+
+An update whose own change names only fields no workflow triggers on (a follow, an unfollow, a
+vote) starts no run at all. Such an update produces no version, so its run would read the entity's
+stored change, an earlier edit's, judge that edit again, and replace any approval open for it.
 

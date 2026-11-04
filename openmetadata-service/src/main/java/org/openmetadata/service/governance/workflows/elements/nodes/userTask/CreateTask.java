@@ -1253,10 +1253,9 @@ public class CreateTask implements TaskListener {
     final Object triggeringVersion =
         new WorkflowVariableHandler(delegateTask)
             .getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE);
-    final boolean previewsTheOpeningEdit = opensCycle && entity != null;
     return new PreviewChanges(
         pendingChange(delegateTask),
-        previewsTheOpeningEdit ? TriggeringChange.of(entity, triggeringVersion) : null);
+        opensCycle ? TriggeringChange.of(entity, triggeringVersion) : null);
   }
 
   private static Object linkChangeRequest(Object payload, DelegateTask delegateTask) {
