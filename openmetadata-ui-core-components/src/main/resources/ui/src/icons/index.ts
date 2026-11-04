@@ -256,6 +256,7 @@ export { Inbox01 } from './Inbox01';
 export { InfoCircle } from './InfoCircle';
 export { Info } from './Info';
 export { Inherit } from './Inherit';
+export { InheritedBadge } from './InheritedBadge';
 export { IntegerType } from './IntegerType';
 export { Integrity } from './Integrity';
 export { Italic01 } from './Italic01';

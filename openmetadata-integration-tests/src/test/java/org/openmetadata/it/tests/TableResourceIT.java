@@ -36,6 +36,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -6661,6 +6662,89 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertTrue(
         tables.stream().allMatch(t -> t.getName().contains("orders")),
         "All returned tables should contain 'orders' in name");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testRegexListTable_caseInsensitiveSubstring(boolean useFqn, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("prod_reporting").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create().name("finance").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchema otherSchema =
+        DatabaseSchemas.create()
+            .name("Finance_archive")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    for (String name : List.of("revenue_summary", "daily_Summary", "orders")) {
+      client
+          .tables()
+          .create(
+              new CreateTable()
+                  .withName(name)
+                  .withDatabaseSchema(schema.getFullyQualifiedName())
+                  .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    }
+    client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName("archive")
+                .withDatabaseSchema(otherSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    for (String mode : List.of("include", "exclude")) {
+      assertRegexTableNames(
+          client,
+          Map.of(
+              "database",
+              database.getFullyQualifiedName(),
+              "tableRegex",
+              "summary",
+              "regexMode",
+              mode,
+              "regexFilterByFqn",
+              Boolean.toString(useFqn)),
+          mode.equals("include")
+              ? Set.of("revenue_summary", "daily_Summary")
+              : Set.of("orders", "archive"));
+      assertRegexTableNames(
+          client,
+          Map.of(
+              "database",
+              database.getFullyQualifiedName(),
+              "databaseSchemaRegex",
+              "finance",
+              "regexMode",
+              mode,
+              "regexFilterByFqn",
+              Boolean.toString(useFqn)),
+          mode.equals("include")
+              ? Set.of("revenue_summary", "daily_Summary", "orders", "archive")
+              : Set.of());
+    }
+    assertRegexTableNames(
+        client,
+        Map.of(
+            "database",
+            database.getFullyQualifiedName(),
+            "tableRegex",
+            "^summary$",
+            "regexMode",
+            "include",
+            "regexFilterByFqn",
+            Boolean.toString(useFqn)),
+        Set.of());
+  }
+
+  private void assertRegexTableNames(
+      OpenMetadataClient client, Map<String, String> queryParams, Set<String> expected) {
+    ListResponse<Table> response =
+        client.tables().list(new ListParams().setQueryParams(queryParams));
+    assertEquals(
+        expected, response.getData().stream().map(Table::getName).collect(Collectors.toSet()));
+    assertEquals(expected.size(), response.getPaging().getTotal());
   }
 
   @Test

@@ -20,6 +20,13 @@ from datetime import datetime, timezone
 
 from sqlglot import exp
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import (
+    TableLookup,
+    UnsupportedTableReferenceError,
+    load_table_binding_resolution,
+)
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createCustomProperty import (
     CreateCustomPropertyRequest,
@@ -93,7 +100,6 @@ from metadata.ingestion.source.dashboard.hex.query_fetcher import (
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
-from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
 
@@ -922,8 +928,19 @@ class HexSource(DashboardServiceSource):
             key = repr((cell.dataConnectionId, *table_key(reference)))
             searched_database = reference.catalog or (connection.default_database if connection else None)
             searched_schema = reference.db or (connection.default_schema if connection else None)
+            if "*" in reference.name:
+                self._add_wildcard_tables(
+                    lineage, searched_database, searched_schema, reference.name, connection.type if connection else None
+                )
+                reference.meta[UNRESOLVED] = True
+                continue
             if key not in resolved_tables:
-                resolved_tables.put(key, self._resolve_table(searched_database, searched_schema, reference.name))
+                resolved_tables.put(
+                    key,
+                    self._resolve_table(
+                        searched_database, searched_schema, reference.name, connection.type if connection else None
+                    ),
+                )
             resolved = resolved_tables.get(key)
             if not resolved:
                 # A later cell inlining this one lacks this connection's defaults and
@@ -975,7 +992,58 @@ class HexSource(DashboardServiceSource):
             )
         return lineage
 
-    def _resolve_table(self, database: str | None, schema: str | None, table: str) -> tuple[Table, str | None] | None:
+    def _resolve_reference(
+        self,
+        database: str | None,
+        schema: str | None,
+        table: str,
+        service: str | None,
+        connection_type: str | None,
+    ) -> tuple[Table, ...]:
+        try:
+            resolution = (
+                get_table_binding_resolution(self.metadata, service)
+                if service
+                else load_table_binding_resolution(connection_type, self.metadata)
+            )
+            return resolution.resolve(
+                TableReference(database, schema, table), service_name=service, lookup=TableLookup.SEARCH
+            )
+        except UnsupportedTableReferenceError as exc:
+            logger.debug("Skipping unsupported Hex table reference %s: %s", table, exc)
+            return ()
+        except Exception as exc:
+            raise TableSearchError(f"searching table reference {table}: {exc}") from exc
+
+    def _add_wildcard_tables(
+        self,
+        lineage: HexCellLineage,
+        searched_database: str | None,
+        searched_schema: str | None,
+        table_name: str,
+        connection_type: str | None = None,
+    ) -> None:
+        for prefix in self.get_db_service_prefixes() or [None]:
+            service, database, schema, table = self.parse_db_service_prefix(prefix)
+            if not (searched_schema or schema):
+                continue
+            if any(
+                expected and actual and expected.lower() != actual.lower()
+                for expected, actual in ((database, searched_database), (schema, searched_schema), (table, table_name))
+            ):
+                continue
+            matches = self._resolve_reference(
+                searched_database or database, searched_schema or schema, table_name, service, connection_type
+            )
+            scopes = {tuple(fqn.split(model_str(match.fullyQualifiedName))[:-1]) for match in matches}
+            if not service and len(scopes) > 1:
+                continue
+            for match in matches:
+                lineage.tables[model_str(match.id)] = (match, prefix)
+
+    def _resolve_table(
+        self, database: str | None, schema: str | None, table: str, connection_type: str | None = None
+    ) -> tuple[Table, str | None] | None:
         """
         The one table the reference names across the db service prefixes (any service
         when none is set), with the prefix it was found under. Lineage must not guess,
@@ -992,28 +1060,14 @@ class HexSource(DashboardServiceSource):
                 continue
             if not (schema or prefix_schema):
                 continue
-            search = build_es_fqn_search_string(
-                database_name=database or prefix_database,
-                schema_name=schema or prefix_schema,
-                service_name=service or "*",
-                table_name=table,
+            found_tables = self._resolve_reference(
+                database or prefix_database, schema or prefix_schema, table, service, connection_type
             )
-            for found in self._search_tables(search):
+            for found in found_tables:
                 matches.setdefault(model_str(found.id), (found, prefix))
         if len(matches) > 1:
             logger.debug("Skipping Hex table reference %s: it matches %d tables", table, len(matches))
         return next(iter(matches.values())) if len(matches) == 1 else None
-
-    def _search_tables(self, fqn_search_string: str) -> list[Table]:
-        try:
-            tables = self.metadata.es_search_from_fqn(
-                entity_type=Table,
-                fqn_search_string=fqn.prefix_entity_for_wildcard_search(entity_type=Table, fqn=fqn_search_string),
-                raise_on_error=True,
-            )
-        except Exception as exc:
-            raise TableSearchError(f"searching {fqn_search_string}: {exc}") from exc
-        return [table for table in tables or [] if table is not None]
 
     @staticmethod
     def _unique_column_name(name: str, taken: set[str]) -> str:
