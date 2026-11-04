@@ -174,6 +174,19 @@ public final class ConnectionSecretsGuard {
       JsonNode maskedIncoming,
       JsonNode maskedStored,
       Set<String> passwordMapPaths) {
+    if (incoming.isArray() || stored.isArray()) {
+      for (int i = 0; i < Math.max(incoming.size(), stored.size()); i++) {
+        if (retargetsWithStoredSecret(
+            incoming.path(i),
+            stored.path(i),
+            maskedIncoming.path(i),
+            maskedStored.path(i),
+            PipelineSources.entriesUnder(passwordMapPaths, Integer.toString(i)))) {
+          return true;
+        }
+      }
+      return false;
+    }
     return (nonExemptFieldChanged(maskedIncoming, maskedStored)
             || maskedPasswordMapEntryEdited(maskedIncoming, incoming, stored, passwordMapPaths, ""))
         && keepsStoredSecret(maskedIncoming, incoming, stored);
