@@ -1057,6 +1057,7 @@ const LineageMapCanvas = ({
     setColumnsHavingLineage,
     setColumnsInCurrentPages,
     setIsPlatformLineage,
+    setEdges: setSceneEdges,
     setNodes: setSceneNodes,
     setSceneBand,
     setSelectedColumn,
@@ -1525,6 +1526,14 @@ const LineageMapCanvas = ({
     setTracedColumns,
     t,
   ]);
+
+  // The Lineage page exports the graph from the store, so keep the store on
+  // what the canvas draws: the laid-out nodes, as the user arranged them, and
+  // their edges.
+  useEffect(() => {
+    setSceneNodes(nodes);
+    setSceneEdges(edges);
+  }, [edges, nodes, setSceneEdges, setSceneNodes]);
 
   useEffect(() => {
     if (!pendingFitNodeIds) {
@@ -2020,94 +2029,99 @@ const LineageMapCanvas = ({
 
   const canDrillScene = scene.nodes.some(isSceneNodeDrillable);
 
+  // The test id marks a rendered scene: the canvas mounts only once the scene
+  // has nodes. It sits on a wrapper because React Flow overwrites the
+  // data-testid of its own root.
   return (
-    <ReactFlow
-      fitView
-      className="custom-react-flow lineage-map-react-flow tw:h-full tw:w-full tw:overflow-clip! tw:bg-primary"
-      deleteKeyCode={null}
-      edgeTypes={{}}
-      edges={[]}
-      fitViewOptions={{
-        ...getSceneFitViewOptions(),
-      }}
-      maxZoom={MAX_ZOOM_VALUE}
-      minZoom={MIN_ZOOM_VALUE}
-      nodeTypes={nodeTypes}
-      nodes={flow.nodes}
-      nodesConnectable={false}
-      onlyRenderVisibleElements={!renderAllNodes}
-      ref={wrapperRef}
-      selectNodesOnDrag={false}
-      onFocus={handleCanvasFocus}
-      onInit={setReactFlowInstance}
-      onMove={handleMove}
-      onNodeClick={handleNodeClick}
-      onNodeMouseEnter={handleNodeMouseEnter}
-      onNodeMouseLeave={handleNodeMouseLeave}
-      onNodesChange={flow.onNodesChange}
-      onPaneClick={handlePaneClick}>
-      {loading && (
-        <div
-          className="lineage-map-loading tw:absolute tw:inset-0 tw:z-30 tw:grid tw:place-items-center tw:bg-primary/80"
-          data-testid="lineage-map-loading">
-          <Loader />
-        </div>
-      )}
-      <Background gap={18} size={1} />
-      {miniMapVisible && (
-        <MiniMap
-          pannable
-          zoomable
-          nodeStrokeWidth={2}
-          position="bottom-right"
+    <div className="tw:h-full tw:w-full" data-testid="lineage-map-canvas">
+      <ReactFlow
+        fitView
+        className="custom-react-flow lineage-map-react-flow tw:h-full tw:w-full tw:overflow-clip! tw:bg-primary"
+        deleteKeyCode={null}
+        edgeTypes={{}}
+        edges={[]}
+        fitViewOptions={{
+          ...getSceneFitViewOptions(),
+        }}
+        maxZoom={MAX_ZOOM_VALUE}
+        minZoom={MIN_ZOOM_VALUE}
+        nodeTypes={nodeTypes}
+        nodes={flow.nodes}
+        nodesConnectable={false}
+        onlyRenderVisibleElements={!renderAllNodes}
+        ref={wrapperRef}
+        selectNodesOnDrag={false}
+        onFocus={handleCanvasFocus}
+        onInit={setReactFlowInstance}
+        onMove={handleMove}
+        onNodeClick={handleNodeClick}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
+        onNodesChange={flow.onNodesChange}
+        onPaneClick={handlePaneClick}>
+        {loading && (
+          <div
+            className="lineage-map-loading tw:absolute tw:inset-0 tw:z-30 tw:grid tw:place-items-center tw:bg-primary/80"
+            data-testid="lineage-map-loading">
+            <Loader />
+          </div>
+        )}
+        <Background gap={18} size={1} />
+        {miniMapVisible && (
+          <MiniMap
+            pannable
+            zoomable
+            nodeStrokeWidth={2}
+            position="bottom-right"
+          />
+        )}
+        <CanvasLayerWrapper
+          dqHighlightedEdges={new Set<string>()}
+          edges={edges}
+          hoverEdge={hoveredEdge}
+          isPathHighlightActive={Boolean(pathHighlight)}
+          nodes={renderedNodes}
+          pathHighlightedEdgeIds={pathHighlight?.edgeIds}
+          onEdgeClick={handleEdgeClick}
+          onEdgeHover={setHoveredEdge}
         />
-      )}
-      <CanvasLayerWrapper
-        dqHighlightedEdges={new Set<string>()}
-        edges={edges}
-        hoverEdge={hoveredEdge}
-        isPathHighlightActive={Boolean(pathHighlight)}
-        nodes={renderedNodes}
-        pathHighlightedEdgeIds={pathHighlight?.edgeIds}
-        onEdgeClick={handleEdgeClick}
-        onEdgeHover={setHoveredEdge}
-      />
-      {isPlatformLineage && (
-        <>
-          <LineageMapControls
-            canDrill={canDrillScene}
-            miniMapVisible={miniMapVisible}
-            scene={scene}
-            onStopSelect={handleRailStopSelect}
-          />
-          <LineageMapBreadcrumbs
-            scene={scene}
-            onBreadcrumbFocus={handleBreadcrumbFocus}
-          />
-          <LineageMapStatusPanel error={sceneError} scene={scene} />
-        </>
-      )}
+        {isPlatformLineage && (
+          <>
+            <LineageMapControls
+              canDrill={canDrillScene}
+              miniMapVisible={miniMapVisible}
+              scene={scene}
+              onStopSelect={handleRailStopSelect}
+            />
+            <LineageMapBreadcrumbs
+              scene={scene}
+              onBreadcrumbFocus={handleBreadcrumbFocus}
+            />
+            <LineageMapStatusPanel error={sceneError} scene={scene} />
+          </>
+        )}
 
-      <LineageMapOnboardingDialog
-        open={showOnboarding}
-        onClose={handleOnboardingClose}
-      />
-      <Panel position="bottom-right">
-        <LineageControlButtons
-          miniMapVisible={miniMapVisible}
-          reactFlowInstance={reactFlowInstance}
-          onFitView={handleFitView}
-          onToggleMiniMap={() => setMiniMapVisible((visible) => !visible)}
+        <LineageMapOnboardingDialog
+          open={showOnboarding}
+          onClose={handleOnboardingClose}
         />
-      </Panel>
-      <Panel className="lineage-layers-panel" position="bottom-left">
-        <LineageLayers
-          sceneLens={scene.lens}
-          sceneLevelLabelKey={getSceneLevelLabelKey(scene)}
-          onSceneLensChange={handleLensChange}
-        />
-      </Panel>
-    </ReactFlow>
+        <Panel position="bottom-right">
+          <LineageControlButtons
+            miniMapVisible={miniMapVisible}
+            reactFlowInstance={reactFlowInstance}
+            onFitView={handleFitView}
+            onToggleMiniMap={() => setMiniMapVisible((visible) => !visible)}
+          />
+        </Panel>
+        <Panel className="lineage-layers-panel" position="bottom-left">
+          <LineageLayers
+            sceneLens={scene.lens}
+            sceneLevelLabelKey={getSceneLevelLabelKey(scene)}
+            onSceneLensChange={handleLensChange}
+          />
+        </Panel>
+      </ReactFlow>
+    </div>
   );
 };
 

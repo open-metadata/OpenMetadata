@@ -42,7 +42,9 @@ class DestinationSecretGuardsTest {
         assertThrows(
             BadRequestException.class,
             () -> DestinationSecretGuards.requireNoMaskedSecrets(List.of(masked)));
-    assertTrue(refused.getMessage().contains("/endpoint"));
+    assertEquals(
+        "Enter the URL of the Slack destination again; a hidden value cannot be used here",
+        refused.getMessage());
     assertDoesNotThrow(() -> DestinationSecretGuards.requireNoMaskedSecrets(List.of(stored())));
   }
 
@@ -96,9 +98,14 @@ class DestinationSecretGuardsTest {
 
     assertDoesNotThrow(
         () -> DestinationSecretGuards.requireSecretsAsStored(storedDestination, restored));
-    assertThrows(
-        BadRequestException.class,
-        () -> DestinationSecretGuards.requireSecretsAsStored(storedDestination, otherEndpoint));
+    BadRequestException refused =
+        assertThrows(
+            BadRequestException.class,
+            () -> DestinationSecretGuards.requireSecretsAsStored(storedDestination, otherEndpoint));
+    assertEquals(
+        "You changed the URL of the Slack destination; to test it, enter all of its hidden values"
+            + " again",
+        refused.getMessage());
   }
 
   @Test
@@ -314,7 +321,11 @@ class DestinationSecretGuardsTest {
                 DestinationSecretGuards.requireUnwrittenSecretsStayProtected(
                     original, carried, reidentity),
             "the stored endpoint and header would be served in the clear");
-    assertTrue(refused.getMessage().contains("'/endpoint'"), refused.getMessage());
+    assertTrue(
+        refused
+            .getMessage()
+            .startsWith("The Slack destination cannot keep its URL on Activity Feed"),
+        refused.getMessage());
 
     JsonPatch retyped =
         Json.createPatchBuilder()
@@ -343,33 +354,64 @@ class DestinationSecretGuardsTest {
         "a destination that leaves no stored value behind is a new one");
   }
 
+  // A destination may move to another channel; what it may not do is keep a stored secret in a
+  // field the new channel does not keep secret, where it would be stored and served as written.
   @Test
-  void aDestinationKeptByItsIdKeepsTheChannelItIsServedBy() {
-    SubscriptionDestination storedDestination = stored();
-    EventSubscription original = alertWith(storedDestination);
-    SubscriptionDestination moved =
-        JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class)
-            .withChannel("ActivityFeed");
+  void aDestinationMayChangeChannelWhileItsStoredSecretsStaySecret() {
+    SubscriptionDestination owners =
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withCategory(SubscriptionDestination.SubscriptionCategory.OWNERS)
+            .withType(SubscriptionType.EMAIL)
+            .withConfig(new LinkedHashMap<>(Map.of("sendToOwners", true)));
+    assertKeepsSecrets(
+        owners,
+        JsonUtils.deepCopy(owners, SubscriptionDestination.class).withType(SubscriptionType.SLACK),
+        "owners notified by Slack instead of email hold no secret");
 
-    assertThrows(
-        BadRequestException.class,
-        () -> DestinationSecretGuards.requireServedChannelUnchanged(original, alertWith(moved)));
-
-    assertDoesNotThrow(
-        () ->
-            DestinationSecretGuards.requireServedChannelUnchanged(
-                original,
-                alertWith(JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class))),
-        "what is unchanged does not refuse");
-    assertDoesNotThrow(
-        () ->
-            DestinationSecretGuards.requireServedChannelUnchanged(
-                original,
-                alertWith(
-                    JsonUtils.deepCopy(storedDestination, SubscriptionDestination.class)
-                        .withId(UUID.randomUUID())
-                        .withChannel("ActivityFeed"))),
+    SubscriptionDestination slack = stored();
+    assertKeepsSecrets(
+        slack,
+        JsonUtils.deepCopy(slack, SubscriptionDestination.class)
+            .withType(SubscriptionType.MS_TEAMS),
+        "Teams keeps the endpoint and the headers secret as Slack does");
+    assertKeepsSecrets(
+        slack,
+        JsonUtils.deepCopy(slack, SubscriptionDestination.class)
+            .withId(UUID.randomUUID())
+            .withChannel("ActivityFeed"),
         "a new destination is served by the channel its save chooses");
+
+    BadRequestException refused =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                DestinationSecretGuards.requireStoredSecretsStaySecret(
+                    alertWith(slack),
+                    alertWith(
+                        JsonUtils.deepCopy(slack, SubscriptionDestination.class)
+                            .withChannel("ActivityFeed"))));
+    assertTrue(
+        refused
+            .getMessage()
+            .startsWith(
+                "The Slack destination cannot move to Activity Feed while it keeps its URL"),
+        refused.getMessage());
+
+    SubscriptionDestination emptied =
+        JsonUtils.deepCopy(slack, SubscriptionDestination.class)
+            .withType(SubscriptionType.EMAIL)
+            .withConfig(new LinkedHashMap<>(Map.of("receivers", List.of("a@example.com"))));
+    assertKeepsSecrets(slack, emptied, "a destination that leaves no stored secret behind moves");
+  }
+
+  private static void assertKeepsSecrets(
+      SubscriptionDestination stored, SubscriptionDestination sent, String message) {
+    assertDoesNotThrow(
+        () ->
+            DestinationSecretGuards.requireStoredSecretsStaySecret(
+                alertWith(stored), alertWith(sent)),
+        message);
   }
 
   // A carried secret belongs to the field of the destination it was stored in: a new id does not

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, Page, Response } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
@@ -27,9 +27,8 @@ import { waitForTaskListResponse } from '../../../utils/task';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 // The navbar pick is saved on the user (defaultDomain) and applied on load, so tests switch
-// domains as a throwaway admin to keep the pick out of parallel tests. Wait for the conversation
-// list, not the entity header's task count, which has its own scope. Matching the new domain
-// and excluding count requests prevents an old or badge-only response from satisfying the wait.
+// domains as a throwaway admin to keep the pick out of parallel tests. Returns the task count
+// the reloaded page requests; the waiter is armed only after the save.
 const switchDomain = async (
   apiContext: APIRequestContext,
   page: Page,
@@ -38,23 +37,23 @@ const switchDomain = async (
   await (domain
     ? setPersistedDomain(apiContext, domain.id ?? '')
     : clearPersistedDomain(apiContext));
-  const expectedDomain = domain?.fullyQualifiedName ?? null;
-  const conversations = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-
-    return (
+  const taskCount = page.waitForResponse(
+    (response) =>
       response.request().method() === 'GET' &&
-      url.pathname.endsWith('/api/v1/conversations') &&
-      !url.searchParams.has('limit') &&
-      url.searchParams.get('domain') === expectedDomain
-    );
-  });
+      new URL(response.url()).pathname.endsWith('/api/v1/tasks/count')
+  );
   await page.reload();
 
-  return conversations;
+  return taskCount;
 };
 
-test.describe('Domain Filtering - Conversations Refetch on Domain Switch', () => {
+// Tasks are a work queue the navbar pick never narrows, so the count carries no domain.
+const expectUnscopedTaskCount = (response: Response) => {
+  expect(response.status()).toBe(200);
+  expect(new URL(response.url()).searchParams.get('domain')).toBeNull();
+};
+
+test.describe('Domain Filtering - Tasks Refetch on Domain Switch', () => {
   const domainA = new Domain();
   const domainB = new Domain();
   const tableInDomainA = new TableClass();
@@ -161,7 +160,7 @@ test.describe('Domain Filtering - Conversations Refetch on Domain Switch', () =>
         domainA.responseData
       );
 
-      expect(response.status()).toBe(200);
+      expectUnscopedTaskCount(response);
     } finally {
       await afterAction();
     }
@@ -191,7 +190,7 @@ test.describe('Domain Filtering - Conversations Refetch on Domain Switch', () =>
         domainB.responseData
       );
 
-      expect(response.status()).toBe(200);
+      expectUnscopedTaskCount(response);
     } finally {
       await afterAction();
     }
@@ -215,10 +214,9 @@ test.describe('Domain Filtering - Conversations Refetch on Domain Switch', () =>
       await switchDomain(apiContext, page, domainA.responseData);
       await waitForAllLoadersToDisappear(page);
 
-      // Resolves only on a count request without a `domain` param.
       const response = await switchDomain(apiContext, page);
 
-      expect(response.status()).toBe(200);
+      expectUnscopedTaskCount(response);
     } finally {
       await afterAction();
     }
@@ -373,7 +371,7 @@ test.describe('Domain Filtering - Entity Page Activity Feed', () => {
         domain.responseData
       );
 
-      expect(response.status()).toBe(200);
+      expectUnscopedTaskCount(response);
     } finally {
       await afterAction();
     }

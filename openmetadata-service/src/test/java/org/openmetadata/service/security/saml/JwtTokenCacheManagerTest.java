@@ -13,13 +13,17 @@
 
 package org.openmetadata.service.security.saml;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.auth.LogoutRequest;
@@ -30,11 +34,7 @@ class JwtTokenCacheManagerTest {
 
   @Test
   void logoutEntryMatchesEveryEncodingOfTheSameToken() {
-    String token =
-        JWT.create()
-            .withSubject("logged-out-" + UUID.randomUUID())
-            .withExpiresAt(Date.from(Instant.now().plusSeconds(600)))
-            .sign(Algorithm.HMAC256("test-key"));
+    String token = tokenExpiringIn(600);
     JwtTokenCacheManager.getInstance()
         .markLogoutEventForToken(new LogoutRequest().withUsername("user").withToken(token));
 
@@ -47,5 +47,54 @@ class JwtTokenCacheManagerTest {
 
     assertNotEquals(token, reencoded);
     assertNotNull(JwtTokenCacheManager.getInstance().getLogoutEventForToken(reencoded));
+  }
+
+  @Test
+  void aLogoutEntryKeepsTheUserAndTimeButNotTheToken() {
+    String token = tokenExpiringIn(600);
+    Date loggedOutAt = new Date();
+    JwtTokenCacheManager.getInstance()
+        .markLogoutEventForToken(
+            new LogoutRequest().withUsername("user").withToken(token).withLogoutTime(loggedOutAt));
+
+    LogoutRequest entry = JwtTokenCacheManager.getInstance().getLogoutEventForToken(token);
+
+    assertEquals("user", entry.getUsername());
+    assertEquals(loggedOutAt, entry.getLogoutTime());
+    assertNull(entry.getToken());
+  }
+
+  @Test
+  void aTokenThatNeverExpiresIsNotCached() {
+    String token =
+        JWT.create().withSubject("bot-" + UUID.randomUUID()).sign(Algorithm.HMAC256("test-key"));
+
+    assertDoesNotThrow(
+        () ->
+            JwtTokenCacheManager.getInstance()
+                .markLogoutEventForToken(new LogoutRequest().withUsername("bot").withToken(token)));
+    assertNull(JwtTokenCacheManager.getInstance().getLogoutEventForToken(token));
+  }
+
+  @Test
+  void aFullCacheDropsTheEntryThatExpiresFirst() {
+    JwtTokenCacheManager cache = new JwtTokenCacheManager(2);
+    String soonest = tokenExpiringIn(60);
+    String later = tokenExpiringIn(600);
+    String latest = tokenExpiringIn(6000);
+    for (String token : List.of(later, soonest, latest)) {
+      cache.markLogoutEventForToken(new LogoutRequest().withUsername("user").withToken(token));
+    }
+
+    assertNull(cache.getLogoutEventForToken(soonest));
+    assertNotNull(cache.getLogoutEventForToken(later));
+    assertNotNull(cache.getLogoutEventForToken(latest));
+  }
+
+  private static String tokenExpiringIn(long seconds) {
+    return JWT.create()
+        .withSubject("logged-out-" + UUID.randomUUID())
+        .withExpiresAt(Date.from(Instant.now().plusSeconds(seconds)))
+        .sign(Algorithm.HMAC256("test-key"));
   }
 }

@@ -104,7 +104,8 @@ export const openTeamTab = async (
   page: Page,
   tabName: RegExp
 ): Promise<void> => {
-  // The profile sidebar can expose a tab with the same name as the team pane.
+  // Scoped: route-cached pages (e.g. /my-data's summary panel) stay mounted and
+  // render same-named tabs.
   await page
     .getByTestId('team-detail')
     .getByRole('tab', { name: tabName })

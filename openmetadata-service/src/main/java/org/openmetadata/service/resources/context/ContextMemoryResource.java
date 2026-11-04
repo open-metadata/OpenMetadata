@@ -998,4 +998,25 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return withVisibleEvidence(
         securityContext, restoreEntity(uriInfo, securityContext, restore.getId()));
   }
+
+  /**
+   * A snapshot is decided on its memory as it is now, as {@code /{id}/versions} decides it: making a
+   * memory private takes back the versions it was shared in.
+   */
+  @Override
+  protected List<ContextMemory> retainReadableHistory(
+      SecurityContext securityContext, List<ContextMemory> snapshots) {
+    return snapshots.isEmpty()
+        ? snapshots
+        : ContextMemoryVisibility.retainVisibleNow(
+            snapshots, currentMemories(snapshots), securityContext);
+  }
+
+  private List<ContextMemory> currentMemories(List<ContextMemory> snapshots) {
+    return repository.get(
+        null,
+        snapshots.stream().map(ContextMemory::getId).distinct().toList(),
+        getFields(ContextMemoryVisibility.guardFields(entityType, "")),
+        Include.ALL);
+  }
 }
