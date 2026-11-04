@@ -14,7 +14,7 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,16 +33,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.secrets.Parameters;
+import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
 
 class AzureKVSecretsManagerTest {
-  private static final String OWNED_NAME = "openmetadata-prefix-queryrunner-user-abc-key";
-
   private static AzureKVSecretsManager secretsManager;
 
   @BeforeAll
@@ -83,44 +83,56 @@ class AzureKVSecretsManagerTest {
   }
 
   @Test
-  void anOwnedKeyDeletedEarlierIsRecoveredAndWritten() {
+  void anOwnedFieldWhoseNameADeletedSecretHoldsGetsAFreshKey() {
     SoftDeletingVault vault = new SoftDeletingVault();
     secretsManager.setClient(vault.client);
-    secretsManager.upsertOwnedSecret(OWNED_NAME, "first");
-    secretsManager.deleteSecret(OWNED_NAME);
+    SecretOwner owner = SecretOwner.builder("pipeline").id(UUID.randomUUID()).build();
+    String first = storedReference(owner, "first", Set.of());
+    secretsManager.ownedSecrets().delete(Set.of(first), owner);
 
-    secretsManager.upsertOwnedSecret(OWNED_NAME, "second");
+    String second = storedReference(owner, "second", Set.of());
 
-    assertEquals(Map.of(OWNED_NAME, "second"), vault.live);
-    assertTrue(vault.deleted.isEmpty());
-  }
-
-  @Test
-  void aNameBasedKeyDeletedEarlierIsNotRecovered() {
-    SoftDeletingVault vault = new SoftDeletingVault();
-    secretsManager.setClient(vault.client);
-    secretsManager.upsertSecret(OWNED_NAME, "first");
-    secretsManager.deleteSecret(OWNED_NAME);
-
-    assertThrows(
-        SecretsManagerException.class, () -> secretsManager.upsertSecret(OWNED_NAME, "second"));
-    assertTrue(vault.live.isEmpty());
+    assertNotEquals(first, second);
+    assertTrue(second.startsWith(first));
+    assertTrue(secretsManager.ownedSecrets().isOwnedBy(second, owner));
+    assertEquals("second", vault.live.get(secretName(second)));
+    assertEquals("first", vault.deleted.get(secretName(first)));
     verify(vault.client, never()).beginRecoverDeletedSecret(anyString());
   }
 
   @Test
-  void aRecoveredSecretIsDeletedAgainWhenTheWriteFails() {
-    SoftDeletingVault vault = new SoftDeletingVault();
-    secretsManager.setClient(vault.client);
-    secretsManager.upsertOwnedSecret(OWNED_NAME, "first");
-    secretsManager.deleteSecret(OWNED_NAME);
-    vault.refuseWritesAfterRecovery = true;
+  void onlyAConflictMeansADeletedSecretHoldsTheName() {
+    assertTrue(
+        secretsManager.isNameReserved(
+            new SecretsManagerException("wrapped", new HttpResponseException("", response(409)))));
+    assertFalse(
+        secretsManager.isNameReserved(
+            new SecretsManagerException("wrapped", new HttpResponseException("", response(403)))));
+    assertFalse(secretsManager.isNameReserved(new RuntimeException("throttled")));
+  }
 
-    assertThrows(
-        SecretsManagerException.class,
-        () -> secretsManager.upsertOwnedSecret(OWNED_NAME, "second"));
-    assertTrue(vault.live.isEmpty());
-    assertEquals(Map.of(OWNED_NAME, "first"), vault.deleted);
+  private static String storedReference(
+      SecretOwner owner, String password, Set<String> keptReferences) {
+    SnowflakeConnection connection =
+        (SnowflakeConnection)
+            secretsManager
+                .ownedSecrets()
+                .encrypt(
+                    new SnowflakeConnection().withUsername("user").withPassword(password),
+                    owner,
+                    List.of(),
+                    keptReferences);
+    return Fernet.getInstance().decrypt(connection.getPassword());
+  }
+
+  private static String secretName(String reference) {
+    return reference.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+  }
+
+  private static HttpResponse response(int statusCode) {
+    HttpResponse response = mock(HttpResponse.class);
+    when(response.getStatusCode()).thenReturn(statusCode);
+    return response;
   }
 
   @Test
@@ -139,13 +151,11 @@ class AzureKVSecretsManagerTest {
             .isOwnedBy(SecretsManager.SECRET_FIELD_PREFIX + name.toUpperCase(Locale.ROOT), owner));
   }
 
-  /** A Key Vault with soft delete on: a deleted name is refused with a 409 until recovered. */
+  /** A Key Vault with soft delete on: a deleted secret keeps its name, refused with a 409. */
   private static final class SoftDeletingVault {
     private final Map<String, String> live = new HashMap<>();
     private final Map<String, String> deleted = new HashMap<>();
     private final SecretClient client = mock(SecretClient.class);
-    private boolean refuseWritesAfterRecovery;
-    private boolean recovered;
 
     @SuppressWarnings("unchecked")
     private SoftDeletingVault() {
@@ -158,31 +168,14 @@ class AzureKVSecretsManagerTest {
                 deleted.put(name, live.remove(name));
                 return mock(SyncPoller.class);
               });
-      when(client.beginRecoverDeletedSecret(anyString()))
-          .thenAnswer(
-              call -> {
-                String name = call.getArgument(0);
-                live.put(name, deleted.remove(name));
-                recovered = true;
-                return mock(SyncPoller.class);
-              });
     }
 
     private KeyVaultSecret set(KeyVaultSecret secret) {
       if (deleted.containsKey(secret.getName())) {
         throw new HttpResponseException("deleted but recoverable", response(409));
       }
-      if (recovered && refuseWritesAfterRecovery) {
-        throw new HttpResponseException("forbidden", response(403));
-      }
       live.put(secret.getName(), secret.getValue());
       return secret;
-    }
-
-    private static HttpResponse response(int statusCode) {
-      HttpResponse response = mock(HttpResponse.class);
-      when(response.getStatusCode()).thenReturn(statusCode);
-      return response;
     }
   }
 }

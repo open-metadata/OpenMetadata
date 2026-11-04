@@ -21,8 +21,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -42,7 +42,7 @@ public final class OwnedSecrets {
   private static final String FOREIGN_REFERENCE =
       "Field [%s] refers to a secret it does not hold. Enter the credential itself instead.";
   private static final String KEY_TOO_LONG =
-      "Secret key [%s] is %d characters long, over the %d the secrets manager accepts. "
+      "Secret keys under [%s] can be %d characters long, over the %d the secrets manager accepts. "
           + "Shorten the configured secrets manager prefix or cluster name.";
 
   private final SecretsManager secretsManager;
@@ -75,7 +75,7 @@ public final class OwnedSecrets {
    *     key
    * @param keptReferences the references the owner holds today; they may stay although they lie
    *     outside the owner's namespace, which is how secrets stored under an older key layout keep
-   *     working
+   *     working, and a new value for a field is written to the key the field holds among them
    */
   public Object encrypt(
       Object value, SecretOwner owner, List<String> path, Set<String> keptReferences) {
@@ -163,7 +163,8 @@ public final class OwnedSecrets {
         requireAcceptedReference(value, owner, keptReferences, fieldPath);
         yield storedForm(stored, value, value);
       }
-      case PLAINTEXT -> storedForm(stored, value, storeValue(owner, fieldPath, value, held));
+      case PLAINTEXT -> storedForm(
+          stored, value, storeValue(owner, fieldPath, value, keptReferences, held));
     };
   }
 
@@ -192,25 +193,56 @@ public final class OwnedSecrets {
     }
   }
 
+  /**
+   * Writes a field's plaintext to the key the field already holds, so the provider keeps one secret
+   * per field with its versions. A field holding none gets its own key, unless that key is not
+   * free: another field of the value still refers to it (a list element keyed by its position can
+   * take a removed element's place), or the provider keeps the name for a deleted secret. Then the
+   * field gets a fresh key, which later writes keep updating.
+   */
   private String storeValue(
-      SecretOwner owner, List<String> fieldPath, String value, Set<String> held) {
-    return secretsManager.storeOwnedValue(
-        fieldPath.getLast(), unheldSecretId(owner, fieldPath, held), value);
+      SecretOwner owner,
+      List<String> fieldPath,
+      String value,
+      Set<String> keptReferences,
+      Set<String> held) {
+    String fieldSecretId = fieldSecretId(owner, fieldPath);
+    String secretId = keyTheFieldHolds(fieldSecretId, keptReferences, held).orElse(fieldSecretId);
+    boolean isFree = !held.contains(secretsManager.canonicalSecretName(secretId));
+    return isFree
+        ? storeUnderKey(fieldPath, secretId, fieldSecretId, value)
+        : storeUnderFreshKey(fieldPath, fieldSecretId, value);
   }
 
-  /**
-   * The field's key, unless another field of the same value still refers to it: a list element
-   * keyed by its position can sit where a removed element used to, and writing there would
-   * overwrite the secret a surviving element still reads. Such a value gets a key of its own.
-   */
-  private String unheldSecretId(SecretOwner owner, List<String> fieldPath, Set<String> held) {
-    String secretId = secretId(owner, fieldPath);
-    if (held.contains(secretsManager.canonicalSecretName(secretId))) {
-      List<String> ownPath = new ArrayList<>(fieldPath);
-      ownPath.add(SecretKeyEncoding.encodeId(UUID.randomUUID()));
-      secretId = secretId(owner, ownPath);
+  /** A kept reference to one of the field's keys that no other field of the value refers to. */
+  private Optional<String> keyTheFieldHolds(
+      String fieldSecretId, Set<String> keptReferences, Set<String> held) {
+    String fieldKeys = secretsManager.canonicalSecretName(fieldSecretId);
+    return keptReferences.stream()
+        .filter(this::isReference)
+        .map(OwnedSecrets::secretName)
+        .filter(
+            name -> {
+              String canonical = secretsManager.canonicalSecretName(name);
+              return canonical.startsWith(fieldKeys) && !held.contains(canonical);
+            })
+        .sorted()
+        .findFirst();
+  }
+
+  private String storeUnderKey(
+      List<String> fieldPath, String secretId, String fieldSecretId, String value) {
+    try {
+      return secretsManager.storeOwnedValue(fieldPath.getLast(), secretId, value);
+    } catch (SecretNameReservedException e) {
+      LOG.debug("Secret [{}] is held by a deleted secret; using a fresh key", secretId);
+      return storeUnderFreshKey(fieldPath, fieldSecretId, value);
     }
-    return secretId;
+  }
+
+  private String storeUnderFreshKey(List<String> fieldPath, String fieldSecretId, String value) {
+    return secretsManager.storeOwnedValue(
+        fieldPath.getLast(), fieldSecretId + SecretKeyEncoding.freshSuffix(), value);
   }
 
   /** The secrets {@code value}'s fields refer to before a write, as the provider names them. */
@@ -220,12 +252,16 @@ public final class OwnedSecrets {
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  private String secretId(SecretOwner owner, List<String> fieldPath) {
+  /**
+   * The field's own key. Every key the field may hold starts with it: a fresh key adds a suffix as
+   * long as a field key, so the length check covers that longer form before anything is written.
+   */
+  private String fieldSecretId(SecretOwner owner, List<String> fieldPath) {
     String secretId = namespace(owner) + SecretKeyEncoding.fieldKey(fieldPath);
+    int longest = secretId.length() + SecretKeyEncoding.FIELD_KEY_LENGTH;
     int maxLength = secretsManager.maxSecretIdLength();
-    if (secretId.length() > maxLength) {
-      throw new SecretsManagerException(
-          String.format(KEY_TOO_LONG, secretId, secretId.length(), maxLength));
+    if (longest > maxLength) {
+      throw new SecretsManagerException(String.format(KEY_TOO_LONG, secretId, longest, maxLength));
     }
     return secretId;
   }
@@ -312,7 +348,7 @@ public final class OwnedSecrets {
     }
 
     private String copy(List<String> fieldPath, String stored, String secret) {
-      String reference = storeValue(owner, fieldPath, secret, held);
+      String reference = storeValue(owner, fieldPath, secret, Set.of(), held);
       rekeyed.add(SecretKeyEncoding.pointer(fieldPath));
       return Fernet.isTokenized(stored) ? fernet().encrypt(reference) : reference;
     }

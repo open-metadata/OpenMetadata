@@ -130,17 +130,20 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   @Override
   protected String storeOwnedValue(String fieldName, String secretId, String value) {
     rejectReservedPlaceholder(fieldName, value);
-    upsertOwnedSecret(secretId, value);
+    try {
+      upsertSecret(secretId, value);
+    } catch (SecretsManagerException e) {
+      throw isNameReserved(e) ? new SecretNameReservedException(secretId, e) : e;
+    }
     return SECRET_FIELD_PREFIX + secretId;
   }
 
   /**
-   * Writes a secret under a key derived from its owner. A provider that keeps a deleted secret's
-   * name reserved overrides this to take the name back: an owned key only ever held one field of
-   * one owner, so what it restores is that owner's own earlier value.
+   * Whether a write failed because the provider keeps the name for a secret deleted earlier. Only
+   * providers that delete softly, keeping the name for a retention period, override this.
    */
-  protected void upsertOwnedSecret(String secretName, String secretValue) {
-    upsertSecret(secretName, secretValue);
+  protected boolean isNameReserved(Throwable failure) {
+    return false;
   }
 
   @Override

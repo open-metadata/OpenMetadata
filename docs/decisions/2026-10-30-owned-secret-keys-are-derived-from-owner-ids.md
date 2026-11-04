@@ -19,15 +19,16 @@ whole life, and it has to be valid as it is on every supported provider.
   by the owner's ids, each id written as lowercase base32. The field key is the first 64 bits of the
   SHA-256 of the field's RFC 6901 path inside the owner, also in base32. Every segment uses only
   `[a-z0-9]`, which every provider accepts as it is.
-- Each save of a field writes the same key; the provider keeps the value's history. The one
-  exception is a key another field of the same value still refers to: a list element keyed by its
-  position can take the place of a removed one, so its new value gets a key of its own instead of
-  overwriting the secret the other field reads.
-- On a provider that keeps a deleted secret's name reserved (Azure Key Vault soft delete), a write
-  to an owned key recovers the deleted secret and then writes it, and deletes it again if that write
-  fails. An owned key only ever held that owner's field, so the value it brings back is the owner's
-  own. Keys outside `OwnedSecrets` are not recovered, since one may have held another entity's
-  value.
+- A field keeps one key for its whole life, and each save writes to it; the provider keeps the
+  value's history. The key a field holds is found among the references the caller keeps for the
+  owner: the one that starts with the field's key and that no other field of the value refers to.
+- A field that holds no key yet gets its own field key, unless that key is not free. A key is not
+  free when another field of the value still refers to it (a list element keyed by its position
+  can take a removed element's place), or when the provider keeps the name for a secret deleted
+  earlier (Azure Key Vault soft delete refuses it with a 409). Then the field gets a fresh key: its
+  field key followed by a random suffix of the same length, which later saves keep updating. A
+  deleted secret is never recovered: a credential an owner cleared stays deleted, with its history,
+  until the provider purges it.
 - A `secret:` reference into the managed namespace is kept when it lies in the owner's own
   namespace, or when the owner already holds it. References outside the managed namespace are left
   as they are.
@@ -38,7 +39,8 @@ whole life, and it has to be valid as it is on every supported provider.
   It copies whatever value the reference holds and does not check who wrote it, so a caller passes
   only references it knows belong to the owner. When that is uncertain, a credential that works on
   its own, such as an access token, is dropped rather than rekeyed, and its owner signs in again.
-- A key longer than the provider accepts fails before anything is written.
+- A key longer than the provider accepts, counting the fresh suffix, fails before anything is
+  written.
 
 ## Consequences
 

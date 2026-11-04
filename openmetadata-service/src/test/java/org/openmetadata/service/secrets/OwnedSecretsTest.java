@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.SecretsManager.SECRET_FIELD_PREFIX;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -117,18 +118,57 @@ class OwnedSecretsTest {
 
   @Test
   void anElementTakingARemovedElementsPlaceKeepsTheSurvivorsSecret() {
-    Keyring saved = encrypt(new Keyring(new Endpoint("first"), new Endpoint("second")));
+    Keyring saved = encrypt(new Keyring(new Endpoint("first"), new Endpoint("second")), Set.of());
     String secondStored = saved.getEndpoints().getLast().getToken();
 
-    Keyring updated = encrypt(new Keyring(new Endpoint(secondStored), new Endpoint("third")));
+    Keyring updated =
+        encrypt(
+            new Keyring(new Endpoint(secondStored), new Endpoint("third")),
+            ownedSecrets.references(saved));
+    String thirdStored = updated.getEndpoints().getLast().getToken();
+    Keyring again =
+        encrypt(
+            new Keyring(new Endpoint(secondStored), new Endpoint("fourth")),
+            ownedSecrets.references(updated));
 
     String kept = reference(updated.getEndpoints().getFirst().getToken());
-    String added = reference(updated.getEndpoints().getLast().getToken());
+    String added = reference(thirdStored);
     assertEquals(reference(secondStored), kept);
     assertNotEquals(kept, added);
     assertEquals("second", vault.getSecretValue(kept));
-    assertEquals("third", vault.getSecretValue(added));
     assertTrue(ownedSecrets.isOwnedBy(added, ALICE));
+    assertEquals(added, reference(again.getEndpoints().getLast().getToken()));
+    assertEquals("fourth", vault.getSecretValue(added));
+  }
+
+  @Test
+  void aFieldWhoseKeyADeletedSecretHoldsGetsAFreshKeyAndKeepsIt() {
+    SoftDeletingVault softDeleting = new SoftDeletingVault();
+    OwnedSecrets owned = softDeleting.ownedSecrets();
+    String first = storedReference(owned, "first", Set.of());
+    owned.delete(Set.of(first), ALICE);
+
+    String second = storedReference(owned, "second", Set.of());
+    String third = storedReference(owned, "third", Set.of(second));
+
+    assertNotEquals(first, second);
+    assertTrue(second.startsWith(first));
+    assertTrue(owned.isOwnedBy(second, ALICE));
+    assertEquals(second, third);
+    assertEquals("third", softDeleting.getSecretValue(third));
+    assertEquals(Set.of(secretName(third)), softDeleting.getSecretsMap().keySet());
+  }
+
+  @Test
+  void aFieldKeepsUpdatingTheKeyItHolds() {
+    String first = reference(encrypt(snowflake("first"), ALICE).getPassword());
+    String fresh = first + SecretKeyEncoding.freshSuffix();
+    vault.upsertSecret(secretName(fresh), "first");
+
+    String second = storedReference(ownedSecrets, "second", Set.of(fresh));
+
+    assertEquals(fresh, second);
+    assertEquals("second", vault.getSecretValue(fresh));
   }
 
   @Test
@@ -425,8 +465,15 @@ class OwnedSecretsTest {
     return (SnowflakeConnection) ownedSecrets.encrypt(connection, owner, List.of(), Set.of());
   }
 
-  private Keyring encrypt(Keyring keyring) {
-    return (Keyring) ownedSecrets.encrypt(keyring, ALICE, List.of(), Set.of());
+  private Keyring encrypt(Keyring keyring, Set<String> keptReferences) {
+    return (Keyring) ownedSecrets.encrypt(keyring, ALICE, List.of(), keptReferences);
+  }
+
+  private static String storedReference(
+      OwnedSecrets owned, String password, Set<String> keptReferences) {
+    SnowflakeConnection connection =
+        (SnowflakeConnection) owned.encrypt(snowflake(password), ALICE, List.of(), keptReferences);
+    return reference(connection.getPassword());
   }
 
   private String resolve(String stored) {
@@ -439,6 +486,34 @@ class OwnedSecretsTest {
 
   private static String secretName(String reference) {
     return reference.substring(SECRET_FIELD_PREFIX.length());
+  }
+
+  /** A provider that deletes softly: a deleted secret keeps its name and refuses writes to it. */
+  private static final class SoftDeletingVault extends InMemorySecretsManager {
+    private final Set<String> deleted = new HashSet<>();
+
+    private SoftDeletingVault() {
+      super(CONFIG);
+    }
+
+    @Override
+    void storeSecret(String secretName, String secretValue) {
+      if (deleted.contains(secretName)) {
+        throw new IllegalStateException("deleted but recoverable");
+      }
+      super.storeSecret(secretName, secretValue);
+    }
+
+    @Override
+    protected void deleteSecretInternal(String secretName) {
+      super.deleteSecretInternal(secretName);
+      deleted.add(secretName);
+    }
+
+    @Override
+    protected boolean isNameReserved(Throwable failure) {
+      return failure.getCause() instanceof IllegalStateException;
+    }
   }
 
   /** Credentials in a list whose elements have no name, so each is keyed by its position. */

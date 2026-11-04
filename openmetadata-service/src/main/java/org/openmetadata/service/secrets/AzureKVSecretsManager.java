@@ -14,12 +14,10 @@ import com.azure.security.keyvault.secrets.models.SecretProperties;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Locale;
 import java.util.regex.Pattern;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
-@Slf4j
 public class AzureKVSecretsManager extends ExternalSecretsManager {
   private static final int MAX_SECRET_NAME_LENGTH = 127;
   private static final int HTTP_CONFLICT = 409;
@@ -98,62 +96,13 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   }
 
   /**
-   * Key Vault keeps a deleted secret's name for its retention period and refuses a new secret under
-   * it with a 409, so an owner that clears a credential and sets it again would fail until then.
-   * Recovering the deleted secret frees the name and keeps soft delete and purge protection intact.
-   * If the write after the recovery fails, the secret is deleted again so it is not left live.
+   * Key Vault deletes softly: a deleted secret keeps its name for the vault's retention period, and
+   * a write under that name is refused with a 409 until then.
    */
   @Override
-  protected void upsertOwnedSecret(String secretName, String secretValue) {
-    try {
-      upsertSecret(secretName, secretValue);
-    } catch (SecretsManagerException e) {
-      if (!isConflict(e)) {
-        throw e;
-      }
-      recoverDeletedSecret(secretName);
-      upsertRecoveredSecret(secretName, secretValue);
-    }
-  }
-
-  private void recoverDeletedSecret(String secretName) {
-    throttle();
-    try {
-      client.beginRecoverDeletedSecret(secretName).waitForCompletion();
-    } catch (RuntimeException e) {
-      throw new SecretsManagerException(
-          String.format(
-              "Secret [%s] was deleted and Key Vault keeps its name until it is purged; "
-                  + "recovering it failed: %s",
-              secretName, e.getMessage()),
-          e);
-    }
-  }
-
-  private void upsertRecoveredSecret(String secretName, String secretValue) {
-    try {
-      upsertSecret(secretName, secretValue);
-    } catch (SecretsManagerException e) {
-      deleteRecoveredSecret(secretName);
-      throw e;
-    }
-  }
-
-  private void deleteRecoveredSecret(String secretName) {
-    try {
-      deleteSecret(secretName);
-    } catch (SecretsManagerException e) {
-      LOG.warn(
-          "Secret [{}] was recovered to be written, the write failed and deleting it again failed "
-              + "too; delete it from the vault: {}",
-          secretName,
-          e.getMessage());
-    }
-  }
-
-  private static boolean isConflict(Throwable throwable) {
+  protected boolean isNameReserved(Throwable failure) {
     boolean conflict = false;
-    Throwable cause = throwable;
+    Throwable cause = failure;
     for (int depth = 0; cause != null && !conflict && depth < MAX_CAUSE_CHAIN_DEPTH; depth++) {
       conflict =
           cause instanceof HttpResponseException httpError

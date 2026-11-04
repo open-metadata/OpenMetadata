@@ -18,6 +18,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,7 +31,12 @@ final class SecretKeyEncoding {
   static final int FIELD_KEY_BYTES = 8;
 
   private static final BaseEncoding BASE32 = BaseEncoding.base32().lowerCase().omitPadding();
+
+  /** Characters in a field key, and in the suffix that tells a field's other keys apart. */
+  static final int FIELD_KEY_LENGTH = BASE32.encode(new byte[FIELD_KEY_BYTES]).length();
+
   private static final String HASH_ALGORITHM = "SHA-256";
+  private static final SecureRandom RANDOM = new SecureRandom();
 
   private SecretKeyEncoding() {}
 
@@ -44,6 +50,13 @@ final class SecretKeyEncoding {
   static String fieldKey(List<String> fieldPath) {
     byte[] digest = sha256(pointer(fieldPath));
     return BASE32.encode(digest, 0, FIELD_KEY_BYTES);
+  }
+
+  /** A random suffix as long as a field key, for a field whose own key is not free. */
+  static String freshSuffix() {
+    byte[] bytes = new byte[FIELD_KEY_BYTES];
+    RANDOM.nextBytes(bytes);
+    return BASE32.encode(bytes);
   }
 
   /** The field path as an RFC 6901 JSON pointer, which is unambiguous whatever the segments hold. */
