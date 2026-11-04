@@ -10,7 +10,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.net.URI;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,8 +26,14 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ImageList;
+import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
@@ -262,6 +270,41 @@ class BuildSearchIndexDocTest {
     assertFalse(result.containsKey("tier"));
     assertFalse(result.containsKey("upstreamLineage"));
     assertFalse(result.containsKey("service"));
+  }
+
+  @Test
+  void profileWebhooksOfUsersAndTeamsAreNotIndexed() {
+    Profile profile =
+        new Profile()
+            .withImages(new ImageList().withImage(URI.create("https://img.example.com/a.png")))
+            .withSubscription(
+                new SubscriptionConfig()
+                    .withSlack(
+                        new Webhook().withEndpoint(URI.create("https://hooks.example.com/x"))));
+    mockAllStatics();
+
+    List<Map<String, Object>> docs =
+        List.of(
+            new UserIndex(
+                    new User()
+                        .withId(UUID.randomUUID())
+                        .withName("alice")
+                        .withFullyQualifiedName("alice")
+                        .withProfile(profile))
+                .buildSearchIndexDoc(),
+            new TeamIndex(
+                    new Team()
+                        .withId(UUID.randomUUID())
+                        .withName("data")
+                        .withFullyQualifiedName("data")
+                        .withProfile(profile))
+                .buildSearchIndexDoc());
+
+    for (Map<String, Object> doc : docs) {
+      Map<?, ?> indexedProfile = (Map<?, ?>) doc.get("profile");
+      assertFalse(indexedProfile.containsKey("subscription"), doc.toString());
+      assertTrue(indexedProfile.containsKey("images"), doc.toString());
+    }
   }
 
   // ==================== Phase 4: fqnHash ====================
