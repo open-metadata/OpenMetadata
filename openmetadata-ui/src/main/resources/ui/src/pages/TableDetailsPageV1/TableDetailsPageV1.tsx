@@ -511,21 +511,29 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
-    try {
-      const res = await saveUpdatedTableData(updatedTable);
+  const onTableUpdate = useCallback(
+    async (updatedTable: Table, key?: keyof Table) => {
+      try {
+        const res = await saveUpdatedTableData(updatedTable);
 
-      setTableDetails((previous) => {
-        if (!previous) {
-          return;
-        }
+        setTableDetails((previous) => {
+          if (!previous) {
+            return;
+          }
 
-        return mergeEntityStateUpdate<Table>(previous, res, updatedTable, key);
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+          return mergeEntityStateUpdate<Table>(
+            previous,
+            res,
+            updatedTable,
+            key
+          );
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [saveUpdatedTableData, setTableDetails]
+  );
 
   const handleUpdateOwner = useCallback(
     async (newOwners?: Table['owners']) => {
@@ -538,7 +546,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'owners');
     },
-    [tableDetails]
+    [tableDetails, onTableUpdate]
   );
 
   const handleUpdateRetentionPeriod = useCallback(
@@ -552,7 +560,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'retentionPeriod');
     },
-    [tableDetails]
+    [tableDetails, onTableUpdate]
   );
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
