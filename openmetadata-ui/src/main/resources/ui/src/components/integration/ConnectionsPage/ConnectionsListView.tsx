@@ -440,6 +440,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               showDashPlaceholder
               maxVisibleOwners={1}
               owners={service.owners ?? []}
+              placeholderVariant="cell"
             />
           </div>
         </Table.Cell>

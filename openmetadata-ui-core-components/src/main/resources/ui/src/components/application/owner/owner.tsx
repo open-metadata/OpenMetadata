@@ -99,8 +99,9 @@ export const Owner = ({
   const isInlineWithSelector = !showLabel && Boolean(selectorContent);
 
   if (owners.length === 0) {
-    // A caller-named empty state keeps the user glyph the app asserts on
-    // (data-testid="no-owner-icon"); the bare `--` needs none.
+    // A caller-named empty state (e.g. "No Assignee") replaces `--`; the
+    // compact and inline layouts put the user glyph the app asserts on
+    // (data-testid="no-owner-icon") before it.
     const namedEmptyText = showDashPlaceholder ? undefined : placeHolder;
     const emptyText = namedEmptyText ?? EMPTY_OWNERS_TEXT;
 

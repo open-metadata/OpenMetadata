@@ -65,6 +65,21 @@ describe('Owner empty placeholder', () => {
     expect(screen.getByTestId('no-owner-icon')).toBeInTheDocument();
   });
 
+  it('keeps a named empty state in the non-compact layout without a label', () => {
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[]}
+        placeHolder="No Reviewers"
+        showLabel={false}
+      />
+    );
+
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveTextContent(
+      'No Reviewers'
+    );
+  });
+
   it('shows -- under a label, where placeHolder is the label', () => {
     render(<Owner isCompactView={false} owners={[]} placeHolder="Assignee" />);
 

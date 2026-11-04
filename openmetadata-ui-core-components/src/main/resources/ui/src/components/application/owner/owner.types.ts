@@ -63,16 +63,16 @@ export interface OwnerProps {
    */
   showDashPlaceholder?: boolean;
   /**
-   * Under a label (`showLabel`), the label text (default "Owners"). Otherwise
-   * the empty-state text (e.g. "No Assignee"), shown with a user glyph instead
-   * of `--`.
+   * In the non-compact view with `showLabel`, the label text (default
+   * "Owners"), and the empty value stays `--`. Otherwise the empty-state text
+   * shown instead of `--` (e.g. "No Assignee"); the compact and inline
+   * layouts put a user glyph before it.
    */
   placeHolder?: string;
   /** Override display names keyed by owner id. */
   ownerDisplayName?: Map<string, ReactNode>;
   /**
-   * Type of the empty placeholder in the non-compact view, so it matches the
-   * empty values beside it:
+   * Type of the empty placeholder, so it matches the empty values beside it:
    * - `header`: a page-header field, in the header value type. Default in
    *   the labelled column layout when `selectorContent` is set.
    * - `cell`: a table cell, at the row's body size.
