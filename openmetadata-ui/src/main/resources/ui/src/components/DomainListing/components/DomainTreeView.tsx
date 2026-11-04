@@ -27,9 +27,16 @@ import {
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
@@ -141,6 +148,7 @@ const DomainTreeView = ({
   openAddDomainDrawer,
   onClearSearch,
 }: DomainTreeViewProps) => {
+  const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -197,7 +205,7 @@ const DomainTreeView = ({
       return undefined;
     }
 
-    return domainBuildESQuery(filters);
+    return JSON.stringify(domainBuildESQuery(filters));
   }, [filters, hasActiveFilters]);
 
   useEffect(() => {
@@ -277,7 +285,7 @@ const DomainTreeView = ({
         const results: Domain[] = await searchDomains(
           encodedValue,
           1,
-          queryFilter
+          queryFilter ? JSON.parse(queryFilter) : undefined
         );
 
         const filteredResults =
@@ -543,8 +551,8 @@ const DomainTreeView = ({
   );
   // Keyed on `queryFilter`, not `hasActiveFilters`: swapping one active filter
   // for another leaves the boolean true, so the tree would keep showing the
-  // previous result set. `urlState` is memoised on the search params, so the
-  // filter object only changes identity when the URL does.
+  // previous result set. A serialized filter also keeps paging-only URL changes
+  // from rerunning the search and selecting its first result.
   useEffect(() => {
     if (searchQuery || hasActiveFilters) {
       searchDomain(searchQuery);
@@ -566,6 +574,52 @@ const DomainTreeView = ({
       setActiveTab(undefined);
     }
   }, [selectedFqn]);
+
+  // The tree swaps the right pane without changing the route, so the URL page
+  // position (`page` is the sub-domain listing's key) would carry over to the
+  // next domain instead of resetting like a route change does.
+  const clearPagingParams = useCallback(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const pagingKeys = ['currentPage', 'cursorType', 'cursorValue', 'page'];
+    if (!pagingKeys.some((key) => searchParams.has(key))) {
+      return;
+    }
+    pagingKeys.forEach((key) => searchParams.delete(key));
+    navigate(
+      { search: searchParams.toString(), hash: location.hash },
+      { replace: true }
+    );
+  }, [location.hash, location.search, navigate]);
+
+  // Keyed on the selection itself so every path that moves it (tree click,
+  // search/filter reselect, delete, sub-domain navigation) resets paging. The
+  // first selection, e.g. after a reload, keeps its page.
+  const lastSelectedFqnRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectedFqn) {
+      return;
+    }
+    if (
+      lastSelectedFqnRef.current &&
+      lastSelectedFqnRef.current !== selectedFqn
+    ) {
+      clearPagingParams();
+    }
+    lastSelectedFqnRef.current = selectedFqn;
+  }, [selectedFqn, clearPagingParams]);
+
+  // Assets and Data Products share the `currentPage` key. React Router applies
+  // the URL change in a transition, so the tab switch joins it; otherwise the
+  // new tab mounts first and fetches the previous tab's page.
+  const handleActiveTabChange = useCallback(
+    (tab: EntityTabs) => {
+      startTransition(() => {
+        clearPagingParams();
+        setActiveTab(tab);
+      });
+    },
+    [clearPagingParams]
+  );
 
   const handleSelectionChange = useCallback(
     (keys: Selection) => {
@@ -924,7 +978,7 @@ const DomainTreeView = ({
           isFollowing={isFollowing}
           isFollowingLoading={isFollowingLoading}
           refreshDomains={refreshAll}
-          onActiveTabChange={setActiveTab}
+          onActiveTabChange={handleActiveTabChange}
           onDelete={handleDomainDelete}
           onNavigate={handleNavigate}
           onRefresh={refreshAll}
@@ -944,6 +998,7 @@ const DomainTreeView = ({
     isDomainLoading,
     selectedDomain,
     activeTab,
+    handleActiveTabChange,
     handleFollowingToggle,
     isFollowing,
     isFollowingLoading,
