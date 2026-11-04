@@ -22,6 +22,8 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -78,10 +80,11 @@ public final class OwnedSecrets {
   public Object encrypt(
       Object value, SecretOwner owner, List<String> path, Set<String> keptReferences) {
     if (value != null) {
+      Set<String> held = heldSecretNames(value);
       PasswordFieldWalker.walk(
           value,
           path,
-          (fieldPath, stored) -> encryptField(owner, fieldPath, stored, keptReferences));
+          (fieldPath, stored) -> encryptField(owner, fieldPath, stored, keptReferences, held));
     }
     return value;
   }
@@ -97,11 +100,13 @@ public final class OwnedSecrets {
    * that works on its own, such as an access token: drop it, so its owner signs in again.
    */
   public RekeyResult rekey(Object value, SecretOwner owner, List<String> path) {
-    Rekeying rekeying = new Rekeying(owner);
+    RekeyResult result = new RekeyResult(List.of(), List.of(), List.of());
     if (value != null) {
+      Rekeying rekeying = new Rekeying(owner, heldSecretNames(value));
       PasswordFieldWalker.walk(value, path, rekeying::visit);
+      result = rekeying.result();
     }
-    return rekeying.result();
+    return result;
   }
 
   /** Every {@code secret:} reference {@code value} holds, Fernet-decrypted. */
@@ -146,7 +151,11 @@ public final class OwnedSecrets {
   }
 
   private String encryptField(
-      SecretOwner owner, List<String> fieldPath, String stored, Set<String> keptReferences) {
+      SecretOwner owner,
+      List<String> fieldPath,
+      String stored,
+      Set<String> keptReferences,
+      Set<String> held) {
     String value = fernet().decryptIfApplies(stored);
     return switch (classify(value)) {
       case CLEARED -> null;
@@ -154,7 +163,7 @@ public final class OwnedSecrets {
         requireAcceptedReference(value, owner, keptReferences, fieldPath);
         yield storedForm(stored, value, value);
       }
-      case PLAINTEXT -> storedForm(stored, value, storeValue(owner, fieldPath, value));
+      case PLAINTEXT -> storedForm(stored, value, storeValue(owner, fieldPath, value, held));
     };
   }
 
@@ -183,8 +192,32 @@ public final class OwnedSecrets {
     }
   }
 
-  private String storeValue(SecretOwner owner, List<String> fieldPath, String value) {
-    return secretsManager.storeOwnedValue(fieldPath.getLast(), secretId(owner, fieldPath), value);
+  private String storeValue(
+      SecretOwner owner, List<String> fieldPath, String value, Set<String> held) {
+    return secretsManager.storeOwnedValue(
+        fieldPath.getLast(), unheldSecretId(owner, fieldPath, held), value);
+  }
+
+  /**
+   * The field's key, unless another field of the same value still refers to it: a list element
+   * keyed by its position can sit where a removed element used to, and writing there would
+   * overwrite the secret a surviving element still reads. Such a value gets a key of its own.
+   */
+  private String unheldSecretId(SecretOwner owner, List<String> fieldPath, Set<String> held) {
+    String secretId = secretId(owner, fieldPath);
+    if (held.contains(secretsManager.canonicalSecretName(secretId))) {
+      List<String> ownPath = new ArrayList<>(fieldPath);
+      ownPath.add(SecretKeyEncoding.encodeId(UUID.randomUUID()));
+      secretId = secretId(owner, ownPath);
+    }
+    return secretId;
+  }
+
+  /** The secrets {@code value}'s fields refer to before a write, as the provider names them. */
+  private Set<String> heldSecretNames(Object value) {
+    return references(value).stream()
+        .map(this::canonicalName)
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   private String secretId(SecretOwner owner, List<String> fieldPath) {
@@ -244,12 +277,14 @@ public final class OwnedSecrets {
 
   private final class Rekeying {
     private final SecretOwner owner;
+    private final Set<String> held;
     private final List<String> rekeyed = new ArrayList<>();
     private final List<String> missing = new ArrayList<>();
     private final List<String> failed = new ArrayList<>();
 
-    private Rekeying(SecretOwner owner) {
+    private Rekeying(SecretOwner owner, Set<String> held) {
       this.owner = owner;
+      this.held = held;
     }
 
     private String visit(List<String> fieldPath, String stored) {
@@ -277,7 +312,7 @@ public final class OwnedSecrets {
     }
 
     private String copy(List<String> fieldPath, String stored, String secret) {
-      String reference = storeValue(owner, fieldPath, secret);
+      String reference = storeValue(owner, fieldPath, secret, held);
       rekeyed.add(SecretKeyEncoding.pointer(fieldPath));
       return Fernet.isTokenized(stored) ? fernet().encrypt(reference) : reference;
     }

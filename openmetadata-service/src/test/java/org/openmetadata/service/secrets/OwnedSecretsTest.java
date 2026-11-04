@@ -41,6 +41,7 @@ import org.openmetadata.schema.services.connections.database.SnowflakeConnection
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.PasswordFieldWalkerTest.Endpoint;
 
 class OwnedSecretsTest {
   private static final String FERNET_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
@@ -112,6 +113,22 @@ class OwnedSecretsTest {
                     .ownedSecrets()
                     .encrypt(snowflake(storedInDatabase), ALICE, List.of(), Set.of()))
             .getPassword());
+  }
+
+  @Test
+  void anElementTakingARemovedElementsPlaceKeepsTheSurvivorsSecret() {
+    Keyring saved = encrypt(new Keyring(new Endpoint("first"), new Endpoint("second")));
+    String secondStored = saved.getEndpoints().getLast().getToken();
+
+    Keyring updated = encrypt(new Keyring(new Endpoint(secondStored), new Endpoint("third")));
+
+    String kept = reference(updated.getEndpoints().getFirst().getToken());
+    String added = reference(updated.getEndpoints().getLast().getToken());
+    assertEquals(reference(secondStored), kept);
+    assertNotEquals(kept, added);
+    assertEquals("second", vault.getSecretValue(kept));
+    assertEquals("third", vault.getSecretValue(added));
+    assertTrue(ownedSecrets.isOwnedBy(added, ALICE));
   }
 
   @Test
@@ -408,6 +425,10 @@ class OwnedSecretsTest {
     return (SnowflakeConnection) ownedSecrets.encrypt(connection, owner, List.of(), Set.of());
   }
 
+  private Keyring encrypt(Keyring keyring) {
+    return (Keyring) ownedSecrets.encrypt(keyring, ALICE, List.of(), Set.of());
+  }
+
   private String resolve(String stored) {
     return vault.getSecretValue(reference(stored));
   }
@@ -418,5 +439,18 @@ class OwnedSecretsTest {
 
   private static String secretName(String reference) {
     return reference.substring(SECRET_FIELD_PREFIX.length());
+  }
+
+  /** Credentials in a list whose elements have no name, so each is keyed by its position. */
+  public static final class Keyring {
+    private final List<Endpoint> endpoints;
+
+    Keyring(Endpoint... endpoints) {
+      this.endpoints = List.of(endpoints);
+    }
+
+    public List<Endpoint> getEndpoints() {
+      return endpoints;
+    }
   }
 }
