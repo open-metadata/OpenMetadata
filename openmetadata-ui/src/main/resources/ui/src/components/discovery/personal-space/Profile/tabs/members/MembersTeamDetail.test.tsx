@@ -808,7 +808,7 @@ describe('MembersTeamDetail', () => {
       ).toBeUndefined();
       expect(
         usePersistentStorage.getState().getUserPreference('me').globalPageSize
-      ).toBe(15);
+      ).toBe(25);
     });
 
     it('escapes and encodes the search term for the URL', async () => {
