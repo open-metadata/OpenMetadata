@@ -84,6 +84,25 @@ public class IndependentOntologyReviewNoticeIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void aRejectionReasonPostedAsATaskCommentReachesTheNoticeAndTheReleaseEvent(TestNamespace ns) {
+    final OntologyRelease release = capture(createOntology(ns, "commentedReject"));
+    final Task task = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+    SdkClients.user1Client().tasks().addComment(task.getId().toString(), "Scope is too broad");
+
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
+
+    final ActivityEvent notice = awaitNotice(release);
+    assertTrue(notice.getSummary().endsWith(": Scope is too broad"), notice.getSummary());
+    final OntologyReleaseEvent rejected = events(release).get(2);
+    assertEquals(EventType.REJECTED, rejected.getEventType());
+    assertEquals("Scope is too broad", rejected.getResolution().getComment());
+  }
+
+  @Test
   void aRejectionWithoutAReasonIsRefusedAndLeavesNoNotice(TestNamespace ns) {
     final OntologyRelease release = capture(createOntology(ns, "silentReject"));
     final Task task = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
