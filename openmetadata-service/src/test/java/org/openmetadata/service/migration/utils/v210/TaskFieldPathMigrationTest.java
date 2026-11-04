@@ -17,39 +17,34 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.APIEndpoint;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.schema.entity.tasks.Task;
-import org.openmetadata.schema.type.APISchema;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Field;
-import org.openmetadata.schema.type.MessageSchema;
-import org.openmetadata.schema.type.TaskEntityType;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.EntityFieldPath;
-import org.openmetadata.service.util.FieldProperty;
+import org.openmetadata.service.migration.utils.v210.FieldPathFormat.FieldPath;
 
 class TaskFieldPathMigrationTest {
 
-  private static final FieldProperty DESCRIPTION = FieldProperty.DESCRIPTION;
-  private static final FieldProperty TAGS = FieldProperty.TAGS;
-  // A stored task keeps its entity as a relationship, not in its JSON.
-  private static final EntityReference TABLE_ABOUT =
-      new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String DESCRIPTION = FieldPathFormat.DESCRIPTION;
+  private static final String TAGS = FieldPathFormat.TAGS;
+  private static final Map<String, List<String>> SEEDED_KEYS = Map.of();
+
+  // Entities as 2.0 stores them.
+  private static final JsonNode TABLE =
+      json(
+          "{'name':'orders','columns':[{'name':'amount'},{'name':'a.b'},"
+              + "{'name':'profile','children':[{'name':'child'}]}]}");
+  private static final JsonNode TOPIC =
+      json("{'messageSchema':{'schemaFields':[{'name':'user_id'},{'name':'order.id'}]}}");
 
   static Stream<Arguments> tablePaths() {
     return Stream.of(
@@ -83,8 +78,8 @@ class TaskFieldPathMigrationTest {
 
   @ParameterizedTest
   @MethodSource("tablePaths")
-  void convert_onAnExistingTable(String legacy, FieldProperty property, String expected) {
-    assertEquals(expected, convert(legacy, Entity.TABLE, property, table()));
+  void convert_onAnExistingTable(String legacy, String property, String expected) {
+    assertEquals(expected, convert(legacy, "table", property, TABLE));
   }
 
   static Stream<Arguments> topicPaths() {
@@ -104,20 +99,19 @@ class TaskFieldPathMigrationTest {
   @ParameterizedTest
   @MethodSource("topicPaths")
   void convert_onAnExistingTopic(String legacy, String expected) {
-    assertEquals(expected, convert(legacy, Entity.TOPIC, DESCRIPTION, topic()));
+    assertEquals(expected, convert(legacy, "topic", DESCRIPTION, TOPIC));
   }
 
   @Test
   void convert_columnsOnAnApiEndpoint_findsTheSchemaThatHasTheField() {
-    APIEndpoint endpoint =
-        new APIEndpoint()
-            .withRequestSchema(new APISchema().withSchemaFields(List.of()))
-            .withResponseSchema(
-                new APISchema().withSchemaFields(List.of(new Field().withName("userId"))));
+    JsonNode endpoint =
+        json(
+            "{'requestSchema':{'schemaFields':[]},"
+                + "'responseSchema':{'schemaFields':[{'name':'userId'}]}}");
 
     assertEquals(
         "responseSchema.schemaFields.userId.tags",
-        convert("columns.userId.tags", Entity.API_ENDPOINT, TAGS, endpoint));
+        convert("columns.userId.tags", "apiEndpoint", TAGS, endpoint));
   }
 
   static Stream<Arguments> pathsOnAGoneEntity() {
@@ -134,94 +128,126 @@ class TaskFieldPathMigrationTest {
   @ParameterizedTest
   @MethodSource("pathsOnAGoneEntity")
   void convert_whenTheEntityIsGone_writesTheLikeliestReading(
-      String legacy, FieldProperty property, String expected) {
-    assertEquals(expected, convert(legacy, Entity.TABLE, property, null));
+      String legacy, String property, String expected) {
+    assertEquals(expected, convert(legacy, "table", property, null));
   }
 
   @Test
   void convert_whenTheFieldIsGone_writesTheLikeliestReading() {
     assertEquals(
         "columns.missing.description",
-        convert("columns::missing::description", Entity.TABLE, DESCRIPTION, table()));
+        convert("columns::missing::description", "table", DESCRIPTION, TABLE));
   }
 
   @Test
   void convert_aPathThatNamesNoField_isLeftAlone() {
-    assertTrue(
-        TaskFieldPathMigration.convert("columns", Entity.TABLE, DESCRIPTION, table()).isEmpty());
+    assertTrue(TaskFieldPathMigration.convert("columns", "table", DESCRIPTION, TABLE).isEmpty());
   }
 
   @Test
   void convert_isIdempotent() {
-    String once =
-        convert("columns::\"profile.child\"::description", Entity.TABLE, DESCRIPTION, table());
+    String once = convert("columns::\"profile.child\"::description", "table", DESCRIPTION, TABLE);
 
-    assertEquals(once, convert(once, Entity.TABLE, DESCRIPTION, table()));
+    assertEquals(once, convert(once, "table", DESCRIPTION, TABLE));
   }
 
   @Test
   void rewrite_writesTheFormatUnderTheTasksKeyAndDropsTheLegacyKey() {
-    ObjectNode json =
-        taskJson(TaskEntityType.DescriptionUpdate, Map.of("field", "columns.profile.child"));
+    ObjectNode task =
+        task("{'type':'DescriptionUpdate','payload':{'field':'columns.profile.child'}}");
 
     Optional<TaskFieldPathMigration.Rewrite> rewrite =
-        TaskFieldPathMigration.rewrite(json, TABLE_ABOUT, about -> table());
+        TaskFieldPathMigration.rewrite(task, "table", TABLE, SEEDED_KEYS);
 
     assertTrue(rewrite.orElseThrow().changed());
     assertEquals(
-        "columns.profile.child.description", json.path("payload").path("fieldPath").asText());
-    assertFalse(json.path("payload").has("field"));
+        "columns.profile.child.description", task.path("payload").path("fieldPath").asText());
+    assertFalse(task.path("payload").has("field"));
   }
 
   @Test
   void rewrite_aTaskAlreadyInTheFormat_isNotWritten() {
-    ObjectNode json =
-        taskJson(TaskEntityType.TagUpdate, Map.of("fieldPath", "columns.amount.tags"));
+    ObjectNode task = task("{'type':'TagUpdate','payload':{'fieldPath':'columns.amount.tags'}}");
 
     assertFalse(
-        TaskFieldPathMigration.rewrite(json, TABLE_ABOUT, about -> table())
-            .orElseThrow()
-            .changed());
+        TaskFieldPathMigration.rewrite(task, "table", TABLE, SEEDED_KEYS).orElseThrow().changed());
   }
 
   @Test
   void rewrite_aTaskThatChangesNoField_isSkipped() {
-    ObjectNode json =
-        taskJson(
-            TaskEntityType.Suggestion,
-            Map.of("suggestionType", "Owner", "fieldPath", "owners", "suggestedValue", "x"));
+    ObjectNode task =
+        task(
+            "{'type':'Suggestion','payload':"
+                + "{'suggestionType':'Owner','fieldPath':'owners','suggestedValue':'x'}}");
 
-    assertTrue(TaskFieldPathMigration.rewrite(json, TABLE_ABOUT, about -> table()).isEmpty());
+    assertTrue(TaskFieldPathMigration.rewrite(task, "table", TABLE, SEEDED_KEYS).isEmpty());
+  }
+
+  @Test
+  void rewrite_aTagSuggestion_endsInTags() {
+    ObjectNode task =
+        task(
+            "{'type':'Suggestion','payload':{'suggestionType':'Tag','fieldPath':'columns.amount'}}");
+
+    TaskFieldPathMigration.rewrite(task, "table", TABLE, SEEDED_KEYS);
+
+    assertEquals("columns.amount.tags", task.path("payload").path("fieldPath").asText());
+  }
+
+  @Test
+  void rewrite_usesTheKeyTheFormSchemaNames() {
+    ObjectNode task = task("{'type':'TagUpdate','payload':{'column':'columns.amount'}}");
+
+    TaskFieldPathMigration.rewrite(
+        task, "table", TABLE, Map.of("TagUpdate", List.of("column", "fieldPath")));
+
+    assertEquals("columns.amount.tags", task.path("payload").path("column").asText());
+    assertFalse(task.path("payload").has("fieldPath"));
+  }
+
+  static Stream<Arguments> formatRoundTrips() {
+    return Stream.of(
+        Arguments.of("columns", List.of("amount"), "columns.amount.tags"),
+        Arguments.of("columns", List.of("profile", "child"), "columns.profile.child.tags"),
+        Arguments.of("columns", List.of("a.b"), "columns.\"a.b\".tags"),
+        Arguments.of("columns", List.of("say \"hi\""), "columns.\"say \"\"hi\"\"\".tags"),
+        Arguments.of("dataModel.columns", List.of("total"), "dataModel.columns.total.tags"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("formatRoundTrips")
+  void format_quotesNamesAndParsesBack(String container, List<String> names, String written) {
+    FieldPath path = new FieldPath(container, names, TAGS);
+    String entityType = "dataModel.columns".equals(container) ? "container" : "table";
+
+    assertEquals(written, path.format());
+    assertEquals(Optional.of(path), FieldPathFormat.parse(written, entityType));
+  }
+
+  @Test
+  void parse_refusesWhatIsNotTheFormat() {
+    assertTrue(FieldPathFormat.parse("columns.amount", "table").isEmpty());
+    assertTrue(FieldPathFormat.parse("columns::amount::tags", "table").isEmpty());
+    assertTrue(FieldPathFormat.parse("columns.\"a.b.tags", "table").isEmpty());
+    assertTrue(FieldPathFormat.parse("fields.amount.tags", "table").isEmpty());
   }
 
   private static String convert(
-      String legacy, String entityType, FieldProperty property, EntityInterface<?> entity) {
+      String legacy, String entityType, String property, JsonNode entity) {
     return TaskFieldPathMigration.convert(legacy, entityType, property, entity)
-        .map(EntityFieldPath::toString)
+        .map(FieldPath::format)
         .orElseThrow();
   }
 
-  private static ObjectNode taskJson(TaskEntityType type, Map<String, Object> payload) {
-    Task task = new Task().withId(UUID.randomUUID()).withType(type).withPayload(payload);
-    return (ObjectNode) JsonUtils.valueToTree(task);
+  private static ObjectNode task(String text) {
+    return (ObjectNode) json(text);
   }
 
-  private static Table table() {
-    Column child = new Column().withName("child");
-    return new Table()
-        .withName("orders")
-        .withColumns(
-            List.of(
-                new Column().withName("amount"),
-                new Column().withName("a.b"),
-                new Column().withName("profile").withChildren(List.of(child))));
-  }
-
-  private static Topic topic() {
-    return new Topic()
-        .withMessageSchema(
-            new MessageSchema()
-                .withSchemaFields(
-                    List.of(new Field().withName("user_id"), new Field().withName("order.id"))));
+  private static JsonNode json(String text) {
+    try {
+      return MAPPER.readTree(text.replace('\'', '"'));
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(e);
+    }
   }
 }

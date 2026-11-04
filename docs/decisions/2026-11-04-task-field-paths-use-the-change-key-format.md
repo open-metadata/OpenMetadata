@@ -29,7 +29,9 @@ entity itself, and the server stores that path written out.
 - The server refuses any other path with a 400 when a task is filed, when its path is edited, and
   when it is approved.
 - The 2.1.0 data migration `TaskFieldPathMigration` rewrites every stored task into this format.
-  It is the only code that reads the old formats.
+  It is the only code that reads the old formats. It works on stored JSON with plain SQL and keeps
+  its own copy of the 2.1.0 format and containers (`FieldPathFormat`), so a later change to the
+  server's classes cannot change what an upgrade from 2.0 writes.
 
 ## Consequences
 Readers trust the stored value, and the same string is the change-summary key, so the two cannot

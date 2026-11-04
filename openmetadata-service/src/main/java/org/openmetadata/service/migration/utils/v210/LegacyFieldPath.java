@@ -13,23 +13,17 @@
 
 package org.openmetadata.service.migration.utils.v210;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import org.openmetadata.service.util.ChildFieldResolver;
-import org.openmetadata.service.util.FieldProperty;
-import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
- * Reads the field path formats tasks were stored with before {@code EntityFieldPath} became the
- * only one: {@code columns::"a.b"::description}, {@code columns."a.b"}, {@code columns.a.b}, {@code
+ * Reads the field path formats tasks were stored with before 2.1.0: {@code
+ * columns::"a.b"::description}, {@code columns."a.b"}, {@code columns.a.b}, {@code
  * columns.a.b.description}, the short containers {@code messageSchema} / {@code dataModel} / {@code
- * requestSchema} / {@code responseSchema}, and {@code columns} standing for any entity's fields.
- * A legacy path can mean more than one field, so it is read into every candidate, most likely
- * first; {@link TaskFieldPathMigration} lets the entity decide between them.
+ * requestSchema} / {@code responseSchema}, and {@code columns} standing for any entity's fields. A
+ * legacy path can mean more than one field, so it is read into every candidate, most likely first;
+ * {@link TaskFieldPathMigration} lets the entity decide between them.
  */
 final class LegacyFieldPath {
   private static final String SEPARATOR = "::";
@@ -67,43 +61,43 @@ final class LegacyFieldPath {
 
   // A trailing description or tags is the property; without one, the whole path names the field.
   private static List<Candidate> dottedCandidates(String path, String entityType) {
-    String[] segments = segments(path);
+    List<String> segments = segments(path);
     boolean trailingProperty =
-        segments.length > 2 && FieldProperty.fromValue(segments[segments.length - 1]).isPresent();
+        segments.size() > 2 && FieldPathFormat.isProperty(segments.getLast());
     List<Candidate> candidates = new ArrayList<>();
     if (trailingProperty) {
-      candidates.addAll(dottedReadings(Arrays.copyOf(segments, segments.length - 1), entityType));
+      candidates.addAll(dottedReadings(segments.subList(0, segments.size() - 1), entityType));
     }
     candidates.addAll(dottedReadings(segments, entityType));
     return candidates;
   }
 
-  private static List<Candidate> dottedReadings(String[] segments, String entityType) {
+  private static List<Candidate> dottedReadings(List<String> segments, String entityType) {
     String declared = declaredPrefix(segments, entityType);
-    int containerSegments = declared == null ? 1 : declared.split("\\.").length;
+    int containerSegments = declared == null ? 1 : FieldPathFormat.depth(declared);
     List<String> names =
-        Arrays.stream(segments, Math.min(containerSegments, segments.length), segments.length)
-            .map(FullyQualifiedName::unquoteName)
+        segments.subList(Math.min(containerSegments, segments.size()), segments.size()).stream()
+            .map(FieldPathFormat::unquote)
             .toList();
     List<String> containers =
-        declared == null ? containers(segments[0], entityType) : List.of(declared);
+        declared == null ? containers(segments.getFirst(), entityType) : List.of(declared);
     return containers.stream().map(container -> new Candidate(container, names)).toList();
   }
 
-  private static String declaredPrefix(String[] segments, String entityType) {
-    return declaredContainers(entityType).stream()
-        .filter(container -> startsWith(segments, container.split("\\.")))
+  private static String declaredPrefix(List<String> segments, String entityType) {
+    return FieldPathFormat.containers(entityType).stream()
+        .filter(container -> FieldPathFormat.startsWith(segments, container))
         .findFirst()
         .orElse(null);
   }
 
   /**
-   * The declared containers a legacy container segment stands for: itself, the declared path it
-   * shortens ({@code messageSchema} for {@code messageSchema.schemaFields}), or every declared
-   * container for the {@code columns} alias. An unknown segment is kept as written.
+   * The containers a legacy container segment stands for: itself, the container it shortens
+   * ({@code messageSchema} for {@code messageSchema.schemaFields}), or every container of the
+   * entity type for the {@code columns} alias. An unknown segment is kept as written.
    */
   static List<String> containers(String segment, String entityType) {
-    List<String> declared = declaredContainers(entityType);
+    List<String> declared = FieldPathFormat.containers(entityType);
     List<String> matching =
         declared.stream()
             .filter(path -> path.equals(segment) || path.startsWith(segment + "."))
@@ -114,30 +108,15 @@ final class LegacyFieldPath {
     return COLUMNS_ALIAS.equals(segment) && !declared.isEmpty() ? declared : List.of(segment);
   }
 
-  private static List<String> declaredContainers(String entityType) {
-    return ChildFieldResolver.supports(entityType)
-        ? ChildFieldResolver.specFor(entityType).containerPaths()
-        : List.of();
-  }
-
   // A quoted name is one name; an unquoted dotted name reaches a nested field, as in an entity
   // link.
   private static List<String> nameSegments(String name) {
-    return nullOrEmpty(name)
+    return name.isEmpty()
         ? List.of()
-        : Arrays.stream(segments(name)).map(FullyQualifiedName::unquoteName).toList();
+        : segments(name).stream().map(FieldPathFormat::unquote).toList();
   }
 
-  private static String[] segments(String path) {
-    try {
-      return FullyQualifiedName.split(path);
-    } catch (IllegalArgumentException e) {
-      return path.split("\\.");
-    }
-  }
-
-  private static boolean startsWith(String[] segments, String[] prefix) {
-    return segments.length > prefix.length
-        && Arrays.equals(Arrays.copyOf(segments, prefix.length), prefix);
+  private static List<String> segments(String path) {
+    return FieldPathFormat.split(path).orElseGet(() -> List.of(path.split("\\.")));
   }
 }
