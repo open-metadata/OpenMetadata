@@ -27,7 +27,10 @@ import { isEmpty } from 'lodash';
 import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
-import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
+import {
+  convertMillisecondsToHumanReadableFormat,
+  getUtcOffsetLabel,
+} from '../../../utils/date-time/DateTimeUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   Agent,
@@ -147,7 +150,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
             </div>
             <div className="tw:mt-px tw:text-xs tw:leading-tight tw:text-quaternary">
               {startTime ? `${startTime} · ` : ''}
-              {t('label.duration-in-minute', { duration: r.duration })}
+              {convertMillisecondsToHumanReadableFormat(r.durationMs, 2)}
             </div>
           </button>
         );
@@ -196,7 +199,9 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
           <div className="tw:text-xs tw:text-tertiary">
             {/* eslint-disable-next-line i18next/no-literal-string -- decorative middot separator */}
             {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
-            {t('message.ran-for-duration', { duration: run.duration })}
+            {t('message.ran-for-duration', {
+              duration: convertMillisecondsToHumanReadableFormat(run.durationMs, 2),
+            })}
           </div>
         </div>
         <Badge

@@ -26,6 +26,7 @@ jest.mock('./RunStepRow.component', () =>
 );
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   getUtcOffsetLabel: jest.fn().mockReturnValue('UTC+05:30'),
 }));
 
@@ -43,7 +44,7 @@ const mockRuns: AgentRun[] = [
     id: 'run-oldest',
     status: 'partial',
     startedAt: 'May 25, 2026 · 08:10',
-    duration: 4.1,
+    durationMs: 9_936_000,
     totals: emptyTotals,
     steps: [],
   },
@@ -51,7 +52,7 @@ const mockRuns: AgentRun[] = [
     id: 'run-middle',
     status: 'failed',
     startedAt: 'May 26, 2026 · 08:10',
-    duration: 0.7,
+    durationMs: 42_000,
     totals: emptyTotals,
     steps: [],
   },
@@ -59,7 +60,7 @@ const mockRuns: AgentRun[] = [
     id: 'run-latest',
     status: 'success',
     startedAt: 'May 27, 2026 · 08:10',
-    duration: 3.8,
+    durationMs: 228_000,
     totals: emptyTotals,
     steps: [],
   },
@@ -165,6 +166,15 @@ describe('RunHistoryDrawer', () => {
     expect(
       screen.getByText(/May 26, 2026 · 08:10 \(UTC\+05:30\)/)
     ).toBeInTheDocument();
+  });
+
+  it('should show run durations in hours and minutes', () => {
+    renderDrawer('run-oldest');
+
+    const [oldest, middle] = screen.getAllByTestId('run-history-item');
+
+    expect(oldest).toHaveTextContent('08:10 · 2h 45m');
+    expect(middle).toHaveTextContent('08:10 · 42s');
   });
 
   it('should select the latest run when no initialRunId is given', () => {
