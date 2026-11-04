@@ -75,10 +75,13 @@ public final class RdfUpdater {
       // and its failures stay the queue's.
       final RdfRepository repository =
           RdfRepository.getInstance().forDelivery(RdfWriteDelivery.QUEUED);
+      // An earlier attempt of a redelivered write may still be applying in Fuseki, where a read
+      // cannot see it, so its entity writes replace the projection instead of diffing against it.
+      final RdfRepository redelivery = repository.replacingEntityWrites();
       writer =
           new RdfLiveWriter(
               store,
-              command -> command.apply(repository),
+              (command, redelivered) -> command.apply(redelivered ? redelivery : repository),
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueueAll;
       liveWriteStore = store;

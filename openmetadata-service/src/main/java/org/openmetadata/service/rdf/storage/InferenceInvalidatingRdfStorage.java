@@ -39,9 +39,19 @@ public final class InferenceInvalidatingRdfStorage extends ForwardingRdfStorage 
     return delegate;
   }
 
+  /** A write that found the projection already stored changes nothing a rule reads. */
   @Override
-  public void storeEntity(final String entityType, final UUID entityId, final Model entityModel) {
-    mutate(() -> delegate.storeEntity(entityType, entityId, entityModel));
+  public RdfEntityWriteResult storeEntity(
+      final String entityType,
+      final UUID entityId,
+      final Model entityModel,
+      final RdfEntityWriteStrategy strategy) {
+    final RdfEntityWriteResult result =
+        delegate.storeEntity(entityType, entityId, entityModel, strategy);
+    if (result.changesGraph()) {
+      dirtyMarker.markAllDirty();
+    }
+    return result;
   }
 
   @Override

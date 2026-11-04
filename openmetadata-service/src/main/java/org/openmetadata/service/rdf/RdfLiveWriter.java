@@ -18,7 +18,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.monitoring.OntologyMetrics;
@@ -30,14 +29,21 @@ import org.openmetadata.service.util.PerRequestContextCleaner;
 public final class RdfLiveWriter implements AutoCloseable {
   private static final int MAX_WRITES_PER_DRAIN = 100;
   private final RdfLiveWriteStore store;
-  private final Consumer<RdfLiveWrite> write;
+  private final Application write;
   private final Executor executor;
   private final AtomicBoolean draining = new AtomicBoolean();
   private volatile boolean closed;
   private ScheduledFuture<?> poll;
 
+  /** Applies one queued write. */
+  @FunctionalInterface
+  public interface Application {
+    /** @param redelivered see {@link RdfLiveWriteStore.Delivery#deliver} */
+    void apply(RdfLiveWrite write, boolean redelivered);
+  }
+
   public RdfLiveWriter(
-      final RdfLiveWriteStore store, final Consumer<RdfLiveWrite> write, final Executor executor) {
+      final RdfLiveWriteStore store, final Application write, final Executor executor) {
     this.store = store;
     this.write = write;
     this.executor = executor;
@@ -104,13 +110,13 @@ public final class RdfLiveWriter implements AutoCloseable {
     }
   }
 
-  private void apply(final String payload) {
+  private void apply(final String payload, final boolean redelivered) {
     // Each queued write is its own unit of work: a read cached by an earlier write in this drain
     // would project a stale entity, so start and leave every write with a clean request context.
     PerRequestContextCleaner.clear();
     final Timer.Sample sample = RequestLatencyContext.startRdfOperation();
     try {
-      write.accept(JsonUtils.readValue(payload, RdfLiveWrite.class));
+      write.apply(JsonUtils.readValue(payload, RdfLiveWrite.class), redelivered);
     } finally {
       RequestLatencyContext.endRdfOperation(sample);
       PerRequestContextCleaner.clear();

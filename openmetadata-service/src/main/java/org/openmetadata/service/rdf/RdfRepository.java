@@ -63,6 +63,8 @@ import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.InferenceInvalidatingRdfStorage;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
@@ -168,6 +170,7 @@ public class RdfRepository {
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
   private final RdfProjectionLoaders projectionLoaders;
   private final RdfWriteDelivery delivery;
+  private final RdfEntityWriteStrategy entityWriteStrategy;
   private final InferenceRuleRepository inferenceRuleRepository;
   private final AssertedOnlyQueries assertedOnlyQueries =
       new AssertedOnlyQueries(
@@ -203,6 +206,7 @@ public class RdfRepository {
     this.datasetNames = RdfDatasetNames.from(config);
     this.relationshipTypeResolverSupplier = RdfRepository::configuredRelationshipTypeResolver;
     this.projectionLoaders = RdfProjectionLoaders.defaults();
+    this.entityWriteStrategy = RdfEntityWriteStrategy.DIFFERENCE;
     if (config.getEnabled() != null && config.getEnabled()) {
       final RdfStorageInterface configuredStorage = RdfStorageFactory.createStorage(config);
       this.datasetManager =
@@ -247,8 +251,14 @@ public class RdfRepository {
     }
   }
 
-  /** A view of {@code base} whose serving writes are made for {@code delivery}. */
-  private RdfRepository(final RdfRepository base, final RdfWriteDelivery delivery) {
+  /**
+   * A view of {@code base} whose serving writes are made for {@code delivery} and whose entity
+   * writes use {@code entityWriteStrategy}.
+   */
+  private RdfRepository(
+      final RdfRepository base,
+      final RdfWriteDelivery delivery,
+      final RdfEntityWriteStrategy entityWriteStrategy) {
     this.config = base.config;
     this.datasetNames = base.datasetNames;
     this.datasetManager = base.datasetManager;
@@ -257,6 +267,7 @@ public class RdfRepository {
     this.relationshipTypeResolverSupplier = base.relationshipTypeResolverSupplier;
     this.projectionLoaders = base.projectionLoaders;
     this.delivery = delivery;
+    this.entityWriteStrategy = entityWriteStrategy;
     this.inferenceRuleRepository = base.inferenceRuleRepository;
     if (datasetManager == null) {
       // Without dataset routing there is no pause to meet; only who owns a failure changes.
@@ -285,7 +296,21 @@ public class RdfRepository {
    * RdfWriteDelivery}.
    */
   public RdfRepository forDelivery(final RdfWriteDelivery delivery) {
-    return delivery.equals(this.delivery) ? this : new RdfRepository(this, delivery);
+    return delivery.equals(this.delivery)
+        ? this
+        : new RdfRepository(this, delivery, entityWriteStrategy);
+  }
+
+  /**
+   * This repository with its entity writes replacing the stored projection whole. The live-write
+   * queue redelivers through it a write whose earlier attempt failed: that attempt may still be
+   * applying in the store, and a write computed from what the store holds now would not see it
+   * (ADR:2026-11-03-live-rdf-entity-writes-send-only-the-changed-triples).
+   */
+  public RdfRepository replacingEntityWrites() {
+    return entityWriteStrategy == RdfEntityWriteStrategy.REPLACE
+        ? this
+        : new RdfRepository(this, delivery, RdfEntityWriteStrategy.REPLACE);
   }
 
   /**
@@ -336,6 +361,7 @@ public class RdfRepository {
     this.datasetNames = RdfDatasetNames.from(config);
     this.datasetManager = null;
     this.delivery = RdfWriteDelivery.DIRECT;
+    this.entityWriteStrategy = RdfEntityWriteStrategy.DIFFERENCE;
     this.inferenceRuleRepository = null;
     this.storageService = storageService;
     this.materializationStorageService = storageService;
@@ -670,8 +696,9 @@ public class RdfRepository {
           entity.getName(),
           entity.getId());
       Model rdfModel = translator.toRdf(entity);
-      storageService.storeEntity(entityType, entity.getId(), rdfModel);
-      LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
+      final RdfEntityWriteResult result =
+          storageService.storeEntity(entityType, entity.getId(), rdfModel, entityWriteStrategy);
+      LOG.debug("Created/Updated entity {} in RDF store: {}", entity.getId(), result);
     } catch (RdfStorageMaintenanceException heldBack) {
       recordFailure(heldBack);
       throw heldBack;

@@ -64,6 +64,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
@@ -307,10 +309,11 @@ class RdfLiveWriteTest {
             call -> {
               requireAvailable();
               dataset.getNamedModel(GRAPH).add((Model) call.getArgument(2));
-              return null;
+              return RdfEntityWriteResult.REPLACED;
             })
         .when(storage)
-        .storeEntity(anyString(), any(UUID.class), any(Model.class));
+        .storeEntity(
+            anyString(), any(UUID.class), any(Model.class), any(RdfEntityWriteStrategy.class));
     final CollectionDAO.RelationshipTypeDAO types = mock(CollectionDAO.RelationshipTypeDAO.class);
     when(types.findEntityByName("broader", Include.NON_DELETED))
         .thenReturn(
