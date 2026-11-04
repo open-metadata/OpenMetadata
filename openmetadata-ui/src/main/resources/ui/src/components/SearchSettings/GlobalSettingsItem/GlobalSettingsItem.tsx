@@ -15,10 +15,10 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { clamp } from 'lodash';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import '../../../pages/SearchSettingsPage/search-settings.less';
 import InlineEdit from '../../common/InlineEdit/InlineEdit.component';
 import './global-settings-item.less';
@@ -141,10 +141,9 @@ export const GlobalSettingItem = ({
           </span>
           <ButtonUtility
             className="tw:ml-1"
-            color="tertiary"
             data-testid={`global-setting-edit-icon-${label}`}
-            icon={<EditIcon className="tw:size-3.5" />}
-            size="xs"
+            icon={Edit01}
+            size="sm"
             tooltip={t('label.edit-entity', { entity: label })}
             onClick={() => setIsEditing(true)}
           />

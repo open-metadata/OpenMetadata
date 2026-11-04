@@ -22,6 +22,9 @@ from typing import Any
 
 from requests.utils import urlparse  # pyright: ignore[reportPrivateImportUsage]
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup, load_table_binding_resolution
+from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -70,10 +73,7 @@ from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import (
-    get_column_fqn,
-    get_table_fqn_from_query_name,
-)
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
@@ -1070,6 +1070,7 @@ class TableauSource(DashboardServiceSource):
                 table.database.name if table.database and table.database.name else database_schema_table.get("database")
             )
 
+            db_service_entity = None
             if db_service_name:
                 db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
                 if db_service_entity:
@@ -1095,18 +1096,21 @@ class TableauSource(DashboardServiceSource):
                 logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
                 return None
 
+            resolution = load_table_binding_resolution(
+                db_service_entity.serviceType.value if db_service_entity else None, self.metadata
+            )
+            resolved_name = prefix_table_name or table_name
+            if not resolved_name:
+                return None
+            reference = TableReference(
+                prefix_database_name or database_name, prefix_schema_name or schema_name, resolved_name
+            )
+            matches = resolution.resolve(reference, service_name=db_service_name, lookup=TableLookup.FIRST_MATCH)
+            if matches:
+                return [TableAndQuery(table=match) for match in matches]
             fqn_search_string = build_es_fqn_search_string(
-                database_name=prefix_database_name or database_name,
-                schema_name=prefix_schema_name or schema_name,
-                service_name=db_service_name or "*",
-                table_name=prefix_table_name or table_name,
+                reference.database, reference.schema, db_service_name or "*", reference.table
             )
-            table_entity = self.metadata.search_in_any_service(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-            )
-            if table_entity:
-                return [TableAndQuery(table=table_entity)]
 
             # fallback to fullName if schema name is not appropriate
             # TODO: We should make this a primary approach for lineage instead
@@ -1135,12 +1139,17 @@ class TableauSource(DashboardServiceSource):
                     service_name=db_service_name or "*",
                     table_name=table_query,
                 )
-                table_entity = self.metadata.search_in_any_service(
-                    entity_type=Table,
-                    fqn_search_string=fqn_search_string,
+                matches = resolution.resolve(
+                    TableReference(
+                        prefix_database_name or database_name or database_query,
+                        prefix_schema_name or schema_query,
+                        prefix_table_name or table_query,
+                    ),
+                    service_name=db_service_name,
+                    lookup=TableLookup.FIRST_MATCH,
                 )
-                if table_entity:
-                    return [TableAndQuery(table=table_entity)]
+                if matches:
+                    return [TableAndQuery(table=match) for match in matches]
             logger.debug(
                 "No table entity found for lineage using GraphQL APIs."
                 f"fqn_search_string={fqn_search_string}, table_name={table_name}"
