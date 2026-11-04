@@ -136,7 +136,7 @@ const ScheduleFieldsGrid = ({
         <CronOptionSelect
           disabled={disabled}
           items={dayOptions}
-          label={t('label.day')}
+          label={t('label.day-of-week')}
           selectedValue={dow}
           testId="day-options"
           onSelect={(dowValue) => handleStateChange({ dow: dowValue })}
@@ -147,7 +147,7 @@ const ScheduleFieldsGrid = ({
         <CronOptionSelect
           disabled={disabled}
           items={dateOptions}
-          label={t('label.date')}
+          label={t('label.day-of-month')}
           selectedValue={dom}
           testId="date-options"
           onSelect={(domValue) => handleStateChange({ dom: domValue })}
@@ -478,9 +478,10 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
 
     return (
       <Card
-        className="tw:flex tw:items-center tw:gap-3 tw:bg-secondary tw:px-4 tw:py-3"
-        size="sm">
-        <Clock className="tw:size-5 tw:shrink-0 tw:text-utility-gray-600" />
+        className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3"
+        size="sm"
+        variant="muted">
+        <Clock className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
         <Typography size="text-sm">{cronStringValue}</Typography>
       </Card>
     );
@@ -528,7 +529,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
               data-testid="cron-container">
               <div data-testid="frequency-container">
                 {/* eslint-disable-next-line jsx-a11y/label-has-for -- button group, not a single control */}
-                <label className="tw:font-medium">{t('label.frequency')}</label>
+                <label className="tw:font-medium">{t('label.cadence')}</label>
                 <div className="tw:mt-2 tw:flex tw:flex-wrap tw:gap-3">
                   {frequencyOptions.map((option) => (
                     <Button

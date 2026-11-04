@@ -154,11 +154,12 @@ public class JsonPatchUtils {
     }
   }
 
-  private static MetadataOperation mapTagToOperation(TagLabel tag) {
+  /** The operation adding or removing {@code tag} needs, by the label's classification. */
+  public static MetadataOperation mapTagToOperation(TagLabel tag) {
     if (tag == null) {
       return null;
     }
-    String source = tag.getSource().value();
+    String source = tag.getSource() == null ? null : tag.getSource().value();
     String tagFQN = tag.getTagFQN();
     if (isTierClassification(tagFQN)) {
       return MetadataOperation.EDIT_TIER;

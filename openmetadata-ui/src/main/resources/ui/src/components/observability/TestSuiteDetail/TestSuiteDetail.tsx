@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   DialogTrigger,
   Input,
@@ -20,7 +21,6 @@ import {
   ModalOverlay,
   Owner,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
@@ -202,6 +202,7 @@ const TestSuiteDetail = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
@@ -291,7 +292,10 @@ const TestSuiteDetail = () => {
     if (activeTab === EntityTabs.PIPELINE) {
       return (
         <div className="tw:w-full">
-          <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+          <TestSuitePipelineTab
+            testSuite={testSuite}
+            onPipelinesChange={handlePipelinesChange}
+          />
         </div>
       );
     }
@@ -428,19 +432,13 @@ const TestSuiteDetail = () => {
                     displayName={testSuite?.displayName}
                     name={testSuite?.name}
                   />
-                  <Tooltip placement="top" title={getCopyTooltipTitle()}>
-                    <Button
-                      aria-label={t('label.copy-item', {
-                        item: t('label.url-uppercase'),
-                      })}
-                      color="tertiary"
-                      data-testid="entity-header-copy-button"
-                      iconLeading={Copy01}
-                      size="xs"
-                      type="button"
-                      onClick={handleCopyEntityUrl}
-                    />
-                  </Tooltip>
+                  <ButtonUtility
+                    data-testid="entity-header-copy-button"
+                    icon={Copy01}
+                    size="lg"
+                    tooltip={getCopyTooltipTitle()}
+                    onClick={handleCopyEntityUrl}
+                  />
                 </Box>
               </Box>
               <Box align="center" className="tw:shrink-0" gap={2}>

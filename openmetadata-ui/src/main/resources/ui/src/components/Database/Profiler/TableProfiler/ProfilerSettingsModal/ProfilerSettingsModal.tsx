@@ -14,6 +14,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  ButtonUtility,
   FormField,
   FormItemLabel,
   FormSelectItem,
@@ -472,12 +473,13 @@ const ProfilerSettingsModal = ({
               <Typography as="p" size="text-xs">
                 {t('label.include')}:
               </Typography>
-              <Button
-                aria-label={t('label.add-entity', {
+              <ButtonUtility
+                color="primary"
+                icon={Plus}
+                size="sm"
+                tooltip={t('label.add-entity', {
                   entity: t('label.column'),
                 })}
-                iconLeading={Plus}
-                size="xs"
                 onPress={() => includeColumns.append({ metrics: ['all'] })}
               />
             </Box>
@@ -516,13 +518,12 @@ const ProfilerSettingsModal = ({
                           )}
                         </FormField>
                       </Box>
-                      <Button
-                        aria-label={t('label.remove-entity', {
+                      <ButtonUtility
+                        icon={Trash01}
+                        size="sm"
+                        tooltip={t('label.remove-entity', {
                           entity: t('label.column'),
                         })}
-                        color="tertiary"
-                        iconLeading={Trash01}
-                        size="xs"
                         onPress={() => includeColumns.remove(index)}
                       />
                     </Box>
@@ -643,12 +644,13 @@ const ProfilerSettingsModal = ({
                 <Typography as="p" size="text-xs">
                   {t('label.value')}:
                 </Typography>
-                <Button
-                  aria-label={t('label.add-entity', {
+                <ButtonUtility
+                  color="primary"
+                  icon={Plus}
+                  size="sm"
+                  tooltip={t('label.add-entity', {
                     entity: t('label.value'),
                   })}
-                  iconLeading={Plus}
-                  size="xs"
                   onPress={() => partitionValues.append({ value: '' })}
                 />
               </Box>
@@ -674,13 +676,12 @@ const ProfilerSettingsModal = ({
                       )}
                     </FormField>
                   </Box>
-                  <Button
-                    aria-label={t('label.remove-entity', {
+                  <ButtonUtility
+                    icon={Trash01}
+                    size="sm"
+                    tooltip={t('label.remove-entity', {
                       entity: t('label.value'),
                     })}
-                    color="tertiary"
-                    iconLeading={Trash01}
-                    size="xs"
                     onPress={() => partitionValues.remove(index)}
                   />
                 </Box>

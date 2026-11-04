@@ -44,14 +44,14 @@ describe('TestCaseTabBarExtraContent', () => {
 
     const tabExpandButton = screen.getByTestId('tab-expand-button');
 
-    expect(tabExpandButton).not.toHaveClass('rotate-180');
+    expect(tabExpandButton).toHaveAttribute('aria-label', 'label.expand');
 
     fireEvent.click(tabExpandButton);
 
     expect(mockToggleTabExpanded).toHaveBeenCalledTimes(1);
   });
 
-  it('rotates the tab control when the tab is expanded', () => {
+  it('switches the tab control to collapse when the tab is expanded', () => {
     render(
       <TestCaseTabBarExtraContent
         isExpandViewSupported
@@ -60,6 +60,9 @@ describe('TestCaseTabBarExtraContent', () => {
       />
     );
 
-    expect(screen.getByTestId('tab-expand-button')).toHaveClass('rotate-180');
+    expect(screen.getByTestId('tab-expand-button')).toHaveAttribute(
+      'aria-label',
+      'label.collapse'
+    );
   });
 });

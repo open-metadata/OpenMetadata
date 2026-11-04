@@ -408,9 +408,6 @@ $$
 $$section
 ### Enable Secure Socket Connection $(id="enableSecureSocketConnection")
 
-- **Definition:** Whether to use SSL/TLS for secure connections.
+- **Deprecated — has no effect.** Socket handshakes are always authenticated under every configuration; this setting is retained only for backward compatibility.
 - **Default:** false
-- **Example:** true
-- **Why it matters:** Ensures encrypted communication for security.
-- **Note:** Should be enabled in production environments
 $$

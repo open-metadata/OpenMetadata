@@ -59,6 +59,35 @@ describe('Table header accessibility', () => {
   });
 });
 
+describe('Table header alignment', () => {
+  it('starts header content by default and centres it on request', () => {
+    render(
+      <Table aria-label="aligned-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+          <Table.Head align="center" id="allowed">
+            Allowed
+          </Table.Head>
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="r1">
+            <Table.Cell>alpha</Table.Cell>
+            <Table.Cell>yes</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const content = (name: string) =>
+      screen.getByRole('columnheader', { name }).firstElementChild;
+
+    expect(content('Name')).not.toHaveClass('tw:justify-center');
+    expect(content('Allowed')).toHaveClass('tw:justify-center');
+  });
+});
+
 describe('Table sizes', () => {
   it('applies the compact scale', () => {
     renderTable({ size: 'compact' });
@@ -100,8 +129,25 @@ describe('Table variant', () => {
     expect(container()).toHaveClass(
       'tw:bg-primary_alt',
       'tw:dark:border-primary',
-      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover'
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover'
     );
+  });
+
+  it('marks only an empty body with the data-empty hook the hover rules skip', () => {
+    const { container: populated } = renderTable();
+    const { container: empty } = render(
+      <Table aria-label="empty-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+        </Table.Header>
+        <Table.Body renderEmptyState={() => 'nothing here'}>{[]}</Table.Body>
+      </Table>
+    );
+
+    expect(populated.querySelector('tbody')).not.toHaveAttribute('data-empty');
+    expect(empty.querySelector('tbody')).toHaveAttribute('data-empty');
   });
 });
 
@@ -273,7 +319,7 @@ describe('TableCard theme roles', () => {
       'tw:after:outline-secondary',
       'tw:dark:after:outline-primary',
       'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-      'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
       // Clamped markdown must fade into the muted row, not the surface.
       'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!'
     );
