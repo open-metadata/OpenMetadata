@@ -76,10 +76,12 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
+import org.openmetadata.service.jdbi3.DomainFilterExclusions;
 import org.openmetadata.service.jdbi3.DomainNavFilter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -1150,6 +1152,88 @@ public final class EntityUtil {
             nullOrEmpty(selectedFqn)
                 ? DomainNavFilter.ParentScope.NONE
                 : parentScope(parent.get(), selectedFqn));
+  }
+
+  /** The navbar domain filter for a search-backed list (e.g. articles sorted by update time). */
+  public static void addNavbarDomainFilter(
+      SecurityContext securityContext, SearchListFilter filter, String entityType) {
+    if (getSubjectContext(securityContext).isBot()) {
+      return;
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    boolean applies =
+        selected != null
+            && DomainNavFilter.shouldApply(
+                entityType,
+                supportsDomains(entityType),
+                filter.getQueryParam("domains") != null,
+                selected.getId().toString());
+    if (applies) {
+      filter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, selected.getFullyQualifiedName());
+      filter.addQueryParam(
+          SearchListFilter.NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM,
+          String.valueOf(DomainFilterExclusions.keepsUnassigned(entityType)));
+    }
+  }
+
+  /**
+   * The caller's navbar domain and its sub-domains as ids, or empty when the pick does not narrow
+   * {@code entityType}; for lists that build their own query (e.g. a search aggregation).
+   */
+  public static List<String> navbarDomainIds(SecurityContext securityContext, String entityType) {
+    if (getSubjectContext(securityContext).isBot()) {
+      return List.of();
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    boolean applies =
+        selected != null
+            && DomainNavFilter.shouldApply(
+                entityType, supportsDomains(entityType), false, selected.getId().toString());
+    return applies ? List.of(domainAndSubDomainIds(selected).split(",")) : List.of();
+  }
+
+  /**
+   * The caller's navbar domain and its sub-domains as a search query filter, or null with no pick;
+   * for reads that query search documents directly (e.g. Data Insights charts).
+   */
+  public static String navbarDomainSearchFilter(SecurityContext securityContext) {
+    if (getSubjectContext(securityContext).isBot()) {
+      return null;
+    }
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    if (selected == null || nullOrEmpty(selected.getFullyQualifiedName())) {
+      return null;
+    }
+    String fqn = selected.getFullyQualifiedName();
+    Map<String, Object> inSubtree =
+        Map.of(
+            "bool",
+            Map.of(
+                "should",
+                List.of(
+                    Map.of("term", Map.of("domains.fullyQualifiedName", fqn)),
+                    Map.of(
+                        "prefix", Map.of("domains.fullyQualifiedName", fqn + Entity.SEPARATOR)))));
+    return JsonUtils.pojoToJson(Map.of("query", inSubtree));
+  }
+
+  /**
+   * Ids of the {@code entityType} entities in the caller's navbar domain or its sub-domains, or
+   * empty when the pick does not narrow that type; for lists that page their own rows.
+   */
+  public static Optional<Set<UUID>> navbarDomainMemberIds(
+      SecurityContext securityContext, String entityType) {
+    List<String> domainIds = navbarDomainIds(securityContext, entityType);
+    if (domainIds.isEmpty()) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findToBatch(domainIds, Relationship.HAS.ordinal(), Entity.DOMAIN, entityType)
+            .stream()
+            .map(row -> UUID.fromString(row.getToId()))
+            .collect(Collectors.toSet()));
   }
 
   // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a

@@ -1044,7 +1044,7 @@ const unsavedPopover = (page: Page) =>
  */
 const openDirtyNavigationEditor = async (page: Page, personaName: string) => {
   await openPersonaSettings(page, personaName, '/customize/navigation');
-  const exploreToggle = page.getByTestId('navigation-switch-/explore');
+  const exploreToggle = page.getByTestId('ai-sidebar-switch-explore');
 
   await expect(exploreToggle.getByRole('switch')).toBeChecked();
 
@@ -1058,7 +1058,7 @@ const openDirtyNavigationEditor = async (page: Page, personaName: string) => {
 const expectEditorKeepsEdits = async (page: Page) => {
   await expect(page.getByTestId('persona-customize-view')).toBeVisible();
   await expect(
-    page.getByTestId('navigation-switch-/explore').getByRole('switch')
+    page.getByTestId('ai-sidebar-switch-explore').getByRole('switch')
   ).not.toBeChecked();
   await expect(page.getByTestId('customize-save')).toBeEnabled();
   await expect(unsavedPopover(page)).not.toBeVisible();
@@ -1186,14 +1186,14 @@ test.describe(
       await page.getByTestId('unsaved-changes-popover-confirm').click();
       const response = await saveResponse;
 
-      expect(response.request().postData() ?? '').toContain('/explore');
+      expect(response.request().postData() ?? '').toContain('explore');
       await expect(page.getByTestId('persona-detail-container')).toBeVisible();
       await expect(unsavedPopover(page)).not.toBeVisible();
 
       await page.getByTestId('customize-card-navigation').click();
 
       await expect(
-        page.getByTestId('navigation-switch-/explore').getByRole('switch')
+        page.getByTestId('ai-sidebar-switch-explore').getByRole('switch')
       ).not.toBeChecked();
       await expect(page.getByTestId('customize-save')).toBeDisabled();
     });

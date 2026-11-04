@@ -12065,7 +12065,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (origLifeCycle.getCreated() != null
             && (updatedLifeCycle.getCreated() == null
                 || updatedLifeCycle.getCreated().getTimestamp()
-                    < origLifeCycle.getCreated().getTimestamp())) {
+                    > origLifeCycle.getCreated().getTimestamp())) {
           updatedLifeCycle.setCreated(origLifeCycle.getCreated());
         }
 

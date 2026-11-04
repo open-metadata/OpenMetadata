@@ -47,7 +47,7 @@ const QueryBuilderAddGroup: FC<QueryBuilderAddGroupProps> = ({
         className="tw:mt-5 tw:self-start"
         data-testid={testId}
         iconLeading={Expand}
-        iconTrailing={<ChevronDown className="tw:size-4" />}
+        iconTrailing={ChevronDown}
         size="sm">
         {label}
       </Button>

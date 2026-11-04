@@ -43,7 +43,7 @@ import {
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
 import {
-  Connection as ConfigObject,
+  AirflowConnectionObject as ConfigObject,
   WorkflowType,
 } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
