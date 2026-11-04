@@ -20,6 +20,7 @@ import {
   MetricObservability,
   ReasonCode,
 } from '../../src/generated/api/data/metricObservability';
+import { DomainStyles } from '../../src/generated/api/domains/domainStyles';
 import { Operation } from '../../src/generated/entity/policies/policy';
 import {
   AuthenticationMechanism,
@@ -592,6 +593,13 @@ export const installVisualData = async (
           ? permissionFor(parts[1])
           : pageOf(Object.values(ResourceEntity).map(permissionFor)),
       });
+
+      return;
+    }
+
+    if (path === 'domains/styles') {
+      // Domains and products in this catalog use their default colour and icon.
+      await route.fulfill({ json: { data: [] } satisfies DomainStyles });
 
       return;
     }
