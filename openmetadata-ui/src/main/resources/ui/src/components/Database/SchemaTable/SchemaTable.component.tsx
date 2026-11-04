@@ -267,7 +267,7 @@ const SchemaTable = () => {
       }
     };
 
-    fetchColumnTypeDetail();
+    void fetchColumnTypeDetail();
 
     return () => {
       cancelled = true;
@@ -407,12 +407,12 @@ const SchemaTable = () => {
   };
 
   useEffect(() => {
-    fetchTestCaseSummary();
+    void fetchTestCaseSummary();
   }, [tableFqn]);
 
   useEffect(() => {
     if (searchText || hasTagFilter) {
-      searchTableColumns(searchText, currentPage, sortBy, sortOrder);
+      void searchTableColumns(searchText, currentPage, sortBy, sortOrder);
     }
   }, [
     searchText,
@@ -427,7 +427,7 @@ const SchemaTable = () => {
     if (searchText || hasTagFilter) {
       return;
     }
-    fetchTableColumns(currentPage, sortBy, sortOrder);
+    void fetchTableColumns(currentPage, sortBy, sortOrder);
   }, [
     tableFqn,
     pageSize,
@@ -992,8 +992,8 @@ const SchemaTable = () => {
             entity: t('label.constraint'),
           }),
         })}
-        selectedKey={editConstraint ?? null}
-        onSelectionChange={(key) =>
+        value={editConstraint ?? null}
+        onChange={(key) =>
           setEditConstraint(
             key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
           )
@@ -1011,7 +1011,7 @@ const SchemaTable = () => {
   );
 
   const handleEditTable = () => {
-    navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
+    void navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
   };
 
   useEffect(() => {
