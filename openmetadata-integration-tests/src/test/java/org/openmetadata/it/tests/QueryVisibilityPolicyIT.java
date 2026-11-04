@@ -16,6 +16,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -123,8 +124,11 @@ public class QueryVisibilityPolicyIT {
         ForbiddenException.class,
         () -> viewer.queries().list(queriesForParent(sensitiveTable, Entity.TABLE)));
 
-    assertMismatchedQueryParentsNotFound(viewer, sensitiveTable);
-    assertMismatchedQueryParentsNotFound(catalogDenied, sensitiveTable);
+    assertMismatchedQueryParentsRejected(viewer, sensitiveTable, 404);
+    assertMismatchedQueryParentsRejected(catalogDenied, sensitiveTable, 403);
+    assertThrows(
+        ForbiddenException.class,
+        () -> catalogDenied.queries().list(queriesForParent(sensitiveTable, Entity.TABLE)));
 
     SdkClients.adminClient().tables().delete(allowedTable.getId());
     assertNotNull(
@@ -132,7 +136,25 @@ public class QueryVisibilityPolicyIT {
         "A soft-deleted parent must still resolve for authorization");
   }
 
-  private void assertMismatchedQueryParentsNotFound(OpenMetadataClient viewer, Table table) {
+  @Test
+  void test_queryVisibility_missingParentRequiresQueryPermission(TestNamespace ns) {
+    Table missingParent = new Table().withId(UUID.randomUUID());
+    ApiException notFound =
+        assertThrows(
+            ApiException.class,
+            () ->
+                SdkClients.adminClient()
+                    .queries()
+                    .list(queriesForParent(missingParent, Entity.TABLE)));
+    assertEquals(404, notFound.getStatusCode());
+    OpenMetadataClient catalogDenied = queryCatalogDeniedViewer(ns);
+    assertThrows(
+        ForbiddenException.class,
+        () -> catalogDenied.queries().list(queriesForParent(missingParent, Entity.TABLE)));
+  }
+
+  private void assertMismatchedQueryParentsRejected(
+      OpenMetadataClient viewer, Table table, int expectedStatus) {
     for (String parentType :
         List.of(
             Entity.DASHBOARD,
@@ -146,7 +168,7 @@ public class QueryVisibilityPolicyIT {
               ApiException.class,
               () -> viewer.queries().list(queriesForParent(table, parentType)),
               "A table ID must not authorize query access as " + parentType);
-      assertEquals(404, exception.getStatusCode());
+      assertEquals(expectedStatus, exception.getStatusCode());
     }
   }
 
