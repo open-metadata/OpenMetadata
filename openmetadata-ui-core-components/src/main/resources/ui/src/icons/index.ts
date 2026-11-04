@@ -462,6 +462,7 @@ export { MetadataButton } from './MetadataButton';
 export { MetadataCompletenessFilled } from './MetadataCompletenessFilled';
 export { MetadataCompleteness } from './MetadataCompleteness';
 export { MetadataService } from './MetadataService';
+export { MetricFilled } from './MetricFilled';
 export { Metric } from './Metric';
 export { Minimize01 } from './Minimize01';
 export { Minimize02 } from './Minimize02';
