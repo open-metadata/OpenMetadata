@@ -153,7 +153,7 @@ final class RdfScaleResources implements AutoCloseable {
         else
           awk '{print "memory " $1}' /sys/fs/cgroup/memory/memory.usage_in_bytes
         fi
-        du -sk /fuseki-data | awk '{printf "disk %.0f\\n", $1*1024}'
+        du -sk /fuseki/databases | awk '{printf "disk %.0f\\n", $1*1024}'
         """);
     if (result.getExitCode() != 0)
       throw new IOException("Fuseki sampling failed: " + result.getStderr());

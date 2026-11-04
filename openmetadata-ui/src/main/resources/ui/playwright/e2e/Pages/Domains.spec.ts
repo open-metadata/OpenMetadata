@@ -48,7 +48,6 @@ import {
   toastNotification,
   uuid,
   visitGlossaryPage,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import { getCustomPropertyEditButton } from '../../utils/customProperty';
 import {
@@ -542,7 +541,6 @@ test.describe('Domains', () => {
     // subdomain delete race fixed in DataProductAndSubdomains.spec.ts.
     const renameButton = page.getByTestId('rename-button-title');
     await expect(renameButton).toBeVisible();
-    await waitForAntdPopupToSettle(page);
     await renameButton.click();
 
     const displayNameInput = page.locator('#displayName');
@@ -786,6 +784,11 @@ test.describe('Domains', () => {
 
       await expect(
         page.getByTestId(user1.responseData.displayName)
+      ).toBeVisible();
+      await expect(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId('inherited-owner-icon')
       ).toBeVisible();
 
       await expect(

@@ -80,7 +80,6 @@ public class Fernet {
     return Arrays.stream(fernetKey.split(KEY_SEPARATOR)).map(Key::new).toList();
   }
 
-  @VisibleForTesting
   public List<Key> getCachedKeys() {
     return cachedKeys;
   }

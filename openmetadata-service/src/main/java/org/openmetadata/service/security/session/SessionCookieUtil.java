@@ -45,7 +45,18 @@ public final class SessionCookieUtil {
       HttpServletRequest request,
       HttpServletResponse response,
       AuthenticationConfiguration authConfig) {
+    // A request that sent no session cookie has nothing to clear, and an expiring Set-Cookie on
+    // its response can arrive after a concurrent login's and delete the session that login set.
+    if (!hasSessionCookie(request)) {
+      return;
+    }
     response.addHeader("Set-Cookie", buildCookie(request, authConfig, "", 0, true));
+  }
+
+  private static boolean hasSessionCookie(HttpServletRequest request) {
+    Cookie[] cookies = request.getCookies();
+    return cookies != null
+        && Arrays.stream(cookies).anyMatch(cookie -> COOKIE_NAME.equals(cookie.getName()));
   }
 
   private static String buildCookie(

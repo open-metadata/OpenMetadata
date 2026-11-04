@@ -49,7 +49,7 @@ describe('dqFilterChip utils', () => {
 
   describe('chipChevronClassName', () => {
     it('should brand the chevron once a value is picked, like FilterSelect does', () => {
-      expect(chipChevronClassName(true)).toContain('tw:text-fg-brand-primary');
+      expect(chipChevronClassName(true)).toContain('tw:text-utility-brand-600');
       expect(chipChevronClassName(true)).not.toContain('tw:text-fg-quaternary');
       expect(chipChevronClassName(false)).toContain('tw:text-fg-quaternary');
     });

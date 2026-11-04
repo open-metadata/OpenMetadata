@@ -54,6 +54,19 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
     );
   };
 
+  // The conversation drawer frames the open thread like the description
+  // drawer does, and only the thread's own controls act. Overflow stays
+  // visible: the comment editor's mention list opens below the frame.
+  if (isThreadPanel) {
+    return (
+      <Card
+        className="tw:mx-4 tw:mb-4 tw:overflow-visible"
+        data-testid="message-container">
+        {renderFeedContent()}
+      </Card>
+    );
+  }
+
   return (
     <Card
       className={classNames(

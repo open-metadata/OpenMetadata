@@ -21,6 +21,7 @@ import {
   deleteAnnouncement,
 } from '../../../../../rest/announcementsAPI';
 import { renderWithQueryClient } from '../../../../../test/unit/test-utils';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import SystemAnnouncementsTable from './SystemAnnouncementsTable';
 
 jest.mock('react-i18next', () => ({
@@ -246,6 +247,67 @@ describe('SystemAnnouncementsTable', () => {
     await waitFor(() =>
       expect(deleteAnnouncement).toHaveBeenCalledWith('a1', true)
     );
+  });
+
+  it('confirms a delete in a popover anchored to the row menu when asked to', async () => {
+    renderWithQueryClient(
+      <SystemAnnouncementsTable
+        deleteConfirmation="popover"
+        list={makeList({ announcements: [makeAnnouncement('a1')], total: 1 })}
+        {...callbacks}
+      />
+    );
+
+    fireEvent.pointerDown(
+      screen.getByTestId('announcement-actions-announcement-a1')
+    );
+    fireEvent.click(screen.getByTestId('announcement-actions-announcement-a1'));
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'label.delete' })
+    );
+
+    expect(
+      await screen.findByTestId('announcement-delete-popover')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('announcement-delete-confirm')).toBeNull();
+    expect(deleteAnnouncement).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('announcement-delete-popover-confirm'));
+
+    await waitFor(() =>
+      expect(deleteAnnouncement).toHaveBeenCalledWith('a1', true)
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId('announcement-delete-popover')).toBeNull()
+    );
+  });
+
+  it('keeps the delete popover open when the delete fails', async () => {
+    (deleteAnnouncement as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    renderWithQueryClient(
+      <SystemAnnouncementsTable
+        deleteConfirmation="popover"
+        list={makeList({ announcements: [makeAnnouncement('a1')], total: 1 })}
+        {...callbacks}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('announcement-actions-announcement-a1'));
+    fireEvent.click(
+      await screen.findByRole('menuitem', { name: 'label.delete' })
+    );
+    fireEvent.click(
+      await screen.findByTestId('announcement-delete-popover-confirm')
+    );
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(
+      screen.getByTestId('announcement-delete-popover')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('announcement-delete-popover-confirm')
+    ).toBeEnabled();
   });
 
   it('pages only when there is more than one page', () => {

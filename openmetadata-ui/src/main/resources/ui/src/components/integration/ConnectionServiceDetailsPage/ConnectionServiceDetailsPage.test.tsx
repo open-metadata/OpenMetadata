@@ -679,8 +679,8 @@ describe('ConnectionServiceDetailsPage', () => {
 
       const labels = tabLabels();
 
-      expect(labels).toContain('label.data-model');
-      expect(labels.indexOf('label.data-model')).toBe(
+      expect(labels).toContain('label.data-model-plural');
+      expect(labels.indexOf('label.data-model-plural')).toBe(
         labels.indexOf('label.connection') - 1
       );
     });
@@ -702,7 +702,7 @@ describe('ConnectionServiceDetailsPage', () => {
       await renderPage();
 
       expect(tabLabels()).not.toEqual(
-        expect.arrayContaining(['label.data-model'])
+        expect.arrayContaining(['label.data-model-plural'])
       );
       expect(tabLabels()).not.toEqual(
         expect.arrayContaining([

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { MembersHeaderPatch } from './Members.types';
 import { UseMembersTeamHeaderParams } from './MembersTeamDetail.types';
@@ -108,6 +109,19 @@ describe('useMembersTeamHeader', () => {
     expect(params.onCancelEditName).toHaveBeenCalled();
   });
 
+  it('places Cancel before Save in the title input', () => {
+    const params = buildParams({ isEditingName: true, editNameValue: 'New' });
+    render(<Harness {...params} />);
+
+    render(<>{lastPatch(params.onSetHeader).titleInput}</>);
+
+    expect(
+      screen
+        .getByTestId('cancel-display-name')
+        .compareDocumentPosition(screen.getByTestId('save-display-name'))
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('offers a join button for a group the user has not joined', () => {
     const params = buildParams({ isCurrentUserMember: false });
     render(<Harness {...params} />);
@@ -171,6 +185,21 @@ describe('useMembersTeamHeader', () => {
     render(<>{lastPatch(params.onSetHeader).actions}</>);
     fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
   };
+
+  it('anchors team confirmations to the menu trigger and opens delete from the menu', () => {
+    const menuTriggerRef = createRef<HTMLButtonElement>();
+    const params = buildParams({ menuTriggerRef });
+    openMenu(params);
+
+    // The open menu hides the rest of the page from assistive tech.
+    expect(menuTriggerRef.current).toBe(
+      screen.getByRole('button', { hidden: true, name: /open menu/i })
+    );
+
+    fireEvent.click(screen.getByTestId('delete-team'));
+
+    expect(params.onDelete).toHaveBeenCalled();
+  });
 
   it('offers export and import on a team the viewer can edit', () => {
     openMenu(buildParams({ isGroupType: false }));

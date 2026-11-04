@@ -20,10 +20,13 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -54,6 +57,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.service.events.ChangeEventMasking;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
@@ -1077,15 +1081,54 @@ public interface AccessControlDAOs {
   }
 
   interface ChangeEventDAO {
-    @SqlQuery(
-        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime DESC LIMIT :limit OFFSET :paginationOffset")
-    List<String> listUnprocessedEvents(
+    /**
+     * One page of the change events after {@code offset}, newest first: at most {@code limit}
+     * events and {@link #MAX_BYTES_PER_READ} bytes of them, and always the first, so a page can
+     * hold fewer events than asked and the next one starts after those it holds.
+     */
+    default List<String> listUnprocessedEvents(long offset, int limit, int paginationOffset) {
+      List<Long> offsets =
+          offsetsWithinBudget(
+              listUnprocessedSizes(offset, limit, paginationOffset), MAX_BYTES_PER_READ);
+      return offsets.isEmpty() ? List.of() : inPageOrder(offsets, listByOffsets(offsets));
+    }
+
+    // An event deleted between the two reads is left out of the page.
+    private static List<String> inPageOrder(List<Long> offsets, List<ChangeEventRecord> rows) {
+      Map<Long, String> jsonByOffset = new HashMap<>();
+      rows.forEach(row -> jsonByOffset.put(row.offset(), row.json()));
+      return offsets.stream().map(jsonByOffset::get).filter(Objects::nonNull).toList();
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, LENGTH(json) AS bytes FROM change_event WHERE `offset` > :offset "
+                + "ORDER BY eventTime DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", octet_length(json::text) AS bytes FROM change_event "
+                + "WHERE \"offset\" > :offset "
+                + "ORDER BY eventTime DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventSizeMapper.class)
+    List<ChangeEventSize> listUnprocessedSizes(
         @Bind("offset") long offset,
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    // The listings below answer each event without the entity it carries: the alert pages read
+    // only the event's own fields, and the entity is as large as the asset that changed.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsById(
         @Bind("id") String id,
@@ -1095,8 +1138,18 @@ public interface AccessControlDAOs {
     @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
     long countFailedEvents(@Bind("id") String id);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE id = :id AND source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE id = :id AND source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsByIdAndSource(
         @Bind("id") String id,
@@ -1104,14 +1157,32 @@ public interface AccessControlDAOs {
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listAllFailedEvents(
         @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, source FROM consumers_dlq "
+                + "WHERE source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json #- '{changeEvent,entity}' AS json, source FROM consumers_dlq "
+                + "WHERE source = :source "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listAllFailedEventsBySource(
         @Bind("source") String source,
@@ -1122,10 +1193,11 @@ public interface AccessControlDAOs {
         value =
             "SELECT json, status, timestamp "
                 + "FROM ( "
-                + "    SELECT json, 'FAILED' AS status, timestamp "
+                + "    SELECT JSON_REMOVE(json, '$.changeEvent.entity') AS json, "
+                + "      'FAILED' AS status, timestamp "
                 + "    FROM consumers_dlq WHERE id = :id "
                 + "    UNION ALL "
-                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    SELECT JSON_REMOVE(json, '$.entity') AS json, 'SUCCESSFUL' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + ") AS combined_events "
                 + "ORDER BY timestamp DESC "
@@ -1135,10 +1207,10 @@ public interface AccessControlDAOs {
         value =
             "SELECT json, status, timestamp "
                 + "FROM ( "
-                + "    SELECT json, 'failed' AS status, timestamp "
+                + "    SELECT json #- '{changeEvent,entity}' AS json, 'failed' AS status, timestamp "
                 + "    FROM consumers_dlq WHERE id = :id "
                 + "    UNION ALL "
-                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    SELECT json - 'entity' AS json, 'successful' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
                 + ") AS combined_events "
                 + "ORDER BY timestamp DESC "
@@ -1157,14 +1229,31 @@ public interface AccessControlDAOs {
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
     int recordExists(@Bind("id") String id);
 
+    /**
+     * Every change event is written through here, so none is stored with a masked field
+     * (ADR:2026-10-26-masked-fields-stay-out-of-change-events-and-version-history).
+     */
+    default void insert(String json) {
+      insertMaskedRow(ChangeEventMasking.masked(json));
+    }
+
+    default void insertBatch(List<String> jsons) {
+      if (nullOrEmpty(jsons)) {
+        return;
+      }
+      insertMaskedRows(jsons.stream().map(ChangeEventMasking::masked).toList());
+    }
+
+    /** Only for {@link #insert}: the event must already be masked. */
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@BindJson("json") String json);
+    void insertMaskedRow(@BindJson("json") String json);
 
+    /** Only for {@link #insertBatch}: the events must already be masked. */
     @Transaction
     @ConnectionAwareSqlBatch(
         value = "INSERT INTO change_event (json) VALUES (:json)",
@@ -1172,14 +1261,7 @@ public interface AccessControlDAOs {
     @ConnectionAwareSqlBatch(
         value = "INSERT INTO change_event (json) VALUES (CAST(:json AS jsonb))",
         connectionType = POSTGRES)
-    void insertBatchRows(@BindJson("json") List<String> jsons);
-
-    default void insertBatch(List<String> jsons) {
-      if (nullOrEmpty(jsons)) {
-        return;
-      }
-      insertBatchRows(jsons);
-    }
+    void insertMaskedRows(@BindJson("json") List<String> jsons);
 
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
@@ -1271,18 +1353,81 @@ public interface AccessControlDAOs {
     /** Record holding change event offset and JSON for cursor-based pagination. */
     record ChangeEventRecord(long offset, String json) {}
 
-    /** Returns change events with their offset values for accurate cursor tracking. */
+    /** How many bytes a change event's stored JSON takes, read without loading the JSON. */
+    record ChangeEventSize(long offset, long bytes) {}
+
+    /** The most change events one read returns, whatever the caller asks for. */
+    int MAX_ROWS_PER_READ = 1000;
+
+    /** The most bytes of change event JSON one read loads, except that it always loads one. */
+    long MAX_BYTES_PER_READ = 8L * 1024 * 1024;
+
+    /**
+     * Returns the change events after {@code afterOffset} in offset order, with their offsets for
+     * cursor tracking. A read stops at {@link #MAX_ROWS_PER_READ} events and at {@link
+     * #MAX_BYTES_PER_READ} bytes, because each event embeds a whole entity: the events it leaves
+     * out are the first ones the next read returns, so a short read does not mean the caller has
+     * caught up (ADR:2026-10-26-alerting-bounds-the-work-of-each-request-and-tick).
+     */
+    default List<ChangeEventRecord> listWithOffset(long limit, long afterOffset) {
+      int rows = Math.clamp(limit, 1, MAX_ROWS_PER_READ);
+      List<Long> offsets =
+          offsetsWithinBudget(listSizesAfter(rows, afterOffset), MAX_BYTES_PER_READ);
+      return offsets.isEmpty() ? List.of() : listByOffsets(offsets);
+    }
+
+    /**
+     * The offsets of the leading events whose sizes add up to at most {@code maxBytes}, and always
+     * the first one: a prefix, so the events left out are the next ones in order.
+     */
+    static List<Long> offsetsWithinBudget(List<ChangeEventSize> sizes, long maxBytes) {
+      List<Long> offsets = new ArrayList<>();
+      long bytes = 0;
+      for (ChangeEventSize size : sizes) {
+        bytes += size.bytes();
+        if (!offsets.isEmpty() && bytes > maxBytes) {
+          break;
+        }
+        offsets.add(size.offset());
+      }
+      return List.copyOf(offsets);
+    }
+
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT `offset`, json FROM change_event WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+            "SELECT `offset`, LENGTH(json) AS bytes FROM change_event "
+                + "WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT \"offset\", json FROM change_event WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+            "SELECT \"offset\", octet_length(json::text) AS bytes FROM change_event "
+                + "WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventSizeMapper.class)
+    List<ChangeEventSize> listSizesAfter(
+        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+
+    // An event deleted between the two reads is missing here, which the reader treats as a gap.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, json FROM change_event WHERE `offset` IN (<offsets>) "
+                + "ORDER BY `offset` ASC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", json FROM change_event WHERE \"offset\" IN (<offsets>) "
+                + "ORDER BY \"offset\" ASC",
         connectionType = POSTGRES)
     @RegisterRowMapper(ChangeEventRecordMapper.class)
-    List<ChangeEventRecord> listWithOffset(
-        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+    List<ChangeEventRecord> listByOffsets(@BindList("offsets") List<Long> offsets);
+  }
+
+  class ChangeEventSizeMapper implements RowMapper<ChangeEventDAO.ChangeEventSize> {
+    @Override
+    public ChangeEventDAO.ChangeEventSize map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new ChangeEventDAO.ChangeEventSize(rs.getLong("offset"), rs.getLong("bytes"));
+    }
   }
 
   class ChangeEventRecordMapper implements RowMapper<ChangeEventDAO.ChangeEventRecord> {

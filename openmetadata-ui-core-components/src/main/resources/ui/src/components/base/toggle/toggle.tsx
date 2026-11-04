@@ -128,7 +128,8 @@ export const Toggle = ({
       className={(renderProps) =>
         cx(
           // max-w-full lets a long hint wrap inside its container instead of overflowing it.
-          'tw:flex tw:w-max tw:max-w-full tw:items-start',
+          // relative contains react-aria's absolutely positioned hidden input.
+          'tw:relative tw:flex tw:w-max tw:max-w-full tw:items-start',
           renderProps.isDisabled && 'tw:cursor-not-allowed',
           sizes[size].root,
           typeof className === 'function' ? className(renderProps) : className

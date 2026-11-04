@@ -199,7 +199,7 @@ const mockProps1 = {
   appData: mockApplicationData,
   maxRecords: 10,
   showPagination: true,
-  jsonSchema: {},
+  jsonSchema: { properties: { batchSize: { type: 'number' as const } } },
 };
 
 const mockProps2 = {
@@ -454,6 +454,33 @@ describe('AppRunsHistory', () => {
       expect.objectContaining({ readonly: true, hideFooter: true }),
       expect.anything()
     );
+  });
+
+  it('shows an empty state instead of a blank form when the schema has no properties', async () => {
+    mockGetApplicationRuns.mockReturnValueOnce({
+      data: [],
+      paging: {
+        offset: 0,
+        total: 0,
+      },
+    });
+
+    render(
+      <AppRunsHistory
+        {...mockProps1}
+        jsonSchema={{ description: 'Nothing to configure' }}
+      />
+    );
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByTestId('app-historical-config'));
+
+    expect(screen.getByTestId('app-run-config-empty')).toHaveTextContent(
+      'label.no-entity'
+    );
+    // The schema's description is untranslated backend text, so it is not shown.
+    expect(screen.queryByText('Nothing to configure')).not.toBeInTheDocument();
+    expect(FormBuilderV1).not.toHaveBeenCalled();
   });
 
   it('should disable config when schema is unavailable', async () => {

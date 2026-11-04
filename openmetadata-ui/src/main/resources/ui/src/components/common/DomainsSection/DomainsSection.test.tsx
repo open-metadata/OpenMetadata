@@ -17,6 +17,12 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainsSection from './DomainsSection';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 // i18n mock
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -38,24 +44,6 @@ jest.mock('../Loader/Loader', () => ({
   )),
 }));
 // Partial antd mock for Typography.Text
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
-
 // SVG icon mocks
 jest.mock('../../../assets/svg/edit.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
