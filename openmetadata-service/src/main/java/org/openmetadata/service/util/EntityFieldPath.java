@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import org.openmetadata.service.Entity;
 
 /**
  * The entity property a task changes: the entity's own description or tags, or those of one of its
@@ -55,19 +56,26 @@ public record EntityFieldPath(String container, List<String> names, FieldPropert
     return field.length == 0 ? entityLevel(property) : fieldPath(path, entityType, field, property);
   }
 
+  /**
+   * The key of the field named {@code name} inside {@code parentKey}, a container or the key of the
+   * parent field. It is the one place a field's name enters a key: the entity updaters build their
+   * change descriptions with it, so a task's path is the key its approval records.
+   */
+  public static String childKey(String parentKey, String name) {
+    return parentKey + Entity.SEPARATOR + FullyQualifiedName.quoteName(name);
+  }
+
   public boolean isEntityLevel() {
     return container.isEmpty();
   }
 
   @Override
   public String toString() {
-    return isEntityLevel()
-        ? property.value()
-        : String.join(
-            ".",
-            container,
-            FullyQualifiedName.build(names.toArray(String[]::new)),
-            property.value());
+    String key = container;
+    for (String name : names) {
+      key = childKey(key, name);
+    }
+    return isEntityLevel() ? property.value() : key + Entity.SEPARATOR + property.value();
   }
 
   private static EntityFieldPath fieldPath(

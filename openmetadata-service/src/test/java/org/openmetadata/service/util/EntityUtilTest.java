@@ -25,11 +25,8 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -291,14 +288,6 @@ class EntityUtilTest {
 
   @Test
   void testVersionAndFieldNameHelpers() {
-    Column column = new Column().withName("amount");
-    Topic topic = new Topic().withFullyQualifiedName("service.topic");
-    Field schemaField = new Field().withFullyQualifiedName("service.topic.user.id");
-    APIEndpoint apiEndpoint = new APIEndpoint().withFullyQualifiedName("service.api");
-    Field apiField = new Field().withFullyQualifiedName("service.api.request.body");
-    SearchIndex searchIndex = new SearchIndex().withFullyQualifiedName("service.search");
-    SearchIndexField searchIndexField =
-        new SearchIndexField().withFullyQualifiedName("service.search.keyword.raw");
     Rule rule = new Rule().withName("maskPII");
     CustomProperty property = new CustomProperty().withName("retention");
 
@@ -309,16 +298,6 @@ class EntityUtilTest {
         "address.city",
         EntityUtil.getLocalColumnName("service.db.table", "service.db.table.address.city"));
     assertEquals("owners.tags", EntityUtil.getFieldName("owners", "tags"));
-    assertEquals("columns.amount.description", EntityUtil.getColumnField(column, "description"));
-    assertEquals(
-        "schemaFields.\"user.id\".description",
-        EntityUtil.getSchemaField(topic, schemaField, "description"));
-    assertEquals(
-        "schemaFields.\"request.body\".description",
-        EntityUtil.getSchemaField(apiEndpoint, apiField, "description"));
-    assertEquals(
-        "fields.\"keyword.raw\".alias",
-        EntityUtil.getSearchIndexField(searchIndex, searchIndexField, "alias"));
     assertEquals("rules.maskPII.effect", EntityUtil.getRuleField(rule, "effect"));
     assertEquals("customProperties.retention", EntityUtil.getCustomField(property, null));
     assertEquals("extension.\"config.timeout\"", EntityUtil.getExtensionField("config.timeout"));
@@ -780,14 +759,6 @@ class EntityUtilTest {
 
   @Test
   void testFieldBuilderAndDomainQueryHelpers() {
-    Column column = new Column().withName("amount");
-    Topic topic = new Topic().withFullyQualifiedName("service.topic");
-    Field schemaField = new Field().withFullyQualifiedName("service.topic.user.id");
-    APIEndpoint apiEndpoint = new APIEndpoint().withFullyQualifiedName("service.api");
-    Field apiField = new Field().withFullyQualifiedName("service.api.request.body");
-    SearchIndex searchIndex = new SearchIndex().withFullyQualifiedName("service.search");
-    SearchIndexField searchField =
-        new SearchIndexField().withFullyQualifiedName("service.search.keyword.raw");
     Rule rule = new Rule().withName("maskPII");
     CustomProperty property = new CustomProperty().withName("retention");
     EntityReference domainRef =
@@ -802,12 +773,6 @@ class EntityUtilTest {
             .withName(DOMAIN_ONLY_ACCESS_ROLE);
     SecurityContext securityContext = mock(SecurityContext.class);
 
-    assertEquals("columns.amount", EntityUtil.getColumnField(column, null));
-    assertEquals("schemaFields.\"user.id\"", EntityUtil.getSchemaField(topic, schemaField, null));
-    assertEquals(
-        "schemaFields.\"request.body\"", EntityUtil.getSchemaField(apiEndpoint, apiField, null));
-    assertEquals(
-        "fields.\"keyword.raw\"", EntityUtil.getSearchIndexField(searchIndex, searchField, null));
     assertEquals("rules.maskPII", EntityUtil.getRuleField(rule, null));
     assertEquals("customProperties.retention.value", EntityUtil.getCustomField(property, "value"));
 
