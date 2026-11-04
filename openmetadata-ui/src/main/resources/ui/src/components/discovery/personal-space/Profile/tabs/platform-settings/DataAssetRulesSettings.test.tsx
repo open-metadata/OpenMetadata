@@ -14,7 +14,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
   getSettingsConfigFromConfigType,
-  toggleEntityRuleEnabled,
+  patchEntityRule,
+  updateSettingsConfig,
 } from '../../../../../../rest/settingConfigAPI';
 import DataAssetRulesSettings from './DataAssetRulesSettings';
 
@@ -24,7 +25,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn(),
-  toggleEntityRuleEnabled: jest.fn(),
+  patchEntityRule: jest.fn(),
   updateSettingsConfig: jest.fn(),
 }));
 
@@ -63,7 +64,7 @@ const mockRules = (rules: unknown[]) =>
 describe('Data Asset Rules settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (toggleEntityRuleEnabled as jest.Mock).mockResolvedValue({ data: {} });
+    (patchEntityRule as jest.Mock).mockResolvedValue({ data: {} });
   });
 
   it('lists the rules with their enabled state', async () => {
@@ -90,10 +91,10 @@ describe('Data Asset Rules settings', () => {
       fireEvent.click(toggle.querySelector('input') as Element);
     });
 
-    expect(toggleEntityRuleEnabled).toHaveBeenCalledWith(
-      'Single Glossary Term',
-      true
-    );
+    expect(patchEntityRule).toHaveBeenCalledWith('Single Glossary Term', [
+      { op: 'replace', path: '/enabled', value: true },
+    ]);
+    expect(updateSettingsConfig).not.toHaveBeenCalled();
   });
 
   it('shows an empty state without an Add action, as adding is not supported yet', async () => {

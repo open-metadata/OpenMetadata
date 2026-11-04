@@ -16,10 +16,7 @@ import {
 } from '../generated/api/configuration/appConfiguration';
 import { SettingType } from '../generated/settings/settings';
 import axiosClient from './axiosClient';
-import {
-  patchAppConfiguration,
-  toggleEntityRuleEnabled,
-} from './settingConfigAPI';
+import { patchAppConfiguration, patchEntityRule } from './settingConfigAPI';
 
 jest.mock('./axiosClient');
 
@@ -66,34 +63,25 @@ describe('patchAppConfiguration', () => {
   });
 });
 
-describe('toggleEntityRuleEnabled', () => {
+describe('patchEntityRule', () => {
   const mockClient = axiosClient as jest.Mocked<typeof axiosClient>;
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('PUTs only the rule name and new enabled state, not the whole list', async () => {
-    mockClient.put.mockResolvedValue({ data: {} });
+  it('PATCHes the named rule with operations relative to that rule, not the whole list', async () => {
+    mockClient.patch.mockResolvedValue({ data: {} });
 
-    await toggleEntityRuleEnabled('Single Domain', false);
+    await patchEntityRule('Multiple Domains are not allowed', [
+      { op: 'replace', path: '/enabled', value: false },
+    ]);
 
-    expect(mockClient.put).toHaveBeenCalledWith(
-      '/system/settings/entityRulesSettings/rules/Single%20Domain/enabled',
-      false,
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-  });
-
-  it('URL-encodes rule names with special characters', async () => {
-    mockClient.put.mockResolvedValue({ data: {} });
-
-    await toggleEntityRuleEnabled('Multiple Domains are not allowed', true);
-
-    expect(mockClient.put).toHaveBeenCalledWith(
-      '/system/settings/entityRulesSettings/rules/Multiple%20Domains%20are%20not%20allowed/enabled',
-      true,
-      { headers: { 'Content-Type': 'application/json' } }
+    expect(mockClient.put).not.toHaveBeenCalled();
+    expect(mockClient.patch).toHaveBeenCalledWith(
+      '/system/settings/entityRulesSettings/rules/Multiple%20Domains%20are%20not%20allowed',
+      [{ op: 'replace', path: '/enabled', value: false }],
+      { headers: { 'Content-Type': 'application/json-patch+json' } }
     );
   });
 });

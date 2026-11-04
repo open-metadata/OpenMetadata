@@ -19,6 +19,7 @@ import com.unboundid.util.ssl.SSLUtil;
 import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -57,7 +58,6 @@ import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -72,6 +72,7 @@ import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -83,7 +84,6 @@ import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
-import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -551,47 +551,52 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   /**
-   * Toggles a single semantics rule's {@code enabled} flag by name, using compare-and-set so a
-   * stale writer cannot silently overwrite rules added or edited by another writer since this
-   * caller last read the setting.
+   * Patches one item of a list inside a setting, found by its {@code name}, so a caller changes
+   * that item without sending (and overwriting) the rest of the list. The patch paths are relative
+   * to the item. The item's position and the compare-and-set expectation come from one read, so a
+   * concurrent change to the setting fails with {@link PreconditionFailedException} (HTTP 412).
    *
-   * <p>The caller does not send the full rule list — only the rule name and the new enabled
-   * state — so rules the caller never saw are preserved. If the stored {@code ENTITY_RULES_SETTINGS}
-   * row changed between the read and the write inside this method, the CAS update affects zero
-   * rows and a {@link PreconditionFailedException} (HTTP 412) is thrown; the caller should read
-   * the setting again and retry.
-   *
-   * @throws EntityNotFoundException when the setting or the named rule does not exist
-   * @throws PreconditionFailedException when the stored setting changed since it was read
+   * @throws EntityNotFoundException when the setting or the named item does not exist
+   * @throws BadRequestException when the patch is invalid, renames, adds or removes items, or
+   *     leaves the setting invalid
    */
-  public Response toggleEntityRuleEnabled(final String ruleName, final boolean enabled) {
-    final String expectedJson =
-        dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
+  public Response patchSettingItem(
+      final SettingsType type,
+      final String listPointer,
+      final String itemName,
+      final JsonPatch itemPatch) {
+    final String expectedJson = dao.getConfigJsonWithKey(type.value());
     if (expectedJson == null) {
-      throw EntityNotFoundException.byName(SettingsType.ENTITY_RULES_SETTINGS.value());
+      throw EntityNotFoundException.byName(type.value());
     }
-    final EntityRulesSettings settings =
-        JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
-    final SemanticsRule rule = findRuleByName(settings, ruleName);
-    rule.setEnabled(enabled);
-    final Settings updated =
-        new Settings().withConfigType(SettingsType.ENTITY_RULES_SETTINGS).withConfigValue(settings);
+    final SystemSettingItemPatch item =
+        SystemSettingItemPatch.locate(JsonUtils.readJson(expectedJson), listPointer, itemName);
+    final JsonValue patched = applyItemPatch(expectedJson, item.rebase(itemPatch));
+    item.assertItemKept(patched);
+    final Settings updated = readPatchedSettings(type, patched.toString());
     replaceSettingIfCurrent(updated, expectedJson);
     prepareFetchedSettings(updated);
     return (new RestUtil.PutResponse<>(Response.Status.OK, updated, ENTITY_UPDATED)).toResponse();
   }
 
-  private SemanticsRule findRuleByName(final EntityRulesSettings settings, final String ruleName) {
-    final List<SemanticsRule> rules = settings.getEntitySemantics();
-    if (nullOrEmpty(rules)) {
-      throw EntityNotFoundException.byName(ruleName);
+  private static JsonValue applyItemPatch(final String storedJson, final JsonPatch patch) {
+    try {
+      return JsonUtils.applyPatch(JsonUtils.readValue(storedJson, Object.class), patch);
+    } catch (JsonException | IllegalArgumentException exception) {
+      throw new BadRequestException("Invalid JSON Patch: " + exception.getMessage(), exception);
     }
-    for (final SemanticsRule rule : rules) {
-      if (ruleName.equals(rule.getName())) {
-        return rule;
-      }
+  }
+
+  private static Settings readPatchedSettings(final SettingsType type, final String patchedJson) {
+    try {
+      final Settings settings = CollectionDAO.SettingsRowMapper.getSettings(type, patchedJson);
+      JsonUtils.validateJsonSchema(settings.getConfigValue(), settings.getConfigValue().getClass());
+      return settings;
+    } catch (JsonParsingException | ConstraintViolationException exception) {
+      throw new BadRequestException(
+          String.format("The patched %s is invalid: %s", type.value(), exception.getMessage()),
+          exception);
     }
-    throw EntityNotFoundException.byName(ruleName);
   }
 
   private void preserveEmailSettings(Settings updated, Settings stored) {

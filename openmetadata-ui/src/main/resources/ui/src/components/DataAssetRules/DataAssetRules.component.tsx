@@ -33,14 +33,10 @@ import { useForm, UseFormReturn } from 'react-hook-form';
 import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
-import {
-  SemanticsRule,
-  Settings,
-  SettingType,
-} from '../../generated/settings/settings';
+import { SemanticsRule, SettingType } from '../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
-  toggleEntityRuleEnabled,
+  patchEntityRule,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
@@ -82,17 +78,11 @@ export const useSemanticsRulesState = () => {
     fetchSemanticsRules();
   }, [fetchSemanticsRules]);
 
-  const updateSemanticsRules = useCallback(
-    async (configValues: SemanticsRule[]) => {
+  const saveSemanticsRules = useCallback(
+    async (save: () => Promise<unknown>) => {
       try {
         setIsSaveLoading(true);
-        const settingsConfigData: Settings = {
-          config_type: SettingType.EntityRulesSettings,
-          config_value: {
-            entitySemantics: configValues,
-          },
-        };
-        await updateSettingsConfig(settingsConfigData);
+        await save();
         fetchSemanticsRules();
 
         showSuccessToast(
@@ -118,34 +108,25 @@ export const useSemanticsRulesState = () => {
     [fetchSemanticsRules]
   );
 
+  const updateSemanticsRules = useCallback(
+    (configValues: SemanticsRule[]) =>
+      saveSemanticsRules(() =>
+        updateSettingsConfig({
+          config_type: SettingType.EntityRulesSettings,
+          config_value: { entitySemantics: configValues },
+        })
+      ),
+    [saveSemanticsRules]
+  );
+
   const toggleRuleEnabled = useCallback(
-    async (ruleName: string, enabled: boolean) => {
-      try {
-        setIsSaveLoading(true);
-        await toggleEntityRuleEnabled(ruleName, enabled);
-        fetchSemanticsRules();
-
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: t('label.data-asset-rules'),
-          })
-        );
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.data-asset-rules').toLocaleLowerCase(
-              i18n.language
-            ),
-          })
-        );
-
-        throw error;
-      } finally {
-        setIsSaveLoading(false);
-      }
-    },
-    [fetchSemanticsRules]
+    (ruleName: string, enabled: boolean) =>
+      saveSemanticsRules(() =>
+        patchEntityRule(ruleName, [
+          { op: 'replace', path: '/enabled', value: enabled },
+        ])
+      ),
+    [saveSemanticsRules]
   );
 
   return {

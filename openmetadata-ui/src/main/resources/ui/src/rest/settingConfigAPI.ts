@@ -29,6 +29,8 @@ import {
 } from '../generated/system/settingsSourceResponse';
 import axiosClient from './axiosClient';
 
+const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
+
 export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
 export { RelationCardinality };
 
@@ -70,26 +72,26 @@ export const updateSettingsConfig = async (payload: Settings) => {
 };
 
 /**
- * Toggles a single Data Asset Rule's {@code enabled} flag by name on the server.
- *
- * <p>Unlike {@link updateSettingsConfig}, which replaces the entire rule list and can silently
- * delete rules added by another writer, this endpoint sends only the rule name and the new
- * enabled state. The server reads the current stored setting, flips the one rule, and writes
- * it back with compare-and-set — so a stale writer gets 412 instead of overwriting newer rules.
+ * Patches one Data Asset Rule, found by name, with operations relative to that rule
+ * (`/enabled`, not `/entitySemantics/2/enabled`). Unlike {@link updateSettingsConfig}, which
+ * replaces the whole rule list and can drop rules another writer added, this sends only the change.
  */
-export const toggleEntityRuleEnabled = async (
+export const patchEntityRule = async (
   ruleName: string,
-  enabled: boolean
-): Promise<AxiosResponse<Settings>> => {
-  const response = await axiosClient.put<Settings>(
+  operations: Operation[]
+) => {
+  const response = await axiosClient.patch<
+    Operation[],
+    AxiosResponse<Settings>
+  >(
     `/system/settings/entityRulesSettings/rules/${encodeURIComponent(
       ruleName
-    )}/enabled`,
-    enabled,
-    { headers: { 'Content-Type': 'application/json' } }
+    )}`,
+    operations,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
   );
 
-  return response;
+  return response.data;
 };
 
 /**
@@ -104,7 +106,7 @@ export const patchSettingsConfig = async (
     Operation[],
     AxiosResponse<Settings>
   >(`/system/settings/${configType}`, patches, {
-    headers: { 'Content-Type': 'application/json-patch+json' },
+    headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE },
   });
 
   return response.data;
@@ -208,7 +210,7 @@ export const patchAppConfiguration = async (
     ops,
     {
       headers: {
-        'Content-Type': 'application/json-patch+json',
+        'Content-Type': JSON_PATCH_CONTENT_TYPE,
       },
     }
   );
