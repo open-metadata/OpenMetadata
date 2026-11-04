@@ -62,7 +62,6 @@ import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -1289,10 +1288,9 @@ public class TaskRepository extends EntityRepository<Task> {
         new ResourceContext<>(about.getType(), about.getId(), null);
 
     Set<MetadataOperation> operations = new LinkedHashSet<>();
-    MetadataOperation requestedOperation = getOperationForTask(task);
     MetadataOperation taskOperation =
         TaskTargetOperations.forTarget(
-            about, requestedOperation, securityContext.getUserPrincipal().getName());
+            about, getOperationForTask(task), securityContext.getUserPrincipal().getName());
     if (taskOperation != null) {
       operations.add(taskOperation);
     }
@@ -1300,15 +1298,6 @@ public class TaskRepository extends EntityRepository<Task> {
     for (MetadataOperation operation : operations) {
       authorizeOperationOrEditAll(
           authorizer, securityContext, about.getType(), operation, resourceContext);
-    }
-    if (requestedOperation == MetadataOperation.EDIT_OWNERS
-        && ResourceRegistry.ownersRequireEditAll(about.getType())) {
-      // These owners need EditAll, and a rule on EditOwners still applies to them, as on a PATCH
-      // (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all).
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(about.getType(), MetadataOperation.EDIT_OWNERS),
-          resourceContext);
     }
   }
 

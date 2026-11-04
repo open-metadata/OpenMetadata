@@ -136,7 +136,6 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
-    resourcePermissionMap.values().forEach(PolicyEvaluator::ownerEditsNeedEditAll);
     return new ArrayList<>(resourcePermissionMap.values());
   }
 
@@ -155,7 +154,6 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
-    resourcePermissionMap.values().forEach(PolicyEvaluator::ownerEditsNeedEditAll);
     return new ArrayList<>(resourcePermissionMap.values());
   }
 
@@ -179,7 +177,6 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourceType, resourcePermission, policyContext);
       }
     }
-    ownerEditsNeedEditAll(resourcePermission);
     return resourcePermission;
   }
 
@@ -203,40 +200,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(subjectContext, resourceContext, resourcePermission, policyContext);
       }
     }
-    ownerEditsNeedEditAll(resourcePermission);
     return resourcePermission;
-  }
-
-  /**
-   * Setting the owners of a configuration entity needs EditAll as well as EditOwners
-   * (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all), so EditOwners is reported as
-   * allowed only as far as EditAll is.
-   */
-  static void ownerEditsNeedEditAll(ResourcePermission resourcePermission) {
-    if (!ResourceRegistry.ownersRequireEditAll(resourcePermission.getResource())) {
-      return;
-    }
-    Permission editAll = permissionFor(resourcePermission, MetadataOperation.EDIT_ALL);
-    Permission editOwners = permissionFor(resourcePermission, MetadataOperation.EDIT_OWNERS);
-    if (editAll == null
-        || editOwners == null
-        || editAll.getAccess() == Access.ALLOW
-        || editOwners.getAccess() == Access.DENY) {
-      return;
-    }
-    editOwners
-        .withAccess(editAll.getAccess())
-        .withRule(editAll.getRule())
-        .withPolicy(editAll.getPolicy())
-        .withRole(editAll.getRole());
-  }
-
-  private static Permission permissionFor(
-      ResourcePermission resourcePermission, MetadataOperation operation) {
-    return resourcePermission.getPermissions().stream()
-        .filter(permission -> permission.getOperation() == operation)
-        .findFirst()
-        .orElse(null);
   }
 
   /** Get list of resources with all their permissions set to given Access */

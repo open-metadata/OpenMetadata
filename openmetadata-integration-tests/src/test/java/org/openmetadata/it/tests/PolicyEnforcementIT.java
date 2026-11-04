@@ -33,43 +33,13 @@ import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.service.Entity;
 
 /**
- * Which policies apply to a request: who may set owners on configuration entities, whether a
- * disabled policy still counts, what an owning team's policies give to outsiders, and who counts
- * as a reviewer. Every user inherits DataConsumer, which grants EditDescription but not
+ * Which policies apply to a request: whether a disabled policy still counts, what an owning team's
+ * policies give to outsiders, and who counts as a reviewer. Every user inherits DataConsumer, which grants EditDescription but not
  * EditDisplayName, so display-name edits are the probe here.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class PolicyEnforcementIT {
-
-  @Test
-  void ownersOfConfigurationEntitiesCannotBeClaimedThroughTheNoOwnerRule(TestNamespace ns) {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Policy policy =
-        admin
-            .policies()
-            .create(
-                new CreatePolicy()
-                    .withName(ns.prefix("ownerlessPolicy"))
-                    .withDescription("Policy created without owners")
-                    .withRules(List.of(allowRule("viewRule", MetadataOperation.VIEW_ALL))));
-    Team team =
-        admin
-            .teams()
-            .create(
-                new CreateTeam()
-                    .withName(ns.prefix("ownerlessTeam"))
-                    .withDescription("Team created without owners")
-                    .withTeamType(CreateTeam.TeamType.GROUP));
-    Glossary glossary = createGlossary(ns, "ownerlessGlossary", null, null);
-    User user = createUser(ns, "claimer", null, null);
-    OpenMetadataClient asUser = clientFor(user);
-    JsonNode claim = claimOwnership(user);
-
-    assertThrows(ForbiddenException.class, () -> asUser.policies().patch(policy.getId(), claim));
-    assertThrows(ForbiddenException.class, () -> asUser.teams().patch(team.getId(), claim));
-    assertDoesNotThrow(() -> asUser.glossaries().patch(glossary.getId(), claim));
-  }
 
   @Test
   void aDisabledPolicyGrantsNothing(TestNamespace ns) {
@@ -217,18 +187,6 @@ public class PolicyEnforcementIT {
 
   private static OpenMetadataClient clientFor(User user) {
     return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
-  }
-
-  private static JsonNode claimOwnership(User user) {
-    return JsonUtils.valueToTree(
-        List.of(
-            Map.of(
-                "op",
-                "add",
-                "path",
-                "/owners",
-                "value",
-                List.of(Map.of("id", user.getId().toString(), "type", Entity.USER)))));
   }
 
   private static JsonNode renameTo(String displayName) {

@@ -249,8 +249,7 @@ const checkElementVisibility = async (
 export const testCommonOperations = async (
   testUserPage: Page,
   entity: EntityClass,
-  effect: 'allow' | 'deny',
-  options: { ownerEditNeedsEditAll?: boolean } = {}
+  effect: 'allow' | 'deny'
 ) => {
   // Navigate to entity page
   await redirectToHomePage(testUserPage);
@@ -275,15 +274,7 @@ export const testCommonOperations = async (
   ).toBeVisible();
 
   for (const config of testIdsConfigs) {
-    // The organization policy gives an entity's owner every operation on it, so owning a
-    // configuration entity, such as a service, means controlling its configuration. Setting
-    // its owners therefore needs EditAll as well as EditOwners
-    // (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all).
-    const configEffect =
-      config.testId === 'edit-owner' && options.ownerEditNeedsEditAll
-        ? 'deny'
-        : effect;
-    await checkElementVisibility(testUserPage, config, configEffect);
+    await checkElementVisibility(testUserPage, config, effect);
   }
 
   if (effect === 'deny') {
@@ -607,10 +598,9 @@ export const testMlModelSpecificOperations = async (
 export const runCommonPermissionTests = async (
   testUserPage: Page,
   entity: EntityClass,
-  effect: 'allow' | 'deny',
-  options: { ownerEditNeedsEditAll?: boolean } = {}
+  effect: 'allow' | 'deny'
 ) => {
-  await testCommonOperations(testUserPage, entity, effect, options);
+  await testCommonOperations(testUserPage, entity, effect);
 };
 
 export const runEntitySpecificPermissionTests = async (

@@ -68,11 +68,9 @@ public class JsonPatchUtils {
     Class<?> entityClass =
         originalEntity != null ? originalEntity.getClass() : entityClass(resourceType);
     boolean tagsAffected = false;
-    boolean ownersAffected = false;
 
     for (JsonValue jsonValue : jsonPatch.toJsonArray()) {
       for (String location : touchedLocations(jsonValue)) {
-        ownersAffected |= isOwnersLocation(location);
         MetadataOperation metadataOperation =
             getMetadataOperation(location, resourceType, entityClass);
         if (metadataOperation.equals(MetadataOperation.EDIT_TAGS)) {
@@ -88,11 +86,6 @@ public class JsonPatchUtils {
       // display names. The label operations below are still added, so a deny conditioned on
       // tags applies whatever else the patch touches.
       uniqueOperations.retainAll(Set.of(MetadataOperation.EDIT_ALL));
-    }
-    if (ownersAffected && ResourceRegistry.ownersRequireEditAll(resourceType)) {
-      // Setting these owners needs EditAll, and a rule on EditOwners still applies to it
-      // (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all).
-      uniqueOperations.addAll(Set.of(MetadataOperation.EDIT_ALL, MetadataOperation.EDIT_OWNERS));
     }
     if (tagsAffected && originalEntity == null) {
       // Without the entity there is no way to tell which labels change.
@@ -326,11 +319,6 @@ public class JsonPatchUtils {
     } catch (RuntimeException e) {
       return null;
     }
-  }
-
-  private static boolean isOwnersLocation(String location) {
-    List<String> segments = pointerSegments(location);
-    return !segments.isEmpty() && Entity.FIELD_OWNERS.equals(segments.getFirst());
   }
 
   // Without a type to walk, the first mapped field name decides.

@@ -45,34 +45,9 @@ public class ResourceRegistry {
               MetadataOperation.CREATE_TASK,
               MetadataOperation.EDIT_TASK));
 
-  // The owner of these types administers configuration (a policy's rules, a team's default roles,
-  // a service's connection, the SQL a test definition runs on it), and OrganizationPolicy gives
-  // every user EditOwners on an ownerless entity and All to its owner. So setting their owners
-  // needs EditAll, not EditOwners (ADR:2026-11-03-owners-of-configuration-entities-need-edit-all).
-  private static final Set<String> CONFIGURATION_TYPES =
-      Set.of(
-          Entity.POLICY,
-          Entity.TEAM,
-          Entity.APPLICATION,
-          Entity.APP_MARKET_PLACE_DEF,
-          Entity.WORKFLOW,
-          Entity.WORKFLOW_DEFINITION,
-          Entity.EVENT_SUBSCRIPTION,
-          Entity.INGESTION_PIPELINE,
-          Entity.TEST_CONNECTION_DEFINITION,
-          Entity.TEST_DEFINITION,
-          Entity.CLASSIFICATION,
-          Entity.AI_GOVERNANCE_POLICY,
-          Entity.AI_GOVERNANCE_FRAMEWORK,
-          Entity.AI_FRAMEWORK_CONTROL);
-
-  private static final Set<String> OWNERS_REQUIRE_EDIT_ALL = ConcurrentHashMap.newKeySet();
-
   static {
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
     mapFieldOperation(MetadataOperation.EDIT_OWNERS, Entity.FIELD_OWNERS);
-    CONFIGURATION_TYPES.forEach(ResourceRegistry::registerOwnersRequireEditAll);
-    Entity.getServiceEntityTypes().forEach(ResourceRegistry::registerOwnersRequireEditAll);
     mapFieldOperation(MetadataOperation.EDIT_REVIEWERS, Entity.FIELD_REVIEWERS);
     mapFieldOperation(MetadataOperation.VIEW_CUSTOM_FIELDS, "extension");
     mapFieldOperation(MetadataOperation.EDIT_CUSTOM_FIELDS, "extension");
@@ -207,19 +182,6 @@ public class ResourceRegistry {
     ENTITY_FIELD_TO_EDIT_OPERATION_MAP
         .computeIfAbsent(entityType, k -> new ConcurrentHashMap<>())
         .put(field, operation);
-  }
-
-  /**
-   * Makes setting the owners of {@code entityType} need EditAll, for a type whose owner
-   * administers configuration. Extensions register their own such types here.
-   */
-  public static void registerOwnersRequireEditAll(String entityType) {
-    OWNERS_REQUIRE_EDIT_ALL.add(entityType);
-    mapEntityFieldOperation(entityType, Entity.FIELD_OWNERS, MetadataOperation.EDIT_ALL);
-  }
-
-  public static boolean ownersRequireEditAll(String entityType) {
-    return entityType != null && OWNERS_REQUIRE_EDIT_ALL.contains(entityType);
   }
 
   /** Given an edit operation get the corresponding entity field */

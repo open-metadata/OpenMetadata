@@ -10,7 +10,6 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
 import java.io.StringReader;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,46 +74,6 @@ class JsonPatchUtilsTest {
     originalTable.setColumns(listOf(column));
 
     Mockito.<EntityInterface<?>>when(resourceContextMock.getEntity()).thenReturn(originalTable);
-  }
-
-  @Test
-  void ownersOfConfigurationEntitiesNeedEditAll() {
-    for (String dataAsset : new String[] {Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM}) {
-      assertEquals(
-          MetadataOperation.EDIT_OWNERS,
-          JsonPatchUtils.getMetadataOperation("/" + Entity.FIELD_OWNERS, dataAsset));
-    }
-    List<String> configurationTypes =
-        new ArrayList<>(
-            List.of(
-                Entity.POLICY,
-                Entity.TEAM,
-                Entity.APPLICATION,
-                Entity.APP_MARKET_PLACE_DEF,
-                Entity.WORKFLOW,
-                Entity.WORKFLOW_DEFINITION,
-                Entity.EVENT_SUBSCRIPTION,
-                Entity.INGESTION_PIPELINE,
-                Entity.TEST_CONNECTION_DEFINITION,
-                Entity.TEST_DEFINITION,
-                Entity.CLASSIFICATION,
-                Entity.AI_GOVERNANCE_POLICY,
-                Entity.AI_GOVERNANCE_FRAMEWORK,
-                Entity.AI_FRAMEWORK_CONTROL));
-    configurationTypes.addAll(Entity.getServiceEntityTypes());
-    for (String entityType : configurationTypes) {
-      assertEquals(
-          MetadataOperation.EDIT_ALL,
-          JsonPatchUtils.getMetadataOperation("/" + Entity.FIELD_OWNERS, entityType),
-          entityType);
-      assertEquals(
-          MetadataOperation.EDIT_ALL,
-          JsonPatchUtils.getMetadataOperation("/" + Entity.FIELD_OWNERS + "/0", entityType),
-          entityType);
-    }
-    assertEquals(
-        MetadataOperation.EDIT_DESCRIPTION,
-        JsonPatchUtils.getMetadataOperation("/" + Entity.FIELD_DESCRIPTION, Entity.POLICY));
   }
 
   @Test
@@ -188,24 +147,6 @@ class JsonPatchUtilsTest {
     // Assertions
     assertTrue(operations.contains(MetadataOperation.EDIT_GLOSSARY_TERMS));
     assertEquals(1, operations.size());
-  }
-
-  @Test
-  void settingTheOwnersOfAConfigurationEntityNeedsEditAllAndEditOwners() {
-    ResourceContextInterface policyContext = Mockito.mock(ResourceContextInterface.class);
-    Mockito.when(policyContext.getResource()).thenReturn(Entity.POLICY);
-    String patch =
-        """
-        [{"op": "add", "path": "/owners/0", "value": {"id": "%s", "type": "user"}}]
-        """
-            .formatted(UUID.randomUUID());
-
-    assertEquals(
-        Set.of(MetadataOperation.EDIT_ALL, MetadataOperation.EDIT_OWNERS),
-        JsonPatchUtils.getMetadataOperations(policyContext, jsonPatch(patch)));
-    assertEquals(
-        Set.of(MetadataOperation.EDIT_OWNERS),
-        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch)));
   }
 
   @Test
