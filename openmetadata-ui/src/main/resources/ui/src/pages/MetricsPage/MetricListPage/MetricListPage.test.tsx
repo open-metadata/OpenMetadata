@@ -127,6 +127,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
       {children as React.ReactNode}
     </button>
   );
+  const ButtonUtility = ({
+    isDisabled,
+    icon: _icon,
+    size: _size,
+    tooltip,
+    ...props
+  }: Record<string, unknown>) => (
+    <button
+      aria-label={tooltip as string | undefined}
+      {...props}
+      disabled={Boolean(isDisabled)}
+    />
+  );
   const Card = ({
     children,
     isSelected,
@@ -318,6 +331,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <nav>{items.map(({ label }) => label).join(' / ')}</nav>
     ),
     Button,
+    ButtonUtility,
     PageLayout: Object.assign(
       ({
         children,

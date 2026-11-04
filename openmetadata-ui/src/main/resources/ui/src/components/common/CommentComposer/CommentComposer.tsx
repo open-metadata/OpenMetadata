@@ -125,7 +125,6 @@ export const CommentEditor: React.FC<CommentEditorProps> = ({
             className="tw:absolute tw:right-2 tw:bottom-1.5"
             gap={2}>
             <ButtonUtility
-              color="tertiary"
               data-testid="formatting-toggle"
               icon={Type01}
               isSelected={isFormatting}
@@ -139,13 +138,13 @@ export const CommentEditor: React.FC<CommentEditorProps> = ({
               aria-hidden
               className="tw:h-5 tw:w-px tw:bg-border-secondary"
             />
-            <Button
-              aria-label={t('label.send')}
+            <ButtonUtility
               color="primary"
               data-testid="send-button"
-              iconLeading={<ArrowRight className="tw:size-4" />}
+              icon={ArrowRight}
               isDisabled={!hasText}
-              size="sm"
+              size="lg"
+              tooltip={t('label.send')}
               onClick={handleSend}
             />
           </Box>

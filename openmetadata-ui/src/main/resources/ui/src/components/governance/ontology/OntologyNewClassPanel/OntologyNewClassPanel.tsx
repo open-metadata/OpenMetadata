@@ -299,7 +299,6 @@ const OntologyNewClassPanel = ({
       <Box align="center" gap={1} key={value}>
         <Badge>{value}</Badge>
         <ButtonUtility
-          color="tertiary"
           icon={XClose}
           isDisabled={locked}
           size="xs"
@@ -368,7 +367,6 @@ const OntologyNewClassPanel = ({
             {property.isIdentifier ? ' · ' + t('label.identifier') : ''}
           </Typography>
           <ButtonUtility
-            color="tertiary"
             icon={XClose}
             isDisabled={locked}
             size="xs"
@@ -498,7 +496,6 @@ const OntologyNewClassPanel = ({
           {t('label.new-class')}
         </Typography>
         <ButtonUtility
-          color="tertiary"
           data-testid="ontology-new-class-close"
           icon={XClose}
           isDisabled={leaveLocked}
