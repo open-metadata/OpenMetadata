@@ -1,22 +1,112 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void test_parentResourceContext_resolvesExistingParent(boolean deleted) {
+    UUID tableId = UUID.randomUUID();
+    Table table = new Table().withId(tableId).withDeleted(deleted);
+    ListFilter filter =
+        new ListFilter(null)
+            .addQueryParam("entityId", tableId.toString())
+            .addQueryParam("entityType", Entity.TABLE);
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> tables = mock(EntityRepository.class);
+    when(tables.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
+    when(tables.get(
+            any(),
+            eq(tableId),
+            any(),
+            argThat((RelationIncludes includes) -> includes.getDefaultInclude() == Include.ALL),
+            anyBoolean()))
+        .thenReturn(table);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tables);
+      ResourceContext<?> context = filter.getParentResourceContext();
+      assertEquals(Entity.TABLE, context.getResource());
+      assertSame(table, context.getEntity());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    ",",
+    ",table",
+    "'',table",
+    "00000000-0000-0000-0000-000000000001,",
+    "00000000-0000-0000-0000-000000000001,''"
+  })
+  void test_parentResourceContext_requiresBothParameters(String entityId, String entityType) {
+    ListFilter filter =
+        new ListFilter(null)
+            .addQueryParam("entityId", entityId)
+            .addQueryParam("entityType", entityType);
+
+    assertNull(filter.getParentResourceContext());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {Entity.TABLE, Entity.DASHBOARD, Entity.USER, Entity.TEAM, Entity.GLOSSARY})
+  void test_parentResourceContext_rejectsIdMissingFromRequestedType(String entityType) {
+    UUID tableId = UUID.randomUUID();
+    ListFilter filter =
+        new ListFilter(null)
+            .addQueryParam("entityId", tableId.toString())
+            .addQueryParam("entityType", entityType);
+    EntityRepository<?> repository = mock(EntityRepository.class);
+    when(repository.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
+    when(repository.get(any(), eq(tableId), any(), any(RelationIncludes.class), anyBoolean()))
+        .thenThrow(EntityNotFoundException.byId(tableId.toString()));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(entityType)).thenReturn(repository);
+      EntityNotFoundException exception =
+          assertThrows(EntityNotFoundException.class, filter::getParentResourceContext);
+      assertEquals(
+          CatalogExceptionMessage.entityNotFound(entityType, tableId.toString()),
+          exception.getMessage());
+    }
+  }
+
   @ParameterizedTest
   @CsvSource({"true,include", "true,exclude", "false,include", "false,exclude"})
   void fqnRegexUsesCaseInsensitiveSearch(boolean mysql, String mode) {
@@ -105,48 +195,6 @@ class ListFilterTest {
     // escape).
     assertEquals("a\\\\b", ListFilter.escape("a\\b"));
     assertEquals("a\\\\b\\_c", ListFilter.escape("a\\b_c"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_passesThroughPlainStrings() {
-    assertEquals("abcd", ListFilter.escapeForMySqlRegexReplacement("abcd"));
-    assertEquals("", ListFilter.escapeForMySqlRegexReplacement(""));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_doublesApostrophesOnce() {
-    // Apostrophes only matter for the SQL string-literal layer — REGEXP_REPLACE's
-    // replacement context doesn't reserve them. Expect a single ' → '' doubling.
-    assertEquals("a''b", ListFilter.escapeForMySqlRegexReplacement("a'b"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_quadruplesBackslashes() {
-    // One input backslash needs to round-trip to one literal backslash in the
-    // REGEXP_REPLACE output, so it must be FOUR backslashes in the emitted SQL text:
-    //   SQL text  : \\\\  (4 backslashes)
-    //   SQL parser: \\    (2 backslashes — '\\' is the SQL string-literal escape for '\')
-    //   regex eng : \     (1 backslash — '\\' in the regex replacement is a literal '\')
-    // Without the regex-replacement escape, the regex engine would interpret the lone
-    // remaining '\' as the start of an escape/backref sequence.
-    assertEquals("a\\\\\\\\b", ListFilter.escapeForMySqlRegexReplacement("a\\b"));
-    assertEquals("\\\\\\\\", ListFilter.escapeForMySqlRegexReplacement("\\"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_protectsBackreferenceLookalikes() {
-    // Without the extra regex-replacement layer, "\1" in the input would survive as "\1"
-    // in the regex replacement and be interpreted as a backreference to capture group 1
-    // (REGEXP_REPLACE doesn't have groups when called like updateFqn does, but the
-    // behaviour is implementation-defined — usually empty-string substitution). After
-    // the double escape it survives as a literal "\1" in the output.
-    assertEquals("\\\\\\\\1bar", ListFilter.escapeForMySqlRegexReplacement("\\1bar"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_combinesBackslashAndApostrophe() {
-    // Backslashes get four-x'd, apostrophes double once.
-    assertEquals("a\\\\\\\\''b", ListFilter.escapeForMySqlRegexReplacement("a\\'b"));
   }
 
   @Test

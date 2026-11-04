@@ -697,7 +697,12 @@ describe('AlertsClassBase', () => {
         setInlineAlertDetails: mockSetInlineAlert,
       });
 
-      expect(handleEntityCreationError).toHaveBeenCalled();
+      expect(handleEntityCreationError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: mockError,
+          defaultErrorType: 'update',
+        })
+      );
       expect(showSuccessToast).not.toHaveBeenCalled();
       expect(mockAfterSave).not.toHaveBeenCalled();
     });

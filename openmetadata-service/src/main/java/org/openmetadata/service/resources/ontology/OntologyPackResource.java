@@ -156,7 +156,7 @@ public final class OntologyPackResource {
     if (existing == null) {
       authorizeCreate(securityContext, targetGlossaryName);
     } else {
-      authorizeEdit(securityContext, repository, existing);
+      authorizeEdit(securityContext, existing);
     }
   }
 
@@ -170,14 +170,12 @@ public final class OntologyPackResource {
         new CreateResourceContext<>(Entity.GLOSSARY, candidate));
   }
 
-  private void authorizeEdit(
-      final SecurityContext securityContext,
-      final GlossaryRepository repository,
-      final Glossary glossary) {
+  private void authorizeEdit(final SecurityContext securityContext, final Glossary glossary) {
+    // By id, so the context loads every attribute a condition reads.
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_ALL),
-        new ResourceContext<>(Entity.GLOSSARY, glossary, repository));
+        new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null, Include.ALL));
   }
 
   private static String requireUser(final SecurityContext securityContext) {

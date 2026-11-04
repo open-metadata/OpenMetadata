@@ -173,8 +173,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   private static final String COUNT_VIEW_MENTIONED = "mentioned";
   private static final String COUNT_VIEW_ENTITY = "entity";
 
+  private final TaskAboutVisibility aboutVisibility;
+
   public TaskResource(Authorizer authorizer, Limits limits) {
     super(Entity.TASK, authorizer, limits);
+    this.aboutVisibility = new TaskAboutVisibility(authorizer);
     // PATCH on assignees / priority must require ReassignTask, not the default EditAll.
     // Without this, any holder of EditAll on the task resource (filer, assignees, reviewers via
     // TaskAuthorPolicy) could reassign or change priority through a JSON Patch, bypassing the
@@ -358,7 +361,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskSearch(filter, q);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   private void applyTaskSearch(ListFilter filter, String q) {
@@ -410,6 +415,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by user FQN who was mentioned in task comments")
           @QueryParam("mentionedUser")
           String mentionedUser) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
     ListFilter baseFilter =
         buildCountFilter(
             uriInfo,
@@ -605,8 +614,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    return repository.listDataAccessRequests(
-        uriInfo, fields, filter, limitParam, offset, sortOrder);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        repository.listDataAccessRequests(uriInfo, fields, filter, limitParam, offset, sortOrder));
   }
 
   @GET
@@ -678,7 +688,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -751,7 +763,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -835,7 +849,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -908,7 +924,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return aboutVisibility.retainViewable(
+        securityContext,
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -939,7 +957,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    Task task = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return task;
   }
 
   @GET
@@ -970,7 +990,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
+    Task task = getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(task.getId()));
+    return task;
   }
 
   @GET
@@ -993,7 +1015,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Task Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    EntityHistory history = super.listVersionsInternal(securityContext, id);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return history;
   }
 
   @GET
@@ -1023,7 +1047,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    Task task = super.getVersionInternal(securityContext, id, version);
+    authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    return task;
   }
 
   @POST
@@ -1148,6 +1174,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   private static boolean isApprovalTaskType(TaskEntityType type) {
     return type != null && APPROVAL_TASK_TYPES.contains(type);
+  }
+
+  /**
+   * The entity a task is about, read whatever fields the request asked for: a task discloses its
+   * target, so every read of it needs what reading the target needs, its creator and assignees
+   * included (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+   */
+  private EntityReference aboutOf(UUID taskId) {
+    return repository
+        .get(null, taskId, repository.getFields(TaskRepository.FIELD_ABOUT), Include.ALL, false)
+        .getAbout();
   }
 
   private void authorizeViewOnAboutEntity(
