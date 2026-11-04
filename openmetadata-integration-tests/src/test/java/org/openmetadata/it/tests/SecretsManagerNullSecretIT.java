@@ -25,6 +25,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -85,6 +86,7 @@ public class SecretsManagerNullSecretIT {
 
   @BeforeAll
   static void installInMemoryVault() {
+    UserTestFactory.getDataConsumer(null);
     originalSecretsManager = SecretsManagerFactory.getSecretsManager();
     vault =
         InMemorySecretsManager.getInstance(
@@ -136,6 +138,7 @@ public class SecretsManagerNullSecretIT {
         .execute(HttpMethod.PUT, MESSAGING_SERVICES_PATH, request, MessagingService.class);
     assertEquals(PASSWORD, vault.getSecretsMap().get(entryId));
 
+    connection.getConsumerConfig().getAdditionalProperties().remove("user.reference");
     switch (removal) {
       case "entry" -> connection.getConsumerConfig().getAdditionalProperties().clear();
       case "map" -> connection.setConsumerConfig(null);
