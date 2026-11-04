@@ -170,13 +170,19 @@ export const UserSelectableList = ({
 
   const botTagRenderer = useCallback(
     (item: EntityReference) => (
-      <div className="d-flex items-center gap-2">
+      <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+        <UserTag
+          truncateName
+          avatarType="outlined"
+          id={item.name ?? ''}
+          name={getEntityName(item)}
+        />
         {botUserIds.current.has(item.id) && (
           <Tooltip
             arrow
             excludeTriggerFromTabOrder
             title={t('label.bot')}
-            triggerClassName="tw:inline-flex">
+            triggerClassName="tw:inline-flex tw:shrink-0">
             <BotIcon
               aria-label={t('label.bot')}
               color={TEXT_GREY_MUTED}
@@ -186,11 +192,6 @@ export const UserSelectableList = ({
             />
           </Tooltip>
         )}
-        <UserTag
-          avatarType="outlined"
-          id={item.name ?? ''}
-          name={getEntityName(item)}
-        />
       </div>
     ),
     [t]

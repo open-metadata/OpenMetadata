@@ -496,7 +496,7 @@ function buildTermAssetBadgeInfo(d: GraphNodeMeta): {
   return { hasAssetBadge, badges };
 }
 
-function buildDataModeTermStyle(
+export function buildDataModeTermStyle(
   datum: NodeData,
   d: GraphNodeMeta
 ): Record<string, unknown> {
@@ -510,7 +510,6 @@ function buildDataModeTermStyle(
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
     badge: hasAssetBadge,
     badges,
-    labelFill: NODE_FILL_DEFAULT,
     ...(d?.isSelected && {
       stroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       lineWidth: NODE_SELECTED_LINE_WIDTH,

@@ -211,6 +211,7 @@ const TagPage = () => {
   const {
     permissions: tagPermissions,
     canEditAll: tagCanEditAll,
+    canEditDomains: tagCanEditDomains,
     error: tagPermissionsError,
   } = useEntityPermissions(
     ResourceEntity.TAG,
@@ -301,6 +302,7 @@ const TagPage = () => {
         disabledAwarePermissions: {
           ...tagPermissions,
           EditOwners: tagCanEditAll || tagPermissions.EditOwners,
+          EditDomains: tagCanEditDomains,
           EditAll: tagCanEditAll,
         },
       };
@@ -315,7 +317,7 @@ const TagPage = () => {
     // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
     // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
     // (Task 8 Batches 3–4) of fixing missing deps in passing.
-  }, [tagPermissions, tagCanEditAll, tagItem]);
+  }, [tagPermissions, tagCanEditAll, tagCanEditDomains, tagItem]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),

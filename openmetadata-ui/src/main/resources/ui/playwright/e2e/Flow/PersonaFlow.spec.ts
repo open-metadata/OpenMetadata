@@ -39,6 +39,7 @@ import {
   setPersonaAsDefault,
   updatePersonaDisplayName,
 } from '../../utils/persona';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { settingClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
@@ -807,6 +808,12 @@ test.describe('Curated Assets – Description filter', () => {
         },
       ],
     });
+    await waitForSearchIndexed(
+      apiContext,
+      curatedTable.entityResponseData.fullyQualifiedName,
+      'table_search_index',
+      { minVersion: curatedTable.entityResponseData.version }
+    );
 
     await afterAction();
   });
@@ -846,18 +853,25 @@ test.describe('Curated Assets – Description filter', () => {
       await selectAssetTypes(adminPage, ['Table']);
 
       const rule0 = adminPage.getByTestId('query-builder-rule-0');
+      const fieldSelect = rule0.getByTestId('advanced-search-field-select');
+      const operatorSelect = rule0.getByTestId(
+        'advanced-search-operator-select'
+      );
 
-      await selectOption(
-        adminPage,
-        rule0.getByTestId('advanced-search-field-select'),
-        'Description',
-        true
-      );
-      await selectOption(
-        adminPage,
-        rule0.getByTestId('advanced-search-operator-select'),
-        'Contains'
-      );
+      await expect(async () => {
+        await selectOption(adminPage, fieldSelect, 'Description', true);
+        await expect(fieldSelect.getByRole('combobox')).toHaveValue(
+          'Description',
+          { timeout: 2_000 }
+        );
+      }).toPass({ timeout: 30_000 });
+      await expect(async () => {
+        await selectOption(adminPage, operatorSelect, 'Contains');
+        await expect(operatorSelect.getByRole('combobox')).toHaveValue(
+          'Contains',
+          { timeout: 2_000 }
+        );
+      }).toPass({ timeout: 30_000 });
       await rule0
         .locator(
           '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
