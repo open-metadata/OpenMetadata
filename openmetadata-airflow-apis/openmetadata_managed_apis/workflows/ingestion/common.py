@@ -18,6 +18,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import partial
 
+import pendulum
 from airflow import DAG
 from airflow.utils import timezone
 from pydantic import ValidationError
@@ -265,6 +266,9 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     # Determine start_date based on schedule_interval using croniter
     schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
+    # Airflow evaluates a cron schedule in the zone of a zone-aware start_date; this is the only
+    # way the pipeline's timezone reaches the scheduler.
+    schedule_tz = pendulum.timezone(ingestion_pipeline.airflowConfig.pipelineTimezone or "UTC")
     if is_airflow_3_or_higher():
         # We want start_date to be close to "now" (not in the past) so Airflow 3
         # doesn't immediately fire a catch-up run on creation even with catchup
@@ -278,12 +282,12 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         # still resetting close to "now" whenever the schedule is genuinely
         # edited — preserving the original intent without the instability.
         start_date = (
-            timezone.from_timestamp(ingestion_pipeline.updatedAt.root / 1000)
+            timezone.from_timestamp(ingestion_pipeline.updatedAt.root / 1000, tz=schedule_tz)
             if ingestion_pipeline.updatedAt
-            else timezone.utcnow()
+            else timezone.utcnow().astimezone(schedule_tz)
         )
     else:
-        now = datetime.now()
+        now = datetime.now(schedule_tz)
 
         if schedule_interval is None:
             # On-demand DAG, set start_date to now
