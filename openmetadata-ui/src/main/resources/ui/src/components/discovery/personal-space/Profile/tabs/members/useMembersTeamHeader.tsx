@@ -59,10 +59,8 @@ const buildTitleSuffix = (
           aria-label={t('label.edit-entity', {
             entity: t('label.display-name'),
           })}
-          color="tertiary"
           data-testid="edit-display-name"
           icon={Edit01}
-          size="xs"
           onClick={() => onStartEditName(getEntityName(team))}
         />
       )}
@@ -94,18 +92,18 @@ const buildTitleInput = (
         }}
       />
       <Button
-        color="primary"
-        data-testid="save-display-name"
-        size="xs"
-        onPress={onSaveDisplayName}>
-        {t('label.save')}
-      </Button>
-      <Button
         color="tertiary"
         data-testid="cancel-display-name"
         size="xs"
         onPress={onCancelEditName}>
         {t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="save-display-name"
+        size="xs"
+        onPress={onSaveDisplayName}>
+        {t('label.save')}
       </Button>
     </Box>
   ) : undefined;

@@ -92,10 +92,9 @@ const SubPanel: React.FC<SubPanelProps> = ({
           {t(config.titleKey)}
         </span>
         <ButtonUtility
-          color="tertiary"
           data-testid="ask-sub-panel-collapse-btn"
           icon={CollapsePanelIcon}
-          size="sm"
+          size="lg"
           tooltip={t('label.collapse')}
           type="button"
           onClick={onCollapse}

@@ -42,6 +42,7 @@ final class OntologyWorkingModel {
           "disjointWith",
           "characteristics",
           "enumValues",
+          "replacedBy",
           "axiomType",
           "subjectIri",
           "expressions",

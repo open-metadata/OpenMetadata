@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.bpmn.exceptions.XMLException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
@@ -127,6 +128,19 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (entity.getTrigger() instanceof PeriodicBatchEntityTriggerDefinition periodic
         && periodic.getConfig() != null) {
       PeriodicBatchEntityTrigger.requireServerTimezone(periodic.getConfig().getSchedule());
+    }
+    requireDeployable(entity);
+  }
+
+  // postCreate and postUpdate deploy the stored definition, so one whose BPMN cannot be built is
+  // refused here instead of being stored behind a failed deploy.
+  private static void requireDeployable(WorkflowDefinition workflowDefinition) {
+    try {
+      WorkflowHandler.toBpmn(new Workflow(workflowDefinition));
+    } catch (XMLException e) {
+      throw BadRequestException.of(
+          "Workflow '%s' cannot be deployed: %s"
+              .formatted(workflowDefinition.getName(), e.getMessage()));
     }
   }
 
@@ -304,6 +318,27 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateEdgeConditions(workflowDefinition);
     // 8. Restrict every other value the BPMN builders interpolate into JUEL expressions
     validateExpressionInterpolation(workflowDefinition);
+    // 9. Trigger filter entries are JSON Logic strings
+    validateTriggerFilterEntries(workflowDefinition);
+  }
+
+  private static void validateTriggerFilterEntries(WorkflowDefinition workflowDefinition) {
+    JsonNode filter =
+        JsonUtils.valueToTree(workflowDefinition.getTrigger()).path("config").path("filter");
+    List<String> invalid = new ArrayList<>();
+    filter
+        .fields()
+        .forEachRemaining(
+            entry -> {
+              if (!entry.getValue().isTextual() && !entry.getValue().isNull()) {
+                invalid.add(entry.getKey());
+              }
+            });
+    if (!invalid.isEmpty()) {
+      throw BadRequestException.of(
+          "Workflow '%s': trigger filter entries must be JSON Logic strings: %s"
+              .formatted(workflowDefinition.getName(), String.join(", ", invalid)));
+    }
   }
 
   /**

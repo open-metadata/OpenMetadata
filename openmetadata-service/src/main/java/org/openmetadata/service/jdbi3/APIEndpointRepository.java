@@ -540,13 +540,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         apiEndpoint.getResponseSchema() != null
             ? apiEndpoint.getResponseSchema().getSchemaFields()
             : null;
-    for (Field schemaField : listOrEmpty(responseSchemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
-    for (Field schemaField : listOrEmpty(requestSchemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    EntityUtil.mergeFieldTags(allTags, responseSchemaFields);
+    EntityUtil.mergeFieldTags(allTags, requestSchemaFields);
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,requestSchema,responseSchema");
   }
 
   public class APIEndpointUpdater extends EntityUpdater {

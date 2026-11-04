@@ -412,6 +412,10 @@ describe('ScheduleInterval', () => {
     );
     expect(screen.getByTestId('day-options')).toHaveValue('1');
     expect(screen.getByTestId('time-picker')).toBeInTheDocument();
+    expect(screen.getByText('label.cadence')).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'label.day-of-week' })
+    ).toHaveValue('1');
   });
 
   it('should emit a new cron when the day select changes (weekly)', async () => {
@@ -447,6 +451,9 @@ describe('ScheduleInterval', () => {
       'true'
     );
     expect(screen.getByTestId('date-options')).toHaveValue('1');
+    expect(
+      screen.getByRole('combobox', { name: 'label.day-of-month' })
+    ).toHaveValue('1');
 
     await act(async () => {
       fireEvent.change(screen.getByTestId('date-options'), {

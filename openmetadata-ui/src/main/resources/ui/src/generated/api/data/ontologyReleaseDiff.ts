@@ -46,6 +46,7 @@ export interface MemberChange {
 export enum ChangeType {
     Added = "ADDED",
     Changed = "CHANGED",
+    Deprecated = "DEPRECATED",
     Removed = "REMOVED",
 }
 

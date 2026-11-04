@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { Team } from '../../../../../../generated/entity/teams/team';
 import MembersTeamsTab from './MembersTeamsTab';
@@ -22,14 +22,50 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Render only the filter slot of the table so the toggle/add-team button the
-// component owns are exercised without TableV2 internals.
+// Render the filter slot and bare keyed rows so the toggle/add-team button and
+// the move anchor are exercised without TableV2 internals.
 jest.mock('../../../../../common/Table/TableV2', () => ({
   __esModule: true,
-  default: ({ extraTableFilters }: { extraTableFilters: React.ReactNode }) => (
-    <div data-testid="table">{extraTableFilters}</div>
+  default: ({
+    extraTableFilters,
+    dataSource,
+  }: {
+    extraTableFilters: React.ReactNode;
+    dataSource: Team[];
+  }) => (
+    <div data-testid="table">
+      {extraTableFilters}
+      {dataSource.map((row) => (
+        <div data-row-key={row.fullyQualifiedName} key={row.name} />
+      ))}
+    </div>
   ),
 }));
+
+// jsdom has no layout, so expose which element the popover is anchored to.
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    ConfirmPopover: (props: {
+      triggerRef?: React.RefObject<Element | null>;
+      isOpen?: boolean;
+    }) => (
+      <>
+        {props.isOpen && (
+          <span
+            data-anchor={
+              props.triggerRef?.current?.getAttribute('data-row-key') ?? 'table'
+            }
+            data-testid="move-anchor"
+          />
+        )}
+        <actual.ConfirmPopover {...props} />
+      </>
+    ),
+  };
+});
 
 const team = { name: 'Engineering', fullyQualifiedName: 'Engineering' } as Team;
 
@@ -46,12 +82,20 @@ const baseProps = {
   searchTerm: '',
   canCreateTeam: true,
   movedTeam: undefined,
+  teamsPage: 1,
+  teamsPageSize: 10,
+  teamsTotal: 0,
   onShowDeletedTeamChange: jest.fn(),
   onSearchTermChange: jest.fn(),
   onNavigate: jest.fn(),
   onSetMovedTeam: jest.fn(),
   onMoveConfirm: jest.fn(),
+  onTeamsPageChange: jest.fn(),
+  onTeamsPageSizeChange: jest.fn(),
 } as unknown as React.ComponentProps<typeof MembersTeamsTab>;
+
+const pageInput = () =>
+  screen.queryByRole('textbox', { name: /current page|label.current-page/i });
 
 describe('MembersTeamsTab', () => {
   it('navigates to the add-team form scoped to the parent team', () => {
@@ -86,7 +130,27 @@ describe('MembersTeamsTab', () => {
     expect(onShowDeletedTeamChange).toHaveBeenCalledWith(true);
   });
 
-  it('confirms and cancels a pending team move from the modal', () => {
+  it('confirms a pending team move from a popover', async () => {
+    const onMoveConfirm = jest.fn().mockResolvedValue(undefined);
+    const onSetMovedTeam = jest.fn();
+    render(
+      <MembersTeamsTab
+        {...baseProps}
+        movedTeam={{ from: team, to: undefined }}
+        onMoveConfirm={onMoveConfirm}
+        onSetMovedTeam={onSetMovedTeam}
+      />
+    );
+
+    expect(await screen.findByTestId('move-team-popover')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('move-team-popover-confirm'));
+
+    await waitFor(() => expect(onMoveConfirm).toHaveBeenCalled());
+    await waitFor(() => expect(onSetMovedTeam).toHaveBeenCalledWith(undefined));
+  });
+
+  it('cancels a pending team move without moving it', async () => {
     const onMoveConfirm = jest.fn();
     const onSetMovedTeam = jest.fn();
     render(
@@ -98,12 +162,75 @@ describe('MembersTeamsTab', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('confirm-button'));
-
-    expect(onMoveConfirm).toHaveBeenCalled();
-
-    fireEvent.click(screen.getByTestId('cancel-button'));
+    fireEvent.click(await screen.findByTestId('move-team-popover-cancel'));
 
     expect(onSetMovedTeam).toHaveBeenCalledWith(undefined);
+    expect(onMoveConfirm).not.toHaveBeenCalled();
+  });
+
+  it('anchors the move popover to the drop-target row, not the whole table', () => {
+    const source = { name: 'Src', fullyQualifiedName: 'Src' } as Team;
+    const target = { name: 'Dst', fullyQualifiedName: 'Dst' } as Team;
+    const props = { ...baseProps, filteredChildTeams: [source, target] };
+    const { rerender } = render(<MembersTeamsTab {...props} />);
+
+    rerender(
+      <MembersTeamsTab {...props} movedTeam={{ from: source, to: target }} />
+    );
+
+    expect(screen.getByTestId('move-anchor')).toHaveAttribute(
+      'data-anchor',
+      'Dst'
+    );
+  });
+
+  it('anchors a move to root on the dragged row', () => {
+    const source = { name: 'Src', fullyQualifiedName: 'Src' } as Team;
+    const props = { ...baseProps, filteredChildTeams: [source] };
+    const { rerender } = render(<MembersTeamsTab {...props} />);
+
+    rerender(<MembersTeamsTab {...props} movedTeam={{ from: source }} />);
+
+    expect(screen.getByTestId('move-anchor')).toHaveAttribute(
+      'data-anchor',
+      'Src'
+    );
+  });
+
+  it('shows no move popover when nothing is being moved', () => {
+    render(<MembersTeamsTab {...baseProps} />);
+
+    expect(screen.queryByTestId('move-team-popover')).not.toBeInTheDocument();
+  });
+
+  it('hides the pager when every sub-team fits on one page', () => {
+    render(<MembersTeamsTab {...baseProps} teamsTotal={8} />);
+
+    expect(screen.queryByTestId('next')).not.toBeInTheDocument();
+  });
+
+  it('steps through pages with a minimal pager while browsing', () => {
+    const onTeamsPageChange = jest.fn();
+    render(
+      <MembersTeamsTab
+        {...baseProps}
+        teamsTotal={25}
+        onTeamsPageChange={onTeamsPageChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('next'));
+
+    expect(onTeamsPageChange).toHaveBeenCalledWith(2);
+    // Cursor paging can only step, so no page number is offered to jump to.
+    expect(pageInput()).not.toBeInTheDocument();
+  });
+
+  it('offers page jumps while searching', () => {
+    render(
+      <MembersTeamsTab {...baseProps} searchTerm="sales" teamsTotal={25} />
+    );
+
+    expect(pageInput()).toBeInTheDocument();
   });
 });

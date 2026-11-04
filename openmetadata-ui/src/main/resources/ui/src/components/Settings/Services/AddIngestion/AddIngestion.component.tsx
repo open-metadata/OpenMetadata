@@ -144,6 +144,11 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     // lazy initialization to initialize the data only once
     const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
       () => ({
+        ...(!isEditMode &&
+          pipelineType === PipelineType.Metadata &&
+          serviceData.serviceType === 'BigQuery' && {
+            shardedTables: { enabled: true },
+          }),
         ...(data?.sourceConfig.config ?? {}),
         ...filterProperties,
         name: data?.name ?? generateUUID(),

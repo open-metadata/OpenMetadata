@@ -82,4 +82,18 @@ describe('MetricVersion utils', () => {
       '0.9',
     ]);
   });
+
+  it('labels a custom tier by its display name', () => {
+    expect(
+      getMetricVersionMetadata({
+        tier: {
+          tagFQN: 'Tier.pw-tier-abc',
+          displayName: 'PW Tier',
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+        },
+      }).tierDisplayName
+    ).toBe('PW Tier');
+  });
 });

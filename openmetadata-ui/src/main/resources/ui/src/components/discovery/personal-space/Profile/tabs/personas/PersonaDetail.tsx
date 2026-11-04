@@ -105,6 +105,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
   const [isTogglingDefault, setIsTogglingDefault] = useState(false);
 
+  const fetchRequestIdRef = useRef(0);
+
   // Personas are not soft-deletable here (ManageButton legacy passed deleted=false),
   // so the permission lookup is deliberately ungated.
   const {
@@ -121,21 +123,45 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   );
 
   const fetchPersona = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
     try {
       const data = await getPersonaByName(fqn);
+      // Drop the response when a later fqn change has superseded this request,
+      // so persona A's data can never land after the prop has moved to persona B.
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       setPersona(data);
       onRename(getEntityName(data));
     } catch (error) {
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       showErrorToast(error as AxiosError);
+      // Clear the previously loaded persona so its body/actions cannot keep
+      // rendering under the new fqn's header when the refetch fails.
+      setPersona(undefined);
     } finally {
-      setIsLoading(false);
+      if (fetchRequestIdRef.current === requestId) {
+        setIsLoading(false);
+      }
     }
   }, [fqn, onRename]);
 
   useEffect(() => {
     void fetchPersona();
   }, [fetchPersona]);
+
+  // Discard persona-specific editing state when the persona changes. The
+  // parent re-mounts this component per fqn (key={fqn}); this guard also makes
+  // a no-key re-render safe, so an open rename/edit session for persona A can
+  // never be submitted against persona B after an fqn-only prop change.
+  useEffect(() => {
+    setIsEditingDesc(false);
+    setIsRenameOpen(false);
+    setRenameValue('');
+  }, [fqn]);
 
   const patchPersona = useCallback(
     async (data: Partial<Persona>) => {
@@ -203,9 +229,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   }, [persona, patchPersona, t]);
 
   const handleUpdateUsers = useCallback(
-    (users: EntityReference[]) => {
-      void patchPersona({ users });
-    },
+    (users: EntityReference[]) => patchPersona({ users }),
     [patchPersona]
   );
 
@@ -257,10 +281,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     return (
       <Box align="center" direction="row" gap={1}>
         <ButtonUtility
-          color="tertiary"
           data-testid="copy-persona-link"
           icon={Copy01}
-          size="xs"
           tooltip={String(
             hasCopied
               ? t('message.link-copy-to-clipboard')
@@ -270,11 +292,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           onPress={() => onCopyToClipBoard()}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-persona-btn"
           icon={Edit}
           isDisabled={!canEditDescription}
-          size="xs"
           tooltip={String(
             canEditDescription ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -307,7 +327,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         <Button
           color="secondary"
           data-testid="set-default-persona-btn"
-          iconLeading={<CheckCircle />}
+          iconLeading={CheckCircle}
           isDisabled={!canEditAll}
           isLoading={isTogglingDefault}
           size="sm"
@@ -324,11 +344,10 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           entityName={getEntityName(persona)}
           entityType={EntityType.PERSONA}>
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-persona-btn"
             icon={Delete}
             isDisabled={!canDeletePersona}
-            size="sm"
+            size="lg"
             tooltip={String(
               canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
             )}
@@ -366,6 +385,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       return (
         <PersonaUsersTab
           canEdit={canEditAll}
+          personaName={persona ? getEntityName(persona) : ''}
           users={persona?.users ?? []}
           onUsersChange={handleUpdateUsers}
         />
@@ -423,10 +443,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
             </Typography>
             {canEditDescription && !isEditingDesc && (
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-persona-description-btn"
                 icon={Edit}
-                size="xs"
                 tooltip={String(
                   t('label.edit-entity', { entity: t('label.description') })
                 )}

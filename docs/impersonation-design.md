@@ -1,5 +1,9 @@
 # Bot Impersonation Feature - Design Document
 
+> **Status:** Historical. Impersonation shipped as the `X-Impersonate-User` header.
+> `generateImpersonationToken` and `IMPERSONATED_USER_CLAIM`, which sections 6 and 10 describe, no
+> longer exist.
+
 ## 1. Overview
 
 ### 1.1 Purpose
@@ -343,25 +347,27 @@ The `Impersonate` operation is registered as a `user`-resource operation, so the
 
 - **`BotImpersonationPolicy`** (new, the default): allow `Impersonate` on `user`, **no deny rules**. **Backward-compatible by default**: a freshly granted bot can impersonate any user, *including admins*, matching the pre-existing `ApplicationBotImpersonationPolicy` (`All`/allow) behavior. This is deliberate — silently denying admin impersonation would break workflows (e.g. AskCollate) that rely on it.
 - **`BotImpersonationRole`** (new): `DefaultBotPolicy` + `BotImpersonationPolicy`. Auto-attached at grant time.
-- **`BotNonAdminImpersonationPolicy`** (new, opt-in restriction): allow `Impersonate` on `user` + **deny `isAdminUser()`**. Admins who want to prevent a bot from impersonating admins attach this instead of the permissive default.
-- **`BotNonAdminImpersonationRole`** (new): `DefaultBotPolicy` + `BotNonAdminImpersonationPolicy`. The directly-assignable form of the opt-in restriction — swap a bot's `BotImpersonationRole` for this to deny admin targets.
+- **`BotNonAdminImpersonationPolicy`** (new, opt-in restriction): allow `Impersonate` on `user` + **deny `isAdminUser()`** + **deny `isBotUser()`**. Admins who want to prevent a bot from impersonating admins attach this instead of the permissive default. Bots are denied as targets too: system and application bots (`ingestion-bot`, ...) can edit policies and roles, this policy included, so the restriction treats them as it treats admins.
+- **`BotNonAdminImpersonationRole`** (new): `DefaultBotPolicy` + `BotNonAdminImpersonationPolicy`. The directly-assignable form of the opt-in restriction — swap a bot's `BotImpersonationRole` for this to deny admin and bot targets.
 - **`ApplicationBotImpersonationPolicy`** (existing, `All`/allow) is unchanged: application bots created with `allowBotImpersonation` (e.g. AskCollate) keep their current behavior, including admin impersonation.
 
 Restriction is therefore **opt-in**, not default — the "configurable policy control" Collate #3581 asks for, delivered without breaking any bot that currently impersonates admins. The `isAdminUser()` / `isBotUser()` condition functions and deny-overrides-allow semantics let admins author any narrower scope (per-team, per-domain, deny-bot, etc.).
 
-**No migration needed.** All four impersonation seeds (`BotImpersonationPolicy`, `BotNonAdminImpersonationPolicy`, and their roles) are new in this change — no released version has them. Seed loading is insert-if-missing, so a fresh install and any upgrade from a prior release both get the current (permissive) JSON seeded directly. There is no prior on-disk state to convert, so no Flyway migration or startup reconciliation is required.
+**No migration needed.** All four impersonation seeds (`BotImpersonationPolicy`, `BotNonAdminImpersonationPolicy`, and their roles) are new in this change — no released version has them. Seed loading is insert-if-missing, so a fresh install and any upgrade from a prior release both get the current (permissive) JSON seeded directly. There is no prior on-disk state to convert, so no Flyway migration or startup reconciliation is required. The one exception is the `isBotUser()` deny rule of `BotNonAdminImpersonationPolicy`, added after the seeds shipped in 2.0: seed loading never updates a stored policy, so the 2.1.0 data migration (`addDenyBotUsersRuleToBotNonAdminImpersonationPolicy`) adds it to a stored policy that still carries the `isAdminUser()` deny rule.
 
 #### 4.4.5 Threat-Model Delta
 
 | Threat | Before | After |
 |--------|--------|-------|
 | Bot impersonates admin | Allowed for any impersonation bot | Allowed by default (backward-compatible); deniable opt-in via `BotNonAdminImpersonationPolicy` (`isAdminUser()` deny) |
-| Bot impersonates another bot (token laundering) | Allowed | Allowed by default; deniable via an `isBotUser()` deny rule in a custom policy |
+| Bot impersonates another bot (token laundering) | Allowed | Allowed by default; denied by `BotNonAdminImpersonationPolicy` (`isBotUser()` deny), or by the same rule in a custom policy |
 | Flag flipped on live bot via PATCH | 500, undefined behavior (works on newer builds) | 400, read-only; grant is creation-time via `createBot` |
 | Flag silently wiped by PUT on bot user | Yes (latent bug) | PUT carries over stored value |
 | `deny` rule with `Impersonate` op | Counted as **allow** | Honored (standard evaluator) |
 | Non-admin RBAC delegate enables impersonation on a bot | n/a | Blocked — enablement is the admin-only flag, independent of RBAC editing (see 4.4.1.1) |
 | Broad `["All"]` policy grants impersonation by subsumption | Would grant | `Impersonate` excluded from `ALL`/`EditAll`/`ViewAll` subsumption; flag still required |
+
+Independently of target scoping, an impersonated request never writes a policy or a role: those writes are `@IdentityEndpoint`s, like the other privilege-granting endpoints (ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges).
 
 ## 5. Data Model Changes
 

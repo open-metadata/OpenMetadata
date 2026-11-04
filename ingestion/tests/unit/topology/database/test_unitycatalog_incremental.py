@@ -138,18 +138,14 @@ class TestUnityCatalogIncrementalSource:
         config.serviceConnection.root.config = Mock(spec=UnityCatalogConnection)
         metadata = Mock()
         incremental = SimpleNamespace(enabled=False)
-        previous_threads = UnitycatalogSource.context.threads
 
-        try:
-            with (
-                patch(f"{UC_METADATA_MODULE}.create_connection", return_value=Mock()),
-                patch.object(UnitycatalogSource, "test_connection", return_value=None),
-            ):
-                source = UnitycatalogSource(config, metadata, incremental)
+        with (
+            patch(f"{UC_METADATA_MODULE}.create_connection", return_value=Mock()),
+            patch.object(UnitycatalogSource, "test_connection", return_value=None),
+        ):
+            source = UnitycatalogSource(config, metadata, incremental)
 
-            assert source.context.threads == 4
-        finally:
-            UnitycatalogSource.context.set_threads(previous_threads)
+        assert source.context.threads == 4
 
     def test_process_table_yields_regular_table(self):
         source = self._make_source()

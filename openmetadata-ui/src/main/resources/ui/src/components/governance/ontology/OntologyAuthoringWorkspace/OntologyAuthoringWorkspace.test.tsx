@@ -15,6 +15,7 @@ import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { Access } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
   flushReactQuery,
@@ -29,6 +30,10 @@ let mockPermissions = {
   ontologyProperty: { Create: true },
 };
 
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
@@ -295,5 +300,87 @@ describe('OntologyAuthoringWorkspace', () => {
     expect(
       screen.queryByTestId('ontology-add-concept')
     ).not.toBeInTheDocument();
+  });
+
+  describe('AI mode', () => {
+    beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
+
+    afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
+
+    it('lists definitions in a table and opens the editor with delete from a row', async () => {
+      get.mockImplementation(async (path) => {
+        if (path === '/ontologyConcepts') {
+          return {
+            data: {
+              data: [{ ...concept, description: 'A buyer' }],
+              paging: { total: 1 },
+            },
+          };
+        }
+
+        return {
+          data: {
+            permissions: [
+              { operation: 'ViewAll', access: Access.Allow },
+              { operation: 'EditAll', access: Access.Allow },
+              { operation: 'Delete', access: Access.Allow },
+            ],
+          },
+        };
+      });
+      renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
+      await flushReactQuery();
+
+      expect(await screen.findByRole('grid')).toBeInTheDocument();
+      expect(
+        screen.getByText(OntologyConceptType.OwlClass)
+      ).toBeInTheDocument();
+      expect(screen.getByText('A buyer')).toBeInTheDocument();
+      expect(screen.getByTestId('ontology-add-concept')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Customer' }));
+      });
+
+      expect(
+        await screen.findByRole('textbox', { name: 'label.concept-iri' })
+      ).toHaveValue(concept.iri);
+      expect(
+        await screen.findByRole('button', { name: 'label.delete' })
+      ).toBeInTheDocument();
+    });
+
+    it('pages with the server cursor from the table footer', async () => {
+      get
+        .mockResolvedValueOnce({
+          data: { data: [concept], paging: { total: 2, after: 'next-cursor' } },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            data: [{ ...concept, id: 'account', name: 'Account' }],
+            paging: { total: 2, before: 'previous-cursor' },
+          },
+        });
+      renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
+      await flushReactQuery();
+
+      expect(
+        await screen.findByRole('button', { name: 'label.previous' })
+      ).toBeDisabled();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
+      });
+
+      expect(
+        await screen.findByRole('button', { name: 'Account' })
+      ).toBeInTheDocument();
+      expect(get).toHaveBeenLastCalledWith(
+        '/ontologyConcepts',
+        expect.objectContaining({
+          params: expect.objectContaining({ after: 'next-cursor' }),
+        })
+      );
+    });
   });
 });

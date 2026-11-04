@@ -41,6 +41,7 @@
  */
 
 import {
+  ButtonUtility,
   MUTED_TABLE_SURFACE_CLASSES,
   PaginationCardWithControls,
   Table as UntitledTable,
@@ -52,7 +53,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, MouseEvent } from 'react';
 import React, {
   forwardRef,
   ReactElement,
@@ -66,7 +67,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Button as AriaButton,
   ColumnResizer,
   Dialog,
   Popover,
@@ -174,7 +174,7 @@ const EXPANDER_GUTTER_PX = 16;
  * the app, not just the ones being migrated. `compact` is available to a call
  * site that opts into it deliberately.
  */
-const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
+const CORE_SIZE_BY_TABLE_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
   compact: 'compact',
   small: 'sm',
   middle: 'md',
@@ -182,7 +182,7 @@ const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
 };
 
 const toCoreSize = (size: TableComponentProps<never>['size']) =>
-  CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'md';
+  CORE_SIZE_BY_TABLE_SIZE[size ?? 'middle'] ?? 'md';
 
 /**
  * The core `Table` root's `size` prop only accepts `'sm' | 'md'` today — the
@@ -240,7 +240,7 @@ const pingShadowClass = (
   return '';
 };
 
-const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
+const CELL_PADDING_BY_TABLE_SIZE: Record<string, string> = {
   compact: 'tw:py-1.5 tw:pl-3 tw:pr-2',
   small: 'tw:p-2',
   middle: 'tw:py-2 tw:pl-4 tw:pr-2',
@@ -248,8 +248,8 @@ const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
 };
 
 const toCellPaddingClass = (size: TableComponentProps<never>['size']) =>
-  CELL_PADDING_BY_ANTD_SIZE[size ?? 'middle'] ??
-  CELL_PADDING_BY_ANTD_SIZE.middle;
+  CELL_PADDING_BY_TABLE_SIZE[size ?? 'middle'] ??
+  CELL_PADDING_BY_TABLE_SIZE.middle;
 
 const resolvePageSize = (
   pageSizeOverride: number | null,
@@ -382,14 +382,15 @@ const HeaderFilterTrigger = ({
       onKeyDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}>
-      <AriaButton
+      <ButtonUtility
         aria-label="filter"
-        className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+        className="tw:ml-1"
         data-testid="filter-trigger"
+        icon={icon}
         ref={triggerRef}
-        onPress={() => onOpenChange(!isOpen)}>
-        {icon}
-      </AriaButton>
+        size="xs"
+        onPress={() => onOpenChange(!isOpen)}
+      />
       <Popover
         isOpen={isOpen}
         placement="bottom right"
@@ -766,21 +767,18 @@ const ExpandControl = <T extends object>({
     }
 
     return (
-      <button
+      <ButtonUtility
         aria-expanded={isExpanded}
         aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
-        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+        className="tw:mr-1"
         data-testid="expand-icon"
-        onClick={(e) => {
+        icon={isExpanded ? ChevronDown : ChevronRight}
+        size="xs"
+        onClick={(e: MouseEvent) => {
           e.stopPropagation();
           onToggle(record, rowKey);
-        }}>
-        {isExpanded ? (
-          <ChevronDown className="tw:size-4" />
-        ) : (
-          <ChevronRight className="tw:size-4" />
-        )}
-      </button>
+        }}
+      />
     );
   }
 
@@ -796,7 +794,7 @@ const ExpandControl = <T extends object>({
     );
   }
 
-  return <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+  return <span className="tw:inline-block tw:w-5 tw:mr-1" />;
 };
 
 interface SizeChangerProps {
@@ -1759,10 +1757,10 @@ const TableV2 = <T extends object>(
   return (
     <div
       className={twMerge(
-        'table-container',
+        'table-container tw:rounded-xl',
         rest.variant === 'muted'
           ? MUTED_CONTAINER_CLASSES
-          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody_tr:hover_td]:bg-secondary',
+          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody:not([data-empty])_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
       ref={ref}>
@@ -1968,22 +1966,17 @@ const TableV2 = <T extends object>(
                               setOpenFilterKey(isOpen ? colKey : null)
                             }>
                             <div
-                              // AntD's filter dropdown caps at ~264px and
-                              // scrolls, with 32px rows; a bare antd Menu
-                              // outside a Dropdown falls back to its roomy
-                              // vertical-nav metrics, so compress it here.
+                              // Caps at ~264px and scrolls, like the filter
+                              // dropdown it replaced.
                               className={classNames(
                                 'tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
-                                'tw:[&_.ant-menu]:bg-transparent',
-                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto',
-                                'tw:[&_.ant-menu-vertical]:border-r-0 tw:[&_.ant-menu-item]:h-8',
-                                'tw:[&_.ant-menu-item]:leading-8 tw:[&_.ant-menu-item]:my-0'
+                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto'
                               )}
                               data-testid="filter-dropdown"
                               style={{ minWidth: '200px' }}>
                               {typeof colType.filterDropdown === 'function'
                                 ? colType.filterDropdown({
-                                    prefixCls: 'ant-table-filter-dropdown',
+                                    prefixCls: '',
                                     setSelectedKeys: (keys) => {
                                       filterDraftRef.current = {
                                         ...filterDraftRef.current,
