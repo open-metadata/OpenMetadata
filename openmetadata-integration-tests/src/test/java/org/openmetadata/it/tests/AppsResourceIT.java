@@ -1626,39 +1626,7 @@ public class AppsResourceIT {
     JobKey job = new JobKey(appName, APPS_JOB_GROUP);
 
     try {
-      CreateAppMarketPlaceDefinitionReq marketPlaceReq =
-          new CreateAppMarketPlaceDefinitionReq()
-              .withName(appName)
-              .withDisplayName("Keep Schedule Test App")
-              .withDescription("Validates that a rejected patch keeps the Quartz job")
-              .withFeatures("schedule restore")
-              .withDeveloper("Test Developer")
-              .withDeveloperUrl("https://www.example.com")
-              .withPrivacyPolicyUrl("https://www.example.com/privacy")
-              .withSupportEmail("support@example.com")
-              .withClassName("org.openmetadata.service.resources.apps.TestApp")
-              .withAppType(AppType.Internal)
-              .withScheduleType(ScheduleType.Scheduled)
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-              .withAppConfiguration(new HashMap<>())
-              .withPermission(NativeAppPermission.All);
-      AppMarketPlaceDefinition marketPlaceDef =
-          httpClient.execute(
-              HttpMethod.POST,
-              "/v1/apps/marketplace",
-              marketPlaceReq,
-              AppMarketPlaceDefinition.class);
-
-      CreateApp createApp =
-          new CreateApp()
-              .withName(marketPlaceDef.getName())
-              .withAppConfiguration(marketPlaceDef.getAppConfiguration())
-              .withAppSchedule(
-                  new AppSchedule()
-                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
-                      .withCronExpression("17 4 * * *")
-                      .withTimezone("Europe/Tallinn"));
-      App installedApp = httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
+      App installedApp = installScheduledInternalApp(httpClient, appName);
       Scheduler scheduler = AppScheduler.getInstance().getScheduler();
       assertTrue(
           scheduler.checkExists(job), "Installing a scheduled internal app registers its job");
@@ -1673,7 +1641,7 @@ public class AppsResourceIT {
           "An unknown zone id must be rejected");
       assertTrue(
           scheduler.checkExists(job),
-          "A rejected patch must put the stored schedule back instead of leaving the app unscheduled");
+          "A rejected patch must leave the stored schedule running instead of unscheduling the app");
       assertEquals(
           "Europe/Tallinn",
           Apps.getByName(appName).getAppSchedule().getTimezone(),
@@ -1684,6 +1652,82 @@ public class AppsResourceIT {
       } catch (Exception ignored) {
       }
     }
+  }
+
+  @Test
+  void test_rejectedSchedulePutKeepsInternalAppScheduled(TestNamespace ns) throws Exception {
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    String appName = ns.prefix("keepSchedulePut");
+    JobKey job = new JobKey(appName, APPS_JOB_GROUP);
+
+    try {
+      App installedApp = installScheduledInternalApp(httpClient, appName);
+      Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+      assertTrue(
+          scheduler.checkExists(job), "Installing a scheduled internal app registers its job");
+
+      CreateApp badZone =
+          new CreateApp()
+              .withName(appName)
+              .withAppConfiguration(installedApp.getAppConfiguration())
+              .withAppSchedule(
+                  new AppSchedule()
+                      .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                      .withCronExpression("17 4 * * *")
+                      .withTimezone("Mars/Olympus"));
+      assertThrows(
+          Exception.class,
+          () -> httpClient.execute(HttpMethod.PUT, "/v1/apps", badZone, App.class),
+          "An unknown zone id must be rejected");
+      assertTrue(
+          scheduler.checkExists(job),
+          "A rejected PUT must leave the stored schedule running instead of unscheduling the app");
+      assertEquals(
+          "Europe/Tallinn",
+          Apps.getByName(appName).getAppSchedule().getTimezone(),
+          "A rejected PUT must leave the stored timezone untouched");
+    } finally {
+      try {
+        Apps.uninstall(appName, true);
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  private App installScheduledInternalApp(HttpClient httpClient, String appName) throws Exception {
+    CreateAppMarketPlaceDefinitionReq marketPlaceReq =
+        new CreateAppMarketPlaceDefinitionReq()
+            .withName(appName)
+            .withDisplayName("Keep Schedule Test App")
+            .withDescription("Validates that a rejected edit keeps the Quartz job")
+            .withFeatures("schedule restore")
+            .withDeveloper("Test Developer")
+            .withDeveloperUrl("https://www.example.com")
+            .withPrivacyPolicyUrl("https://www.example.com/privacy")
+            .withSupportEmail("support@example.com")
+            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withAppType(AppType.Internal)
+            .withScheduleType(ScheduleType.Scheduled)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+            .withAppConfiguration(new HashMap<>())
+            .withPermission(NativeAppPermission.All);
+    AppMarketPlaceDefinition marketPlaceDef =
+        httpClient.execute(
+            HttpMethod.POST,
+            "/v1/apps/marketplace",
+            marketPlaceReq,
+            AppMarketPlaceDefinition.class);
+
+    CreateApp createApp =
+        new CreateApp()
+            .withName(marketPlaceDef.getName())
+            .withAppConfiguration(marketPlaceDef.getAppConfiguration())
+            .withAppSchedule(
+                new AppSchedule()
+                    .withScheduleTimeline(ScheduleTimeline.CUSTOM)
+                    .withCronExpression("17 4 * * *")
+                    .withTimezone("Europe/Tallinn"));
+    return httpClient.execute(HttpMethod.POST, "/v1/apps", createApp, App.class);
   }
 
   private AppMarketPlaceDefinition createExternalAppMarketplace(

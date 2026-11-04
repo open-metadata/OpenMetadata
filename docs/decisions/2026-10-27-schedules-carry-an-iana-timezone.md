@@ -45,11 +45,16 @@ controller and the OMJob operator all agree on.
   in parentheses.
 - Kubernetes CronJob `spec.timeZone` needs Kubernetes 1.27 or newer; older clusters ignore the field
   and run at the controller's zone.
-- The Airflow pipeline service client does not read `pipelineTimezone`; Airflow deployments keep
-  scheduling at the Airflow default zone until that client passes it on.
+- An Airflow cron follows the zone of a zone-aware `start_date`, so `build_dag_configs` anchors the
+  DAG start date in `pipelineTimezone`. Airflow and Kubernetes deployments run the cron in the same
+  zone the UI shows.
 - Periodic workflow triggers run in the server zone: Flowable's `TimerEventDefinition` has no zone
   and `CycleBusinessCalendar` resolves the cron with the engine clock. `PeriodicBatchEntityTrigger`
   rejects a schedule whose zone rules differ from the server's rather than dropping it silently,
-  and `WorkflowDefinitionRepository.prepare` runs that check before the definition is stored.
+  and `WorkflowDefinitionRepository.prepare` trims the zone and runs that check before the
+  definition is stored. The check compares against the JVM zone of the server handling the request
+  and only runs on create and edit, so every replica must run in the same zone (the engine clock
+  that fires the timers needs that anyway), and a server moved to another zone rejects the next
+  edit of a definition that names the old one until its zone is cleared or changed.
 - Changing the stored representation (for example to an offset) would need a migration of every
   pipeline and app and a change to the operator and the k8s client in the same release.

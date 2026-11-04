@@ -44,6 +44,7 @@ import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.TimezoneUtil;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
 
@@ -61,7 +62,6 @@ public class AbstractNativeApplication implements NativeApplication {
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
-  private static final String DEFAULT_PIPELINE_TIMEZONE = "UTC";
 
   public AbstractNativeApplication(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     this.collectionDAO = collectionDAO;
@@ -206,7 +206,7 @@ public class AbstractNativeApplication implements NativeApplication {
     airflowConfig.setScheduleInterval(deriveInterval(schedule));
     airflowConfig.setPipelineTimezone(
         schedule == null || schedule.getTimezone() == null || schedule.getTimezone().isBlank()
-            ? DEFAULT_PIPELINE_TIMEZONE
+            ? TimezoneUtil.UTC
             : schedule.getTimezone());
     return airflowConfig;
   }
