@@ -56,6 +56,7 @@ import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMig
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
+import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
@@ -157,6 +158,21 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DestinationIdMigration.STEP_NAME,
         () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
+    // Webhook endpoints, header values and credentials were stored as written on user and team
+    // profiles, and on alert destinations saved before they were encrypted; new writes encrypt
+    // each one for the webhook that holds it, this does the same for what is already stored and
+    // removes what cannot be shown to be its own. Each destination's id owns its secrets, so this
+    // runs after the destination id step. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WebhookSecretsMigration.PROFILE_STEP_NAME,
+        () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, POSTGRES));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WebhookSecretsMigration.ALERT_STEP_NAME,
+        () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, POSTGRES));
     // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
     // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
     // harmless.

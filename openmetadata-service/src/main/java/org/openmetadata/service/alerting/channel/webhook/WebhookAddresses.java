@@ -15,6 +15,7 @@ package org.openmetadata.service.alerting.channel.webhook;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.LinkedHashSet;
@@ -27,9 +28,11 @@ import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.WebhookRecipient;
@@ -49,14 +52,31 @@ public final class WebhookAddresses implements AddressDirectory {
 
   @Override
   public Recipient ofUser(User user) {
-    return WebhookRecipient.ofProfile(
-        user.getName(), ProfileWebhookSecrets.decrypted(user.getProfile()), onProfile);
+    return ofProfile(
+        user.getName(),
+        new ProfileWebhookSecrets.Holder(Entity.USER, user.getId()),
+        user.getProfile());
   }
 
   @Override
   public Recipient ofTeam(Team team) {
-    return WebhookRecipient.ofProfile(
-        team.getName(), ProfileWebhookSecrets.decrypted(team.getProfile()), onProfile);
+    return ofProfile(
+        team.getName(),
+        new ProfileWebhookSecrets.Holder(Entity.TEAM, team.getId()),
+        team.getProfile());
+  }
+
+  // A profile holding a secret not written for its webhook is left out, as one without an address.
+  private Recipient ofProfile(String name, ProfileWebhookSecrets.Holder holder, Profile profile) {
+    Recipient recipient = null;
+    try {
+      recipient =
+          WebhookRecipient.ofProfile(
+              name, ProfileWebhookSecrets.decrypted(holder, profile), onProfile);
+    } catch (BadRequestException e) {
+      LOG.warn("The profile webhook of {} is left out: {}", name, e.getMessage());
+    }
+    return recipient;
   }
 
   @Override

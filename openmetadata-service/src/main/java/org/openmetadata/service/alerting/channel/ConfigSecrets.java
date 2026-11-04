@@ -19,22 +19,30 @@ import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.macasaet.fernet.TokenValidationException;
+import jakarta.ws.rs.BadRequestException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
-import java.util.function.UnaryOperator;
+import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.OwnedCiphertext;
+import org.openmetadata.service.secrets.SecretOwner;
 
 /**
- * The secrets of one sending configuration, as JSON, at the fields its owner names: encrypted before
- * the configuration is stored, decrypted where a message is sent, masked in a response, and
- * restored from the stored configuration when a request sends back what it read. An alert's
- * destinations and the webhooks on a user's or a team's profile keep their secrets this one way.
+ * The secrets of one sending configuration, as JSON, at the fields its owner names: encrypted for
+ * that owner before the configuration is stored, decrypted where a message is sent, masked in a
+ * response, and restored from the stored configuration when a request sends back what it read. An
+ * alert's destinations and the webhooks on a user's or a team's profile keep their secrets this one
+ * way. A secret opens only for the owner and field it was written for ({@link OwnedCiphertext}), so
+ * ciphertext written for anything else is never sent.
  */
 @Slf4j
 public final class ConfigSecrets {
-  public static final UnaryOperator<String> MASK = secret -> PASSWORD_MASK;
+  private static final String NOT_WRITTEN_HERE =
+      "The stored value at '%s' was not written for this configuration; enter it again";
 
   // Where a configuration delivers what it carries: the endpoint it posts to, and, for OAuth
   // credentials, the token URL they are shown to. A secret restored beside a moved target would
@@ -48,19 +56,22 @@ public final class ConfigSecrets {
 
   private ConfigSecrets() {}
 
-  /** Encrypts, in place, the text at each field. Ciphertext is kept as it is. */
-  public static boolean encrypt(JsonNode config, List<JsonPointer> fields) {
-    return transform(config, fields, ConfigSecrets::encrypted);
+  /** Encrypts, in place, the text at each field for {@code owner}. Ciphertext is kept as it is. */
+  public static boolean encrypt(SecretOwner owner, JsonNode config, List<JsonPointer> fields) {
+    return transform(config, fields, (field, value) -> encrypted(owner, field, value));
   }
 
-  /** Decrypts, in place, the text at each field. Text that is not ciphertext is kept as it is. */
-  public static boolean decrypt(JsonNode config, List<JsonPointer> fields) {
-    return transform(config, fields, ConfigSecrets::decrypted);
+  /**
+   * Decrypts, in place, the text at each field. Text that is not ciphertext is kept as it is, and
+   * ciphertext not written for {@code owner} at that field is refused with a 400.
+   */
+  public static boolean decrypt(SecretOwner owner, JsonNode config, List<JsonPointer> fields) {
+    return transform(config, fields, (field, value) -> decrypted(owner, field, value));
   }
 
   /** Replaces, in place, the text at each field with the mask. */
   public static boolean mask(JsonNode config, List<JsonPointer> fields) {
-    return transform(config, fields, MASK);
+    return transform(config, fields, (field, value) -> PASSWORD_MASK);
   }
 
   /**
@@ -70,11 +81,13 @@ public final class ConfigSecrets {
    * randomized, so encrypting it again never would. Says nothing of a moved target, which the caller
    * judges first with {@link #targetMoved}.
    */
-  public static boolean restore(JsonNode stored, JsonNode sent, List<JsonPointer> fields) {
+  public static boolean restore(
+      SecretOwner owner, JsonNode stored, JsonNode sent, List<JsonPointer> fields) {
     boolean changed = false;
     for (JsonPointer field : fields) {
       String storedValue = stored.at(field).asText(null);
-      if (storedValue != null && standsForStored(sent.at(field).asText(null), storedValue)) {
+      String sentValue = sent.at(field).asText(null);
+      if (storedValue != null && standsForStored(owner, field, sentValue, storedValue)) {
         set(sent, field, storedValue);
         changed = true;
       }
@@ -83,12 +96,34 @@ public final class ConfigSecrets {
   }
 
   /** Whether {@code sent} would deliver what {@code stored} carries somewhere it is not stored. */
-  public static boolean targetMoved(JsonNode stored, JsonNode sent) {
+  public static boolean targetMoved(SecretOwner owner, JsonNode stored, JsonNode sent) {
     return SECRET_TARGETS.stream()
             .anyMatch(
                 target ->
-                    !targetUnchanged(sent.at(target).asText(null), stored.at(target).asText(null)))
+                    !targetUnchanged(
+                        owner,
+                        target,
+                        sent.at(target).asText(null),
+                        stored.at(target).asText(null)))
         || !receiverTexts(stored).equals(receiverTexts(sent));
+  }
+
+  /**
+   * Binds to {@code owner}, in place, the secrets of a configuration stored before they were bound.
+   * Plaintext was entered for this configuration and is encrypted for it. Ciphertext may have been
+   * written for anything, so it is removed, except at the {@code kept} fields, whose value never
+   * leaves the server, where it is encrypted for the owner again. Ciphertext already bound is kept,
+   * so running it again changes nothing. Returns the fields removed.
+   */
+  public static List<JsonPointer> bindStored(
+      SecretOwner owner, JsonNode config, List<JsonPointer> fields, List<JsonPointer> kept) {
+    List<JsonPointer> removed = new ArrayList<>();
+    for (JsonPointer field : fields) {
+      if (removedWhileBinding(owner, config, field, kept.contains(field))) {
+        removed.add(field);
+      }
+    }
+    return List.copyOf(removed);
   }
 
   public static boolean isMask(String value) {
@@ -99,11 +134,12 @@ public final class ConfigSecrets {
     ((ObjectNode) config.at(field.head())).put(field.last().getMatchingProperty(), value);
   }
 
-  static boolean transform(JsonNode config, List<JsonPointer> fields, UnaryOperator<String> op) {
+  static boolean transform(
+      JsonNode config, List<JsonPointer> fields, BiFunction<JsonPointer, String, String> op) {
     boolean changed = false;
     for (JsonPointer field : fields) {
       String value = config.at(field).asText();
-      String transformed = op.apply(value);
+      String transformed = op.apply(field, value);
       if (!transformed.equals(value)) {
         set(config, field, transformed);
         changed = true;
@@ -117,11 +153,13 @@ public final class ConfigSecrets {
    * for the stored one, or plain text the stored ciphertext decrypts to. A plain text beside a
    * plain text (a configuration stored before this model) is kept as it reads.
    */
-  private static boolean targetUnchanged(String sent, String stored) {
+  private static boolean targetUnchanged(
+      SecretOwner owner, JsonPointer target, String sent, String stored) {
     if (stored == null) {
       return sent == null;
     }
-    return sent != null && (sent.equals(stored) || isMask(sent) || isCiphertextOf(sent, stored));
+    return sent != null
+        && (sent.equals(stored) || isMask(sent) || isCiphertextOf(owner, target, sent, stored));
   }
 
   private static Set<String> receiverTexts(JsonNode config) {
@@ -130,38 +168,67 @@ public final class ConfigSecrets {
     return receivers;
   }
 
-  private static boolean standsForStored(String incoming, String stored) {
-    return isMask(incoming) || isCiphertextOf(incoming, stored);
+  private static boolean standsForStored(
+      SecretOwner owner, JsonPointer field, String incoming, String stored) {
+    return isMask(incoming) || isCiphertextOf(owner, field, incoming, stored);
   }
 
   // Ciphertext the primary key cannot decrypt, one of an older key of a rotation list included,
   // matches nothing, so sending the secret again encrypts it with the primary key.
-  private static boolean isCiphertextOf(String incoming, String stored) {
+  private static boolean isCiphertextOf(
+      SecretOwner owner, JsonPointer field, String incoming, String stored) {
     return incoming != null
         && !Fernet.isTokenized(incoming)
-        && Fernet.isTokenized(stored)
+        && OwnedCiphertext.isOwned(stored)
         && Fernet.getInstance().isKeyDefined()
-        && incoming.equals(decryptOrNull(stored));
+        && OwnedCiphertext.decryptWithPrimaryKey(owner, field.toString(), stored)
+            .filter(incoming::equals)
+            .isPresent();
   }
 
-  private static String decryptOrNull(String ciphertext) {
-    String plaintext = null;
+  private static boolean removedWhileBinding(
+      SecretOwner owner, JsonNode config, JsonPointer field, boolean kept) {
+    String value = config.at(field).asText();
+    boolean alreadyBound = value.isEmpty() || OwnedCiphertext.isOwned(value);
+    Optional<String> secret = alreadyBound ? Optional.empty() : secretToBind(value, kept);
+    secret.ifPresent(
+        it -> set(config, field, OwnedCiphertext.encrypt(owner, field.toString(), it)));
+    boolean removed = !alreadyBound && secret.isEmpty();
+    if (removed) {
+      ((ObjectNode) config.at(field.head())).remove(field.last().getMatchingProperty());
+    }
+    return removed;
+  }
+
+  private static Optional<String> secretToBind(String value, boolean kept) {
+    Optional<String> secret = Optional.of(value);
+    if (Fernet.isTokenized(value)) {
+      secret = kept ? decryptedOrEmpty(value) : Optional.empty();
+    }
+    return secret;
+  }
+
+  private static Optional<String> decryptedOrEmpty(String ciphertext) {
+    Optional<String> plaintext = Optional.empty();
     try {
-      plaintext = Fernet.getInstance().decryptWithPrimaryKey(ciphertext);
+      plaintext = Optional.of(Fernet.getInstance().decrypt(ciphertext));
     } catch (TokenValidationException | IllegalArgumentException e) {
-      LOG.debug("A stored secret does not decrypt with the primary Fernet key", e);
+      LOG.debug("A stored secret does not decrypt with the configured Fernet keys", e);
     }
     return plaintext;
   }
 
-  private static String encrypted(String value) {
-    boolean keptAsIs = value.isEmpty() || !Fernet.getInstance().isKeyDefined();
-    return keptAsIs ? value : Fernet.getInstance().encryptIfApplies(value);
+  private static String encrypted(SecretOwner owner, JsonPointer field, String value) {
+    boolean keptAsIs =
+        value.isEmpty() || !Fernet.getInstance().isKeyDefined() || Fernet.isTokenized(value);
+    return keptAsIs ? value : OwnedCiphertext.encrypt(owner, field.toString(), value);
   }
 
-  private static String decrypted(String value) {
-    return Fernet.getInstance().isKeyDefined()
-        ? Fernet.getInstance().decryptIfApplies(value)
+  private static String decrypted(SecretOwner owner, JsonPointer field, String value) {
+    boolean ciphertext = Fernet.getInstance().isKeyDefined() && Fernet.isTokenized(value);
+    return ciphertext
+        ? OwnedCiphertext.decrypt(owner, field.toString(), value)
+            .orElseThrow(() -> new BadRequestException(NOT_WRITTEN_HERE.formatted(field)))
         : value;
   }
 }

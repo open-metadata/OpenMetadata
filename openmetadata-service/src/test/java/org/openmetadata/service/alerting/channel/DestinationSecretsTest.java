@@ -4,9 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +29,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.channel.webhook.WebhookConfigRules;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.OwnedCiphertext;
 
 class DestinationSecretsTest {
 
@@ -50,8 +54,9 @@ class DestinationSecretsTest {
     assertTrue(encryptedClientId.startsWith(Fernet.FERNET_PREFIX));
     assertTrue(encryptedClientSecret.startsWith(Fernet.FERNET_PREFIX));
 
-    assertEquals("my-client-id", Fernet.getInstance().decrypt(encryptedClientId));
-    assertEquals("my-client-secret", Fernet.getInstance().decrypt(encryptedClientSecret));
+    assertEquals("my-client-id", opened(result.get(0), "/authType/clientId", encryptedClientId));
+    assertEquals(
+        "my-client-secret", opened(result.get(0), "/authType/clientSecret", encryptedClientSecret));
   }
 
   @Test
@@ -80,7 +85,7 @@ class DestinationSecretsTest {
     String encryptedKey = (String) authMap.get("secretKey");
 
     assertTrue(encryptedKey.startsWith(Fernet.FERNET_PREFIX));
-    assertEquals("my-secret-key", Fernet.getInstance().decrypt(encryptedKey));
+    assertEquals("my-secret-key", opened(result.get(0), "/authType/secretKey", encryptedKey));
   }
 
   // Before the fix, a Slack/MS Teams/GChat destination carrying an authType was accepted by
@@ -107,8 +112,9 @@ class DestinationSecretsTest {
         encryptedClientSecret.startsWith(Fernet.FERNET_PREFIX),
         type + " clientSecret was not encrypted");
 
-    assertEquals("my-client-id", Fernet.getInstance().decrypt(encryptedClientId));
-    assertEquals("my-client-secret", Fernet.getInstance().decrypt(encryptedClientSecret));
+    assertEquals("my-client-id", opened(result.get(0), "/authType/clientId", encryptedClientId));
+    assertEquals(
+        "my-client-secret", opened(result.get(0), "/authType/clientSecret", encryptedClientSecret));
     assertEquals(type, result.get(0).getType());
   }
 
@@ -147,7 +153,7 @@ class DestinationSecretsTest {
 
     assertTrue(
         encryptedKey.startsWith(Fernet.FERNET_PREFIX), type + " secretKey was not encrypted");
-    assertEquals("my-secret-key", Fernet.getInstance().decrypt(encryptedKey));
+    assertEquals("my-secret-key", opened(result.get(0), "/authType/secretKey", encryptedKey));
     assertEquals(type, result.get(0).getType());
   }
 
@@ -162,8 +168,9 @@ class DestinationSecretsTest {
     List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
     Map<String, Object> config = configOf(result.getFirst());
     Map<String, String> headers = headersOf(result.getFirst());
-    assertEquals(ENDPOINT, Fernet.getInstance().decrypt((String) config.get("endpoint")));
-    assertEquals(TOKEN, Fernet.getInstance().decrypt((String) headers.get("Authorization")));
+    assertEquals(ENDPOINT, opened(result.getFirst(), "/endpoint", (String) config.get("endpoint")));
+    assertEquals(
+        TOKEN, opened(result.getFirst(), "/headers/Authorization", headers.get("Authorization")));
     assertEquals(Map.of("team", "a"), config.get("queryParams"));
     assertNull(config.get("authType"));
     assertEquals(type, result.getFirst().getType());
@@ -182,7 +189,8 @@ class DestinationSecretsTest {
     assertEquals(PASSWORD_MASK, headersOf(masked).get("Authorization"));
     DestinationSecrets.encrypt(List.of(destination));
     assertEquals(
-        "123456789", Fernet.getInstance().decrypt(headersOf(destination).get("Authorization")));
+        "123456789",
+        opened(destination, "/headers/Authorization", headersOf(destination).get("Authorization")));
   }
 
   @Test
@@ -215,6 +223,58 @@ class DestinationSecretsTest {
     assertEquals(TOKEN, headersOf(usable).get("Authorization"));
     assertTrue(((String) configOf(stored).get("endpoint")).startsWith(Fernet.FERNET_PREFIX));
     assertEquals(ENDPOINT, WebhookConfigRules.stored(stored).getEndpoint().toString());
+  }
+
+  @Test
+  void decrypted_refusesCiphertextNotWrittenForTheDestination() {
+    SubscriptionDestination encryptedElsewhere =
+        buildOAuth2Destination("client", Fernet.getInstance().encrypt("a value held elsewhere"));
+    SubscriptionDestination stored = oauth2Destination();
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination another = oauth2Destination();
+    Map<String, Object> config = new LinkedHashMap<>(configOf(another));
+    config.put("authType", authTypeOf(stored));
+    another.withConfig(config);
+
+    for (SubscriptionDestination destination : List.of(encryptedElsewhere, another)) {
+      BadRequestException refused =
+          assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(destination));
+      assertTrue(refused.getMessage().contains("not written for"), refused.getMessage());
+      assertThrows(BadRequestException.class, () -> WebhookConfigRules.stored(destination));
+    }
+  }
+
+  @Test
+  void bindStoredAlert_bindsWhatWasEnteredAndRemovesWhatCannotBeShownToBeItsOwn() {
+    String foreign = Fernet.getInstance().encrypt("a value held elsewhere");
+    SubscriptionDestination entered = incomingWebhook(SubscriptionType.SLACK);
+    SubscriptionDestination signed =
+        buildBearerDestination(SubscriptionType.WEBHOOK, Fernet.getInstance().encrypt("hmac-key"));
+    SubscriptionDestination copied = buildOAuth2Destination("client", foreign);
+    SubscriptionDestination withHeader = incomingWebhook(SubscriptionType.WEBHOOK);
+    withHeader.withConfig(withHeader(configOf(withHeader), foreign));
+    EventSubscription alert =
+        new EventSubscription()
+            .withId(UUID.randomUUID())
+            .withName("legacy")
+            .withDestinations(List.of(entered, signed, copied, withHeader))
+            .withChangeDescription(destinationsChange(List.of(copied)));
+    JsonNode row = JsonUtils.valueToTree(alert);
+
+    assertTrue(DestinationSecrets.bindStoredAlert(row));
+    String once = JsonUtils.pojoToJson(row);
+    assertFalse(DestinationSecrets.bindStoredAlert(row));
+    assertEquals(once, JsonUtils.pojoToJson(row));
+
+    List<SubscriptionDestination> bound =
+        JsonUtils.treeToValue(row, EventSubscription.class).getDestinations();
+    assertEquals(ENDPOINT, configOf(DestinationSecrets.decrypted(bound.get(0))).get("endpoint"));
+    assertEquals(
+        "hmac-key", authTypeOf(DestinationSecrets.decrypted(bound.get(1))).get("secretKey"));
+    assertFalse(authTypeOf(bound.get(2)).containsKey("clientSecret"));
+    assertFalse(headersOf(bound.get(3)).containsKey("Authorization"));
+    assertEquals(List.of(true, true, false, false), enabledOf(bound));
+    assertFalse(once.contains(foreign), "neither the row nor its history keeps it");
   }
 
   @Test
@@ -442,6 +502,21 @@ class DestinationSecretsTest {
             .withOldValue(JsonUtils.pojoToJson(destinations))
             .withNewValue(JsonUtils.pojoToJson(destinations));
     return new ChangeDescription().withFieldsUpdated(List.of(change));
+  }
+
+  private static Map<String, Object> withHeader(Map<String, Object> config, String value) {
+    Map<String, Object> withHeader = new LinkedHashMap<>(config);
+    withHeader.put("headers", new LinkedHashMap<>(Map.of("Authorization", value)));
+    return withHeader;
+  }
+
+  private static List<Boolean> enabledOf(List<SubscriptionDestination> destinations) {
+    return destinations.stream().map(SubscriptionDestination::getEnabled).toList();
+  }
+
+  private static String opened(SubscriptionDestination destination, String field, String value) {
+    return OwnedCiphertext.decrypt(DestinationSecrets.ownerOf(destination), field, value)
+        .orElseThrow();
   }
 
   @SuppressWarnings("unchecked")

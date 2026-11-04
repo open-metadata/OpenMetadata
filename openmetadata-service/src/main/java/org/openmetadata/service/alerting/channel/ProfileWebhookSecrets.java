@@ -23,10 +23,13 @@ import jakarta.json.JsonValue;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -35,6 +38,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.SecretOwner;
 
 /**
  * The webhooks a user or a team keeps on its profile, one for each channel that can address them.
@@ -43,10 +47,13 @@ import org.openmetadata.service.fernet.Fernet;
  * same way: encrypted before the profile is stored, masked in every response, restored from the
  * stored profile when a request sends the mask back, and decrypted only to send.
  */
+@Slf4j
 public final class ProfileWebhookSecrets {
   private static final String SUBSCRIPTION = "subscription";
   private static final String PROFILE = "profile";
   private static final JsonPointer SUBSCRIPTIONS = JsonPointer.compile("/profile/subscription");
+  private static final List<String> CHANGE_DESCRIPTIONS =
+      List.of("changeDescription", "incrementalChangeDescription");
   private static final List<String> FIELD_CHANGE_LISTS =
       List.of("fieldsAdded", "fieldsUpdated", "fieldsDeleted");
   private static final List<String> FIELD_CHANGE_VALUES = List.of("oldValue", "newValue");
@@ -61,13 +68,30 @@ public final class ProfileWebhookSecrets {
   private static final String READ_MESSAGE =
       "A profile webhook secret cannot be copied or moved; the patch reads from '%s'";
 
+  private static final String WEBHOOK = "webhook";
+
   private ProfileWebhookSecrets() {}
+
+  /**
+   * The user or team a profile belongs to, by its entity type and id. Each of its webhooks owns its
+   * secrets: a secret written for one opens for no other, in this profile or another. A holder
+   * without an id has nothing stored for it, so it owns nothing a stored secret opens for.
+   */
+  public record Holder(String entityType, UUID id) {
+    SecretOwner ownerOf(String slot) {
+      return SecretOwner.builder(entityType)
+          .id(id == null ? UUID.randomUUID() : id)
+          .literal(WEBHOOK)
+          .literal(slot.toLowerCase(Locale.ROOT))
+          .build();
+    }
+  }
 
   /**
    * The profile of a new user or team, with its webhook secrets encrypted. Nothing is stored that a
    * mask or ciphertext could stand for, so either is refused.
    */
-  public static Profile ofANewEntity(Profile profile) {
+  public static Profile ofANewEntity(Holder holder, Profile profile) {
     return transformWebhooks(
         profile,
         (slot, config) -> {
@@ -76,7 +100,7 @@ public final class ProfileWebhookSecrets {
               field ->
                   requireEntered(
                       slot, field, config.at(field).asText(), MissingNode.getInstance()));
-          ConfigSecrets.encrypt(config, fields);
+          ConfigSecrets.encrypt(holder.ownerOf(slot), config, fields);
         });
   }
 
@@ -87,10 +111,12 @@ public final class ProfileWebhookSecrets {
    * stored secret goes. Everything else is encrypted, so the change description and the stored row
    * carry ciphertext only.
    */
-  public static Profile updated(Profile stored, Profile sent) {
+  public static Profile updated(Holder holder, Profile stored, Profile sent) {
     JsonNode storedSubscriptions = subscriptionsOf(stored);
     return transformWebhooks(
-        sent, (slot, config) -> updateWebhook(slot, storedSubscriptions.path(slot), config));
+        sent,
+        (slot, config) ->
+            updateWebhook(holder.ownerOf(slot), slot, storedSubscriptions.path(slot), config));
   }
 
   /**
@@ -98,7 +124,8 @@ public final class ProfileWebhookSecrets {
    * stored: nothing is copied or moved out of a profile webhook, and a webhook whose target changes
    * has every secret written by the patch itself.
    */
-  public static void validatePatch(Profile stored, Profile patched, JsonPatch patch) {
+  public static void validatePatch(
+      Holder holder, Profile stored, Profile patched, JsonPatch patch) {
     List<JsonObject> operations = operationsOf(patch);
     operations.stream()
         .map(operation -> operation.getString("from", null))
@@ -116,16 +143,22 @@ public final class ProfileWebhookSecrets {
         .forEach(
             webhook ->
                 requireMovedWebhookRewritten(
+                    holder.ownerOf(webhook.getKey()),
                     webhook.getKey(),
                     storedSubscriptions.path(webhook.getKey()),
                     webhook.getValue(),
                     written));
   }
 
-  /** A copy of the profile with every webhook secret decrypted: the profile as it is used to send. */
-  public static Profile decrypted(Profile profile) {
+  /**
+   * A copy of the profile with every webhook secret decrypted: the profile as it is used to send. A
+   * secret not written for its webhook is refused with a 400, so nothing is sent with it.
+   */
+  public static Profile decrypted(Holder holder, Profile profile) {
     return transformWebhooks(
-        profile, (slot, config) -> ConfigSecrets.decrypt(config, WebhookSecrets.fieldsIn(config)));
+        profile,
+        (slot, config) ->
+            ConfigSecrets.decrypt(holder.ownerOf(slot), config, WebhookSecrets.fieldsIn(config)));
   }
 
   /** A copy of the profile with every webhook secret masked. */
@@ -183,6 +216,71 @@ public final class ProfileWebhookSecrets {
     return JsonUtils.treeToValue(tree, ChangeDescription.class);
   }
 
+  /**
+   * Masks, in place, the profile webhook secrets of a user or a team as JSON: a stored row or one of
+   * its versions. Returns whether anything changed.
+   */
+  public static boolean maskEntityTree(JsonNode entity) {
+    return transformEntityTree(entity, ConfigSecrets::mask);
+  }
+
+  /**
+   * Binds, in place, the profile webhook secrets of a stored user or team row written before they
+   * were bound to their webhook ({@link ConfigSecrets#bindStored}); its change descriptions keep the
+   * mask. A webhook that loses a value is removed, to be added again. Running it again changes
+   * nothing. Returns whether anything changed.
+   */
+  public static boolean bindStoredEntity(String entityType, JsonNode entity) {
+    Holder holder = new Holder(entityType, UUID.fromString(entity.path("id").asText()));
+    JsonNode before = entity.deepCopy();
+    if (entity.at(SUBSCRIPTIONS) instanceof ObjectNode subscriptions) {
+      List<String> unbound = new ArrayList<>();
+      subscriptions
+          .properties()
+          .forEach(
+              webhook -> {
+                if (!bindStoredWebhook(holder, webhook.getKey(), webhook.getValue())) {
+                  unbound.add(webhook.getKey());
+                }
+              });
+      subscriptions.remove(unbound);
+    }
+    CHANGE_DESCRIPTIONS.forEach(
+        name -> transformChangeDescription(entity.path(name), ConfigSecrets::mask));
+    return !entity.equals(before);
+  }
+
+  /** Whether the webhook keeps every value it holds once its secrets are bound to it. */
+  private static boolean bindStoredWebhook(Holder holder, String slot, JsonNode config) {
+    List<JsonPointer> removed =
+        config.isObject()
+            ? ConfigSecrets.bindStored(
+                holder.ownerOf(slot),
+                config,
+                WebhookSecrets.fieldsIn(config),
+                WebhookSecrets.KEPT_ON_THE_SERVER)
+            : List.of();
+    if (!removed.isEmpty()) {
+      LOG.warn(
+          "The {} webhook of {} {} held values at {} that were not written for it; it is removed "
+              + "until it is added again",
+          slot,
+          holder.entityType(),
+          holder.id(),
+          removed);
+    }
+    return removed.isEmpty();
+  }
+
+  private static boolean transformEntityTree(
+      JsonNode entity, BiPredicate<JsonNode, List<JsonPointer>> transform) {
+    boolean changed = transformSubscriptions(entity.at(SUBSCRIPTIONS), transform);
+    for (String name : CHANGE_DESCRIPTIONS) {
+      changed |= transformChangeDescription(entity.path(name), transform);
+    }
+    return changed;
+  }
+
   private static boolean transformSubscriptions(
       JsonNode subscriptions, BiPredicate<JsonNode, List<JsonPointer>> transform) {
     boolean changed = false;
@@ -227,9 +325,10 @@ public final class ProfileWebhookSecrets {
     return changed;
   }
 
-  private static void updateWebhook(String slot, JsonNode stored, JsonNode sent) {
+  private static void updateWebhook(
+      SecretOwner owner, String slot, JsonNode stored, JsonNode sent) {
     List<JsonPointer> fields = WebhookSecrets.fieldsIn(sent);
-    boolean moved = ConfigSecrets.targetMoved(stored, sent);
+    boolean moved = ConfigSecrets.targetMoved(owner, stored, sent);
     for (JsonPointer field : fields) {
       String value = sent.at(field).asText();
       requireEntered(slot, field, value, stored);
@@ -238,9 +337,9 @@ public final class ProfileWebhookSecrets {
       }
     }
     if (!moved) {
-      ConfigSecrets.restore(stored, sent, fields);
+      ConfigSecrets.restore(owner, stored, sent, fields);
     }
-    ConfigSecrets.encrypt(sent, fields);
+    ConfigSecrets.encrypt(owner, sent, fields);
   }
 
   /**
@@ -263,8 +362,8 @@ public final class ProfileWebhookSecrets {
   }
 
   private static void requireMovedWebhookRewritten(
-      String slot, JsonNode stored, JsonNode patched, List<String> written) {
-    if (!stored.isMissingNode() && ConfigSecrets.targetMoved(stored, patched)) {
+      SecretOwner owner, String slot, JsonNode stored, JsonNode patched, List<String> written) {
+    if (!stored.isMissingNode() && ConfigSecrets.targetMoved(owner, stored, patched)) {
       String base = SUBSCRIPTIONS + "/" + slot;
       boolean everySecretWritten =
           WebhookSecrets.fieldsIn(patched).stream()

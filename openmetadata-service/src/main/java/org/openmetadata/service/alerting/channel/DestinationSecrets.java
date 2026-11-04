@@ -30,11 +30,13 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.secrets.SecretOwner;
 
 /**
  * What a destination's configuration holds that must not be stored or read back in the clear: the
@@ -42,10 +44,14 @@ import org.openmetadata.schema.utils.ResultList;
  * message is sent, and masked in every response. A response sent back as it was read carries the
  * mask, which stands for the stored value.
  */
+@Slf4j
 public final class DestinationSecrets {
   private static final String DESTINATIONS = "destinations";
   private static final String CONFIG = "config";
-  private static final String FIELD_CHANGE_NAME = "name";
+  private static final String ID = "id";
+  private static final String NAME = "name";
+  private static final String ENABLED = "enabled";
+  private static final String OWNER_KIND = "alertdestination";
   private static final List<String> CHANGE_DESCRIPTIONS =
       List.of("changeDescription", "incrementalChangeDescription");
   private static final List<String> FIELD_CHANGE_LISTS =
@@ -77,23 +83,39 @@ public final class DestinationSecrets {
               if (nullOrEmpty(destination.getId())) {
                 destination.withId(UUID.randomUUID());
               }
-              transform(destination, ConfigSecrets::encrypt);
+              SecretOwner owner = ownerOf(destination);
+              transform(
+                  destination, (config, fields) -> ConfigSecrets.encrypt(owner, config, fields));
               result.add(destination);
             });
     return result;
   }
 
-  /** A copy of the destination with its secrets decrypted: the configuration as it is used. */
+  /**
+   * A copy of the destination with its secrets decrypted: the configuration as it is used. A secret
+   * not written for this destination is refused with a 400, so nothing is sent with it.
+   */
   public static SubscriptionDestination decrypted(SubscriptionDestination destination) {
     SubscriptionDestination copy = JsonUtils.deepCopy(destination, SubscriptionDestination.class);
-    transform(copy, ConfigSecrets::decrypt);
+    SecretOwner owner = ownerOf(copy);
+    transform(copy, (config, fields) -> ConfigSecrets.decrypt(owner, config, fields));
     return copy;
+  }
+
+  /**
+   * Who a destination's secrets belong to: the destination itself, by its id, which the server
+   * keeps for its whole life. A destination without an id has nothing stored for it, so it gets an
+   * owner of its own that no stored secret opens for.
+   */
+  static SecretOwner ownerOf(SubscriptionDestination destination) {
+    UUID id = destination.getId() == null ? UUID.randomUUID() : destination.getId();
+    return SecretOwner.builder(OWNER_KIND).id(id).build();
   }
 
   /** A copy of the alert with every secret masked, in its destinations and its change history. */
   public static EventSubscription mask(EventSubscription alert) {
     JsonNode tree = JsonUtils.valueToTree(alert);
-    maskAlert(tree);
+    maskAlertTree(tree);
     return JsonUtils.treeToValue(tree, EventSubscription.class);
   }
 
@@ -160,7 +182,7 @@ public final class DestinationSecrets {
     JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
     JsonNode updatedConfig = JsonUtils.valueToTree(updated.getConfig());
     if (ConfigSecrets.restore(
-        storedConfig, updatedConfig, secretFieldsOf(updated, updatedConfig))) {
+        ownerOf(stored), storedConfig, updatedConfig, secretFieldsOf(updated, updatedConfig))) {
       updated.withConfig(JsonUtils.treeToValue(updatedConfig, Object.class));
     }
   }
@@ -212,7 +234,9 @@ public final class DestinationSecrets {
   /** Whether {@code sent} would deliver what {@code stored} carries somewhere it is not stored. */
   static boolean targetMoved(SubscriptionDestination stored, SubscriptionDestination sent) {
     return ConfigSecrets.targetMoved(
-        JsonUtils.valueToTree(stored.getConfig()), JsonUtils.valueToTree(sent.getConfig()));
+        ownerOf(stored),
+        JsonUtils.valueToTree(stored.getConfig()),
+        JsonUtils.valueToTree(sent.getConfig()));
   }
 
   private static void transform(
@@ -223,8 +247,66 @@ public final class DestinationSecrets {
     }
   }
 
-  private static void maskAlert(JsonNode alert) {
-    transformAlert(alert, ConfigSecrets::mask);
+  /**
+   * Binds, in place, the secrets of an alert row stored before they were bound to their
+   * destination ({@link ConfigSecrets#bindStored}); its change descriptions keep the mask. A
+   * destination that loses a value is disabled until its secrets are entered again. Running it
+   * again changes nothing. Returns whether anything changed.
+   */
+  public static boolean bindStoredAlert(JsonNode alert) {
+    boolean changed = false;
+    for (JsonNode destination : alert.path(DESTINATIONS)) {
+      if (destination instanceof ObjectNode stored) {
+        changed |= bindStoredDestination(alert, stored);
+      }
+    }
+    for (String name : CHANGE_DESCRIPTIONS) {
+      changed |= transformChangeDescription(alert.path(name), ConfigSecrets::mask);
+    }
+    return changed;
+  }
+
+  /**
+   * Masks, in place, the secrets of an alert as JSON, in its destinations and in the destination
+   * lists its change descriptions record: a version, which nothing sends from. Returns whether
+   * anything changed.
+   */
+  public static boolean maskAlertTree(JsonNode alert) {
+    return transformAlert(alert, ConfigSecrets::mask);
+  }
+
+  private static boolean bindStoredDestination(JsonNode alert, ObjectNode destination) {
+    JsonNode before = destination.deepCopy();
+    if (destination.path(ID).asText().isEmpty()) {
+      destination.put(ID, UUID.randomUUID().toString());
+    }
+    SubscriptionDestination typed =
+        JsonUtils.treeToValue(destination, SubscriptionDestination.class);
+    JsonNode config = destination.path(CONFIG);
+    List<JsonPointer> removed =
+        ConfigSecrets.bindStored(
+            ownerOf(typed),
+            config,
+            secretFieldsOf(typed, config),
+            WebhookSecrets.KEPT_ON_THE_SERVER);
+    if (!removed.isEmpty()) {
+      disable(alert, typed, destination, removed);
+    }
+    return !destination.equals(before);
+  }
+
+  private static void disable(
+      JsonNode alert,
+      SubscriptionDestination typed,
+      ObjectNode destination,
+      List<JsonPointer> removed) {
+    destination.put(ENABLED, false);
+    LOG.warn(
+        "Destination {} of alert {} held values at {} that were not written for it; they are "
+            + "removed and the destination is disabled until they are entered again",
+        typed.getId(),
+        alert.path(NAME).asText(),
+        removed);
   }
 
   private static boolean transformAlert(
@@ -254,7 +336,7 @@ public final class DestinationSecrets {
     boolean changed = false;
     for (String list : FIELD_CHANGE_LISTS) {
       for (JsonNode fieldChange : changeDescription.path(list)) {
-        if (DESTINATIONS.equals(fieldChange.path(FIELD_CHANGE_NAME).asText())
+        if (DESTINATIONS.equals(fieldChange.path(NAME).asText())
             && fieldChange instanceof ObjectNode holder) {
           for (String valueField : FIELD_CHANGE_VALUES) {
             changed |= transformDestinationsJson(holder, valueField, transform);
@@ -286,7 +368,7 @@ public final class DestinationSecrets {
     Object masked = version;
     if (version instanceof String json) {
       JsonNode tree = JsonUtils.readTree(json);
-      maskAlert(tree);
+      maskAlertTree(tree);
       masked = JsonUtils.pojoToJson(tree);
     }
     return masked;

@@ -26,11 +26,15 @@ import java.util.List;
 public final class WebhookSecrets {
   private static final JsonPointer ENDPOINT = JsonPointer.compile("/endpoint");
   private static final JsonPointer HEADERS = JsonPointer.compile("/headers");
+  private static final JsonPointer SIGNING_KEY = JsonPointer.compile("/authType/secretKey");
   private static final List<JsonPointer> AUTHENTICATION =
       List.of(
-          JsonPointer.compile("/authType/secretKey"),
+          SIGNING_KEY,
           JsonPointer.compile("/authType/clientId"),
           JsonPointer.compile("/authType/clientSecret"));
+
+  /** The secrets that never leave the server: the signing key only ever keys an HMAC. */
+  public static final List<JsonPointer> KEPT_ON_THE_SERVER = List.of(SIGNING_KEY);
 
   private WebhookSecrets() {}
 
