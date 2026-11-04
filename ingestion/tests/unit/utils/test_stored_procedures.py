@@ -428,21 +428,14 @@ class TestStoredProcedures:
         assert (
             get_procedure_name_from_call(
                 query_text=(
-                    "DECLARE d VARCHAR2(99) := 'D:\\exp\\'; "
-                    "f VARCHAR2(9) := 'o.csv'; "
-                    "BEGIN etl.export(d, f); END;"
+                    "DECLARE d VARCHAR2(99) := 'D:\\exp\\'; f VARCHAR2(9) := 'o.csv'; BEGIN etl.export(d, f); END;"
                 )
             )
             == "export"
         )
 
         # A single backslashed literal ahead of a real call: same guarantee.
-        assert (
-            get_procedure_name_from_call(
-                query_text="SELECT 'D:\\exp\\'; CALL nightly_load()"
-            )
-            == "nightly_load"
-        )
+        assert get_procedure_name_from_call(query_text="SELECT 'D:\\exp\\'; CALL nightly_load()") == "nightly_load"
 
         # The unterminated-string regression tests must still hold: a lone `'`
         # that genuinely opens a never-closed string still truncates.
@@ -457,16 +450,11 @@ class TestStoredProcedures:
         """
         # A `q'[` written in a `--` line comment must not be read as a q-quote
         # opener that swallows the real `BEGIN` on the next line.
-        assert (
-            get_procedure_name_from_call(
-                query_text="-- q'[\nBEGIN etl.notify(q'[it's done]'); END;"
-            )
-            == "notify"
-        )
+        assert get_procedure_name_from_call(query_text="-- q'[\nBEGIN etl.notify(q'[it's done]'); END;") == "notify"
 
         # A `q'[x]'` written inside a `"..."` delimited identifier is part of
         # the procedure name, not a q-quote literal, so it must be preserved.
-        assert get_procedure_name_from_call(query_text='CALL "q\'[x]\'"()') == "q'[x]'"
+        assert get_procedure_name_from_call(query_text="CALL \"q'[x]'\"()") == "q'[x]'"
 
         # The q-quote still blanks a real q-quote literal that follows the
         # comment, so a `CALL` inside it does not fabricate lineage.

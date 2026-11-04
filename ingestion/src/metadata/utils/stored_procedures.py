@@ -57,9 +57,7 @@ NAME_PATTERN = "|".join(
 
 # Characters that may continue a word identifier. Used to keep `q'` / `nq'`
 # from matching the tail of an identifier like `seq'...`.
-_WORD_CHARS = frozenset(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
-)
+_WORD_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
 
 
 def _blank_line_comment(text: str, i: int, n: int, out: list[str]) -> int:
@@ -71,9 +69,7 @@ def _blank_line_comment(text: str, i: int, n: int, out: list[str]) -> int:
     return j
 
 
-def _blank_block_comment(
-    text: str, i: int, n: int, out: list[str]
-) -> int | None:
+def _blank_block_comment(text: str, i: int, n: int, out: list[str]) -> int | None:
     """Blank a `/* ... */` block comment. Return the new index, or ``None`` if
     the comment is unterminated (caller truncates at the opener)."""
     j = i + 2
@@ -118,9 +114,7 @@ def _copy_backtick(text: str, i: int, n: int, out: list[str]) -> int:
     return j
 
 
-def _blank_dollar(
-    text: str, i: int, n: int, out: list[str]
-) -> int | None:
+def _blank_dollar(text: str, i: int, n: int, out: list[str]) -> int | None:
     """Blank a PostgreSQL `$tag$...$tag$` dollar-quote (empty tag `$$` allowed).
     Return the new index, ``None`` to truncate (unterminated), or ``-1`` when
     the `$` does not open a dollar-quote (caller preserves it verbatim)."""
@@ -143,12 +137,7 @@ def _detect_qquote(text: str, i: int, n: int) -> tuple[int, str]:
     the opening `'` and the delimiter character. Otherwise return ``(-1, "")``.
     """
     c = text[i]
-    if (
-        c in ("q", "Q")
-        and i + 2 < n
-        and text[i + 1] == "'"
-        and (i == 0 or text[i - 1] not in _WORD_CHARS)
-    ):
+    if c in ("q", "Q") and i + 2 < n and text[i + 1] == "'" and (i == 0 or text[i - 1] not in _WORD_CHARS):
         d = text[i + 2]
         if not d.isspace():
             return i + 1, d
@@ -165,9 +154,7 @@ def _detect_qquote(text: str, i: int, n: int) -> tuple[int, str]:
     return -1, ""
 
 
-def _blank_qquote(
-    text: str, start: int, q_end: int, delim: str, out: list[str], n: int
-) -> int | None:
+def _blank_qquote(text: str, start: int, q_end: int, delim: str, out: list[str], n: int) -> int | None:
     """Blank a `q'`/`nq'` literal that opens at ``start`` (closing `'` at
     ``q_end``). Bracket delimiters pair `()`/`[]`/`{}`/`<>`; any other single
     non-whitespace delimiter is its own closer. Return the new index, or
@@ -176,14 +163,10 @@ def _blank_qquote(
     close = {"(": ")", "[": "]", "{": "}", "<": ">"}.get(delim)
     j = q_end + 2
     if close is not None:
-        while j < n and not (
-            text[j] == close and j + 1 < n and text[j + 1] == "'"
-        ):
+        while j < n and not (text[j] == close and j + 1 < n and text[j + 1] == "'"):
             j += 1
     else:
-        while j < n and not (
-            text[j] == delim and j + 1 < n and text[j + 1] == "'"
-        ):
+        while j < n and not (text[j] == delim and j + 1 < n and text[j + 1] == "'"):
             j += 1
     if j >= n or j + 1 >= n:
         return None
@@ -191,9 +174,7 @@ def _blank_qquote(
     return j + 2
 
 
-def _blank_ordinary_string(
-    text: str, i: int, out: list[str], n: int
-) -> int | None:
+def _blank_ordinary_string(text: str, i: int, out: list[str], n: int) -> int | None:
     """Blank an ordinary `'...'` literal that opens at ``i``. A backslash is a
     literal character and `''` is an escaped apostrophe. Return the new index,
     or ``None`` if the string is unterminated (caller truncates at the opener).
