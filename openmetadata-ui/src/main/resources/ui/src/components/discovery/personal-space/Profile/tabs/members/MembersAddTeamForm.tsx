@@ -283,7 +283,10 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
           className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8"
           data-testid="add-team-container"
           direction="col">
-          <Box className="tw:max-w-[50%] tw:w-full" direction="col" gap={5}>
+          <Box
+            className="tw:max-w-[50%] tw:w-full tw:mx-auto"
+            direction="col"
+            gap={5}>
             <FormFields fields={nameFields} />
 
             <Box direction="col" gap={1}>
@@ -322,7 +325,7 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
       </HookForm>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         data-testid="add-team-footer"
         direction="row"
         gap={3}

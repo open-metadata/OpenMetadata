@@ -24,8 +24,8 @@ import {
  * Testid corrections vs. the original draft (verified against the running
  * app and the current UI source, see task-5-report.md):
  * - landing-page: `activity-feed-widget` does not exist; the real testid on
- *   the feed widget wrapper is `KnowledgePanel.ActivityFeed`
- *   (src/components/MyData/FeedWidget/FeedWidget.component.tsx).
+ *   the feed widget's grid cell is `KnowledgePanel.ActivityFeed`
+ *   (src/components/MyData/HomeLandingPage/HomeLandingPage.tsx).
  * - explore: `search-summary` does not exist. The volatile regions are the
  *   result-count text (`search-results-count`,
  *   src/components/SearchedData/SearchedData.tsx) and the facet-count tree
@@ -33,16 +33,16 @@ import {
  *   src/components/Explore/ExploreTree/ExploreTree.tsx). Both are masked.
  */
 /**
- * The landing dashboard's run-dependent content: the activity feed, the
- * Context Center article list (other specs create pages), the per-service
- * asset counts, and the release toast. Masking these replaces the 3% diff
- * allowance the page used to carry, so the widget chrome stays under test at
- * the suite's default 1% gate.
+ * The landing dashboard's run-dependent content: the activity digest, the
+ * Context Center article list (other specs create pages), the estate's asset
+ * counts and connector breakdown, and the release toast. Masking these replaces the 3% diff allowance the page used
+ * to carry, so the widget chrome stays under test at the suite's default 1% gate.
  */
 const LANDING_PAGE_MASKS = [
   '[data-testid="KnowledgePanel.ActivityFeed"]',
   '[data-testid="KnowledgePanel.KnowledgeCenter"]',
-  '[data-testid="KnowledgePanel.DataAssets"] [data-testid="badge-container"]',
+  '[data-testid="KnowledgePanel.DataEstate"] [data-testid="data-estate-total"]',
+  '[data-testid="KnowledgePanel.DataEstate"] [data-testid="connector-breakdown"]',
   '[data-testid="whats-new-alert-card"]',
 ];
 

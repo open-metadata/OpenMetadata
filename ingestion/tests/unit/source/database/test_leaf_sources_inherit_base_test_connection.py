@@ -16,7 +16,6 @@ import pytest
 
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.ingestion.source.database.deltalake.metadata import DeltalakeSource
 from metadata.ingestion.source.database.domodatabase.metadata import DomodatabaseSource
 from metadata.ingestion.source.database.glue.metadata import GlueSource
 from metadata.ingestion.source.database.salesforce.metadata import SalesforceSource
@@ -24,7 +23,6 @@ from metadata.ingestion.source.database.sas.metadata import SasSource
 
 OWNED_LEAF_SOURCES = [
     DatalakeSource,
-    DeltalakeSource,
     DomodatabaseSource,
     GlueSource,
     SalesforceSource,

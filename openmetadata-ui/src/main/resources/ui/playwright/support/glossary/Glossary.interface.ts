@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlossaryTerm } from '../../../src/generated/entity/data/glossaryTerm';
+
 export type GlossaryResponseDataType = {
   name: string;
   displayName: string;
@@ -39,6 +41,7 @@ export type GlossaryData = {
 };
 
 export type GlossaryTermResponseDataType = {
+  entityStatus?: GlossaryTerm['entityStatus'];
   name: string;
   displayName: string;
   description: string;

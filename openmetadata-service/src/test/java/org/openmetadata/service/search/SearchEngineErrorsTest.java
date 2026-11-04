@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.sdk.exception.SearchException;
+import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 
 class SearchEngineErrorsTest {
 
@@ -62,6 +63,27 @@ class SearchEngineErrorsTest {
 
     assertTrue(thrown.getMessage().contains("parse_exception: Encountered"), thrown.getMessage());
     assertTrue(thrown.getMessage().contains("other: reason"), thrown.getMessage());
+  }
+
+  @Test
+  @DisplayName("a missing index the caller made up is the caller's error")
+  void indexNotFoundForAnUnknownNameIsTheCallersError() {
+    SearchIndexNotFoundException thrown =
+        SearchEngineErrors.indexNotFound("cluster_nope", List.of("nope"));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), thrown.getResponse().getStatus());
+    assertEquals("Unknown search index [nope]", thrown.getMessage());
+  }
+
+  @Test
+  @DisplayName("a managed index missing from the cluster stays a server fault")
+  void indexNotFoundForAManagedIndexStaysServerError() {
+    SearchIndexNotFoundException thrown =
+        SearchEngineErrors.indexNotFound("cluster_table_search_index", List.of());
+
+    assertEquals(
+        Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), thrown.getResponse().getStatus());
+    assertEquals("Failed to find index cluster_table_search_index", thrown.getMessage());
   }
 
   @Test

@@ -22,7 +22,6 @@ import { ChangeDescription } from '../../../../generated/tests/testCase';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
-import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getParameterValueDiffRows } from '../../../../utils/EntityVersionUtils';
 import Description from '../../../common/EntityDescription/Description';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
@@ -146,10 +145,7 @@ function TestCaseSidePanel({
   );
 }
 
-const TestCaseResultTab = ({
-  showSidePanel,
-  editVariant = getDefaultTestCaseFormVariant(),
-}: TestCaseTabProps) => {
+const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
@@ -296,7 +292,6 @@ const TestCaseResultTab = ({
                 open={isParameterEdit}
                 showDocPanel={false}
                 testCase={testCaseData}
-                variant={editVariant}
                 onClose={handleCancelParameter}
                 onUpdate={setTestCase}
               />

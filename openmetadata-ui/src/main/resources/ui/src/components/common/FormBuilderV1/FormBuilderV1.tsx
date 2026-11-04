@@ -143,6 +143,19 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       [props.templates]
     );
 
+    // Custom fields (toggles, tag arrays) report focus through
+    // formContext.handleFocus, so a form-level onFocus has to reach them too.
+    const { onFocus, formContext: consumerFormContext } = props;
+    const formContext = useMemo(
+      () => ({
+        handleFocus: onFocus
+          ? (id: string) => onFocus(id, undefined)
+          : undefined,
+        ...consumerFormContext,
+      }),
+      [consumerFormContext, onFocus]
+    );
+
     return (
       <FieldDocsContext.Provider value={fieldDocs}>
         <Form
@@ -152,6 +165,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
           omitExtraData
           className="rjsf no-header"
           fields={mergedFields}
+          formContext={formContext}
           formData={localFormData}
           idSeparator="/"
           ref={ref}
@@ -169,7 +183,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
            * and keep the card's bottom border-radius visible during scroll. */}
           {!hideFooter && (
             <Box
-              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1"
+              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-surface tw:pt-4 tw:pb-1"
               direction="row"
               gap={2}
               justify="end">

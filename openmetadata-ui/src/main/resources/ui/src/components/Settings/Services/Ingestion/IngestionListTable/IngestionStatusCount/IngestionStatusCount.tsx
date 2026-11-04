@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
-import './ingestion-status-count.less';
+import { STATUS_TILE_CLASS } from './IngestionStatusCount.constants';
 import { IngestionStatusCountProps } from './IngestionStatusCount.interface';
 
 function IngestionStatusCount({
@@ -28,22 +28,20 @@ function IngestionStatusCount({
   );
 
   return (
-    <Box
-      align="center"
-      className="ingestion-status-count"
-      gap={1}
-      justify="evenly"
-      wrap="nowrap">
+    <Box align="center" gap={2} wrap="nowrap">
       {records.map((record) => (
-        <Box
-          align="center"
-          className={classNames('status-count', record.type)}
-          direction="col"
-          justify="center"
+        <div
+          className={classNames(
+            'tw:flex tw:h-12 tw:min-w-15.5 tw:flex-col tw:items-center tw:justify-center tw:rounded-xl tw:px-3 tw:py-1.5',
+            STATUS_TILE_CLASS[record.type]
+          )}
+          data-testid={`${record.type}-count`}
           key={`${record.label}-${runId}`}>
-          <Typography className="record-count">{record.value}</Typography>
-          <Typography className="record-label">{record.label}</Typography>
-        </Box>
+          <span className="tw:text-sm tw:font-bold">{record.value}</span>
+          <span className="tw:text-xs tw:font-medium tw:leading-4">
+            {record.label}
+          </span>
+        </div>
       ))}
     </Box>
   );

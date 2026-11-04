@@ -98,7 +98,7 @@ export const EventTriggerFilterSection: React.FC<
                 entityTypes={entityType}
                 forceReadOnly={lockFields}
                 label={t('label.exclude-filter')}
-                outputType={SearchOutputType.ElasticSearch}
+                outputType={SearchOutputType.JSONLogic}
                 showExploreLink={false}
                 value={triggerFilter}
                 onChange={(value: string) => {

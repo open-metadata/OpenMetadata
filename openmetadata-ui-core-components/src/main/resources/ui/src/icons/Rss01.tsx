@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Rss01: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const Rss01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M6 19a1 1 0 1 1-2 0 1 1 0 0 1 2 0"
+      d="M3.333 9.167a7.5 7.5 0 0 1 7.5 7.5m-7.5-13.334a13.333 13.333 0 0 1 13.333 13.333M5 15.833a.833.833 0 1 1-1.667 0 .833.833 0 0 1 1.667 0"
       stroke="currentColor"
       strokeWidth={1.3}
     />

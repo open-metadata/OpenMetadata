@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
@@ -93,17 +92,22 @@ const ContractQualityCard: React.FC<{
     };
   }, [testCaseSummary]);
 
-  const getTestCaseStatusIcon = (record: TestCase) => (
-    <Icon
-      className="test-status-icon"
-      component={
-        TEST_CASE_STATUS_ICON[
-          (record?.testCaseResult?.testCaseStatus ??
-            'Queued') as keyof typeof TEST_CASE_STATUS_ICON
-        ]
-      }
-    />
-  );
+  const getTestCaseStatusIcon = (record: TestCase) => {
+    const StatusIcon =
+      TEST_CASE_STATUS_ICON[
+        (record?.testCaseResult?.testCaseStatus ??
+          'Queued') as keyof typeof TEST_CASE_STATUS_ICON
+      ];
+
+    return (
+      <StatusIcon
+        className="test-status-icon"
+        fill="currentColor"
+        height="1em"
+        width="1em"
+      />
+    );
+  };
 
   useEffect(() => {
     if (contract?.testSuite?.id) {
@@ -214,7 +218,10 @@ const ContractQualityCard: React.FC<{
       </Grid.Item>
       <Grid.Item className="layout-column d-flex justify-end" span={12}>
         {contractStatus && (
-          <div className="contract-status-container">
+          <Box
+            align="center"
+            className="contract-status-container tw:self-start"
+            gap={3}>
             <Typography className="contract-status-label">{`${t(
               'label.entity-status',
               {
@@ -226,7 +233,7 @@ const ContractQualityCard: React.FC<{
               label={contractStatus}
               status={getContractStatusType(contractStatus)}
             />
-          </div>
+          </Box>
         )}
       </Grid.Item>
     </Grid>

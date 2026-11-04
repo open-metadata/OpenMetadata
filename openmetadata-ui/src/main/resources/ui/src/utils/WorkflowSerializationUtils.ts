@@ -88,10 +88,30 @@ export const deserializePeriodicBatchFilters = (
   return dataAssetFilters;
 };
 
+// Older workflows saved the per-entity-type filter map as a JSON string; the server still reads
+// that form, so read it here too.
+const toFilterMap = (
+  filter: Record<string, string> | string | undefined
+): Record<string, string> | undefined => {
+  if (typeof filter !== 'string') {
+    return filter;
+  }
+  try {
+    const parsed: unknown = JSON.parse(filter);
+
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, string>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const deserializeEventBasedFilters = (
-  filterObj: Record<string, string> | undefined,
+  filter: Record<string, string> | string | undefined,
   entityTypes: string[]
 ): string => {
+  const filterObj = toFilterMap(filter);
   if (!filterObj || typeof filterObj !== 'object') {
     return '';
   }
@@ -110,4 +130,28 @@ export const deserializeEventBasedFilters = (
   const firstKey = Object.keys(filterObj)[0];
 
   return firstKey ? filterObj[firstKey] || '' : '';
+};
+
+// FQNs may contain commas, so multi-value fields are stored as a JSON array.
+// ADR:2026-10-13-set-action-multi-fqn-field-values-are-json-arrays
+export const serializeFqnList = (fqns: string[]): string =>
+  fqns.length > 0 ? JSON.stringify(fqns) : '';
+
+// Reads the JSON array, or the comma-separated format older workflows were saved with.
+export const parseFqnList = (value: string): string[] => {
+  if (!value) {
+    return [];
+  }
+  if (value.trim().startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map(String);
+      }
+    } catch {
+      // not JSON, fall back to the legacy format
+    }
+  }
+
+  return value.split(',').map((fqn) => fqn.trim());
 };

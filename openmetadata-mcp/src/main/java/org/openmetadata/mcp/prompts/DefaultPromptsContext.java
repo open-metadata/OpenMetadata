@@ -5,9 +5,7 @@ import static org.openmetadata.mcp.McpUtils.getPrompts;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
@@ -17,10 +15,9 @@ public class DefaultPromptsContext {
   }
 
   public McpSchema.GetPromptResult callPrompt(
-      JwtFilter jwtFilter, String promptName, McpSchema.GetPromptRequest promptRequest) {
-    Map<String, Object> params = promptRequest.arguments();
-    CatalogSecurityContext securityContext =
-        jwtFilter.getCatalogSecurityContext((String) params.get("Authorization"));
+      CatalogSecurityContext securityContext,
+      String promptName,
+      McpSchema.GetPromptRequest promptRequest) {
     LOG.info(
         "Catalog Principal: {} is trying to call the prompt: {}",
         securityContext.getUserPrincipal().getName(),

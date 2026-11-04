@@ -32,20 +32,6 @@
         align-items: center;
         padding: var(--om-space-24) var(--om-space-16);
         border-top: 1px solid @grey-200;
-
-        .delete-consumer-filter-button {
-          color: @red-1;
-          span {
-            font-weight: var(--om-font-weight-semibold);
-          }
-          .anticon {
-            font-size: var(--om-font-size-sm);
-          }
-
-          &:hover {
-            color: @red-3;
-          }
-        }
       }
     }
   }
@@ -84,33 +70,6 @@
         width: 100%;
         gap: var(--om-space-12);
 
-        .enable-form-item {
-          margin-bottom: 0;
-
-          .ant-switch {
-            margin-left: var(--om-space-2);
-            width: 44px;
-            height: 24px;
-
-            .ant-switch-handle {
-              width: 16px;
-              height: 16px;
-              top: 4px;
-              left: 4px;
-
-              &::before {
-                border-radius: var(--om-radius-20);
-              }
-            }
-          }
-
-          .ant-switch-checked {
-            .ant-switch-handle {
-              left: calc(100% - 16px - 4px);
-            }
-          }
-        }
-
         > div:first-child {
           flex: 1;
           min-width: 0;
@@ -121,30 +80,6 @@
           font-size: var(--om-font-size-md);
           font-weight: var(--om-font-weight-semibold);
           line-height: 32px;
-        }
-
-        .ant-btn.edit-expand-button {
-          border-radius: var(--om-radius-md);
-          border: 1px solid @border-light;
-
-          svg {
-            font-size: var(--om-font-size-xl);
-            color: @grey-600;
-          }
-        }
-      }
-
-      .expandable-card-extra {
-        .ant-btn.expand-collapse-icon {
-          width: 30px;
-          height: 30px;
-          border-radius: var(--om-radius-md);
-          border: 1px solid @border-light;
-
-          svg {
-            font-size: var(--om-font-size-xl);
-            color: @grey-600;
-          }
         }
       }
     }
@@ -160,29 +95,6 @@
 
       .semantic-form-item-content {
         padding: var(--om-space-20);
-
-        .ant-switch {
-          margin-left: var(--om-space-2);
-          width: 36px;
-          height: 20px;
-
-          .ant-switch-handle {
-            width: 14px;
-            height: 14px;
-            top: 3px;
-            left: 3px;
-
-            &::before {
-              border-radius: var(--om-radius-20);
-            }
-          }
-        }
-
-        .ant-switch-checked {
-          .ant-switch-handle {
-            left: calc(100% - 14px - 4px);
-          }
-        }
       }
     }
   }

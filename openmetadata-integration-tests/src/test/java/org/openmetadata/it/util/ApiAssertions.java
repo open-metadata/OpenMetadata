@@ -22,6 +22,10 @@ public final class ApiAssertions {
     return assertRejected(Response.Status.BAD_REQUEST, request, message);
   }
 
+  public static OpenMetadataException assertNotFound(Executable request, String message) {
+    return assertRejected(Response.Status.NOT_FOUND, request, message);
+  }
+
   private static OpenMetadataException assertRejected(
       Response.Status status, Executable request, String message) {
     OpenMetadataException failure = assertThrows(OpenMetadataException.class, request, message);

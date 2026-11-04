@@ -40,7 +40,7 @@ import org.openmetadata.service.search.vector.VectorIndexService;
  */
 class AvailableEntityTypesConsistencyTest {
 
-  private static final String[] LANGUAGES = {"en", "jp", "ru", "zh"};
+  private static final String[] LANGUAGES = {"en", "jp", "ko", "ru", "zh"};
 
   /** Fields {@code VectorDocBuilder} writes on entity and chunk docs. */
   private static final List<String> EMBEDDING_FIELDS =

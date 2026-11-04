@@ -12,7 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { TeamType } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
@@ -66,21 +66,6 @@ jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>Loader</p>);
 });
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <p>
-          {type === ERROR_PLACEHOLDER_TYPE.PERMISSION
-            ? 'Permission_Error_Placeholder'
-            : 'No_Data_Error_Placeholder'}
-        </p>
-      ));
-  }
-);
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
@@ -191,7 +176,7 @@ describe('Test Teams Page', () => {
     });
 
     expect(
-      screen.getByText('Permission_Error_Placeholder')
+      screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 
@@ -279,7 +264,7 @@ describe('Test Teams Page', () => {
       render(<TeamsPage />);
     });
 
-    expect(screen.getByText('No_Data_Error_Placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
 
     (getTeamByName as jest.Mock).mockReset();
   });
@@ -415,6 +400,24 @@ describe('Test Teams Page', () => {
         expect.objectContaining({
           include: Include.NonDeleted,
         })
+      );
+    });
+
+    it('should not request owned assets, since the asset column reads /teams/assets/counts', async () => {
+      setMockPermissions({ ViewBasic: true });
+
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+
+      const advancedFetches = (getTeams as jest.Mock).mock.calls.filter(
+        ([params]) => params?.fields
+      );
+
+      expect(advancedFetches.length).toBeGreaterThan(0);
+
+      advancedFetches.forEach(([params]) =>
+        expect(params.fields).not.toContain(TabSpecificField.OWNS)
       );
     });
 

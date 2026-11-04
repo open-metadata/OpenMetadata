@@ -212,7 +212,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?:                string;
     supportsMetadataExtraction?: boolean;
@@ -367,6 +369,11 @@ export interface GCPCredentialsConfiguration {
      * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
+    /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
     /**
      * Path of the file containing the GCP credentials info
      */

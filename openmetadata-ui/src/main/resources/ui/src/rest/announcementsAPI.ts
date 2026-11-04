@@ -13,7 +13,10 @@
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CreateAnnouncement } from '../generated/api/feed/createAnnouncement';
-import { Announcement } from '../generated/entity/feed/announcement';
+import {
+  Announcement,
+  AnnouncementType,
+} from '../generated/entity/feed/announcement';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/announcements';
@@ -29,6 +32,9 @@ export interface ListAnnouncementsParams {
   entityLink?: string;
   status?: AnnouncementEntity['status'];
   active?: boolean;
+  type?: AnnouncementType;
+  /** `true` lists only system announcements (no entityLink), `false` only entity ones. */
+  system?: boolean;
   limit?: number;
   before?: string;
   after?: string;
@@ -49,6 +55,12 @@ export const getActiveAnnouncements = async (entityLink?: string) => {
     active: true,
     limit: 100,
   });
+};
+
+export const getAnnouncementById = async (id: string) => {
+  const response = await APIClient.get<AnnouncementEntity>(`${BASE_URL}/${id}`);
+
+  return response.data;
 };
 
 export const createAnnouncement = async (data: CreateAnnouncementRequest) => {

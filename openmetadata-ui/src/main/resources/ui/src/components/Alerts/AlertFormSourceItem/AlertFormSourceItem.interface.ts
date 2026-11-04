@@ -12,8 +12,8 @@
  */
 
 export interface AlertFormSourceItemProps {
-  filterResources?: {
-    name?: string;
-  }[];
   isViewMode?: boolean;
+  value?: string[];
+  onChange?: (value: string[], previous: string[]) => void;
+  error?: string;
 }

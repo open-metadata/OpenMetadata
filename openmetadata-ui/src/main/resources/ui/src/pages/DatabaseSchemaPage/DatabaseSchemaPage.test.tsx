@@ -190,10 +190,6 @@ jest.mock('../../components/common/Loader/Loader', () => ({
     .mockImplementation(() => <div data-testid="loader">Loader</div>),
 }));
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)
-);
-
 jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseSchemaDetailsByFQN: jest
     .fn()
@@ -334,7 +330,11 @@ describe('Tests for DatabaseSchemaPage', () => {
       renderWithQueryClient(<DatabaseSchemaPageComponent />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('DatabaseSchemaPage should fetch details with basic fields', async () => {

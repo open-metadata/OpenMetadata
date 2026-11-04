@@ -23,14 +23,11 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
-from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
     import pandas as pd
 
     from metadata.profiler.processor.runner import PandasRunner
-
-logger = profiler_logger()
 
 
 class RowCount(StaticMetric):
@@ -66,15 +63,11 @@ class RowCount(StaticMetric):
         """pandas function"""
         if dfs is None:
             return None
-        try:
-            computation = self.get_pandas_computation()
-            accumulator = computation.create_accumulator()
-            for df in dfs:
-                accumulator = computation.update_accumulator(accumulator, df)
-            return computation.aggregate_accumulator(accumulator)
-        except Exception as err:
-            logger.debug(f" Failure when Computing RowCount.\n Error: {err}")
-            return 0
+        computation = self.get_pandas_computation()
+        accumulator = computation.create_accumulator()
+        for df in dfs:
+            accumulator = computation.update_accumulator(accumulator, df)
+        return computation.aggregate_accumulator(accumulator)
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""

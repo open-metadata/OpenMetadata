@@ -11,17 +11,26 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  DatePicker,
+  Dropdown,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Calendar, ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { DateTime } from 'luxon';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
-import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
+import {
+  dateValueToEndOfDayMillis,
+  millisToPickerDateValue,
+  PickerDateValue,
+} from '../../../utils/date-time/calendarDate.utils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
-import MyDatePicker from '../../common/DatePicker/DatePicker';
+import DateRangeFilter from '../../common/DateRangeFilter/DateRangeFilter';
 import {
   LineageTimeFilterProps,
   LineageTimePresetKey,
@@ -49,6 +58,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
   const { i18n, t } = useTranslation();
   const [showCustomRange, setShowCustomRange] = useState<boolean>(false);
   const [showPointInTime, setShowPointInTime] = useState<boolean>(false);
+  const [pointValue, setPointValue] = useState<PickerDateValue | null>(null);
 
   const matchedPresetDays = useMemo<number | null>(() => {
     if (startTime === undefined || endTime === undefined) {
@@ -112,6 +122,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
         return;
       }
       if (key === LineageTimePresetKey.PointInTime) {
+        setPointValue(isPointInTime ? millisToPickerDateValue(endTime) : null);
         setShowPointInTime(true);
 
         return;
@@ -124,41 +135,24 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
         });
       }
     },
+    [onChange, isPointInTime, endTime]
+  );
+
+  const handleCustomApply = useCallback(
+    ({ startTs, endTs }: { startTs: number; endTs: number }) =>
+      onChange({ startTime: startTs, endTime: endTs }),
     [onChange]
   );
 
-  const handleCustomChange = useCallback(
-    (values: [DateTime | null, DateTime | null] | null) => {
-      if (!values) {
-        onChange({ startTime: undefined, endTime: undefined });
-        setShowCustomRange(false);
-
-        return;
-      }
-      const start = values[0]?.startOf('day').toMillis();
-      const end = values[1]?.endOf('day').toMillis();
-      onChange({ startTime: start, endTime: end });
-      setShowCustomRange(false);
-    },
-    [onChange]
-  );
-
-  const handlePointInTimeChange = useCallback(
-    (value: DateTime | null) => {
-      if (!value) {
-        onChange({ startTime: undefined, endTime: undefined });
-        setShowPointInTime(false);
-
-        return;
-      }
+  const handlePointInTimeApply = useCallback(() => {
+    if (pointValue) {
+      // The date-only value resolves to midnight; include the whole day.
       onChange({
         startTime: undefined,
-        endTime: value.endOf('day').toMillis(),
+        endTime: dateValueToEndOfDayMillis(pointValue),
       });
-      setShowPointInTime(false);
-    },
-    [onChange]
-  );
+    }
+  }, [onChange, pointValue]);
 
   const presetItems = useMemo(
     () => [
@@ -217,14 +211,13 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
           aria-label={t('label.lineage-time-filter')}
           className="tw:px-3.5 tw:py-2.5"
           color="tertiary"
-          data-testid="lineage-time-filter">
-          <div className="tw:flex tw:items-center tw:gap-1">
-            <Calendar height={16} width={16} />
-            <Typography as="span" className="tw:font-normal">
-              {triggerLabel}
-            </Typography>
-            <DropdownIcon height={12} width={12} />
-          </div>
+          data-testid="lineage-time-filter"
+          // Sized to the label; the button's default icon slot outweighs it.
+          iconLeading={<Calendar className="tw:size-4 tw:shrink-0" />}
+          iconTrailing={ChevronDown}>
+          <Typography as="span" className="tw:font-normal">
+            {triggerLabel}
+          </Typography>
         </Button>
         <Dropdown.Popover className="tw:min-w-44">
           <Dropdown.Menu
@@ -244,35 +237,25 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
         </Dropdown.Popover>
       </Dropdown.Root>
       {showCustomRange && (
-        <MyDatePicker.RangePicker
-          allowClear
-          data-testid="lineage-time-filter-range"
-          format={(value) => value.toFormat('yyyy-LL-dd')}
-          open={showCustomRange}
-          placement="bottomRight"
-          value={
-            startTime !== undefined && endTime !== undefined
-              ? [DateTime.fromMillis(startTime), DateTime.fromMillis(endTime)]
-              : null
-          }
-          onChange={handleCustomChange}
-          onOpenChange={(open) => setShowCustomRange(open)}
-        />
+        <span data-testid="lineage-time-filter-range">
+          <DateRangeFilter
+            isOpen
+            endTs={endTime}
+            size="sm"
+            startTs={startTime}
+            onApply={handleCustomApply}
+            onOpenChange={setShowCustomRange}
+          />
+        </span>
       )}
       {showPointInTime && (
-        <MyDatePicker
-          allowClear
+        <DatePicker
+          isOpen
           data-testid="lineage-time-filter-point"
-          format={(value) => value.toFormat('yyyy-LL-dd')}
-          open={showPointInTime}
-          placement="bottomRight"
-          value={
-            isPointInTime && endTime !== undefined
-              ? DateTime.fromMillis(endTime)
-              : null
-          }
-          onChange={handlePointInTimeChange}
-          onOpenChange={(open) => setShowPointInTime(open)}
+          value={pointValue}
+          onApply={handlePointInTimeApply}
+          onChange={setPointValue}
+          onOpenChange={setShowPointInTime}
         />
       )}
     </div>

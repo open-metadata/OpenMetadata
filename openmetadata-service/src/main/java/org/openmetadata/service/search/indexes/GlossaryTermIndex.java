@@ -8,6 +8,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
 public class GlossaryTermIndex implements TaggableIndex {
+  private static final String FIELD_CHILDREN_COUNT = "childrenCount";
   final GlossaryTerm glossaryTerm;
 
   public GlossaryTermIndex(GlossaryTerm glossaryTerm) {
@@ -29,18 +30,17 @@ public class GlossaryTermIndex implements TaggableIndex {
     return Set.of("children");
   }
 
-  /**
-   * {@code effectiveAttributes} is deliberately absent: it is derived from the term's ancestors, so
-   * an indexed copy would go stale whenever an ancestor's attributes change until the next full
-   * reindex. It stays computed per read on the API until a cascade handler exists to refresh
-   * descendants.
-   */
   @Override
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
     fields.add("relatedTerms");
-    fields.add("realizedIn");
+    fields.add(FIELD_CHILDREN_COUNT);
     return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
+  public Set<String> getFieldsLoadedOnWrite() {
+    return Set.of(FIELD_CHILDREN_COUNT);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

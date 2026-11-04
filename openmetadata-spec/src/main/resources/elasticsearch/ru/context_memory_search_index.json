@@ -406,6 +406,38 @@
         "type": "date",
         "format": "epoch_millis||epoch_second||strict_date_optional_time"
       },
+      "outcomes": {
+        "properties": {
+          "appliedCount": {
+            "type": "long",
+            "null_value": 0
+          },
+          "positiveCount": {
+            "type": "long",
+            "null_value": 0
+          },
+          "negativeCount": {
+            "type": "long",
+            "null_value": 0
+          },
+          "correctedCount": {
+            "type": "long",
+            "null_value": 0
+          },
+          "lastAppliedAt": {
+            "type": "date",
+            "format": "epoch_millis||epoch_second||strict_date_optional_time"
+          },
+          "lastCorrectedAt": {
+            "type": "date",
+            "format": "epoch_millis||epoch_second||strict_date_optional_time"
+          },
+          "countedAt": {
+            "type": "date",
+            "format": "epoch_millis||epoch_second||strict_date_optional_time"
+          }
+        }
+      },
       "version": {
         "type": "float"
       },

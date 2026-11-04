@@ -467,8 +467,16 @@ public interface EntityDAO<T extends EntityInterface<?>> {
     if (CollectionUtils.isEmpty(entityFQNs)) {
       return List.of();
     }
-    List<String> nameHashes =
-        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
+    return findReferencesByNameHashes(
+        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList(), include);
+  }
+
+  /** {@link #findReferencesByFqns} for callers that hold name hashes rather than FQNs. */
+  default List<EntityReference> findReferencesByNameHashes(
+      List<String> nameHashes, Include include) {
+    if (CollectionUtils.isEmpty(nameHashes)) {
+      return List.of();
+    }
     int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (nameHashes.size() <= maxChunkSize) {
       return findReferenceRows(nameHashes, include).stream()
@@ -589,6 +597,15 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT (json->>'version')::text FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = POSTGRES)
+  String findVersionByIdForUpdate(@Define("table") String table, @BindUUID("id") UUID id);
+
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
   List<EntityIdJsonPair> findByIds(
@@ -601,6 +618,14 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   // batches of endpoints with one query per entity type instead of a read per relationship.
   @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>)")
   List<String> findExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  /**
+   * Existence proof a writer takes inside its own transaction: the shared lock makes a concurrent
+   * hard delete of these rows wait for the writer's commit, so a reference the writer stores can
+   * never point at a row that is already gone.
+   */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) FOR SHARE")
+  List<String> lockExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(

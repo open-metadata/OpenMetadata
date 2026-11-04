@@ -12,11 +12,15 @@
  */
 
 import type { AxiosError } from 'axios';
-import { get, isEqual, uniqueId, uniqWith } from 'lodash';
+import { get, isEqual, uniqueId } from 'lodash';
 import type { EntityTags } from 'Models';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ReactFlowInstance } from 'reactflow';
-import type { EdgeData } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import type {
+  EdgeData,
+  LineageConfig,
+  LineageConfigFormValues,
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
 import type {
   LineageEntityReference,
   LineageSourceType,
@@ -35,17 +39,36 @@ import type { EntityReference } from '../generated/type/entityReference';
 import { TagSource } from '../generated/type/tagLabel';
 import type {
   EdgeDetails,
+  EntityLineageResponse,
   LineageData,
   LineageNodeType,
 } from '../interface/lineage.interface';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
-import { getNodeLineageData } from './EntityLineageNodeUtils';
+import {
+  getNodeLineageData,
+  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageNodeUtils';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
+
+/** Lineage edges minus every removed from -> to pair, filtered in one pass. */
+export const withoutLineageEdges = (
+  edges: EdgeDetails[],
+  removed: { fromId: string; toId: string }[]
+): EdgeDetails[] => {
+  const removedKeys = new Set(
+    removed.map(({ fromId, toId }) => `${fromId}->${toId}`)
+  );
+
+  return edges.filter(
+    ({ fromEntity, toEntity }) =>
+      !removedKeys.has(`${fromEntity.id}->${toEntity.id}`)
+  );
+};
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
@@ -242,7 +265,7 @@ const createLoadMoreEdge = (
 
 const handleNodePagination = (
   node: LineageNodeType,
-  edges: Record<string, EdgeDetails>,
+  currentCount: number,
   isDownstream: boolean
 ): { newNode?: LineageNodeType; newEdge?: EdgeDetails } => {
   const { paging } = node;
@@ -253,10 +276,6 @@ const handleNodePagination = (
   if (!totalCount || totalCount <= 0) {
     return {};
   }
-
-  const currentCount = Object.values(edges).filter((edge) =>
-    isDownstream ? edge.fromEntity.id === node.id : edge.toEntity.id === node.id
-  ).length;
 
   if (currentCount >= totalCount) {
     return {};
@@ -301,6 +320,26 @@ const processNodeArray = (
   );
 };
 
+/**
+ * Drops deep-equal duplicates like `uniqWith(nodes, isEqual)`, but only
+ * deep-compares nodes that share an id: equal nodes always do, and comparing
+ * every pair is quadratic in the node count.
+ */
+const removeDuplicateNodes = (nodes: LineageNodeType[]) => {
+  const keptById = new Map<string, LineageNodeType[]>();
+
+  return nodes.filter((node) => {
+    const kept = keptById.get(node.id) ?? [];
+    if (kept.some((other) => isEqual(other, node))) {
+      return false;
+    }
+    kept.push(node);
+    keptById.set(node.id, kept);
+
+    return true;
+  });
+};
+
 const processPipelineEdge = (
   edge: EdgeDetails,
   pipelineNode: Pipeline
@@ -318,33 +357,48 @@ const processPipelineEdge = (
   ];
 };
 
+// A lineage response can carry tens of thousands of edges, so every pass
+// below stays linear: a quadratic one froze the tab for minutes (#34904).
 const processEdges = (
   edges: EdgeDetails[],
   nodesArray: LineageNodeType[]
 ): EdgeDetails[] => {
-  return edges.reduce<EdgeDetails[]>(
-    (acc: EdgeDetails[], edge: EdgeDetails) => {
-      if (!edge.pipeline) {
-        return [...acc, edge];
-      }
+  const nodesByFqn = new Map<string | undefined, LineageNodeType>();
+  nodesArray.forEach((node) => {
+    if (!nodesByFqn.has(node.fullyQualifiedName)) {
+      nodesByFqn.set(node.fullyQualifiedName, node);
+    }
+  });
 
-      const pipelineNode = nodesArray.find(
-        (node) => node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName
+  const processedEdges: EdgeDetails[] = [];
+  edges.forEach((edge) => {
+    const pipelineNode = edge.pipeline
+      ? nodesByFqn.get(edge.pipeline.fullyQualifiedName)
+      : undefined;
+
+    if (pipelineNode) {
+      processedEdges.push(
+        ...processPipelineEdge(edge, pipelineNode as unknown as Pipeline)
       );
+    } else {
+      processedEdges.push(edge);
+    }
+  });
 
-      if (!pipelineNode) {
-        return [...acc, edge];
-      }
+  return processedEdges;
+};
 
-      const pipelineEdges = processPipelineEdge(
-        edge,
-        pipelineNode as unknown as Pipeline
-      );
+const countEdgesByEndpoint = (
+  edges: Record<string, EdgeDetails>,
+  endpoint: 'fromEntity' | 'toEntity'
+) => {
+  const counts = new Map<string, number>();
+  Object.values(edges).forEach((edge) => {
+    const id = edge[endpoint].id;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  });
 
-      return [...acc, ...pipelineEdges];
-    },
-    []
-  );
+  return counts;
 };
 
 const processPagination = (
@@ -357,6 +411,8 @@ const processPagination = (
 } => {
   const newNodes: LineageNodeType[] = [];
   const newEdges: EdgeDetails[] = [];
+  const downstreamCounts = countEdgesByEndpoint(downstreamEdges, 'fromEntity');
+  const upstreamCounts = countEdgesByEndpoint(upstreamEdges, 'toEntity');
 
   const eligibleNodes = nodesArray.filter(
     (node) =>
@@ -366,13 +422,21 @@ const processPagination = (
   );
 
   eligibleNodes.forEach((node) => {
-    const downstream = handleNodePagination(node, downstreamEdges, true);
+    const downstream = handleNodePagination(
+      node,
+      downstreamCounts.get(node.id) ?? 0,
+      true
+    );
     if (downstream.newNode && downstream.newEdge) {
       newNodes.push(downstream.newNode);
       newEdges.push(downstream.newEdge);
     }
 
-    const upstream = handleNodePagination(node, upstreamEdges, false);
+    const upstream = handleNodePagination(
+      node,
+      upstreamCounts.get(node.id) ?? 0,
+      false
+    );
     if (upstream.newNode && upstream.newEdge) {
       newNodes.push(upstream.newNode);
       newEdges.push(upstream.newEdge);
@@ -409,6 +473,10 @@ const getOrCreateTempNode = (
   return tempNode;
 };
 
+/** Links a temp hop to the stored edge it was expanded from. */
+const getEdgeEndpointsKey = (edge: EdgeDetails) =>
+  `${edge.fromEntity.id}-${edge.toEntity.id}`;
+
 const extractTempLineageNodes = (
   edges: EdgeDetails[],
   existingNodes: LineageNodeType[]
@@ -428,6 +496,7 @@ const extractTempLineageNodes = (
     if (!edge.tempLineageTables?.length) {
       return;
     }
+    const tempHopOf = getEdgeEndpointsKey(edge);
     edge.tempLineageTables.forEach((hop: TempLineageTable) => {
       const fromNode = getOrCreateTempNode(
         hop.fromEntity,
@@ -440,6 +509,7 @@ const extractTempLineageNodes = (
         newTempNodes
       );
       newEdges.push({
+        tempHopOf,
         fromEntity: {
           id: fromNode.id,
           type: fromNode.type ?? EntityType.TABLE,
@@ -473,7 +543,7 @@ export const parseLineageData = (
 } => {
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
-  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
+  const nodesArray = removeDuplicateNodes(processNodeArray(nodes, rootFqn));
 
   const processedNodes: LineageNodeType[] = [...nodesArray];
 
@@ -507,13 +577,133 @@ export const parseLineageData = (
     (node) => node.fullyQualifiedName === entityFqn
   ) as LineageNodeType;
 
-  const baseEdges = tempEdges.length
-    ? finalEdges.filter((e) => !e.tempLineageTables?.length)
-    : finalEdges;
-
+  // The edges that were expanded stay alongside their hops, so the temp tables
+  // can be hidden without refetching; applyTempTableVisibility picks one view.
   return {
     nodes: [...finalNodes, ...tempNodes],
-    edges: [...baseEdges, ...tempEdges],
+    edges: [...finalEdges, ...tempEdges],
     entity,
+  };
+};
+
+/**
+ * The lineage to draw: temp tables between two tables when `show`, otherwise
+ * the direct edge between them. Returns the input unchanged when it has no
+ * temp hops.
+ */
+export const applyTempTableVisibility = <T extends EntityLineageResponse>(
+  lineage: T,
+  show: boolean
+): T => {
+  const edges = lineage.edges ?? [];
+  if (!edges.some((edge) => edge.tempHopOf)) {
+    return lineage;
+  }
+
+  // Stored edges that share a temp table each keep their own copy of the
+  // shared hop (pruneTempLineage needs them), but only one is drawn.
+  const drawnHops = new Set<string>();
+
+  return show
+    ? {
+        ...lineage,
+        edges: edges.filter((edge) => {
+          if (edge.tempLineageTables?.length) {
+            return false;
+          }
+          if (!edge.tempHopOf) {
+            return true;
+          }
+          const hop = getEdgeEndpointsKey(edge);
+          if (drawnHops.has(hop)) {
+            return false;
+          }
+          drawnHops.add(hop);
+
+          return true;
+        }),
+      }
+    : {
+        ...lineage,
+        nodes: (lineage.nodes ?? []).filter((node) => !node.isTempTable),
+        edges: edges.filter((edge) => !edge.tempHopOf),
+      };
+};
+
+/**
+ * Keeps a stored edge and its temp hops consistent after an edit made in one
+ * view: drops an edge with temp tables whose end node is gone, the hops of a
+ * stored edge that is gone, and temp tables no edge reaches. Returns the input
+ * unchanged when nothing needs dropping.
+ */
+export const pruneTempLineage = (
+  lineage: EntityLineageResponse
+): EntityLineageResponse => {
+  const edges = lineage.edges ?? [];
+  const nodes = lineage.nodes ?? [];
+  if (!edges.some((edge) => edge.tempHopOf || edge.tempLineageTables?.length)) {
+    return lineage;
+  }
+
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  if (lineage.entity?.id) {
+    nodeIds.add(lineage.entity.id);
+  }
+  const keptStored = edges.filter(
+    (edge) =>
+      !edge.tempLineageTables?.length ||
+      (nodeIds.has(edge.fromEntity.id) && nodeIds.has(edge.toEntity.id))
+  );
+  const storedKeys = new Set(
+    keptStored
+      .filter((edge) => edge.tempLineageTables?.length)
+      .map(getEdgeEndpointsKey)
+  );
+  const keptEdges = keptStored.filter(
+    (edge) => !edge.tempHopOf || storedKeys.has(edge.tempHopOf)
+  );
+  const reachedIds = new Set(
+    keptEdges.flatMap((edge) => [edge.fromEntity.id, edge.toEntity.id])
+  );
+  const keptNodes = nodes.filter(
+    (node) => !node.isTempTable || reachedIds.has(node.id)
+  );
+
+  return keptEdges.length === edges.length && keptNodes.length === nodes.length
+    ? lineage
+    : { ...lineage, nodes: keptNodes, edges: keptEdges };
+};
+
+export const getLineageConfigFormValues = (
+  config: LineageConfig
+): Omit<LineageConfigFormValues, 'showTempTables'> => ({
+  upstreamDepth: String(config.upstreamDepth ?? ''),
+  downstreamDepth: String(config.downstreamDepth ?? ''),
+  nodesPerLayer: String(config.nodesPerLayer ?? ''),
+});
+
+/**
+ * Drops the nodes no remaining edge reaches from the entity. Temp hops whose
+ * stored edge is gone are pruned first: left behind, they would keep the far
+ * end of a removed edge reachable.
+ */
+export const dropUnreachableNodes = (
+  lineage: EntityLineageResponse,
+  entityFqn: string
+): EntityLineageResponse => {
+  const pruned = pruneTempLineage(lineage);
+  const { downstreamEdges, upstreamEdges } = getUpstreamDownstreamNodesEdges(
+    pruned.edges ?? [],
+    pruned.nodes ?? [],
+    entityFqn
+  );
+
+  return {
+    ...pruned,
+    nodes: (pruned.nodes ?? []).filter(
+      (node) =>
+        downstreamEdges?.some((edge) => edge.toEntity.id === node.id) ||
+        upstreamEdges?.some((edge) => edge.fromEntity.id === node.id)
+    ),
   };
 };

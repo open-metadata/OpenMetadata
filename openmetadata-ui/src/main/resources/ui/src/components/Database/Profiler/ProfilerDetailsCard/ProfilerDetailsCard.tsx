@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from '@openmetadata/ui-core-components';
+import { Box, Card, Skeleton } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   LineChart,
@@ -30,7 +30,8 @@ import {
   DQTooltipContent,
 } from '../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ProfileExecutionSource } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import {
   MetricChartType,
   ProfilerDetailsCardProps,
@@ -52,6 +53,8 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   isLoading,
   noDataPlaceholderText,
   chartType = 'line',
+  profiles,
+  isSharded,
 }: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const Chart = chartType === 'area' ? AreaChart : LineChart;
@@ -82,13 +85,20 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
     () => ({
       render: (items, row) => (
         <DQTooltipContent
+          footer={
+            <ProfileExecutionSource
+              isSharded={isSharded}
+              profiles={profiles}
+              timestamp={Number(row?.timestamp)}
+            />
+          }
           header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
           rows={chartTooltipRows(items)}
           valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
         />
       ),
     }),
-    [tickFormatter]
+    [tickFormatter, profiles, isSharded]
   );
 
   if (isLoading) {
@@ -96,44 +106,45 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   }
 
   return (
-    <div>
-      {title && (
-        <div className="tw:mb-3">
-          <p className="tw:m-0 tw:text-md tw:font-semibold">{title}</p>
-        </div>
-      )}
-      <div
-        className="tw:rounded-[10px] tw:border tw:border-secondary tw:p-4 tw:shadow-none"
+    <Box direction="col" gap={3}>
+      {title && <p className="tw:m-0 tw:text-md tw:font-semibold">{title}</p>}
+      {/* overflow-visible: chart tooltips near the edge must not be clipped. */}
+      <Card
+        className="tw:overflow-visible"
         data-testid="profiler-details-card-container">
-        <div className="tw:flex tw:flex-col tw:gap-4">
-          <ProfilerLatestValue
-            information={information}
-            tickFormatter={tickFormatter}
-          />
-
-          {data.length > 0 ? (
-            <div className="tw:w-full" id={`${name}_graph`}>
-              <Chart
-                ariaLabel={title ?? name}
-                data={data}
-                height={CHART_HEIGHT}
-                series={series}
-                tooltip={tooltip}
-                xKey="name"
-                yAxis={yAxis}
-                zoom="auto"
-                zoomVisiblePoints={PROFILER_CHART_DATA_SIZE}
-              />
-            </div>
-          ) : (
-            <ErrorPlaceHolder
-              className="mt-0-important"
-              placeholderText={noDataPlaceholderText}
+        <Card.Content>
+          <Box direction="col" gap={4}>
+            <ProfilerLatestValue
+              information={information}
+              tickFormatter={tickFormatter}
             />
-          )}
-        </div>
-      </div>
-    </div>
+
+            {data.length > 0 ? (
+              <div className="tw:w-full" id={`${name}_graph`}>
+                <Chart
+                  ariaLabel={title ?? name}
+                  data={data}
+                  height={CHART_HEIGHT}
+                  series={series}
+                  tooltip={tooltip}
+                  xKey="name"
+                  yAxis={yAxis}
+                  zoom="auto"
+                  zoomVisiblePoints={PROFILER_CHART_DATA_SIZE}
+                />
+              </div>
+            ) : (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoDataPlaceholder
+                  data-testid="no-data-placeholder"
+                  description={noDataPlaceholderText}
+                />
+              </div>
+            )}
+          </Box>
+        </Card.Content>
+      </Card>
+    </Box>
   );
 };
 

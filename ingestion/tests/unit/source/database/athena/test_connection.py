@@ -230,11 +230,21 @@ def test_error_pack_classifies_a_signature_error_through_a_wrapping_cause():
     assert diagnosis.title == "AWS secret key does not match"
 
 
-def test_error_pack_classifies_missing_workgroup():
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_error_pack_classifies_missing_workgroup(wrapped):
     error = RuntimeError("WorkGroup primary is not found")
+    if wrapped:
+        outer = RuntimeError("driver wrapper")
+        outer.__cause__ = error
+        error = outer
     diagnosis = ATHENA_ERRORS.classify(error)
     assert diagnosis is not None
     assert diagnosis.title == "Workgroup not found"
+
+
+@pytest.mark.parametrize("message", ["WorkGroup unavailable", "Database is not found"])
+def test_error_pack_requires_both_missing_workgroup_signals(message):
+    assert ATHENA_ERRORS.classify(RuntimeError(message)) is None
 
 
 def test_error_pack_classifies_missing_result_location():

@@ -23,6 +23,7 @@ import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from decimal import Decimal
+from functools import partial
 from typing import (
     TYPE_CHECKING,
     TypedDict,
@@ -55,6 +56,7 @@ from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
     TestCaseErrorDetails,
+    TestCaseEvaluationScope,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -247,6 +249,7 @@ class BaseTestValidator(ABC):
         test_result = self._run_validation()
         if test_result.result:
             test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
+        test_result.evaluationScope = self.result_evaluation_scope(test_result.testCaseStatus)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
@@ -824,6 +827,20 @@ class BaseTestValidator(ABC):
             logger.debug("Could not describe the evaluation scope of %s: %s", self.test_case, exc)
             return message
 
+    def result_evaluation_scope(self, status: TestCaseStatus | None) -> TestCaseEvaluationScope | None:
+        """The scope to record on the result, or none for an aborted run, which read no rows
+
+        Like the scope sentence, this is reporting: a scope that cannot be resolved is left off
+        the result rather than failing the run.
+        """
+        if status is TestCaseStatus.Aborted:
+            return None
+        try:
+            return self.get_evaluation_scope().to_result_scope(self.BYPASSES_SAMPLER)
+        except Exception as exc:
+            logger.debug("Could not record the evaluation scope of %s: %s", self.test_case, exc)
+            return None
+
     @staticmethod
     def _dimension_prefix(dimension_info: DimensionInfo | None) -> str:
         """`Dimension country=Spain: ` for a dimensional row, nothing for the overall result"""
@@ -1339,6 +1356,21 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_set_param_value(self, param_name: str) -> list:
+        """An allowed or forbidden set, typed by the column it is checked against"""
+        return self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            param_name,
+            partial(utils.parse_set_values, column_type=self.get_set_values_type()),
+        )
+
+    def get_set_values_type(self):
+        """The column type a set is parsed against, or None to keep its values as written.
+
+        Implementation provided by SQAValidatorMixin or PandasValidatorMixin via MRO chain.
+        """
+        return super().get_set_values_type()  # type: ignore
 
     def get_bounds(self, min_param_name: str, max_param_name: str) -> tuple[float | None, float | None]:
         """Resolve the test case bounds and widen them by the failure threshold.

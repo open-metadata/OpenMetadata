@@ -4,6 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import io.dropwizard.logback.shaded.guava.annotations.VisibleForTesting;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import lombok.NonNull;
@@ -64,23 +65,24 @@ public class LoginAttemptCache {
   }
 
   public void recordSuccessfulLogin(String username) {
-    attemptsCache.invalidate(username.toLowerCase());
+    attemptsCache.invalidate(cacheKey(username));
   }
 
   public void recordFailedLogin(String username) {
+    String key = cacheKey(username);
     int attempts;
     try {
-      attempts = attemptsCache.get(username.toLowerCase());
+      attempts = attemptsCache.get(key);
     } catch (ExecutionException e) {
       attempts = 0;
     }
     attempts++;
-    attemptsCache.put(username, attempts);
+    attemptsCache.put(key, attempts);
   }
 
   public boolean isLoginBlocked(String username) {
     try {
-      return attemptsCache.get(username.toLowerCase()) >= maxAttempt;
+      return attemptsCache.get(cacheKey(username)) >= maxAttempt;
     } catch (ExecutionException e) {
       return false;
     }
@@ -88,9 +90,13 @@ public class LoginAttemptCache {
 
   public int getUserFailedLoginCount(String username) {
     try {
-      return attemptsCache.get(username.toLowerCase());
+      return attemptsCache.get(cacheKey(username));
     } catch (ExecutionException e) {
       return -1;
     }
+  }
+
+  private static String cacheKey(String username) {
+    return username.toLowerCase(Locale.ROOT);
   }
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -123,6 +123,10 @@ jest.mock('react-i18next', () => ({
     },
   }),
 }));
+
+// Core fields put the test id on the field wrapper, not on the <input>.
+const getTextInput = (testId: string) =>
+  within(screen.getByTestId(testId)).getByRole('textbox');
 
 const mockOnChange = jest.fn();
 const mockOnNext = jest.fn();
@@ -251,7 +255,7 @@ describe('ContractSecurityFormTab', () => {
     it('should render data classification input field', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const input = screen.getByTestId('data-classification-input');
+      const input = getTextInput('data-classification-input');
 
       expect(input).toBeInTheDocument();
       expect(input).toHaveAttribute(
@@ -263,7 +267,7 @@ describe('ContractSecurityFormTab', () => {
     it('should call onChange when data classification is updated', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const input = screen.getByTestId('data-classification-input');
+      const input = getTextInput('data-classification-input');
 
       await act(async () => {
         fireEvent.change(input, { target: { value: 'Public' } });
@@ -421,9 +425,7 @@ describe('ContractSecurityFormTab', () => {
           />
         );
 
-        const classificationInput = screen.getByTestId(
-          'data-classification-input'
-        );
+        const classificationInput = getTextInput('data-classification-input');
         await act(async () => {
           fireEvent.change(classificationInput, {
             target: { value: 'Public' },
@@ -572,16 +574,6 @@ describe('ContractSecurityFormTab', () => {
         container.querySelector('.contract-form-content-container')
       ).toBeInTheDocument();
     });
-
-    it('should have vertical form layout', () => {
-      const { container } = render(
-        <ContractSecurityFormTab {...commonProps} />
-      );
-
-      const form = container.querySelector('.ant-form-vertical');
-
-      expect(form).toBeInTheDocument();
-    });
   });
 
   describe('Error Handling', () => {
@@ -645,19 +637,21 @@ describe('ContractSecurityFormTab', () => {
     it('should call onChange when form values change', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const input = screen.getByTestId('data-classification-input');
+      const input = getTextInput('data-classification-input');
 
       await act(async () => {
         fireEvent.change(input, { target: { value: 'Restricted' } });
       });
 
-      expect(mockOnChange).toHaveBeenCalled();
+      expect(mockOnChange).toHaveBeenLastCalledWith({
+        security: expect.objectContaining({ dataClassification: 'Restricted' }),
+      });
     });
 
     it('should update policies when access policy changes', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const accessPolicyInput = screen.getByTestId('access-policy-input-0');
+      const accessPolicyInput = getTextInput('access-policy-input-0');
 
       await act(async () => {
         fireEvent.change(accessPolicyInput, {

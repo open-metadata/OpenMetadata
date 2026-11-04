@@ -30,6 +30,10 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import {
+  ClassicDeprecatedLabel,
+  ClassicDeprecationHint,
+} from '../../../../../AppModeSwitcher/ClassicDeprecationNotice';
 import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { APP_MODE_OPTIONS, NO_DEFAULT_VALUE } from './AppModeSettings';
 import { APP_MODE_FIELDS } from './PlatformSettings.constants';
@@ -127,8 +131,19 @@ const AppModeSettingsForm = ({
               {APP_MODE_OPTIONS.map((option) => (
                 <RadioButton
                   data-testid={`app-mode-option-${option.value}`}
+                  hint={
+                    option.value === DefaultAppMode.Classic ? (
+                      <ClassicDeprecationHint />
+                    ) : undefined
+                  }
                   key={option.value}
-                  label={t(option.labelKey)}
+                  label={
+                    option.value === DefaultAppMode.Classic ? (
+                      <ClassicDeprecatedLabel label={t(option.labelKey)} />
+                    ) : (
+                      t(option.labelKey)
+                    )
+                  }
                   value={option.value}
                 />
               ))}

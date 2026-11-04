@@ -34,6 +34,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface.RelationshipData
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "operation")
 @JsonSubTypes({
+  @JsonSubTypes.Type(value = RdfMutation.GraphReplace.class, name = "replaceGraph"),
   @JsonSubTypes.Type(value = RdfMutation.EntityWrite.class, name = "entity"),
   @JsonSubTypes.Type(value = RdfMutation.EntityBatch.class, name = "entities"),
   @JsonSubTypes.Type(value = RdfMutation.EntityDelete.class, name = "delete"),
@@ -170,6 +171,17 @@ public sealed interface RdfMutation {
     @Override
     public void apply(final RdfStorageInterface storage) {
       storage.clearGraph(graph);
+    }
+  }
+
+  record GraphReplace(String graph, byte[] rdf) implements RdfMutation {
+    public static GraphReplace capture(final String graph, final Model model) {
+      return new GraphReplace(graph, encode(model));
+    }
+
+    @Override
+    public void apply(final RdfStorageInterface storage) {
+      withModel(rdf, model -> storage.replaceGraph(graph, model));
     }
   }
 

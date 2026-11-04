@@ -19,10 +19,11 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
@@ -91,7 +92,7 @@ class AlertBacklogMigrationIT {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("disabled"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of(Entity.TABLE))
             .withEnabled(false)
             .withPollInterval(86400)

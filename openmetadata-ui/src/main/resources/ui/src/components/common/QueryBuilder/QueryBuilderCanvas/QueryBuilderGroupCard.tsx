@@ -69,6 +69,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
           conjunction={conjunction}
           context={context}
           groupField={drilledLevel}
+          negated={Boolean(group.properties?.not)}
           path={path}
         />
       </div>

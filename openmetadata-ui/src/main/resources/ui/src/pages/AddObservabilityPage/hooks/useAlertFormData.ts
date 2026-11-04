@@ -11,15 +11,29 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { EventSubscription } from '../../../generated/events/eventSubscription';
+import {
+  AlertType,
+  EventSubscription,
+} from '../../../generated/events/eventSubscription';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import {
+  createNotificationAlert,
+  getAlertsFromName,
+  updateNotificationAlert,
+} from '../../../rest/alertsAPI';
 import {
   createObservabilityAlert,
   getObservabilityAlertByFQN,
@@ -27,6 +41,10 @@ import {
 } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import {
+  getNotificationAlertDetailsPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
@@ -37,8 +55,9 @@ import { useAlertResources } from './useAlertResources';
 import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates';
 
 /**
- * Alert form state, resources, templates and save for a caller that owns the form values,
- * so it needs no antd form. The caller passes the chosen sources and the choices so far.
+ * Alert form state, what the chosen sources support, templates and save for a caller that owns
+ * the form values, so it needs no antd form. The caller passes the chosen sources and the choices
+ * so far.
  */
 export function useAlertFormData({
   afterSaveAction,
@@ -58,17 +77,18 @@ export function useAlertFormData({
   const { getResourceLimit } = useLimitStore();
 
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
+  const [alertError, setAlertError] = useState<AxiosError>();
   const [initialData, setInitialData] = useState<EventSubscription>();
   const [loadingState, setLoadingState] = useState<
     UseAlertFormDataReturn['loadingState']
   >({
     alerts: false,
-    functions: false,
     templates: false,
   });
   const [saving, setSaving] = useState(false);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const isNotification = alertType === AlertType.Notification;
   const extraFormWidgets = useMemo(
     () => alertsClassBase.getAddAlertFormExtraWidgets(),
     []
@@ -86,19 +106,22 @@ export function useAlertFormData({
   const fetchAlert = useCallback(async () => {
     try {
       setLoadingState((state) => ({ ...state, alerts: true }));
+      setAlertError(undefined);
 
-      const observabilityAlert = await getObservabilityAlertByFQN(fqn);
+      const observabilityAlert = isNotification
+        ? await getAlertsFromName(fqn)
+        : await getObservabilityAlertByFQN(fqn);
       const modifiedAlertData =
         alertsClassBase.getModifiedAlertDataForForm(observabilityAlert);
 
       setInitialData(observabilityAlert);
       setAlert(modifiedAlertData);
-    } catch {
-      // Error handling
+    } catch (error) {
+      setAlertError(error as AxiosError);
     } finally {
       setLoadingState((state) => ({ ...state, alerts: false }));
     }
-  }, [fqn]);
+  }, [fqn, isNotification]);
 
   useEffect(() => {
     if (!fqn) {
@@ -109,14 +132,28 @@ export function useAlertFormData({
 
   const breadcrumb = useMemo(
     () => [
-      {
-        name: t('label.observability'),
-        url: '',
-      },
-      {
-        name: t('label.alert-plural'),
-        url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
-      },
+      ...(isNotification
+        ? [
+            { name: t('label.setting-plural'), url: ROUTES.SETTINGS },
+            {
+              name: t('label.notification-plural'),
+              url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
+            },
+            {
+              name: t('label.alert-plural'),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.NOTIFICATIONS,
+                GlobalSettingOptions.ALERTS
+              ),
+            },
+          ]
+        : [
+            { name: t('label.observability'), url: '' },
+            {
+              name: t('label.alert-plural'),
+              url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
+            },
+          ]),
       {
         name: fqn
           ? t('label.edit-entity', { entity: t('label.alert') })
@@ -124,7 +161,7 @@ export function useAlertFormData({
         url: '',
       },
     ],
-    [fqn, t]
+    [fqn, isNotification, t]
   );
 
   const handleSave = useCallback(
@@ -137,8 +174,12 @@ export function useAlertFormData({
           fqn,
           initialData,
           currentUser,
-          createAlertAPI: createObservabilityAlert,
-          updateAlertAPI: updateObservabilityAlert,
+          createAlertAPI: isNotification
+            ? createNotificationAlert
+            : createObservabilityAlert,
+          updateAlertAPI: isNotification
+            ? updateNotificationAlert
+            : updateObservabilityAlert,
           afterSaveAction: async (savedFqn: string) => {
             if (!isEditMode) {
               await getResourceLimit('eventsubscription', true, true);
@@ -151,9 +192,11 @@ export function useAlertFormData({
             }
 
             navigate(
-              observabilityRouterClassBase.getObservabilityAlertDetailsPath(
-                savedFqn
-              )
+              isNotification
+                ? getNotificationAlertDetailsPath(savedFqn)
+                : observabilityRouterClassBase.getObservabilityAlertDetailsPath(
+                    savedFqn
+                  )
             );
           },
           setInlineAlertDetails,
@@ -171,6 +214,7 @@ export function useAlertFormData({
       getResourceLimit,
       initialData,
       isEditMode,
+      isNotification,
       navigate,
       setInlineAlertDetails,
     ]
@@ -196,10 +240,11 @@ export function useAlertFormData({
 
   return {
     alert,
+    alertError,
     breadcrumb,
     extraFormButtons,
     extraFormWidgets,
-    filterResources: alertResources.filterResources,
+    fetchAlert,
     handleCancel,
     handleSave,
     inlineAlertDetails,
@@ -207,7 +252,6 @@ export function useAlertFormData({
     isLoading,
     loadingState: {
       ...loadingState,
-      functions: alertResources.loading,
       templates: alertTemplates.loading,
     },
     saving,

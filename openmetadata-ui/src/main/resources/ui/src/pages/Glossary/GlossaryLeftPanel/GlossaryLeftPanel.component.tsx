@@ -18,6 +18,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DomainFilterChip } from '../../../components/common/DomainFilterChip/DomainFilterChip.component';
 import GlossaryV1Skeleton from '../../../components/common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -89,7 +90,10 @@ const GlossaryLeftPanel = ({
   }, [glossaryFqn]);
 
   return (
-    <div className="tw:h-full" data-testid="glossary-left-panel">
+    <div
+      className="tw:h-full"
+      data-testid="glossary-left-panel"
+      data-tour-step="glossary">
       <GlossaryV1Skeleton loading={glossaries.length === 0}>
         <div className="tw:flex tw:flex-col tw:gap-4">
           {createGlossaryPermission && (
@@ -107,6 +111,8 @@ const GlossaryLeftPanel = ({
               </Button>
             </div>
           )}
+
+          <DomainFilterChip className="tw:px-3" />
 
           <nav aria-label={t('label.glossary-plural')} ref={navRef}>
             <NavList

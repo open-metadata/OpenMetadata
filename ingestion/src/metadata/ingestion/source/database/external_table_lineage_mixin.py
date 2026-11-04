@@ -142,9 +142,15 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
         """
         if not data_model_entity:
             return None
+        target = column.lower()
         for entity_column in data_model_entity.columns:
-            # Storage connectors leave displayName unset on partition columns, so fall back to the name.
-            if (entity_column.displayName or model_str(entity_column.name)).lower() == column.lower():
+            # Storage connectors leave displayName unset on partition columns, so fall back to the
+            # name. Other connectors (e.g. the datalake/Glue parsers via truncate_column_name) set
+            # displayName to the raw column name while name holds the truncated copy, so a name
+            # that matches name must still be matched even when displayName is set to something else.
+            if (entity_column.displayName and entity_column.displayName.lower() == target) or model_str(
+                entity_column.name
+            ).lower() == target:
                 return model_str(entity_column.fullyQualifiedName) if entity_column.fullyQualifiedName else None
         return None
 

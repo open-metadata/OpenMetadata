@@ -20,6 +20,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import TierCard from './TierCard';
 
 const mockTierData = [
@@ -112,6 +113,45 @@ describe('TierCard', () => {
     expect(screen.queryByTestId('Tier.Tier1-expand')).not.toBeInTheDocument();
   });
 
+  it('reads an editor-HTML description as text, not markup', async () => {
+    mockGetTags.mockResolvedValueOnce({
+      data: [
+        {
+          ...mockTierData[1],
+          description: '<p>Critical data</p><ul><li><p>Revenue</p></li></ul>',
+        },
+      ],
+    });
+    render(<TierCard {...mockProps} />);
+
+    const row = await screen.findByTestId('Tier.Tier2');
+
+    expect(within(row).getByText('Critical data')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('Tier.Tier2-expand'));
+
+    expect(screen.getByTestId('Tier.Tier2-details')).toHaveTextContent(
+      'Revenue'
+    );
+  });
+
+  it('ignores empty editor paragraphs around the summary', async () => {
+    mockGetTags.mockResolvedValueOnce({
+      data: [
+        {
+          ...mockTierData[1],
+          description: '<p></p><p>Critical data</p><p></p>',
+        },
+      ],
+    });
+    render(<TierCard {...mockProps} />);
+
+    const row = await screen.findByTestId('Tier.Tier2');
+
+    expect(within(row).getByText('Critical data')).toBeInTheDocument();
+    expect(screen.queryByTestId('Tier.Tier2-expand')).not.toBeInTheDocument();
+  });
+
   it('shows a current tier missing from the list by name, not FQN', async () => {
     render(<TierCard {...mockProps} currentTier="Tier.Tier9" />);
 
@@ -168,6 +208,100 @@ describe('TierCard', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('Tier.Tier1')).toBeInTheDocument()
+    );
+  });
+
+  it('should show error toast and request close when save rejects (controlled)', async () => {
+    const rejectedUpdate = jest
+      .fn()
+      .mockRejectedValue(new Error('save failed'));
+    const onOpenChange = jest.fn();
+
+    render(
+      <TierCard
+        open
+        currentTier="Tier.Tier1"
+        updateTier={rejectedUpdate}
+        onOpenChange={onOpenChange}>
+        <span>trigger</span>
+      </TierCard>
+    );
+
+    await screen.findByTestId('Tier.Tier2');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('Tier.Tier2'));
+    });
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(rejectedUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ fullyQualifiedName: 'Tier.Tier2' })
+    );
+  });
+
+  it('should show error toast on a failed save and stay usable on reopen (uncontrolled)', async () => {
+    const rejectedUpdate = jest.fn().mockRejectedValue(new Error('409'));
+
+    render(
+      <TierCard currentTier="Tier.Tier1" updateTier={rejectedUpdate}>
+        <Button data-testid="edit-tier">Edit</Button>
+      </TierCard>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-tier'));
+    });
+    await screen.findByTestId('Tier.Tier2');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('Tier.Tier2'));
+    });
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    // The popover closes itself after a selection, even on a failed save.
+    await waitFor(() =>
+      expect(screen.queryByTestId('Tier.Tier2')).not.toBeInTheDocument()
+    );
+
+    // Reopen: tiers are already cached, so getTierData is NOT re-invoked.
+    mockGetTags.mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-tier'));
+    });
+    await screen.findByTestId('Tier.Tier2');
+
+    expect(mockGetTags).not.toHaveBeenCalled();
+
+    // Another failing save still shows the error toast.
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('Tier.Tier2'));
+    });
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledTimes(2));
+  });
+
+  it('should not show error toast after a successful save', async () => {
+    const resolvingUpdate = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <TierCard currentTier="Tier.Tier1" updateTier={resolvingUpdate}>
+        <Button data-testid="edit-tier">Edit</Button>
+      </TierCard>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-tier'));
+    });
+    await screen.findByTestId('Tier.Tier2');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('Tier.Tier2'));
+    });
+
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(resolvingUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ fullyQualifiedName: 'Tier.Tier2' })
     );
   });
 });

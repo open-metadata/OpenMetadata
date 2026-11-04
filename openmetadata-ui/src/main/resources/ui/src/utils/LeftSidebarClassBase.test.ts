@@ -15,6 +15,7 @@ import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import {
+  SIDEBAR_ENTITY_PATH_ALIASES,
   SIDEBAR_LIST,
   SIDEBAR_NESTED_KEYS,
 } from '../constants/LeftSidebar.constants';
@@ -56,6 +57,9 @@ jest.mock('../constants/LeftSidebar.constants', () => ({
   ],
   SIDEBAR_NESTED_KEYS: {
     '/observability/alerts': '/observability/alerts',
+  },
+  SIDEBAR_ENTITY_PATH_ALIASES: {
+    '/glossary-term': '/glossary',
   },
 }));
 
@@ -175,6 +179,30 @@ describe('LeftSidebarClassBase', () => {
 
         expect(updatedItems).toHaveLength(1);
         expect(updatedItems[0].key).toBe('/new-item');
+      });
+    });
+
+    describe('getSidebarPathAliases', () => {
+      it('should return the SIDEBAR_ENTITY_PATH_ALIASES constant', () => {
+        expect(instance.getSidebarPathAliases()).toEqual(
+          SIDEBAR_ENTITY_PATH_ALIASES
+        );
+      });
+
+      it('should allow a subclass to add aliases for routes it owns', () => {
+        class ExtendedLeftSidebar extends LeftSidebarClassBase {
+          public getSidebarPathAliases() {
+            return {
+              ...super.getSidebarPathAliases(),
+              '/custom-section': '/glossary',
+            };
+          }
+        }
+
+        expect(new ExtendedLeftSidebar().getSidebarPathAliases()).toEqual({
+          '/glossary-term': '/glossary',
+          '/custom-section': '/glossary',
+        });
       });
     });
 

@@ -14,8 +14,10 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+from metadata.generated.schema.tests.basic import TestCaseEvaluationScope
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.tableExecutionSource import TableExecutionSource
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
@@ -73,6 +75,7 @@ class EvaluationScopeRuntimeParameters(BaseModel):
     sampling and no partitioning gives and what an unset scope has to fall back to.
     """
 
+    execution_source: TableExecutionSource | None = Field(default=None)
     profile_sample: float | None = None
     profile_sample_type: ProfileSampleType | None = None
     # Whether the sampler actually read a subset. A configured amount does not say so on its
@@ -99,3 +102,24 @@ class EvaluationScopeRuntimeParameters(BaseModel):
     def is_full_table(self) -> bool:
         """Whether the test case saw the whole table"""
         return not self.is_sampled and not self.is_partitioned
+
+    def to_result_scope(self, bypasses_sampler: bool) -> TestCaseEvaluationScope:
+        """The scope as recorded on the result, so the UI never has to parse the message
+
+        A test that runs its own SQL reads the table as written, so whatever sample or partition
+        is configured, none of it was applied to the rows behind its verdict. A sample query is
+        returned as written too, before any configured sample size or partition: the rows were
+        sampled, but by the query, so neither is recorded.
+        """
+        sampled = self.is_sampled and not bypasses_sampler
+        by_query = bool(self.sample_query)
+        partition = self.partition_details if self.is_partitioned and not bypasses_sampler and not by_query else None
+        sized = sampled and not by_query
+        return TestCaseEvaluationScope(
+            sampled=sampled,
+            executionSource=self.execution_source if not bypasses_sampler and not by_query else None,
+            profileSample=self.profile_sample if sized else None,
+            profileSampleType=self.profile_sample_type if sized else None,
+            partitioned=partition is not None,
+            partitionColumnName=partition.partitionColumnName if partition else None,
+        )

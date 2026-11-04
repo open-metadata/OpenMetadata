@@ -15,9 +15,17 @@ import { Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toPng } from 'html-to-image';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { FocusScope, useOverlay, usePreventScroll } from 'react-aria';
 import { useTranslation } from 'react-i18next';
+import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
+import 'react-reflex/styles.css';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import {
@@ -39,7 +47,7 @@ import {
   normalizeGraphLevel,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphRelationshipRows } from '../../../utils/discovery/knowledge-graph/knowledgeGraphExport.utils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import CustomNode from './GraphElements/CustomNode';
@@ -53,7 +61,6 @@ import {
   KnowledgeGraphPresentation,
   KnowledgeGraphProps,
 } from './KnowledgeGraph.interface';
-import { RelationCategory } from './KnowledgeGraph.relations';
 import './KnowledgeGraph.style.less';
 import KnowledgeGraphBands from './KnowledgeGraphBands';
 import KnowledgeGraphDetails from './KnowledgeGraphDetails';
@@ -92,32 +99,11 @@ const getGraphViewState = (
   };
 };
 
-const hasGraphFilters = (
-  filters: KnowledgeGraphFilters,
-  families: RelationCategory[],
-  coverage: string
-) =>
-  [filters.entityTypes, filters.relationshipTypes, families].some(
+const hasGraphFilters = (filters: KnowledgeGraphFilters) =>
+  [filters.entityTypes, filters.relationshipTypes].some(
     (items) => items.length > 0
-  ) || coverage !== 'all';
+  );
 
-const getGraphStatus = (
-  view: ReturnType<typeof getGraphViewState>,
-  loading: boolean,
-  mode: KnowledgeGraphMode,
-  concepts: ReturnType<typeof useKnowledgeGraphExplorer>['concepts']
-) => {
-  const metadata =
-    mode === 'ontology'
-      ? concepts
-      : { error: null, loading: false, partial: false };
-
-  return {
-    failed: view.failed || Boolean(metadata.error),
-    loading: loading || metadata.loading,
-    partial: view.partial || metadata.partial,
-  };
-};
 /** The design draws level bands only once there is a level beyond the entity itself. */
 const areBandsVisible = (showBands: boolean, level: KnowledgeGraphLevel) =>
   showBands && level > 1;
@@ -127,6 +113,13 @@ const selectedNodeId = (selection: GraphSelection) =>
 
 const selectedFamily = (selection: GraphSelection) =>
   selection?.kind === 'category' ? selection.category : null;
+
+// This component orchestrates data, canvas, drawer, overlays and footer
+// through several hooks and a few optional branches — the cyclomatic
+// cost comes from being an integration site, not from branchy logic that
+// should be split. Keeping it one file keeps the KG wiring reviewable in
+// one read; dropping sections into child components only moves the deps
+// through props.
 
 const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   entity,
@@ -154,17 +147,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     label: string;
     edgeIds: string[];
   } | null>(null);
-  const [excludedFamilies, setExcludedFamilies] = useState<RelationCategory[]>(
-    []
-  );
-  const [coverageMode, setCoverageMode] = useState<
-    'all' | 'mapped' | 'unmapped' | 'highlight'
-  >('all');
-  const clearFilters = () => {
-    setFilters(EMPTY_FILTERS);
-    setExcludedFamilies([]);
-    setCoverageMode('all');
-  };
+  const clearFilters = () => setFilters(EMPTY_FILTERS);
   const [refresh, setRefresh] = useState(0);
   const {
     result,
@@ -173,12 +156,10 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     displayData,
     presented,
     columns,
-    concepts,
     ontology,
     coverage,
     scene,
     counts,
-    familyCounts,
     detailCounts,
   } = useKnowledgeGraphExplorer({
     entityId: entity?.id ?? '',
@@ -187,8 +168,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     mode,
     filters,
     refresh,
-    excludedFamilies,
-    coverageMode,
     presentation,
     expanded,
     focusedNodeId: selectedNodeId(selection),
@@ -219,7 +198,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       selectedLevel,
       presentation,
       ontology.concept?.id,
-      excludedFamilies,
       expanded,
     ]),
     viewportKey: JSON.stringify([isFullscreen, drawer !== null]),
@@ -231,7 +209,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     canvas.error,
     selectedLevel
   );
-  const status = getGraphStatus(view, result.loading, mode, concepts);
+  const status = {
+    failed: view.failed,
+    loading: result.loading,
+    partial: view.partial,
+  };
   const findNode = (id: string) => {
     const group = presented.data?.nodes.find((node) =>
       node.presentation?.members?.some((member) => member.id === id)
@@ -245,13 +227,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       canvas.selectNode(id);
     }
   };
-  const hasFilters = hasGraphFilters(filters, excludedFamilies, coverageMode);
+  const hasFilters = hasGraphFilters(filters);
   useEffect(() => {
     setSelection(null);
     setExpanded([]);
     setDrawer(null);
     setRelationshipScope(null);
-  }, [entity?.id, entityType]);
+  }, [entity?.id, entityType, mode]);
 
   const handleRefresh = useCallback(() => setRefresh((value) => value + 1), []);
   const handleModeChange = useCallback(
@@ -295,10 +277,15 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     wasFullscreen.current = isFullscreen;
   }, [isFullscreen]);
 
-  const handleZoom = useCallback(
-    (factor: number) => canvas.zoomBy(factor),
+  const handleZoomIn = useCallback(
+    () => canvas.zoomBy(ZOOM_IN_FACTOR),
     [canvas]
   );
+  const handleZoomOut = useCallback(
+    () => canvas.zoomBy(ZOOM_OUT_FACTOR),
+    [canvas]
+  );
+  const handleExtendToLevel3 = useCallback(() => setSelectedLevel(3), []);
   const handleFit = canvas.fit;
   const handleExport = useCallback(
     async (format: EntityGraphExportFormat) => {
@@ -328,16 +315,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     ]
   );
   const handleExportPng = useCallback(async () => {
-    const container = canvas.containerRef.current?.parentElement;
+    const container = canvas.container?.parentElement;
     if (!container || !canvas.ready) {
       return;
     }
     try {
       const url = await toPng(container, {
-        backgroundColor: resolveCssColor(
-          'var(--om-color-bg-primary)',
-          '#ffffff'
-        ),
+        backgroundColor: resolveCssColor('var(--color-bg-primary)', '#ffffff'),
         pixelRatio: 2,
         filter: (node) =>
           !(node instanceof HTMLElement) ||
@@ -354,14 +338,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [canvas.containerRef, canvas.ready]);
+  }, [canvas.container, canvas.ready]);
 
   const handleExportCsv = useCallback(async () => {
     const { unparse } = await import('papaparse');
-    downloadFile(
+    downloadCsv(
       unparse(getGraphRelationshipRows(displayData), { escapeFormulae: true }),
-      'knowledge-graph-relationships.csv',
-      'text/csv;charset=utf-8'
+      'knowledge-graph-relationships.csv'
     );
   }, [displayData]);
 
@@ -373,15 +356,140 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     );
   }
 
+  // Lifted out of the JSX so stageChildren below can slot it into the
+  // first ReflexElement without duplicating the bands + canvas + loader +
+  // empty + view-controls block.
+  const canvasContent = (
+    <div className="knowledge-graph-body">
+      <KnowledgeGraphBands
+        layout={layout}
+        rings={canvas.rings}
+        showBands={areBandsVisible(showBands, selectedLevel)}
+        zoom={canvas.zoom}
+      />
+      <div
+        aria-busy={result.loading}
+        aria-label={t('label.knowledge-graph')}
+        className="knowledge-graph-canvas"
+        data-graph-origin={canvas.viewportOrigin}
+        data-ready={canvas.ready}
+        data-testid="knowledge-graph-canvas"
+        ref={canvas.containerRef}
+        role="region"
+      />
+      {view.initialLoading && (
+        <div className="tw:pointer-events-none tw:absolute tw:inset-0 tw:flex tw:items-center tw:justify-center">
+          <Loader />
+        </div>
+      )}
+      {view.empty && (
+        <KnowledgeGraphEmptyState
+          hasFilters={hasFilters}
+          level={view.level}
+          mode={mode}
+          onClearFilters={clearFilters}
+          onExtend={handleExtendToLevel3}
+        />
+      )}
+      <KnowledgeGraphViewControls
+        isFullscreen={isFullscreen}
+        zoom={canvas.zoom}
+        onFit={handleFit}
+        onFullscreen={handleFullscreen}
+        onRefresh={handleRefresh}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+      />
+    </div>
+  );
+  const detailsElement =
+    drawer && displayData ? (
+      <KnowledgeGraphDetails
+        columns={columns}
+        coverage={coverage}
+        data={displayData}
+        drawer={drawer}
+        mode={mode}
+        relationshipScope={relationshipScope}
+        onClearRelationshipScope={() => setRelationshipScope(null)}
+        onClose={() => setDrawer(null)}
+        onDrawerChange={setDrawer}
+        onRetry={handleRefresh}
+        onSelect={(kind, id) =>
+          kind === 'node' ? findNode(id) : setSelection({ kind, id })
+        }
+      />
+    ) : null;
+  // Precomputed children for ReflexContainer: canvas always, splitter +
+  // details pane only when the drawer is open. react-reflex iterates its
+  // direct children with React.Children.map (which flattens an array) to
+  // clone each with `events`/`index`; the splitter and details element
+  // have to be direct children for that injection to reach them. If G6
+  // ever has to re-attach because the ReflexElement remounts the canvas
+  // container, `useKnowledgeGraphCanvas`'s callback ref drives a fresh
+  // init + draw via its `containerNode` dep.
+  const stageChildren: ReactNode[] = [
+    <ReflexElement
+      className="kg-stage-canvas-pane"
+      key="canvas"
+      minSize={160}
+      propagateDimensions={false}>
+      {canvasContent}
+    </ReflexElement>,
+  ];
+  if (detailsElement) {
+    stageChildren.push(
+      <ReflexSplitter
+        className={classNames(
+          'kg-stage-splitter',
+          'tw:relative tw:cursor-row-resize',
+          "tw:before:absolute tw:before:inset-x-0 tw:before:-inset-y-1 tw:before:content-['']"
+        )}
+        key="splitter"
+        propagate={false}>
+        {/* ReflexSplitter forwards only data-*, className, style, id and
+            children — a11y attrs on the splitter are dropped, so they live
+            on this child element instead. */}
+        <span
+          aria-label={t('label.kg-resize-details')}
+          aria-orientation="horizontal"
+          className="tw:sr-only"
+          role="separator"
+        />
+      </ReflexSplitter>,
+      <ReflexElement
+        className="kg-stage-details-pane"
+        flex={0.4}
+        key="details"
+        minSize={180}>
+        {detailsElement}
+      </ReflexElement>
+    );
+  }
+
+  // Fullscreen turns the KG root into a modal dialog; non-fullscreen leaves
+  // the element unlabelled so screen readers follow the surrounding page.
+  const fullscreenAria = isFullscreen
+    ? {
+        'aria-label': t('label.knowledge-graph'),
+        'aria-modal': true,
+        role: 'dialog' as const,
+      }
+    : null;
+
   return (
     <FocusScope contain={isFullscreen}>
       <div
         {...overlayProps}
-        aria-label={isFullscreen ? t('label.knowledge-graph') : undefined}
-        aria-modal={isFullscreen || undefined}
-        className={classNames({ 'full-screen-knowledge-graph': isFullscreen })}
-        ref={fullscreenRef}
-        role={isFullscreen ? 'dialog' : undefined}>
+        {...fullscreenAria}
+        className={classNames({
+          // `overflow-auto` is a short-viewport safety net: once the toolbar +
+          // canvas floor + drawer min stack past the viewport, the page can
+          // still scroll to reach the drawer footer.
+          'full-screen-knowledge-graph tw:fixed tw:inset-0 tw:z-900 tw:flex tw:flex-col tw:overflow-auto tw:bg-primary tw:p-4':
+            isFullscreen,
+        })}
+        ref={fullscreenRef}>
         <Card
           className={classNames('knowledge-graph-container', {
             'kg-details-open': drawer,
@@ -391,11 +499,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             className="kg-toolbar-header tw:block tw:shrink-0 tw:px-3!"
             extra={
               <KnowledgeGraphToolbar
-                excludedFamilies={excludedFamilies}
-                familyCounts={familyCounts}
                 filterOptions={result.unfiltered?.filterOptions}
                 filters={filters}
-                hasFilters={hasFilters}
                 labelMode={labelMode}
                 layout={layout}
                 mode={mode}
@@ -409,7 +514,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 selectedLevel={selectedLevel}
                 showBands={showBands}
                 viewport={{ isFullscreen, onFullscreen: handleFullscreen }}
-                onClearFilters={clearFilters}
                 onExportCsv={handleExportCsv}
                 onExportJsonLd={() => handleExport('jsonld')}
                 onExportPng={handleExportPng}
@@ -422,13 +526,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 onModeChange={handleModeChange}
                 onPresentationChange={setPresentation}
                 onToggleBands={() => setShowBands((value) => !value)}
-                onToggleFamily={(family) =>
-                  setExcludedFamilies((current) =>
-                    current.includes(family)
-                      ? current.filter((item) => item !== family)
-                      : [...current, family]
-                  )
-                }
               />
             }
           />
@@ -440,77 +537,27 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               onRetry={handleRefresh}
             />
             <div className="kg-stage">
-              <Card.Content className="knowledge-graph-body tw:p-0">
-                <KnowledgeGraphBands
-                  layout={layout}
-                  rings={canvas.rings}
-                  showBands={areBandsVisible(showBands, selectedLevel)}
-                  zoom={canvas.zoom}
-                />
-                <div
-                  aria-busy={result.loading}
-                  aria-label={t('label.knowledge-graph')}
-                  className="knowledge-graph-canvas"
-                  data-graph-origin={canvas.viewportOrigin}
-                  data-ready={canvas.ready}
-                  data-testid="knowledge-graph-canvas"
-                  ref={canvas.containerRef}
-                  role="region"
-                />
-                {view.initialLoading && (
-                  <div className="knowledge-graph-loading">
-                    <Loader />
-                  </div>
-                )}
-                {view.empty && (
-                  <KnowledgeGraphEmptyState
-                    hasFilters={hasFilters}
-                    level={view.level}
-                    mode={mode}
-                    onClearFilters={clearFilters}
-                    onExtend={() => setSelectedLevel(3)}
-                  />
-                )}
-                <KnowledgeGraphViewControls
-                  isFullscreen={isFullscreen}
-                  zoom={canvas.zoom}
-                  onFit={handleFit}
-                  onFullscreen={handleFullscreen}
-                  onRefresh={handleRefresh}
-                  onZoomIn={() => handleZoom(ZOOM_IN_FACTOR)}
-                  onZoomOut={() => handleZoom(ZOOM_OUT_FACTOR)}
-                />
-              </Card.Content>
-              {drawer && displayData && (
-                <KnowledgeGraphDetails
-                  columns={columns}
-                  concepts={concepts}
-                  coverage={coverage}
-                  coverageMode={coverageMode}
-                  data={displayData}
-                  drawer={drawer}
-                  mode={mode}
-                  relationshipScope={relationshipScope}
-                  onClearRelationshipScope={() => setRelationshipScope(null)}
-                  onClose={() => setDrawer(null)}
-                  onCoverageMode={setCoverageMode}
-                  onDrawerChange={setDrawer}
-                  onRetry={handleRefresh}
-                  onSelect={(kind, id) =>
-                    kind === 'node' ? findNode(id) : setSelection({ kind, id })
-                  }
-                />
-              )}
+              <ReflexContainer
+                className="kg-stage-main"
+                orientation="horizontal">
+                {stageChildren}
+              </ReflexContainer>
               <KnowledgeGraphOverlays
+                coverage={coverage}
                 edges={scene.edges}
                 key={entityType + ':' + entity.id}
                 nodes={scene.nodes}
-                rootId={rootEntityId}
                 selection={selection}
                 tooltip={canvas.tooltip}
                 onExpandGroup={expandGroup}
                 onSelectionChange={setSelection}
-                onViewRelationships={(groupId) => {
+                onViewRelationships={(groupId, scope) => {
+                  if (scope) {
+                    setRelationshipScope(scope);
+                    setDrawer('relationships');
+
+                    return;
+                  }
                   const group = scene.nodes.find((node) => node.id === groupId);
                   const bundle = getGroupRelationship(group, scene.edges);
                   setRelationshipScope(
@@ -545,7 +592,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               onCollapse={() => setExpanded([])}>
               <KnowledgeGraphLegend
                 counts={counts}
-                hiddenCount={excludedFamilies.length}
                 isCollapsed={legendCollapsed}
                 selectedCategory={selectedFamily(selection)}
                 onSelectCategory={(category) =>

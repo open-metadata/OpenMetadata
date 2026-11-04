@@ -19,15 +19,15 @@ import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
-import { getCustomizePagePath } from '../../../../utils/GlobalSettingsUtils';
 import {
-  getCustomizePageCategories,
+  getCustomizePageCategoryCards,
   getCustomizePageOptions,
 } from '../../../../utils/Persona/PersonaUtils';
+import { getCustomizePagePath } from '../../../../utils/RouterUtils';
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 
 export const CustomizeUI = () => {
-  const categories = useMemo(() => getCustomizePageCategories(), []);
+  const categories = useMemo(() => getCustomizePageCategoryCards(), []);
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();
@@ -69,6 +69,7 @@ export const CustomizeUI = () => {
   return (
     <Grid
       className="layout-row layout-grid bg-grey"
+      data-testid="customize-ui-options"
       style={getLayoutGutter(16, 16)}>
       {items.map((value) => (
         <Grid.Item className="layout-column" key={value.key} span={8}>

@@ -16,10 +16,8 @@ import {
   render,
   screen,
   waitForElementToBeRemoved,
-  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
@@ -27,6 +25,7 @@ import {
   mockApplicationData,
   mockExternalApplicationData,
 } from '../../../../mocks/rests/applicationAPI.mock';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
@@ -144,11 +143,15 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../common/Table/TableV2', () => {
+  const ActualTable = jest.requireActual(
+    '../../../common/Table/TableV2'
+  ).default;
+
   return jest
     .fn()
     .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
       <div>
-        {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+        {loading ? <p>TableLoader</p> : <ActualTable {...rest} />}
         {customPaginationProps && (
           <button
             onClick={() =>
@@ -196,7 +199,7 @@ const mockProps1 = {
   appData: mockApplicationData,
   maxRecords: 10,
   showPagination: true,
-  jsonSchema: {},
+  jsonSchema: { properties: { batchSize: { type: 'number' as const } } },
 };
 
 const mockProps2 = {
@@ -259,7 +262,9 @@ describe('AppRunsHistory', () => {
       .findIndex((header) => header.textContent === 'label.triggered-by');
     const [, firstDataRow] = screen.getAllByRole('row');
 
-    return within(firstDataRow).getAllByRole('cell')[columnIndex];
+    return Array.from(
+      firstDataRow.querySelectorAll('[role="rowheader"], [role="gridcell"]')
+    )[columnIndex];
   };
 
   it('should show the user who triggered an on-demand run', async () => {
@@ -311,7 +316,7 @@ describe('AppRunsHistory', () => {
   });
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
-    jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
+    jest.useFakeTimers().setSystemTime(new Date('2024-02-05'));
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
@@ -444,6 +449,38 @@ describe('AppRunsHistory', () => {
 
     expect(screen.getByTestId('app-run-config-close')).toBeInTheDocument();
     expect(screen.getByText('Configure Save')).toBeInTheDocument();
+    // The run config is read-only, so the form must not offer a Submit.
+    expect(FormBuilderV1).toHaveBeenLastCalledWith(
+      expect.objectContaining({ readonly: true, hideFooter: true }),
+      expect.anything()
+    );
+  });
+
+  it('shows an empty state instead of a blank form when the schema has no properties', async () => {
+    mockGetApplicationRuns.mockReturnValueOnce({
+      data: [],
+      paging: {
+        offset: 0,
+        total: 0,
+      },
+    });
+
+    render(
+      <AppRunsHistory
+        {...mockProps1}
+        jsonSchema={{ description: 'Nothing to configure' }}
+      />
+    );
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByTestId('app-historical-config'));
+
+    expect(screen.getByTestId('app-run-config-empty')).toHaveTextContent(
+      'label.no-entity'
+    );
+    // The schema's description is untranslated backend text, so it is not shown.
+    expect(screen.queryByText('Nothing to configure')).not.toBeInTheDocument();
+    expect(FormBuilderV1).not.toHaveBeenCalled();
   });
 
   it('should disable config when schema is unavailable', async () => {
@@ -538,5 +575,50 @@ describe('AppRunsHistory', () => {
     });
 
     expect(screen.getByText('Running')).toBeInTheDocument();
+  });
+
+  it('toggles a run with stats from the expand chevron', async () => {
+    mockHasAppRunStats.mockReturnValue(true);
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-chevron', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByTestId('expand-icon'));
+
+    expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('expand-icon'));
+
+    expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
+  });
+
+  it('hands the run to onViewRunConfig instead of opening the config dialog', async () => {
+    const onViewRunConfig = jest.fn();
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-config', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(
+      <AppRunsHistory {...mockProps1} onViewRunConfig={onViewRunConfig} />
+    );
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByText('label.config'));
+
+    expect(onViewRunConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ status: Status.Failed })
+    );
+    expect(
+      screen.queryByTestId('edit-table-type-property-modal')
+    ).not.toBeInTheDocument();
   });
 });

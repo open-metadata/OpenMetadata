@@ -98,7 +98,7 @@ describe('buildClusterEdgeGeometry', () => {
     expect(start.y).toBeGreaterThan(0);
     expect(start.y).toBeLessThan(200);
     expect(end.x).toBe(500);
-    expect(geometry?.arrowPath).toMatch(/^M 500 /);
+    expect(geometry?.end).toEqual(end);
     expect(geometry?.labelLeft).toBeGreaterThan(236);
     expect(geometry?.labelLeft).toBeLessThan(500);
   });
@@ -156,7 +156,7 @@ describe('buildClusterEdgeGeometry', () => {
 
     expect(start).toEqual({ x: 236, y: 100 });
     expect(end).toEqual({ x: 864, y: 100 });
-    expect(geometry?.arrowPath).toMatch(/^M 864 100 /);
+    expect(geometry?.end).toEqual(end);
     // The label sits on the drawn curve, which rounds off the route's bends.
     expect(geometry?.labelLeft).toBeCloseTo(550, 0);
     expect(geometry?.labelTop).toBeCloseTo(320.4, 0);

@@ -71,7 +71,7 @@ generate_typescript() {
     local output_file="$2"
     
     echo "Generating ${output_file} from specification at ${input_schema}"
-    ./node_modules/.bin/quicktype -s schema "$input_schema" -o "$output_file" --just-types > /dev/null 2>&1
+    "$QUICKTYPE" -s schema "$input_schema" -o "$output_file" --just-types > /dev/null 2>&1
 
     # Remove empty output files
     if [[ ! -s "$output_file" ]]; then
@@ -127,8 +127,16 @@ cd "$(dirname "$0")/../../../../.." || {
     exit 1
 }
 
+# quicktype is fetched on demand at an exact pin (ADR:2026-10-19-ts-codegen-runs-quicktype-via-npx-at-one-exact-pin);
+# keep the version identical to json2ts.sh. Resolved once so the parallel jobs skip npx.
+QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
+    echo "Error: Failed to resolve quicktype via npx" >&2
+    exit 1
+}
+
 process_schema_files
 wait $(jobs -p)
+node openmetadata-ui/src/main/resources/ui/scripts/normalize-generated-map-types.mjs "$QUICKTYPE" "$UI_OUTPUT_DIRECTORY" || exit 1
 
 # Cleanup
 rm -rf "$TEMP_DIR"

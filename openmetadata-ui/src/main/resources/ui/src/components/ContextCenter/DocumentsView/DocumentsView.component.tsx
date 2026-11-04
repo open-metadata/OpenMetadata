@@ -19,7 +19,6 @@ import {
   Checkbox,
   Dot,
   Dropdown,
-  EmptyPlaceholder,
   FileIcon,
   Skeleton,
   Typography,
@@ -59,6 +58,8 @@ import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
@@ -653,7 +654,7 @@ const FileRow: FC<FileRowProps> = ({
   return (
     <Box
       align="center"
-      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
+      className={`tw:@container tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
         isActive ? 'tw:bg-brand-primary' : 'tw:hover:bg-primary_hover'
       }`}
       data-testid={`document-row-${file.id}`}
@@ -689,7 +690,7 @@ const FileRow: FC<FileRowProps> = ({
           weight="medium">
           {fileName}
         </Typography>
-        <Box align="center" gap={2} wrap="wrap">
+        <Box align="center" className="tw:whitespace-nowrap" gap={2}>
           <Typography
             className="tw:text-quaternary"
             data-testid="document-size"
@@ -713,6 +714,7 @@ const FileRow: FC<FileRowProps> = ({
               <Typography
                 className="tw:text-quaternary"
                 data-testid="document-updated-by"
+                ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
                 size="text-xs">
                 {file.updatedBy}
               </Typography>
@@ -735,6 +737,7 @@ const FileRow: FC<FileRowProps> = ({
               <Typography
                 className="tw:text-quaternary"
                 data-testid="document-folder-name"
+                ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
                 size="text-xs">
                 {folderName}
               </Typography>
@@ -749,11 +752,14 @@ const FileRow: FC<FileRowProps> = ({
         gap={2}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
-        <DocumentStatusBadge
-          error={file.processingError}
-          stats={file.extractionStats}
-          status={file.processingStatus}
-        />
+        {/* Hidden on narrow rows (preview panel open) so it can't squeeze the file details */}
+        <span className="tw:hidden tw:@xl:inline-flex">
+          <DocumentStatusBadge
+            error={file.processingError}
+            stats={file.extractionStats}
+            status={file.processingStatus}
+          />
+        </span>
         <ButtonUtility
           className={`tw:ml-1.5${
             isPreviewSupported ? '' : ' tw:invisible tw:pointer-events-none'
@@ -849,7 +855,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 
   const emptyStateContent = selectedFolderName ? (
     <div className="tw:relative tw:flex-1">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         actions={
           onUploadFile
             ? [
@@ -867,16 +873,14 @@ const DocumentsView: FC<DocumentsViewProps> = ({
         title={t('label.folder-name-is-empty', {
           folderName: selectedFolderName,
         })}
-        variant="blank"
       />
     </div>
   ) : (
     <div className="tw:relative tw:flex-1">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearchResultIcon />}
         title={t('label.no-matching-results')}
-        variant="blank"
       />
     </div>
   );

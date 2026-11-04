@@ -113,7 +113,6 @@ final class ConceptContextBuilder {
       context
           .withDefinition(AIContextBuilder.unescapeRichText(term.getDescription()))
           .withSynonyms(term.getSynonyms())
-          .withAttributes(term.getAttributes())
           .withRelatedTerms(visibleRelations(term));
     } else if (entity instanceof Metric metric) {
       context.withDefinition(expression(metric));
@@ -380,11 +379,7 @@ final class ConceptContextBuilder {
 
   private static List<UUID> sourceMemories(EntityInterface concept, List<KnowledgeItem> articles) {
     Set<UUID> ids = new LinkedHashSet<>();
-    if (concept instanceof GlossaryTerm term) {
-      if (term.getSourceMemoryIds() != null) {
-        term.getSourceMemoryIds().stream().limit(MAX_EVIDENCE).forEach(ids::add);
-      }
-    } else if (concept instanceof Metric metric && metric.getDerivedFrom() != null) {
+    if (concept instanceof Metric metric && metric.getDerivedFrom() != null) {
       ids.add(metric.getDerivedFrom().getId());
     }
     listOrEmpty(articles).stream()

@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
@@ -17,8 +18,11 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
+import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityFieldUtils;
 
@@ -82,6 +86,12 @@ public class SetEntityAttributeImpl implements JavaDelegate {
         Optional.ofNullable(updatedByNamespace)
             .map(ns -> (String) varHandler.getNamespacedVariable(ns, UPDATED_BY_VARIABLE))
             .orElse(null);
+    if (actualUser == null || actualUser.isEmpty()) {
+      // The configured namespace had no acting user (e.g. an auto-approved user task was bypassed
+      // and set no updatedBy). Use the global editor (the requester) so the write is attributed to
+      // a real user with governance-bot as impersonator.
+      actualUser = (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+    }
     return new FieldUpdate(fieldName, fieldValue, actualUser);
   }
 
@@ -92,8 +102,9 @@ public class SetEntityAttributeImpl implements JavaDelegate {
   private static void setEntityField(
       EntityInterface<?> entity, String entityLinkValue, FieldUpdate update) {
     String entityType = MessageParser.EntityLink.parse(entityLinkValue).getEntityType();
-    // fieldValue==null clears the field. When we have an acting user, preserve it and mark
-    // governance-bot as impersonator; otherwise attribute the write to governance-bot directly.
+    // fieldValue==null clears the field. With an acting user, attribute the write to that user and
+    // mark governance-bot as impersonator; only when no user resolves at all does the write fall to
+    // governance-bot directly.
     if (update.actualUser() != null && !update.actualUser().isEmpty()) {
       EntityFieldUtils.setEntityField(
           entity,
@@ -107,6 +118,20 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       EntityFieldUtils.setEntityField(
           entity, entityType, GOVERNANCE_BOT, update.fieldName(), update.fieldValue(), true, null);
     }
+    if (EntityStatusWorkflows.isStageField(update.fieldName()) && update.fieldValue() != null) {
+      // The stage is saved as its EntityStatus, whatever the case and spacing of the value.
+      closeRevisionsOutsideStage(
+          entity, EntityFieldUtils.parseEntityStatus(update.fieldValue()).value());
+    }
+  }
+
+  // A Revise and resubmit task asks for changes within one stage; once the workflow moves the
+  // asset to another stage it can no longer be resubmitted there.
+  private static void closeRevisionsOutsideStage(EntityInterface<?> entity, String stage) {
+    new MetadataCollectionService(
+            (TaskRepository) Entity.getEntityRepository(Entity.TASK),
+            Entity.getEntityReferenceByName(Entity.USER, GOVERNANCE_BOT, Include.NON_DELETED))
+        .closeRevisionsOutside(entity, stage);
   }
 
   /** The field a node sets, the value it sets it to, and the user it acts for, if any. */

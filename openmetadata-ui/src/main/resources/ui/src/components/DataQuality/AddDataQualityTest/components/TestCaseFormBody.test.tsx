@@ -279,6 +279,57 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('selectedTable')).toBeInTheDocument();
   });
 
+  it('reports the active field for a click on the table select and keyboard focus on a test level card', async () => {
+    const onActiveFieldChange = jest.fn();
+    const Wrapper = () => {
+      const form = useForm<FormValues>({
+        defaultValues: { testLevel: TestLevel.TABLE } as FormValues,
+      });
+
+      return (
+        <HookForm showFieldDocs form={form} onSubmit={jest.fn()}>
+          <TestCaseFormBody
+            form={form}
+            onActiveFieldChange={onActiveFieldChange}
+          />
+        </HookForm>
+      );
+    };
+
+    await act(async () => {
+      render(<Wrapper />);
+    });
+
+    // A select holding a value takes no focus on click.
+    await act(async () => {
+      fireEvent.pointerDown(await screen.findByTestId('selectedTable'));
+    });
+
+    expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/table');
+
+    await act(async () => {
+      screen.getAllByRole('radio')[0].focus();
+    });
+
+    expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/testLevel');
+  });
+
+  it('labels the table field Selected Table once a table is picked', async () => {
+    await act(async () => {
+      renderBody();
+    });
+
+    expect(screen.queryByText('label.selected-entity')).not.toBeInTheDocument();
+
+    await act(async () => {
+      formRef?.setValue('selectedTable', TABLE_FQN);
+    });
+
+    expect(
+      await screen.findByText('label.selected-entity')
+    ).toBeInTheDocument();
+  });
+
   it('does not render the column select at table level', async () => {
     await act(async () => {
       renderBody();
@@ -405,6 +456,44 @@ describe('TestCaseFormBody', () => {
     });
 
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+  });
+
+  it('keeps a test type picked before the selected table details finish loading', async () => {
+    // A table missing from the search cache loads through getTableDetailsByFQN.
+    mockSearchQuery.mockResolvedValue({
+      hits: { total: { value: 0 }, hits: [] },
+    } as never);
+    let resolveTable: (table: Table) => void = jest.fn();
+    mockGetTableDetailsByFQN.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTable = resolve;
+      }) as never
+    );
+
+    await act(async () => {
+      renderBody();
+    });
+
+    await act(async () => {
+      formRef?.setValue('selectedTable', TABLE_FQN);
+    });
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveTable(SELECTED_TABLE);
+    });
+
+    expect(screen.getByTestId('parameter-minValue')).toBeInTheDocument();
+    expect(formRef?.getValues('testTypeId')).toEqual(
+      expect.objectContaining({ id: TEST_DEFINITION_FQN })
+    );
   });
 
   it('defaults the data quality dimension to the selected test definition one', async () => {
@@ -587,6 +676,75 @@ describe('TestCaseFormBody', () => {
       expect(
         screen.queryByTestId('parameter-dimensionFailurePolicy')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('failure threshold with a dynamic assertion', () => {
+    // threshold/thresholdUnit are not learned bounds — ingestion widens the
+    // bound they configure downstream of bound resolution, so they must stay
+    // editable when the assertion is dynamic.
+    const DYNAMIC_THRESHOLD_DEFINITION = {
+      ...DYNAMIC_DEFINITION,
+      parameterDefinition: [
+        ...(DYNAMIC_DEFINITION.parameterDefinition ?? []),
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: 'NUMBER',
+          required: false,
+        },
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: 'STRING',
+          required: false,
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const renderWithDynamicAssertion = async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [DYNAMIC_THRESHOLD_DEFINITION],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      expect(
+        await screen.findByTestId('parameter-minValue')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        formRef?.setValue('useDynamicAssertion', true);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('parameter-minValue')
+        ).not.toBeInTheDocument();
+      });
+    };
+
+    it('keeps the threshold editable once the bounds are learned', async () => {
+      await renderWithDynamicAssertion();
+
+      expect(screen.getByTestId('threshold-row')).toBeInTheDocument();
+      expect(screen.getByTestId('parameter-threshold')).toBeInTheDocument();
+      expect(screen.getByTestId('parameter-thresholdUnit')).toBeInTheDocument();
     });
   });
 

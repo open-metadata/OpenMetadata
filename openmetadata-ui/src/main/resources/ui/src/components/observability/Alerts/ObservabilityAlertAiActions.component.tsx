@@ -16,7 +16,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,9 +26,6 @@ import {
   ProviderType,
 } from '../../../generated/events/eventSubscription';
 import { AlertPermission } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.interface';
-
-const ACTION_BUTTON_CLASS_NAME = 'tw:rounded-lg';
-const ACTION_ICON_CLASS_NAME = 'tw:h-4 tw:w-4 tw:text-fg-quaternary';
 
 interface ObservabilityAlertAiActionsProps {
   alertPermission?: AlertPermission;
@@ -66,10 +63,11 @@ function ObservabilityAlertAiActions({
     <div className="tw:flex tw:items-center tw:gap-1">
       {alertPermission.edit && onEditAlert && (
         <ButtonUtility
-          className={ACTION_BUTTON_CLASS_NAME}
+          color="tertiary"
           data-testid={`alert-edit-${record.name}`}
-          icon={<Edit03 className={ACTION_ICON_CLASS_NAME} />}
+          icon={Edit01}
           isDisabled={record.provider === ProviderType.System}
+          size="lg"
           tooltip={t('label.edit')}
           onClick={(event: MouseEvent<HTMLButtonElement>) => {
             event.preventDefault();
@@ -80,10 +78,11 @@ function ObservabilityAlertAiActions({
       )}
       {alertPermission.delete && (
         <ButtonUtility
-          className={ACTION_BUTTON_CLASS_NAME}
+          color="tertiary"
           data-testid={`alert-delete-${record.name}`}
-          icon={<Trash01 className={ACTION_ICON_CLASS_NAME} />}
+          icon={Trash01}
           isDisabled={record.provider === ProviderType.System}
+          size="lg"
           tooltip={t('label.delete')}
           onClick={() => onSelectAlert(record)}
         />

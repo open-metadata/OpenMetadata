@@ -93,6 +93,10 @@ public interface EntityManagementClient {
   /**
    * Soft deletes or restores child entities using a script update.
    *
+   * <p>The script must give the same result when it runs twice on a document: documents a
+   * concurrent write held are retried by running the query again ({@link
+   * UpdateByQueryReconciler}).
+   *
    * @param indexNames the list of index names
    * @param scriptTxt the script text for the update operation
    * @param fieldAndValue list of field-value pairs to match for the update
@@ -141,6 +145,10 @@ public interface EntityManagementClient {
    * multiple indices, in a single update-by-query. Lets a caller fan a change out to the children of
    * many parents at once instead of issuing one update-by-query per parent.
    *
+   * <p>The script must give the same result when it runs twice on a document: documents a
+   * concurrent write held are retried by running the query again ({@link
+   * UpdateByQueryReconciler}).
+   *
    * @param indexNames list of index names
    * @param field field to match documents on
    * @param values parent values to match (any-of / terms)
@@ -152,6 +160,39 @@ public interface EntityManagementClient {
       List<String> values,
       Pair<String, Map<String, Object>> updates)
       throws IOException;
+
+  /**
+   * Like {@link #updateChildren(List, String, List, Pair)}, but matches documents by id ({@code
+   * docIds}) or where {@code field} under any of {@code nestedPaths}, nested or not, equals any of
+   * {@code values}. A path an index does not map is ignored for that index.
+   */
+  default void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    throw new UnsupportedOperationException("Nested-field child updates are not supported");
+  }
+
+  /**
+   * Runs {@code updates} on every document where {@code field} under one of {@code nestedPaths}
+   * (nested fields, such as owners) or {@code objectPaths} (object fields, such as domains) equals
+   * any of {@code values}: the documents holding a copy of a reference. Asynchronous, like {@link
+   * #updateChildrenByNestedField}, because a widely used reference fans out to many documents.
+   */
+  default void updateReferenceCopies(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      List<String> objectPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    throw new UnsupportedOperationException("Reference-copy updates are not supported");
+  }
 
   /**
    * Gets a document by ID from the specified index.

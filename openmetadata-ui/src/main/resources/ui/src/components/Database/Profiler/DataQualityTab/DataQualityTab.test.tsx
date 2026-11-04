@@ -538,12 +538,21 @@ jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ visible, onCancel, afterDeleteAction, allowSoftDelete }) =>
+      ({
+        visible,
+        onCancel,
+        afterDeleteAction,
+        allowSoftDelete,
+        isRecursiveDelete,
+      }) =>
         visible ? (
           <div>
             <p>DeleteEntityModal</p>
             <span data-testid="allow-soft-delete">
               {String(Boolean(allowSoftDelete))}
+            </span>
+            <span data-testid="recursive-delete">
+              {String(Boolean(isRecursiveDelete))}
             </span>
             <button
               data-testid="soft-delete-confirm"
@@ -559,9 +568,9 @@ jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
 jest.mock(
   '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () =>
-    jest.fn().mockImplementation(({ open, variant, onClose, onUpdate }) =>
+    jest.fn().mockImplementation(({ open, onClose, onUpdate }) =>
       open ? (
-        <div data-testid="test-case-form-v1" data-variant={variant}>
+        <div data-testid="test-case-form-v1">
           <p>EditTestCaseModal</p>
           <button onClick={onClose}>cancel</button>
           <button onClick={onUpdate}>submit</button>
@@ -574,13 +583,16 @@ jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ visible, onCancel, onConfirm, isLoading, bodyText }) =>
+      ({ visible, onCancel, onConfirm, isLoading, bodyText, isDestructive }) =>
         visible ? (
           <div>
             <p>ConfirmationModal</p>
             <p data-testid="confirmation-body">{bodyText}</p>
             <button onClick={onCancel}>cancel</button>
-            <button onClick={onConfirm}>
+            <button
+              data-destructive={String(Boolean(isDestructive))}
+              data-testid="confirmation-submit"
+              onClick={onConfirm}>
               {isLoading ? (
                 <span data-testid="submit-btn-loading">Loading</span>
               ) : (
@@ -1010,6 +1022,27 @@ describe('DataQualityTab test', () => {
     expect(screen.queryByTestId('next-previous')).not.toBeInTheDocument();
   });
 
+  it('Should not show NextPrevious when there are no test cases, even with showPagination', async () => {
+    const pagingData = {
+      paging: { total: 0 },
+      currentPage: 1,
+      pageSize: 25,
+      pagingHandler: jest.fn(),
+    };
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          showPagination
+          pagingData={pagingData as never}
+          testCases={[]}
+        />
+      );
+    });
+
+    expect(screen.queryByTestId('next-previous')).not.toBeInTheDocument();
+  });
+
   it('Should stop click propagation from interactive cell wrappers', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
@@ -1076,6 +1109,10 @@ describe('DataQualityTab test', () => {
     const openRemoveModel = await screen.findByText('ConfirmationModal');
 
     expect(openRemoveModel).toBeInTheDocument();
+    expect(screen.getByTestId('confirmation-submit')).toHaveAttribute(
+      'data-destructive',
+      'true'
+    );
   });
 
   it('Edit functionality - menu item is accessible', async () => {
@@ -1103,7 +1140,7 @@ describe('DataQualityTab test', () => {
     expect(editButton).not.toBeDisabled();
   });
 
-  it('Should render TestCaseFormDrawer in drawer variant by default when editing', async () => {
+  it('Should render TestCaseFormDrawer when editing', async () => {
     const firstRowData = MOCK_TEST_CASE[0];
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
@@ -1127,33 +1164,6 @@ describe('DataQualityTab test', () => {
     const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
 
     expect(testCaseFormDrawer).toBeInTheDocument();
-    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'drawer');
-  });
-
-  it('Should forward editVariant="modal" as TestCaseFormDrawer variant', async () => {
-    const firstRowData = MOCK_TEST_CASE[0];
-    await act(async () => {
-      render(<DataQualityTab {...mockProps} editVariant="modal" />);
-    });
-    const tableRows = await screen.findAllByRole('row');
-    const firstRow = tableRows[1];
-    const actionDropdown = await findByTestId(
-      firstRow,
-      `action-dropdown-${firstRowData.name}`
-    );
-
-    await act(async () => {
-      fireEvent.click(actionDropdown);
-    });
-
-    const editButton = await screen.findByTestId(`edit-${firstRowData.name}`);
-    await act(async () => {
-      fireEvent.click(editButton);
-    });
-
-    const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
-
-    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'modal');
   });
 
   it('Delete functionality - menu item is accessible', async () => {
@@ -1690,6 +1700,49 @@ describe('DataQualityTab test', () => {
       ).not.toBeInTheDocument();
       expect(screen.getByLabelText(`select-${firstCase.id}`)).not.toBeChecked();
     });
+
+    it('asks for a destructive confirm button', () => {
+      renderBundleSuiteTab();
+      selectRows(firstCase);
+      fireEvent.click(screen.getByTestId('bulk-remove-test-cases'));
+
+      expect(screen.getByTestId('confirmation-submit')).toHaveAttribute(
+        'data-destructive',
+        'true'
+      );
+    });
+
+    it('puts the selection toolbar in the header row beside the search', () => {
+      const { container } = renderBundleSuiteTab({
+        tableHeader: <div data-testid="suite-search">search</div>,
+      });
+      selectRows(firstCase);
+
+      const header = container.querySelector('.data-quality-table-header');
+
+      expect(header).toContainElement(
+        screen.getByTestId('bulk-selection-toolbar')
+      );
+      expect(header).toContainElement(screen.getByTestId('suite-search'));
+    });
+  });
+
+  it('keeps the selection toolbar above the table on the test case list', () => {
+    const { container } = render(
+      <DataQualityTab
+        {...mockProps}
+        enableBulkActions
+        tableHeader={<div data-testid="list-header">header</div>}
+      />
+    );
+    fireEvent.click(screen.getByLabelText(`select-${MOCK_TEST_CASE[0].id}`));
+
+    const header = container.querySelector('.data-quality-table-header');
+
+    expect(screen.getByTestId('bulk-selection-toolbar')).toBeInTheDocument();
+    expect(header).not.toContainElement(
+      screen.getByTestId('bulk-selection-toolbar')
+    );
   });
 
   describe('BundleSuiteFormDrawer integration', () => {
@@ -1796,6 +1849,7 @@ describe('DataQualityTab test', () => {
 
       expect(await screen.findByText('DeleteEntityModal')).toBeInTheDocument();
       expect(screen.getByTestId('allow-soft-delete')).toHaveTextContent('true');
+      expect(screen.getByTestId('recursive-delete')).toHaveTextContent('true');
       expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument();
     });
 
