@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -81,7 +81,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
-  jest.fn(({ userName }: { userName: string }) => <span>{userName}</span>)
+  jest.fn(
+    ({ userName, displayName }: { userName: string; displayName?: string }) => (
+      <span>{displayName ?? userName}</span>
+    )
+  )
 );
 
 jest.mock(
@@ -323,6 +327,101 @@ describe('CreateMemoryModal', () => {
 
     expect(screen.getByTestId('memory-title-input')).toBeInTheDocument();
     expect(screen.getByTestId('memory-type-select')).toBeInTheDocument();
+  });
+
+  it.each([
+    { type: 'user', name: 'alice', displayName: 'Alice' },
+    { type: 'team', name: 'operations', displayName: 'Operations' },
+  ])('shows the $type owner and last updater separately', (owner) => {
+    const memory: ContextMemory = {
+      id: 'memory-id',
+      name: 'refund-policy',
+      owners: [{ id: 'owner-id', ...owner }],
+      updatedBy: 'admin',
+      updatedAt: 1767225600000,
+    };
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('label.owner')).toBeInTheDocument();
+    expect(screen.getByText(owner.displayName)).toBeInTheDocument();
+    expect(screen.queryByText('label.created-by')).not.toBeInTheDocument();
+
+    const metadata = within(screen.getByTestId('memory-metadata-section'));
+
+    expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
+    expect(metadata.getByText('admin')).toBeInTheDocument();
+    expect(metadata.getByText(/Jan 1, 2026/)).toBeInTheDocument();
+  });
+
+  it('shows the last updater when a memory has no owner', () => {
+    const memory: ContextMemory = {
+      id: 'memory-id',
+      name: 'legacy-policy',
+      updatedBy: 'admin',
+      updatedAt: 1767225600000,
+    };
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText('label.owner')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.created-by')).not.toBeInTheDocument();
+
+    const metadata = within(screen.getByTestId('memory-metadata-section'));
+
+    expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
+    expect(metadata.getByText('admin')).toBeInTheDocument();
+  });
+
+  it('shows the last updater when the owner also made the update', () => {
+    const memory: ContextMemory = {
+      id: 'memory-id',
+      name: 'owned-policy',
+      owners: [{ id: 'owner-id', type: 'user', name: 'alice' }],
+      updatedBy: 'alice',
+      updatedAt: 1767225600000,
+    };
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('label.owner')).toBeInTheDocument();
+
+    const metadata = within(screen.getByTestId('memory-metadata-section'));
+
+    expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
+    expect(metadata.getByText('alice')).toBeInTheDocument();
+  });
+
+  it('keeps the update date when a legacy memory has no updater', () => {
+    const memory: ContextMemory = {
+      id: 'memory-id',
+      name: 'legacy-policy',
+      updatedAt: 1767225600000,
+    };
+
+    render(
+      <MemoryRouter>
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
+      </MemoryRouter>
+    );
+
+    const metadata = within(screen.getByTestId('memory-metadata-section'));
+
+    expect(metadata.getByText('label.updated')).toBeInTheDocument();
+    expect(metadata.getByText('Jan 1, 2026')).toBeInTheDocument();
+    expect(metadata.queryByText('label.updated-by')).not.toBeInTheDocument();
   });
 
   it('links applied glossary terms from the memory modal', () => {

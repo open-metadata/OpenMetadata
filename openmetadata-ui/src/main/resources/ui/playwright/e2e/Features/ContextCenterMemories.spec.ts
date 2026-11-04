@@ -529,6 +529,39 @@ test.describe(
     // ─── 4. Memory Row Card — Visible Metadata ──────────────────────────────
 
     test.describe('Memory Row Card Metadata', () => {
+      test('list and panel distinguish the owner from the last updater', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = await searchAndGetMemoryRow(
+          page,
+          secondAuthorMemoryTitle,
+          secondAuthorMemoryId
+        );
+
+        await expect(row.getByTestId('memory-owner')).toHaveText(
+          dataConsumerUser.displayName || dataConsumerUser.name
+        );
+        await expect(row.getByTestId('memory-updated-by')).toContainText(
+          'Updated by admin'
+        );
+        await row.click();
+
+        const dialog = getMemoryDialog(page);
+        const metadata = dialog.getByTestId('memory-metadata-section');
+
+        await expect(dialog.getByText('Owner', { exact: true })).toBeVisible();
+        await expect(dialog.getByTestId(dataConsumerUser.name)).toBeVisible();
+        await expect(
+          metadata.getByText('Updated by', { exact: true })
+        ).toBeVisible();
+        await expect(metadata.getByTestId('admin')).toContainText('admin');
+        await expect(
+          dialog.getByText('Created By', { exact: true })
+        ).not.toBeVisible();
+      });
+
       test('row shows the creator display name', async ({
         page,
         isolatedUserPage,

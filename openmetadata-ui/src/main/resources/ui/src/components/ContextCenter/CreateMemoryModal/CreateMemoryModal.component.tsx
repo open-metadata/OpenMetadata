@@ -74,6 +74,7 @@ import {
 } from '../../../constants/ContextCenter.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { OwnerType } from '../../../enums/user.enum';
 import {
   ContextMemory,
   ContextMemoryStatus,
@@ -259,24 +260,24 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           {modalTitle}
         </Typography>
       </div>
-      {(memoryToEdit?.owners?.[0]?.name ?? memoryToEdit?.updatedBy) && (
-        <div className="tw:flex tw:items-center tw:gap-1">
-          <Typography className="tw:text-quaternary" size="text-xs">
-            {t('label.created-by')}
+      {memoryToEdit?.owners?.[0]?.name && (
+        <Box align="center" gap={1} wrap="wrap">
+          <Typography color="secondary" size="text-xs">
+            {t('label.owner')}
           </Typography>
           <UserPopOverCard
             showUserName
             className="tw:text-primary"
+            displayName={getEntityName(memoryToEdit.owners[0])}
             profileWidth={16}
-            userName={memoryToEdit?.owners?.[0]?.name || ''}
+            type={
+              memoryToEdit.owners[0].type === EntityType.TEAM
+                ? OwnerType.TEAM
+                : OwnerType.USER
+            }
+            userName={memoryToEdit.owners[0].name}
           />
-          <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xl">
-            &middot;
-          </span>
-          <Typography className="tw:text-quaternary" size="text-xs">
-            {formatDate(memoryToEdit?.updatedAt)}
-          </Typography>
-        </div>
+        </Box>
       )}
       {memorySource && memorySourceLink && (
         <div className="tw:flex tw:items-center tw:gap-1">
@@ -758,18 +759,30 @@ const MemoryMetadataExtraRows: FC<{
       memoryToEdit={memoryToEdit}
       t={t}
     />
-    {Boolean(memoryToEdit?.updatedAt) && (
+    {Boolean(memoryToEdit?.updatedBy || memoryToEdit?.updatedAt) && (
       <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
         <div className="tw:basis-[30%]">
           <Typography
             className="tw:text-quaternary tw:w-28 tw:shrink-0"
             size="text-sm">
-            {t('label.updated')}
+            {t(memoryToEdit?.updatedBy ? 'label.updated-by' : 'label.updated')}
           </Typography>
         </div>
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {formatDate(memoryToEdit?.updatedAt)}
-        </Typography>
+        <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
+          {memoryToEdit?.updatedBy && (
+            <UserPopOverCard
+              showUserName
+              profileWidth={16}
+              userName={memoryToEdit.updatedBy}
+            />
+          )}
+          {Boolean(memoryToEdit?.updatedAt) && (
+            <Typography color="secondary" size="text-sm">
+              {memoryToEdit?.updatedBy && <>&middot; </>}
+              {formatDate(memoryToEdit?.updatedAt)}
+            </Typography>
+          )}
+        </Box>
       </div>
     )}
     {memoryToEdit &&
