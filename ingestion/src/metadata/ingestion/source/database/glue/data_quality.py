@@ -30,10 +30,6 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
-from metadata.generated.schema.api.tests.createTestSuite import (
-    CreateTestSuiteRequest,
-    TestSuiteEntityName,
-)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -61,7 +57,6 @@ from metadata.generated.schema.type.basic import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.tests_data import (
-    OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
 )
 from metadata.ingestion.ometa.utils import model_str
@@ -83,7 +78,7 @@ from metadata.utils.lru_cache import LRUCache
 from metadata.utils.time_utils import datetime_to_timestamp
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Iterator
+    from collections.abc import Iterable, Iterator
 
     from metadata.generated.schema.entity.services.connections.database.glue.glueDataQualityConfig import (
         GlueDataQualityConfiguration,
@@ -184,7 +179,7 @@ def build_test_definition_name(rule_type: str, entity_type: EntityType) -> str:
 def safe_name(value: str) -> str:
     """`value` as a name part. When replacing unsafe characters changes it, or it runs past
     NAME_PART_MAX_LENGTH, a hash of the raw value keeps two distinct values from sharing a
-    name, and so a history; capped parts keep suite names within their 256 characters."""
+    name, and so a history."""
     safe = _UNSAFE_NAME_CHARS.sub("_", value).strip("_") or "glue"
     if safe == value and len(safe) <= NAME_PART_MAX_LENGTH:
         return safe
@@ -302,10 +297,6 @@ class GlueDataQualityClient:
             if not next_token:
                 return
 
-    def _paginate(self, operation: str, key: str, **kwargs: Any) -> Iterator[dict]:
-        for page in self._pages(operation, key, **kwargs):
-            yield from page
-
     def list_result_id_pages(self, started_after: datetime) -> Iterator[list[str]]:
         for page in self._pages(
             "list_data_quality_results",
@@ -339,15 +330,6 @@ class GlueDataQualityClient:
             logger.debug(f"Glue Data Quality results no longer available: {missing}")
         yield from response.get("Results", [])
 
-    def ruleset_descriptions(self, names: Collection[str]) -> dict[str, str]:
-        """Descriptions of the named rulesets only, so the result is bounded by this run's
-        suites rather than by every ruleset in the region."""
-        return {
-            ruleset["Name"]: ruleset["Description"]
-            for ruleset in self._paginate("list_data_quality_rulesets", "Rulesets", MaxResults=LIST_PAGE_SIZE)
-            if ruleset.get("Description") and ruleset["Name"] in names
-        }
-
 
 @dataclass
 class _RunState:
@@ -359,7 +341,6 @@ class _RunState:
     definitions: LRUCache[bool] = field(default_factory=lambda: LRUCache(CACHE_SIZE))
     # Run timestamps each test case already holds within the lookback window.
     seen_runs: LRUCache[set[int]] = field(default_factory=lambda: LRUCache(CACHE_SIZE))
-    suites: dict[str, set[str]] = field(default_factory=dict)
     unresolved: dict[str, _Unresolved] = field(default_factory=dict)
     filtered: set[str] = field(default_factory=set)
 
@@ -409,7 +390,6 @@ class GlueDataQualityMixin:
             yield Either(right=None, left=_listing_error(exc))
 
         yield from _unresolved_errors(run.unresolved)
-        yield from self._yield_ruleset_suites(run.suites, client)
 
     def _process_dq_result(self, result: DataQualityResult, run: _RunState) -> Iterable[Either]:
         scope = result.scope
@@ -442,7 +422,6 @@ class GlueDataQualityMixin:
             yield from self._ensure_test_case(
                 run,
                 test_case_fqn,
-                scope=scope,
                 definition=definition,
                 entity_type=entity_type,
                 request=CreateTestCaseRequest(
@@ -463,7 +442,6 @@ class GlueDataQualityMixin:
             yield from self._ensure_test_case(
                 run,
                 test_case_fqn,
-                scope=scope,
                 definition=definition,
                 entity_type=EntityType.TABLE,
                 request=CreateTestCaseRequest(
@@ -481,14 +459,12 @@ class GlueDataQualityMixin:
         run: _RunState,
         test_case_fqn: str,
         *,
-        scope: str,
         definition: str,
         entity_type: EntityType,
         request: CreateTestCaseRequest,
     ) -> Iterable[Either]:
         """Emit the definition and test case create requests the first time a rule is
         seen in this run; the sink writes them before any result is posted."""
-        run.suites.setdefault(scope, set()).add(test_case_fqn)
         if test_case_fqn in run.seen_runs:
             return
 
@@ -613,51 +589,3 @@ class GlueDataQualityMixin:
                 return TABLE_NOT_FOUND
             table_fqn = model_str(found[0].fullyQualifiedName)
         return self.metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["columns"]) or TABLE_NOT_FOUND
-
-    def _yield_ruleset_suites(self, suites: dict[str, set[str]], client: GlueDataQualityClient) -> Iterable[Either]:
-        """Group each ruleset's test cases, across every table it runs on, in a logical suite."""
-        if not suites:
-            return
-
-        try:
-            descriptions = client.ruleset_descriptions(suites.keys())
-        except Exception as exc:
-            logger.warning(f"Could not list Glue Data Quality rulesets, using default suite descriptions: {exc}")
-            descriptions = {}
-
-        # Suites are global; the service keeps two accounts' same-named rulesets apart.
-        service = self.context.get().database_service
-        for scope, test_case_fqns in suites.items():
-            try:
-                yield from self._ruleset_suite(service, scope, test_case_fqns, descriptions.get(scope))
-            except Exception as exc:
-                yield Either(
-                    right=None,
-                    left=StackTraceError(
-                        name=f"Glue Data Quality suite [{scope}]",
-                        error=f"Could not group the test cases of ruleset [{scope}] in a suite: {exc}",
-                        stackTrace=traceback.format_exc(),
-                    ),
-                )
-
-    def _ruleset_suite(
-        self, service: str, scope: str, test_case_fqns: set[str], description: str | None
-    ) -> Iterable[Either]:
-        test_cases = [
-            test_case
-            for test_case_fqn in sorted(test_case_fqns)
-            if (test_case := self.metadata.get_by_name(entity=TestCase, fqn=test_case_fqn, fields=TEST_CASE_FIELDS))
-        ]
-        if not test_cases:
-            return
-        yield Either(
-            left=None,
-            right=OMetaLogicalTestSuiteSample(
-                test_suite=CreateTestSuiteRequest(
-                    name=TestSuiteEntityName(f"AWS Glue DQ - {safe_name(service)} - {safe_name(scope)}"),
-                    displayName=f"AWS Glue DQ - {service} - {scope}",
-                    description=Markdown(description or f"Test cases of AWS Glue Data Quality ruleset [{scope}]."),
-                ),
-                test_cases=test_cases,
-            ),
-        )

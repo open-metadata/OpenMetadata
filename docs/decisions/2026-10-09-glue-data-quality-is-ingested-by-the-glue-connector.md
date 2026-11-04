@@ -34,12 +34,10 @@ another system, and its `TestPlatform` enum had no value for Glue.
      ruleset name), with every run of characters outside `A-Za-z0-9_-` replaced by `_`, leading and
      trailing `_` stripped, and `glue` used if nothing is left. When that changes the name, or it
      is longer than 100 characters, it is cut to 100 characters and `_<sha1(name)[:8]>` of the raw
-     name is appended, so two rulesets never share a test case history and suite names stay
-     within 256 characters.
+     name is appended, so two rulesets never share a test case history.
    - **Ruleset score:** each ruleset also gets a `<ruleset>_score` test case.
-   - **Suites:** each ruleset's test cases are grouped in a logical test suite named
-     `AWS Glue DQ - <service> - <ruleset>`, both parts normalized as above. Suite names are
-     global, so the OpenMetadata service name keeps two accounts' same-named rulesets apart.
+   - **Suites:** none are created. As with dbt and Great Expectations, test cases belong only
+     to their table's own test suite.
    - **Status:** PASS → `Success`, FAIL → `Failed`, ERROR → `Aborted`.
    - **Result timestamp:** the run's `CompletedOn`, else its `StartedOn`.
 4. **Scope:** a result on a Glue catalog table is imported only when the pipeline's
