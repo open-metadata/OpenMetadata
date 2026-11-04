@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  PlatformLineage,
-  PlatformLineageActive,
-} from '@openmetadata/ui-core-components/icons';
+import { PlatformLineage } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
@@ -33,7 +30,7 @@ export const lineageModule: AppModule = {
   navOrder: 85,
   labelKey: 'label.lineage',
   icon: PlatformLineage,
-  activeIcon: PlatformLineageActive,
+  activeIcon: PlatformLineage,
   prefix: ROUTES.PLATFORM_LINEAGE,
   defaultPath: ROUTES.PLATFORM_LINEAGE,
   routes: [],

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -77,22 +77,18 @@ const PoliciesDetailsList = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              arrow
-              title={
+            <ButtonUtility
+              data-testid={`remove-action-${getEntityName(record)}`}
+              icon={IconRemove}
+              isDisabled={!hasAccess}
+              size="lg"
+              tooltip={
                 hasAccess
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`remove-action-${getEntityName(record)}`}
-                icon={IconRemove}
-                isDisabled={!hasAccess}
-                size="sm"
-                onClick={() => onDelete(record)}
-              />
-            </Tooltip>
+              }
+              onClick={() => onDelete(record)}
+            />
           );
         },
       },

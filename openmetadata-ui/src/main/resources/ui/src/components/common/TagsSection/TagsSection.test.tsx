@@ -78,10 +78,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 // Mock SVG components
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => <div data-testid="edit-icon-svg">EditIcon</div>,
-}));
-
 jest.mock('../../../../assets/svg/close-icon.svg', () => ({
   ReactComponent: () => <div data-testid="close-icon-svg">CloseIcon</div>,
 }));
@@ -172,19 +168,6 @@ jest.mock('../../../utils/TagClassBase', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-// Mock EditIconButton
-jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button
-      className="edit-icon"
-      data-testid="edit-icon-button"
-      onClick={onClick}
-      {...props}>
-      Edit
-    </button>
-  )),
 }));
 
 // Mock Loader

@@ -165,7 +165,6 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
                         ? 'tw:bg-(--om-legacy-color-e8e8e9) tw:hover:bg-(--om-legacy-color-e8e8e9)! tw:dark:bg-tertiary tw:dark:hover:bg-tertiary!'
                         : 'tw:hover:bg-(--om-legacy-color-ecedee)! tw:dark:hover:bg-secondary_hover!'
                     )}
-                    color="tertiary"
                     icon={
                       // Inline SVG so the glyph follows the theme; light keeps the
                       // black it had as an <img> (currentColor defaulted to black).

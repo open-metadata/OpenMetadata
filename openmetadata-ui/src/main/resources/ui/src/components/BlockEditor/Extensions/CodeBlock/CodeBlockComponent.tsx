@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 
 const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
@@ -36,10 +36,9 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
           onOpenChange={setIsTooltipOpen}>
           <ButtonUtility
             aria-label={t('label.copy')}
-            className="tw:size-8"
-            color="tertiary"
             data-testid="code-block-copy-icon"
-            icon={<CopyIcon height={24} width={24} />}
+            icon={Copy01}
+            size="lg"
             onClick={handleCopy}
           />
         </Tooltip>

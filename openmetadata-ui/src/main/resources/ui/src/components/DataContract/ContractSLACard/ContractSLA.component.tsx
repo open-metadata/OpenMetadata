@@ -18,9 +18,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  FailedTests,
   MinusCircle,
   SuccessfulTests,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
@@ -212,7 +212,7 @@ const ContractSLA: React.FC<{
     }
 
     return met === false ? (
-      <FailedTests
+      <XCircle
         aria-hidden={false}
         aria-label={t('label.failed')}
         className="sla-icon tw:text-fg-error-primary"
