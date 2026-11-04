@@ -252,7 +252,9 @@ class RuleEngineTest {
   }
 
   // The shapes the workflow builder saves for a Column Tags rule (jsonLogicColumnTags.ts), mapped
-  // to the expected result for a table whose column is tagged PII.Sensitive, then Other.Tag.
+  // to the expected result for a table whose column is tagged PII.Sensitive, Other.Tag, then
+  // nothing.
+  // Every rule expects true once, so a rule that throws (apply returns false) cannot pass.
   private static final Map<String, List<Boolean>> COLUMN_TAG_RULES = columnTagRules();
 
   private static Map<String, List<Boolean>> columnTagRules() {
@@ -260,12 +262,12 @@ class RuleEngineTest {
     String inPii = "{\"in\":[{\"var\":\"tagFQN\"},[\"PII.Sensitive\"]]}";
     String notNull = "{\"!=\":[{\"var\":\"tagFQN\"},null]}";
     Map<String, List<Boolean>> rules = new LinkedHashMap<>();
-    rules.put(perColumnTag(equalsPii), List.of(true, false));
-    rules.put("{\"!\":" + perColumnTag(equalsPii) + "}", List.of(false, true));
-    rules.put(perColumnTag(inPii), List.of(true, false));
-    rules.put("{\"!\":" + perColumnTag(inPii) + "}", List.of(false, true));
-    rules.put(perColumnTag(notNull), List.of(true, true));
-    rules.put("{\"!\":" + perColumnTag(notNull) + "}", List.of(false, false));
+    rules.put(perColumnTag(equalsPii), List.of(true, false, false));
+    rules.put("{\"!\":" + perColumnTag(equalsPii) + "}", List.of(false, true, true));
+    rules.put(perColumnTag(inPii), List.of(true, false, false));
+    rules.put("{\"!\":" + perColumnTag(inPii) + "}", List.of(false, true, true));
+    rules.put(perColumnTag(notNull), List.of(true, true, false));
+    rules.put("{\"!\":" + perColumnTag(notNull) + "}", List.of(false, false, true));
     return rules;
   }
 
@@ -274,11 +276,9 @@ class RuleEngineTest {
   }
 
   private static Map<String, Object> tableWithColumnTag(String tagFqn) {
+    List<TagLabel> tags = tagFqn == null ? List.of() : List.of(new TagLabel().withTagFQN(tagFqn));
     Column tagged =
-        new Column()
-            .withName("email")
-            .withDataType(ColumnDataType.STRING)
-            .withTags(List.of(new TagLabel().withTagFQN(tagFqn)));
+        new Column().withName("email").withDataType(ColumnDataType.STRING).withTags(tags);
     Column untagged = new Column().withName("id").withDataType(ColumnDataType.INT);
     return JsonUtils.getMap(
         new Table().withId(UUID.randomUUID()).withName("t").withColumns(List.of(tagged, untagged)));
@@ -288,11 +288,13 @@ class RuleEngineTest {
   void columnTagRulesEvaluateAgainstEachColumnsTags() {
     Map<String, Object> piiTable = tableWithColumnTag("PII.Sensitive");
     Map<String, Object> otherTable = tableWithColumnTag("Other.Tag");
+    Map<String, Object> untaggedTable = tableWithColumnTag(null);
 
     COLUMN_TAG_RULES.forEach(
         (rule, expected) -> {
           assertEquals(expected.get(0), RuleEngine.getInstance().apply(rule, piiTable), rule);
           assertEquals(expected.get(1), RuleEngine.getInstance().apply(rule, otherTable), rule);
+          assertEquals(expected.get(2), RuleEngine.getInstance().apply(rule, untaggedTable), rule);
         });
   }
 

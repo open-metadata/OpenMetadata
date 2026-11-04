@@ -616,7 +616,7 @@
       "specs": ["playwright/e2e/Features/Workflows/**/*.spec.ts"]
     },
     {
-      "_comment": "The query builder's JsonLogic/Elasticsearch save and load pipeline, shared by workflow conditions, advanced search and data contract semantics.",
+      "_comment": "The query builder's JsonLogic/Elasticsearch save and load pipeline, shared by workflow conditions, advanced search, curated assets and data contract semantics.",
       "sources": ["openmetadata-ui/src/main/resources/ui/src/utils/queryBuilder/**"],
       "specs": [
         "playwright/e2e/Features/Workflows/**/*.spec.ts",
