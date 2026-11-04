@@ -249,7 +249,8 @@ const checkElementVisibility = async (
 export const testCommonOperations = async (
   testUserPage: Page,
   entity: EntityClass,
-  effect: 'allow' | 'deny'
+  effect: 'allow' | 'deny',
+  options: { ownerEditNeedsEditAll?: boolean } = {}
 ) => {
   // Navigate to entity page
   await redirectToHomePage(testUserPage);
@@ -274,7 +275,12 @@ export const testCommonOperations = async (
   ).toBeVisible();
 
   for (const config of testIdsConfigs) {
-    await checkElementVisibility(testUserPage, config, effect);
+    // Owners of a configuration entity, such as a service, need EditAll as well as EditOwners
+    const configEffect =
+      config.testId === 'edit-owner' && options.ownerEditNeedsEditAll
+        ? 'deny'
+        : effect;
+    await checkElementVisibility(testUserPage, config, configEffect);
   }
 
   if (effect === 'deny') {
@@ -598,9 +604,10 @@ export const testMlModelSpecificOperations = async (
 export const runCommonPermissionTests = async (
   testUserPage: Page,
   entity: EntityClass,
-  effect: 'allow' | 'deny'
+  effect: 'allow' | 'deny',
+  options: { ownerEditNeedsEditAll?: boolean } = {}
 ) => {
-  await testCommonOperations(testUserPage, entity, effect);
+  await testCommonOperations(testUserPage, entity, effect, options);
 };
 
 export const runEntitySpecificPermissionTests = async (

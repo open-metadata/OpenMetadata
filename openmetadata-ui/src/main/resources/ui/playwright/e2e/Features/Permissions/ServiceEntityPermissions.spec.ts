@@ -113,15 +113,18 @@ Object.entries(
       /**
        * Tests allow permissions for common service operations
        * @description Verifies that a user with allow permissions can perform all common operations on the service,
-       * including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms,
-       * EditCustomFields, and Delete operations
+       * including EditDescription, EditTier, EditDisplayName, EditTags, EditGlossaryTerms,
+       * EditCustomFields, and Delete operations. Setting a service's owners also needs EditAll, so
+       * EditOwners alone does not offer the owner edit.
        */
       test(`${entityType} allow common operations permissions`, async ({
         testUserPage,
       }) => {
         test.slow(true);
 
-        await runCommonPermissionTests(testUserPage, entity, 'allow');
+        await runCommonPermissionTests(testUserPage, entity, 'allow', {
+          ownerEditNeedsEditAll: true,
+        });
       });
 
       if (serviceConfig?.specificTest) {
