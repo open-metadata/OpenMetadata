@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-11-02 (initial)
 - **Deciders:** Ontology Studio program
 - **Guard:** `OntologyRolesIT`, `OntologyRolesMigrationIT`, `OntologyOwnerInheritanceTest`
-- **Related:** ADR:2026-11-02-ontology-reviewers-vote-without-edit-rights, `OntologyRolesMigration`
+- **Related:** ADR:2026-11-02-ontology-reviewers-vote-without-edit-rights (v4 states what a DataSteward edits), `OntologyRolesMigration`
 
 ## Context
 Ontology writes need edit rights. No built-in role named an ontology resource, so only an
