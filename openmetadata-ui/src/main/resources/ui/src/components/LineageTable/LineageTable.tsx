@@ -44,7 +44,6 @@ import {
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/tests/testCase';
@@ -53,12 +52,8 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
-import {
-  EdgeFromToData,
-  LineageNodeType,
-} from '../../interface/lineage.interface';
+import { EdgeFromToData } from '../../interface/lineage.interface';
 import { QueryFieldInterface } from '../../interface/queryFilter.interface';
-import { SearchSourceAlias } from '../../interface/search.interface';
 import {
   getLineageByEntityCount,
   getLineageDataByFQN,
@@ -83,7 +78,7 @@ import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
-import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import { ColumnsType } from '../common/Table/Table.interface';
@@ -93,11 +88,9 @@ import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageNode } from '../Lineage/Lineage.interface';
 import { useLineageHandlers } from '../Lineage/Lineage/LineageHandlersContext';
-import {
-  SearchedDataProps,
-  SourceType,
-} from '../SearchedData/SearchedData.interface';
-import { EImpactLevel } from './LineageTable.interface';
+import { SourceType } from '../SearchedData/SearchedData.interface';
+import { EImpactLevel, LineageTableRow } from './LineageTable.interface';
+import LineageTableDescription from './LineageTableDescription';
 import { useLineageTableState } from './useLineageTableState';
 
 const LINEAGE_IMPACT_OPTION_ICONS: Record<
@@ -223,10 +216,25 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     );
   }, [setSelectedQuickFilters]);
 
-  // Any narrowing/widening of the result set (search term or quick filter)
-  // must re-fetch starting from page 1 of the new set, otherwise a stale
-  // `currentPage` can request a `from` offset past the narrowed result count
-  // and render an empty table (with no pager at the default page size).
+  // Any narrowing/widening of the result set (search term, quick filter, or
+  // node-depth change) must re-fetch starting from page 1 of the new set,
+  // otherwise a stale `currentPage` can request a `from` offset past the
+  // narrowed result count and render an empty table (with no pager at the
+  // default page size). The node-depth dropdown rewrites only the `depth`
+  // URL param (see CustomControls), so the reset on that path is wired here
+  // via an effect keyed on `nodeDepth`. Comparing against the previous depth
+  // keeps a URL deep-link to a specific page (e.g. `?depth=3&currentPage=2`)
+  // on its page, and ignores the new `handlePageChange` identity usePaging
+  // hands out on every page change — only a *change* of depth resets.
+  const previousNodeDepthRef = useRef(nodeDepth);
+  useEffect(() => {
+    if (previousNodeDepthRef.current === nodeDepth) {
+      return;
+    }
+    previousNodeDepthRef.current = nodeDepth;
+    handlePageChange(1);
+  }, [nodeDepth, handlePageChange]);
+
   const handlePageReset = useCallback(() => {
     handlePageChange(1);
   }, [handlePageChange]);
@@ -529,13 +537,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       if (res.nodes) {
         const upstreamNodes = prepareUpstreamColumnLevelNodesFromUpstreamEdges(
           upstreamEdges,
-          res.nodes as unknown as Record<string, LineageNodeType>
+          res.nodes
         );
 
         const downstreamNodes =
           prepareDownstreamColumnLevelNodesFromDownstreamEdges(
             downstreamEdges,
-            res.nodes as unknown as Record<string, LineageNodeType>
+            res.nodes
           );
 
         setColumnLineageNodes(upstreamNodes, downstreamNodes);
@@ -714,27 +722,33 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Render function for column names with search highlighting and popover
   const renderName = useCallback(
-    (_: string, record: SearchSourceAlias) => (
-      <EntityPopOverCard
-        entityFQN={record.fullyQualifiedName ?? ''}
-        entityType={record.entityType ?? ''}>
-        <Link
-          to={getEntityLinkFromType(
-            record.fullyQualifiedName ?? '',
-            record.entityType as EntityType,
-            record
-          )}>
-          {renderHighlightedText(
-            highlightSearchText(getEntityName(record), searchValue)
-          )}
-        </Link>
-      </EntityPopOverCard>
-    ),
+    (_: string, record: LineageTableRow) => {
+      if ('fromEntity' in record) {
+        return null;
+      }
+
+      return (
+        <EntityPopOverCard
+          entityFQN={record.fullyQualifiedName ?? ''}
+          entityType={record.entityType ?? ''}>
+          <Link
+            to={getEntityLinkFromType(
+              record.fullyQualifiedName ?? '',
+              record.entityType as EntityType,
+              record
+            )}>
+            {renderHighlightedText(
+              highlightSearchText(getEntityName(record), searchValue)
+            )}
+          </Link>
+        </EntityPopOverCard>
+      );
+    },
     [searchValue]
   );
 
   // Define columns for table-level impact analysis
-  const tableColumns: ColumnsType<SearchSourceAlias> = useMemo(
+  const tableColumns: ColumnsType<LineageTableRow> = useMemo(
     () => [
       {
         title: t('label.name'),
@@ -755,8 +769,19 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        ellipsis: true,
-        render: (text: string) => <span>{isEmpty(text) ? NO_DATA : text}</span>,
+        render: (text: string, record: LineageTableRow) =>
+          isEmpty(text) ? (
+            NO_DATA
+          ) : (
+            <LineageTableDescription
+              description={text}
+              entityPath={getEntityLinkFromType(
+                'fromEntity' in record ? '' : record.fullyQualifiedName ?? '',
+                record.entityType as EntityType,
+                'fromEntity' in record ? undefined : record
+              )}
+            />
+          ),
       },
       {
         title: t('label.domain-plural'),
@@ -797,11 +822,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        render: (
-          tags: TagLabel[],
-          record: SearchedDataProps['data'][number]['_source'],
-          index: number
-        ) =>
+        render: (tags: TagLabel[], record: LineageTableRow, index: number) =>
           isEmpty(tags) ? (
             NO_DATA
           ) : (
@@ -823,11 +844,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'glossary-terms',
-        render: (
-          tags: TagLabel[],
-          record: SearchedDataProps['data'][number]['_source'],
-          index: number
-        ) =>
+        render: (tags: TagLabel[], record: LineageTableRow, index: number) =>
           isEmpty(tags) ? (
             NO_DATA
           ) : (
@@ -868,7 +885,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   );
 
   // Define columns for column-level impact analysis
-  const columnImpactColumns: ColumnsType<SourceType> = useMemo(
+  const columnImpactColumns: ColumnsType<LineageTableRow> = useMemo(
     () => [
       {
         title: t('label.source'),
@@ -1024,6 +1041,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <TableV2
           className="h-full"
           columns={columns}
+          containerClassName="tw:rounded-xl"
           customPaginationProps={pagingProps}
           dataSource={dataSource}
           defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
@@ -1032,7 +1050,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
           loading={loading}
           locale={{
-            emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoDataPlaceholder data-testid="no-data-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowKey={

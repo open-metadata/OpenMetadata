@@ -31,6 +31,8 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_R
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+import static org.openmetadata.service.security.SecurityUtil.isEmailRegistrationDomainAllowed;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -90,8 +92,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -157,11 +161,11 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
-import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -192,6 +196,18 @@ import org.openmetadata.service.util.email.TemplateConstants;
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "/v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
+  static final String USERS_EXPORT_NEEDS_EMAIL_ACCESS =
+      "Exporting users requires access to their emails, which only admins and bots have";
+  static final String BOT_TOKENS_ONLY =
+      "This endpoint can only generate tokens for bot users. "
+          + "Use PUT /users/security/token to create a personal access token.";
+  private static final String WAIT_FOR_PROPAGATION_DESCRIPTION =
+      "When every server runs the same `credentialVerification` settings, respond only once"
+          + " every server rejects the revoked tokens. The wait adds the receiving server's"
+          + " `credentialVerification.maxStaleness` (5 seconds by default) to the call, so while"
+          + " a change to `maxStaleness` rolls out it covers only the servers whose"
+          + " `maxStaleness` is no larger than the receiving server's."
+          + " (Default = `false`)";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private final RoleRepository roleRepository;
@@ -227,6 +243,44 @@ public class UserResource extends EntityResource<User, UserRepository> {
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_TEAMS, MetadataOperation.IMPERSONATE);
+  }
+
+  /** A stored user carries its password hash, or for a bot its token, which no snapshot shows. */
+  @Override
+  protected Optional<UnaryOperator<User>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(withoutCredentials(securityContext, false));
+  }
+
+  /**
+   * The user as a response may carry it: without the stored password hash or bot token, which the
+   * write paths load to carry them over, and with another person's email masked like a read masks
+   * it.
+   */
+  private UnaryOperator<User> withoutCredentials(
+      SecurityContext securityContext, boolean ownAccount) {
+    return user -> {
+      user.setAuthenticationMechanism(null);
+      return ownAccount ? user : PIIMasker.maskUser(authorizer, securityContext, user);
+    };
+  }
+
+  /**
+   * A users CSV names the team it covers, not a user, so the check is on users as a whole. Checked
+   * against a user who happens to share the team's name, it would let that user, who owns only
+   * their own account, import into the team. An export also carries each member's email in the
+   * clear, which reads of a user mask for anyone but an admin or a bot, so only they may export one:
+   * masking the file instead would let a re-import write the mask over the emails.
+   * ADR:2026-10-30-a-users-csv-export-needs-access-to-the-emails-it-carries
+   */
+  @Override
+  protected void authorizeCsv(
+      SecurityContext securityContext, String team, MetadataOperation operation) {
+    authorizer.authorize(
+        securityContext, new OperationContext(entityType, operation), getResourceContext());
+    if (operation == MetadataOperation.VIEW_ALL
+        && !authorizer.authorizePII(securityContext, null)) {
+      throw new AuthorizationException(USERS_EXPORT_NEEDS_EMAIL_ACCESS);
+    }
   }
 
   @Override
@@ -455,6 +509,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/generateRandomPwd")
+  @IdentityEndpoint
   @Operation(
       operationId = "generateRandomPwd",
       summary = "Generate a random password",
@@ -619,6 +674,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @POST
   @Path("/logout")
+  @IdentityEndpoint
   @Operation(
       operationId = "logoutUser",
       summary = "Logout a User(Only called for saml and basic Auth)",
@@ -684,6 +740,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @POST
+  @IdentityEndpoint
   @Operation(
       operationId = "createUser",
       summary = "Create a user",
@@ -704,7 +761,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     if (grantsPrivileges(create)) {
-      authorizeAdminForPrivilegedFields(securityContext);
+      authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
     }
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(user.getIsBot())) {
@@ -738,7 +795,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled()) {
-        if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
+        if (isOwnSignUp(securityContext, user)) {
+          if (!isRegistrationAllowed(user, SecurityConfigurationManager.getCurrentAuthzConfig())) {
+            throw new CustomExceptionMessage(
+                FORBIDDEN,
+                CatalogExceptionMessage.SELF_SIGNUP_DOMAIN_NOT_ALLOWED,
+                CatalogExceptionMessage.SELF_SIGNUP_DOMAIN_NOT_ALLOWED_MESSAGE);
+          }
           User created =
               addHref(
                   uriInfo,
@@ -767,6 +830,27 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return createdUserRes;
     }
     return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
+  }
+
+  /**
+   * Self sign-up creates the caller's own account only: both the name and the email must be the
+   * ones the caller's token carries. The email decides whether {@code adminEmails} makes the
+   * account an admin, so it cannot be taken from the request body alone.
+   */
+  static boolean isOwnSignUp(SecurityContext securityContext, User user) {
+    return securityContext.getUserPrincipal() instanceof CatalogPrincipal principal
+        && principal.getName().equals(user.getName())
+        && sameIdentifier(principal.getEmail(), user.getEmail());
+  }
+
+  /**
+   * Self sign-up here applies the registration domains every sign-in flow that creates accounts
+   * applies.
+   */
+  static boolean isRegistrationAllowed(User user, AuthorizerConfiguration authorizer) {
+    return isEmailRegistrationDomainAllowed(
+        user.getEmail(),
+        authorizer == null ? null : authorizer.getAllowedEmailRegistrationDomains());
   }
 
   private void addUserAuthForBasic(User user, CreateUser create) {
@@ -834,11 +918,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     repository.setFullyQualifiedName(user);
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
+    boolean createsOrRestores =
+        existingUser == null || Boolean.TRUE.equals(existingUser.getDeleted());
+    if (createsOrRestores) {
+      // Impersonated requests update active users only.
+      rejectPrivilegedImpersonation(containerRequestContext);
+    }
     if (existingUser == null) {
       validateEmailDomain(
           user,
@@ -854,8 +945,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // ownership branch below, otherwise a principal holding EDIT on users would be able to grant
     // roles to somebody else through PUT while PATCH refuses the same change.
     if (grantsPrivileges(create, existingUser, user)) {
-      authorizeAdminForPrivilegedFields(securityContext);
-    } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
+      authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
+    } else if (!sameIdentifier(securityContext.getUserPrincipal().getName(), user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
       // is same as the user. We are trying to update. One option is to set users.owner as user,
       // however that is not supported for User. The principal name comes from the token unmodified
@@ -867,14 +958,32 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsBot())) {
       return createOrUpdateBotUser(user, create, uriInfo, securityContext);
     }
+    if (existingUser != null && !mayChangeAdminFlag(securityContext, containerRequestContext)) {
+      user.setIsAdmin(existingUser.getIsAdmin());
+    }
     PutResponse<User> response =
         repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return withRedactedEntity(
+        response.toResponse(),
+        withoutCredentials(
+            securityContext,
+            sameIdentifier(securityContext.getUserPrincipal().getName(), user.getName())));
+  }
+
+  /**
+   * Granting or revoking admin is for admins alone. A PUT carries the whole user, so for anyone else
+   * the flag keeps its stored value: leaving it out of the request must not revoke it.
+   * ADR:2026-10-30-only-admins-grant-or-revoke-a-users-admin-flag
+   */
+  private static boolean mayChangeAdminFlag(
+      SecurityContext securityContext, ContainerRequestContext requestContext) {
+    return !isImpersonated(requestContext) && getSubjectContext(securityContext).isAdmin();
   }
 
   @PUT
   @Path("/generateToken/{id}")
+  @IdentityEndpoint
   @Operation(
       operationId = "generateJWTTokenForBotUser",
       summary = "Generate JWT Token for a Bot User",
@@ -904,9 +1013,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Only allow token generation for bot users via this endpoint
     if (!Boolean.TRUE.equals(user.getIsBot())) {
-      throw new AuthorizationException(
-          "This endpoint can only generate tokens for bot users. "
-              + "Use POST /users/generateToken for self-service token generation.");
+      throw new AuthorizationException(BOT_TOKENS_ONLY);
     }
 
     JWTAuthMechanism jwtAuthMechanism =
@@ -916,22 +1023,21 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    BotTokenCache.mutateToken(
-        user.getName(),
-        () ->
-            repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName()));
+    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
 
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 
   @POST
   @Path("/generateToken")
+  @IdentityEndpoint
   @Operation(
       operationId = "generateJWTTokenForUser",
-      summary = "Generate JWT Token for a User",
+      summary = "Generate JWT Token for a Bot User",
       description =
-          "Generate JWT Token for a user. Users with EDIT permission can generate tokens for bot users, "
-              + "and users can generate their own tokens. Regular users cannot generate tokens for other regular users.",
+          "Generate JWT Token for a bot user. Users with EDIT permission on the bot can generate its "
+              + "token. Users create their own tokens as personal access tokens through "
+              + "PUT /users/security/token.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -952,26 +1058,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("User ID is required for token generation");
     }
 
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(userId));
     User user = repository.get(uriInfo, userId, repository.getFieldsWithUserAuth("*"));
-
-    // Permission check: admins can generate tokens for bot users,
-    // users can generate their own tokens
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    boolean isCurrentUser = currentUserName.equalsIgnoreCase(user.getName());
-    boolean isBotUser = Boolean.TRUE.equals(user.getIsBot());
-
-    if (isBotUser) {
-      // For bot users, users with EDIT permission on the bot can generate tokens
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      ResourceContext<?> resourceContext = getResourceContextById(userId);
-      authorizer.authorize(securityContext, operationContext, resourceContext);
-    } else if (!isCurrentUser) {
-      // For non-bot users, only the user themselves can generate their own token
-      // No one else can generate tokens for regular users (prevents impersonation)
-      throw new AuthorizationException(
-          "Users can only generate tokens for themselves. "
-              + "Use the bot user API to generate tokens for bots.");
+    // The minted token is a bot token stored as the account's authentication mechanism. A person's
+    // account would lose its own mechanism and get a token that bot revocation does not cover;
+    // personal access tokens are the revocable equivalent for people.
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new AuthorizationException(BOT_TOKENS_ONLY);
     }
 
     JWTAuthMechanism jwtAuthMechanism =
@@ -981,24 +1076,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    if (isBotUser) {
-      BotTokenCache.mutateToken(
-          user.getName(),
-          () ->
-              repository.createOrUpdate(
-                  uriInfo, user, securityContext.getUserPrincipal().getName()));
-    } else {
-      UserTokenCache.mutateToken(
-          user.getName(),
-          () ->
-              repository.createOrUpdate(
-                  uriInfo, user, securityContext.getUserPrincipal().getName()));
-    }
+    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 
   @PUT
   @Path("/revokeToken")
+  @IdentityEndpoint
   @Operation(
       operationId = "revokeJWTTokenForBotUser",
       summary = "Revoke JWT Token for a Bot User",
@@ -1016,6 +1100,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response revokeToken(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = WAIT_FOR_PROPAGATION_DESCRIPTION)
+          @QueryParam("waitForPropagation")
+          @DefaultValue("false")
+          boolean waitForPropagation,
       @Valid RevokeTokenRequest revokeTokenRequest) {
     authorizer.authorizeAdmin(securityContext);
     User user =
@@ -1028,17 +1116,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     PutResponse<User> response =
-        BotTokenCache.mutateToken(
-            user.getName(),
-            () ->
-                repository.createOrUpdate(
-                    uriInfo, user, securityContext.getUserPrincipal().getName()));
+        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+    if (waitForPropagation) {
+      Credentials.awaitPropagation();
+    }
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
   @GET
   @Path("/token/{id}")
+  @IdentityEndpoint
   @Operation(
       operationId = "getJWTTokenForBotUser",
       summary = "Get JWT Token for a Bot User",
@@ -1076,6 +1164,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/auth-mechanism/{id}")
+  @IdentityEndpoint
   @Operation(
       operationId = "getAuthenticationMechanismBotUser",
       summary = "Get Authentication Mechanism for a Bot User",
@@ -1122,6 +1211,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @RequestBody(
@@ -1152,7 +1242,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         throw new AuthorizationException("Users can only update their own default domain");
       }
       if (isPrivilegedUserPatchPath(path)) {
-        authorizer.authorizeAdmin(securityContext);
+        authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
         continue;
       }
       if (patchOpObject.containsKey("value")) {
@@ -1171,32 +1261,47 @@ public class UserResource extends EntityResource<User, UserRepository> {
             // ignore exception if value is not an object
           }
           if (value != null) {
-            String teamId = value.getString("id");
-            repository.validateTeamAddition(id, UUID.fromString(teamId));
-            if (!repository.isTeamJoinable(teamId)) {
-              authorizer.authorizeAdmin(securityContext); // Only admin can join closed teams
-            }
+            repository.validateTeamAddition(id, UUID.fromString(value.getString("id")));
           }
         }
       }
     }
-    return patchInternal(uriInfo, securityContext, id, patch);
+    if (JsonUtils.extractPatchedFields(patch).contains(TEAMS_FIELD)
+        && patchJoinsClosedTeam(id, patch)) {
+      authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
+    }
+    return withRedactedEntity(
+        patchInternal(uriInfo, securityContext, id, patch),
+        withoutCredentials(securityContext, isSelf));
+  }
+
+  // Judged on the teams the patch leaves the user in, as the repository will apply it, so every
+  // way of writing the same membership (e.g. add, replace, move or copy) is treated alike.
+  private boolean patchJoinsClosedTeam(UUID id, JsonPatch patch) {
+    User stored = repository.get(null, id, repository.getPatchFields(), Include.NON_DELETED, false);
+    User patched = JsonUtils.applyPatch(stored, patch, User.class);
+    return joinsClosedTeam(
+        stored, listOrEmpty(patched.getTeams()).stream().map(EntityReference::getId).toList());
   }
 
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
   private static final String IS_BOT_PATCH_PATH = "/isBot";
   private static final String ROLES_FIELD = "roles";
   private static final String TEAMS_FIELD = "teams";
-  private static final String PRIVILEGED_FIELDS = ROLES_FIELD + "," + TEAMS_FIELD;
+  private static final String PRIVILEGED_FIELDS =
+      String.join(",", ROLES_FIELD, TEAMS_FIELD, Entity.FIELD_DOMAINS);
   private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
+  private static final String DOMAINS_PATCH_PATH = "/" + Entity.FIELD_DOMAINS;
 
   // A root-level operation (path "") replaces the whole user document, so it covers the same
-  // fields as the explicit paths below.
+  // fields as the explicit paths below. Domains grant access through hasDomain(), so only an admin
+  // changes them: ADR:2026-10-21-only-admins-change-a-users-domains
   private static boolean isPrivilegedUserPatchPath(String path) {
     return path.isEmpty()
         || path.equals(IS_ADMIN_PATCH_PATH)
         || path.equals(IS_BOT_PATCH_PATH)
-        || path.contains(ROLES_PATCH_PATH_SEGMENT);
+        || path.contains(ROLES_PATCH_PATH_SEGMENT)
+        || path.startsWith(DOMAINS_PATCH_PATH);
   }
 
   // Fields on an update that only an admin may set, whoever the user being changed is. The teams
@@ -1207,19 +1312,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       return true;
     }
-    if (nullOrEmpty(updatedUser.getRoles()) && nullOrEmpty(create.getTeams())) {
+    if (nullOrEmpty(updatedUser.getRoles())
+        && nullOrEmpty(create.getTeams())
+        && nullOrEmpty(updatedUser.getDomains())) {
       return false;
     }
-    // Reading back what the user already holds only pays off once the request names a role or a
-    // team - nothing else can be an elevation.
+    // Reading back what the user already holds only pays off once the request names a role, a team
+    // or a domain - nothing else can be an elevation.
     User currentUser = loadPrivilegedFields(existingUser);
     return hasRoleElevation(currentUser, updatedUser)
-        || joinsClosedTeam(currentUser, create.getTeams());
+        || joinsClosedTeam(currentUser, create.getTeams())
+        || hasDomainElevation(currentUser, updatedUser);
   }
 
-  // findByNameOrNull() sets core fields only, so the roles and teams the user already holds have to
-  // be loaded before the request can be compared against them. A null existingUser means the user
-  // is being created, so everything the request asks for is new.
+  // findByNameOrNull() sets core fields only, so the roles, teams and domains the user already
+  // holds have to be loaded before the request can be compared against them. A null existingUser
+  // means the user is being created, so everything the request asks for is new.
   private User loadPrivilegedFields(User existingUser) {
     if (existingUser == null) {
       return null;
@@ -1239,6 +1347,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return !entityIds(currentUser.getRoles()).containsAll(updatedRoleIds);
   }
 
+  // True when the request asks for a domain the user does not already hold as their own. A domain
+  // inherited from a team goes away when the user leaves the team, so it does not count as held.
+  private boolean hasDomainElevation(final User currentUser, final User updatedUser) {
+    final Set<UUID> heldDomainIds = currentUser == null ? Set.of() : ownDomainIds(currentUser);
+    return !heldDomainIds.containsAll(entityIds(updatedUser.getDomains()));
+  }
+
+  private static Set<UUID> ownDomainIds(final User user) {
+    return listOrEmpty(user.getDomains()).stream()
+        .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
+  }
+
   // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
   // policies, so joining a team that is not open to everyone grants privileges the same way naming
   // a role does. PATCH has always required an admin for it. Teams the user is already in are
@@ -1255,12 +1377,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team
-  // named on a create request is one the user is not a member of yet.
+  // and domain named on a create request is one the user does not hold yet.
   private boolean grantsPrivileges(CreateUser create) {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
         || grantsRolesFromRequestBody(create)
-        || joinsClosedTeam(null, create.getTeams());
+        || joinsClosedTeam(null, create.getTeams())
+        || !nullOrEmpty(create.getDomains());
   }
 
   // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
@@ -1271,13 +1394,34 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   // The principal is not in the database yet during self sign-up, and authorizeAdmin() resolves the
   // subject from it, so a plain call would surface the outcome as a 404 instead of a 403.
-  private void authorizeAdminForPrivilegedFields(SecurityContext securityContext) {
+  private void authorizeAdminForPrivilegedFields(
+      SecurityContext securityContext, ContainerRequestContext requestContext) {
+    rejectPrivilegedImpersonation(requestContext);
     String principal = securityContext.getUserPrincipal().getName();
     try {
       authorizer.authorizeAdmin(securityContext);
     } catch (EntityNotFoundException e) {
       throw new AuthorizationException(CatalogExceptionMessage.notAdmin(principal));
     }
+  }
+
+  /**
+   * Minting a bot token, granting admin or elevating roles while impersonating would outlive the
+   * request-scoped grant, so a privileged user mutation is closed to impersonated callers even
+   * though the impersonated principal is itself an admin. Read from the request context: the
+   * injected {@link SecurityContext} is a Jersey proxy that hides the impersonation.
+   */
+  private static void rejectPrivilegedImpersonation(ContainerRequestContext requestContext) {
+    if (isImpersonated(requestContext)) {
+      throw new AuthorizationException(
+          "Impersonated requests cannot grant privileges or mint credentials for a user");
+    }
+  }
+
+  private static boolean isImpersonated(ContainerRequestContext requestContext) {
+    return requestContext.getSecurityContext()
+            instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null;
   }
 
   private static Set<UUID> entityIds(List<EntityReference> references) {
@@ -1489,11 +1633,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return withPersonsAuthenticationMechanismRedacted(
+        deleteByName(uriInfo, securityContext, name, false, hardDelete));
   }
 
   @PUT
   @Path("/restore")
+  @IdentityEndpoint
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted User.",
@@ -1511,7 +1657,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return withPersonsAuthenticationMechanismRedacted(
+        restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   @GET
@@ -1747,6 +1894,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/changePassword")
+  @IdentityEndpoint
   @Operation(
       operationId = "changeUserPassword",
       summary = "Change Password For User",
@@ -1868,6 +2016,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @GET
   @Path("/security/token")
+  @IdentityEndpoint
   @Operation(
       operationId = "getPersonalAccessToken",
       summary = "Get personal access token to User",
@@ -1905,6 +2054,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/security/token/revoke")
+  @IdentityEndpoint
   @Operation(
       operationId = "revokePersonalAccessToken",
       summary = "Revoke personal access token to User",
@@ -1929,6 +2079,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("removeAll")
           @DefaultValue("false")
           boolean removeAll,
+      @Parameter(description = WAIT_FOR_PROPAGATION_DESCRIPTION)
+          @QueryParam("waitForPropagation")
+          @DefaultValue("false")
+          boolean waitForPropagation,
       @Valid RevokePersonalTokenRequest request) {
     if (!CommonUtil.nullOrEmpty(userName)) {
       authorizer.authorizeAdmin(securityContext);
@@ -1936,19 +2090,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
       userName = securityContext.getUserPrincipal().getName();
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
-    UserTokenCache.mutateToken(
-        user.getName(),
-        () -> {
-          if (removeAll) {
-            tokenRepository.deleteTokenByUserAndType(
-                user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
-          } else {
-            List<String> ids =
-                request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
-            tokenRepository.deleteAllToken(ids);
-          }
-          return null;
-        });
+    if (removeAll) {
+      tokenRepository.revokeAllPersonalAccessTokens(user.getName(), user.getId());
+    } else {
+      tokenRepository.revokePersonalAccessTokens(
+          user.getName(), user.getId(), request.getTokenIds());
+    }
+    if (waitForPropagation) {
+      Credentials.awaitPropagation();
+    }
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1956,6 +2106,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/security/token")
+  @IdentityEndpoint
   @Operation(
       operationId = "createPersonalAccessToken",
       summary = "Provide access token to User",
@@ -1997,12 +2148,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   null);
       PersonalAccessToken personalAccessToken =
           TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
-      UserTokenCache.mutateToken(
-          user.getName(),
-          () -> {
-            tokenRepository.insertToken(personalAccessToken);
-            return null;
-          });
+      tokenRepository.insertPersonalAccessToken(user.getName(), personalAccessToken);
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
     }
     throw new CustomExceptionMessage(
@@ -2076,6 +2222,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/import")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
@@ -2113,6 +2260,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @PUT
   @Path("/importAsync")
+  @IdentityEndpoint
   @Consumes(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
@@ -2192,11 +2340,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     addAuthMechanismToBot(user, create, uriInfo);
     addRolesToBot(user, uriInfo);
     PutResponse<User> response =
-        BotTokenCache.mutateToken(
-            user.getName(),
-            () ->
-                repository.createOrUpdate(
-                    uriInfo, user, securityContext.getUserPrincipal().getName()));
+        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
@@ -2340,8 +2484,25 @@ public class UserResource extends EntityResource<User, UserRepository> {
             "Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
   }
 
+  private Response withPersonsAuthenticationMechanismRedacted(Response response) {
+    return withRedactedEntity(response, UserResource::withoutPersonsAuthenticationMechanism);
+  }
+
+  /**
+   * A person's mechanism holds their password hash, which no response needs. A bot's is left as it
+   * is, for the callers that handle bot tokens to decide on.
+   * ADR:2026-10-30-a-users-authentication-mechanism-never-leaves-in-a-response-or-change-event
+   */
+  private static User withoutPersonsAuthenticationMechanism(User user) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      user.setAuthenticationMechanism(null);
+    }
+    return user;
+  }
+
   private void decryptOrNullify(SecurityContext securityContext, User user) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    withoutPersonsAuthenticationMechanism(user);
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
         authorizer.authorize(

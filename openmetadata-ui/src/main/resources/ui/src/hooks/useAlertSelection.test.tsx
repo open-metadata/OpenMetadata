@@ -25,10 +25,6 @@ jest.mock('../rest/alertsAPI', () => ({
   getAlertCapabilities: jest.fn(),
 }));
 
-jest.mock('../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-}));
-
 jest.mock('../utils/AlertsClassBase', () => ({
   __esModule: true,
   default: { getSourceNameSearch: jest.fn().mockReturnValue({}) },
@@ -67,6 +63,83 @@ describe('useAlertSelection', () => {
         'Owners',
         'Users',
       ])
+    );
+  });
+
+  it('is ready once the server has answered, and stays ready', async () => {
+    const { result, rerender, waitFor } = renderHook(
+      (props: { sources: string[] }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: props.sources,
+        }),
+      { initialProps: { sources: [] as string[] } }
+    );
+
+    expect(result.current.ready).toBe(false);
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    rerender({ sources: ['task'] });
+
+    expect(result.current.ready).toBe(true);
+  });
+
+  // The empty form asks first; a saved alert's sources only arrive after it has loaded.
+  it('does not describe the saved sources with the answer for an empty form', async () => {
+    let answerTask: (value: unknown) => void = jest.fn();
+    mockGetAlertCapabilities.mockImplementation(({ sources }) =>
+      sources.length
+        ? new Promise((resolve) => (answerTask = resolve))
+        : Promise.resolve(answer([], ['Owners', 'Users']))
+    );
+    const { result, rerender, waitFor } = renderHook(
+      (props: { sources: string[] }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: props.sources,
+        }),
+      { initialProps: { sources: [] as string[] } }
+    );
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    rerender({ sources: ['task'] });
+
+    expect(result.current.support.supportedFilters).toBeUndefined();
+
+    answerTask(answer(['task'], ['Owners', 'Mentions']));
+    await waitFor(() =>
+      expect(result.current.support.supportedFilters).toHaveLength(1)
+    );
+  });
+
+  // A filter one source supports may not hold for the one just added, and the save would refuse it.
+  it('offers no rule from the previous answer while it asks about a new source', async () => {
+    let answerBoth: (value: unknown) => void = jest.fn();
+    mockGetAlertCapabilities.mockImplementation(({ sources }) =>
+      sources.length > 1
+        ? new Promise((resolve) => (answerBoth = resolve))
+        : Promise.resolve(answer(sources, ['Owners']))
+    );
+    const { result, rerender, waitFor } = renderHook(
+      (props: { sources: string[] }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: props.sources,
+        }),
+      { initialProps: { sources: ['task'] } }
+    );
+    await waitFor(() =>
+      expect(result.current.support.supportedFilters).toHaveLength(1)
+    );
+
+    rerender({ sources: ['task', 'conversation'] });
+
+    expect(result.current.support.supportedFilters).toBeUndefined();
+    expect(result.current.support.hasFilters).toBe(true);
+
+    answerBoth(answer(['task', 'conversation'], ['Owners']));
+    await waitFor(() =>
+      expect(result.current.support.supportedFilters).toHaveLength(1)
     );
   });
 

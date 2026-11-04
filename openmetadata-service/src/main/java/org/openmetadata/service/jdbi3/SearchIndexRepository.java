@@ -60,6 +60,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("fields.description");
+  // A PUT loads the stored index with these fields, and the bulk loader reads field tags only
+  // with fields. Without it, a re-run that sends no field tags indexes the fields bare.
+  private static final String UPDATE_FIELDS = "fields";
 
   public SearchIndexRepository() {
     super(
@@ -68,7 +71,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         SearchIndex.class,
         Entity.getCollectionDAO().searchIndexDAO(),
         "",
-        "",
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the parent service delete cascade: search docs by service.id
@@ -519,11 +522,12 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         updateFieldDescription(searchFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
         updateFieldDisplayName(searchFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSearchIndexFields(

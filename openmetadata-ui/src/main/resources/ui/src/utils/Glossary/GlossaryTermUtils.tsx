@@ -22,7 +22,6 @@ import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.inter
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
-import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
 import type { GlossaryTermDetailPageTabProps } from './GlossaryTermClassBase';
 
@@ -144,17 +143,15 @@ export const getGlossaryTermDetailPageTabs = (
 
   const buildTermsTab = (): TabProps => ({
     label: (
-      <div data-testid="terms">
-        {tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
-          i18n.t('label.glossary-term-plural')}
-        <span className="p-l-xs ">
-          {getCountBadge(
-            glossaryTerm.childrenCount || 0,
-            '',
-            activeTab === EntityTabs.GLOSSARY_TERMS
-          )}
-        </span>
-      </div>
+      <TabsLabel
+        count={glossaryTerm.childrenCount || 0}
+        id="terms"
+        isActive={activeTab === EntityTabs.GLOSSARY_TERMS}
+        name={
+          tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
+          i18n.t('label.glossary-term-plural')
+        }
+      />
     ),
     key: EntityTabs.GLOSSARY_TERMS,
     children: (
@@ -167,12 +164,12 @@ export const getGlossaryTermDetailPageTabs = (
 
   const buildAssetsTab = (): TabProps => ({
     label: (
-      <div data-testid="assets">
-        {tabLabelMap[EntityTabs.ASSETS] ?? i18n.t('label.asset-plural')}
-        <span className="p-l-xs">
-          {getCountBadge(assetCount ?? 0, '', activeTab === EntityTabs.ASSETS)}
-        </span>
-      </div>
+      <TabsLabel
+        count={assetCount ?? 0}
+        id="assets"
+        isActive={activeTab === EntityTabs.ASSETS}
+        name={tabLabelMap[EntityTabs.ASSETS] ?? i18n.t('label.asset-plural')}
+      />
     ),
     key: EntityTabs.ASSETS,
     children: (

@@ -22,9 +22,8 @@
   max-width: 100%;
 }
 
-/* The OSS Explore asset list (FollowingTab + MyDataPage's MyDataAssetsList)
-   hard-codes a light theme (legacy `bg-white`, `.black` text, `text-black`
-   icons) and doesn't react to the tailwind `.dark-mode` toggle. Scope the
+/* The OSS Explore asset list (AssetsTabs) hard-codes a light theme (legacy
+   `bg-white`, `.black` text, `text-black` icons) and doesn't react to the tailwind `.dark-mode` toggle. Scope the
    overrides to the Explore container `.assets-tab-container` itself so they
    apply wherever the list renders (parent-agnostic) and nowhere else — ONLY
    under `.dark-mode`, leaving light mode 100% on the original Explore styling.
@@ -46,19 +45,7 @@
     background-color: var(--color-bg-secondary) !important;
   }
 
-  // Search bar + filter button.
-  .ant-input-affix-wrapper,
-  .ant-input {
-    background-color: var(--color-bg-primary) !important;
-    color: var(--color-text-primary) !important;
-    border-color: var(--color-border-secondary) !important;
-  }
-
-  .ant-input-prefix,
-  .ant-input-prefix .anticon {
-    color: var(--color-text-tertiary) !important;
-  }
-
+  // Filter button.
   .feed-filter-icon {
     background-color: var(--color-bg-primary) !important;
     border-color: var(--color-border-secondary) !important;
@@ -92,15 +79,6 @@
    domains, teams, …). Dropdowns render in a body-level portal, so they can't be
    scoped by an ancestor; `.dark-mode` on <html> covers the portal. Remap the
    two light states (text is already handled by the OSS theme). */
-.dark-mode {
-  .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-    background-color: var(--color-bg-secondary_hover) !important;
-  }
-
-  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-    background-color: var(--color-bg-active) !important;
-  }
-}
 
 // The owned-assets card already provides its border; drop the nested
 // EntitySummaryPanel card borders so the right column isn't double-bordered.

@@ -70,7 +70,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   public ListFilter(Include include) {
-    this.include = include;
+    this.include = include == null ? Include.ALL : include;
   }
 
   public String getConditionForEntity(String tableName) {
@@ -122,6 +122,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getClassificationTagsCondition(tableName));
     conditions.add(getGlossaryTermsCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
+    conditions.add(getWorkflowInstanceIdCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
     conditions.add(getTestCaseOwnerCondition());
@@ -137,15 +138,19 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
+    conditions.add(getTaskReviewerOrAssigneeCondition());
     conditions.add(getCreatedByCondition());
     conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
+    conditions.add(getAboutEntityIdsCondition(tableName));
+    conditions.add(getAboutEntityTypeCondition(tableName));
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
+    conditions.add(getEntityLinkHashCondition());
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
@@ -166,6 +171,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
+    conditions.add(getAgentIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
     conditions.add(getSourceEntityCondition());
@@ -406,6 +412,27 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
+   * Tasks that any of the given users or teams review or are assigned, by comma-separated id. A
+   * vote removes the voter from a task's assignees, so a reviewer's own listing keeps the task
+   * through the reviewer relationship.
+   */
+  private String getTaskReviewerOrAssigneeCondition() {
+    String ids = queryParams.get("reviewerOrAssigneeIds");
+    if (nullOrEmpty(ids)) {
+      return "";
+    }
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromEntity IN ('user', 'team') "
+            + "AND entity_relationship.fromId IN (%s) "
+            + "AND entity_relationship.toEntity = 'task' "
+            + "AND entity_relationship.relation IN (%d, %d)))",
+        buildIndexedBindParams("reviewerOrAssigneeId", ids),
+        Relationship.ASSIGNED_TO.ordinal(),
+        Relationship.REVIEWS.ordinal());
+  }
+
+  /**
    * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
    * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
    * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
@@ -429,6 +456,28 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
     return buildFqnPrefixOrCondition("about", aboutEntityFqn);
+  }
+
+  private String getAboutEntityIdsCondition(String tableName) {
+    String ids = queryParams.get("aboutEntityIds");
+    return nullOrEmpty(ids)
+        ? ""
+        : String.format(
+            "%s IN (SELECT toId FROM entity_relationship WHERE toEntity = '%s' "
+                + "AND relation = %d AND deleted = FALSE AND fromId IN (%s))",
+            qualifyColumn(tableName, "id"),
+            Entity.TASK,
+            Relationship.MENTIONED_IN.ordinal(),
+            buildIndexedBindParams("aboutEntityId", ids));
+  }
+
+  private String getAboutEntityTypeCondition(String tableName) {
+    return nullOrEmpty(queryParams.get("aboutEntityType"))
+        ? ""
+        : String.format(
+            "%s IN (SELECT toId FROM entity_relationship WHERE fromEntity = :aboutEntityType "
+                + "AND toEntity = '%s' AND relation = %d AND deleted = FALSE)",
+            qualifyColumn(tableName, "id"), Entity.TASK, Relationship.MENTIONED_IN.ordinal());
   }
 
   /**
@@ -513,6 +562,24 @@ public class ListFilter extends Filter<ListFilter> {
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
+  }
+
+  /**
+   * Matches workflow runs by the md5 of their entityLink, in the exact form the
+   * idx_wf_instance_entity_link key takes (2.0.7 migration), so the run list for an entity is an
+   * index lookup; entityLink is unbounded TEXT and has no index of its own. See
+   * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
+   */
+  private String getEntityLinkHashCondition() {
+    final String entityLinkHash = queryParams.get("entityLinkHash");
+    String condition = "";
+    if (entityLinkHash != null) {
+      condition =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "entityLinkHash = :entityLinkHash"
+              : "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+    }
+    return condition;
   }
 
   /**
@@ -976,10 +1043,13 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == Include.NON_DELETED || include == Include.DELETED) {
-      return columnName + String.format(" = %s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
-    }
-    return "";
+    // Exhaustive on purpose: ALL must stay a named "" and not a siloed fall-through that a
+    // refactor could turn back into a deleted clause (invalid on time-series tables).
+    return switch (include) {
+      case NON_DELETED -> columnName + " = FALSE";
+      case DELETED -> columnName + " = TRUE";
+      case ALL -> "";
+    };
   }
 
   public String getDatabaseCondition(String tableName) {
@@ -1067,7 +1137,7 @@ public class ListFilter extends Filter<ListFilter> {
     return testSuiteName == null ? "" : getFqnPrefixCondition(null, testSuiteName, "testSuite");
   }
 
-  private String getDomainCondition(String tableName) {
+  String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
     String domainAccessControl = getQueryParam("domainAccessControl");
@@ -1342,9 +1412,19 @@ public class ListFilter extends Filter<ListFilter> {
     return serverId == null ? "" : "serverId = :serverId";
   }
 
+  private String getAgentIdCondition() {
+    String agentId = queryParams.get("agentId");
+    return agentId == null ? "" : "agentId = :agentId";
+  }
+
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
     return entityFQN == null ? "" : "entityFQNHash = :entityFQNHash";
+  }
+
+  private String getWorkflowInstanceIdCondition() {
+    String workflowInstanceId = queryParams.get("workflowInstanceId");
+    return workflowInstanceId == null ? "" : "workflowInstanceId = :workflowInstanceId";
   }
 
   public String getParentCondition(String tableName) {
@@ -1606,15 +1686,16 @@ public class ListFilter extends Filter<ListFilter> {
           tableName == null
               ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s'))", fieldPath)
               : String.format("JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.%s'))", tableName, fieldPath);
-      String operator = exclude ? "NOT REGEXP" : "REGEXP";
-      return String.format("%s %s :%s", expr, operator, paramName + "Regex");
+      // Explicit flags keep filtering independent of the database's default collation.
+      return String.format(
+          "%sREGEXP_LIKE(%s, :%s, 'i')", exclude ? "NOT " : "", expr, paramName + "Regex");
     } else {
       String pgPath = "{" + fieldPath.replace(".", ",") + "}";
       String expr =
           tableName == null
               ? String.format("json #>> '%s'", pgPath)
               : String.format("%s.json #>> '%s'", tableName, pgPath);
-      String operator = exclude ? "!~" : "~";
+      String operator = exclude ? "!~*" : "~*";
       return String.format("%s %s :%s", expr, operator, paramName + "Regex");
     }
   }

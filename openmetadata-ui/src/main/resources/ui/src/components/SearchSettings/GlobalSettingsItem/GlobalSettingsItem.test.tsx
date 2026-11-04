@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { GlobalSettingItem } from './GlobalSettingsItem';
 
 const mockProps = {
@@ -40,6 +41,68 @@ describe('GlobalSettingItem', () => {
     fireEvent.click(editIcon);
 
     expect(screen.getByTestId('value-input')).toBeInTheDocument();
+  });
+
+  it('moves focus into the editor and back to the edit button when it closes', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<GlobalSettingItem {...mockProps} />);
+
+    const editButton = screen.getByRole('button', {
+      name: /label\.edit-entity/,
+    });
+    editButton.focus();
+    await user.keyboard('{Enter}');
+
+    expect(screen.getByTestId('value-input')).toHaveFocus();
+
+    await user.click(screen.getByTestId('inline-cancel-btn'));
+
+    expect(
+      screen.getByRole('button', { name: /label\.edit-entity/ })
+    ).toHaveFocus();
+  });
+
+  it('returns focus to the edit button after a save that kept focus in the editor', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<GlobalSettingItem {...mockProps} />);
+
+    await user.click(
+      screen.getByRole('button', { name: /label\.edit-entity/ })
+    );
+    await user.click(screen.getByTestId('inline-save-btn'));
+
+    expect(
+      await screen.findByRole('button', { name: /label\.edit-entity/ })
+    ).toHaveFocus();
+  });
+
+  it('does not pull focus back when a slow save finishes after the user moved on', async () => {
+    let finishSave: () => void = () => undefined;
+    const onUpdate = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        })
+    );
+    const user = userEvent.setup({ delay: null });
+    render(
+      <>
+        <GlobalSettingItem {...mockProps} onUpdate={onUpdate} />
+        <button>Other setting</button>
+      </>
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: /label\.edit-entity/ })
+    );
+    await user.click(screen.getByTestId('inline-save-btn'));
+    const otherSetting = screen.getByRole('button', { name: 'Other setting' });
+    otherSetting.focus();
+    await act(async () => {
+      finishSave();
+    });
+
+    expect(otherSetting).toHaveFocus();
   });
 
   it('Should update value when input changes', () => {

@@ -88,6 +88,7 @@ import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -274,7 +275,13 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
-    return cachedSearch(request, subjectContext);
+    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
+  }
+
+  private Response filterTestCaseResponses(
+      Response response, SecurityContext securityContext, SearchRequest request) {
+    return TestCaseSearchMasker.maskSearch(
+        response, authorizer, securityContext, searchRepository, request);
   }
 
   private Response cachedSearch(SearchRequest request, SubjectContext subjectContext)
@@ -551,6 +558,10 @@ public class SearchResource {
       @RequestBody(description = "Preview request containing search settings", required = true)
           PreviewSearchRequest previewRequest)
       throws IOException {
+    // Preview runs with caller-supplied search settings, which can be made expensive enough to
+    // stall
+    // the cluster; it is an admin tool for tuning those settings, so only admins may call it.
+    authorizer.authorizeAdmin(securityContext);
     requireNonNegative("from", previewRequest.getFrom());
     requireNonNegative("size", previewRequest.getSize());
 
@@ -693,7 +704,8 @@ public class SearchResource {
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain);
 
-    return searchRepository.searchWithNLQ(request, subjectContext);
+    return filterTestCaseResponses(
+        searchRepository.searchWithNLQ(request, subjectContext), securityContext, request);
   }
 
   @GET
@@ -762,8 +774,11 @@ public class SearchResource {
           int size)
       throws IOException {
 
-    return searchRepository.searchByField(
-        fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext));
+    return filterTestCaseResponses(
+        searchRepository.searchByField(
+            fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext)),
+        securityContext,
+        new SearchRequest().withIndex(index));
   }
 
   @GET
@@ -786,7 +801,10 @@ public class SearchResource {
       @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
       throws IOException {
 
-    return searchRepository.searchBySourceUrl(sourceUrl, getSubjectContext(securityContext));
+    return filterTestCaseResponses(
+        searchRepository.searchBySourceUrl(sourceUrl, getSubjectContext(securityContext)),
+        securityContext,
+        new SearchRequest().withIndex("all"));
   }
 
   @GET
@@ -855,7 +873,11 @@ public class SearchResource {
             .withQueryText(queryText);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return searchRepository.aggregate(aggregationRequest, subjectContext);
+    return TestCaseSearchMasker.maskAggregation(
+        aggregationRequest,
+        authorizer,
+        securityContext,
+        new TestCaseSearchMasker.AggregationContext(searchRepository, subjectContext));
   }
 
   @POST
@@ -879,7 +901,11 @@ public class SearchResource {
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return searchRepository.aggregate(aggregationRequest, subjectContext);
+    return TestCaseSearchMasker.maskAggregation(
+        aggregationRequest,
+        authorizer,
+        securityContext,
+        new TestCaseSearchMasker.AggregationContext(searchRepository, subjectContext));
   }
 
   @GET

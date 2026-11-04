@@ -616,6 +616,48 @@ class ElasticSearchVectorServiceTest {
         "Expected num_candidates=" + expectedNumCandidates + " in: " + requestBody);
   }
 
+  @Test
+  void testNumCandidatesClampedToEngineMaxForHighK() throws Exception {
+    // The REST resource and MCP tool both advertise MAX_K = 10,000. With the default
+    // multiplier 2 the raw computation is 20,000, which Elasticsearch rejects with a 400.
+    // The query builder must clamp num_candidates to 10,000 so the admitted k never
+    // produces an invalid request.
+    int k = 10_000;
+    int expectedNumCandidates = VectorSearchQueryBuilder.ES_MAX_KNN_NUM_CANDIDATES;
+
+    List<String> capturedBodies = new java.util.ArrayList<>();
+    Response mockResponse = mock(Response.class);
+    HttpEntity mockEntity = mock(HttpEntity.class);
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            inv -> {
+              Request req = inv.getArgument(0);
+              org.apache.hc.core5.http.HttpEntity entity = req.getEntity();
+              if (entity != null) {
+                try (java.io.InputStream is = entity.getContent()) {
+                  capturedBodies.add(new String(is.readAllBytes(), StandardCharsets.UTF_8));
+                }
+              }
+              return mockResponse;
+            });
+    when(mockResponse.getStatusCode()).thenReturn(200);
+    when(mockResponse.getEntity()).thenReturn(mockEntity);
+    when(mockEntity.getContent())
+        .thenAnswer(
+            inv -> new ByteArrayInputStream(EMPTY_HITS_RESPONSE.getBytes(StandardCharsets.UTF_8)));
+
+    vectorService.search("test query", Map.of(), 10, 0, k, 0.0);
+
+    assertFalse(capturedBodies.isEmpty(), "Expected at least one request to be captured");
+    String requestBody = capturedBodies.get(0);
+    assertTrue(
+        requestBody.contains("\"num_candidates\":" + expectedNumCandidates),
+        "Expected num_candidates=" + expectedNumCandidates + " in: " + requestBody);
+    assertFalse(
+        requestBody.contains("\"num_candidates\":20000"),
+        "num_candidates must not exceed the engine cap of 10,000: " + requestBody);
+  }
+
   /** Returns each response in sequence; repeats the last one if more calls are made. */
   private void mockRestClientResponseSequence(String... responses) throws Exception {
     Response mockResponse = mock(Response.class);

@@ -41,7 +41,7 @@ import {
 } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
-import { Connection as ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
+import { AirflowConnectionObject as ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,

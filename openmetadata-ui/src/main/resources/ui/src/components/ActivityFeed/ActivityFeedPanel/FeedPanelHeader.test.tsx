@@ -11,102 +11,47 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
 import FeedPanelHeader from './FeedPanelHeader';
 
-const mockFeedPanelHeaderProp = {
-  onCancel: jest.fn(),
-  noun: 'Conversations',
-  onShowNewConversation: jest.fn(),
-  entityLink:
-    '<#E::table::sample_data.ecommerce_db.shopify.dim_address::description>',
-};
-
 describe('Test FeedPanelHeader Component', () => {
-  it('Check if FeedPanelHeader has all child elements', async () => {
-    const { container } = render(
-      <FeedPanelHeader {...mockFeedPanelHeaderProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
+  it('titles the panel Conversation alone', () => {
+    render(<FeedPanelHeader onCancel={jest.fn()} />);
+
+    expect(screen.getByTestId('header-title')).toHaveTextContent(
+      /^label\.conversation$/
     );
-
-    const title = await findByTestId(container, 'header-title');
-    const noun = await findByTestId(container, 'header-noun');
-    const newConversationButton = await findByTestId(
-      container,
-      'add-new-conversation'
-    );
-
-    const drawerCloseButton = await findByTestId(container, 'closeDrawer');
-
-    expect(title).toBeInTheDocument();
-    expect(noun).toHaveTextContent('Conversations label.on-lowercase');
-    expect(newConversationButton).toBeInTheDocument();
-    expect(drawerCloseButton).toBeInTheDocument();
   });
 
-  it('Check if FeedPanelHeader has onShowNewConversation as undefined', async () => {
-    const { container } = render(
+  it('offers a new conversation only when it can start one', () => {
+    const onShowNewConversation = jest.fn();
+    const { rerender } = render(<FeedPanelHeader onCancel={jest.fn()} />);
+
+    expect(
+      screen.queryByTestId('add-new-conversation')
+    ).not.toBeInTheDocument();
+
+    rerender(
       <FeedPanelHeader
-        {...mockFeedPanelHeaderProp}
-        onShowNewConversation={undefined}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
+        onCancel={jest.fn()}
+        onShowNewConversation={onShowNewConversation}
+      />
     );
+    fireEvent.click(screen.getByTestId('add-new-conversation'));
 
-    const newConversationButton = queryByTestId(
-      container,
-      'add-new-conversation'
-    );
-
-    // onShowNewConversation is undefined so add-new-conversation should not be in the document
-    expect(newConversationButton).not.toBeInTheDocument();
+    expect(onShowNewConversation).toHaveBeenCalledWith(true);
   });
 
-  it('Check if FeedPanelHeader has noun as undefined', async () => {
-    const { container } = render(
-      <FeedPanelHeader {...mockFeedPanelHeaderProp} noun={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+  it('closes from the close icon unless it is hidden', () => {
+    const onCancel = jest.fn();
+    const { rerender } = render(<FeedPanelHeader onCancel={onCancel} />);
 
-    const noun = await findByTestId(container, 'header-noun');
+    fireEvent.click(screen.getByTestId('closeDrawer'));
 
-    // noun is undefined so default noun should be present in text content
-    expect(noun).toHaveTextContent('label.conversation label.on-lowercase');
-  });
+    expect(onCancel).toHaveBeenCalled();
 
-  it('Should render entityFQN if entityField is empty', async () => {
-    const { container } = render(
-      <FeedPanelHeader
-        {...mockFeedPanelHeaderProp}
-        entityLink="<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.address_id.unique_column_test>"
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    rerender(<FeedPanelHeader hideCloseIcon onCancel={onCancel} />);
 
-    const entityAttribute = await findByTestId(container, 'entity-attribute');
-
-    expect(entityAttribute).toHaveTextContent('unique_column_test');
-  });
-
-  it('defaults the noun to conversation', async () => {
-    const { container } = render(
-      <FeedPanelHeader {...mockFeedPanelHeaderProp} noun={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const noun = await findByTestId(container, 'header-noun');
-
-    expect(noun).toHaveTextContent(/Conversation label.on-lowercase/i);
+    expect(screen.queryByTestId('closeDrawer')).not.toBeInTheDocument();
   });
 });

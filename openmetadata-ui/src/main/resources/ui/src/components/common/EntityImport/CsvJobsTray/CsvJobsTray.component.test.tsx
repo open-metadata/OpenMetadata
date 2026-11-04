@@ -435,6 +435,9 @@ describe('CsvJobsTray', () => {
     );
 
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect((createObjectURL.mock.calls[0][0] as Blob).type).toBe(
+      'text/csv;charset=utf-8'
+    );
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-job');
   });
 

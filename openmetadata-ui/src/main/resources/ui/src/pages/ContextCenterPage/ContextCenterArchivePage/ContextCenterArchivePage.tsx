@@ -29,6 +29,7 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { queryClient } from '../../../queryClient';
 import {
   deleteDriveFile,
@@ -52,6 +53,7 @@ type FilterKey = 'all' | 'mine' | 'article' | 'document';
 
 const ContextCenterArchivePage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
@@ -251,7 +253,9 @@ const ContextCenterArchivePage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-archive-page">
       <DocumentTitle title={t('label.archive')} />
       <PageLayout

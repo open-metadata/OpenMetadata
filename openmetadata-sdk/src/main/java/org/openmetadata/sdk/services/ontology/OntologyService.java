@@ -1,19 +1,33 @@
 package org.openmetadata.sdk.services.ontology;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
+import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
+import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
+import org.openmetadata.schema.api.data.OntologyWorkingDiff;
+import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.EntityServiceBase;
 
 public final class OntologyService extends EntityServiceBase<Ontology> {
   public OntologyService(final HttpClient httpClient) {
     super(httpClient, "/v1/ontologies");
+  }
+
+  @Override
+  protected void normalizePatchNodes(
+      final JsonNode original, final JsonNode updated, final Ontology entity) {
+    removeField(original, "publicationStatus");
+    removeField(updated, "publicationStatus");
   }
 
   public Ontology create(final CreateOntology request) {
@@ -27,6 +41,42 @@ public final class OntologyService extends EntityServiceBase<Ontology> {
   public OntologyState state(final UUID id) {
     return httpClient.execute(
         HttpMethod.GET, basePath + "/" + id + "/state", null, OntologyState.class);
+  }
+
+  public OntologyWorkingDiff workingDiff(final UUID id, final int limit, final String after) {
+    final var options = RequestOptions.builder().queryParam("limit", Integer.toString(limit));
+    if (after != null) {
+      options.queryParam("after", after);
+    }
+    return httpClient.execute(
+        HttpMethod.GET,
+        basePath + "/" + id + "/working/diff",
+        null,
+        OntologyWorkingDiff.class,
+        options.build());
+  }
+
+  public NativeOntologyImportPreview previewImport(
+      final UUID id, final PreviewNativeOntologyImport request) {
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/" + id + "/imports/preview",
+        request,
+        NativeOntologyImportPreview.class);
+  }
+
+  public NativeOntologyImportSummary previewImport(final PreviewNativeOntologyImport request) {
+    return httpClient.execute(
+        HttpMethod.POST, basePath + "/imports/preview", request, NativeOntologyImportSummary.class);
+  }
+
+  public NativeOntologyImportDetection detectImportFormat(
+      final PreviewNativeOntologyImport request) {
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/imports/detect",
+        request,
+        NativeOntologyImportDetection.class);
   }
 
   public OntologyRelease capture(final UUID id, final CaptureOntologyRelease request) {

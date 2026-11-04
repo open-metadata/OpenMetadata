@@ -135,6 +135,24 @@ Never add your own border or `<Divider>` around a dialog's header or footer.
 </Dialog>
 ```
 
+## Empty states
+
+Use the prefilled variants from `src/components/common/EmptyPlaceholder/`, not the core
+`EmptyPlaceholder`: `NoDataPlaceholder`, `CreatePlaceholder` (falls back to
+`PermissionPlaceholder` when `permission={false}`), `PermissionPlaceholder`,
+`NoSearchResultsPlaceholder`, `NoFilteredResultsPlaceholder` (`onClearFilters`),
+`SomethingWentWrongPlaceholder` (`onReload`) carry a default icon and copy. `FeaturesPlaceholder`
+(onboarding) has no defaults: pass `title`, `description` and `features`. The placeholder is
+absolutely positioned, so give the host `tw:relative` and a height. Keep the default icon, and pass plain copy
+(a `Transi18next` link is fine) — a `Tooltip` around `title`/`description` pins it to `w-max` and
+the text overflows instead of wrapping.
+
+```tsx
+<div className="tw:relative tw:min-h-60">
+  <NoDataPlaceholder title={t('message.no-data-available')} />
+</div>
+```
+
 ## Color usage
 
 Never write a raw Tailwind palette class (`tw:bg-gray-50`, `tw:text-red-600`,

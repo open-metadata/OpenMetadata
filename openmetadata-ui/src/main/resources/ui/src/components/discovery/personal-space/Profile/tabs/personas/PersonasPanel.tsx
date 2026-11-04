@@ -12,7 +12,7 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, Button, ConfirmPopover } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, {
@@ -21,6 +21,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,7 +32,6 @@ import {
   getCustomizePageOptions,
 } from '../../../../../../utils/Persona/PersonaUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import { UnsavedChangesModal } from '../../../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { CustomizeEditorActions } from './customize/customizeEditor.types';
 import PersonaAddForm from './PersonaAddForm';
@@ -77,12 +77,40 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     },
     [setHash]
   );
+  // Stable: PersonaDetail builds its header actions from it, and a new
+  // callback each render would re-push the header in a render loop.
+  const onPersonaDeleted = useCallback(
+    () => onNavigate({ type: 'landing' }),
+    [onNavigate]
+  );
 
   const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
   const [pendingExit, setPendingExit] = useState<() => void>();
-  const [isSavingBeforeExit, setIsSavingBeforeExit] = useState(false);
   const isEditorDirty =
     view.type === 'customize' && Boolean(editorActions?.canSave);
+  const exitAnchorRef = useRef<Element | null>(null);
+
+  // The exit triggers (footer Cancel, breadcrumb, dialog close, settings nav)
+  // live in different components, so the prompt anchors to whichever control
+  // the user last pressed instead of each one passing its element in.
+  // ponytail: last-pressed element as anchor; plumb explicit refs if a guard
+  // ever fires without a user press.
+  useEffect(() => {
+    // Presses inside an open prompt must not move it onto its own buttons.
+    if (!isEditorDirty || pendingExit) {
+      return;
+    }
+    const recordAnchor = (event: Event) => {
+      exitAnchorRef.current = event.target as Element;
+    };
+    document.addEventListener('pointerdown', recordAnchor, true);
+    document.addEventListener('keydown', recordAnchor, true);
+
+    return () => {
+      document.removeEventListener('pointerdown', recordAnchor, true);
+      document.removeEventListener('keydown', recordAnchor, true);
+    };
+  }, [isEditorDirty, pendingExit]);
 
   // Every way out of a dirty in-modal editor (breadcrumbs, Cancel, the modal's
   // close button) goes through here so unsaved changes are never dropped silently.
@@ -121,13 +149,8 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   }, [pendingExit]);
 
   const handleSaveExit = useCallback(async () => {
-    setIsSavingBeforeExit(true);
-    try {
-      await editorActions?.onSave();
-      handleDiscardExit();
-    } finally {
-      setIsSavingBeforeExit(false);
-    }
+    await editorActions?.onSave();
+    handleDiscardExit();
   }, [editorActions, handleDiscardExit]);
 
   const onTabChange = useCallback(
@@ -371,8 +394,9 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
         <PersonaDetail
           activeTab={activeTab}
           fqn={view.fqn}
+          key={view.fqn}
           subCategory={subCategory}
-          onDeleted={() => onNavigate({ type: 'landing' })}
+          onDeleted={onPersonaDeleted}
           onRename={setResolvedName}
           onSelectCategory={(category) =>
             onNavigate({
@@ -411,12 +435,24 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
           onHeaderActionsChange={setCustomizeActions}
           onRename={setResolvedName}
         />
-        <UnsavedChangesModal
-          loading={isSavingBeforeExit}
-          open={Boolean(pendingExit)}
-          onCancel={() => setPendingExit(undefined)}
-          onDiscard={handleDiscardExit}
-          onSave={() => void handleSaveExit()}
+        <ConfirmPopover
+          actions={[
+            {
+              key: 'discard',
+              label: t('label.discard-and-go'),
+              'data-testid': 'unsaved-changes-popover-discard',
+              onPress: handleDiscardExit,
+            },
+          ]}
+          confirmText={t('label.save-and-go')}
+          data-testid="unsaved-changes-popover"
+          isOpen={Boolean(pendingExit)}
+          showCancel={false}
+          title={t('message.save-changes-first')}
+          triggerRef={exitAnchorRef}
+          variant="primary"
+          onConfirm={handleSaveExit}
+          onOpenChange={(open) => !open && setPendingExit(undefined)}
         />
       </>
     );

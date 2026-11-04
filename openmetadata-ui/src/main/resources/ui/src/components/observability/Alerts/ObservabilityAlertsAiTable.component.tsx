@@ -14,22 +14,23 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Table,
   TableCard,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
   Bell01,
   MarkerPin01,
   Plus,
   ZapFast,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import {
   PAGE_SIZE_BASE,
@@ -37,6 +38,7 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { Paging } from '../../../generated/type/paging';
@@ -52,6 +54,7 @@ import {
 } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
+import FeaturesPlaceholder from '../../common/EmptyPlaceholder/FeaturesPlaceholder';
 import ObservabilityAlertAiActions from './ObservabilityAlertAiActions.component';
 
 interface ObservabilityAlertsAiPageChangeParams {
@@ -67,146 +70,15 @@ const ALERT_NAME_COLUMN_LAYOUT_CLASS = 'tw:w-[30%]! tw:max-w-0';
 interface AlertsEmptyStateProps {
   hasCreatePermission: boolean;
   onAddAlert: () => void;
-  features: {
-    key: string;
-    icon: JSX.Element;
-    title: string;
-    description: string;
-  }[];
 }
 
 function AlertsEmptyState({
   hasCreatePermission,
   onAddAlert,
-  features,
 }: Readonly<AlertsEmptyStateProps>) {
   const { t } = useTranslation();
 
-  return (
-    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-      <EmptyPlaceholder
-        actions={
-          hasCreatePermission
-            ? [
-                {
-                  key: 'new-alert',
-                  label: t('label.new-entity', {
-                    entity: t('label.alert'),
-                  }),
-                  color: 'primary' as const,
-                  iconLeading: Plus,
-                  onPress: onAddAlert,
-                },
-              ]
-            : undefined
-        }
-        description={t('message.observability-alert-empty-description')}
-        features={features}
-        title={t('message.observability-alert-empty-heading')}
-        variant="features"
-      />
-    </Box>
-  );
-}
-
-interface AlertsErrorStateProps {
-  onRetryPermission?: () => void;
-}
-
-// When the resource-permission fetch failed we can't tell allow from deny, and
-// showErrorToast suppresses its 401/403 — so show an explicit error + retry
-// cue instead of the create-less onboarding.
-function AlertsErrorState({
-  onRetryPermission,
-}: Readonly<AlertsErrorStateProps>) {
-  const { t } = useTranslation();
-
-  return (
-    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-      <EmptyPlaceholder
-        actions={
-          onRetryPermission
-            ? [
-                {
-                  key: 'retry',
-                  label: t('label.try-again'),
-                  color: 'primary' as const,
-                  onPress: onRetryPermission,
-                },
-              ]
-            : undefined
-        }
-        description={t('server.unexpected-error')}
-        icon={<AlertTriangle className="tw:text-fg-error-primary" />}
-        title={t('message.something-went-wrong')}
-        variant="blank"
-      />
-    </Box>
-  );
-}
-
-interface ObservabilityAlertsAiTableProps {
-  /** Accessible table name; defaults to the Observability alerts label. */
-  ariaLabel?: string;
-  alertPermissions?: AlertPermission[];
-  alertResourcePermission?: OperationPermission;
-  hasResourcePermissionError?: boolean;
-  alerts: EventSubscription[];
-  columnList: AlertTableColumn[];
-  currentPage: number;
-  getAlertDetailsPath: (fqn: string) => string;
-  loading: boolean;
-  loadingCount: number;
-  onAddAlert: () => void;
-  onEditAlert?: (alert: EventSubscription) => void;
-  onPageChange: (params: ObservabilityAlertsAiPageChangeParams) => void;
-  onPageSizeChange: (pageSize: number) => void;
-  onRetryPermission?: () => void;
-  onSelectAlert: (alert: EventSubscription) => void;
-  onViewAlert?: (alert: EventSubscription) => void;
-  pageSize: number;
-  paging: Paging;
-  showPagination: boolean;
-}
-
-function ObservabilityAlertsAiTable({
-  ariaLabel,
-  alertPermissions,
-  alertResourcePermission,
-  hasResourcePermissionError,
-  alerts,
-  columnList,
-  currentPage,
-  getAlertDetailsPath,
-  loading,
-  loadingCount,
-  onAddAlert,
-  onEditAlert,
-  onPageChange,
-  onPageSizeChange,
-  onRetryPermission,
-  onSelectAlert,
-  onViewAlert,
-  paging,
-  pageSize,
-  showPagination,
-}: Readonly<ObservabilityAlertsAiTableProps>) {
-  const { t } = useTranslation();
-  const totalPages = computeTotalPages(pageSize, paging.total);
-  const displayTotalPages = Math.max(
-    totalPages,
-    currentPage + (paging.after ? 1 : 0),
-    currentPage
-  );
-  // Fail closed: only show the create CTA when create is explicitly allowed. If
-  // the resource-permission fetch fails (undefined), the CTA stays hidden rather
-  // than optimistically exposing a privileged action; useObservabilityAlerts
-  // surfaces an error toast so the user can refresh to retry.
-  const hasCreatePermission = Boolean(
-    alertResourcePermission?.Create || alertResourcePermission?.All
-  );
-
-  const emptyStateFeatures = useMemo(
+  const features = useMemo(
     () => [
       {
         key: 'trigger',
@@ -228,6 +100,97 @@ function ObservabilityAlertsAiTable({
       },
     ],
     [t]
+  );
+
+  return (
+    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+      <FeaturesPlaceholder
+        actions={
+          hasCreatePermission
+            ? [
+                {
+                  key: 'new-alert',
+                  label: t('label.new-entity', {
+                    entity: t('label.alert'),
+                  }),
+                  color: 'primary' as const,
+                  iconLeading: Plus,
+                  onPress: onAddAlert,
+                },
+              ]
+            : undefined
+        }
+        description={t('message.observability-alert-empty-description')}
+        features={features}
+        title={t('message.observability-alert-empty-heading')}
+      />
+    </Box>
+  );
+}
+
+interface ObservabilityAlertsAiTableProps {
+  /** Accessible table name; defaults to the Observability alerts label. */
+  ariaLabel?: string;
+  alertPermissions?: AlertPermission[];
+  alertResourcePermission?: OperationPermission;
+  hasResourcePermissionError?: boolean;
+  alerts: EventSubscription[];
+  alertsError?: AxiosError;
+  columnList: AlertTableColumn[];
+  currentPage: number;
+  getAlertDetailsPath: (fqn: string) => string;
+  loading: boolean;
+  loadingCount: number;
+  onAddAlert: () => void;
+  onEditAlert?: (alert: EventSubscription) => void;
+  onPageChange: (params: ObservabilityAlertsAiPageChangeParams) => void;
+  onPageSizeChange: (pageSize: number) => void;
+  onRetry?: () => void;
+  onRetryPermission?: () => void;
+  onSelectAlert: (alert: EventSubscription) => void;
+  onViewAlert?: (alert: EventSubscription) => void;
+  pageSize: number;
+  paging: Paging;
+  showPagination: boolean;
+}
+
+function ObservabilityAlertsAiTable({
+  ariaLabel,
+  alertPermissions,
+  alertResourcePermission,
+  hasResourcePermissionError,
+  alerts,
+  alertsError,
+  columnList,
+  currentPage,
+  getAlertDetailsPath,
+  loading,
+  loadingCount,
+  onAddAlert,
+  onEditAlert,
+  onPageChange,
+  onPageSizeChange,
+  onRetry,
+  onRetryPermission,
+  onSelectAlert,
+  onViewAlert,
+  paging,
+  pageSize,
+  showPagination,
+}: Readonly<ObservabilityAlertsAiTableProps>) {
+  const { t } = useTranslation();
+  const totalPages = computeTotalPages(pageSize, paging.total);
+  const displayTotalPages = Math.max(
+    totalPages,
+    currentPage + (paging.after ? 1 : 0),
+    currentPage
+  );
+  // Fail closed: only show the create CTA when create is explicitly allowed. If
+  // the resource-permission fetch fails (undefined), the CTA stays hidden rather
+  // than optimistically exposing a privileged action; useObservabilityAlerts
+  // surfaces an error toast so the user can refresh to retry.
+  const hasCreatePermission = Boolean(
+    alertResourcePermission?.Create || alertResourcePermission?.All
   );
 
   const handlePageChange = (nextPage: number) => {
@@ -285,7 +248,10 @@ function ObservabilityAlertsAiTable({
           className={getAlertTableCellLayoutClassName(
             ALERT_TABLE_COLUMN_IDS.DESCRIPTION
           )}>
-          <RichTextEditorPreviewerNew markdown={record.description ?? ''} />
+          <RichTextEditorPreviewerNew
+            clampByLines
+            markdown={record.description ?? ''}
+          />
         </Table.Cell>
         <Table.Cell
           className={getAlertTableCellLayoutClassName(
@@ -307,26 +273,37 @@ function ObservabilityAlertsAiTable({
 
   const isAlertsEmpty = !loading && alerts.length === 0;
 
-  const emptyStatePlaceholder = (
-    <AlertsEmptyState
-      features={emptyStateFeatures}
-      hasCreatePermission={hasCreatePermission}
-      onAddAlert={onAddAlert}
-    />
-  );
+  const getEmptyOrErrorPlaceholder = () => {
+    if (alertsError || hasResourcePermissionError) {
+      return (
+        <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+          {alertsError?.response?.status === ClientErrors.FORBIDDEN ? (
+            <PermissionPlaceholder
+              permissionValue={t('label.view-entity', {
+                entity: t('label.alert-plural'),
+              })}
+            />
+          ) : (
+            <SomethingWentWrongPlaceholder
+              onReload={alertsError ? onRetry : onRetryPermission}
+            />
+          )}
+        </Box>
+      );
+    }
 
-  const errorStatePlaceholder = (
-    <AlertsErrorState onRetryPermission={onRetryPermission} />
-  );
-
-  const alertsEmptyPlaceholder = hasResourcePermissionError
-    ? errorStatePlaceholder
-    : emptyStatePlaceholder;
+    return (
+      <AlertsEmptyState
+        hasCreatePermission={hasCreatePermission}
+        onAddAlert={onAddAlert}
+      />
+    );
+  };
 
   return (
-    <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:outline-0">
+    <TableCard.Root className="tw:rounded-xl tw:shadow-none">
       {isAlertsEmpty ? (
-        alertsEmptyPlaceholder
+        getEmptyOrErrorPlaceholder()
       ) : (
         <>
           <div className="tw:border-b tw:border-secondary">

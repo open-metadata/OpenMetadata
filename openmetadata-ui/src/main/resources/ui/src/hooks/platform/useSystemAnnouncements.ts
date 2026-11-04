@@ -84,6 +84,9 @@ export const useSystemAnnouncementsList = () => {
     // Keeps the current rows on screen while a filter change loads, instead
     // of flashing the empty state between them.
     placeholderData: keepPreviousData,
+    // The table offers its own Retry; silent background retries on a 5xx kept
+    // the skeleton up for several seconds before the error state appeared.
+    retry: false,
   });
 
   const matching = useMemo(

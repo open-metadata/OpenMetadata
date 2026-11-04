@@ -73,6 +73,14 @@ public class NoopAuthorizer implements Authorizer {
     /* Always authorize */
   }
 
+  @Override
+  public void authorizeActor(
+      final ChangeActor actor,
+      final OperationContext operationContext,
+      final ResourceContextInterface resourceContext) {
+    /* Always authorize */
+  }
+
   private void addAnonymousUser() {
     String username = "anonymous";
     try {
