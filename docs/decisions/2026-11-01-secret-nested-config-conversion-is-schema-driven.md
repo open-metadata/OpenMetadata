@@ -1,7 +1,7 @@
 # Nested configuration conversion is schema-driven and fails closed for secret-bearing oneOf values
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-01 (initial); v2 2026-11-03 (branch selection, undeclared fields, pipeline configs, labels)
+- **Revisions:** v1 2026-11-01 (initial); v2 2026-11-03 (branch selection, undeclared fields, pipeline configs, labels); v3 2026-11-04 (typed branches and required fields)
 - **Deciders:** Harsha
 - **Guard:** `NestedSecretConverterCoverageTest`, `JsonSchemaRepositoryTest`, `DBSecretsManagerTest`, `PasswordEntityMaskerTest`, `ClassConverterFactoryTest`, `IngestionPipelineBuilderTest`
 - **Related:** #28299, #33193, ANT-2026-5GKK8L41
@@ -49,3 +49,11 @@ children, newly allowed branches, inline definitions, and ingestion pipeline con
   values previously stored in cleartext, and exposed credentials should be rotated.
 - Invalid secret-bearing configurations fail instead of being stored or returned unprotected, so
   schema authors must keep branch metadata and generated models current.
+
+## Amendment v3
+
+Typed inputs select the branch matching their runtime class before conversion visits their children.
+The undeclared-field fallback in decision 3 applies only when every required property of the chosen
+branch has a non-null value. Complete stored configurations may retain compatibility with obsolete
+fields; incomplete credentials are rejected. `SchemaClassConverterTest` and `DBSecretsManagerTest`
+enforce these rules.

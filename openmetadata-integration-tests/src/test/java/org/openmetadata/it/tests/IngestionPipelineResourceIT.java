@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.util.Config;
+import jakarta.json.Json;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -29,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,8 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
@@ -94,6 +98,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
@@ -1873,6 +1878,110 @@ public class IngestionPipelineResourceIT
 
   private static ArrayNode replace(String path, Object value) {
     return JsonUtils.getObjectMapper().createArrayNode().add(replaceOp(path, value));
+  }
+
+  @ParameterizedTest
+  @MethodSource("protectedPipelineSources")
+  void nestedPipelineSecretMustBeReenteredWhenTheSourceMoves(
+      PipelineType pipelineType,
+      String configJson,
+      String targetPath,
+      String secretPath,
+      TestNamespace ns) {
+    String ownerName = "sourceowner" + ns.uniqueShortId();
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(ownerName).withEmail(ownerName + "@test.com"));
+    OpenMetadataClient asOwner =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns)
+            .withPipelineType(pipelineType)
+            .withOwners(List.of(owner.getEntityReference()))
+            .withSourceConfig(
+                new SourceConfig().withConfig(JsonUtils.readValue(configJson, Object.class)));
+    IngestionPipeline pipeline = createEntity(request);
+    asOwner.ingestionPipelines().patch(pipeline.getId(), descriptionPatch("Owner can edit"));
+    IngestionPipeline masked = asOwner.ingestionPipelines().get(pipeline.getId());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        JsonUtils.valueToTree(masked.getSourceConfig()).at(secretPath).asText());
+    String stored = storedPipelineJson(pipeline.getId());
+    String elsewhere = "https://elsewhere.example";
+
+    assertRetargetRequiresSecrets(
+        () ->
+            asOwner
+                .ingestionPipelines()
+                .patch(pipeline.getId(), replace("/sourceConfig" + targetPath, elsewhere)));
+    assertEquals(stored, storedPipelineJson(pipeline.getId()));
+
+    SourceConfig retargeted =
+        JsonUtils.applyPatch(
+            masked.getSourceConfig(),
+            Json.createPatchBuilder().replace(targetPath, elsewhere).build(),
+            SourceConfig.class);
+    assertRetargetRequiresSecrets(
+        () ->
+            asOwner
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    INGESTION_PIPELINES_PATH,
+                    request.withSourceConfig(retargeted),
+                    IngestionPipeline.class));
+    assertEquals(stored, storedPipelineJson(pipeline.getId()));
+
+    asOwner
+        .ingestionPipelines()
+        .patch(
+            pipeline.getId(),
+            replace("/sourceConfig" + targetPath, elsewhere)
+                .add(replaceOp("/sourceConfig" + secretPath, "entered-again")));
+    SourceConfig changed =
+        SdkClients.ingestionBotClient()
+            .ingestionPipelines()
+            .get(pipeline.getId())
+            .getSourceConfig();
+    assertEquals(elsewhere, JsonUtils.valueToTree(changed).at(targetPath).asText());
+    assertEquals("entered-again", JsonUtils.valueToTree(changed).at(secretPath).asText());
+  }
+
+  private static void assertRetargetRequiresSecrets(Runnable update) {
+    OpenMetadataException failure = assertThrows(OpenMetadataException.class, update::run);
+    assertEquals(400, failure.getStatusCode(), failure.getMessage());
+    assertTrue(
+        failure.getMessage().contains(ConnectionSecretsGuard.SECRETS_REQUIRED),
+        failure.getMessage());
+  }
+
+  private static Stream<Arguments> protectedPipelineSources() {
+    return Stream.of(
+        Arguments.of(
+            PipelineType.TEST_SUITE,
+            """
+            {"type":"TestSuite","serviceConnections":[{"serviceName":"mysql","serviceConnection":{"config":
+             {"type":"Mysql","username":"user","hostPort":"db.internal:3306","authType":{"password":"stored-secret"}}}}]}
+            """,
+            "/config/serviceConnections/0/serviceConnection/config/hostPort",
+            "/config/serviceConnections/0/serviceConnection/config/authType/password"),
+        Arguments.of(
+            PipelineType.APPLICATION,
+            """
+            {"type":"Application","appConfig":{"clientId":"client","clientSecret":"client-secret",
+             "signingSecret":"signing-secret","botToken":"stored-secret"}}
+            """,
+            "/config/appConfig/clientId",
+            "/config/appConfig/botToken"),
+        Arguments.of(
+            PipelineType.APPLICATION,
+            """
+            {"type":"Application","appPrivateConfig":{"waiiInstance":"https://waii.example",
+             "collateURL":"https://collate.example","token":"stored-secret","limits":{"actions":{}}}}
+            """,
+            "/config/appPrivateConfig/waiiInstance",
+            "/config/appPrivateConfig/token"));
   }
 
   private static ObjectNode replaceOp(String path, Object value) {

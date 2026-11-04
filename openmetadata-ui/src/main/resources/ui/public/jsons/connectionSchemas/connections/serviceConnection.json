@@ -4625,7 +4625,8 @@
                             "clientCertificate",
                             "clientKeyCertificate",
                             "rootCertificate"
-                          ]
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     },
@@ -42849,7 +42850,8 @@
                             "clientCertificate",
                             "clientKeyCertificate",
                             "rootCertificate"
-                          ]
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     },

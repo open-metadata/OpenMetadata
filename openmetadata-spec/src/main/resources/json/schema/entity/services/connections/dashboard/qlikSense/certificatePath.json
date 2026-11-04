@@ -22,5 +22,6 @@
       "type": "string"
     }
   },
-  "required": ["clientCertificate", "clientKeyCertificate", "rootCertificate"]
+  "required": ["clientCertificate", "clientKeyCertificate", "rootCertificate"],
+  "additionalProperties": false
 }

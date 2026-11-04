@@ -137,7 +137,9 @@ final class JsonSchemaRepository {
   }
 
   boolean isCandidate(Ref oneOf, Ref schema, Object value) {
-    return javaClass(schema) != null
+    Class<?> candidate = javaClass(schema);
+    return candidate != null
+        && (value instanceof Map<?, ?> || candidate.isInstance(value))
         && matchesDiscriminator(schema, value)
         && (!hasOpenObjectBranch(oneOf) || matchesRequiredProperties(schema, value));
   }
@@ -161,6 +163,18 @@ final class JsonSchemaRepository {
   private static long declaredFieldCount(Ref schema, Map<?, ?> value) {
     JsonNode properties = schema.node().path("properties");
     return value.keySet().stream().filter(key -> properties.has(key.toString())).count();
+  }
+
+  boolean hasRequiredProperties(Ref schema, Object value) {
+    if (!(value instanceof Map<?, ?> map)) {
+      return false;
+    }
+    for (JsonNode required : schema.node().path("required")) {
+      if (map.get(required.asText()) == null) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private boolean matchesRequiredProperties(Ref schema, Object value) {
