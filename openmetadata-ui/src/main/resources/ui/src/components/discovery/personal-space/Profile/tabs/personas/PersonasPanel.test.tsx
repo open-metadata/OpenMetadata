@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
@@ -414,11 +420,11 @@ describe('PersonasPanel', () => {
       fireEvent.click(screen.getByTestId('crumb-detail'));
 
       expect(
-        await screen.findByTestId('unsaved-changes-modal')
+        await screen.findByTestId('unsaved-changes-popover')
       ).toBeInTheDocument();
       expect(screen.getByTestId('persona-customize-view')).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('unsaved-changes-modal-discard'));
+      fireEvent.click(screen.getByTestId('unsaved-changes-popover-discard'));
 
       expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
       expect(mockEditorSave).not.toHaveBeenCalled();
@@ -428,10 +434,30 @@ describe('PersonasPanel', () => {
       await openDirtyEditor();
 
       fireEvent.click(screen.getByTestId('persona-customize-view'));
-      fireEvent.click(await screen.findByTestId('unsaved-changes-modal-save'));
+      fireEvent.click(
+        await screen.findByTestId('unsaved-changes-popover-confirm')
+      );
 
       expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
       expect(mockEditorSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays in the editor when the prompt is dismissed with Escape', async () => {
+      await openDirtyEditor();
+
+      fireEvent.click(screen.getByTestId('crumb-detail'));
+      fireEvent.keyDown(await screen.findByTestId('unsaved-changes-popover'), {
+        key: 'Escape',
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('unsaved-changes-popover')
+        ).not.toBeInTheDocument()
+      );
+
+      expect(screen.getByTestId('persona-customize-view')).toBeInTheDocument();
+      expect(mockEditorSave).not.toHaveBeenCalled();
     });
 
     it('intercepts closing the modal through the exit guard', async () => {
@@ -446,10 +472,10 @@ describe('PersonasPanel', () => {
 
       expect(intercepted).toBe(true);
       expect(
-        await screen.findByTestId('unsaved-changes-modal')
+        await screen.findByTestId('unsaved-changes-popover')
       ).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('unsaved-changes-modal-discard'));
+      fireEvent.click(screen.getByTestId('unsaved-changes-popover-discard'));
 
       expect(close).toHaveBeenCalledTimes(1);
     });

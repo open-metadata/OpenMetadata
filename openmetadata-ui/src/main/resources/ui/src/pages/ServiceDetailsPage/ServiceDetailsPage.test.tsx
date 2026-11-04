@@ -1424,6 +1424,8 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('data-model-table')).toBeInTheDocument();
       });
+
+      expect(screen.getByText('label.data-model-plural')).toBeInTheDocument();
     });
 
     it('should render agents tab for metadata services', async () => {

@@ -154,6 +154,24 @@ describe('TimeIntervalPropertyValue.utils', () => {
       });
     });
 
+    it('accepts epoch milliseconds with fewer than 13 digits', () => {
+      expect(
+        resolveEditedInterval({ start: '946684800000', end: '1790195220000' })
+      ).toEqual({
+        isValid: true,
+        value: { start: 946684800000, end: 1790195220000 },
+      });
+    });
+
+    it('rejects epoch milliseconds beyond the safe integer range', () => {
+      expect(
+        resolveEditedInterval({ start: '0', end: '9007199254740993' })
+      ).toEqual({
+        isValid: false,
+        errorKey: 'message.invalid-unix-epoch-time-milliseconds',
+      });
+    });
+
     it('rejects an end before the start', () => {
       expect(resolveEditedInterval(undefined, 20, 10)).toEqual({
         isValid: false,
