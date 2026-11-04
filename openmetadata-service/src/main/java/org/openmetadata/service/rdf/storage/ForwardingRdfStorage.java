@@ -13,7 +13,9 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -86,6 +88,11 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   }
 
   @Override
+  public void replaceGraph(final String graph, final Model model) {
+    delegate().replaceGraph(graph, model);
+  }
+
+  @Override
   public List<String> getAllGraphs() {
     return delegate().getAllGraphs();
   }
@@ -106,8 +113,23 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   }
 
   @Override
-  public void compactStorage() {
-    delegate().compactStorage();
+  public CompactionResult compact(Duration maxWait) {
+    return delegate().compact(maxWait);
+  }
+
+  @Override
+  public Optional<StorageFacts> storageFacts() {
+    return delegate().storageFacts();
+  }
+
+  @Override
+  public CompactionResult compactAndAwait(Duration warningAfter) {
+    return delegate().compactAndAwait(warningAfter);
+  }
+
+  @Override
+  public void executeMaintenanceUpdate(String sparqlUpdate, Duration timeout) {
+    delegate().executeMaintenanceUpdate(sparqlUpdate, timeout);
   }
 
   @Override

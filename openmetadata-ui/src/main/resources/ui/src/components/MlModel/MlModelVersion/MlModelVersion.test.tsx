@@ -44,10 +44,6 @@ jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>Description</div>)
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
   jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
@@ -136,7 +132,9 @@ describe('MlModelVersion tests', () => {
     });
 
     const featureTabLabel = screen.getByText('label.feature-plural');
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
+    const errorPlaceHolder = screen.getByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(featureTabLabel).toBeInTheDocument();
     expect(errorPlaceHolder).toBeInTheDocument();

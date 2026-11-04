@@ -33,8 +33,11 @@ export interface DataQualityFilters {
   testCaseType: TestCaseType;
 }
 
+// 30 days, the Data Quality page's own default: the card's footer opens that
+// page, and a shorter window here made the two disagree on the same estate.
+// ADR:2026-10-16-landing-overview-cards-match-the-pages-they-open
 export const DEFAULT_DATA_QUALITY_FILTERS: DataQualityFilters = {
-  range: DataQualityRange.LAST_7_DAYS,
+  range: DataQualityRange.LAST_30_DAYS,
   scope: DataQualityScope.ALL,
   testCaseType: TestCaseType.all,
 };

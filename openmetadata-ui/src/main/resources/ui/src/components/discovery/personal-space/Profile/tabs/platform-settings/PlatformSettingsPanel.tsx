@@ -20,6 +20,7 @@ import { useApplicationStore } from '../../../../../../hooks/useApplicationStore
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import GlossarySettings from '../../../../../governance/glossary/GlossarySettings';
+import { ResourcePlayer } from '../../../../../Learning/ResourcePlayer/ResourcePlayerModal.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppModeSettings from './AppModeSettings';
@@ -57,6 +58,7 @@ import PlatformSettingsLanding from './PlatformSettingsLanding';
 import ProfilerSettings from './ProfilerSettings';
 import ProfilerSettingsForm from './ProfilerSettingsForm';
 import EntitySearchSettings from './search/EntitySearchSettings';
+import FieldValueBoostForm from './search/FieldValueBoostForm';
 import SearchSettingsView from './search/SearchSettingsView';
 import TableSchemaSettings from './TableSchemaSettings';
 import TableSchemaSettingsForm from './TableSchemaSettingsForm';
@@ -84,7 +86,15 @@ const VIEW_PAGES: Partial<
   'brand-url': (props) => <BrandUrlSettings {...props} />,
   lineage: (props) => <LineageSettings {...props} />,
   'data-asset-rules': () => <DataAssetRulesSettings />,
-  'learning-resources': (props) => <LearningResourcesSettings {...props} />,
+  'learning-resources': (props) =>
+    props.itemId ? (
+      <ResourcePlayer
+        className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
+        resourceId={props.itemId}
+      />
+    ) : (
+      <LearningResourcesSettings {...props} />
+    ),
   'app-mode': (props) => <AppModeSettings {...props} />,
   'table-schema': (props) => <TableSchemaSettings {...props} />,
   'time-format': (props) => <TimeFormatSettings {...props} />,
@@ -115,6 +125,7 @@ const FORM_PAGES: Partial<
   'app-mode': (props) => <AppModeSettingsForm {...props} />,
   'table-schema': (props) => <TableSchemaSettingsForm {...props} />,
   'time-format': (props) => <TimeFormatSettingsForm {...props} />,
+  search: (props) => <FieldValueBoostForm {...props} />,
 };
 
 const isFormView = (view: PlatformSettingsView) =>
@@ -142,6 +153,11 @@ const PlatformSettingsPanel = ({
   );
   const [showHint, setShowHint] = useState(false);
   const [pageActions, setPageActions] = useState<ReactNode>();
+  // Per-page state that survives the page unmounting while one of its items or
+  // forms is open, so returning restores it; cleared when the panel closes.
+  const [savedPageStates, setSavedPageStates] = useState<
+    Partial<Record<string, unknown>>
+  >({});
 
   const view = useMemo(
     () =>
@@ -156,6 +172,16 @@ const PlatformSettingsPanel = ({
       ? pages.find((page) => page.id === view.page)
       : undefined;
   const showsForm = isFormView(view);
+
+  const activePageId = view.type === 'page' ? view.page : undefined;
+  const savePageState = useCallback(
+    (state: unknown) => {
+      if (activePageId) {
+        setSavedPageStates((prev) => ({ ...prev, [activePageId]: state }));
+      }
+    },
+    [activePageId]
+  );
 
   const onNavigate = useCallback(
     (next: PlatformSettingsView) =>
@@ -236,6 +262,8 @@ const PlatformSettingsPanel = ({
         showHint,
         onNavigate,
         itemId: view.itemId,
+        savedState: savedPageStates[view.page],
+        onSaveState: savePageState,
       });
     }
 
@@ -243,6 +271,8 @@ const PlatformSettingsPanel = ({
       itemId: view.itemId,
       onNavigate,
       onSetHeaderActions: setPageActions,
+      savedState: savedPageStates[view.page],
+      onSaveState: savePageState,
     };
     const ContributedPage = activePage?.component;
 

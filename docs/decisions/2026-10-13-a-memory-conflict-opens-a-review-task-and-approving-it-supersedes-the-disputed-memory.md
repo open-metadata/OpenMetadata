@@ -1,7 +1,7 @@
 # A memory conflict opens a review task, and approving it supersedes the disputed memory
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache) · v3 2026-10-19 (that eviction comes from every rolled-back transaction)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryLifecycleTest`, `MemoryConflictDecisionTest`,
   `MemoryConflictReviewTasksTest`, `MemoryConflictResolutionTest`, `ContextMemoryLifecycleIT`,
@@ -105,3 +105,11 @@ Approved — and nothing wrote it.
   the memory's stage.
 - Keeping both memories, or recording a local exception to an organization-wide default, is not a
   decision this task offers yet; that arrives with cross-scope conflicts in ai-platform#1462.
+
+## Amendment — 2026-10-19: every rolled-back transaction evicts its cache keys
+
+A refused decision no longer evicts its memories itself. Under
+ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote, every transaction that
+does not commit evicts the keys its writes recorded, so the refusal leaves no uncommitted memory in
+the cache without code of its own. `ContextMemoryConflictReviewIT` still checks that a decision
+failing part-way leaves both memories as they were, and now guards that rule.

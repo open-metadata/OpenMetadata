@@ -16,17 +16,18 @@ import { useCallback, useRef, useState } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
   Aggregations,
+  SearchIndexValue,
   SearchResponse,
 } from '../../../../interface/search.interface';
 import { nlqSearch, searchQuery } from '../../../../rest/searchAPI';
 import { domainBuildESQuery } from '../../../../utils/DomainFilterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
-export interface DataFetchingConfig<T> {
-  searchIndex: SearchIndex;
+export interface DataFetchingConfig<T, SI extends SearchIndex> {
+  searchIndex: SI;
   baseFilter?: string;
   pageSize?: number;
-  transform?: (data: SearchResponse<SearchIndex>) => T[];
+  transform: (data: SearchResponse<SearchIndexValue<SI>>) => T[];
   /** Use the NLQ endpoint instead of plain ES. Ignored for an empty term. */
   useNlq?: boolean;
 }
@@ -45,8 +46,11 @@ export interface DataFetchingResult<T> {
   ) => Promise<void>;
 }
 
-export const useDataFetching = <T extends { id: string }>(
-  config: DataFetchingConfig<T>
+export const useDataFetching = <
+  T extends { id: string },
+  SI extends SearchIndex
+>(
+  config: DataFetchingConfig<T, SI>
 ): DataFetchingResult<T> => {
   const [entities, setEntities] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,15 +65,6 @@ export const useDataFetching = <T extends { id: string }>(
     transform,
     useNlq = false,
   } = config;
-
-  // Default transform function
-  const defaultTransform = useCallback(
-    (data: SearchResponse<SearchIndex>) =>
-      data.hits?.hits?.map((hit) => hit._source) || [],
-    []
-  );
-
-  const transformData = transform || defaultTransform;
 
   const buildESQuery = useCallback(
     (filters: Record<string, string[]>): Record<string, unknown> =>
@@ -115,7 +110,7 @@ export const useDataFetching = <T extends { id: string }>(
         }
 
         // Process response
-        const transformedEntities = transformData(response);
+        const transformedEntities = transform(response);
         const total = response?.hits?.total?.value || 0;
         const responseAggregations = response?.aggregations || null;
 
@@ -140,7 +135,7 @@ export const useDataFetching = <T extends { id: string }>(
         }
       }
     },
-    [searchIndex, pageSize, transformData, buildESQuery, useNlq]
+    [searchIndex, pageSize, transform, buildESQuery, useNlq]
   );
 
   // Refetch function

@@ -19,7 +19,6 @@ import {
   Checkbox,
   Dot,
   Dropdown,
-  EmptyPlaceholder,
   FileIcon,
   Skeleton,
   Typography,
@@ -59,6 +58,8 @@ import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
@@ -854,7 +855,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 
   const emptyStateContent = selectedFolderName ? (
     <div className="tw:relative tw:flex-1">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         actions={
           onUploadFile
             ? [
@@ -872,16 +873,14 @@ const DocumentsView: FC<DocumentsViewProps> = ({
         title={t('label.folder-name-is-empty', {
           folderName: selectedFolderName,
         })}
-        variant="blank"
       />
     </div>
   ) : (
     <div className="tw:relative tw:flex-1">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearchResultIcon />}
         title={t('label.no-matching-results')}
-        variant="blank"
       />
     </div>
   );

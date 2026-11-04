@@ -23,9 +23,9 @@ public final class OntologyAxiomMapper implements EntityMapper<OntologyAxiom, Cr
   @Override
   public OntologyAxiom createToEntity(final CreateOntologyAxiom request, final String user) {
     return copy(new OntologyAxiom(), request, user)
-        .withGlossary(
+        .withOntology(
             Entity.getEntityReferenceByName(
-                Entity.GLOSSARY, request.getGlossary(), Include.NON_DELETED))
+                Entity.ONTOLOGY, request.getOntology(), Include.NON_DELETED))
         .withAxiomType(request.getAxiomType())
         .withSubjectIri(request.getSubjectIri())
         .withExpressions(request.getExpressions())
@@ -33,7 +33,6 @@ public final class OntologyAxiomMapper implements EntityMapper<OntologyAxiom, Cr
         .withTargetIri(request.getTargetIri())
         .withLiteral(request.getLiteral())
         .withProvenance(request.getProvenance())
-        .withEntityStatus(request.getEntityStatus())
         .withProvider(request.getProvider());
   }
 }

@@ -102,7 +102,6 @@ export const COLLATE_SAAS = 'CollateSaaS';
 export const COLLATE_SAAS_RUNNER = 'Collate SaaS Runner';
 export const RUNNER = 'ingestionRunner';
 
-export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR500 = i18n.t('message.something-went-wrong');
 
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
@@ -408,6 +407,7 @@ export const ENTITY_PATH = {
   files: 'file',
   spreadsheets: 'spreadsheet',
   worksheets: 'worksheet',
+  articles: 'page',
   dataProductsTab: 'dataProductsTab',
   column: 'tableColumn',
   aiApplications: 'aiApplication',
@@ -419,9 +419,6 @@ export const ENTITY_PATH = {
   teams: 'team',
   users: 'user',
 };
-
-export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/custom-properties';
 
 export const SUPPORTED_FORMAT_MAP = {
   date: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy/MM/dd', 'dd/MM/yyyy'],
@@ -473,38 +470,6 @@ export const ENTITY_REFERENCE_OPTIONS = [
     value: 'glossaryTerm',
   },
 ];
-
-export const VALIDATION_MESSAGES = {
-  required: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  types: {
-    email: i18n.t('message.entity-is-not-valid', {
-      entity: '${label}',
-    }),
-  },
-  whitespace: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  string: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-  },
-  number: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-    min: i18n.t('message.entity-size-less-than', {
-      entity: '${label}',
-      min: '${min}',
-    }),
-  },
-};
 
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',

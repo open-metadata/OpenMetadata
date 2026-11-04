@@ -47,9 +47,7 @@ import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import Fqn from '../../utils/Fqn';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useOntologyTermDetails } from './hooks/useOntologyTermDetails';
-import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
 import { OntologyConceptDataAssets } from './OntologyConceptDataAssets';
-import { OntologyConceptRealization } from './OntologyConceptRealization.component';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
 import {
@@ -93,26 +91,13 @@ interface InspectorRelation {
   readonly relationName: string;
 }
 
-type SectionKey =
-  | 'properties'
-  | 'realizedIn'
-  | 'relationships'
-  | 'mappings'
-  | 'dataAssets';
+type SectionKey = 'relationships' | 'mappings' | 'dataAssets';
 
-const SECTION_ORDER: SectionKey[] = [
-  'properties',
-  'realizedIn',
-  'relationships',
-  'mappings',
-  'dataAssets',
-];
+const SECTION_ORDER: SectionKey[] = ['relationships', 'mappings', 'dataAssets'];
 
 const SECTION_ADD_LABEL_KEYS: Record<SectionKey, string> = {
   dataAssets: 'label.data-asset',
   mappings: 'label.mapping',
-  properties: 'label.property',
-  realizedIn: 'label.realized-in',
   relationships: 'label.relationship',
 };
 
@@ -120,8 +105,6 @@ const SECTION_ADD_LABEL_KEYS: Record<SectionKey, string> = {
 const SECTION_ADD_TEST_IDS: Record<SectionKey, string> = {
   dataAssets: 'authoring-add-data-assets',
   mappings: 'authoring-add-mapping',
-  properties: 'add-attribute',
-  realizedIn: 'add-realization',
   relationships: 'authoring-add-relationship',
 };
 
@@ -194,16 +177,9 @@ function getSectionCounts(
   relationshipCount: number,
   assetTotal: number
 ): Record<SectionKey, number> {
-  const inheritedAttributeCount = (
-    termDetails?.effectiveAttributes ?? []
-  ).filter((attribute) => attribute.inherited).length;
-
   return {
     dataAssets: assetTotal,
     mappings: termDetails?.conceptMappings?.length ?? 0,
-    properties:
-      (termDetails?.attributes?.length ?? 0) + inheritedAttributeCount,
-    realizedIn: termDetails?.realizedIn?.length ?? 0,
     relationships: relationshipCount,
   };
 }
@@ -864,13 +840,9 @@ const OntologyAuthoringInspector = ({
             : undefined
         }
       />
-      {relations.length === 0 ? (
-        <InspectorEmptyText>
-          {t('message.no-concept-relationships')}
-        </InspectorEmptyText>
-      ) : (
+      {relations.length > 0 ? (
         <InspectorList>{relations.map(renderRelationRow)}</InspectorList>
-      )}
+      ) : null}
       {isEditable && openSection === 'relationships'
         ? renderRelationshipForm()
         : null}
@@ -889,11 +861,7 @@ const OntologyAuthoringInspector = ({
             : undefined
         }
       />
-      {conceptMappings.length === 0 ? (
-        <InspectorEmptyText>
-          {t('message.no-concept-mappings')}
-        </InspectorEmptyText>
-      ) : (
+      {conceptMappings.length > 0 ? (
         <InspectorList>
           {conceptMappings.map((mapping, index) => {
             const scheme = getMappingScheme(mapping.conceptIri);
@@ -935,7 +903,7 @@ const OntologyAuthoringInspector = ({
             );
           })}
         </InspectorList>
-      )}
+      ) : null}
       {isEditable && openSection === 'mappings' ? renderMappingForm() : null}
     </InspectorSection>
   );
@@ -959,35 +927,8 @@ const OntologyAuthoringInspector = ({
         <React.Fragment key={key}>{renderMappingsSection()}</React.Fragment>
       );
     }
-    if (!isPersistedTerm) {
-      return null;
-    }
 
-    return key === 'properties' ? (
-      <OntologyConceptAttributes
-        showEditControls
-        attributes={termDetails?.attributes ?? []}
-        effectiveAttributes={termDetails?.effectiveAttributes}
-        isAdding={openSection === 'properties'}
-        isEditMode={isEditable}
-        key={key}
-        termId={termId}
-        variant="inspector"
-        onAddingChange={(isOpen) => setSectionOpen('properties', isOpen)}
-        onTermUpdate={setTermDetails}
-      />
-    ) : (
-      <OntologyConceptRealization
-        isAdding={openSection === 'realizedIn'}
-        isEditMode={isEditable}
-        key={key}
-        realizations={termDetails?.realizedIn ?? []}
-        termId={termId}
-        variant="inspector"
-        onAddingChange={(isOpen) => setSectionOpen('realizedIn', isOpen)}
-        onTermUpdate={setTermDetails}
-      />
-    );
+    return null;
   };
 
   const renderAddMoreDetails = () => {

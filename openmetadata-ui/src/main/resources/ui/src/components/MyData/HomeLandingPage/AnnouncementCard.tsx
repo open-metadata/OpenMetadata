@@ -108,6 +108,8 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         // The title's stretched ::after makes the whole card the hit target, so
         // the focus ring belongs on the card, not on the title text alone.
         'tw:has-[a:focus-visible]:outline-2 tw:has-[a:focus-visible]:outline-brand',
+        // A linked card lifts as a whole on hover; the title stays as it is.
+        href && 'tw:transition-shadow tw:hover:shadow-md',
         // Past/future announcements read as context, not as today's news.
         { 'tw:opacity-70': !isDismissible },
         className
@@ -117,8 +119,9 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         plain text in the type's colour, as in the design; the badge stays for
         the lifecycle, which is the only thing here that reads as a status. */}
       <div className="tw:flex tw:items-center tw:gap-2">
+        {/* Same colour as the label beside it, so the two read as one. */}
         <TypeIcon
-          className={classNames('tw:shrink-0 tw:size-4', surface.icon)}
+          className={classNames('tw:shrink-0 tw:size-4', surface.title)}
         />
         <span
           className={classNames('tw:text-xs tw:font-semibold', surface.title)}
@@ -145,9 +148,11 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
             // z-10 keeps the dismiss target above the title's stretched ::after.
             <ButtonUtility
               // Bare glyph — no filled container. size-6 keeps the hit target at
-              // the 24px minimum even though the glyph itself is 14px.
+              // the 24px minimum even though the glyph itself is 14px; -my-1
+              // stops that target from making the row taller than the 16px
+              // type icon, which would pad the card's top beyond its bottom.
               className={classNames(
-                'tw:z-10 tw:size-6 tw:shrink-0 tw:rounded-md tw:p-0 tw:*:data-icon:size-3.5',
+                'tw:z-10 tw:-my-1 tw:size-6 tw:shrink-0 tw:rounded-md tw:p-0 tw:*:data-icon:size-3.5',
                 surface.icon
               )}
               color="tertiary"
@@ -166,8 +171,11 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       {href ? (
         // `after:inset-0` stretches the anchor over the whole card: one tab
         // stop, real link semantics (⌘/middle click), no nested interactives.
+        // `!` on the colour and decoration: the global `a:hover`/`a:focus`
+        // rules would otherwise turn the title blue and underline it — the
+        // card's shadow is the hover cue.
         <Link
-          className="tw:mt-2 tw:truncate tw:text-xs tw:font-semibold tw:text-primary tw:after:absolute tw:after:inset-0 tw:after:rounded-xl"
+          className="tw:mt-2 tw:truncate tw:text-xs tw:font-semibold tw:text-primary! tw:no-underline! tw:after:absolute tw:after:inset-0 tw:after:rounded-xl"
           to={href}
           onClick={onNavigate}>
           {title}
@@ -188,7 +196,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
       {description && (
         <Tooltip title={description}>
           <Typography
-            className="tw:mt-1 tw:text-pretty tw:text-tertiary!"
+            className="tw:mt-1.5 tw:text-pretty tw:text-tertiary!"
             ellipsis={{ rows: 2 }}
             size="text-xs">
             {description}

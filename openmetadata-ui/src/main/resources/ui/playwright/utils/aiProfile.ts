@@ -12,10 +12,12 @@
  */
 
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { escapeRegExp } from 'lodash';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage, uuid } from './common';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 /**
  * Open the AI-mode profile. The profile is a hash-driven surface reached from the
@@ -33,7 +35,7 @@ export const openAiProfile = async (
 
   await page.getByTestId('ask-ai-user-menu-trigger').click();
   await page.getByTestId('ai-user-menu-profile').click();
-  await page.getByTestId('ai-profile-page').waitFor();
+  await expect(page.getByTestId('ai-profile-page')).toBeVisible();
 
   if (navId) {
     await page.getByTestId(navId).click();
@@ -69,19 +71,29 @@ export const openOrganizationTeams = async (page: Page): Promise<void> => {
 
 /**
  * Drill from the Organization team into a specific child team via its row link.
- * All child teams are fetched in one page (no server-side paging), so the link
- * is always present in the DOM.
+ * Sub-teams are paged, so the team is searched for first. The search is
+ * ES-backed and a freshly-created team can lag the index — re-issue the search
+ * until its link appears.
  */
 export const openTeamByLink = async (
   page: Page,
   teamName: string
 ): Promise<void> => {
+  const searchInput = page.getByTestId('team-detail').getByTestId('searchbar');
+  const teamLink = page.getByTestId(`team-link-${teamName}`);
+
+  await expect(async () => {
+    await searchInput.fill('');
+    await searchInput.fill(teamName);
+    await expect(teamLink).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 30000 });
+
   const teamResponse = page.waitForResponse((response) =>
     response
       .url()
       .includes(`/api/v1/teams/name/${encodeURIComponent(teamName)}`)
   );
-  await page.getByTestId(`team-link-${teamName}`).click();
+  await teamLink.click();
   await teamResponse;
 
   await expect(page.getByTestId('team-detail')).toBeVisible();
@@ -161,18 +173,22 @@ export const openCreatedTeam = async (
 
 /** Wait for the PATCH that updates a given team. */
 export const waitForTeamPatch = (page: Page, teamId: string) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes(`/api/v1/teams/${teamId}`) &&
-      response.request().method() === 'PATCH'
+      response.request().method() === 'PATCH',
+    'ok'
   );
 
 /** Wait for the PATCH that updates a given user (entity-id scoped for parallel safety). */
 export const waitForUserPatch = (page: Page, userId: string) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes(`/api/v1/users/${userId}`) &&
-      response.request().method() === 'PATCH'
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname === `/api/v1/users/${userId}`,
+    'ok'
   );
 
 /**
@@ -209,8 +225,11 @@ export const addUserToTeam = async (
   await patchResponse;
 };
 
-/** Open a user's profile-details panel from the Users list. */
-export const openUserProfile = async (
+/**
+ * Open a user's detail (`#members/user/<name>`, Overview tab) by clicking their
+ * name in the Users list.
+ */
+export const openUserDetailView = async (
   page: Page,
   userName: string
 ): Promise<void> => {
@@ -218,16 +237,24 @@ export const openUserProfile = async (
   await openUsersPanel(page);
   const userCell = await searchUserRow(page, userName);
 
-  const profileResponse = page.waitForResponse((response) =>
-    response
-      .url()
-      .includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
+  const userResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        `/api/v1/users/name/${encodeURIComponent(userName)}`,
+    200
   );
   await userCell.click();
-  await profileResponse;
+  await userResponse;
 
-  await expect(page.getByTestId('profile-details-panel')).toBeVisible();
+  await expect(page.getByTestId('members-user-detail')).toBeVisible();
+  await expect(page).toHaveURL(userDetailUrl(userName));
 };
+
+/** The Members user-detail URL (Overview tab) for `userName`. */
+export const userDetailUrl = (userName: string) =>
+  new RegExp(`#members/user/${escapeRegExp(encodeURIComponent(userName))}$`);
 
 /** Click the "Members" breadcrumb in the profile content header. */
 export const clickMembersBreadcrumb = async (page: Page): Promise<void> => {

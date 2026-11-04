@@ -17,13 +17,14 @@ import {
   Table,
 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
 import {
   FilterDescriptor,
   FilterValue,
 } from '../../../DataQuality/TestCases/FilterChip.interface';
-import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 
 // Leading icons for single-select filter options, per the 2.0 mock. Keyed by
 // option value so it naturally extends to other filters (e.g. status).
@@ -102,17 +103,20 @@ const DateChip = ({
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) => {
+  const { t } = useTranslation();
   const range = (descriptor.value ?? {}) as {
     startTs?: number;
     endTs?: number;
   };
 
   return (
-    <DqDateRangeFilter
+    <DateRangeFilter
       endTs={range.endTs != null ? Number(range.endTs) : undefined}
       isOpen={isOpen}
+      placeholder={`${descriptor.label}: ${t('label.all-time')}`}
       startTs={range.startTs != null ? Number(range.startTs) : undefined}
       onApply={(value) => descriptor.onChange(value)}
+      onClear={() => descriptor.onChange(undefined)}
       onOpenChange={onOpenChange}
     />
   );

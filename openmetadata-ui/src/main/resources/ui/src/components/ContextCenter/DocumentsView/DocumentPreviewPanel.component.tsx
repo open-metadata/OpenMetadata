@@ -70,7 +70,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       direction="col">
       <Box
         align="center"
-        className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:shrink-0"
+        className="tw:px-4 tw:h-12 tw:p-2 tw:border-b tw:border-secondary tw:shrink-0"
         gap={3}
         justify="between">
         <Box align="center" className="tw:max-w-[78%]" gap={2}>

@@ -18,6 +18,7 @@ import {
   Input,
   Label,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../../../generated/entity/feed/announcement';
@@ -57,6 +58,7 @@ const SystemAnnouncementForm = ({
   announcement,
   onCancel,
   onSaved,
+  centered,
 }: SystemAnnouncementFormProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -114,7 +116,12 @@ const SystemAnnouncementForm = ({
   return (
     <Box className="tw:h-full tw:min-h-0" direction="col">
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto">
-        <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:p-6 tw:lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        <Box
+          className={classNames('tw:w-full tw:max-w-[50%] tw:px-6 tw:pb-6', {
+            'tw:mx-auto': centered,
+          })}
+          direction="col"
+          gap={6}>
           <HookForm
             className="tw:flex tw:min-w-0 tw:flex-col tw:gap-5"
             data-testid={FORM_ID}
@@ -310,13 +317,11 @@ const SystemAnnouncementForm = ({
             </FormField>
           </HookForm>
 
-          <div className="tw:self-start tw:lg:sticky tw:lg:top-0">
-            <AnnouncementBannerPreview
-              createdBy={isEdit ? announcement?.createdBy : currentUser?.name}
-              values={values}
-            />
-          </div>
-        </div>
+          <AnnouncementBannerPreview
+            createdBy={isEdit ? announcement?.createdBy : currentUser?.name}
+            values={values}
+          />
+        </Box>
       </div>
 
       <Box

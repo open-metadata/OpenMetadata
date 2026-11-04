@@ -12,6 +12,7 @@
  */
 import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import { ReactComponent as ListConversationIcon } from '../../../assets/svg/action-icons/list-conversation.svg';
 import { ReactComponent as RequestUpdateIcon } from '../../../assets/svg/action-icons/request-update.svg';
@@ -24,18 +25,25 @@ import { WidgetActionButtonProps } from './WidgetActionButton.interface';
 // keeps its tooltip, which often says why it is disabled. ButtonUtility's
 // isDisabled turns that tooltip off too, and a bare `disabled` made Tooltip
 // wrap the still-enabled button in a second tab stop.
-const createWidgetButton = (icon: ReactNode) => {
+// `compact` is the table-cell size: a 20px box around a 16px glyph.
+const createWidgetButton = (icon: ReactNode, compactIcon: ReactNode) => {
   const WidgetButton = ({
     title,
+    className,
+    compact,
     disabled,
     onClick,
     ...props
   }: WidgetActionButtonProps) => (
     <ButtonUtility
       aria-disabled={disabled || undefined}
-      className="tw:p-1 tw:aria-disabled:cursor-not-allowed tw:aria-disabled:text-fg-disabled_subtle"
+      className={classNames(
+        'tw:aria-disabled:cursor-not-allowed tw:aria-disabled:text-fg-disabled_subtle',
+        compact ? 'tw:p-0.5' : 'tw:p-1',
+        className
+      )}
       color="tertiary"
-      icon={icon}
+      icon={compact ? compactIcon : icon}
       size="xs"
       tooltip={title}
       onClick={disabled ? undefined : onClick}
@@ -46,14 +54,22 @@ const createWidgetButton = (icon: ReactNode) => {
   return WidgetButton;
 };
 
-export const WidgetEditButton = createWidgetButton(<Edit01 size={16} />);
+export const WidgetEditButton = createWidgetButton(
+  <Edit01 size={16} />,
+  <Edit01 size={16} />
+);
 
-export const WidgetPlusButton = createWidgetButton(<Plus size={15} />);
+export const WidgetPlusButton = createWidgetButton(
+  <Plus size={15} />,
+  <Plus size={16} />
+);
 
 export const WidgetCommentButton = createWidgetButton(
+  <ListConversationIcon height={16} width={16} />,
   <ListConversationIcon height={16} width={16} />
 );
 
 export const WidgetRequestButton = createWidgetButton(
+  <RequestUpdateIcon height={16} width={16} />,
   <RequestUpdateIcon height={16} width={16} />
 );

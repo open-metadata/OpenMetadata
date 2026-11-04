@@ -725,23 +725,30 @@ public interface ClassificationTagDAOs {
                 .withAppliedBy(r.getString("appliedBy"))
                 .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
-        // json is null when the tag/term was deleted (orphan tag_usage row); keep the label as-is.
+        String json = r.getString("json");
+        if (json == null) {
+          // An orphaned tag_usage row: its tag or glossary term no longer exists. Return the label
+          // unenriched so one bad row does not fail the whole read, and log it so it can be found.
+          TAG_USAGE_LOG.warn(
+              "Orphaned tag_usage row: {} tag '{}' on target '{}' has no tag or glossary term."
+                  + " Returning the label without enrichment.",
+              source,
+              label.getTagFQN(),
+              r.getString("targetFQNHash"));
+          return Pair.of(r.getString("targetFQNHash"), label);
+        }
         if (source == TagLabel.TagSource.CLASSIFICATION) {
-          Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
-          if (tag != null) {
-            label.setName(tag.getName());
-            label.setDisplayName(tag.getDisplayName());
-            label.setDescription(tag.getDescription());
-            label.setStyle(tag.getStyle());
-          }
+          Tag tag = JsonUtils.readValue(json, Tag.class);
+          label.setName(tag.getName());
+          label.setDisplayName(tag.getDisplayName());
+          label.setDescription(tag.getDescription());
+          label.setStyle(tag.getStyle());
         } else if (source == TagLabel.TagSource.GLOSSARY) {
-          GlossaryTerm glossaryTerm = JsonUtils.readValue(r.getString("json"), GlossaryTerm.class);
-          if (glossaryTerm != null) {
-            label.setName(glossaryTerm.getName());
-            label.setDisplayName(glossaryTerm.getDisplayName());
-            label.setDescription(glossaryTerm.getDescription());
-            label.setStyle(glossaryTerm.getStyle());
-          }
+          GlossaryTerm glossaryTerm = JsonUtils.readValue(json, GlossaryTerm.class);
+          label.setName(glossaryTerm.getName());
+          label.setDisplayName(glossaryTerm.getDisplayName());
+          label.setDescription(glossaryTerm.getDescription());
+          label.setStyle(glossaryTerm.getStyle());
         } else {
           throw new IllegalArgumentException("Invalid source type " + source);
         }

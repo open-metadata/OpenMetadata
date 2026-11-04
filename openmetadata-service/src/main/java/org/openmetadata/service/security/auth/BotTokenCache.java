@@ -3,7 +3,6 @@ package org.openmetadata.service.security.auth;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.util.Set;
-import java.util.function.Supplier;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
@@ -15,12 +14,22 @@ import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FreshReadScope;
 
+/**
+ * Reads a bot's stored JWT for server-side callers. It caches nothing; the name stays because other
+ * distributions call it. Request authentication checks bot tokens through {@link
+ * org.openmetadata.service.security.credentials.Credentials#verifier()}.
+ */
 public final class BotTokenCache {
   public static final String EMPTY_STRING = "";
 
   private BotTokenCache() {}
 
+  /**
+   * The bot's stored JWT, decrypted: {@link #EMPTY_STRING} when the bot has none, null when it
+   * cannot be read.
+   */
   public static String getToken(String botName) {
     try {
       return loadTokens(botName).stream().findFirst().orElse(EMPTY_STRING);
@@ -29,33 +38,10 @@ public final class BotTokenCache {
     }
   }
 
-  public static boolean isTokenValid(String botName, String presentedToken) {
-    return CredentialTokenState.fromCacheBundle()
-        .isTokenValid(
-            CredentialTokenState.Kind.BOT, botName, presentedToken, () -> loadTokens(botName));
-  }
-
-  public static <T> T mutateToken(String botName, Supplier<T> mutation) {
-    return CredentialTokenState.fromCacheBundle()
-        .mutate(CredentialTokenState.Kind.BOT, botName, mutation, () -> loadTokens(botName));
-  }
-
-  public static void invalidateToken(String botName) {
-    CredentialTokenState.fromCacheBundle().invalidate(CredentialTokenState.Kind.BOT, botName);
-  }
-
-  public static Runnable denyToken(String botName) {
-    return CredentialTokenState.fromCacheBundle()
-        .denyUntilReload(CredentialTokenState.Kind.BOT, botName, () -> loadTokens(botName));
-  }
-
-  public static void reloadToken(String botName) {
-    CredentialTokenState.fromCacheBundle()
-        .reload(CredentialTokenState.Kind.BOT, botName, () -> loadTokens(botName));
-  }
-
   private static Set<String> loadTokens(String botName) {
-    try {
+    // Fresh read on any thread, also those PerRequestContextCleanupFilter does not wrap: a bot user
+    // left in the request cache would bring a revoked token back.
+    try (FreshReadScope.Handle freshRead = FreshReadScope.enter()) {
       return loadExistingTokens(botName);
     } catch (EntityNotFoundException ignored) {
       return Set.of();

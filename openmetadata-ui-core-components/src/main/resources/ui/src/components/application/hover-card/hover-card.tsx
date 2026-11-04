@@ -19,7 +19,10 @@ import {
   useFocusWithin,
   useHover,
 } from 'react-aria';
-import { Popover as AriaPopover } from 'react-aria-components';
+import {
+  OverlayArrow as AriaOverlayArrow,
+  Popover as AriaPopover,
+} from 'react-aria-components';
 import { cx } from '@/utils/cx';
 
 export interface HoverCardProps {
@@ -34,6 +37,10 @@ export interface HoverCardProps {
   /** Milliseconds before the card closes, giving the pointer time to move into it. @default 200 */
   closeDelay?: number;
   isDisabled?: boolean;
+  /** Distance in px between the trigger and the card. @default 8 */
+  offset?: number;
+  /** Whether to show an arrow pointing toward the trigger. @default false */
+  arrow?: boolean;
   /** Classes for the card surface. */
   className?: string;
 }
@@ -45,6 +52,8 @@ export const HoverCard = ({
   openDelay = 300,
   closeDelay = 200,
   isDisabled,
+  offset = 8,
+  arrow = false,
   className,
 }: HoverCardProps) => {
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -92,6 +101,12 @@ export const HoverCard = ({
     onHoverStart: () => schedule(true),
     onHoverEnd: () => schedule(false),
   });
+  // Focus moving from the trigger into the card (e.g. to a link inside it) must
+  // keep the card open; otherwise the trigger's blur closes it under the user.
+  const { focusWithinProps: cardFocusWithinProps } = useFocusWithin({
+    isDisabled,
+    onFocusWithinChange: (isFocused) => schedule(isFocused),
+  });
   // Only keyboard focus opens the card; a mouse click that focuses the trigger
   // is already covered by hover.
   const { focusWithinProps } = useFocusWithin({
@@ -108,7 +123,9 @@ export const HoverCard = ({
   return (
     <>
       <span
-        className="tw:inline-flex tw:max-w-full"
+        // min-w-0: in a flex row the trigger can shrink, so a truncating
+        // child (an entity link) ellipsizes instead of holding the row open.
+        className="tw:inline-flex tw:min-w-0 tw:max-w-full"
         ref={triggerRef}
         {...mergeProps(triggerHoverProps, focusWithinProps)}>
         {children}
@@ -116,12 +133,24 @@ export const HoverCard = ({
       <AriaPopover
         isNonModal
         isOpen={isOpen && !isDisabled}
-        offset={8}
+        offset={offset}
         placement={placement}
         triggerRef={triggerRef}
         onOpenChange={setIsOpen}>
+        {arrow && (
+          <AriaOverlayArrow>
+            <svg
+              // Shifted 1px into the card so it covers the card's outline instead of sitting on it.
+              className="tw:block tw:fill-bg-overlay-surface tw:drop-shadow-sm tw:in-placement-left:-translate-x-px tw:in-placement-left:-rotate-90 tw:in-placement-right:translate-x-px tw:in-placement-right:rotate-90 tw:in-placement-top:-translate-y-px tw:in-placement-top:rotate-0 tw:in-placement-bottom:translate-y-px tw:in-placement-bottom:rotate-180"
+              height={20}
+              viewBox="0 0 100 100"
+              width={20}>
+              <path d="M0,0 L35.858,35.858 Q50,50 64.142,35.858 L100,0 Z" />
+            </svg>
+          </AriaOverlayArrow>
+        )}
         <div
-          {...cardHoverProps}
+          {...mergeProps(cardHoverProps, cardFocusWithinProps)}
           className={cx(
             'tw:rounded-xl tw:bg-overlay-surface tw:p-4 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
             className

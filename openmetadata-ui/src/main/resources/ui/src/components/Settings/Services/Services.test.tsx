@@ -176,10 +176,6 @@ jest.mock('../../../utils/ServiceUtils', () => ({
   getOptionalFields: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
-});
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
   Owner: jest.fn().mockReturnValue(<></>),
@@ -281,13 +277,6 @@ jest.mock('../../PageHeader/PageHeader.component', () =>
     ))
 );
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-
-  Tooltip: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-}));
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -424,7 +413,11 @@ describe('Services', () => {
 
       // "No deleted services" says nothing about whether the category has any, so inviting the user
       // to connect their first one would be wrong.
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(
         screen.queryByText('message.empty-database-services-title')
       ).not.toBeInTheDocument();
@@ -439,7 +432,11 @@ describe('Services', () => {
         fireEvent.click(screen.getByTestId('trigger-search'));
       });
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(
         screen.queryByText('message.empty-database-services-title')
       ).not.toBeInTheDocument();

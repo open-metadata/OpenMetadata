@@ -14,7 +14,7 @@ import type { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import type { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../constants/Export.constants';
 import type { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -27,10 +27,9 @@ export const ExtraDatabaseSchemaDropdownOptions = (
   fqn: string,
   permission: OperationPermission,
   deleted: boolean,
-  navigate: NavigateFunction
+  navigate: NavigateFunction,
+  showModal: (data: ExportData) => void
 ) => {
-  const { showModal } = useEntityExportModalProvider();
-
   const { ViewAll, EditAll } = permission;
 
   return [

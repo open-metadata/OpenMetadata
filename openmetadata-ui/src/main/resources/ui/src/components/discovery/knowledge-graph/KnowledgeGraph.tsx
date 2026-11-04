@@ -47,7 +47,7 @@ import {
   normalizeGraphLevel,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphRelationshipRows } from '../../../utils/discovery/knowledge-graph/knowledgeGraphExport.utils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import CustomNode from './GraphElements/CustomNode';
@@ -104,23 +104,6 @@ const hasGraphFilters = (filters: KnowledgeGraphFilters) =>
     (items) => items.length > 0
   );
 
-const getGraphStatus = (
-  view: ReturnType<typeof getGraphViewState>,
-  loading: boolean,
-  mode: KnowledgeGraphMode,
-  concepts: ReturnType<typeof useKnowledgeGraphExplorer>['concepts']
-) => {
-  const metadata =
-    mode === 'ontology'
-      ? concepts
-      : { error: null, loading: false, partial: false };
-
-  return {
-    failed: view.failed || Boolean(metadata.error),
-    loading: loading || metadata.loading,
-    partial: view.partial || metadata.partial,
-  };
-};
 /** The design draws level bands only once there is a level beyond the entity itself. */
 const areBandsVisible = (showBands: boolean, level: KnowledgeGraphLevel) =>
   showBands && level > 1;
@@ -173,7 +156,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     displayData,
     presented,
     columns,
-    concepts,
     ontology,
     coverage,
     scene,
@@ -227,7 +209,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     canvas.error,
     selectedLevel
   );
-  const status = getGraphStatus(view, result.loading, mode, concepts);
+  const status = {
+    failed: view.failed,
+    loading: result.loading,
+    partial: view.partial,
+  };
   const findNode = (id: string) => {
     const group = presented.data?.nodes.find((node) =>
       node.presentation?.members?.some((member) => member.id === id)
@@ -329,7 +315,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     ]
   );
   const handleExportPng = useCallback(async () => {
-    const container = canvas.containerRef.current?.parentElement;
+    const container = canvas.container?.parentElement;
     if (!container || !canvas.ready) {
       return;
     }
@@ -352,14 +338,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [canvas.containerRef, canvas.ready]);
+  }, [canvas.container, canvas.ready]);
 
   const handleExportCsv = useCallback(async () => {
     const { unparse } = await import('papaparse');
-    downloadFile(
+    downloadCsv(
       unparse(getGraphRelationshipRows(displayData), { escapeFormulae: true }),
-      'knowledge-graph-relationships.csv',
-      'text/csv;charset=utf-8'
+      'knowledge-graph-relationships.csv'
     );
   }, [displayData]);
 
@@ -393,7 +378,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         role="region"
       />
       {view.initialLoading && (
-        <div className="knowledge-graph-loading">
+        <div className="tw:pointer-events-none tw:absolute tw:inset-0 tw:flex tw:items-center tw:justify-center">
           <Loader />
         </div>
       )}
@@ -421,7 +406,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     drawer && displayData ? (
       <KnowledgeGraphDetails
         columns={columns}
-        concepts={concepts}
         coverage={coverage}
         data={displayData}
         drawer={drawer}
@@ -458,9 +442,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       <ReflexSplitter
         className={classNames(
           'kg-stage-splitter',
-          'tw:relative tw:h-px tw:cursor-row-resize tw:border-0',
-          'tw:bg-border-secondary tw:hover:bg-border-brand',
-          'tw:[&.active]:bg-border-brand',
+          'tw:relative tw:cursor-row-resize',
           "tw:before:absolute tw:before:inset-x-0 tw:before:-inset-y-1 tw:before:content-['']"
         )}
         key="splitter"
@@ -500,7 +482,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       <div
         {...overlayProps}
         {...fullscreenAria}
-        className={classNames({ 'full-screen-knowledge-graph': isFullscreen })}
+        className={classNames({
+          // `overflow-auto` is a short-viewport safety net: once the toolbar +
+          // canvas floor + drawer min stack past the viewport, the page can
+          // still scroll to reach the drawer footer.
+          'full-screen-knowledge-graph tw:fixed tw:inset-0 tw:z-900 tw:flex tw:flex-col tw:overflow-auto tw:bg-primary tw:p-4':
+            isFullscreen,
+        })}
         ref={fullscreenRef}>
         <Card
           className={classNames('knowledge-graph-container', {
@@ -563,7 +551,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 tooltip={canvas.tooltip}
                 onExpandGroup={expandGroup}
                 onSelectionChange={setSelection}
-                onViewRelationships={(groupId) => {
+                onViewRelationships={(groupId, scope) => {
+                  if (scope) {
+                    setRelationshipScope(scope);
+                    setDrawer('relationships');
+
+                    return;
+                  }
                   const group = scene.nodes.find((node) => node.id === groupId);
                   const bundle = getGroupRelationship(group, scene.edges);
                   setRelationshipScope(

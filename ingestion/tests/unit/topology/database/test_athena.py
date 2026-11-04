@@ -1163,6 +1163,23 @@ MOCK_VIEW_NAME = "sample_view"
 MOCK_VIEW_DEFINITION = (
     f'CREATE VIEW "{MOCK_DATABASE_SCHEMA.name.root}"."{MOCK_VIEW_NAME}" AS SELECT id FROM {MOCK_TABLE_NAME}'
 )
+MOCK_HIVE_VIEW = {
+    "TableType": "VIRTUAL_VIEW",
+    "Parameters": {},
+    "ViewOriginalText": "SELECT secret_token FROM private_data",
+    "ViewExpandedText": "SELECT secret_token FROM private_data",
+}
+MOCK_SPARK_VIEW = {
+    "TableType": "VIRTUAL_VIEW",
+    "Parameters": {"spark.sql.create.version": "3.5.0"},
+    "ViewOriginalText": "SELECT secret_token FROM private_data",
+    "ViewExpandedText": "SELECT secret_token FROM private_data",
+}
+MOCK_ATHENA_VIEW = {
+    "TableType": "VIRTUAL_VIEW",
+    "Parameters": {"presto_view": "true"},
+    "ViewOriginalText": "/* Presto View: encoded */",
+}
 GLUE_TABLE_AND_VIEW = [
     {"Name": MOCK_TABLE_NAME, "TableType": "EXTERNAL_TABLE", "Parameters": {}},
     {"Name": MOCK_VIEW_NAME, "TableType": "VIRTUAL_VIEW", "Parameters": {}},
@@ -1214,16 +1231,20 @@ def bulk_tables_catalog(monkeypatch):
     return catalog
 
 
-def _inspector_for_table_and_view():
+def _inspector_for_table_and_view(partitioned_tables: set[str] | frozenset[str] = frozenset(), view_error=None):
     columns = [{"name": "id", "type": INTEGER(), "nullable": True, "default": None, "comment": None}]
     inspector = MagicMock()
     inspector.get_view_names.return_value = [MOCK_VIEW_NAME]
-    # Athena probes partitions through get_columns too; answering it with the table's columns
-    # would type the table Partitioned.
-    inspector.get_columns.side_effect = lambda *_args, only_partition_columns=False, **_kwargs: (
-        [] if only_partition_columns else columns
-    )
+
+    def get_columns(table_name, *_args, only_partition_columns=False, **_kwargs):
+        partition_column = {"name": "day", "type": INTEGER(), "nullable": True, "default": None, "comment": None}
+        if only_partition_columns:
+            return [partition_column] if table_name in partitioned_tables else []
+        return columns + ([partition_column] if table_name in partitioned_tables else [])
+
+    inspector.get_columns.side_effect = get_columns
     inspector.get_view_definition.return_value = MOCK_VIEW_DEFINITION
+    inspector.get_view_definition.side_effect = view_error
     inspector.get_table_comment.return_value = {"text": None}
     inspector.get_table_options.return_value = {}
     inspector.get_unique_constraints.return_value = []
@@ -1232,7 +1253,13 @@ def _inspector_for_table_and_view():
     return inspector
 
 
-def _ingest_tables_through_bulk_sink(include_views: bool) -> None:
+def _ingest_tables_through_bulk_sink(
+    include_views: bool,
+    glue_tables=None,
+    partitioned_tables: set[str] | frozenset[str] = frozenset(),
+    glue_view_metadata=None,
+    view_error=None,
+) -> AthenaSource:
     """Run Athena's table and view passes for one schema into the real REST sink, which flushes
     them as a single /tables/bulk request: the shape in which a duplicate FQN flips its type."""
     config = deepcopy(mock_athena_config)
@@ -1247,14 +1274,22 @@ def _ingest_tables_through_bulk_sink(include_views: bool) -> None:
         additional_client_config_arguments={"retry": 0, "retry_wait": 0},
     )
     try:
-        source, _ = _make_source_with_glue(config, GLUE_TABLE_AND_VIEW, metadata=metadata)
-        source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        source, _ = _make_source_with_glue(
+            config, GLUE_TABLE_AND_VIEW if glue_tables is None else glue_tables, metadata=metadata
+        )
+        assert source.glue_client is not None
+        if glue_view_metadata is not None:
+            source.glue_client.get_table.return_value = {"Table": glue_view_metadata}
+        source.context.get().upsert("database_schema", MOCK_DATABASE_SCHEMA.name.root)
+        source.context.get().upsert("database_service", MOCK_DATABASE_SERVICE.name.root)
+        source.context.get().upsert("database", MOCK_DATABASE.name.root)
         sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
 
         with patch.object(
-            type(source), "inspector", new_callable=PropertyMock, return_value=_inspector_for_table_and_view()
+            type(source),
+            "inspector",
+            new_callable=PropertyMock,
+            return_value=_inspector_for_table_and_view(partitioned_tables, view_error),
         ):
             for table_name_and_type in source.get_tables_name_and_type():
                 for record in source.yield_table(table_name_and_type):
@@ -1263,6 +1298,7 @@ def _ingest_tables_through_bulk_sink(include_views: bool) -> None:
         sink.close()
 
         assert source.status.failures == sink.status.failures == []
+        return source
     finally:
         metadata.close()
 
@@ -1300,3 +1336,118 @@ class TestAthenaViewsReachTheBulkPayloadOnce:
         assert all(
             table["tableType"] == TableType.View.value for table in first_run[0] if table["name"] == MOCK_VIEW_NAME
         )
+
+
+class TestAthenaPartitionedIcebergTableType:
+    @pytest.mark.parametrize(
+        ("parameters", "partitioned", "expected_type"),
+        [
+            ({"table_type": "ICEBERG"}, False, TableType.Iceberg),
+            ({"table_type": "ICEBERG"}, True, TableType.Iceberg),
+            ({}, True, TableType.Partitioned),
+        ],
+    )
+    def test_final_bulk_payload_preserves_table_type_and_partition_metadata(
+        self, bulk_tables_catalog, parameters, partitioned, expected_type
+    ):
+        glue_tables = [{"Name": MOCK_TABLE_NAME, "TableType": "EXTERNAL_TABLE", "Parameters": parameters}]
+        _ingest_tables_through_bulk_sink(
+            include_views=False,
+            glue_tables=glue_tables,
+            partitioned_tables={MOCK_TABLE_NAME} if partitioned else frozenset(),
+        )
+
+        (table,) = bulk_tables_catalog.sent_tables
+        assert table["tableType"] == expected_type.value
+        if partitioned:
+            assert table["tablePartition"]["columns"][0]["columnName"] == "day"
+        else:
+            assert table.get("tablePartition") is None
+
+
+class TestAthenaHiveViewDefinitionWarning:
+    @pytest.mark.parametrize("glue_view_metadata", [MOCK_HIVE_VIEW, MOCK_SPARK_VIEW], ids=["hive", "spark"])
+    def test_hive_view_is_emitted_without_definition_and_with_safe_fqn_warning(
+        self, bulk_tables_catalog, caplog, glue_view_metadata
+    ):
+        source = _ingest_tables_through_bulk_sink(
+            include_views=True,
+            glue_view_metadata=glue_view_metadata,
+            view_error=RuntimeError("SHOW CREATE VIEW unsupported for Hive view"),
+        )
+
+        by_name = {table["name"]: table for table in bulk_tables_catalog.sent_tables}
+        assert by_name[MOCK_VIEW_NAME]["tableType"] == TableType.View.value
+        assert by_name[MOCK_VIEW_NAME].get("schemaDefinition") is None
+        assert len(source.status.warnings) == 1
+        (warning,) = source.status.warnings
+        assert list(warning) == ["sample_athena_service.sample_db.sample_instance.sample_view"]
+        assert "SHOW CREATE VIEW" in next(iter(warning.values()))
+        assert "secret_token" not in str(warning)
+        assert "secret_token" not in caplog.text
+
+    @pytest.mark.parametrize(
+        "view_metadata",
+        [
+            MOCK_ATHENA_VIEW,
+            {
+                "TableType": "VIRTUAL_VIEW",
+                "Parameters": {},
+                "ViewOriginalText": "SELECT id FROM source_table",
+                "ViewDefinition": {"Representations": []},
+            },
+        ],
+    )
+    def test_supported_view_keeps_fetched_definition_without_warning(self, bulk_tables_catalog, view_metadata):
+        source = _ingest_tables_through_bulk_sink(include_views=True, glue_view_metadata=view_metadata)
+
+        by_name = {table["name"]: table for table in bulk_tables_catalog.sent_tables}
+        assert by_name[MOCK_VIEW_NAME]["schemaDefinition"] == MOCK_VIEW_DEFINITION
+        assert source.status.warnings == []
+
+    def test_unexpected_definition_failure_keeps_existing_semantics(self, bulk_tables_catalog):
+        source = _ingest_tables_through_bulk_sink(
+            include_views=True,
+            glue_view_metadata=MOCK_ATHENA_VIEW,
+            view_error=RuntimeError("transient query failure"),
+        )
+
+        by_name = {table["name"]: table for table in bulk_tables_catalog.sent_tables}
+        assert by_name[MOCK_VIEW_NAME].get("schemaDefinition") is None
+        assert source.status.warnings == []
+        assert source.status.failures == []
+
+    def test_glue_metadata_failure_falls_back_to_athena_definition(self):
+        source, _ = _make_source_with_glue(deepcopy(mock_athena_config), [])
+        assert source.glue_client is not None
+        source.glue_client.get_table.side_effect = RuntimeError("Glue unavailable")
+        inspector = MagicMock()
+        inspector.get_view_definition.return_value = MOCK_VIEW_DEFINITION
+
+        assert (
+            source.get_schema_definition(TableType.View, MOCK_VIEW_NAME, MOCK_DATABASE_SCHEMA.name.root, inspector)
+            == MOCK_VIEW_DEFINITION
+        )
+        assert source.status.warnings == []
+
+    def test_many_hive_views_have_bounded_warnings(self):
+        source, _ = _make_source_with_glue(deepcopy(mock_athena_config), [])
+        source.context.get().upsert("database_schema", MOCK_DATABASE_SCHEMA.name.root)
+        source.context.get().upsert("database_service", MOCK_DATABASE_SERVICE.name.root)
+        source.context.get().upsert("database", MOCK_DATABASE.name.root)
+        assert source.glue_client is not None
+        source.glue_client.get_table.return_value = {"Table": MOCK_HIVE_VIEW}
+        inspector = MagicMock()
+        inspector.get_view_definition.side_effect = RuntimeError("SHOW CREATE VIEW unsupported for Hive view")
+
+        for index in range(250):
+            assert (
+                source.get_schema_definition(
+                    TableType.View, f"hive_view_{index}", MOCK_DATABASE_SCHEMA.name.root, inspector
+                )
+                is None
+            )
+
+        assert len(source.status.warnings) == 101
+        assert list(source.status.warnings[0]) == ["sample_athena_service.sample_db.sample_instance.hive_view_0"]
+        assert "additional" in str(source.status.warnings[-1]).lower()

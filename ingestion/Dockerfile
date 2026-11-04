@@ -1,7 +1,21 @@
+ARG BASE_IMAGE=apache/airflow:3.3.2-python3.12
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.3.2-python3.12
+FROM ${BASE_IMAGE}
+
+# gRPC ships a separate CA bundle that can lag behind OS distrust updates.
+ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
 USER root
+RUN apt-get -qq update \
+  && apt-get -qq install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+COPY ingestion/airflow-constraints-3.3.2.txt /opt/openmetadata/python-tls/airflow-constraints.txt
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    /usr/local/bin/python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
+    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade /tmp/python-pip/*.whl \
+    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
+    && /usr/local/bin/python /tmp/patch_python_seeds.py /tmp/python-pip/pip-26.2.2-py3-none-any.whl \
+    && rm -rf /tmp/python-pip
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
 
@@ -103,16 +117,6 @@ COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/ex
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 
-# Refresh the interpreter-level pip before dropping privileges. The per-user
-# pip upgrade below only reaches ~/.local, leaving the base image's
-# own copy (/usr/python/lib/python3.12/site-packages, pip 25.0.1) on disk for image
-# scanners (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
-# The explicit interpreter path is required, not stylistic: as root, `pip` resolves to
-# airflow's /root/bin/pip wrapper, which exits 1 (and for non-root execs ~/.local/bin/pip),
-# and bare `python` resolves to /home/airflow/.local/bin/python. Both would miss the very
-# copy this line exists to fix.
-RUN /usr/local/bin/python -m pip install --no-cache-dir --upgrade "pip>=26.2,<27"
-
 USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
@@ -123,8 +127,10 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
-RUN pip install --upgrade "pip>=26.2,<27" "setuptools>=83"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt"
+RUN python -m pip install --no-cache-dir --upgrade "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
+    && python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
+    && pip install --upgrade "setuptools>=83"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint /opt/openmetadata/python-tls/airflow-constraints.txt
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 
@@ -185,3 +191,9 @@ RUN python -c "import MySQLdb, psycopg2"
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
+# Airflow's isolated prek environment carries another uv binary and CA bundle.
+ENV PREK_NATIVE_TLS=true
+RUN python -m pip --python /home/airflow/.local/share/uv/tools/prek/bin/python install --upgrade "uv>=0.13.4"
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    python -m pip install --no-cache-dir --upgrade "virtualenv>=21.14.12" \
+    && python /tmp/patch_python_seeds.py

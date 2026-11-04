@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import OperationalError
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
@@ -128,3 +129,40 @@ def test_the_notice_fires_once_per_run(source_class, method_name, expected_messa
 
     warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
     assert len([message for message in warnings if "resultLimit" in message]) == 1
+
+
+def _failing_engine(error=None):
+    engine = MagicMock()
+    engine.connect.side_effect = error or OperationalError("SELECT 1", {}, Exception("VIEW SERVER STATE denied"))
+    return engine
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        OperationalError("SELECT 1", {}, Exception("VIEW SERVER STATE denied")),
+        # mssql+pytds leaks these raw rather than wrapping them in a SQLAlchemyError.
+        OSError("connection reset"),
+        TimeoutError("timed out"),
+    ],
+    ids=["sqlalchemy_error", "os_error", "timeout"],
+)
+def test_yield_table_query_skips_engine_that_fails_to_connect(error):
+    """One engine's connection/query failure (e.g. a permission error) must not stop
+    lineage extraction for the other engines in an ingest-all-databases run."""
+    bound = _source(LineageSource, "yield_table_query", row_count=2, result_limit=5)
+    bound.__self__.get_engine.return_value = [_failing_engine(error), _engine_yielding(2)]
+
+    queries = list(bound())
+
+    assert len(queries) == 2
+
+
+def test_yield_table_query_does_not_swallow_a_statement_builder_bug():
+    """A bug in a source's get_sql_statement is a code bug, not an unreachable engine:
+    it must surface instead of being reported as one more skipped connection."""
+    bound = _source(LineageSource, "yield_table_query", row_count=2, result_limit=5)
+    bound.__self__.get_sql_statement.side_effect = KeyError("start_time")
+
+    with pytest.raises(KeyError):
+        list(bound())

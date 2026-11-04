@@ -12,9 +12,9 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import EntityMarkdownLink from './EntityMarkdownLink';
 
@@ -158,6 +158,49 @@ describe('EntityMarkdownLink', () => {
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', 'https://example.com');
+  });
+
+  // In AI mode a team link is `<current search>#members/teams/<fqn>`: it must
+  // follow the page's query string, not keep the one it first rendered with.
+  it('rebuilds a settings link when the page query string changes', () => {
+    const defaultGetEntityLink = mockGetEntityLink.getMockImplementation();
+    mockGetEntityLink.mockImplementation(
+      (_type: string, fqn: string) =>
+        `${globalThis.location.search}#members/teams/${fqn}`
+    );
+    let navigate: ReturnType<typeof useNavigate> = jest.fn();
+    const NavigateProbe = () => {
+      navigate = useNavigate();
+
+      return null;
+    };
+    globalThis.history.pushState({}, '', '/table/t?q=1');
+
+    renderWithRouter(
+      <>
+        <NavigateProbe />
+        <EntityMarkdownLink href="#team/Engineering">
+          Engineering
+        </EntityMarkdownLink>
+      </>
+    );
+
+    expect(screen.getByText('Engineering')).toHaveAttribute(
+      'href',
+      '/table/t?q=1#members/teams/Engineering'
+    );
+
+    act(() => navigate('/table/t?q=2'));
+
+    expect(screen.getByText('Engineering')).toHaveAttribute(
+      'href',
+      '/table/t?q=2#members/teams/Engineering'
+    );
+
+    if (defaultGetEntityLink) {
+      mockGetEntityLink.mockImplementation(defaultGetEntityLink);
+    }
+    globalThis.history.pushState({}, '', '/');
   });
 
   it('should render entity link for table entity format', () => {

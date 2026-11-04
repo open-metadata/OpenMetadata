@@ -4,6 +4,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.getClaimAsList;
+import static org.openmetadata.service.security.SecurityUtil.isEmailRegistrationDomainAllowed;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 import static org.openmetadata.service.security.SecurityUtil.trustedRedirects;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
@@ -37,7 +39,6 @@ import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
-import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.AuthenticationErrorResponse;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.AuthenticationResponse;
@@ -78,6 +79,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -92,6 +94,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
@@ -150,6 +153,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String LOGOUT_PATH = "/logout";
 
   static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
+  static final String AUTHORIZATION_CODE_REQUIRED = "Authorization code is required";
 
   /** The browser renews a minute before its token expires; a shorter-lived one would loop. */
   private static final long BROWSER_RENEWAL_MARGIN_MILLIS = TimeUnit.SECONDS.toMillis(60);
@@ -610,10 +614,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Optional state validation
       validateStateIfRequired(pendingSession, resp, successResponse);
 
-      // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
-
-      // Validations
+      requireAuthorizationCode(pendingSession, credentials);
       validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
 
       // pac4j 6 re-parses the serialized id token on every toIdToken() call; parse once and reuse.
@@ -633,11 +635,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       validateNonceIfRequired(pendingSession, idTokenClaims);
 
       // The MCP callback completes its own OAuth exchange off the provider-issued id_token, which
-      // is only available here. Hand the validated credentials over on the session for it to pick
-      // up. Scoped to the MCP flow so a normal web login never parks provider tokens in a session.
+      // is only available here. Hand the validated credentials over on this request, so the MCP
+      // callback only ever reads tokens this callback validated; a session would outlive it.
       if (isMcpRedirectUri(pendingSession.getRedirectUri())) {
-        req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
-        LOG.debug("Stored OIDC credentials on session for MCP callback handoff");
+        req.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+        LOG.debug("Stored OIDC credentials on the request for MCP callback handoff");
       }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
@@ -646,8 +648,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
       User user =
           identity.emailFirstFlow()
-              ? getOrCreateEmailFirstOidcUser(identity.email(), identity.displayName(), claims)
-              : getOrCreateOidcUser(identity.userName(), identity.email(), claims);
+              ? getOrCreateEmailFirstOidcUser(identity, claims)
+              : getOrCreateOidcUser(identity, claims);
       syncRolesFromProvider(user, claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -914,26 +916,36 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new HashMap<>(authParams);
   }
 
+  /**
+   * A callback carries an authorization code for every configured response type: the client asks to
+   * be redirected back in query mode, where providers return one.
+   * ADR:2026-10-30-confidential-oidc-callback-takes-only-the-code
+   */
+  private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
+    if (credentials.getCode() == null) {
+      LOG.warn(
+          "Rejecting OIDC callback without an authorization code for session {}",
+          SessionService.truncateId(session.getId()));
+      throw new IllegalArgumentException(AUTHORIZATION_CODE_REQUIRED);
+    }
+  }
+
   private void validateAndSendTokenRequest(
       UserSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws URISyntaxException {
-    if (oidcCredentials.getCode() != null) {
-      LOG.debug(
-          "Initiating Token Request - Session: {}, redirect_uri: {}",
-          session.getId(),
-          computedCallbackUrl);
-      CodeVerifier verifier =
-          nullOrEmpty(session.getPkceVerifier())
-              ? null
-              : new CodeVerifier(session.getPkceVerifier());
-      TokenRequest request =
-          createTokenRequest(
-              client.getConfiguration(),
-              clientAuthentication,
-              new AuthorizationCodeGrant(
-                  oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
-      executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
-    }
+    LOG.debug(
+        "Initiating Token Request - Session: {}, redirect_uri: {}",
+        session.getId(),
+        computedCallbackUrl);
+    CodeVerifier verifier =
+        nullOrEmpty(session.getPkceVerifier()) ? null : new CodeVerifier(session.getPkceVerifier());
+    TokenRequest request =
+        createTokenRequest(
+            client.getConfiguration(),
+            clientAuthentication,
+            new AuthorizationCodeGrant(
+                oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
+    executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
   }
 
   private void validateStateIfRequired(
@@ -977,27 +989,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return configuration.getOpMetadataResolver().load();
   }
 
+  /**
+   * Keeps only the authorization code from the callback redirect; the ID token is the one the token
+   * endpoint returns for that code. ADR:2026-10-30-confidential-oidc-callback-takes-only-the-code
+   */
   static OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();
-    // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
     if (code != null) {
       // pac4j 6 stores the code as a String; toAuthorizationCode() reconstructs the nimbus type.
       credentials.setCode(code.getValue());
     }
-    // get ID token
-    JWT idToken = successResponse.getIDToken();
-    if (idToken != null) {
-      // pac4j 6 stores the id token as a serialized String; toIdToken() re-parses it to a JWT.
-      credentials.setIdToken(idToken.serialize());
-    }
-    // get access token
-    AccessToken accessToken = successResponse.getAccessToken();
-    if (accessToken != null) {
-      // pac4j 6 setAccessToken takes a Map; setAccessTokenObject keeps the nimbus AccessToken.
-      credentials.setAccessTokenObject(accessToken);
-    }
-
     return credentials;
   }
 
@@ -1154,8 +1156,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         response, validatedRedirectUri, accessToken, user.getEmail(), user.getName());
   }
 
-  private OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(
-      Map<String, Object> claims) {
+  /** Public so the MCP callback resolves the same identity as the web login it wraps. */
+  public OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(Map<String, Object> claims) {
     return new OidcIdentityResolver(
             authenticationConfiguration,
             authorizerConfiguration,
@@ -1166,33 +1168,47 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private User getOrCreateEmailFirstOidcUser(
-      String email, String displayName, Map<String, Object> claims) {
+      OidcIdentityResolver.ResolvedOidcIdentity identity, Map<String, Object> claims) {
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
     return EmailFirstUserProvisioner.forProvider(
             "OIDC",
             authorizerConfiguration,
             Entity.getUserRepository(),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
+            user -> applyTeamsAndPicture(user, teamsFromClaim, identity.picture()),
+            user -> applyTeamsAndPicture(user, teamsFromClaim, identity.picture()))
         .getOrCreate(
-            email,
-            displayName,
+            identity.email(),
+            identity.displayName(),
             SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)),
             Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup()));
+  }
+
+  private static boolean applyTeamsAndPicture(User user, List<String> teams, URI picture) {
+    boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teams);
+    boolean pictureChanged = UserProfileClaims.syncPicture(user, picture);
+    return teamsAssigned || pictureChanged;
+  }
+
+  private static boolean applyDisplayNameAndPicture(
+      User user, OidcIdentityResolver.ResolvedOidcIdentity identity) {
+    boolean displayNameFilled = UserProfileClaims.fillDisplayName(user, identity.displayName());
+    boolean pictureChanged = UserProfileClaims.syncPicture(user, identity.picture());
+    return displayNameFilled || pictureChanged;
   }
 
   private boolean isUserAdmin(String email, String username) {
     return UserUtil.isConfiguredAdmin(authorizerConfiguration, email, username);
   }
 
-  private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
+  private User getOrCreateOidcUser(
+      OidcIdentityResolver.ResolvedOidcIdentity identity, Map<String, Object> claims) {
+    String userName = identity.userName();
+    String email = identity.email();
     // Extract teams from claims if configured (supports array claims like groups)
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
 
     try {
-      // Fetch user with teams relationship loaded to preserve existing team memberships
-      User user =
-          Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
+      User user = Entity.getUserRepository().getUserByNameForAuthUpdate(userName);
 
       boolean shouldBeAdmin = isUserAdmin(email, userName);
       boolean needsUpdate = false;
@@ -1212,7 +1228,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
-      needsUpdate = needsUpdate || teamsAssigned;
+      boolean profileChanged = applyDisplayNameAndPicture(user, identity);
+      needsUpdate = needsUpdate || teamsAssigned || profileChanged;
 
       if (needsUpdate) {
         UserUtil.addOrUpdateUser(user);
@@ -1230,11 +1247,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String domain = email.split("@")[1];
 
       // Validate email domain against allowed registration domains
-      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
-      if (allowedDomains != null
-          && !allowedDomains.isEmpty()
-          && !allowedDomains.contains("all")
-          && allowedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      if (!isEmailRegistrationDomainAllowed(
+          email, authorizerConfiguration.getAllowedEmailRegistrationDomains())) {
         LOG.warn(
             "SECURITY: Blocked OAuth signup for disallowed domain: {} (user: {})", domain, email);
         throw new AuthenticationException("Email domain not allowed for self-signup: " + domain);
@@ -1245,6 +1259,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
                   userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
               .withIsAdmin(isAdmin)
               .withIsEmailVerified(true);
+      applyDisplayNameAndPicture(newUser, identity);
 
       // Assign default role if configured
       String defaultRoleName = authorizerConfiguration.getDefaultOAuthRole();
@@ -1264,9 +1279,47 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
 
-      return UserUtil.addOrUpdateUser(newUser);
+      return createOrAdoptConcurrentlyCreatedUser(
+          () -> UserUtil.addOrUpdateUser(newUser),
+          () -> Entity.getUserRepository().getUserByNameForAuthUpdate(userName),
+          email);
     }
     throw new AuthenticationException("User not found and self-signup is disabled");
+  }
+
+  /**
+   * Two first sign-ins of one new user race to create the account, and the loser gets a uniqueness
+   * conflict. It signs in to the account the winner just created, but only when that account
+   * carries the same email: a conflict with a differently addressed account is a different person.
+   */
+  static User createOrAdoptConcurrentlyCreatedUser(
+      Supplier<User> create, Supplier<User> loadByName, String email) {
+    try {
+      return create.get();
+    } catch (UserCreationException conflict) {
+      return adoptConcurrentlyCreatedUser(conflict, loadByName, email);
+    }
+  }
+
+  private static User adoptConcurrentlyCreatedUser(
+      UserCreationException conflict, Supplier<User> loadByName, String email) {
+    if (!UserUtil.isRetryableUserCreationConflict(conflict)) {
+      throw conflict;
+    }
+    User concurrentlyCreated = loadOrRethrow(loadByName, conflict);
+    if (!sameIdentifier(email, concurrentlyCreated.getEmail())) {
+      throw conflict;
+    }
+    LOG.debug("Signing in to the account a concurrent first login created for {}", email);
+    return concurrentlyCreated;
+  }
+
+  private static User loadOrRethrow(Supplier<User> loadByName, UserCreationException conflict) {
+    try {
+      return loadByName.get();
+    } catch (EntityNotFoundException notCreatedUnderThisName) {
+      throw conflict;
+    }
   }
 
   /**

@@ -641,9 +641,10 @@ test('Alert operations for a user with and without permissions', async ({
         // Check if option is selected
         await test
           .expect(
-            userWithPermissionsPage.locator(
-              `[data-testid="fqn-list-select"] [title="${table1Fqn}"]`
-            )
+            userWithPermissionsPage
+              .getByTestId('fqn-list-select')
+              .getByTestId('autocomplete-selected-item')
+              .filter({ hasText: table1Fqn })
           )
           .toBeAttached();
 

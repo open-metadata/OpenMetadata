@@ -172,6 +172,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+// LocalUtil and LocalUtilClassBase import each other; mocking the latter keeps
+// requireActual below from reading LocalUtil's exports mid-initialization.
+jest.mock('../../../../utils/i18next/LocalUtilClassBase');
+
 jest.mock('../../../../utils/i18next/LocalUtil', () => ({
   ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
   Transi18next: ({
@@ -533,6 +537,35 @@ describe('IncidentGroupsView', () => {
       sortType: 'asc',
       page: 1,
     });
+  });
+
+  it('should keep the ordering in the URL', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('sort-by-severity'));
+    });
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'sortField=severity&sortType=desc'
+    );
+  });
+
+  it('should open on the ordering a link carries', async () => {
+    await act(async () => {
+      renderView(
+        '/observability/incident-manager?sortField=lastSeen&sortType=asc'
+      );
+    });
+
+    expect(screen.getByTestId('table-sort-type')).toHaveTextContent(
+      'lastSeen:asc'
+    );
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sortField: 'lastSeen', sortType: 'asc' })
+    );
   });
 
   it('should order by another field from the first page', async () => {

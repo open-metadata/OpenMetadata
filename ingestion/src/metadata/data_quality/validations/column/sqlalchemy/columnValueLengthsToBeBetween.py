@@ -13,7 +13,6 @@
 Validator for column value length to be between test case
 """
 
-import math
 from typing import cast
 
 from sqlalchemy import Column
@@ -21,6 +20,9 @@ from sqlalchemy import Column
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
+)
+from metadata.data_quality.validations.checkers.between_bounds_checker import (
+    is_unbounded,
 )
 from metadata.data_quality.validations.column.base.columnValueLengthsToBeBetween import (
     BaseColumnValueLengthsToBeBetweenValidator,
@@ -87,20 +89,13 @@ class ColumnValueLengthsToBeBetweenValidator(
             NotImplementedError:
         """
         row_count = self._compute_row_count(self.runner, column)
-        filters = []
-        if min_bound > -math.inf:
-            filters.append((LenFn(column), "lt", min_bound))
-        if max_bound < math.inf:
-            filters.append((LenFn(column), "gt", max_bound))
-        failed_rows = self._compute_row_count_between(
-            self.runner,
+        failed_rows = self._count_rows_outside(
+            cast(QueryRunner, self.runner),  # noqa: TC006
             column,
-            {
-                "filters": filters,
-                "or_filter": True,
-            },
+            LenFn(column),
+            min_bound,
+            max_bound,
         )
-
         return row_count, failed_rows
 
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
@@ -166,9 +161,9 @@ class ColumnValueLengthsToBeBetweenValidator(
         min_bound = self.get_min_bound(self.MIN_BOUND)
         max_bound = self.get_max_bound(self.MAX_BOUND)
         filters = []
-        if min_bound is not None and min_bound > float("-inf"):
+        if not is_unbounded(min_bound):
             filters.append((LenFn(self.get_column()), "lt", min_bound))
-        if max_bound is not None and max_bound < float("inf"):
+        if not is_unbounded(max_bound):
             filters.append((LenFn(self.get_column()), "gt", max_bound))
         return {
             "filters": filters,

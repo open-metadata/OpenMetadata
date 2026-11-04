@@ -375,10 +375,11 @@ export const DIMMED_EDGE_LABEL_OPACITY = 0.16;
 
 export const NODE_FILL_DEFAULT = 'var(--tw-color-bg-primary)';
 export const NODE_BORDER_COLOR = BORDER_SECONDARY_TOKEN;
-export const NODE_SELECTED_STROKE = 'var(--tw-color-border-brand)';
+export const NODE_SELECTED_STROKE = 'var(--tw-border-color-brand)';
 export const NODE_SELECTED_LINE_WIDTH = 2.5;
 export const NODE_SELECTED_HALO_LINE_WIDTH = 4;
-export const NODE_SELECTED_HALO_FILL = 'var(--tw-color-bg-brand-primary)';
+export const NODE_SELECTED_HALO_FILL =
+  'var(--tw-background-color-brand-primary)';
 export const NODE_BORDER_RADIUS = 9;
 export const NODE_PADDING_V = 9;
 export const NODE_PADDING_H = 12;
@@ -399,7 +400,7 @@ export const COMBO_COLOR_FALLBACK = '#94a3b8';
 export const DATA_MODE_ASSET_COUNT_BADGE_BG =
   'var(--tw-color-bg-primary-solid)';
 export const DATA_MODE_LOAD_MORE_BADGE_BG = 'var(--tw-color-bg-brand-solid)';
-export const NODE_LABEL_FONT_SIZE = 11;
+export const NODE_LABEL_FONT_SIZE = 12;
 export const NODE_LABEL_FONT_WEIGHT = 600;
 export const NODE_SHADOW_COLOR = BORDER_SECONDARY_TOKEN;
 export const NODE_SHADOW_BLUR = 2;
@@ -570,6 +571,18 @@ export const METRIC_NODE_STROKE_FALLBACK = BORDER_PRIMARY_FALLBACK;
 export const METRIC_NODE_MUTED_COLOR = 'var(--tw-color-text-tertiary)';
 export const METRIC_NODE_MUTED_COLOR_FALLBACK = '#535862';
 export const METRIC_NODE_LINE_DASH = [4, 3];
+// A proposed node is a term an AI draft would create: purple and dashed until
+// someone approves it, after which it reloads as an ordinary concept.
+export const PROPOSED_NODE_FILL = 'var(--tw-color-utility-purple-50)';
+export const PROPOSED_NODE_FILL_FALLBACK = '#F4F3FF';
+export const PROPOSED_NODE_STROKE = 'var(--tw-color-utility-purple-400)';
+export const PROPOSED_NODE_STROKE_FALLBACK = '#9B8AFB';
+export const PROPOSED_NODE_SELECTED_STROKE =
+  'var(--tw-color-utility-purple-500)';
+export const PROPOSED_NODE_SELECTED_STROKE_FALLBACK = '#7A5AF8';
+export const PROPOSED_NODE_LABEL_COLOR = 'var(--tw-color-utility-purple-700)';
+export const PROPOSED_NODE_LABEL_COLOR_FALLBACK = '#5925DC';
+export const PROPOSED_NODE_LINE_DASH = [4, 4];
 export const NODE_SHADOW_COLOR_FALLBACK = 'rgba(0,0,0,0.12)';
 export const LABEL_TEXT_ALIGN_LEFT = 'left';
 

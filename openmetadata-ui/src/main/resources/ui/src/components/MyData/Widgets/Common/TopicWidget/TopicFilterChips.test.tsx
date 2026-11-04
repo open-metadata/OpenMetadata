@@ -76,6 +76,19 @@ describe('TopicFilterChips', () => {
     expect(screen.queryByTestId('topic-filter-all')).toBeNull();
   });
 
+  it('sets the label and count at 12px, the count tucked against its label', () => {
+    renderChips();
+
+    const count = screen.getByTestId('domains-filter-all-count');
+
+    expect(count.parentElement).toHaveClass('tw:text-xs', 'tw:gap-1');
+    expect(count.parentElement).toHaveTextContent('All30');
+    expect(screen.getByTestId('domains-filter-all')).toHaveClass(
+      'tw:px-2.5',
+      'tw:py-1'
+    );
+  });
+
   // `role="radio"` promises arrow-key movement; the hand-rolled buttons only
   // tabbed. react-aria's group moves focus between the options.
   it('moves focus between chips with the arrow keys', async () => {

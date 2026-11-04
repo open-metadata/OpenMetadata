@@ -105,7 +105,7 @@ const controlPoint = (
 export const routeGraphEdges = (
   sourceNodes: NodeData[],
   sourceEdges: EdgeData[]
-) => {
+): { nodes: NodeData[]; edges: EdgeData[] } => {
   const nodes = sourceNodes.map((node) => ({
     ...node,
     style: { ...node.style, ports: [...CARD_PORTS] },

@@ -177,6 +177,44 @@ public class SearchListFilterTest {
   }
 
   @Test
+  void testNavbarDomainMatchesTheDomainAndItsSubDomains() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "Sales");
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM, "false");
+
+    String actual = searchListFilter.getCondition(Entity.PAGE);
+
+    assertTrue(actual.contains("{\"term\":{\"domains.fullyQualifiedName\":\"Sales\"}}"));
+    assertTrue(actual.contains("{\"prefix\":{\"domains.fullyQualifiedName\":\"Sales.\"}}"));
+    assertFalse(actual.contains("must_not"));
+  }
+
+  @Test
+  void testNavbarDomainCanKeepItemsWithNoDomain() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "Sales");
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM, "true");
+
+    String actual = searchListFilter.getCondition(Entity.PAGE);
+
+    assertTrue(
+        actual.contains(
+            "{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"domains.fullyQualifiedName\"}}}}"));
+  }
+
+  @Test
+  void testExplicitDomainTakesPrecedenceOverNavbarDomain() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("domains", "Finance");
+    searchListFilter.addQueryParam(SearchListFilter.NAV_DOMAIN_PARAM, "Sales");
+
+    String actual = searchListFilter.getCondition(Entity.PAGE);
+
+    assertTrue(actual.contains("Finance"));
+    assertFalse(actual.contains("Sales"));
+  }
+
+  @Test
   void testContextMemoryFiltersBuildPinnedAndAssetClauses() {
     SearchListFilter searchListFilter = new SearchListFilter(Include.ALL);
     searchListFilter.addQueryParam("pinned", true);

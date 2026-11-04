@@ -20,7 +20,6 @@ import {
 } from '@testing-library/react';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { DataType } from '../../generated/type/ontologyAttribute';
 import { addGlossaryTerm } from '../../rest/glossaryAPI';
 import OntologyConceptDraftInspector from './OntologyConceptDraftInspector';
 import { OntologyNode } from './OntologyExplorer.interface';
@@ -169,9 +168,7 @@ describe('OntologyConceptDraftInspector', () => {
     expect(onCreated).toHaveBeenCalledWith(CREATED_CONCEPT);
   });
 
-  it('creates the concept with properties authored in the draft panel', async () => {
-    (addGlossaryTerm as jest.Mock).mockResolvedValue(CREATED_CONCEPT);
-
+  it('keeps ontology property authoring out of glossary drafts', () => {
     render(
       <OntologyConceptDraftInspector
         isLeaseOwned
@@ -183,44 +180,7 @@ describe('OntologyConceptDraftInspector', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('add-attribute'));
-    fireEvent.change(
-      within(screen.getByTestId('attribute-name-input')).getByRole('textbox'),
-      { target: { value: 'subscriptionId' } }
-    );
-    fireEvent.click(screen.getByTestId('attribute-identifier-toggle'));
-    fireEvent.click(screen.getByTestId('save-attribute'));
-
-    expect(
-      screen.getByTestId('ontology-attribute-subscriptionId')
-    ).toBeVisible();
-
-    fireEvent.change(
-      within(screen.getByTestId('ontology-draft-name-field')).getByRole(
-        'textbox'
-      ),
-      { target: { value: CREATED_CONCEPT.name } }
-    );
-    fireEvent.change(
-      within(screen.getByTestId('ontology-draft-description-field')).getByRole(
-        'textbox'
-      ),
-      { target: { value: CREATED_CONCEPT.description } }
-    );
-    fireEvent.click(screen.getByTestId('ontology-draft-save'));
-
-    await waitFor(() =>
-      expect(addGlossaryTerm).toHaveBeenCalledWith(
-        expect.objectContaining({
-          attributes: [
-            expect.objectContaining({
-              dataType: DataType.String,
-              isIdentifier: true,
-              name: 'subscriptionId',
-            }),
-          ],
-        })
-      )
-    );
+    expect(screen.queryByTestId('add-attribute')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-draft-save')).toBeInTheDocument();
   });
 });

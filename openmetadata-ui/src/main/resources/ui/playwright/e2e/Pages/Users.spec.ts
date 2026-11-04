@@ -1254,15 +1254,16 @@ test.describe('User Profile Persona Interactions', () => {
       );
 
       await adminPage
-        .locator('.default-persona-text [data-testid="tag-chip"]')
+        .getByTestId('default-persona-chip')
+        .getByTestId('tag-chip')
         .waitFor();
     });
 
     // Test clicking on default persona chip to navigate to persona page
     await test.step('Navigate to persona page by clicking on default persona chip', async () => {
       const defaultPersonaChip = adminPage
-        .locator('.default-persona-text [data-testid="tag-chip"]')
-        .first();
+        .getByTestId('default-persona-chip')
+        .getByTestId('tag-chip');
       const personaLink = defaultPersonaChip.locator('a').first();
 
       // Verify the persona link has text content

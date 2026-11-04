@@ -27,9 +27,12 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 
 /**
  * Builds and merges structured change-preview data stored under the {@code proposedChanges} key in
@@ -240,8 +243,17 @@ public final class ChangePreviewUtils {
       // proposedChanges carried over from a prior revision's task.
       Map<String, FieldDiff> priorMap =
           hasNoChanges(pending) ? extractProposedChanges(existingPayload) : new LinkedHashMap<>();
+      if (entity instanceof McpServer) {
+        changeDescription = JsonUtils.deepCopy(changeDescription, ChangeDescription.class);
+        McpServerMasker.maskChangeDescription(changeDescription);
+      }
       Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
       Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
+      if (hasNoChanges(pending)) {
+        // An approval workflow moves the entity's status itself (e.g. to In Review right before it
+        // opens the task), so a status change read off the entity is the workflow's own write.
+        merged.remove(Entity.FIELD_ENTITY_STATUS);
+      }
       if (LOG.isDebugEnabled()) {
         LOG.debug(
             "[ChangePreview] entity='{}' v={} cdAdded={} cdDeleted={} cdUpdated={} priorPayload={} newDiff={} merged={}",

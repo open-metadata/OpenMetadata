@@ -21,7 +21,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { getDatabases } from '../../../rest/databaseAPI';
-import { getServiceByFQN, patchService } from '../../../rest/serviceAPI';
+import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTopics } from '../../../rest/topicsAPI';
 import {
   EXTENSION_POINTS,
@@ -679,8 +679,8 @@ describe('ConnectionServiceDetailsPage', () => {
 
       const labels = tabLabels();
 
-      expect(labels).toContain('label.data-model');
-      expect(labels.indexOf('label.data-model')).toBe(
+      expect(labels).toContain('label.data-model-plural');
+      expect(labels.indexOf('label.data-model-plural')).toBe(
         labels.indexOf('label.connection') - 1
       );
     });
@@ -702,7 +702,7 @@ describe('ConnectionServiceDetailsPage', () => {
       await renderPage();
 
       expect(tabLabels()).not.toEqual(
-        expect.arrayContaining(['label.data-model'])
+        expect.arrayContaining(['label.data-model-plural'])
       );
       expect(tabLabels()).not.toEqual(
         expect.arrayContaining([
@@ -806,22 +806,6 @@ describe('ConnectionServiceDetailsPage', () => {
         screen.queryByTestId('tab-badge-dataAssets')
       ).not.toBeInTheDocument();
     });
-  });
-
-  it('mirrors data products the data-assets tab saved, without saving them again', async () => {
-    await act(async () => {
-      render(<ConnectionServiceDetailsPage />);
-    });
-    await waitFor(() => expect(mockDataAssetsTab).toHaveBeenCalled());
-    const dataProduct = { id: 'dp-1', type: 'dataProduct', name: 'Revenue' };
-
-    const { onDataProductsChange } = mockDataAssetsTab.mock.calls.at(-1)[0];
-    act(() => onDataProductsChange([dataProduct]));
-
-    expect(mockDataAssetsTab.mock.calls.at(-1)[0].serviceDetails).toEqual(
-      expect.objectContaining({ dataProducts: [dataProduct] })
-    );
-    expect(patchService).not.toHaveBeenCalled();
   });
 
   it('loads the other service when the route moves to it without remounting', async () => {

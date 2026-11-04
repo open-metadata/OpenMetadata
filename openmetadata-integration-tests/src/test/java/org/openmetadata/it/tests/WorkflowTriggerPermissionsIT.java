@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -32,16 +35,21 @@ import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for trigger-endpoint authorization on
@@ -187,6 +195,166 @@ public class WorkflowTriggerPermissionsIT {
         response.statusCode(),
         "DataConsumer must be denied on TEST_CONNECTION without serviceName "
             + "(falls back to INGESTION_PIPELINE CREATE)");
+  }
+
+  @ParameterizedTest
+  @EnumSource(WorkflowUpdateMethod.class)
+  void test_editTestConnection_cannotRetargetStoredSecrets(
+      WorkflowUpdateMethod method, TestNamespace ns) throws Exception {
+    final WorkflowEditFixture fixture = workflowClaimedByNonServiceOwner(ns, method);
+    final CreateWorkflow edit =
+        testConnectionRequest(fixture.workflow().getName(), fixture.ownedService().getName())
+            .withDescription("Retarget connection")
+            .withStatus(WorkflowStatus.RUNNING)
+            .withResponse(new TestConnectionResult().withSteps(List.of()));
+    final TestServiceConnectionRequest request = (TestServiceConnectionRequest) edit.getRequest();
+    request.setConnection(
+        new DatabaseConnection()
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("alternate.example.net:3306")
+                    .withUsername("openmetadata_user")
+                    .withAuthType(new basicAuth().withPassword("*********"))));
+
+    final Workflow updated = editWorkflow(fixture, edit, method);
+    assertExecutionRequestUnchanged(fixture.workflow(), updated);
+    final Workflow stored = fixture.editor().workflows().get(fixture.workflow().getId().toString());
+    assertExecutionRequestUnchanged(fixture.workflow(), stored);
+    assertEquals(WorkflowStatus.RUNNING, stored.getStatus());
+    assertEquals(edit.getDescription(), stored.getDescription());
+    assertEquals(
+        JsonUtils.valueToTree(edit.getResponse()), JsonUtils.valueToTree(stored.getResponse()));
+    assertEquals(403, triggerWorkflow(stored.getId(), fixture.token()).statusCode());
+
+    final Workflow runnerWorkflow =
+        SdkClients.ingestionBotClient().workflows().getByName(stored.getFullyQualifiedName());
+    assertEquals(
+        "mysql:3306",
+        JsonUtils.valueToTree(runnerWorkflow.getRequest())
+            .at("/connection/config/hostPort")
+            .asText());
+    assertEquals(
+        "openmetadata_password",
+        JsonUtils.valueToTree(runnerWorkflow.getRequest())
+            .at("/connection/config/authType/password")
+            .asText());
+  }
+
+  @ParameterizedTest
+  @EnumSource(WorkflowUpdateMethod.class)
+  void test_editTestConnection_cannotBypassTriggerBySwitchingType(
+      WorkflowUpdateMethod method, TestNamespace ns) throws Exception {
+    final WorkflowEditFixture fixture = workflowClaimedByNonServiceOwner(ns, method);
+    final CreateWorkflow edit =
+        queryRunnerRequest(fixture.workflow().getName(), SharedEntities.get().USER3_REF)
+            .withDescription("Switch workflow type")
+            .withStatus(WorkflowStatus.RUNNING);
+
+    final Workflow updated = editWorkflow(fixture, edit, method);
+    assertExecutionRequestUnchanged(fixture.workflow(), updated);
+    final Workflow stored =
+        fixture.editor().workflows().getByName(fixture.workflow().getFullyQualifiedName());
+    assertExecutionRequestUnchanged(fixture.workflow(), stored);
+    assertEquals(edit.getDescription(), stored.getDescription());
+    assertEquals(403, triggerWorkflow(stored.getId(), fixture.token()).statusCode());
+  }
+
+  private enum WorkflowUpdateMethod {
+    PATCH_ID,
+    PATCH_NAME,
+    PUT
+  }
+
+  private record WorkflowEditFixture(
+      Workflow workflow, DatabaseService ownedService, OpenMetadataClient editor, String token) {}
+
+  private WorkflowEditFixture workflowClaimedByNonServiceOwner(
+      TestNamespace ns, WorkflowUpdateMethod method) throws Exception {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final EntityReference attacker = SharedEntities.get().USER3_REF;
+    final DatabaseService victim =
+        ns.trackRoot(
+            Entity.DATABASE_SERVICE,
+            createMysqlService(
+                admin, ns.prefix("original" + method), List.of(SharedEntities.get().USER2_REF)));
+    final DatabaseService ownedService =
+        ns.trackRoot(
+            Entity.DATABASE_SERVICE,
+            createMysqlService(admin, ns.prefix("alternate" + method), List.of(attacker)));
+    final CreateWorkflow create =
+        testConnectionRequest(ns.prefix("immutable" + method), victim.getName());
+    final TestServiceConnectionRequest request = (TestServiceConnectionRequest) create.getRequest();
+    final MysqlConnection connection =
+        (MysqlConnection) ((DatabaseConnection) request.getConnection()).getConfig();
+    connection.setAuthType(new basicAuth().withPassword("*********"));
+    final Workflow workflow = ns.trackRoot(Entity.WORKFLOW, admin.workflows().create(create));
+    final String email = "shared_user3@test.openmetadata.org";
+    final OpenMetadataClient editor = SdkClients.createClient(email, email, new String[] {});
+    final String token = tokenFor(email, new String[] {});
+    assertEquals(403, triggerWorkflow(workflow.getId(), token).statusCode());
+
+    final ArrayNode claim = JsonUtils.getObjectMapper().createArrayNode();
+    claim
+        .addObject()
+        .put("op", "add")
+        .put("path", "/owners")
+        .set("value", JsonUtils.valueToTree(List.of(attacker)));
+    final Workflow claimed = editor.workflows().patch(workflow.getId(), claim);
+    assertEquals(
+        "*********",
+        JsonUtils.valueToTree(claimed.getRequest())
+            .at("/connection/config/authType/password")
+            .asText());
+    return new WorkflowEditFixture(claimed, ownedService, editor, token);
+  }
+
+  private Workflow editWorkflow(
+      WorkflowEditFixture fixture, CreateWorkflow edit, WorkflowUpdateMethod method) {
+    if (method == WorkflowUpdateMethod.PUT) {
+      return fixture
+          .editor()
+          .getHttpClient()
+          .execute(HttpMethod.PUT, "/v1/automations/workflows", edit, Workflow.class);
+    }
+    final ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/request")
+        .set("value", JsonUtils.valueToTree(edit.getRequest()));
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/workflowType")
+        .put("value", edit.getWorkflowType().value());
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/description")
+        .put("value", edit.getDescription());
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/status")
+        .put("value", edit.getStatus().value());
+    if (edit.getResponse() != null) {
+      patch
+          .addObject()
+          .put("op", "add")
+          .put("path", "/response")
+          .set("value", JsonUtils.valueToTree(edit.getResponse()));
+    }
+    final String identifier =
+        method == WorkflowUpdateMethod.PATCH_NAME
+            ? "name/" + fixture.workflow().getFullyQualifiedName()
+            : fixture.workflow().getId().toString();
+    return fixture.editor().workflows().patch(identifier, patch);
+  }
+
+  private void assertExecutionRequestUnchanged(Workflow original, Workflow updated) {
+    assertEquals(original.getWorkflowType(), updated.getWorkflowType());
+    assertEquals(
+        JsonUtils.valueToTree(original.getRequest()), JsonUtils.valueToTree(updated.getRequest()));
   }
 
   @Test

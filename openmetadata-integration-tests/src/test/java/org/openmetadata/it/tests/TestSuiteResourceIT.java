@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -299,6 +300,45 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     TestSuite restored = getEntity(testSuite.getId().toString());
     assertNotNull(restored);
     assertFalse(restored.getDeleted());
+  }
+
+  @Test
+  void test_restoreLogicalTestSuiteKeepsDeletedTestCasesDeleted(TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Table table = createTableForBasicTestSuite(ns, "logical_restore_table");
+    final TestCase liveTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("live_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    final TestCase deletedTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("deleted_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    final TestSuite suite = createEntity(createMinimalRequest(ns));
+    addTestCasesToLogicalTestSuite(suite.getId(), List.of(liveTest.getId(), deletedTest.getId()));
+
+    client.testCases().delete(deletedTest.getId().toString());
+    deleteEntity(suite.getId().toString());
+    restoreEntity(suite.getId().toString());
+
+    final TestSuite restoredSuite = client.testSuites().get(suite.getId().toString(), "tests");
+    assertFalse(restoredSuite.getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted(),
+        "Logical suites group tests without owning their deletion state");
+    assertFalse(client.testCases().get(liveTest.getId().toString()).getDeleted());
+    assertEquals(
+        List.of(liveTest.getId()),
+        restoredSuite.getTests().stream().map(EntityReference::getId).toList());
   }
 
   @Test
@@ -726,17 +766,31 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
     TestSuite testSuite = createBasicTestSuite(createTestSuite);
 
+    final TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("basic_restore_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
     // Delete the basic test suite
     deleteBasicTestSuite(testSuite.getId());
 
     // Verify it's soft deleted
     TestSuite deletedSuite = getEntityIncludeDeleted(testSuite.getId().toString());
     assertTrue(deletedSuite.getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(testCase.getId().toString(), null, Include.ALL.value())
+            .getDeleted());
 
     // Restore it
     restoreEntity(testSuite.getId().toString());
     TestSuite restoredSuite = getEntity(testSuite.getId().toString());
     assertFalse(restoredSuite.getDeleted());
+    assertFalse(client.testCases().get(testCase.getId().toString()).getDeleted());
 
     // Hard delete
     hardDeleteBasicTestSuite(testSuite.getId());

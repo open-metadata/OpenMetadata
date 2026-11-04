@@ -37,9 +37,6 @@ import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/clos
 import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
-import { TOUR_SEARCH_TERM } from '../../constants/constants';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
-import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -55,9 +52,9 @@ import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import './global-search-bar.less';
 
-// Pure helpers pulled out of the component body so the branches they need
-// (parsing the querystring, deciding whether to show search content) don't
-// accumulate in the component's own cyclomatic complexity.
+// Pure helper pulled out of the component body so the branches it needs
+// (parsing the querystring) don't accumulate in the component's own
+// cyclomatic complexity.
 const parseSearchQueryFromLocationSearch = (search: string): string => {
   const parsedQueryString = Qs.parse(
     search.startsWith('?') ? search.substring(1) : search
@@ -65,12 +62,6 @@ const parseSearchQueryFromLocationSearch = (search: string): string => {
 
   return isString(parsedQueryString.search) ? parsedQueryString.search : '';
 };
-
-const getShouldShowSearchContent = (
-  isTourOpen: boolean,
-  searchValue: string,
-  isNLPActive: boolean
-): boolean => !isTourOpen && (Boolean(searchValue) || isNLPActive);
 
 // The "All" criteria is an empty string, which react-aria cannot use as a key.
 const ALL_SEARCH_CRITERIA_KEY = 'all';
@@ -94,18 +85,18 @@ export const GlobalSearchBar = () => {
   const pathname = location.pathname;
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
   const navigate = useNavigate();
-  const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
   const searchQuery = parseSearchQueryFromLocationSearch(location.search);
   const [searchValue, setSearchValue] = useState<string>(searchQuery);
 
   const entitiesSelect = useMemo(
     () => (
       <Select
+        borderless
         aria-label={t('label.search-index')}
         data-testid="global-search-selector"
         popoverClassName="tw:w-50"
-        selectedKey={searchCriteria || ALL_SEARCH_CRITERIA_KEY}
-        onSelectionChange={(key) =>
+        value={searchCriteria || ALL_SEARCH_CRITERIA_KEY}
+        onChange={(key) =>
           key !== null &&
           updateSearchCriteria(
             key === ALL_SEARCH_CRITERIA_KEY
@@ -149,24 +140,22 @@ export const GlobalSearchBar = () => {
   ]);
 
   const searchHandler = (value: string) => {
-    if (!isTourOpen) {
-      setIsSearchBoxOpen(false);
-      addToRecentSearched(value);
+    setIsSearchBoxOpen(false);
+    addToRecentSearched(value);
 
-      const defaultTab: string =
-        searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
+    const defaultTab: string =
+      searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
 
-      navigate(
-        getExplorePath({
-          tab: defaultTab,
-          search: value,
-          isPersistFilters: true,
-          extraParameters: {
-            sort: '_score',
-          },
-        })
-      );
-    }
+    navigate(
+      getExplorePath({
+        tab: defaultTab,
+        search: value,
+        isPersistFilters: true,
+        extraParameters: {
+          sort: '_score',
+        },
+      })
+    );
   };
 
   const handleClear = () => {
@@ -179,11 +168,6 @@ export const GlobalSearchBar = () => {
   const handleKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLInputElement;
     if (e.key === 'Enter') {
-      if (isTourOpen && searchValue === TOUR_SEARCH_TERM) {
-        updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
-        updateTourSearch('');
-      }
-
       searchHandler(target.value);
     }
   };
@@ -194,11 +178,7 @@ export const GlobalSearchBar = () => {
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
-    if (isTourOpen) {
-      updateTourSearch(value);
-    } else {
-      value ? setIsSearchBoxOpen(true) : setIsSearchBoxOpen(false);
-    }
+    setIsSearchBoxOpen(Boolean(value));
   };
 
   useEffect(() => {
@@ -207,11 +187,7 @@ export const GlobalSearchBar = () => {
     }
   }, [currentUser]);
 
-  const shouldShowSearchContent = getShouldShowSearchContent(
-    isTourOpen,
-    searchValue,
-    isNLPActive
-  );
+  const shouldShowSearchContent = Boolean(searchValue) || isNLPActive;
 
   const renderNlpToggle = () => {
     if (!isNLPEnabled) {
@@ -310,6 +286,7 @@ export const GlobalSearchBar = () => {
       ref={searchContainerRef}>
       {renderNlpToggle()}
       <Input
+        borderless
         aria-label={t('label.search-for-type', {
           type: t('label.data-asset-plural'),
         })}

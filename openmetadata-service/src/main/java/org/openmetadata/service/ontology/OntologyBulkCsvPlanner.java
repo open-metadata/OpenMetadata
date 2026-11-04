@@ -27,7 +27,6 @@ import org.openmetadata.schema.api.data.OntologyBulkErrorCode;
 import org.openmetadata.schema.api.data.OntologyBulkOperation;
 import org.openmetadata.schema.api.data.OntologyBulkRequest;
 import org.openmetadata.schema.api.data.OntologyBulkRowError;
-import org.openmetadata.schema.api.data.OntologyIriPreviewRequest;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
@@ -47,13 +46,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 final class OntologyBulkCsvPlanner {
   private static final double INITIAL_VERSION = 0.1D;
   private final OntologyBulkCsvParser parser;
-  private final OntologyIriMinter iriMinter;
   private final Clock clock;
 
-  OntologyBulkCsvPlanner(
-      final OntologyBulkCsvParser parser, final OntologyIriMinter iriMinter, final Clock clock) {
+  OntologyBulkCsvPlanner(final OntologyBulkCsvParser parser, final Clock clock) {
     this.parser = parser;
-    this.iriMinter = iriMinter;
     this.clock = clock;
   }
 
@@ -129,8 +125,6 @@ final class OntologyBulkCsvPlanner {
       final String fullyQualifiedName,
       final URI requestedIri,
       final OntologyBulkCsvContext context) {
-    final URI iri =
-        requestedIri == null ? mintIri(context.glossary(), row.name(), termId) : requestedIri;
     final GlossaryTerm term =
         new GlossaryTerm()
             .withId(termId)
@@ -140,8 +134,7 @@ final class OntologyBulkCsvPlanner {
             .withFullyQualifiedName(fullyQualifiedName)
             .withGlossary(context.glossary().getEntityReference())
             .withParent(parent)
-            .withIri(iri)
-            .withAttributes(List.of())
+            .withIri(requestedIri)
             .withConceptMappings(List.of())
             .withEntityStatus(EntityStatus.DRAFT)
             .withVersion(INITIAL_VERSION)
@@ -218,15 +211,6 @@ final class OntologyBulkCsvPlanner {
         .withBaseVersion(isCreate ? null : baseVersion)
         .withTerm(term)
         .withState(OntologyChangeOperationState.ACTIVE);
-  }
-
-  private URI mintIri(final Glossary glossary, final String name, final UUID id) {
-    final OntologyIriPreviewRequest request =
-        new OntologyIriPreviewRequest()
-            .withGlossaryId(glossary.getId())
-            .withTermName(name)
-            .withCandidateId(id);
-    return iriMinter.preview(glossary, request).getIri();
   }
 
   private static OntologyBulkRowError requiredCreateValues(final CsvRow row) {

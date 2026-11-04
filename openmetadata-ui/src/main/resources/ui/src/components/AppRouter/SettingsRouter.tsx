@@ -23,8 +23,8 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import { AlertType } from '../../generated/events/eventSubscription';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useIsAiMode } from '../../hooks/useAppMode';
 import { isLoginConfigurationApplicable } from '../../utils/AuthProvider.util';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
@@ -33,13 +33,12 @@ import {
   getSettingPathRelative,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import { NOTIFICATION_ALERT_KIND } from '../observability/Alerts/alertKinds';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const AddNotificationPage = withPageSuspenseFallback(
+const AddObservabilityPage = withPageSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AddNotificationPage/AddNotificationPage')
+    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
   )
 );
 
@@ -368,16 +367,6 @@ const SystemAnnouncementFormPage = withPageSuspenseFallback(
   )
 );
 
-// AI mode renders notification alerts with the same AI alert pages
-// Observability uses; only the alert kind differs.
-const AiAlertsPage = withPageSuspenseFallback(
-  React.lazy(() => import('../observability/Alerts/AlertsPage'))
-);
-
-const AiAlertDetailsPage = withPageSuspenseFallback(
-  React.lazy(() => import('../observability/Alerts/AlertDetailsPage'))
-);
-
 /**
  * The bare `/settings/services` path is served by this generic category route, so the services
  * guard has to live inside it. Matching a literal `services` path instead looks equivalent and is
@@ -400,7 +389,6 @@ const SettingCategoryRoute = () => {
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const authProvider = useApplicationStore(
     (state) => state.authConfig?.provider
   );
@@ -567,11 +555,7 @@ const SettingsRouter = () => {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             )}>
-            {isAiMode ? (
-              <AiAlertsPage kind={NOTIFICATION_ALERT_KIND} />
-            ) : (
-              <NotificationListPage />
-            )}
+            <NotificationListPage />
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
@@ -584,11 +568,7 @@ const SettingsRouter = () => {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             )}>
-            {isAiMode ? (
-              <AiAlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />
-            ) : (
-              <NotificationAlertDetailsPage />
-            )}
+            <NotificationAlertDetailsPage />
           </AdminProtectedRoute>
         }
         path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB.replace(
@@ -598,7 +578,8 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AddNotificationPage
+          <AddObservabilityPage
+            alertType={AlertType.Notification}
             pageTitle={t('label.edit-entity', {
               entity: t('label.notification-alert'),
             })}
@@ -612,7 +593,8 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AddNotificationPage
+          <AddObservabilityPage
+            alertType={AlertType.Notification}
             pageTitle={t('label.add-entity', {
               entity: t('label.notification-alert'),
             })}
@@ -1149,6 +1131,9 @@ const SettingsRouter = () => {
           GlobalSettingOptions.TASK_FORMS
         )}
       />
+      {/* Without this an unknown settings URL (e.g. /settings/bots/<name>; bots live at
+          /bots/<name>) matches nothing and renders an empty page. */}
+      <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>
   );
 };

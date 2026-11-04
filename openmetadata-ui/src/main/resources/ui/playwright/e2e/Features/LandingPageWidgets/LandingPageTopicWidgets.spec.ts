@@ -25,6 +25,10 @@ const TEAM_ACTIVITY = {
   layoutKey: 'KnowledgePanel.ActivityFeed',
   topicKey: 'teamActivity',
 };
+const PLATFORM_HEALTH = {
+  layoutKey: 'KnowledgePanel.PlatformHealth',
+  topicKey: 'platformHealth',
+};
 const DATA_ESTATE = {
   layoutKey: 'KnowledgePanel.DataEstate',
   topicKey: 'dataEstate',
@@ -108,51 +112,31 @@ test.describe(
     test('list view stacks the cards into a single column', async ({
       page,
     }) => {
-      await waitForLandingPageWidget(page, TEAM_ACTIVITY.layoutKey);
+      await waitForLandingPageWidget(page, PLATFORM_HEALTH.layoutKey);
       await waitForLandingPageWidget(page, DATA_ESTATE.layoutKey);
 
-      const activityCell = page.getByTestId(TEAM_ACTIVITY.layoutKey);
+      const healthCell = page.getByTestId(PLATFORM_HEALTH.layoutKey);
       const estateCell = page.getByTestId(DATA_ESTATE.layoutKey);
+      const leftEdgesMatch = async () => {
+        const health = await healthCell.boundingBox();
+        const estate = await estateCell.boundingBox();
 
-      // Grid: the default layout puts Data Estate in the second column of the
-      // first row (x 1, y 0) and Team Activity in the first column of the
-      // second (x 0, y 1). Different columns, so their left edges differ.
-      await expect
-        .poll(async () => {
-          const gridActivity = await activityCell.boundingBox();
-          const gridEstate = await estateCell.boundingBox();
+        return health && estate
+          ? Math.round(health.x) === Math.round(estate.x)
+          : undefined;
+      };
 
-          return gridActivity && gridEstate
-            ? Math.round(gridActivity.x) !== Math.round(gridEstate.x)
-            : false;
-        })
-        .toBe(true);
+      // Grid: the default layout opens on Platform Health and Data Estate side
+      // by side (x 0 and x 1 of the first row), so their left edges differ.
+      await expect.poll(leftEdgesMatch).toBe(false);
 
       await page.getByTestId('topics-list-view').click();
 
-      await expect
-        .poll(async () => {
-          const listActivity = await activityCell.boundingBox();
-          const listEstate = await estateCell.boundingBox();
-
-          return listActivity && listEstate
-            ? Math.round(listActivity.x) === Math.round(listEstate.x)
-            : false;
-        })
-        .toBe(true);
+      await expect.poll(leftEdgesMatch).toBe(true);
 
       await page.getByTestId('topics-grid-view').click();
 
-      await expect
-        .poll(async () => {
-          const back = await activityCell.boundingBox();
-          const backEstate = await estateCell.boundingBox();
-
-          return back && backEstate
-            ? Math.round(back.x) !== Math.round(backEstate.x)
-            : false;
-        })
-        .toBe(true);
+      await expect.poll(leftEdgesMatch).toBe(false);
     });
   }
 );

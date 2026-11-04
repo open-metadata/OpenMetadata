@@ -32,12 +32,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -61,6 +64,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -103,7 +107,7 @@ public final class UserUtil {
       throw new IllegalArgumentException("ExistsChecker predicate cannot be null");
     }
 
-    String baseUsername = email.toLowerCase().split("@")[0];
+    String baseUsername = email.toLowerCase(Locale.ROOT).split("@")[0];
 
     if (!existsChecker.test(baseUsername)) {
       return baseUsername;
@@ -234,7 +238,7 @@ public final class UserUtil {
         if (nullOrEmpty(email)) {
           continue;
         }
-        String normalizedEmail = email.toLowerCase();
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
         if (processedEmails.contains(normalizedEmail)) {
           continue;
         }
@@ -257,7 +261,7 @@ public final class UserUtil {
         if (nullOrEmpty(principal)) {
           continue;
         }
-        String email = (principal + "@" + domain).toLowerCase();
+        String email = (principal + "@" + domain).toLowerCase(Locale.ROOT);
         if (processedEmails.contains(email)) {
           LOG.debug(
               "[BootstrapUser] Skipping adminPrincipal '{}' - already processed via adminEmails",
@@ -461,8 +465,8 @@ public final class UserUtil {
             user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
       }
 
-      // Insert directly into change event DAO
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      // Change events never carry a user's authentication mechanism.
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
     } catch (Exception e) {
       // Don't fail user creation if ChangeEvent fails
       LOG.error("Failed to create ChangeEvent for user {}: {}", user.getName(), e.getMessage(), e);
@@ -602,12 +606,12 @@ public final class UserUtil {
     User user =
         new User()
             .withId(UUID.randomUUID())
-            .withName(botName.toLowerCase())
-            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase()))
+            .withName(botName.toLowerCase(Locale.ROOT))
+            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase(Locale.ROOT)))
             .withEmail(botEmail)
             .withIsBot(true)
             .withIsAdmin(false)
-            .withUpdatedBy(botName.toLowerCase())
+            .withUpdatedBy(botName.toLowerCase(Locale.ROOT))
             .withUpdatedAt(System.currentTimeMillis());
 
     return addOrUpdateBotUser(user);
@@ -633,6 +637,15 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
+    if (originalUser != null && !Boolean.TRUE.equals(originalUser.getIsBot())) {
+      // Turning a person's account into a bot would hand the bot's role to every credential the
+      // account already holds, such as its password and personal access tokens.
+      throw new IllegalStateException(
+          String.format(
+              "User '%s' already exists and is not a bot, so the bot of that name was not created. "
+                  + "Rename or delete that user, then restart the server.",
+              user.getName()));
+    }
     AuthenticationMechanism authMechanism =
         originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
@@ -797,9 +810,10 @@ public final class UserUtil {
   public static User getUser(String updatedBy, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
-        .withName(create.getName().toLowerCase())
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
-        .withEmail(create.getEmail().toLowerCase())
+        .withName(create.getName().toLowerCase(Locale.ROOT))
+        .withFullyQualifiedName(
+            EntityInterfaceUtil.quoteName(create.getName().toLowerCase(Locale.ROOT)))
+        .withEmail(create.getEmail().toLowerCase(Locale.ROOT))
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())
         .withIsBot(create.getIsBot())
@@ -809,7 +823,7 @@ public final class UserUtil {
         .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
         .withExtension(create.getExtension())
-        .withUpdatedBy(updatedBy.toLowerCase())
+        .withUpdatedBy(updatedBy.toLowerCase(Locale.ROOT))
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
@@ -833,9 +847,8 @@ public final class UserUtil {
       return false;
     }
 
-    String normalizedEmail = email.toLowerCase();
     return adminEmails.stream()
-        .anyMatch(adminEmail -> adminEmail.equalsIgnoreCase(normalizedEmail));
+        .anyMatch(adminEmail -> SecurityUtil.sameIdentifier(adminEmail, email));
   }
 
   /**
@@ -875,7 +888,64 @@ public final class UserUtil {
     if (nullOrEmpty(botDomain)) {
       throw new IllegalArgumentException("Bot domain cannot be null or empty");
     }
-    return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
+    return String.format(
+        "%s@%s", botName.toLowerCase(Locale.ROOT), botDomain.toLowerCase(Locale.ROOT));
+  }
+
+  /**
+   * Rejects a user that the sign-in email-domain rule would refuse, so an admin learns it when
+   * creating the user instead of at the user's first login (issue #19306). Called from the
+   * user-facing create paths only: users that server-side code creates, such as the bootstrap
+   * admins or support access, sign in with OpenMetadata-issued tokens and are not checked.
+   * ADR:2026-10-16-users-created-through-the-api-must-pass-the-sign-in-domain-rule
+   */
+  public static void validateEmailDomain(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    Optional<String> rejection = emailDomainRejection(user, authConfig, authorizerConfig);
+    if (rejection.isPresent()) {
+      throw new BadRequestException(rejection.get());
+    }
+  }
+
+  /**
+   * Why the sign-in email-domain rule would refuse this user, or empty when it would not. The rule
+   * applies only where login applies it: never to bots, and never under the native-password
+   * providers, whose sessions use OpenMetadata-issued tokens that login does not domain-check.
+   */
+  public static Optional<String> emailDomainRejection(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    List<String> allowedDomains = signInEmailDomains(user, authConfig, authorizerConfig);
+    String emailDomain = emailDomainOf(user.getEmail());
+    boolean isRefused =
+        !allowedDomains.isEmpty()
+            && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase);
+    return isRefused
+        ? Optional.of(CatalogExceptionMessage.invalidEmailDomain(emailDomain, allowedDomains))
+        : Optional.empty();
+  }
+
+  /** Empty when no sign-in email-domain rule applies to this user. */
+  private static List<String> signInEmailDomains(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    if (Boolean.TRUE.equals(user.getIsBot())
+        || authConfig == null
+        || authorizerConfig == null
+        || SecurityConfigurationManager.isNativePasswordProvider(authConfig.getProvider())) {
+      return List.of();
+    }
+    Set<String> allowedEmailDomains = authorizerConfig.getAllowedEmailDomains();
+    return SecurityUtil.configuredEmailDomains(
+        allowedEmailDomains == null ? List.of() : new ArrayList<>(allowedEmailDomains),
+        authorizerConfig.getPrincipalDomain(),
+        authorizerConfig.getAllowedDomains(),
+        authorizerConfig.getEnforcePrincipalDomain());
+  }
+
+  private static String emailDomainOf(String email) {
+    if (nullOrEmpty(email) || !email.contains("@")) {
+      return "";
+    }
+    return email.substring(email.indexOf('@') + 1);
   }
 
   public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {

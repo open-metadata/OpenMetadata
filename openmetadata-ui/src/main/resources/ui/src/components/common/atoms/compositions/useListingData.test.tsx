@@ -16,6 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
+import { SearchResponse } from '../../../../interface/search.interface';
 import { useListingData } from './useListingData';
 
 // Mock dependencies
@@ -30,6 +31,10 @@ import { useSelectionState } from '../data/useSelectionState';
 import { useUrlState } from '../data/useUrlState';
 import { usePaginationState } from '../pagination/usePaginationState';
 import { useActionHandlers } from './useActionHandlers';
+
+const transform = (
+  response: SearchResponse<SearchIndex.TABLE | SearchIndex.DOMAIN>
+) => response.hits.hits.map(({ _source }) => _source);
 
 const mockSetPageSize = jest.fn();
 const mockSearchEntities = jest.fn();
@@ -98,6 +103,7 @@ describe('useListingData', () => {
 
     mockUseSelectionState.mockReturnValue({
       selectedEntities: [],
+      setSelectedEntities: jest.fn(),
       isAllSelected: false,
       isIndeterminate: false,
       handleSelectAll: jest.fn(),
@@ -128,6 +134,7 @@ describe('useListingData', () => {
         () =>
           useListingData({
             searchIndex: SearchIndex.TABLE,
+            transform,
             filterKeys: [],
             columns: [],
             pageSize: 10,
@@ -148,6 +155,7 @@ describe('useListingData', () => {
         () =>
           useListingData({
             searchIndex: SearchIndex.TABLE,
+            transform,
             filterKeys: [],
             columns: [],
             pageSize: 10,
@@ -183,6 +191,7 @@ describe('useListingData', () => {
         () =>
           useListingData({
             searchIndex: SearchIndex.TABLE,
+            transform,
             filterKeys: [],
             columns: [],
             pageSize: 10,
@@ -221,6 +230,7 @@ describe('useListingData', () => {
         () =>
           useListingData({
             searchIndex: SearchIndex.TABLE,
+            transform,
             filterKeys: [],
             columns: [],
             pageSize: 10,
@@ -263,6 +273,7 @@ describe('useListingData', () => {
         () =>
           useListingData({
             searchIndex: SearchIndex.TABLE,
+            transform,
             filterKeys: [],
             columns: [],
             pageSize: 10,
@@ -307,6 +318,7 @@ describe('useListingData', () => {
         () =>
           useListingData({
             searchIndex: SearchIndex.TABLE,
+            transform,
             filterKeys: [],
             columns: [],
             pageSize: 10,
@@ -325,7 +337,8 @@ describe('useListingData', () => {
 
   describe('keep-alive routes', () => {
     const config = {
-      searchIndex: SearchIndex.DOMAIN,
+      searchIndex: SearchIndex.DOMAIN as const,
+      transform,
       filterKeys: [],
       columns: [],
     };
@@ -361,7 +374,7 @@ describe('useListingData', () => {
 
   it('does not re-query when the NLQ toggle flips, leaving NLQ to the next submit', () => {
     mockUseUrlState.mockReturnValue({
-      ...mockUseUrlState(),
+      ...mockUseUrlState({ filterKeys: [] }),
       urlState: {
         searchQuery: 'finance',
         filters: {},
@@ -376,6 +389,7 @@ describe('useListingData', () => {
       () =>
         useListingData({
           searchIndex: SearchIndex.DOMAIN,
+          transform,
           filterKeys: [],
           columns: [],
           enableNlq: true,

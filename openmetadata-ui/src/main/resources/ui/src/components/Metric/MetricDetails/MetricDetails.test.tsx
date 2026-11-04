@@ -21,6 +21,7 @@ import { Metric, MetricType } from '../../../generated/entity/data/metric';
 import { getMetricTabAssets } from '../../../rest/metricTabsAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import MetricDetails from './MetricDetails';
 import { MetricDetailsProps } from './MetricDetails.interface';
@@ -178,6 +179,16 @@ describe('MetricDetails component', () => {
     });
 
     expect(container).toBeInTheDocument();
+  });
+
+  it('does not wrap the tabs in the metric-page-tabs container', () => {
+    const { container } = render(<MetricDetails {...mockProps} />, {
+      wrapper: Wrapper,
+    });
+
+    // metric.less sizes `.metric-page-tabs .activity-feed-tab` to 100% of a
+    // parent with no fixed height, so the feed panel shrinks to its content.
+    expect(container.querySelector('.metric-page-tabs')).toBeNull();
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', () => {
@@ -355,5 +366,18 @@ describe('MetricDetails component', () => {
     expect(
       screen.queryByTestId('metric-add-assets-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('marks the metric deleted after a soft delete and refetches it if the delete job fails', () => {
+    render(<MetricDetails {...mockProps} />, { wrapper: Wrapper });
+
+    const headerProps = (DataAssetsHeader as jest.Mock).mock.calls.at(-1)[0];
+    headerProps.afterDeleteAction(true, 0.2);
+
+    expect(mockProps.onToggleDelete).toHaveBeenCalledWith(0.2);
+
+    headerProps.onDeleteFailure();
+
+    expect(mockProps.fetchMetricDetails).toHaveBeenCalled();
   });
 });

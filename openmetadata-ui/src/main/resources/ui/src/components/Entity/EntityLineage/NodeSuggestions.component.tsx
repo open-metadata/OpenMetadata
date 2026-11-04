@@ -18,7 +18,7 @@ import {
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { capitalize, debounce, get } from 'lodash';
+import { debounce, get } from 'lodash';
 import {
   FC,
   HTMLAttributes,
@@ -37,7 +37,10 @@ import { EntityReference } from '../../../generated/entity/type';
 import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  getEntityName,
+  getEntityNameLabel,
+} from '../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../../utils/TableUtils';
@@ -198,14 +201,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus required for inline node search
           autoFocus
           aria-label={t('label.search-for-type', {
-            type: capitalize(entityType),
+            type: getEntityNameLabel(entityType),
           })}
           className="tw:w-full"
           data-testid="node-search-box"
           inputValue={searchValue}
           items={nodeSelectOptions}
           placeholder={`${t('label.search-for-type', {
-            type: capitalize(entityType),
+            type: getEntityNameLabel(entityType),
           })}s...`}
           selectedKey={null}
           shortcut={false}

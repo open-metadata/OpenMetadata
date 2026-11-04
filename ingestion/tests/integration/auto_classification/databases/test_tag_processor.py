@@ -61,7 +61,7 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
                 "config": {
                     "type": DatabaseMetadataConfigType.DatabaseMetadata.value,
                     "tableFilterPattern": FilterPattern(
-                        includes=["^(example_table|identifier_en|identifier_es|identifier_it)$"]
+                        includes=["^(example_table|card_prefix_cases|identifier_en|identifier_es|identifier_it)$"]
                     ),
                 }
             },
@@ -104,7 +104,7 @@ def autoclassification_config(db_service, bot_workflow_config, sink_config):
             "sourceConfig": {
                 "config": {
                     "type": "AutoClassification",
-                    "tableFilterPattern": FilterPattern(includes=["^example_table$"]),
+                    "tableFilterPattern": FilterPattern(includes=["^(example_table|card_prefix_cases)$"]),
                     "storeSampleData": True,
                 }
             },
@@ -133,21 +133,26 @@ def test_it_returns_the_expected_classifications(
     metadata: OpenMetadata,
     run_autoclassification: AutoClassificationWorkflow,
 ) -> None:
-    (
-        academic_year_code_column,
-        address_column,
-        customer_id_column,
-        dwh_x10_column,
-        dwh_x20_column,
-        nhs_number_column,
-        order_date_column,
-        timestamp_column,
-        user_name_column,
-        version_column,
-    ) = metadata.get_table_columns(
-        f"{db_service.fullyQualifiedName.root}.test_db.public.example_table",
-        fields=["tags"],
-    )
+    columns = {
+        column.name.root.lower(): column
+        for column in metadata.get_table_columns(
+            f"{db_service.fullyQualifiedName.root}.test_db.public.example_table",
+            fields=["tags"],
+        )
+    }
+    academic_year_code_column = columns["academic_year_code"]
+    address_column = columns["address"]
+    card_note_column = columns["card_note"]
+    customer_id_column = columns["customer_id"]
+    dwh_x10_column = columns["dwh_x10"]
+    dwh_x20_column = columns["dwh_x20"]
+    nhs_number_column = columns["nhs_number"]
+    order_date_column = columns["order_date"]
+    service_url_column = columns["service_url"]
+    session_ip_column = columns["session_ip"]
+    timestamp_column = columns["timestamp"]
+    user_name_column = columns["user_name"]
+    version_column = columns["version"]
 
     assert customer_id_column.tags == []
     assert nhs_number_column.tags == [
@@ -201,6 +206,61 @@ def test_it_returns_the_expected_classifications(
     # type or semantics (#29083); date_time_patcher now drops them because a bare year names no
     # month or day.
     assert academic_year_code_column.tags == []
+    assert card_note_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `CreditCardRecognizer`", "Patterns matched:"),
+        ),
+    ]
+    assert service_url_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.NonSensitive"),
+            reason=Contains("Detected by `UrlRecognizer`", "Patterns matched:"),
+        ),
+    ]
+    assert session_ip_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `IpRecognizer`", "Patterns matched:"),
+        ),
+    ]
+
+
+def test_card_prefix_classifications_preserve_configured_metadata(
+    db_service: DatabaseService,
+    metadata: OpenMetadata,
+    run_autoclassification: AutoClassificationWorkflow,
+) -> None:
+    tag = metadata.get_by_name(entity=Tag, fqn="PII.Sensitive", fields=["recognizers"])
+    card_recognizer = next(
+        recognizer for recognizer in tag.recognizers if recognizer.name.root == "EnglishCreditCardRecognizer"
+    )
+    columns = {
+        column.name.root: column
+        for column in metadata.get_table_columns(
+            f"{db_service.fullyQualifiedName.root}.test_db.public.card_prefix_cases", fields=["tags"]
+        )
+    }
+    for name in ("date_compact", "date_spaced", "date_dashed", "qty_spaced", "quantity_diners", "quantity_19"):
+        assert len(columns[name].tags) == 1, name
+        label = columns[name].tags[0]
+        assert label.tagFQN.root == "PII.Sensitive", name
+        assert "Detected by `CreditCardRecognizer`" in label.reason, name
+        assert label.metadata is not None, name
+        evidence = label.metadata.recognizer
+        assert evidence.recognizerId == card_recognizer.id, name
+        assert evidence.recognizerName == "CreditCardRecognizer", name
+        assert evidence.score == 1.0, name
+        assert evidence.patterns, name
+        assert [(pattern.name, pattern.score) for pattern in evidence.patterns] == [("Credit Card Number", 1.0)], name
+    for name in ("invalid_date", "invalid_checksum", "unlabeled_number", "compact_short_suffix", "spaced_short_suffix"):
+        assert all(
+            label.metadata is None or label.metadata.recognizer.recognizerId != card_recognizer.id
+            for label in columns[name].tags
+        ), name
 
 
 @pytest.mark.parametrize(

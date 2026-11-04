@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility } from '@openmetadata/ui-core-components';
-import {
-  ChevronLeft,
-  ChevronRight,
-} from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useRailPager } from '../../../hooks/useRailPager';
 import {
   AnnouncementEntity,
   listAnnouncements,
@@ -32,8 +29,8 @@ import {
   CRITICAL_ANNOUNCEMENTS_PAGE_SIZE,
   CRITICAL_ANNOUNCEMENTS_QUERY_KEY,
   CRITICAL_ANNOUNCEMENTS_TTL_MS,
-  CRITICAL_PAGER_BUTTON_CLASSES,
 } from './CriticalAnnouncements.constants';
+import RailPager from './RailPager';
 import {
   DismissedAnnouncementsScope,
   useDismissedAnnouncements,
@@ -69,17 +66,26 @@ const getCriticalAnnouncementsQueryOptions = () => ({
   staleTime: CRITICAL_ANNOUNCEMENTS_TTL_MS,
 });
 
+export interface CriticalAnnouncementsProps {
+  /** What holds the top slot while no critical announcement is live. */
+  fallback?: ReactNode;
+}
+
 /**
- * The Home page's top banner: the live critical system announcements, one at
- * a time. Several make a carousel in the same slot rather than a stack, moved
- * only by the user — an outage notice should not slide away mid-read. It wraps
- * at either end rather than disabling a pager button, which would drop the
- * keyboard focus resting on it.
+ * The Home page's top banner: the live critical system announcements, one
+ * full-width banner at a time. Several make a rail that pages exactly like the
+ * announcements rail below it — the same pager, the same slide — moved only by
+ * the user, so an outage notice never slides away mid-read.
  *
  * This is the only place users see system announcements; the rail below lists
  * asset announcements alone.
+ *
+ * The banner takes the page's top slot, so whatever normally sits there is
+ * passed as `fallback` and shown whenever no critical announcement is live.
  */
-const CriticalAnnouncements = () => {
+const CriticalAnnouncements = ({
+  fallback = null,
+}: CriticalAnnouncementsProps) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { currentUser } = useApplicationStore();
@@ -90,7 +96,6 @@ const CriticalAnnouncements = () => {
     currentUser?.id,
     DismissedAnnouncementsScope.CriticalBanner
   );
-  const [index, setIndex] = useState(0);
 
   // An id no longer returned has expired or been deleted, and cannot return.
   useEffect(() => {
@@ -117,69 +122,69 @@ const CriticalAnnouncements = () => {
     () => (announcements ?? []).filter(({ id }) => !dismissedIds.has(id)),
     [announcements, dismissedIds]
   );
+  const count = visible.length;
+  const {
+    railRef,
+    canScroll,
+    pageIndex,
+    syncScrollState,
+    goToPrevious,
+    goToNext,
+  } = useRailPager(count);
 
-  if (visible.length === 0) {
-    return null;
+  if (count === 0) {
+    return <>{fallback}</>;
   }
 
-  // Clamped rather than reset: dismissing the current banner shows the next
-  // one in its place, and dismissing the last steps back to its neighbour.
-  const current = Math.min(index, visible.length - 1);
-  const announcement = visible[current];
-  const total = visible.length;
-  const step = (by: 1 | -1) => setIndex((current + by + total) % total);
-
-  const hasPager = total > 1;
-
-  // The arrows flank the banner, outside its dark surface, so they stay in the
-  // page's own theme beside the rail's matching pager below.
   return (
     <section
       aria-label={t('label.critical-announcement-plural')}
-      className="tw:flex tw:items-center tw:gap-3"
+      className="tw:relative"
       data-testid="critical-announcements">
-      {/* No tooltip — the arrows explain themselves — so the name the
-          tooltip would carry is given as `aria-label` instead. */}
-      {hasPager && (
-        <ButtonUtility
-          aria-label={t('label.previous')}
-          className={CRITICAL_PAGER_BUTTON_CLASSES}
-          color="secondary"
-          data-testid="critical-announcement-previous"
-          icon={ChevronLeft}
-          size="xs"
-          onClick={() => step(-1)}
-        />
-      )}
-
-      <div className="tw:min-w-0 tw:flex-1">
-        <CriticalAnnouncementBanner
-          announcement={announcement}
-          onDismiss={() => dismiss(announcement.id)}
-        />
-        {/* Not shown, but announced: with no visible counter, this is how a
-            screen reader learns where it is in the carousel. */}
-        {hasPager && (
+      {/* No heading: the banner names itself Critical. The pager keeps the
+      rail's place, right-aligned above it, so the two carousels page alike. */}
+      {count > 1 && (
+        <>
+          <div className="tw:mr-2 tw:mb-3 tw:flex tw:justify-end">
+            <RailPager
+              canScroll={canScroll}
+              testIdPrefix="critical-announcement"
+              onNext={goToNext}
+              onPrevious={goToPrevious}
+            />
+          </div>
+          {/* One banner fills the rail, so its page is the banner's position.
+          Clamped: a dismissal can shorten the rail before it re-measures. */}
           <span
             aria-live="polite"
             className="tw:sr-only"
             data-testid="critical-announcement-position">
-            {t('label.current-of-total', { current: current + 1, total })}
+            {t('label.current-of-total', {
+              current: Math.min(pageIndex, count - 1) + 1,
+              total: count,
+            })}
           </span>
-        )}
-      </div>
-
-      {hasPager && (
-        <ButtonUtility
-          aria-label={t('label.next')}
-          className={CRITICAL_PAGER_BUTTON_CLASSES}
-          color="secondary"
-          data-testid="critical-announcement-next"
-          icon={ChevronRight}
-          size="xs"
-          onClick={() => step(1)}
-        />
+        </>
       )}
+
+      <ul
+        aria-label={t('label.critical-announcement-plural')}
+        className="tw:flex tw:snap-x tw:snap-mandatory tw:gap-3.5 tw:overflow-x-auto tw:overscroll-x-contain tw:scrollbar-hide"
+        data-testid="critical-announcement-rail"
+        ref={railRef}
+        onScroll={syncScrollState}>
+        {visible.map((announcement) => (
+          <li
+            className="tw:flex tw:shrink-0 tw:basis-full tw:snap-start"
+            key={announcement.id}>
+            <CriticalAnnouncementBanner
+              announcement={announcement}
+              className="tw:w-full"
+              onDismiss={() => dismiss(announcement.id)}
+            />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 };

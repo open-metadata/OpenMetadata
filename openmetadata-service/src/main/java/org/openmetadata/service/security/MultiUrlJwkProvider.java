@@ -17,55 +17,19 @@ import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkException;
 import com.auth0.jwk.JwkProvider;
 import com.auth0.jwk.SigningKeyNotFoundException;
-import com.auth0.jwk.UrlJwkProvider;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.util.concurrent.UncheckedExecutionException;
+import com.google.common.base.Ticker;
 import java.net.URL;
-import java.util.ArrayList;
+import java.time.Duration;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import org.jetbrains.annotations.NotNull;
 import org.openmetadata.service.exception.UnhandledServerException;
 
+/** Finds the key a token names: OpenMetadata's own key, else the identity provider's. */
 final class MultiUrlJwkProvider implements JwkProvider {
-  private final List<JwkProvider> jwkProviders;
-  private final Set<String> configuredUrls;
-  private final Supplier<List<URL>> providerKeySetUrls;
+  private static final Duration KEY_LIFETIME = Duration.ofHours(24);
+
   private final LocalJwkProvider localJwkProvider = new LocalJwkProvider();
-  private final LoadingCache<String, Jwk> CACHE =
-      CacheBuilder.newBuilder()
-          .maximumSize(10)
-          .expireAfterWrite(24, TimeUnit.HOURS)
-          .build(
-              new CacheLoader<>() {
-                @Override
-                public @NotNull Jwk load(@NotNull String key) throws Exception {
-                  try {
-                    return localJwkProvider.get(key);
-                  } catch (Exception ignored) {
-                    // ignore exception
-                  }
-                  JwkException lastException =
-                      new SigningKeyNotFoundException(
-                          "JWT Token keyID doesn't match the configured keyID. This usually happens if you didn't configure "
-                              + "proper publicKeyUrls under authentication configuration.",
-                          null);
-                  for (JwkProvider jwkProvider : candidateProviders()) {
-                    try {
-                      return jwkProvider.get(key);
-                    } catch (JwkException e) {
-                      lastException.addSuppressed(e);
-                    }
-                  }
-                  throw lastException;
-                }
-              });
+  private final IdentityProviderKeys identityProviderKeys;
 
   public MultiUrlJwkProvider(List<URL> publicKeyUris) {
     this(publicKeyUris, List::of);
@@ -77,51 +41,31 @@ final class MultiUrlJwkProvider implements JwkProvider {
    * configured only through the environment never had it written into {@code publicKeyUrls}.
    */
   MultiUrlJwkProvider(List<URL> publicKeyUris, Supplier<List<URL>> providerKeySetUrls) {
-    this.jwkProviders =
-        publicKeyUris.stream().map(UrlJwkProvider::new).collect(Collectors.toList());
-    this.configuredUrls =
-        publicKeyUris.stream().map(URL::toExternalForm).collect(Collectors.toUnmodifiableSet());
-    this.providerKeySetUrls = providerKeySetUrls;
-  }
-
-  private List<JwkProvider> candidateProviders() {
-    List<JwkProvider> candidates = new ArrayList<>(jwkProviders);
-    providerKeySetUrls.get().stream()
-        .filter(url -> !configuredUrls.contains(url.toExternalForm()))
-        .map(UrlJwkProvider::new)
-        .forEach(candidates::add);
-    return candidates;
+    this.identityProviderKeys =
+        new IdentityProviderKeys(
+            publicKeyUris,
+            providerKeySetUrls,
+            KeySetFetchPolicy.DEFAULT,
+            KEY_LIFETIME,
+            Ticker.systemTicker());
   }
 
   @Override
   public Jwk get(String keyId) {
-    Jwk signingKey;
     try {
-      signingKey = CACHE.get(keyId);
-    } catch (ExecutionException | UncheckedExecutionException e) {
-      throw toAuthenticationOrServerException(e);
+      return keyHolderOf(keyId).get(keyId);
+    } catch (SigningKeyNotFoundException e) {
+      // A key we do not trust signed the token (a rotated key, another issuer, a stale token, or
+      // no key id at all). A 401 lets the client renew or sign in again; a 500 makes it treat a
+      // session it could recover as fatal.
+      throw AuthenticationException.getInvalidTokenException(
+          "Token signing key not found in configured public keys", e);
+    } catch (JwkException e) {
+      throw new UnhandledServerException("JWKS key resolution failed", e);
     }
-    return signingKey;
   }
 
-  private RuntimeException toAuthenticationOrServerException(Exception cacheException) {
-    Throwable cause =
-        cacheException.getCause() != null ? cacheException.getCause() : cacheException;
-    RuntimeException result;
-    if (cause instanceof SigningKeyNotFoundException signingKeyNotFound) {
-      // Unknown key id means the token was signed by a key we do not trust (IdP
-      // key rotation, wrong issuer, a stale token). That is an authentication
-      // failure (401), not a server error (500) — returning 500 makes the client
-      // treat a re-authenticable session as a fatal error and hang instead of
-      // refreshing or redirecting to login.
-      result =
-          AuthenticationException.getInvalidTokenException(
-              "Token signing key not found in configured public keys", signingKeyNotFound);
-    } else {
-      // Genuine server-side failure (e.g. a JWKS endpoint fetch error); keep the
-      // cause chained so production logs show the real reason.
-      result = new UnhandledServerException("JWKS key resolution failed", cause);
-    }
-    return result;
+  private JwkProvider keyHolderOf(String keyId) {
+    return localJwkProvider.hasKey(keyId) ? localJwkProvider : identityProviderKeys;
   }
 }

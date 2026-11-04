@@ -492,6 +492,7 @@ const AddDataContract: React.FC<{
               nextLabel: currentTabInfo.nextTabLabel,
               prevLabel: currentTabInfo.prevTabLabel,
             }}
+            initialValues={filteredContract}
             selectedQuality={
               filteredContract?.qualityExpectations?.map(
                 (quality) => quality.id ?? ''

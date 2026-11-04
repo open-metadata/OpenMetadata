@@ -220,11 +220,13 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'useAccessHistory',
   'accessHistoryChunkSize',
+  'systemMetricsBatchSize',
   'scheme',
   'computeTableMetrics',
   'computeColumnMetrics',
   'includeViews',
   'useStatistics',
+  'enableAutoPartitionDetection',
   'confidence',
   'profileSampleConfig',
   'randomizedSample',
@@ -285,6 +287,7 @@ export const OPTIONAL_SCOPE_PROPERTIES = new Set([
 ]);
 
 export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
+  'shardedTables',
   'includeTables',
   'includeViews',
   'includeTags',

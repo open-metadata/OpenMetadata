@@ -20,7 +20,6 @@ import { useControlledState } from '@react-stately/utils';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AssetsOfEntity } from '../../enums/Assets.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
 import {
@@ -29,10 +28,9 @@ import {
 } from '../../rest/glossaryAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import Fqn from '../../utils/Fqn';
-import { getQueryFilterToExcludeTerm } from '../../utils/GlossaryPureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { AssetSelectionModal } from '../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import OntologyDataAssetPicker from './OntologyDataAssetPicker';
 import {
   InspectorList,
   InspectorRemoveButton,
@@ -72,6 +70,11 @@ const ASSET_BADGE_COLORS: Record<string, 'indigo' | 'blue-light'> = {
   table: 'indigo',
   tableColumn: 'blue-light',
 };
+
+// An empty section is offered from the drawer's "Add more details" instead,
+// unless its picker is open.
+const isEmptySection = (total: number, loaded: number, hasPicker: boolean) =>
+  total === 0 && loaded === 0 && !hasPicker;
 
 export const OntologyConceptDataAssets = ({
   initialCount = 0,
@@ -185,20 +188,17 @@ export const OntologyConceptDataAssets = ({
   const remainingCount = total - assets.length;
 
   const picker =
-    isPickerOpen && termFqn ? (
-      <AssetSelectionModal
-        open
-        entityFqn={termFqn}
-        queryFilter={getQueryFilterToExcludeTerm(termFqn)}
-        type={AssetsOfEntity.GLOSSARY}
+    isPickerOpen && term ? (
+      <OntologyDataAssetPicker
+        term={term}
         onCancel={() => setIsPickerOpen(false)}
+        onPartialSave={() => void reloadAfterEdit()}
         onSave={handleAssetsAdded}
       />
     ) : null;
 
-  // An empty section is offered from the drawer's "Add more details" instead.
-  if (total === 0 && assets.length === 0) {
-    return picker;
+  if (isEmptySection(total, assets.length, Boolean(picker))) {
+    return null;
   }
 
   const renderAssetRow = (asset: EntityReference) => {

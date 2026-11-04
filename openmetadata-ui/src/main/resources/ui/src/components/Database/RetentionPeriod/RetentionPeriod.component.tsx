@@ -152,14 +152,7 @@ const RetentionPeriod = ({
               id="retention-period-form"
               onSubmit={handleSubmit}>
               <Dialog.Content className="tw:gap-3 tw:px-6 tw:pt-6 tw:pb-12 tw:sm:px-6">
-                <Alert
-                  className={classNames(
-                    'tw:rounded-xs tw:border-[var(--ant-info-color-deprecated-border)]',
-                    'tw:bg-[var(--ant-info-color-deprecated-bg)] tw:p-[15px]',
-                    'tw:dark:border-utility-blue-300 tw:dark:bg-utility-blue-50'
-                  )}
-                  showIcon={false}
-                  variant="brand">
+                <Alert showIcon={false} variant="brand">
                   <span className="tw:leading-[22px] tw:text-primary">
                     {t('message.retention-period-description')}
                   </span>
@@ -173,7 +166,7 @@ const RetentionPeriod = ({
               </Dialog.Content>
               <Dialog.Footer className="tw:mt-0 tw:border-secondary tw:sm:mt-0 tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
                 <Button
-                  className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
+                  className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--theme-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--theme-primary-color-hover)]"
                   color="tertiary"
                   data-testid="cancel-button"
                   onPress={onCancel}>

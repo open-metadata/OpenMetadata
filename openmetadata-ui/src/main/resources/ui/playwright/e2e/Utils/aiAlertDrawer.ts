@@ -14,6 +14,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { waitForCapabilitiesOf } from '../../utils/alert';
 import {
+  chooseSelectOption,
   scrollIntoViewAndSettle,
   selectOptionWithRetry,
 } from '../../utils/common';
@@ -97,14 +98,40 @@ const sourceNameOf = (label: string) =>
     )
     .join('');
 
-// What the form offers follows the server's answer about the chosen source, so wait for it.
-export const selectAlertSource = async (page: Page, source: string) => {
-  const answered = waitForCapabilitiesOf(page, [sourceNameOf(source)]);
-  await selectOptionWithRetry(
-    page.getByTestId('source-select').getByRole('button'),
-    page.getByRole('option', { name: source, exact: true })
+// Adds a source to the ones already chosen. What the form offers follows the server's answer
+// about every chosen source, so wait for it. Escape would also close the drawer.
+export const selectAlertSource = async (
+  page: Page,
+  source: string,
+  chosenSources: string[] = []
+) => {
+  const name = sourceNameOf(source);
+  const answered = waitForCapabilitiesOf(page, [...chosenSources, name]);
+  await chooseSelectOption(
+    page.getByTestId('source-select'),
+    page.getByRole('listbox').getByTestId(`${name}-option`)
   );
   await answered;
+  await dismissPopover(
+    page.getByRole('dialog').filter({ has: page.getByTestId('source-select') })
+  );
+  await expect(page.getByRole('listbox')).toBeHidden();
+};
+
+// Takes the chosen sources away, so that a source of another kind can be chosen. The caller names
+// them, so the chips are awaited rather than counted at whatever instant the helper runs.
+export const clearAlertSources = async (page: Page, labels: string[]) => {
+  const sourceSelect = page.getByTestId('source-select');
+  const chosen = sourceSelect.getByTestId('autocomplete-selected-item');
+  await expect(chosen).toHaveText(labels);
+
+  for (const label of labels) {
+    await sourceSelect
+      .getByRole('button', { name: `Remove ${label}`, exact: true })
+      .click();
+  }
+  await expect(chosen).toHaveCount(0);
+  await dismissPopover(page.getByRole('dialog').filter({ has: sourceSelect }));
 };
 
 export const getDestinationCategoryOptions = async (
