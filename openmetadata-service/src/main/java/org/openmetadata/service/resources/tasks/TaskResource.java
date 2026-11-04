@@ -114,7 +114,6 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.tasks.IncidentWorkflowStages;
-import org.openmetadata.service.tasks.TaskTagTarget;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -1084,7 +1083,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
-    TaskTagTarget.requireTagField(task);
     return create(uriInfo, securityContext, task);
   }
 
@@ -1117,7 +1115,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
-    TaskTagTarget.requireTagField(task);
     return createOrUpdate(uriInfo, securityContext, task);
   }
 
