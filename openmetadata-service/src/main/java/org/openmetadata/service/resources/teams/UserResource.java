@@ -88,8 +88,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -229,6 +231,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_TEAMS, MetadataOperation.IMPERSONATE);
+  }
+
+  /** A stored user carries its password hash, or for a bot its token, which no snapshot shows. */
+  @Override
+  protected Optional<UnaryOperator<User>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(user -> user.withAuthenticationMechanism(null));
   }
 
   @Override
@@ -857,6 +865,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     PutResponse<User> response =
         repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
+    withoutPersonsAuthenticationMechanism(response.getEntity());
     return response.toResponse();
   }
 
@@ -1164,7 +1173,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         }
       }
     }
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return withPersonsAuthenticationMechanismRedacted(
+        patchInternal(uriInfo, securityContext, id, patch));
   }
 
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
@@ -1512,7 +1522,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    return withPersonsAuthenticationMechanismRedacted(
+        deleteByName(uriInfo, securityContext, name, false, hardDelete));
   }
 
   @PUT
@@ -1535,7 +1546,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return withPersonsAuthenticationMechanismRedacted(
+        restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   @GET
@@ -2346,8 +2358,24 @@ public class UserResource extends EntityResource<User, UserRepository> {
             "Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
   }
 
+  private Response withPersonsAuthenticationMechanismRedacted(Response response) {
+    return withRedactedEntity(response, UserResource::withoutPersonsAuthenticationMechanism);
+  }
+
+  /**
+   * A person's mechanism holds their password hash, which no response needs. A bot's is left as it
+   * is, for the callers that handle bot tokens to decide on.
+   */
+  private static User withoutPersonsAuthenticationMechanism(User user) {
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      user.setAuthenticationMechanism(null);
+    }
+    return user;
+  }
+
   private void decryptOrNullify(SecurityContext securityContext, User user) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    withoutPersonsAuthenticationMechanism(user);
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
         authorizer.authorize(

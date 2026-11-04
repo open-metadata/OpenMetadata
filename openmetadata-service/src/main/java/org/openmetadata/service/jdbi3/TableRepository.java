@@ -148,10 +148,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
   public static final String PATCH_FIELDS =
-      "tableConstraints,tablePartition,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
-      "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,dataModel,sourceUrl,columns,schemaDefinition";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -1473,12 +1473,22 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table, boolean update) {
+    DatabaseUtil.validateTableSharding(table);
     var schema = (DatabaseSchema) getCachedParentOrLoad(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+
+    if (table.getTableSharding() != null) {
+      var source = table.getTableSharding().getRepresentative();
+      if (!source.getDatabaseName().equals(table.getDatabase().getName())
+          || !source.getSchemaName().equals(schema.getName())) {
+        throw new IllegalArgumentException(
+            "Shard representative must belong to the table database and schema");
+      }
+    }
 
     // For create operations (update=false), validate constraints immediately.
     // For update operations (PATCH/PUT), constraint validation happens in updateTableConstraints()
@@ -2415,6 +2425,11 @@ public class TableRepository extends EntityRepository<Table> {
       compareAndUpdate(
           "tableType",
           () -> recordChange("tableType", origTable.getTableType(), updatedTable.getTableType()));
+      compareAndUpdate(
+          "tableSharding",
+          () ->
+              recordChange(
+                  "tableSharding", origTable.getTableSharding(), updatedTable.getTableSharding()));
       compareAndUpdate(
           "dataModel",
           () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));

@@ -222,6 +222,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     Compare two tables and fail if the number of differences exceeds a threshold
     """
 
+    BYPASSES_SAMPLER = True
+
     runtime_params: TableDiffRuntimeParameters
 
     def _run_validation(self):

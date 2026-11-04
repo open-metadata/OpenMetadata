@@ -12,6 +12,7 @@
  */
 
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import type { ReactNode } from 'react';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -86,6 +87,7 @@ export type ExploreSearchIndex =
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
 export interface ExploreProps {
+  additionalSearchResults?: ReactNode;
   aggregations?: Aggregations;
   activeTabKey: SearchIndex;
   tabItems: ItemType[];

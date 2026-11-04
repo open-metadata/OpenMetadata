@@ -143,6 +143,7 @@ export const prepareChartData = ({
 
     dataPoints.push({
       name: result.timestamp,
+      executionSource: result.evaluationScope?.executionSource,
       status: result.testCaseStatus,
       ...values,
       ...omitBy(metric, isUndefined),

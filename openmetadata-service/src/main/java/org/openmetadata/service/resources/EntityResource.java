@@ -47,9 +47,11 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +61,7 @@ import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -70,6 +73,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -488,7 +492,33 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getVersion(id, version);
+    T stored = repository.getVersion(id, version);
+    return snapshotRedaction(securityContext)
+        .map(redaction -> redaction.apply(stored))
+        .orElse(stored);
+  }
+
+  /**
+   * The versions and history endpoints return entities as they were stored, without the
+   * post-processing the entity's own reads apply. A resource whose entities carry secrets returns
+   * the redaction its reads apply; empty, the default, shows a stored snapshot unchanged.
+   */
+  protected Optional<UnaryOperator<T>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.empty();
+  }
+
+  /** Applies {@code redaction} to the entity a response carries, bare or inside a change event. */
+  @SuppressWarnings("unchecked")
+  protected final Response withRedactedEntity(Response response, UnaryOperator<T> redaction) {
+    Object body = response.getEntity();
+    if (entityClass.isInstance(body)) {
+      return Response.fromResponse(response).entity(redaction.apply((T) body)).build();
+    }
+    if (body instanceof ChangeEvent changeEvent
+        && entityClass.isInstance(changeEvent.getEntity())) {
+      changeEvent.setEntity(redaction.apply((T) changeEvent.getEntity()));
+    }
+    return response;
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
@@ -502,7 +532,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listVersions(id);
+    EntityHistory history = repository.listVersions(id);
+    snapshotRedaction(securityContext)
+        .ifPresent(
+            redaction ->
+                history.setVersions(
+                    history.getVersions().stream()
+                        .map(
+                            version ->
+                                (Object)
+                                    JsonUtils.pojoToJson(
+                                        redaction.apply(
+                                            JsonUtils.readValue((String) version, entityClass))))
+                        .collect(Collectors.toList())));
+    return history;
   }
 
   protected ResultList<T> listEntityHistoryByTimestampInternal(
@@ -516,7 +559,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext resourceContext = getResourceContext();
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    ResultList<T> history =
+        repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    snapshotRedaction(securityContext)
+        .ifPresent(
+            redaction ->
+                history.setData(
+                    history.getData().stream().map(redaction).collect(Collectors.toList())));
+    return history;
   }
 
   public T getByNameInternal(

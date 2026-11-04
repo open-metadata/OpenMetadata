@@ -37,13 +37,17 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.AthenaConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -299,6 +303,28 @@ class JsonUtilsTest {
     assertEquals(0, actualJson.get("connection").size());
     assertTrue(actualJson.has("deleted"));
     assertFalse(actualJson.get("deleted").asBoolean());
+  }
+
+  @Test
+  void testPojoToMaskedJsonLeavesOutAUsersAuthenticationMechanism() {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("alice")
+            .withEmail("alice@example.com")
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+                    .withConfig(new BasicAuthMechanism().withPassword("$2a$12$storedHash")));
+    ChangeEvent changeEvent = new ChangeEvent().withEntityType("user").withEntity(user);
+
+    JsonNode userJson = JsonUtils.readTree(JsonUtils.pojoToMaskedJson(user));
+    JsonNode changeEventJson = JsonUtils.readTree(JsonUtils.pojoToMaskedJson(changeEvent));
+
+    assertEquals("alice", userJson.get("name").asText());
+    assertFalse(userJson.has("authenticationMechanism"));
+    assertFalse(changeEventJson.get("entity").has("authenticationMechanism"));
+    assertFalse(changeEventJson.toString().contains("storedHash"));
   }
 
   @Test

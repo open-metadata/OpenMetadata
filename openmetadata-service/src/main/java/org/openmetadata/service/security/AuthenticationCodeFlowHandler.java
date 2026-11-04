@@ -35,11 +35,11 @@ import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.http.HTTPRequest;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.id.Issuer;
 import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
-import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.AuthenticationErrorResponse;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.AuthenticationResponse;
@@ -71,6 +71,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
@@ -79,6 +80,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -135,6 +137,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String REDIRECT_URI_KEY = "redirectUri";
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+  static final String AUTHORIZATION_CODE_REQUIRED = "Authorization code is required";
 
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
@@ -230,6 +233,24 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   public OidcClient getClient() {
     return client;
+  }
+
+  /**
+   * The issuer the provider's discovery document names, which its tokens must carry. Read on demand
+   * from pac4j's cached metadata, so the server can start while the provider is unreachable.
+   */
+  public String getProviderIssuer() {
+    Issuer issuer = resolveProviderMetadata(client.getConfiguration()).getIssuer();
+    return issuer == null ? null : issuer.getValue();
+  }
+
+  /** Whether this handler signs users in through {@code oidcClient}, as the token filter expects. */
+  public boolean servesClient(OidcClientConfig oidcClient) {
+    OidcClientConfig current = authenticationConfiguration.getOidcConfiguration();
+    return oidcClient != null
+        && Objects.equals(current.getId(), oidcClient.getId())
+        && StringUtils.trimToEmpty(current.getDiscoveryUri())
+            .equals(StringUtils.trimToEmpty(oidcClient.getDiscoveryUri()));
   }
 
   public synchronized void updateConfiguration(
@@ -517,10 +538,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Optional state validation
       validateStateIfRequired(pendingSession, resp, successResponse);
 
-      // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
-
-      // Validations
+      requireAuthorizationCode(pendingSession, credentials);
       validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
 
       // pac4j 6 re-parses the serialized id token on every toIdToken() call; parse once and reuse.
@@ -722,24 +741,33 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new HashMap<>(authParams);
   }
 
+  /**
+   * A callback carries an authorization code for every configured response type: the client asks to
+   * be redirected back in query mode, where providers return one.
+   */
+  private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
+    if (credentials.getCode() == null) {
+      LOG.warn(
+          "Rejecting OIDC callback without an authorization code for session {}",
+          SessionService.truncateId(session.getId()));
+      throw new IllegalArgumentException(AUTHORIZATION_CODE_REQUIRED);
+    }
+  }
+
   private void validateAndSendTokenRequest(
       UserSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws URISyntaxException {
-    if (oidcCredentials.getCode() != null) {
-      LOG.debug(
-          "Initiating Token Request - Session: {}, redirect_uri: {}",
-          session.getId(),
-          computedCallbackUrl);
-      CodeVerifier verifier =
-          nullOrEmpty(session.getPkceVerifier())
-              ? null
-              : new CodeVerifier(session.getPkceVerifier());
-      TokenRequest request =
-          createTokenRequest(
-              new AuthorizationCodeGrant(
-                  oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
-      executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
-    }
+    LOG.debug(
+        "Initiating Token Request - Session: {}, redirect_uri: {}",
+        session.getId(),
+        computedCallbackUrl);
+    CodeVerifier verifier =
+        nullOrEmpty(session.getPkceVerifier()) ? null : new CodeVerifier(session.getPkceVerifier());
+    TokenRequest request =
+        createTokenRequest(
+            new AuthorizationCodeGrant(
+                oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
+    executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
   }
 
   private void validateStateIfRequired(
@@ -774,27 +802,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return configuration.getOpMetadataResolver().load();
   }
 
-  private OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
+  /**
+   * Keeps only the authorization code from the callback redirect; the ID token is the one the token
+   * endpoint returns for that code.
+   */
+  static OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();
-    // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
     if (code != null) {
       // pac4j 6 stores the code as a String; toAuthorizationCode() reconstructs the nimbus type.
       credentials.setCode(code.getValue());
     }
-    // get ID token
-    JWT idToken = successResponse.getIDToken();
-    if (idToken != null) {
-      // pac4j 6 stores the id token as a serialized String; toIdToken() re-parses it to a JWT.
-      credentials.setIdToken(idToken.serialize());
-    }
-    // get access token
-    AccessToken accessToken = successResponse.getAccessToken();
-    if (accessToken != null) {
-      // pac4j 6 setAccessToken takes a Map; setAccessTokenObject keeps the nimbus AccessToken.
-      credentials.setAccessTokenObject(accessToken);
-    }
-
     return credentials;
   }
 

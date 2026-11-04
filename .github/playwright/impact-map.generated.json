@@ -1376,6 +1376,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/TestSummary/TestSummary.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/TableSharding.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/TestSummaryCustomTooltip/TestSummaryCustomTooltip.component.tsx"
       ],
       "specs": [
@@ -5539,6 +5547,7 @@
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -5787,7 +5796,8 @@
       "specs": [
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
-        "playwright/e2e/Features/IncidentManagerPagination.spec.ts"
+        "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
+        "playwright/e2e/Pages/TableSharding.spec.ts"
       ]
     },
     {
@@ -5796,6 +5806,14 @@
       ],
       "specs": [
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/tests/testCase.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/TableSharding.spec.ts"
       ]
     },
     {

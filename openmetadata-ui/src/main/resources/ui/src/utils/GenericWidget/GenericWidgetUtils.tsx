@@ -31,6 +31,7 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import type { EntityReference } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/tests/testCase';
+import { TableShardingWidget } from '../../pages/TableDetailsPageV1/Sharding/TableSharding';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
 import tableClassBase from '../TableClassBase';
@@ -373,6 +374,7 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
     <PartitionedKeys renderAsExpandableCard={false} />
   ),
+  [DetailPageWidgetKeys.TABLE_SHARDING]: () => <TableShardingWidget />,
   [DetailPageWidgetKeys.TABLE_ALIASES]: () => (
     <TableAliases renderAsExpandableCard={false} />
   ),
