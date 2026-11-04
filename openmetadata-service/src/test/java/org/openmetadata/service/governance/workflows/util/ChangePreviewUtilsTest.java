@@ -632,6 +632,59 @@ class ChangePreviewUtilsTest {
     assertEquals(List.of("Draft"), proposed.get("entityStatus").removed());
   }
 
+  // The workflow sets the status to In Review before the task exists, so the entity's latest hop is
+  // that write; the first task previews the edit that started the run.
+  @Test
+  void buildProposedChangesPayload_firstTask_previewsTheOpeningEditNotTheStatusWrite() {
+    EntityInterface<?> entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withIncrementalChangeDescription(
+                new ChangeDescription().withFieldsUpdated(List.of(statusChange())));
+    ChangeDescription openingEdit = tagsAdded("PII.Sensitive");
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, null, null, openingEdit);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+    assertEquals(List.of("tags"), List.copyOf(proposed.keySet()));
+    assertEquals(List.of("PII.Sensitive"), proposed.get("tags").added());
+  }
+
+  // A re-edit adds its own hop to the preview the run already carries, so the chain of edits shows.
+  @Test
+  void buildProposedChangesPayload_reEdit_foldsItsHopIntoTheCarriedPreview() {
+    EntityInterface<?> entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withIncrementalChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("description")
+                                .withOldValue("old")
+                                .withNewValue("new"))));
+    Map<String, Object> carried = new LinkedHashMap<>();
+    carried.put(
+        "proposedChanges",
+        Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of())));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, carried, null, null);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+    assertEquals(List.of("PII.Sensitive"), proposed.get("tags").added());
+    assertEquals(List.of("new"), proposed.get("description").added());
+  }
+
+  private static ChangeDescription tagsAdded(String tagFqn) {
+    return new ChangeDescription()
+        .withFieldsAdded(
+            List.of(
+                new FieldChange()
+                    .withName("tags")
+                    .withNewValue("[{\"tagFQN\":\"%s\"}]".formatted(tagFqn))));
+  }
+
   private static FieldChange statusChange() {
     return new FieldChange()
         .withName("entityStatus")

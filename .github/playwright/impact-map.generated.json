@@ -312,7 +312,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/constant/dataQuality.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts"
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts"
       ]
     },
     {
@@ -10033,6 +10034,14 @@
       "specs": [
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/EntityPageInfos/ManageButton/ManageButton.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts"
       ]
     },
     {
