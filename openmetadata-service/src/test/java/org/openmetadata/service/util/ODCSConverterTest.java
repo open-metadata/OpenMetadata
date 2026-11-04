@@ -712,10 +712,10 @@ class ODCSConverterTest {
     List<ODCSSchemaElement> props = tableObject.getProperties();
 
     assertEquals(ODCSSchemaElement.LogicalType.INTEGER, props.get(0).getLogicalType()); // INT
-    assertEquals(ODCSSchemaElement.LogicalType.LONG, props.get(1).getLogicalType()); // BIGINT
-    assertEquals(ODCSSchemaElement.LogicalType.FLOAT, props.get(2).getLogicalType()); // FLOAT
-    assertEquals(ODCSSchemaElement.LogicalType.DOUBLE, props.get(3).getLogicalType()); // DOUBLE
-    assertEquals(ODCSSchemaElement.LogicalType.DECIMAL, props.get(4).getLogicalType()); // DECIMAL
+    assertEquals(ODCSSchemaElement.LogicalType.INTEGER, props.get(1).getLogicalType()); // BIGINT
+    assertEquals(ODCSSchemaElement.LogicalType.NUMBER, props.get(2).getLogicalType()); // FLOAT
+    assertEquals(ODCSSchemaElement.LogicalType.NUMBER, props.get(3).getLogicalType()); // DOUBLE
+    assertEquals(ODCSSchemaElement.LogicalType.NUMBER, props.get(4).getLogicalType()); // DECIMAL
     assertEquals(ODCSSchemaElement.LogicalType.BOOLEAN, props.get(5).getLogicalType()); // BOOLEAN
     assertEquals(ODCSSchemaElement.LogicalType.STRING, props.get(6).getLogicalType()); // STRING
     assertEquals(ODCSSchemaElement.LogicalType.DATE, props.get(7).getLogicalType()); // DATE
@@ -1794,16 +1794,16 @@ class ODCSConverterTest {
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
     assertNotNull(odcs);
-    assertNotNull(odcs.getQuality());
-    assertEquals(2, odcs.getQuality().size());
+    assertNull(odcs.getQuality());
+    assertEquals(1, odcs.getSchema().getFirst().getQuality().size());
 
-    ODCSQualityRule exportedRule1 = odcs.getQuality().get(0);
+    ODCSQualityRule exportedRule1 = findProperty(odcs, "user_id").getQuality().getFirst();
     assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule1.getType());
     assertEquals(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES, exportedRule1.getMetric());
-    assertEquals("user_id", exportedRule1.getColumn());
+    assertNull(exportedRule1.getColumn());
     assertEquals("user_id_not_null", exportedRule1.getName());
 
-    ODCSQualityRule exportedRule2 = odcs.getQuality().get(1);
+    ODCSQualityRule exportedRule2 = odcs.getSchema().getFirst().getQuality().getFirst();
     assertEquals(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT, exportedRule2.getMetric());
   }
 
@@ -1839,13 +1839,13 @@ class ODCSConverterTest {
     DataContract contract = ODCSConverter.fromODCS(original, entityRef);
     ODCSDataContract exported = ODCSConverter.toODCS(contract);
 
-    assertNotNull(exported.getQuality());
-    assertEquals(1, exported.getQuality().size());
+    assertNull(exported.getQuality());
+    assertEquals(1, findProperty(exported, "id").getQuality().size());
 
-    ODCSQualityRule exportedRule = exported.getQuality().get(0);
+    ODCSQualityRule exportedRule = findProperty(exported, "id").getQuality().get(0);
     assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule.getType());
     assertEquals(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES, exportedRule.getMetric());
-    assertEquals("id", exportedRule.getColumn());
+    assertNull(exportedRule.getColumn());
     assertEquals("id_uniqueness", exportedRule.getName());
     assertEquals("ID must be unique", exportedRule.getDescription());
     assertEquals(ODCSQualityRule.Dimension.UNIQUENESS, exportedRule.getDimension());
@@ -2398,9 +2398,9 @@ class ODCSConverterTest {
 
     ODCSDataContract odcs = ODCSConverter.toODCS(contract);
 
-    assertNotNull(odcs.getQuality());
-    assertEquals(1, odcs.getQuality().size());
-    assertEquals("row_count", odcs.getQuality().get(0).getName());
+    assertNull(odcs.getQuality());
+    assertEquals(1, odcs.getSchema().getFirst().getQuality().size());
+    assertEquals("row_count", odcs.getSchema().getFirst().getQuality().getFirst().getName());
 
     ODCSSchemaElement tableObject = odcs.getSchema().get(0);
     ODCSSchemaElement emailProp = tableObject.getProperties().get(0);
@@ -2433,8 +2433,8 @@ class ODCSConverterTest {
     DataContract contract = ODCSConverter.fromODCS(source, tableRef("shipments"));
     ODCSDataContract exported = ODCSConverter.toODCS(contract);
 
-    assertNotNull(exported.getQuality());
-    ODCSQualityRule exportedRule = exported.getQuality().getFirst();
+    assertNull(exported.getQuality());
+    ODCSQualityRule exportedRule = exported.getSchema().getFirst().getQuality().getFirst();
     assertEquals(ODCSQualityRule.Type.CUSTOM, exportedRule.getType());
     assertEquals("soda", exportedRule.getEngine());
     assertEquals(sodaRule.getImplementation(), exportedRule.getImplementation());

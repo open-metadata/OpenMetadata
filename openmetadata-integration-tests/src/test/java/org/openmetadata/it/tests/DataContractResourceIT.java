@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -106,6 +108,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.datacontract.odcs.ODCSPublishedSchema;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.data.DataContractResource;
@@ -2402,8 +2405,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(3, tableObject.getProperties().size());
 
     assertEquals(
-        ODCSSchemaElement.LogicalType.LONG,
-        tableObject.getProperties().get(0).getLogicalType()); // BIGINT maps to LONG
+        ODCSSchemaElement.LogicalType.INTEGER, tableObject.getProperties().get(0).getLogicalType());
     assertEquals(
         ODCSSchemaElement.LogicalType.STRING, tableObject.getProperties().get(1).getLogicalType());
     assertEquals(
@@ -2505,7 +2507,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertTrue(exported.contains("quality:"), exported);
     assertEquals(
         "engine",
-        new YAMLMapper().readTree(exported).at("/quality/0/customProperties/0/property").asText());
+        new YAMLMapper()
+            .readTree(exported)
+            .at("/schema/0/quality/0/customProperties/0/property")
+            .asText());
     assertFalse(exported.contains("[]"), exported);
   }
 
@@ -3221,6 +3226,96 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testNativeCustomPropertiesExportAsValidOdcsAcrossAllRoutes(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String costCenter = ns.prefix("exportCostCenter");
+    String retentionDays = ns.prefix("exportRetentionDays");
+    String qualityTarget = ns.prefix("exportQualityTarget");
+    Map<String, String> types =
+        Map.of(costCenter, "string", retentionDays, "integer", qualityTarget, "number");
+    try {
+      for (Map.Entry<String, String> property : types.entrySet()) {
+        CustomPropertyTestSupport.registerProperty(
+            client, "dataContract", property.getKey(), property.getValue());
+      }
+      Table table = createTestTable(ns);
+      TestCase check =
+          client
+              .testCases()
+              .create(
+                  new CreateTestCase()
+                      .withName(ns.prefix("native_id_not_null"))
+                      .withEntityLink(
+                          "<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
+                      .withTestDefinition("columnValuesToBeNotNull"));
+      Map<String, Object> values =
+          Map.of(costCenter, "ANALYTICS-042", retentionDays, 90, qualityTarget, 99.5);
+      CreateDataContract request =
+          new CreateDataContract()
+              .withName(ns.prefix("native_export"))
+              .withEntity(table.getEntityReference())
+              .withSchema(table.getColumns())
+              .withQualityExpectations(List.of(check.getEntityReference()))
+              .withExtension(values);
+      DataContract created = client.dataContracts().create(request);
+      DataContract stored =
+          client
+              .dataContracts()
+              .get(created.getId().toString(), "extension,schema,qualityExpectations");
+      assertEquals(values.keySet(), ((Map<?, ?>) stored.getExtension()).keySet());
+      assertTrue(nullOrEmpty(stored.getOdcsQualityRules()));
+      assertNull(stored.getOdcsPreservedFields());
+
+      YAMLMapper mapper = new YAMLMapper();
+      List<JsonNode> exported =
+          List.of(
+              mapper.readTree(client.dataContracts().exportToODCSYaml(created.getId())),
+              mapper.readTree(
+                  client.dataContracts().exportToODCSYamlByFqn(created.getFullyQualifiedName())),
+              mapper.readTree(
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataContracts/" + created.getId() + "/odcs", null)),
+              mapper.readTree(
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/dataContracts/name/" + created.getFullyQualifiedName() + "/odcs",
+                          null)));
+      for (JsonNode document : exported) {
+        assertEquals(List.of(), ODCSPublishedSchema.validate(document));
+        Map<String, JsonNode> properties = new HashMap<>();
+        document
+            .path("customProperties")
+            .forEach(
+                property ->
+                    properties.put(property.path("property").asText(), property.path("value")));
+        assertEquals("ANALYTICS-042", properties.get(costCenter).asText());
+        assertTrue(properties.get(retentionDays).isIntegralNumber());
+        assertEquals(90, properties.get(retentionDays).asInt());
+        assertEquals(99.5, properties.get(qualityTarget).asDouble());
+        assertFalse(document.at("/schema/0/properties/0/quality/0").has("column"));
+      }
+      request.setExtension(Map.of(costCenter, "UPDATED"));
+      DataContract updated = client.dataContracts().createOrUpdate(request);
+      JsonNode changed = mapper.readTree(client.dataContracts().exportToODCSYaml(updated.getId()));
+      assertEquals(1, changed.path("customProperties").size());
+      assertEquals("UPDATED", changed.at("/customProperties/0/value").asText());
+      request.setExtension(Map.of());
+      client.dataContracts().createOrUpdate(request);
+      JsonNode cleared = mapper.readTree(client.dataContracts().exportToODCSYaml(created.getId()));
+      assertFalse(cleared.has("customProperties"));
+    } finally {
+      for (String property : types.keySet()) {
+        CustomPropertyTestSupport.removeProperty(client, "dataContract", property);
+      }
+    }
+  }
+
+  @Test
   void testGenericODCSMetadataSurvivesImportUpdateAndBothYamlExports(TestNamespace ns)
       throws Exception {
     Table table = createTestTable(ns);
@@ -3545,6 +3640,24 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     odcs.setSchema(List.of(tableObject));
 
     return SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+  }
+
+  private static List<ODCSQualityRule> exportedQualityRules(ODCSDataContract contract) {
+    List<ODCSQualityRule> rules = new ArrayList<>();
+    for (ODCSSchemaElement object : contract.getSchema()) {
+      collectExportedQualityRules(object, rules);
+    }
+    return rules;
+  }
+
+  private static void collectExportedQualityRules(
+      ODCSSchemaElement element, List<ODCSQualityRule> rules) {
+    if (element.getQuality() != null) {
+      rules.addAll(element.getQuality());
+    }
+    if (element.getProperties() != null) {
+      element.getProperties().forEach(child -> collectExportedQualityRules(child, rules));
+    }
   }
 
   private static ODCSSchemaElement findExportedProperty(ODCSDataContract odcs, String name) {
@@ -5736,10 +5849,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract odcs = SdkClients.adminClient().dataContracts().exportToODCS(contract.getId());
 
     assertNotNull(odcs);
-    assertNotNull(odcs.getQuality());
-    assertEquals(1, odcs.getQuality().size());
+    assertNull(odcs.getQuality());
+    assertEquals(1, exportedQualityRules(odcs).size());
 
-    ODCSQualityRule exportedRule = odcs.getQuality().get(0);
+    ODCSQualityRule exportedRule = exportedQualityRules(odcs).get(0);
     assertEquals(ODCSQualityRule.Type.LIBRARY, exportedRule.getType());
     assertEquals(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT, exportedRule.getMetric());
     assertEquals(0.0, exportedRule.getMustBeGreaterThan());
@@ -5796,12 +5909,12 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract exported =
         SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
 
-    assertNotNull(exported.getQuality());
-    assertEquals(3, exported.getQuality().size());
+    assertNull(exported.getQuality());
+    assertEquals(3, exportedQualityRules(exported).size());
 
     // Verify SQL rule
     ODCSQualityRule exportedSqlRule =
-        exported.getQuality().stream()
+        exportedQualityRules(exported).stream()
             .filter(r -> r.getType() == ODCSQualityRule.Type.SQL)
             .findFirst()
             .orElseThrow();
@@ -5811,16 +5924,19 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     // Verify library rule
     ODCSQualityRule exportedLibraryRule =
-        exported.getQuality().stream()
+        exportedQualityRules(exported).stream()
             .filter(r -> r.getType() == ODCSQualityRule.Type.LIBRARY)
             .findFirst()
             .orElseThrow();
     assertEquals(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES, exportedLibraryRule.getMetric());
-    assertEquals("email", exportedLibraryRule.getColumn());
+    assertNull(exportedLibraryRule.getColumn());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES,
+        findExportedProperty(exported, "email").getQuality().getFirst().getMetric());
 
     // Verify custom rule
     ODCSQualityRule exportedCustomRule =
-        exported.getQuality().stream()
+        exportedQualityRules(exported).stream()
             .filter(r -> r.getType() == ODCSQualityRule.Type.CUSTOM)
             .findFirst()
             .orElseThrow();
@@ -6020,9 +6136,9 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract exported =
         SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
 
-    assertNotNull(exported.getQuality());
-    assertEquals("cron", exported.getQuality().get(0).getScheduler());
-    assertEquals("0 0 * * *", exported.getQuality().get(0).getSchedule());
+    assertNull(exported.getQuality());
+    assertEquals("cron", exportedQualityRules(exported).get(0).getScheduler());
+    assertEquals("0 0 * * *", exportedQualityRules(exported).get(0).getSchedule());
   }
 
   @Test
@@ -6092,15 +6208,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     ODCSDataContract exported =
         SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
 
-    assertNotNull(exported.getQuality());
-    assertEquals(3, exported.getQuality().size());
+    assertNull(exported.getQuality());
+    assertEquals(3, exportedQualityRules(exported).size());
 
-    ODCSQualityRule exportedBetweenRule = exported.getQuality().get(0);
+    ODCSQualityRule exportedBetweenRule = exportedQualityRules(exported).get(0);
     assertNotNull(exportedBetweenRule.getMustBeBetween());
     assertEquals(100.0, exportedBetweenRule.getMustBeBetween().get(0));
     assertEquals(10000.0, exportedBetweenRule.getMustBeBetween().get(1));
 
-    ODCSQualityRule exportedNotBetweenRule = exported.getQuality().get(1);
+    ODCSQualityRule exportedNotBetweenRule = exportedQualityRules(exported).get(1);
     assertNotNull(exportedNotBetweenRule.getMustNotBeBetween());
     assertEquals(10.0, exportedNotBetweenRule.getMustNotBeBetween().get(0));
     assertEquals(90.0, exportedNotBetweenRule.getMustNotBeBetween().get(1));

@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.datacontract.odcs.ODCSExportDocument;
 import org.openmetadata.service.datacontract.odcs.ODCSImportIssues;
 import org.openmetadata.service.datacontract.odcs.ODCSPreservedFields;
 import org.openmetadata.service.datacontract.odcs.ODCSShapeNormalizer;
@@ -99,8 +100,16 @@ public class ODCSConverter {
 
   public static JsonNode toODCSDocument(
       DataContract contract, List<ODCSQualityRule> additionalQualityRules) {
-    JsonNode nativeDocument = MAPPER.valueToTree(toNativeODCS(contract, additionalQualityRules));
-    return ODCSPreservedFields.restore(contract.getOdcsPreservedFields(), nativeDocument);
+    String tableName =
+        contract.getEntity() != null && contract.getEntity().getName() != null
+            ? contract.getEntity().getName()
+            : contract.getName();
+    JsonNode nativeDocument =
+        ODCSExportDocument.nativeDocument(
+            MAPPER.valueToTree(toNativeODCS(contract, additionalQualityRules)), tableName);
+    JsonNode preserved =
+        ODCSPreservedFields.restore(contract.getOdcsPreservedFields(), nativeDocument);
+    return ODCSExportDocument.withNativeCustomProperties(preserved, contract.getExtension());
   }
 
   private static ODCSDataContract toNativeODCS(

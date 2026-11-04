@@ -69,6 +69,10 @@ public final class ODCSFieldCoverage {
       return new FieldRule(Treatment.NOT_IMPORTED, reason, null);
     }
 
+    static FieldRule preservedNested(Section section, String reason) {
+      return new FieldRule(Treatment.NOT_IMPORTED, reason, section);
+    }
+
     static FieldRule nested(Section section) {
       return new FieldRule(Treatment.NESTED, null, section);
     }
@@ -363,8 +367,7 @@ public final class ODCSFieldCoverage {
             "transformDescription",
             "customProperties",
             "relationships",
-            "id",
-            "items")) {
+            "id")) {
       fields.put(key, FieldRule.dropped(NO_COLUMN_EQUIVALENT));
     }
     V3_2_PROPERTY_FIELDS.forEach(key -> fields.put(key, FieldRule.dropped(ADDED_IN_V3_2)));
@@ -384,6 +387,7 @@ public final class ODCSFieldCoverage {
             "quality")) {
       fields.put(key, FieldRule.mapped());
     }
+    fields.put("items", FieldRule.preservedNested(Section.PROPERTY, NO_COLUMN_EQUIVALENT));
     fields.put("logicalTypeOptions", FieldRule.nested(Section.LOGICAL_TYPE_OPTIONS));
     fields.put(PROPERTIES, FieldRule.nested(Section.PROPERTY));
     fields.put("authoritativeDefinitions", FieldRule.stored());
