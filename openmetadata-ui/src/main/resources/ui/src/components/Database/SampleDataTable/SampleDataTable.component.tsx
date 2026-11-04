@@ -15,6 +15,7 @@ import { Button, Dropdown, Select, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 
 import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,7 +27,7 @@ import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
-import { Table } from '../../../generated/entity/data/table';
+import { Table, TableType } from '../../../generated/entity/data/table';
 import { withLoader } from '../../../hoc/withLoader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -80,6 +81,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   const { isTourPage, tourMockDatasetData } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
+  const [isSharded, setIsSharded] = useState(false);
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -166,6 +168,10 @@ const SampleDataTable: FC<SampleDataProps> = ({
     });
 
     return {
+      executionSource:
+        sampleData && 'executionSource' in sampleData
+          ? sampleData.executionSource
+          : undefined,
       columns: updatedColumns,
       rows: data,
     };
@@ -178,6 +184,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
           ? await getSampleDataByContainerId(tableId)
           : await getSampleDataByTableId(tableId);
       setSampleData(getSampleDataWithType(entityData));
+      setIsSharded(
+        'tableType' in entityData && entityData.tableType === TableType.Sharded
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -330,6 +339,10 @@ const SampleDataTable: FC<SampleDataProps> = ({
             ))}
           </Select>
         </Space>
+        <ExecutionSource
+          isSharded={isSharded}
+          source={sampleData?.executionSource}
+        />
         <Dropdown
           menu={{
             items: manageButtonContent,

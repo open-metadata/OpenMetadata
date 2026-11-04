@@ -57,6 +57,9 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.DimensionValue;
+import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
+import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -65,6 +68,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -5724,5 +5728,48 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private void refreshSearchIndex(Rest5Client searchClient, String indexName) throws Exception {
     Request request = new Request("POST", "/" + indexName + "/_refresh");
     searchClient.performRequest(request);
+  }
+
+  @Test
+  void post_testCaseResultWithEvaluationScope_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_evaluation_scope"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    long timestamp = System.currentTimeMillis();
+    TestCaseEvaluationScope scope =
+        new TestCaseEvaluationScope()
+            .withExecutionSource(
+                new TableExecutionSource()
+                    .withDatabaseName("demo_project")
+                    .withSchemaName("demo_dataset")
+                    .withTableName("events_20260101")
+                    .withShardDate("2026-01-01"));
+
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(timestamp);
+    create.setTestCaseStatus(TestCaseStatus.Failed);
+    create.setResult("failed");
+    create.setEvaluationScope(scope);
+    create.setDimensionResults(
+        List.of(
+            new TestCaseDimensionResult()
+                .withId(UUID.randomUUID())
+                .withTestCaseResultId(UUID.randomUUID())
+                .withTimestamp(timestamp)
+                .withDimensionKey("channel=web")
+                .withDimensionValues(
+                    List.of(new DimensionValue().withName("channel").withValue("web")))
+                .withTestCaseStatus(TestCaseStatus.Failed)));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    assertEquals(
+        scope,
+        listTestCaseResults(testCase.getFullyQualifiedName()).getFirst().getEvaluationScope());
   }
 }

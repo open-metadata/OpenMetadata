@@ -37,6 +37,7 @@ import {
 import { CustomDQTooltip } from '../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ProfileExecutionSource } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
 
@@ -48,6 +49,8 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   curveType,
   title,
   isLoading,
+  profiles,
+  isSharded,
   noDataPlaceholderText,
   chartType = 'line',
 }: ProfilerDetailsCardProps) => {
@@ -131,6 +134,13 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   content={
                     <CustomDQTooltip
                       dateTimeFormatter={formatDateTimeLong}
+                      footer={(timestamp) => (
+                        <ProfileExecutionSource
+                          isSharded={isSharded}
+                          profiles={profiles}
+                          timestamp={timestamp}
+                        />
+                      )}
                       timeStampKey="timestamp"
                       valueFormatter={(value) =>
                         tooltipFormatter(value, tickFormatter)

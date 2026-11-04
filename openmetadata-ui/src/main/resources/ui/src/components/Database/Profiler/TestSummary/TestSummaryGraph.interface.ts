@@ -18,6 +18,7 @@ import {
 } from '../../../../generated/tests/testCase';
 
 export interface TestSummaryGraphProps {
+  isSharded?: boolean;
   testCaseParameterValue?: TestCaseParameterValue[];
   testCaseFqn?: string;
   testCaseName: string;
