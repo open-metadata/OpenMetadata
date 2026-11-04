@@ -2621,6 +2621,93 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     assertNotNull(fetched2.getLifeCycle().getCreated(), "Lifecycle should have created info");
   }
 
+  @Test
+  void patch_entityLifeCycleMergesObservedBounds(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+    T original = createEntity(createMinimalRequest(ns));
+    original.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(
+                new org.openmetadata.schema.type.AccessDetails()
+                    .withTimestamp(2000L)
+                    .withAccessedByAProcess("initial"))
+            .withUpdated(new org.openmetadata.schema.type.AccessDetails().withTimestamp(3000L)));
+    T first = patchEntity(original.getId().toString(), original);
+    first.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(
+                new org.openmetadata.schema.type.AccessDetails()
+                    .withTimestamp(1000L)
+                    .withAccessedByAProcess("earlier"))
+            .withUpdated(new org.openmetadata.schema.type.AccessDetails().withTimestamp(4000L))
+            .withAccessed(new org.openmetadata.schema.type.AccessDetails().withTimestamp(5000L)));
+    T second = patchEntity(first.getId().toString(), first);
+    second.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(
+                new org.openmetadata.schema.type.AccessDetails()
+                    .withTimestamp(6000L)
+                    .withAccessedByAProcess("later"))
+            .withUpdated(new org.openmetadata.schema.type.AccessDetails().withTimestamp(2000L)));
+    patchEntity(second.getId().toString(), second);
+    T stored = getEntityWithFields(original.getId().toString(), "lifeCycle");
+    assertEquals(1000L, stored.getLifeCycle().getCreated().getTimestamp());
+    assertEquals("earlier", stored.getLifeCycle().getCreated().getAccessedByAProcess());
+    assertEquals(4000L, stored.getLifeCycle().getUpdated().getTimestamp());
+    assertEquals(5000L, stored.getLifeCycle().getAccessed().getTimestamp());
+    assertEquals(original.getId(), stored.getId());
+    assertEquals(
+        JsonUtils.pojoToJsonNode(original).get("createdAt"),
+        JsonUtils.pojoToJsonNode(stored).get("createdAt"));
+    assertEquals(
+        JsonUtils.pojoToJsonNode(original).get("createdBy"),
+        JsonUtils.pojoToJsonNode(stored).get("createdBy"));
+    assertEquals(original.getVersion(), stored.getVersion());
+  }
+
+  /**
+   * Test: a life cycle timestamp before the Unix epoch is the year-0001 placeholder older ingestion
+   * clients send; it is dropped on write while the real aspects next to it are kept.
+   */
+  @Test
+  void patch_entityLifeCyclePlaceholderTimestampIsDropped(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+
+    T entity = createEntity(createMinimalRequest(ns));
+    org.openmetadata.schema.type.AccessDetails placeholderCreated =
+        new org.openmetadata.schema.type.AccessDetails().withTimestamp(-62135596800000L);
+
+    entity.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle().withCreated(placeholderCreated));
+    T placeholderOnly = patchEntity(entity.getId().toString(), entity);
+    T fetched = getEntityWithFields(placeholderOnly.getId().toString(), "lifeCycle");
+    assertTrue(
+        fetched.getLifeCycle() == null || fetched.getLifeCycle().getCreated() == null,
+        "A placeholder created timestamp must not be stored");
+    assertEquals(entity.getVersion(), fetched.getVersion());
+
+    org.openmetadata.schema.type.AccessDetails accessed =
+        new org.openmetadata.schema.type.AccessDetails().withTimestamp(1695059900000L);
+    fetched.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(placeholderCreated)
+            .withAccessed(accessed));
+    patchEntity(fetched.getId().toString(), fetched);
+    T mixed = getEntityWithFields(fetched.getId().toString(), "lifeCycle");
+    assertNull(mixed.getLifeCycle().getCreated(), "The placeholder aspect is dropped");
+    assertEquals(1695059900000L, mixed.getLifeCycle().getAccessed().getTimestamp());
+
+    mixed.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle().withCreated(placeholderCreated));
+    patchEntity(mixed.getId().toString(), mixed);
+    T kept = getEntityWithFields(mixed.getId().toString(), "lifeCycle");
+    assertNull(kept.getLifeCycle().getCreated(), "The placeholder is not stored");
+    assertEquals(
+        1695059900000L,
+        kept.getLifeCycle().getAccessed().getTimestamp(),
+        "A placeholder-only life cycle leaves the recorded times in place");
+  }
+
   /**
    * Test: Verify lifecycle updates do NOT cause version pollution
    * This test verifies the fix for https://github.com/open-metadata/OpenMetadata/issues/21326
@@ -7735,8 +7822,13 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
       String after = null;
       do {
         JsonNode result = readHistoryPage(client, basePath, startTs, endTs, limit, "after", after);
-        pages.add(versionKeys(result));
-        lastPageBeforeCursor = cursor(result, "before");
+        List<String> page = versionKeys(result);
+        // A concurrent test can hard-delete the row that made the previous page report more,
+        // leaving this page empty and cursorless. The walk then ends on the last page with rows.
+        if (!page.isEmpty()) {
+          pages.add(page);
+          lastPageBeforeCursor = cursor(result, "before");
+        }
         after = cursor(result, "after");
       } while (after != null);
       return new HistoryWalk(pages, lastPageBeforeCursor);

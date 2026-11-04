@@ -1080,6 +1080,88 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   @Test
+  void test_importCsv_updateKeepsVersionHistory(TestNamespace ns) {
+    DatabaseSchema schema = createImportSchema(ns);
+    Table table = createOwnedTaggedTable(schema, ns.prefix("carrier_invoices"));
+    editDescription(SdkClients.user1Client(), table.getId(), "Reviewed by the table owner.");
+    Table beforeImport =
+        editDescription(SdkClients.ingestionBotClient(), table.getId(), "Refreshed by ingestion.");
+
+    importReplacingText(schema, "Refreshed by ingestion.", "Imported from the catalog sheet.");
+
+    assertEquals(List.of(0.4, 0.3, 0.2, 0.1), versionsInHistory(table.getId()));
+    assertVersionKept(table.getId(), beforeImport);
+
+    editDescription(SdkClients.adminClient(), table.getId(), "Corrected after the import.");
+    assertEquals(
+        List.of(0.4, 0.3, 0.2, 0.1),
+        versionsInHistory(table.getId()),
+        "the importer's edit within the session merges into the import's version");
+    assertVersionKept(table.getId(), beforeImport);
+
+    Table ownerEdit =
+        editDescription(SdkClients.user1Client(), table.getId(), "Approved by the table owner.");
+    assertEquals(List.of(0.5, 0.4, 0.3, 0.2, 0.1), versionsInHistory(table.getId()));
+    assertEquals(1, ownerEdit.getOwners().size());
+    assertEquals(1, ownerEdit.getTags().size());
+  }
+
+  private DatabaseSchema createImportSchema(TestNamespace ns) {
+    Database database = createDatabase(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("import_history_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    return createEntity(createSchema);
+  }
+
+  private Table createOwnedTaggedTable(DatabaseSchema schema, String name) {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(name);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setDescription("Freight invoices from carriers.");
+    createTable.setOwners(List.of(testUser1Ref()));
+    createTable.setTags(List.of(personalDataTagLabel()));
+    createTable.setColumns(
+        List.of(new Column().withName("invoice_id").withDataType(ColumnDataType.BIGINT)));
+    return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private void importReplacingText(DatabaseSchema schema, String text, String replacement) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String exported = admin.databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    String csv = exported.replace(text, replacement);
+    admin.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+  }
+
+  private Table editDescription(OpenMetadataClient client, UUID tableId, String description) {
+    Table table = client.tables().get(tableId.toString(), "owners,tags");
+    table.setDescription(description);
+    client.tables().update(tableId, table);
+    return client.tables().get(tableId.toString(), "owners,tags");
+  }
+
+  private List<Double> versionsInHistory(UUID tableId) {
+    // EntityHistory.versions is an untyped list: the SDK hands back each version as its JSON text,
+    // or as an already-parsed object depending on the deserializer, so both shapes are read here.
+    return SdkClients.adminClient().tables().getVersionList(tableId).getVersions().stream()
+        .map(
+            version ->
+                version instanceof String json
+                    ? JsonUtils.readValue(json, Table.class)
+                    : JsonUtils.convertValue(version, Table.class))
+        .map(Table::getVersion)
+        .toList();
+  }
+
+  private void assertVersionKept(UUID tableId, Table expected) {
+    Table stored = SdkClients.adminClient().tables().getVersion(tableId, expected.getVersion());
+    assertEquals(expected.getDescription(), stored.getDescription());
+    assertEquals(expected.getUpdatedBy(), stored.getUpdatedBy());
+    assertEquals(testUser1Ref().getId(), stored.getOwners().getFirst().getId());
+    assertEquals(personalDataTagLabel().getTagFQN(), stored.getTags().getFirst().getTagFQN());
+  }
+
+  @Test
   void testImportExportRecursive(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);

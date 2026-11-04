@@ -805,7 +805,7 @@ export interface TestServiceConnectionRequest {
  * Drive Connection.
  */
 export interface RequestConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -1098,7 +1098,7 @@ export interface RequestConnection {
  *
  * Custom Drive Connection to build a source that is not supported.
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -2370,7 +2370,8 @@ export interface Connection {
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
-     * mechanism.
+     * mechanism. The entire value is protected as a secret, including non-secret names. Secret
+     * references must resolve to the entire LOGDATA value.
      */
     logdata?: string;
     /**
@@ -2827,7 +2828,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     /**
      * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
      * local_kafka
@@ -2998,7 +2999,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?: string;
     /**
@@ -3742,9 +3745,9 @@ export interface AWSCredentials {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
     /**
@@ -4189,9 +4192,9 @@ export enum CloudProvider {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface DataLakeConfigurationSource {
     securityConfig?: SecurityConfigClass;
@@ -4224,9 +4227,9 @@ export interface DataLakeConfigurationSource {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  *
  * GCP Credentials
  *
@@ -4397,7 +4400,7 @@ export interface AirflowConnectionConnection {
     /**
      * Service Type
      */
-    type?: ConnectionType;
+    type?: S3Type;
     /**
      * Database of the data source.
      *
@@ -4768,7 +4771,7 @@ export enum SSLMode {
  *
  * Service type.
  */
-export enum ConnectionType {
+export enum S3Type {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -4794,9 +4797,9 @@ export enum ConnectionType {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface PurpleGCPCredentials {
     /**
@@ -5266,9 +5269,11 @@ export interface OracleConnectionType {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -5289,14 +5294,25 @@ export interface S3Connection {
      * Service Type
      */
     type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
 export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 
@@ -6379,11 +6395,22 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**

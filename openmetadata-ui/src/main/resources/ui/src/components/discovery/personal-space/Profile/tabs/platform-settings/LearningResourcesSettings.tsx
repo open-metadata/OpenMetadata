@@ -20,6 +20,7 @@ import {
   ConfirmPopover,
   Grid,
   Input,
+  Skeleton,
   Table,
   TableCard,
   Typography,
@@ -312,10 +313,9 @@ const LearningResourcesSettings = ({
         return (
           <Box gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`edit-${record.name}`}
               icon={Edit01}
-              size="xs"
+              size="lg"
               tooltip={t('label.edit')}
               onPress={() => openForm(record)}
             />
@@ -329,10 +329,9 @@ const LearningResourcesSettings = ({
               })}
               onConfirm={() => handleDelete(record)}>
               <ButtonUtility
-                color="tertiary"
                 data-testid={`delete-${record.name}`}
                 icon={Trash01}
-                size="xs"
+                size="lg"
                 tooltip={t('label.delete')}
               />
             </ConfirmPopover>
@@ -356,6 +355,14 @@ const LearningResourcesSettings = ({
           setCurrentPage(1);
         }}
       />
+    </Box>
+  );
+
+  const tableSkeleton = (
+    <Box className="tw:p-3" direction="col" gap={2}>
+      {Array.from({ length: pageSize }, (_, i) => (
+        <Skeleton height={28} key={i} variant="rounded" />
+      ))}
     </Box>
   );
 
@@ -418,17 +425,17 @@ const LearningResourcesSettings = ({
             </Table.Header>
             <Table.Body
               items={isLoading ? [] : resources}
-              renderEmptyState={() => (
-                <Box className="tw:justify-center tw:py-12">
-                  {isLoading ? (
-                    <SettingsSkeleton rows={3} variant="default" />
-                  ) : (
+              renderEmptyState={() =>
+                isLoading ? (
+                  tableSkeleton
+                ) : (
+                  <Box className="tw:justify-center tw:py-12">
                     <Typography className="tw:text-tertiary" size="text-sm">
                       {t('server.no-records-found')}
                     </Typography>
-                  )}
-                </Box>
-              )}>
+                  </Box>
+                )
+              }>
               {(record) => (
                 <Table.Row
                   columns={columns}

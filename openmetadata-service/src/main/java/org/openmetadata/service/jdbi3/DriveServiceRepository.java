@@ -35,6 +35,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Directory;
@@ -159,7 +160,8 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
               // Convert the CSV record to a List<String>
               List<String> recordList = new ArrayList<>();
               for (int i = 0; i < record.size(); i++) {
-                recordList.add(record.get(i));
+                // Child export cells are already escaped; restore so formatCsv escapes once.
+                recordList.add(CsvUtil.restoreFormula(record.get(i)));
               }
               // Add the record to the CSV file using the overridden addRecord method
               this.addRecord(csvFile, recordList);

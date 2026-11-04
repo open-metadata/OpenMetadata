@@ -167,6 +167,16 @@ public class RuleEngine {
     return getEnabledEntitySemantics().stream().anyMatch(rule -> ruleName.equals(rule.getName()));
   }
 
+  /**
+   * Whether any enabled platform rule is built on the given JSON Logic operation (e.g. {@code
+   * validateDataProductDomainMatch}). Matches on the rule's logic rather than its name, which admins
+   * can edit.
+   */
+  public boolean isOperationEnabled(String operation) {
+    return getEnabledEntitySemantics().stream()
+        .anyMatch(rule -> JsonUtils.readTree(rule.getRule()).has(operation));
+  }
+
   private List<SemanticsRule> getEnabledEntitySemantics() {
     try {
       if (Entity.getSystemRepository() == null) {

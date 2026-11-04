@@ -21,6 +21,7 @@ import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import { PageType } from '../../../../../../../generated/system/ui/page';
+import { useIsAiMode } from '../../../../../../../hooks/useAppMode';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { getDocumentByFQN } from '../../../../../../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../../../../../../rest/PersonaAPI';
@@ -83,7 +84,13 @@ const PersonaCustomizeView = ({
     return parts.length === 2 ? [parts[0], parts[1]] : [parts[0], undefined];
   }, [category]);
 
-  const Editor = entityType ? undefined : EDITORS[baseCategory];
+  const isAiMode = useIsAiMode();
+  // One Navigation category for both shells: AI mode edits the AI sidebar.
+  const editorKey =
+    isAiMode && baseCategory === 'navigation'
+      ? 'askCollateSidebar'
+      : baseCategory;
+  const Editor = entityType ? undefined : EDITORS[editorKey];
 
   const loadDocument = useCallback(
     async (

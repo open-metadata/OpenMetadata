@@ -57,14 +57,15 @@ public class CommonUtils {
   /**
    * Returns {@code entity} as the caller may read it: a context memory's references to Queries the
    * caller cannot view keep only their id and type, as in every REST memory response ({@link
-   * ContextMemoryEvidenceAccess}); every other entity type is returned as is. Applied where a tool
-   * answers with the entity, not on reads it only checks.
+   * ContextMemoryEvidenceAccess}); a metric's or metric group's relations keep only the entities
+   * the caller may view ({@link MetricRelationVisibility}); every other entity type is returned as
+   * is. Applied where a tool answers with the entity, not on reads it only checks.
    */
   public static EntityInterface<?> withVisibleEvidence(
       EntityInterface<?> entity, Authorizer authorizer, SecurityContext securityContext) {
     return entity instanceof ContextMemory memory
         ? ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext)
-        : entity;
+        : MetricRelationVisibility.visibleTo(entity, authorizer, securityContext);
   }
 
   /**

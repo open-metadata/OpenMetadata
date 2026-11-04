@@ -95,7 +95,11 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   const fetchRequestIdRef = useRef(0);
 
   const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
+    () =>
+      Boolean(paging.before || paging.after) ||
+      paging.total > pageSize ||
+      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
+      pageSize !== PAGE_SIZE_BASE,
     [paging, pageSize]
   );
 
@@ -303,6 +307,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         color="link-color"
         key={key}
         size="sm"
+        tooltip={getEntityName(policy)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'policies-detail',
@@ -386,11 +392,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
             entityName={getEntityName(role)}
             entityType={EntityType.ROLE}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`delete-action-${getEntityName(role)}`}
               icon={Trash01}
               isDisabled={!deleteRolePermission}
-              size="xs"
+              size="lg"
               tooltip={
                 deleteRolePermission
                   ? t('label.delete-entity', { entity: t('label.role') })

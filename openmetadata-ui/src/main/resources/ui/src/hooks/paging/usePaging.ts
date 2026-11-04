@@ -16,6 +16,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -118,6 +119,11 @@ export const usePaging = (
 
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
+  // Read by handlePageChange's functional updates so the callback can stay
+  // stable: consumers key "reset to page 1" effects and memoised handlers on
+  // it, and a new identity per page change re-fired them on every Next click.
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
   const [pageSize, setPageSize] = useState<number>(resolvedPageSize);
 
   // Keep pagination in sync when filters or other controls update paging params directly in the URL.
@@ -193,8 +199,10 @@ export const usePaging = (
       cursorData?: CursorState,
       pageSize?: number
     ) => {
-      const nextPage = typeof page === 'function' ? page(currentPage) : page;
+      const nextPage =
+        typeof page === 'function' ? page(currentPageRef.current) : page;
 
+      currentPageRef.current = nextPage;
       setCurrentPage(nextPage);
 
       const urlUpdate: Partial<PagingUrlParams> = {
@@ -213,7 +221,7 @@ export const usePaging = (
 
       updateUrlParams(urlUpdate as FilterState);
     },
-    [currentPage, setCurrentPage, persistGlobalPageSize, updateUrlParams]
+    [setCurrentPage, persistGlobalPageSize, updateUrlParams]
   );
 
   return {
