@@ -10,11 +10,58 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import fs from 'fs';
+import path from 'path';
+import Fqn from './Fqn';
 import {
   buildTaskFieldPath,
   getTaskFieldName,
   parseTaskFieldPath,
+  TaskFieldProperty,
 } from './TaskFieldPathUtils';
+
+interface SharedCase {
+  entityType: string;
+  path: string;
+  container?: string;
+  names?: string[];
+  property?: TaskFieldProperty;
+}
+
+// The cases the server's EntityFieldPathTest reads too, so the two cannot drift apart.
+const SHARED_CASES: { valid: SharedCase[]; invalid: SharedCase[] } = JSON.parse(
+  fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '../../../../../../..',
+      'openmetadata-spec/src/test/resources/task-field-path-cases.json'
+    ),
+    'utf8'
+  )
+);
+
+describe('the task field path cases shared with the server', () => {
+  it.each(SHARED_CASES.valid)(
+    'reads and writes back $path',
+    ({ path: fieldPath, container, names = [], property }) => {
+      expect(parseTaskFieldPath(fieldPath)).toEqual(
+        container ? { container, names, property } : { names, property }
+      );
+      // A task page passes the field as a quoted value, its names joined as an FQN.
+      expect(
+        buildTaskFieldPath(
+          container || undefined,
+          container ? `"${Fqn.build(...names)}"` : undefined,
+          property as TaskFieldProperty
+        )
+      ).toBe(fieldPath);
+    }
+  );
+
+  it.each(SHARED_CASES.invalid)('refuses $path', ({ path: fieldPath }) => {
+    expect(parseTaskFieldPath(fieldPath)).toBeUndefined();
+  });
+});
 
 describe('buildTaskFieldPath', () => {
   it.each([
