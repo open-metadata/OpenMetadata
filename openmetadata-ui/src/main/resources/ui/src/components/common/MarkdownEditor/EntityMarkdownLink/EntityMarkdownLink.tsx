@@ -31,6 +31,10 @@ import {
  */
 export const DOCUMENT_LINK_PREFIX = '#document/';
 
+// An external link (docs, GitHub, …) opens in a new tab so the page it sits on,
+// such as a chat conversation, stays put.
+const EXTERNAL_LINK_PATTERN = /^https?:\/\//i;
+
 const parseEntityLink = (href: string): ParsedEntityLink => {
   if (!href || !href.startsWith('#')) {
     return { isEntityLink: false };
@@ -130,8 +134,13 @@ const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
   const parsedLink = useMemo(() => parseEntityLink(href || ''), [href]);
 
   if (!parsedLink.isEntityLink || !parsedLink.entityInfo) {
+    const isExternal = EXTERNAL_LINK_PATTERN.test(href ?? '');
+
     return (
-      <a className={className} href={href}>
+      <a
+        className={className}
+        href={href}
+        {...(isExternal && { rel: 'noopener noreferrer', target: '_blank' })}>
         {children}
       </a>
     );
