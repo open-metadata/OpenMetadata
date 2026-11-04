@@ -82,7 +82,8 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
     List<Directory> directories =
         repository.listAllForCSV(
             repository.getFields("name,owners,tags,domains,extension"),
-            driveService.getFullyQualifiedName());
+            driveService.getFullyQualifiedName(),
+            user);
 
     directories.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new DriveServiceCsv(driveService, user, recursive)

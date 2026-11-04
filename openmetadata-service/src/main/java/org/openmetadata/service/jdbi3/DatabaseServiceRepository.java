@@ -90,7 +90,8 @@ public class DatabaseServiceRepository
     List<Database> databases =
         repository.listAllForCSV(
             repository.getFields("name,owners,tags,domains,extension"),
-            databaseService.getFullyQualifiedName());
+            databaseService.getFullyQualifiedName(),
+            user);
 
     databases.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user, recursive)
