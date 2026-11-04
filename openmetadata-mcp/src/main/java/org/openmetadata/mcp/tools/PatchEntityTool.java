@@ -66,6 +66,7 @@ public class PatchEntityTool implements McpTool {
   //   testCase             table-or-testCase authorization, sample cleanup
   //   testSuite            getAuthRequestsForUpdate authorization
   //   task                 restricted-field diff validation
+  //   team                 authorizeAdmin on defaultPersona
   //   user                 isAdmin / isBot / roles / teams authorization
   //   workflow             connection-secret decryptOrNullify
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
@@ -82,6 +83,7 @@ public class PatchEntityTool implements McpTool {
           Entity.TEST_CASE,
           Entity.TEST_SUITE,
           Entity.TASK,
+          Entity.TEAM,
           Entity.USER,
           Entity.WORKFLOW);
 
