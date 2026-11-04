@@ -10,8 +10,10 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 
@@ -19,10 +21,14 @@ import org.openmetadata.schema.type.change.ChangeSource;
  * The *Sources maps are mapped with "dynamic": false, so a source key that is not declared is
  * kept in _source but never indexed, and Explore filters such as exists on
  * descriptionSources.Suggested silently match nothing.
+ * ADR:2026-11-04-source-maps-index-every-enum-key
  */
 class SourcesIndexMappingTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final List<String> LANGUAGES = List.of("en", "jp", "ko", "ru", "zh");
+  private static final List<String> LANGUAGES =
+      Arrays.stream(IndexMappingLanguage.values())
+          .map(language -> language.toString().toLowerCase(Locale.ROOT))
+          .toList();
   private static final List<String> CHANGE_SOURCES =
       Arrays.stream(ChangeSource.values()).map(ChangeSource::value).toList();
   private static final List<String> LABEL_TYPES =
