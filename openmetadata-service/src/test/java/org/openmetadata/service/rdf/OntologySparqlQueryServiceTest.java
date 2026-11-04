@@ -29,7 +29,13 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.QueryDeniedException;
@@ -40,6 +46,8 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.SparqlFederationConfig;
@@ -49,6 +57,199 @@ import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 class OntologySparqlQueryServiceTest {
   private static final UUID GLOSSARY_ID = UUID.randomUUID();
+
+  @Test
+  void rejectsSingleValueGrowthWithoutExhaustingTheServerHeap() {
+    final StringBuilder query = new StringBuilder("SELECT ?s27 WHERE { BIND(\"12345678\" AS ?s0) ");
+    for (int index = 1; index <= 27; index++) {
+      query.append("BIND(CONCAT(?s%d, ?s%d) AS ?s%d) ".formatted(index - 1, index - 1, index));
+    }
+    query.append('}');
+    final Model model = ModelFactory.createDefaultModel();
+
+    assertThrows(
+        SparqlQueryLimits.QueryLimitExceededException.class,
+        () -> service(model).query(GLOSSARY_ID, request(query.toString())));
+
+    assertTrue(model.isClosed());
+    assertTrue(
+        service(modelWithStatement())
+            .query(GLOSSARY_ID, request("ASK { ?s ?p ?o }"))
+            .body()
+            .contains("true"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("memoryIntensiveQueries")
+  void containsIntermediateAndOptimizerAllocations(final String query) {
+    final Model model = ModelFactory.createDefaultModel();
+    for (int index = 0; index < 706; index++) {
+      model.add(
+          model.createResource("urn:subject:" + index),
+          model.createProperty("urn:predicate"),
+          model.createLiteral("value:" + index));
+    }
+
+    final RuntimeException failure =
+        assertThrows(
+            RuntimeException.class,
+            () -> service(model).query(GLOSSARY_ID, request(query).withTimeout(10_000)));
+    assertTrue(
+        failure instanceof SparqlQueryLimits.QueryLimitExceededException
+            || failure instanceof SparqlQueryExecutionGuard.QueryTimeoutException,
+        failure.toString());
+    assertTrue(model.isClosed());
+  }
+
+  private static Stream<String> memoryIntensiveQueries() {
+    final String product = "{ ?a ?b ?c . ?d ?e ?f . ?g ?h ?i }";
+    final String values =
+        IntStream.range(0, 600).mapToObj(Integer::toString).collect(Collectors.joining(" "));
+    final String valueProduct =
+        "{ VALUES ?a { %s } VALUES ?b { %s } VALUES ?c { %s } }".formatted(values, values, values);
+    String expression = "\"abcdefgh\"";
+    for (int index = 0; index < 27; index++) {
+      expression = "REPLACE(" + expression + ", \"(.)\", \"$1$1\")";
+    }
+    return Stream.of(
+        "SELECT * WHERE " + product + " ORDER BY ?c",
+        "SELECT * WHERE " + product + " ORDER BY ?c LIMIT 10000",
+        "SELECT ?a ?b ?c ?d ?e ?f WHERE " + product + " GROUP BY ?a ?b ?c ?d ?e ?f",
+        "SELECT * WHERE " + valueProduct + " ORDER BY ?c",
+        "SELECT * WHERE { { SELECT * WHERE " + product + " ORDER BY ?c } }",
+        "SELECT (" + expression + " AS ?value) WHERE {}",
+        "SELECT (GROUP_CONCAT(?c) AS ?value) WHERE " + product,
+        "SELECT ?wide WHERE { VALUES ?a { %s } VALUES ?b { %s } BIND(CONCAT(\"%s\", STR(?a), STR(?b)) AS ?wide) } ORDER BY ?wide"
+            .formatted(values, values, "x".repeat(4_096)));
+  }
+
+  @Test
+  void rejectsOversizedOutputBeforeReturningAPartialResult() {
+    final Model model = ModelFactory.createDefaultModel();
+    model.add(
+        model.createResource("urn:subject"),
+        model.createProperty("urn:predicate"),
+        model.createLiteral("\u754c".repeat(4_000)));
+    final String values =
+        IntStream.range(0, 1_000).mapToObj(Integer::toString).collect(Collectors.joining(" "));
+
+    final var failure =
+        assertThrows(
+            SparqlQueryLimits.QueryLimitExceededException.class,
+            () ->
+                service(model)
+                    .query(
+                        GLOSSARY_ID,
+                        request(
+                            "SELECT ?value WHERE { ?s ?p ?value . VALUES ?n { "
+                                + values
+                                + " } }")));
+
+    assertTrue(failure.getMessage().contains("response"), failure.getMessage());
+    assertTrue(model.isClosed());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = SparqlQuery.Format.class,
+      names = {"JSON", "XML", "CSV", "TSV"})
+  void preservesTupleFormats(final SparqlQuery.Format format) {
+    final var result =
+        service(modelWithStatement())
+            .query(GLOSSARY_ID, request("SELECT ?s WHERE { ?s ?p ?o }").withFormat(format));
+
+    assertTrue(result.body().contains("urn:subject"), result.body());
+    assertEquals(format.value(), result.format());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = SparqlQuery.Format.class,
+      names = {"TURTLE", "RDFXML", "NTRIPLES", "JSONLD"})
+  void preservesDescribeFormats(final SparqlQuery.Format format) {
+    final Model model = ModelFactory.createDefaultModel();
+    model.add(
+        model.createResource("https://example.com/subject"),
+        model.createProperty("https://example.com/predicate"),
+        model.createResource("https://example.com/object"));
+    final var result =
+        service(model)
+            .query(
+                GLOSSARY_ID, request("DESCRIBE <https://example.com/subject>").withFormat(format));
+
+    assertTrue(result.body().contains("https://example.com/subject"), result.body());
+    assertEquals(format.value(), result.format());
+  }
+
+  @Test
+  void retainsSerializationFailuresAsServerErrors() {
+    final Model model = modelWithStatement();
+    final var failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                service(model)
+                    .query(
+                        GLOSSARY_ID,
+                        request("DESCRIBE <urn:subject>").withFormat(SparqlQuery.Format.RDFXML)));
+
+    assertTrue(failure.getMessage().contains("SPARQL worker failed:"), failure.getMessage());
+    assertTrue(model.isClosed());
+  }
+
+  @Test
+  void releasesWorkerCapacityAfterTimeout() {
+    assertThrows(
+        SparqlQueryExecutionGuard.QueryTimeoutException.class,
+        () ->
+            service(modelWithStatement())
+                .query(GLOSSARY_ID, request("ASK { ?s ?p ?o }").withTimeout(1)));
+
+    assertTrue(
+        service(modelWithStatement())
+            .query(GLOSSARY_ID, request("ASK { ?s ?p ?o }"))
+            .body()
+            .contains("true"));
+  }
+
+  @Test
+  void boundsAdmissionBeforeMaterializingAnotherModel() throws Exception {
+    final CountDownLatch materializing = new CountDownLatch(1);
+    final CountDownLatch release = new CountDownLatch(1);
+    final var blockingService =
+        new OntologySparqlQueryService(
+            (id, includeRelations) -> {
+              materializing.countDown();
+              try {
+                assertTrue(release.await(10, TimeUnit.SECONDS));
+              } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(exception);
+              }
+              return modelWithStatement();
+            },
+            new SparqlFederationGuard(null));
+
+    try (final var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      final var running =
+          executor.submit(() -> blockingService.query(GLOSSARY_ID, request("ASK {}")));
+      try {
+        assertTrue(materializing.await(10, TimeUnit.SECONDS));
+        final var rejected =
+            new OntologySparqlQueryService(
+                (id, includeRelations) -> {
+                  throw new AssertionError("A rejected query must not materialize its graph");
+                },
+                new SparqlFederationGuard(null));
+        assertThrows(
+            SparqlQueryExecutionGuard.QueryCapacityException.class,
+            () -> rejected.query(GLOSSARY_ID, request("ASK {}")));
+      } finally {
+        release.countDown();
+      }
+      assertTrue(running.get(30, TimeUnit.SECONDS).body().contains("true"));
+    }
+  }
 
   @Test
   void executesTupleQueriesAndClosesTheMaterializedModel() {

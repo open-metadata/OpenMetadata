@@ -15,8 +15,10 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
@@ -41,6 +44,8 @@ import org.openmetadata.schema.api.data.OntologyImportResult;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /** Cross-cutting integration coverage for database-primary ontology governance APIs. */
 @Execution(ExecutionMode.CONCURRENT)
@@ -155,6 +160,7 @@ public class OntologyGovernanceIT {
   }
 
   @Test
+  @ResourceLock("ontology-sparql-worker")
   void scopedSparqlCannotObserveAnotherGlossaryOrSelectExternalGraphs(TestNamespace ns)
       throws Exception {
     Glossary visibleGlossary = GlossaryTestFactory.createWithName(ns, "visibleGlossary");
@@ -179,6 +185,35 @@ public class OntologyGovernanceIT {
             .withQuery("SELECT * FROM <https://example.org/external> WHERE { ?s ?p ?o }");
     HttpResponse<String> rejected = queryOntology(visibleGlossary, external);
     assertEquals(400, rejected.statusCode(), rejected.body());
+  }
+
+  @Test
+  @ResourceLock("ontology-sparql-worker")
+  void rejectsMemoryExhaustionForANonAdminAndServesTheNextQuery(TestNamespace ns) {
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final String path = "/v1/glossaries/" + glossary.getId() + "/sparql";
+    final var http = SdkClients.user2Client().getHttpClient();
+    final StringBuilder query = new StringBuilder("SELECT ?s27 WHERE { BIND(\"12345678\" AS ?s0) ");
+    for (int index = 1; index <= 27; index++) {
+      query.append("BIND(CONCAT(?s%d, ?s%d) AS ?s%d) ".formatted(index - 1, index - 1, index));
+    }
+    query.append('}');
+
+    final OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                http.execute(
+                    HttpMethod.POST,
+                    path,
+                    new SparqlQuery().withQuery(query.toString()),
+                    JsonNode.class));
+
+    assertEquals(400, failure.getStatusCode());
+    assertTrue(failure.getMessage().contains("memory"), failure.getMessage());
+    final JsonNode result =
+        http.execute(HttpMethod.POST, path, new SparqlQuery().withQuery("ASK {}"), JsonNode.class);
+    assertTrue(result.path("boolean").asBoolean());
   }
 
   private static OntologyImportResult importTurtle(Glossary glossary, String body)
