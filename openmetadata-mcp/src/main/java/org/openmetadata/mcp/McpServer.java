@@ -311,7 +311,7 @@ public class McpServer implements McpServerProvider {
 
   protected McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpStatelessServerFeatures.SyncToolSpecification(
-        tool, (context, req) -> runCallback(() -> executeTool(tool, context, req)));
+        tool, (context, req) -> runCallback(tool.name(), () -> executeTool(tool, context, req)));
   }
 
   private McpSchema.CallToolResult executeTool(
@@ -346,6 +346,7 @@ public class McpServer implements McpServerProvider {
         prompt,
         (context, arguments) ->
             runCallback(
+                prompt.name(),
                 () ->
                     promptsContext.callPrompt(
                         securityContextFrom(context), prompt.name(), arguments)));
@@ -370,7 +371,7 @@ public class McpServer implements McpServerProvider {
    * exception's own message. A token the server could not confirm becomes an {@link McpError} that
    * reads as temporarily unavailable, without that message, which names the principal.
    */
-  private static <T> T runCallback(Supplier<T> callback) {
+  private static <T> T runCallback(String name, Supplier<T> callback) {
     PerRequestContextCleaner.clear();
     try {
       return callback.get();
@@ -378,6 +379,14 @@ public class McpServer implements McpServerProvider {
       LOG.debug("MCP callback token could not be confirmed", e);
       throw McpError.builder(JsonRpcErrorBody.UNAVAILABLE)
           .message(CredentialUnavailableException.CLIENT_MESSAGE)
+          .build();
+    } catch (VirtualMachineError | LinkageError e) {
+      // Reactor treats these as fatal: it drops them on the worker instead of failing the call, so
+      // the request waiting for the reply would hold its thread until the server restarts. The
+      // name is logged because a stack overflow's trace keeps only the deepest frames.
+      LOG.error("MCP callback {} failed", name, e);
+      throw McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+          .message("The server could not complete this call")
           .build();
     } finally {
       PerRequestContextCleaner.clear();

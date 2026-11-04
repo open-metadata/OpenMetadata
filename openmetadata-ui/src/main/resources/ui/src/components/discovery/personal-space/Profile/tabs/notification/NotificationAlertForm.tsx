@@ -256,7 +256,9 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
   return (
     <Box className="tw:flex tw:flex-col tw:h-full" direction="col">
-      <Box className="tw:flex-1 tw:overflow-y-auto tw:px-8" direction="col">
+      <Box
+        className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-6"
+        direction="col">
         <Box className="tw:max-w-[50%] tw:w-full tw:mx-auto" direction="col">
           <AlertAiForm
             alert={alert}
@@ -295,7 +297,13 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-btn"
-          onPress={() => onNavigate({ type: 'list' })}>
+          onPress={() =>
+            onNavigate(
+              fqn
+                ? { type: 'detail', fqn, name: getEntityName(alert) }
+                : { type: 'list' }
+            )
+          }>
           {t('label.cancel')}
         </Button>
         <Button

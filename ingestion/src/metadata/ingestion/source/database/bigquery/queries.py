@@ -179,6 +179,7 @@ BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
     """
 select
 table_name as table_name,
+table_type as table_type,
 creation_time as created_at
 from `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
 where table_schema = '{schema_name}'
@@ -195,6 +196,7 @@ BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION = textwrap.dedent(
     """
 select
 t.table_name as table_name,
+t.table_type as table_type,
 t.creation_time as created_at,
 s.storage_last_modified_time as updated_at
 from `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLES t

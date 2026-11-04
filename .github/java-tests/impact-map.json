@@ -341,7 +341,8 @@
         "*Orphan*IT",
         "*Benchmark*IT",
         "*OptimisticLock*IT",
-        "org/openmetadata/it/tests/repositories/**"
+        "org/openmetadata/it/tests/repositories/**",
+        "LifeCycle*IT"
       ]
     },
     {

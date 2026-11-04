@@ -429,8 +429,15 @@ jest.mock(
   '../../components/governance/ontology/OntologyConceptEditor/OntologyConceptEditor',
   () => ({
     __esModule: true,
-    default: ({ onSaved }: { onSaved: (saved: unknown) => void }) => (
+    default: ({
+      concept,
+      onSaved,
+    }: {
+      concept: { displayName?: string };
+      onSaved: (saved: unknown) => void;
+    }) => (
       <div data-testid="ontology-concept-editor">
+        <span>{concept.displayName}</span>
         <button
           type="button"
           onClick={() =>
@@ -1694,6 +1701,13 @@ describe('OntologyExplorerPage', () => {
 
     it('reads the release, then enters Edit on the draft concept from the concept panel', async () => {
       asConceptOwner();
+      (getOntologyConcept as jest.Mock).mockResolvedValue({
+        id: 'Customer',
+        name: 'Customer',
+        fullyQualifiedName: 'native-sales.Customer',
+        iri: 'https://example.org/sales#Customer',
+        displayName: 'Customer as drafted',
+      });
       renderNativeStudio('?ontology=native-sales');
       await screen.findByTestId('native-canvas');
 
@@ -1708,6 +1722,7 @@ describe('OntologyExplorerPage', () => {
       expect(
         await screen.findByTestId('ontology-concept-editor')
       ).toBeVisible();
+      expect(screen.getByText('Customer as drafted')).toBeVisible();
       expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
         'aria-selected',
         'true'

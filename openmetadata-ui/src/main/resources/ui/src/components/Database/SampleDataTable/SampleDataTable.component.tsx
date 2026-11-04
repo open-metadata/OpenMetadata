@@ -13,6 +13,7 @@
 
 import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 
 import { isEmpty, lowerCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,7 +23,7 @@ import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
-import { Table } from '../../../generated/entity/data/table';
+import { Table, TableType } from '../../../generated/entity/data/table';
 import { withLoader } from '../../../hoc/withLoader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -80,6 +81,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 }) => {
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
+  const [isSharded, setIsSharded] = useState(false);
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -173,6 +175,10 @@ const SampleDataTable: FC<SampleDataProps> = ({
     });
 
     return {
+      executionSource:
+        sampleData && 'executionSource' in sampleData
+          ? sampleData.executionSource
+          : undefined,
       columns: updatedColumns,
       rows: data,
     };
@@ -185,6 +191,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
           ? await getSampleDataByContainerId(tableId)
           : await getSampleDataByTableId(tableId);
       setSampleData(getSampleDataWithType(entityData));
+      setIsSharded(
+        'tableType' in entityData && entityData.tableType === TableType.Sharded
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -334,6 +343,10 @@ const SampleDataTable: FC<SampleDataProps> = ({
             ))}
           </Select>
         </Box>
+        <ExecutionSource
+          isSharded={isSharded}
+          source={sampleData?.executionSource}
+        />
         <ManageMenu
           data-testid="sample-data-manage-button"
           isOpen={showActions}

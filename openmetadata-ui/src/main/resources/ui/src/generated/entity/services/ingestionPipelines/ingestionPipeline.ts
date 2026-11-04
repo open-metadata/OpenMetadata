@@ -1033,6 +1033,11 @@ export interface Pipeline {
      * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
      * Iceberg table properties) onto the entity extension. When disabled, no custom property
      * definitions are registered and no extension values are set.
+     *
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * the app views, last run status, run time and refresh time of Hex projects) onto the
+     * dashboard extension. The custom property definitions are shared by every dashboard in
+     * OpenMetadata, so this is disabled by default.
      */
     includeCustomProperties?: boolean;
     /**
@@ -1140,6 +1145,10 @@ export interface Pipeline {
      * Regex to only fetch tables or databases that matches the pattern.
      */
     schemaFilterPattern?: FilterPattern;
+    /**
+     * BigQuery daily shard grouping. Omitted configuration remains disabled.
+     */
+    shardedTables?: BigQueryShardedTables;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      *
@@ -8779,6 +8788,19 @@ export enum AirflowConnectionType {
     VertexAI = "VertexAI",
     Vertica = "Vertica",
     Wherescape = "Wherescape",
+}
+
+/**
+ * BigQuery daily shard grouping. Omitted configuration remains disabled.
+ *
+ * Group native daily shard tables into stable logical families.
+ */
+export interface BigQueryShardedTables {
+    /**
+     * Group BigQuery daily shards into a stable logical table using the newest shard for
+     * columns and execution.
+     */
+    enabled?: boolean;
 }
 
 /**

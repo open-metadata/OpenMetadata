@@ -24,6 +24,7 @@ import {
 } from '../../../../../../generated/configuration/lineageSettings';
 import { SettingType } from '../../../../../../generated/settings/settings';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { updateSettingsConfig } from '../../../../../../rest/settingConfigAPI';
 import {
   showErrorToast,
@@ -40,7 +41,6 @@ import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
-import { useFormFieldDocs } from './useFormFieldDocs';
 import { useSettingsFetch } from './useSettingsFetch';
 
 interface SelectOption {

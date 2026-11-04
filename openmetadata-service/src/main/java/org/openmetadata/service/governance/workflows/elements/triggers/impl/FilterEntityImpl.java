@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
+import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -89,7 +91,11 @@ public class FilterEntityImpl implements JavaDelegate {
     } else {
       passesFilter =
           passesExcludedFilter(
-              entityLinkStr, entityType, excludedFilter, includeFields, filterLogic);
+              entityLinkStr,
+              varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
+              excludedFilter,
+              includeFields,
+              filterLogic);
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -148,15 +154,16 @@ public class FilterEntityImpl implements JavaDelegate {
 
   private boolean passesExcludedFilter(
       String entityLinkStr,
-      String entityType,
+      Object triggeringVersion,
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
+    String entityType = entityLink.getEntityType();
     EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
     // A null change description means a Create event.
-    ChangeDescription change = entity.getChangeDescription();
+    ChangeDescription change = TriggeringChange.of(entity, triggeringVersion);
 
     boolean fieldBasedFilter;
     if (change == null) {
