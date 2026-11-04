@@ -1327,7 +1327,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
       entityFQN
     );
     await waitForAllLoadersToDisappear(page);
-    await navigateToEntityPanelTab(page, 'custom property');
+    await navigateToEntityPanelTab(page, 'custom properties');
     await waitForAllLoadersToDisappear(page);
   }
 

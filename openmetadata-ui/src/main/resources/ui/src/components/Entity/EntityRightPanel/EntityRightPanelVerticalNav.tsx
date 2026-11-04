@@ -115,7 +115,7 @@ const EntityRightPanelVerticalNav: React.FC<
       items.push({
         key: EntityRightPanelTab.CUSTOM_PROPERTIES,
         icon: <CustomPropertiesIcon />,
-        label: t('label.custom-property'),
+        label: t('label.custom-property-plural'),
         'data-testid': 'custom-properties-tab',
       });
     }
