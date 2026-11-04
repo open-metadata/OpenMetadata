@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.it.bootstrap.SharedEntities.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -1036,6 +1037,92 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     Table updated = SdkClients.adminClient().tables().get(tableId, "domains,dataProducts,tags");
     assertTrue(hasDataProduct(updated.getDataProducts(), product.getId()));
     assertTrue(updated.getTags().stream().anyMatch(t -> "PII.Sensitive".equals(t.getTagFQN())));
+  }
+
+  private static final String ADD_SENSITIVE_TAG =
+      "{\"op\":\"add\",\"path\":\"/tags/0\",\"value\":{\"tagFQN\":\"PII.Sensitive\","
+          + "\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}}";
+
+  /** The tag-only JSON patch the table page sends, on a table that inherits its domain. */
+  @Test
+  void test_tagOnlyPatchOnInheritedDomainAssetWithDataProduct(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "domain_tag_only");
+    var schema = createSchemaWithDomain(ns, "schema_tag_only", domain);
+    Table table = createChildTable(ns, "table_tag_only", schema, null);
+    DataProduct product = createFinanceDataProduct(ns, "dp_tag_only", domain);
+    String tableId = table.getId().toString();
+
+    bulkAddAssets(
+        product.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    patchTable(tableId, "[" + ADD_SENSITIVE_TAG + "]");
+
+    Table updated = SdkClients.adminClient().tables().get(tableId, "domains,dataProducts,tags");
+    assertTrue(updated.getTags().stream().anyMatch(t -> "PII.Sensitive".equals(t.getTagFQN())));
+    assertTrue(hasDataProduct(updated.getDataProducts(), product.getId()));
+    assertTrue(
+        updated.getDomains().stream().allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "The tag patch must not store the inherited domain as the table's own");
+  }
+
+  /** A patch that drops the inherited domain must still be validated against it. */
+  @Test
+  void test_tagPatchDroppingInheritedDomainPassesDomainValidation(TestNamespace ns)
+      throws Exception {
+    Domain domain = createTestDomain(ns, "domain_drop_inherited");
+    var schema = createSchemaWithDomain(ns, "schema_drop_inherited", domain);
+    Table table = createChildTable(ns, "table_drop_inherited", schema, null);
+    DataProduct product = createFinanceDataProduct(ns, "dp_drop_inherited", domain);
+    String tableId = table.getId().toString();
+    bulkAddAssets(
+        product.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    patchTable(tableId, "[{\"op\":\"remove\",\"path\":\"/domains/0\"}," + ADD_SENSITIVE_TAG + "]");
+
+    Table updated = SdkClients.adminClient().tables().get(tableId, "domains,dataProducts,tags");
+    assertTrue(updated.getTags().stream().anyMatch(t -> "PII.Sensitive".equals(t.getTagFQN())));
+    assertTrue(hasDataProduct(updated.getDataProducts(), product.getId()));
+    assertTrue(
+        updated.getDomains().stream().allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "The table must keep inheriting its schema's domain");
+  }
+
+  /** Inheriting owners onto the patched copy must not store the schema's owner on the table. */
+  @Test
+  void test_removingDirectOwnerFallsBackToInheritedOwnerWithoutStoringIt(TestNamespace ns)
+      throws Exception {
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("schema_owner_fallback"))
+            .withDatabase(
+                getOrCreateDatabase(ns, getOrCreateDatabaseService(ns).getFullyQualifiedName())
+                    .getFullyQualifiedName())
+            .withOwners(List.of(testUser2().getEntityReference()));
+    var schema = SdkClients.adminClient().databaseSchemas().create(createSchema);
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("table_owner_fallback"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withOwners(List.of(testUser3().getEntityReference())));
+    String tableId = table.getId().toString();
+
+    patchTable(tableId, "[{\"op\":\"remove\",\"path\":\"/owners/0\"}]");
+
+    Table updated = SdkClients.adminClient().tables().get(tableId, "owners");
+    assertEquals(1, updated.getOwners().size());
+    assertEquals(testUser2().getId(), updated.getOwners().getFirst().getId());
+    assertTrue(
+        Boolean.TRUE.equals(updated.getOwners().getFirst().getInherited()),
+        "The schema's owner must stay inherited, not be stored as the table's own owner");
+    assertTrue(
+        listOrEmpty(updated.getChangeDescription().getFieldsAdded()).stream()
+            .noneMatch(f -> "owners".equals(f.getName())),
+        "Removing the direct owner must not record the inherited owner as added");
   }
 
   private static String refJson(UUID id, String type) {
