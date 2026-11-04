@@ -359,7 +359,7 @@ public final class ApprovalGate {
         gatingWorkflows(
             rules,
             entityType,
-            edited.published(),
+            edited,
             triggerNames(edited.base(), edited.proposed(), edited.changed()));
     Optional<StagedChange> staged = Optional.empty();
     if (!gating.isEmpty()) {
@@ -393,14 +393,11 @@ public final class ApprovalGate {
   }
 
   private static List<GatedBy> gatingWorkflows(
-      List<GatingRule> rules,
-      String entityType,
-      EntityInterface updated,
-      Map<String, List<String>> changed) {
+      List<GatingRule> rules, String entityType, Edited edited, Map<String, List<String>> changed) {
     List<GatedBy> gating = new ArrayList<>();
     for (GatingRule rule : rules) {
       Set<String> fields =
-          WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
+          isExcludedBeforeAndAfter(rule, edited)
               ? Set.of()
               : gatedFields(rule, entityType, changed);
       if (!fields.isEmpty()) {
@@ -408,6 +405,14 @@ public final class ApprovalGate {
       }
     }
     return gating;
+  }
+
+  // The filter is judged on the stored entity as well as the proposed one: an edit that moves the
+  // asset out of the filter is itself reviewed, and only an asset the filter leaves out both
+  // before and after the edit is not.
+  private static boolean isExcludedBeforeAndAfter(GatingRule rule, Edited edited) {
+    return WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), edited.original())
+        && WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), edited.published());
   }
 
   private static void rejectAmbiguousReview(List<GatedBy> gating) {

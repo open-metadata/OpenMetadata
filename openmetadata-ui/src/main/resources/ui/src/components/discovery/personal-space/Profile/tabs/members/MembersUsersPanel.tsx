@@ -191,26 +191,33 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [pageSize, isAdmin, showDeleted, setPaging]
   );
 
+  // Writing an unchanged page to the hash is not free: it is a navigation.
+  const resetToFirstPage = useCallback(() => {
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
+  }, [currentPage, handlePageChange]);
+
   const handleSearch = useCallback(
     (value: string) => {
       setSearchValue(value);
-      handlePageChange(INITIAL_PAGING_VALUE);
+      resetToFirstPage();
       if (value) {
         void searchUsers(value);
       } else {
         void fetchUsers();
       }
     },
-    [handlePageChange, fetchUsers, searchUsers]
+    [resetToFirstPage, fetchUsers, searchUsers]
   );
 
   const handleShowDeletedChange = useCallback(
     (checked: boolean) => {
       setShowDeleted(checked);
-      handlePageChange(INITIAL_PAGING_VALUE);
+      resetToFirstPage();
       setSearchValue('');
     },
-    [handlePageChange]
+    [resetToFirstPage]
   );
 
   const handlePageNavigation = ({
@@ -267,9 +274,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   };
 
   useEffect(() => {
-    if (currentPage !== INITIAL_PAGING_VALUE) {
-      handlePageChange(INITIAL_PAGING_VALUE);
-    }
+    resetToFirstPage();
     refetchUsers.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on size/deleted only
   }, [pageSize, showDeleted]);
@@ -366,11 +371,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
               onConfirm={() => handleRestoreUser(record)}>
               <ButtonUtility
                 aria-label={t('label.restore')}
-                color="tertiary"
                 data-testid={`restore-user-btn-${record.name}`}
-                icon={<RefreshCcw01 className="tw:size-4" />}
+                icon={RefreshCcw01}
                 isDisabled={!isAdminUser}
-                size="sm"
+                size="lg"
                 tooltip={
                   isAdminUser
                     ? t('label.restore-entity', {
@@ -391,11 +395,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             entityType={EntityType.USER}>
             <ButtonUtility
               aria-label={t('label.delete')}
-              color="tertiary"
               data-testid={`delete-user-btn-${record.name}`}
-              icon={<Trash01 className="tw:size-4" />}
+              icon={Trash01}
               isDisabled={!isAdminUser}
-              size="sm"
+              size="lg"
               tooltip={
                 isAdminUser
                   ? t('label.delete-entity', {

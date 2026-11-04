@@ -104,6 +104,20 @@ class LoginLockoutIT {
     assertDoesNotThrow(() -> authenticator.checkIfLoginBlocked(user.getEmail()));
   }
 
+  /** An oversized body is refused before it is read, so it is not a failed attempt either. */
+  @Test
+  void aLoginBodyOverTheLimitIsRefusedBeforeItIsRead(TestNamespace ns) throws Exception {
+    String password = "Right!Passw0rd" + ns.uniqueShortId();
+    User user = createUser(ns, password);
+
+    HttpResponse<String> response =
+        postLogin(loginBody(user, password) + " ".repeat(SecurityUtil.MAX_LOGIN_BODY_BYTES));
+
+    assertEquals(400, response.statusCode());
+    assertTrue(response.body().contains("Invalid login request"), response.body());
+    assertEquals(200, login(user, password).statusCode());
+  }
+
   private static User createUser(TestNamespace ns, String password) {
     String name = ns.shortPrefix("lockout");
     return SdkClients.adminClient()
@@ -168,18 +182,25 @@ class LoginLockoutIT {
   }
 
   private static HttpResponse<String> login(User user, String password) throws Exception {
-    LoginRequest request =
+    return postLogin(loginBody(user, password));
+  }
+
+  private static String loginBody(User user, String password) {
+    return JsonUtils.pojoToJson(
         new LoginRequest()
             .withEmail(user.getEmail())
             .withPassword(
-                Base64.getEncoder().encodeToString(password.getBytes(StandardCharsets.UTF_8)));
+                Base64.getEncoder().encodeToString(password.getBytes(StandardCharsets.UTF_8))));
+  }
+
+  private static HttpResponse<String> postLogin(String body) throws Exception {
     // A fresh client per POST: a pooled connection the server already closed fails a POST, and the
     // JDK only retries GET and HEAD.
     return HttpClient.newHttpClient()
         .send(
             HttpRequest.newBuilder(URI.create(SdkClients.getServerUrl() + "/v1/auth/login"))
                 .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+                .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build(),
             HttpResponse.BodyHandlers.ofString());
   }

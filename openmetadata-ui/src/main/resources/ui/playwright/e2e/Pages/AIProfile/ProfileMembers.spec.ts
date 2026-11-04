@@ -307,8 +307,9 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     const searchInput = page
       .getByTestId('users-list-container')
       .getByTestId('searchbar');
-    const roleLink = page
-      .getByTestId('users-list-table')
+    // Scoped to the searched row: the unfiltered first page already shows a
+    // seeded user's role link, which would let the click race the search.
+    const roleLink = getRowByName(page, listUser.responseData.name)
       .getByTestId('role-link')
       .getByRole('link');
     await expect(async () => {
