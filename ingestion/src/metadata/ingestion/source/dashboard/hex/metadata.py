@@ -703,9 +703,16 @@ class HexSource(DashboardServiceSource):
         A data model without columns only links tables the query history named: one whose
         tables fell out of the history's lookback window is kept, with its lineage
         """
-        data_model = self.metadata.get_by_name(
-            entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, project), fields=["columns"]
-        )
+        try:
+            data_model = self.metadata.get_by_name(
+                entity=DashboardDataModel, fqn=self._build_fqn(DashboardDataModel, project), fields=["columns"]
+            )
+        except Exception as exc:
+            # A lookup that fails is not a data model that isn't there
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not look up the data model of Hex project %s: %s", project.id, exc)
+            self._keep_data_model(project)
+            return
         if data_model and not data_model.columns:
             self._keep_data_model(project)
 

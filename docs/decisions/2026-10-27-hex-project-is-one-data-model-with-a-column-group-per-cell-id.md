@@ -17,6 +17,7 @@
   `test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns`,
   `test_a_cell_whose_table_gives_no_columns_still_links_it_to_a_data_model`,
   `test_a_data_model_without_columns_outlives_the_query_history_window`,
+  `test_a_data_model_without_columns_that_cant_be_looked_up_is_kept`,
   `test_resolver.py::test_hex_query_history_never_drops_a_schema_the_query_names`)
 - **Related:** #36357
 
@@ -90,7 +91,8 @@ query history carries no column lineage, as it can't tell which cell read the ta
   looks back seven days, and a project not run in that window would otherwise lose its lineage.
 - With data models off, or the project's data model filtered out, tables link to the dashboard as
   before.
-- A query history reference that names a schema resolves only in that schema; only a bare name
-  falls back to any schema of the database. The parser lower-cases names, so a BigQuery reference
-  that misses its exact name takes the one table matching it case-insensitively, and none when
-  several do (BigQuery names are case-sensitive).
+- A query history reference that names a schema resolves only in that schema; a bare name falls
+  back to any schema of the database, and links nothing when several tables match. The parser
+  lower-cases names, which BigQuery resolution handles
+  (ADR:2026-11-03-bigquery-daily-shards-use-stable-logical-tables, v2).
+- A data model without columns whose lookup fails is kept, as one that can't be read isn't gone.

@@ -757,6 +757,11 @@ def test_hex_query_history_never_drops_a_schema_the_query_names(sdk):
     assert tables_read("select * from my_db.my_schema.account") == []
     # A bare name only has the session's schema, which may not be the table's
     assert tables_read("select * from account") == [elsewhere.id]
+    # ...but which of several same-named tables it read can't be told
+    same_named = [table("my_service.my_db.raw.orders"), table("my_service.my_db.staging.orders")]
+    transport.entities.update({item.fullyQualifiedName.root: item for item in same_named})
+    transport.hits = [item.fullyQualifiedName.root for item in same_named]
+    assert tables_read("select * from orders") == []
 
 
 def test_bigquery_usage_counts_each_execution_once_and_preserves_sql(sdk, tmp_path):

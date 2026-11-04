@@ -410,7 +410,8 @@ class HexQueryFetcher:
                         schema_fallback=not schema_query,
                     )
 
-                    if table_entities:
+                    # A bare name matching several tables can't tell which one was read
+                    if table_entities and (schema_query or len(table_entities) == 1):
                         # Filter based on prefix constraints if needed
                         for table_entity in table_entities:
                             if self._matches_prefix_constraints(table_entity, db_service_prefix):

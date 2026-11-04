@@ -531,6 +531,28 @@ class TestHexCellLineage:
         assert (data_models, edges) == ([], [])
         assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
 
+    def test_a_data_model_without_columns_that_cant_be_looked_up_is_kept(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        run(source)
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+        lookup = source.metadata.get_by_name
+
+        def unavailable(entity, fqn, **kwargs):
+            if entity is DashboardDataModel and "fields" in kwargs:
+                raise ConnectionError("server unavailable")
+            return lookup(entity, fqn, **kwargs)
+
+        source.metadata.get_by_name = unavailable
+
+        run(source)
+
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
     def test_a_data_model_whose_cells_are_all_gone_is_not_kept(self, make_source):
         source = make_source([REVENUE_CELL])
         run(source)
