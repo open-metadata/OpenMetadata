@@ -29,6 +29,7 @@ This module implements a complete OAuth 2.0 Authorization Code Flow with PKCE fo
 - **Rate Limiting** - Registration (10/hour per IP) and token (30/minute per IP) endpoint protection
 - **Thread-Safe Concurrent Processing** - ThreadLocal storage for request isolation
 - **Audit Logging** - OAuth operations logged via SLF4J (oauth_audit_log table available for future use)
+- **Read-only Mode** - Turn on Read-only Mode in the MCP Server app settings to expose only tools annotated `readOnlyHint`, for every user including admins. Writes are blocked at once; the tool list changes, and turning it off applies, after a restart. Through the API, send the full configuration: `PUT /api/v1/system/mcp/config` replaces every field.
 
 ### Database-Driven Configuration
 - **Runtime Configuration** - Update MCP settings without server restart via REST API
