@@ -5312,7 +5312,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * now. The patched copy still carries the inherited refs of the original, which may be stale, so
    * they are dropped and inheritance is resolved again on a scratch copy. Only owners and domains
    * are taken from it, because some types' setInheritedFields also reload other stored state, such
-   * as an alert's template, which would hide the patch from the rules.
+   * as an alert's template, which would hide the patch from the rules. A type that resolves its
+   * inheritance elsewhere, such as a task taking its target's domains in prepare, inherits nothing
+   * here, so it keeps the refs it already carries.
    */
   private T withInheritedOwnersAndDomains(final T updated) {
     final T inheriting = JsonUtils.deepCopy(updated, entityClass);
@@ -5320,9 +5322,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     inheriting.setDomains(EntityUpdater.getEntityReferences(updated.getDomains()));
     setInheritedFields(inheriting, new Fields(allowedFields, "owners,domains", true));
     final T ruleFacts = JsonUtils.deepCopy(updated, entityClass);
-    ruleFacts.setOwners(inheriting.getOwners());
-    ruleFacts.setDomains(inheriting.getDomains());
+    ruleFacts.setOwners(resolvedOrCarried(inheriting.getOwners(), updated.getOwners()));
+    ruleFacts.setDomains(resolvedOrCarried(inheriting.getDomains(), updated.getDomains()));
     return ruleFacts;
+  }
+
+  private static List<EntityReference> resolvedOrCarried(
+      final List<EntityReference> resolved, final List<EntityReference> carried) {
+    return nullOrEmpty(resolved) ? carried : resolved;
   }
 
   /** The rules copy() left for now: the entity's parent is attached, so it inherits. */

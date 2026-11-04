@@ -1237,7 +1237,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     assertEquals(1, rejected.getNumberOfRowsFailed(), JsonUtils.pojoToJson(rejected));
     Table stored =
-        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts", "deleted");
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts", "all");
     assertTrue(Boolean.TRUE.equals(stored.getDeleted()), "The rejected item must stay deleted");
     assertFalse(hasDataProduct(stored.getDataProducts(), otherProduct.getId()));
   }
