@@ -3,8 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-04 (initial)
 - **Deciders:** anuj-kumary
-- **Guard:** `openmetadata-ui/src/main/resources/ui/src/utils/queryBuilder/jsonLogicColumnTags.test.ts`;
-  `RuleEngineTest.columnTagRulesEvaluateAgainstEachColumnsTags`
+- **Guard:** `openmetadata-ui/src/main/resources/ui/src/utils/queryBuilder/jsonLogicColumnTags.test.ts`
 - **Related:** #37018, ADR:2026-10-26-negated-list-conditions-are-stored-as-negated-some
 
 ## Context

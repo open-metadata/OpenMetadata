@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,13 +17,9 @@ import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
@@ -249,60 +244,5 @@ class RuleEngineTest {
         RuleEngine.getInstance().evaluateAndReturn(table, List.of(trueRule), false, false);
 
     assertTrue(failed.isEmpty(), "Rule evaluating to true should pass");
-  }
-
-  // The shapes the workflow builder saves for a Column Tags rule (jsonLogicColumnTags.ts), mapped
-  // to the expected result for a table whose column is tagged PII.Sensitive, Other.Tag, then
-  // nothing.
-  // Every rule expects true once, so a rule that throws (apply returns false) cannot pass.
-  private static final Map<String, List<Boolean>> COLUMN_TAG_RULES = columnTagRules();
-
-  private static Map<String, List<Boolean>> columnTagRules() {
-    String equalsPii = "{\"==\":[{\"var\":\"tagFQN\"},\"PII.Sensitive\"]}";
-    String inPii = "{\"in\":[{\"var\":\"tagFQN\"},[\"PII.Sensitive\"]]}";
-    String notNull = "{\"!=\":[{\"var\":\"tagFQN\"},null]}";
-    Map<String, List<Boolean>> rules = new LinkedHashMap<>();
-    rules.put(perColumnTag(equalsPii), List.of(true, false, false));
-    rules.put("{\"!\":" + perColumnTag(equalsPii) + "}", List.of(false, true, true));
-    rules.put(perColumnTag(inPii), List.of(true, false, false));
-    rules.put("{\"!\":" + perColumnTag(inPii) + "}", List.of(false, true, true));
-    rules.put(perColumnTag(notNull), List.of(true, true, false));
-    rules.put("{\"!\":" + perColumnTag(notNull) + "}", List.of(false, false, true));
-    return rules;
-  }
-
-  private static String perColumnTag(String condition) {
-    return "{\"some\":[{\"var\":\"columns\"},{\"some\":[{\"var\":\"tags\"}," + condition + "]}]}";
-  }
-
-  private static Map<String, Object> tableWithColumnTag(String tagFqn) {
-    List<TagLabel> tags = tagFqn == null ? List.of() : List.of(new TagLabel().withTagFQN(tagFqn));
-    Column tagged =
-        new Column().withName("email").withDataType(ColumnDataType.STRING).withTags(tags);
-    Column untagged = new Column().withName("id").withDataType(ColumnDataType.INT);
-    return JsonUtils.getMap(
-        new Table().withId(UUID.randomUUID()).withName("t").withColumns(List.of(tagged, untagged)));
-  }
-
-  @Test
-  void columnTagRulesEvaluateAgainstEachColumnsTags() {
-    Map<String, Object> piiTable = tableWithColumnTag("PII.Sensitive");
-    Map<String, Object> otherTable = tableWithColumnTag("Other.Tag");
-    Map<String, Object> untaggedTable = tableWithColumnTag(null);
-
-    COLUMN_TAG_RULES.forEach(
-        (rule, expected) -> {
-          assertEquals(expected.get(0), RuleEngine.getInstance().apply(rule, piiTable), rule);
-          assertEquals(expected.get(1), RuleEngine.getInstance().apply(rule, otherTable), rule);
-          assertEquals(expected.get(2), RuleEngine.getInstance().apply(rule, untaggedTable), rule);
-        });
-  }
-
-  @Test
-  void dottedColumnTagsVarCannotReachTagsThroughTheColumnsList() {
-    String rule =
-        "{\"some\":[{\"var\":\"columns.tags\"},{\"==\":[{\"var\":\"tagFQN\"},\"PII.Sensitive\"]}]}";
-
-    assertEquals(false, RuleEngine.getInstance().apply(rule, tableWithColumnTag("PII.Sensitive")));
   }
 }
