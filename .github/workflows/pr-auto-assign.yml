@@ -11,7 +11,8 @@
 
 name: PR Auto Assign
 
-# Gives every PR exactly one assignee who owns getting it merged.
+# Gives every PR exactly one assignee who owns getting it merged
+# (ADR:2026-11-04-a-new-pr-is-assigned-to-one-owner).
 #   * Author has write access -> the author.
 #   * Otherwise (external contributors cannot be assigned) -> an owner of the CODEOWNERS
 #     rule covering the most changed lines. Team owners can't be assigned either, so they
