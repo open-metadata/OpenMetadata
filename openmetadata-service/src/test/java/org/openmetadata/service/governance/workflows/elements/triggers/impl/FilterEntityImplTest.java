@@ -41,6 +41,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -158,6 +159,42 @@ class FilterEntityImplTest {
     assertTrue(passesFilter(), "At the event's version the entity's own change is the event's");
   }
 
+  // ---- No change to judge: only a create may carry none ----
+
+  @Test
+  void eventPath_createWithNoChange_fires() {
+    givenEntity(glossary().withChangeDescription(null));
+    triggeredBy(EventType.ENTITY_CREATED);
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "A create carries no change and fires");
+  }
+
+  @Test
+  void eventPath_updateThatLeftNoChange_doesNotFire() {
+    // An edit undone within its session reverts the entity to a version with no change, and a
+    // follow never stores one: the update has nothing for include/exclude to judge.
+    givenEntity(glossary().withChangeDescription(null));
+    triggeredBy(EventType.ENTITY_UPDATED);
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertFalse(passesFilter(), "An update with no change to judge must not fire");
+  }
+
+  @Test
+  void eventPath_runWithoutEventType_keepsPassingWithNoChange() {
+    givenEntity(glossary().withChangeDescription(null));
+    exclude("description");
+
+    delegate.execute(execution);
+
+    assertTrue(passesFilter(), "A run started before the event type was recorded keeps passing");
+  }
+
   // ---- Change-request path: admitted at submission, routed only to the reviewing workflow ----
 
   @Test
@@ -216,6 +253,10 @@ class FilterEntityImplTest {
     when(execution.getVariable("global_changeRequestId")).thenReturn(UUID.randomUUID().toString());
     when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
     when(execution.getVariable("global_changeRequestWorkflow")).thenReturn(workflowName);
+  }
+
+  private void triggeredBy(EventType eventType) {
+    when(execution.getVariable("global_triggeringEventType")).thenReturn(eventType.value());
   }
 
   private void exclude(String... fields) {

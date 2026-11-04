@@ -277,7 +277,6 @@ const OntologyConceptAssets = ({
               </Box>
               {canEdit ? (
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`ontology-native-asset-remove-${binding.assetId}`}
                   icon={Trash01}
                   isDisabled={!bindings.editableSnapshot}

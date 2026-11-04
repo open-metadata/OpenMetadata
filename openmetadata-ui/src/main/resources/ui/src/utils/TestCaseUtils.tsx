@@ -12,12 +12,14 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Upload01 as ImportIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Edit01,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { lowerCase } from 'lodash';
 import type { ReactElement, ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
-import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageMenuItem } from '../components/common/ManageMenuButton/ManageMenuButton.component';
@@ -80,7 +82,7 @@ export const getTestCaseManageMenuItems = (
       ? [
           {
             key: 'import-button',
-            icon: ImportIcon,
+            icon: Upload01,
             title: t('label.import'),
             description: t('message.import-entity-help', {
               entity: t('label.test-case-lowercase-plural'),
@@ -98,7 +100,7 @@ export const getTestCaseManageMenuItems = (
       ? [
           {
             key: 'export-button',
-            icon: ExportIcon,
+            icon: Download01,
             title: t('label.export'),
             description: t('message.export-entity-help', {
               entity: t('label.test-case-lowercase-plural'),
@@ -116,7 +118,7 @@ export const getTestCaseManageMenuItems = (
       ? [
           {
             key: 'bulk-edit-button',
-            icon: IconEdit,
+            icon: Edit01,
             title: t('label.bulk-edit'),
             description: t('message.bulk-edit-entity-help', {
               entity: t('label.test-case-lowercase-plural'),

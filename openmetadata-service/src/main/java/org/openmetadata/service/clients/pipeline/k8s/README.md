@@ -116,6 +116,13 @@ The OMJob operator adds the labels it uses to find and clean up its pods:
 These two always carry the operator's values. The labels above are copied onto the pods as they
 are, so the pods keep `app.kubernetes.io/managed-by = openmetadata`.
 
+The `podLabels` and `podAnnotations` parameters (comma-separated `key=value` pairs) are added to
+every resource the client creates: Jobs, CronJobs, OMJobs, CronOMJobs, ConfigMaps, Secrets and
+pod templates. The built-in labels above win on a key clash. This is how a GitOps controller such
+as ArgoCD can be made to track the spawned resources, for example with
+`podLabels: app.kubernetes.io/instance=<argocd-app>` and
+`podAnnotations: argocd.argoproj.io/compare-options=IgnoreExtraneous,argocd.argoproj.io/sync-options=Prune=false`.
+
 Logs, Status, and Control
 -------------------------
 - Logs: the server reads the most recent pod with `app.kubernetes.io/pipeline=<name>`.

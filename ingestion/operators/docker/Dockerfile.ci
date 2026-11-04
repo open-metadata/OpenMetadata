@@ -173,10 +173,10 @@ RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3"
 # 0.64.0 is vulnerable to CVE-2026-107377 (first patched in 0.81.0). Generate with
 # 0.83.0, then remove it in the same layer so its files cannot remain in the final
 # image's lower layers.
-RUN pip install "datamodel-code-generator==0.83.0" \
+RUN pip install "datamodel-code-generator==0.83.0" "ruff==0.15.22" \
   && mkdir -p /ingestion/src/metadata/generated \
   && python /scripts/datamodel_generation.py \
-  && pip uninstall -y datamodel-code-generator
+  && pip uninstall -y datamodel-code-generator black ruff
 RUN pip install ".[airflow]"
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 

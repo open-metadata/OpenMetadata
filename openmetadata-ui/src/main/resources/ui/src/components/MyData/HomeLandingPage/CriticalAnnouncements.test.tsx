@@ -310,11 +310,11 @@ describe('CriticalAnnouncements', () => {
     const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
 
     expect(screen.getByTestId(PREV_BTN)).toBeDisabled();
-    expect(screen.getByTestId(NEXT_BTN)).not.toBeDisabled();
+    expect(screen.getByTestId(NEXT_BTN)).toBeEnabled();
 
     scrollRailTo(rail, 400);
 
-    expect(screen.getByTestId(PREV_BTN)).not.toBeDisabled();
+    expect(screen.getByTestId(PREV_BTN)).toBeEnabled();
     expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
   });
 

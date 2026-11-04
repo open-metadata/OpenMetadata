@@ -505,7 +505,7 @@ class LookerUnitTest(TestCase):
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
         with (
-            patch.object(fqn, "build", return_value=None),
+            patch.object(fqn, "build", return_value="service.db.schema.dashboard_name"),
             patch.object(OpenMetadata, "get_by_name", return_value=table),
         ):
             original_lineage = self.looker.build_lineage_request(source, db_service_name, to_entity).right

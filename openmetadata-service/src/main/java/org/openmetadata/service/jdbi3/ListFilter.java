@@ -24,6 +24,8 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -266,13 +268,23 @@ public class ListFilter extends Filter<ListFilter> {
    * This is used for authorization checks on the parent entity (e.g., checking VIEW_QUERIES
    * permission on a table when listing queries for that table).
    *
+   * <p>Resolve the parent before authorization so a mismatched type cannot produce an empty context
+   * that skips entity-based policy conditions.
+   *
    * @return ResourceContext for the parent entity, or null if entityId/entityType not specified
+   * @throws EntityNotFoundException if the id does not identify an entity of the requested type
    */
   public ResourceContext<?> getParentResourceContext() {
     String entityId = queryParams.get("entityId");
     String parentEntityType = queryParams.get("entityType");
     if (!nullOrEmpty(entityId) && !nullOrEmpty(parentEntityType)) {
-      return new ResourceContext<>(parentEntityType, java.util.UUID.fromString(entityId), null);
+      ResourceContext<?> parentResourceContext =
+          new ResourceContext<>(parentEntityType, UUID.fromString(entityId), null);
+      if (parentResourceContext.getEntity() == null) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(parentEntityType, entityId));
+      }
+      return parentResourceContext;
     }
     return null;
   }
@@ -1137,7 +1149,7 @@ public class ListFilter extends Filter<ListFilter> {
     return testSuiteName == null ? "" : getFqnPrefixCondition(null, testSuiteName, "testSuite");
   }
 
-  private String getDomainCondition(String tableName) {
+  String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
     String domainAccessControl = getQueryParam("domainAccessControl");
@@ -1686,15 +1698,16 @@ public class ListFilter extends Filter<ListFilter> {
           tableName == null
               ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s'))", fieldPath)
               : String.format("JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.%s'))", tableName, fieldPath);
-      String operator = exclude ? "NOT REGEXP" : "REGEXP";
-      return String.format("%s %s :%s", expr, operator, paramName + "Regex");
+      // Explicit flags keep filtering independent of the database's default collation.
+      return String.format(
+          "%sREGEXP_LIKE(%s, :%s, 'i')", exclude ? "NOT " : "", expr, paramName + "Regex");
     } else {
       String pgPath = "{" + fieldPath.replace(".", ",") + "}";
       String expr =
           tableName == null
               ? String.format("json #>> '%s'", pgPath)
               : String.format("%s.json #>> '%s'", tableName, pgPath);
-      String operator = exclude ? "!~" : "~";
+      String operator = exclude ? "!~*" : "~*";
       return String.format("%s %s :%s", expr, operator, paramName + "Regex");
     }
   }
