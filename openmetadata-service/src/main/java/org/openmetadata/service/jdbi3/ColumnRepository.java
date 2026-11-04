@@ -80,6 +80,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.ChildFieldResolver;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -124,6 +125,9 @@ public class ColumnRepository {
     // Row-level filters (metadataStatus / hasConflicts / hasMissingMetadata) are applied inside the
     // aggregator over the fully-grouped columns, before pagination, so page counts and per-page
     // size stay correct (#26824). Nothing to post-process here.
+    if (securityContext != null) {
+      request.setSubjectContext(DefaultAuthorizer.getSubjectContext(securityContext));
+    }
     return columnAggregator.aggregateColumns(request);
   }
 
@@ -434,6 +438,9 @@ public class ColumnRepository {
         Entity.getEntityRepository(entityType);
     ListFilter filter =
         buildSearchFilter(entityType, serviceName, databaseName, schemaName, domainId);
+    if (domainId == null) {
+      EntityUtil.addNavbarDomainFilter(securityContext, filter, entityType, () -> null);
+    }
 
     List<? extends EntityInterface<?>> parents =
         viewableParents(

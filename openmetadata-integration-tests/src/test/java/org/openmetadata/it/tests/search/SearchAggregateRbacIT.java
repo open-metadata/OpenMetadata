@@ -13,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -28,11 +30,15 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -65,6 +71,8 @@ import org.openmetadata.service.Entity;
 public class SearchAggregateRbacIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String NAME_FREE_LETTERS = "jkmqsuvxyz";
+  private static final String DOMAIN_INDEX = "domain_search_index";
   private static final String TABLE_INDEX = "table_search_index";
   private static final String ENTITY_TYPE_FIELD = "entityType";
   private static final String TABLE_ENTITY_TYPE = Entity.TABLE;
@@ -389,11 +397,22 @@ public class SearchAggregateRbacIT {
       DatabaseSchema schema,
       Domain domain,
       Deque<Runnable> cleanup) {
+    return createTable(admin, name, schema, domain, COLUMN.getName(), cleanup);
+  }
+
+  private Table createTable(
+      OpenMetadataClient admin,
+      String name,
+      DatabaseSchema schema,
+      Domain domain,
+      String columnName,
+      Deque<Runnable> cleanup) {
     CreateTable create =
         new CreateTable()
             .withName(name)
             .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withColumns(List.of(COLUMN));
+            .withColumns(
+                List.of(new Column().withName(columnName).withDataType(ColumnDataType.INT)));
     if (domain != null) {
       create.withDomains(List.of(domain.getFullyQualifiedName()));
     }
@@ -469,6 +488,210 @@ public class SearchAggregateRbacIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  /**
+   * The column grid aggregates over the same documents search does, so with search access control
+   * on, a restricted caller sees only the columns of tables their policies let them find.
+   */
+  @Test
+  void test_columnGrid_restrictedUserSeesOnlyOwnDomainColumns(TestNamespace ns) throws Exception {
+    assumeTheServerTrustsHarnessSignedTokens();
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain own = createDomain(admin, p + "_own", cleanup);
+      Domain foreign = createDomain(admin, p + "_foreign", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      String ownColumn = p + "_owncol";
+      String foreignColumn = p + "_foreigncol";
+      createTable(admin, p + "_own_tbl", schema, own, ownColumn, cleanup);
+      createTable(admin, p + "_foreign_tbl", schema, foreign, foreignColumn, cleanup);
+
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, own, cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      Awaitility.await("both columns are indexed")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> assertEquals(Set.of(ownColumn, foreignColumn), gridColumnNames(admin, p)));
+      assertEquals(Set.of(ownColumn), gridColumnNames(restricted, p));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * Hierarchy search rewrites the caller's query into one should clause among name matches. A term
+   * must still meet the caller's access policies and deleted flag to come back.
+   */
+  @Test
+  void test_hierarchySearch_keepsPoliciesAndDeletedFlag(TestNamespace ns) throws Exception {
+    assumeTheServerTrustsHarnessSignedTokens();
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      // Letters that never occur in the generated names, so only the display names below match
+      String word =
+          ThreadLocalRandom.current()
+              .ints(14, 0, NAME_FREE_LETTERS.length())
+              .mapToObj(i -> String.valueOf(NAME_FREE_LETTERS.charAt(i)))
+              .collect(Collectors.joining());
+      Domain own = createDomain(admin, p + "_own", cleanup);
+      Domain foreign = createDomain(admin, p + "_foreign", cleanup);
+      Glossary ownGlossary = createGlossary(admin, p + "_own_g", own, cleanup);
+      Glossary foreignGlossary = createGlossary(admin, p + "_foreign_g", foreign, cleanup);
+      GlossaryTerm ownTerm = createTerm(admin, ownGlossary, p + "_own_t", word + " own");
+      GlossaryTerm foreignTerm =
+          createTerm(admin, foreignGlossary, p + "_foreign_t", word + " foreign");
+      GlossaryTerm goneTerm = createTerm(admin, ownGlossary, p + "_gone_t", word + " gone");
+      admin.glossaryTerms().delete(goneTerm.getId().toString());
+
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, own, cleanup);
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      Awaitility.await("terms and the deletion are indexed")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                String live = searchTerms(admin, word, false, false);
+                assertTrue(live.contains(ownTerm.getFullyQualifiedName()), live);
+                assertTrue(live.contains(foreignTerm.getFullyQualifiedName()), live);
+                assertTrue(
+                    searchTerms(admin, word, true, false)
+                        .contains(goneTerm.getFullyQualifiedName()));
+              });
+
+      String restrictedTree = searchTerms(restricted, word, false, true);
+      assertTrue(restrictedTree.contains(ownTerm.getFullyQualifiedName()), restrictedTree);
+      assertFalse(restrictedTree.contains(foreignTerm.getFullyQualifiedName()), restrictedTree);
+      assertFalse(restrictedTree.contains(goneTerm.getFullyQualifiedName()), restrictedTree);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * The navbar sends its selected domain as a query_filter on every search, the domain picker's
+   * included, so applied by hierarchy search it would leave the picker unable to find any other
+   * domain. Another domain still comes back by name.
+   */
+  @Test
+  void test_domainHierarchySearch_findsAnotherDomainWhileOneIsSelected(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain selected = createDomain(admin, p + "_selected", cleanup);
+      Domain other = createDomain(admin, p + "_other", cleanup);
+      String selectedFqn = selected.getFullyQualifiedName();
+      String navbarFilter =
+          "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":["
+              + "{\"term\":{\"fullyQualifiedName\":\""
+              + selectedFqn
+              + "\"}},{\"prefix\":{\"fullyQualifiedName\":\""
+              + selectedFqn
+              + ".\"}}]}}]}}}";
+      String byName = "*" + other.getName() + "*";
+      Awaitility.await("the other domain is indexed")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      search(admin, DOMAIN_INDEX, byName, false, true, null)
+                          .contains(other.getFullyQualifiedName())));
+
+      String picked = search(admin, DOMAIN_INDEX, byName, false, true, navbarFilter);
+
+      assertTrue(picked.contains(other.getFullyQualifiedName()), picked);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private Glossary createGlossary(
+      OpenMetadataClient admin, String name, Domain domain, Deque<Runnable> cleanup) {
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(name)
+                    .withDescription("Hierarchy search RBAC test glossary")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    cleanup.push(
+        () ->
+            admin
+                .glossaries()
+                .delete(
+                    glossary.getId().toString(),
+                    Map.of("hardDelete", "true", "recursive", "true")));
+    return glossary;
+  }
+
+  private GlossaryTerm createTerm(
+      OpenMetadataClient admin, Glossary glossary, String name, String displayName) {
+    return admin
+        .glossaryTerms()
+        .create(
+            new CreateGlossaryTerm()
+                .withName(name)
+                .withDisplayName(displayName)
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Hierarchy search RBAC test term"));
+  }
+
+  private String searchTerms(
+      OpenMetadataClient client, String query, boolean deleted, boolean hierarchy) {
+    return search(client, "glossary_term_search_index", query, deleted, hierarchy, null);
+  }
+
+  private String search(
+      OpenMetadataClient client,
+      String index,
+      String query,
+      boolean deleted,
+      boolean hierarchy,
+      String filter) {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", "0")
+            .queryParam("size", "50")
+            .queryParam("deleted", String.valueOf(deleted))
+            .queryParam("getHierarchy", String.valueOf(hierarchy));
+    if (filter != null) {
+      options.queryParam("query_filter", filter);
+    }
+    return client
+        .getHttpClient()
+        .executeForString(HttpMethod.GET, "/v1/search/query", null, options.build());
+  }
+
+  private Set<String> gridColumnNames(OpenMetadataClient client, String pattern) throws Exception {
+    String grid =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/grid",
+                null,
+                RequestOptions.builder().queryParam("columnNamePattern", pattern).build());
+    Set<String> names = new HashSet<>();
+    MAPPER
+        .readTree(grid)
+        .path("columns")
+        .forEach(item -> names.add(item.path("columnName").asText()));
+    return names;
   }
 
   private boolean disableSearchAccessControl(OpenMetadataClient admin) throws Exception {

@@ -1,9 +1,6 @@
 package org.openmetadata.mcp.server.auth.handlers;
 
 import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.OIDC_CREDENTIAL_PROFILE;
-import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.oauth2.sdk.id.State;
@@ -22,7 +19,6 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +34,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
+import org.openmetadata.service.security.OidcIdentityResolver.ResolvedOidcIdentity;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.util.UserUtil;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
@@ -141,43 +139,6 @@ public class McpCallbackServlet extends HttpServlet {
             + "Falling back to http://localhost:8585 — this is only suitable for local development. "
             + "Configure a proper base URL for production deployments.");
     return "http://localhost:8585";
-  }
-
-  private Map<String, String> getClaimsMapping() {
-    try {
-      var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
-      if (authConfig != null && authConfig.getJwtPrincipalClaimsMapping() != null) {
-        return buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping());
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get claims mapping from config: {}", e.getMessage());
-    }
-    return Map.of();
-  }
-
-  private String[] getClaimsOrder() {
-    try {
-      var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
-      if (authConfig != null && authConfig.getJwtPrincipalClaims() != null) {
-        return authConfig.getJwtPrincipalClaims().toArray(new String[0]);
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get claims order from config: {}", e.getMessage());
-    }
-    return new String[] {"email", "preferred_username", "sub"};
-  }
-
-  private String getPrincipalDomain() {
-    try {
-      var authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
-      if (authzConfig != null && authzConfig.getPrincipalDomain() != null) {
-        return authzConfig.getPrincipalDomain();
-      }
-      LOG.debug("Principal domain not configured, using empty string");
-    } catch (Exception e) {
-      LOG.warn("Failed to get principal domain from config: {}", e.getMessage());
-    }
-    return "";
   }
 
   private IdTokenValidator getIdTokenValidator(AuthenticationCodeFlowHandler ssoHandler) {
@@ -381,11 +342,12 @@ public class McpCallbackServlet extends HttpServlet {
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(claimsSet.getClaims());
 
+      ResolvedOidcIdentity identity = ssoHandler.resolveOidcIdentity(claims);
+      String email = identity.email();
+      // As in the web login and the SAML bridge: with emailClaim set, the account that owns the
+      // email is the user, not whichever account is named like the email's local part.
       String userName =
-          findUserNameFromClaims(getClaimsMapping(), List.of(getClaimsOrder()), claims);
-      String email =
-          findEmailFromClaims(
-              getClaimsMapping(), List.of(getClaimsOrder()), claims, getPrincipalDomain());
+          identity.emailFirstFlow() ? UserUtil.resolveUserNameForEmail(email) : identity.userName();
 
       if (userName == null || userName.trim().isEmpty()) {
         LOG.error(
