@@ -46,7 +46,7 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.7",
     "pandas": "pandas>=2.2.2,<3",
-    "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
+    "pyarrow": "pyarrow>=23.0.1,<27",  # CVE-2026-25087 / CVE-2024-52338 (fixed in 23.0.1); SNYK-PYTHON-PYARROW-21279727 (fixed in 26.0.0, needs Python >=3.11)
     "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
