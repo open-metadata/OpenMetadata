@@ -1587,8 +1587,7 @@ const MetricListPage = () => {
         // TableV2 stays mounted so the toolbar's search input keeps focus.
         className={isEmptyList ? 'tw:h-full tw:[&_thead]:hidden' : undefined}
         columns={metricTableColumns}
-        // The empty-state row is not a data row, so it gets no hover fill.
-        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:[&_th]:whitespace-nowrap tw:[&_tbody[data-empty]_tr:hover_td]:bg-transparent"
+        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:[&_th]:whitespace-nowrap"
         data-testid="metric-list-table"
         dataSource={isPlaceholder ? [] : visibleRows}
         defaultVisibleColumns={DEFAULT_VISIBLE_METRIC_COLUMNS}

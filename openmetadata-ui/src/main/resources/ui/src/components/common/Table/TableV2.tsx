@@ -1760,7 +1760,7 @@ const TableV2 = <T extends object>(
         'table-container tw:rounded-xl',
         rest.variant === 'muted'
           ? MUTED_CONTAINER_CLASSES
-          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody_tr:hover_td]:bg-secondary',
+          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody:not([data-empty])_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
       ref={ref}>
