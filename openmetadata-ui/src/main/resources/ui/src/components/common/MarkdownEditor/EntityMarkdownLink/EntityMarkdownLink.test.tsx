@@ -147,18 +147,20 @@ describe('EntityMarkdownLink', () => {
     });
   });
 
-  it('should render regular link for non-entity URLs', () => {
-    renderWithRouter(
-      <EntityMarkdownLink href="https://example.com">
-        External Link
-      </EntityMarkdownLink>
-    );
+  it.each(['https://example.com', 'http://example.com', 'HTTPS://example.com'])(
+    'should open external link %s in a new tab',
+    (href) => {
+      renderWithRouter(
+        <EntityMarkdownLink href={href}>External Link</EntityMarkdownLink>
+      );
 
-    const link = screen.getByText('External Link');
+      const link = screen.getByText('External Link');
 
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', 'https://example.com');
-  });
+      expect(link).toHaveAttribute('href', href);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    }
+  );
 
   // In AI mode a team link is `<current search>#members/teams/<fqn>`: it must
   // follow the page's query string, not keep the one it first rendered with.
@@ -250,6 +252,7 @@ describe('EntityMarkdownLink', () => {
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '#invalid-format');
+    expect(link).not.toHaveAttribute('target');
   });
 
   it('should render regular link for unknown entity type', () => {
