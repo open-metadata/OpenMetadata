@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v208;
+package org.openmetadata.service.migration.utils.v209;
 
 import java.util.List;
 import org.jdbi.v3.core.Handle;
@@ -29,7 +29,8 @@ import org.jdbi.v3.core.Handle;
  *
  * <p>Runs from the Java migration per
  * ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration. 2.1.0 runs it again because a
- * database already at 2.1.0 reruns 2.0.8 for its SQL only. Each index is created only when missing.
+ * database at 2.1.0 that recorded 2.0.9 before this step was added reruns 2.0.9 for its SQL only.
+ * Each index is created only when missing.
  */
 public final class McpGrantUserNameIndexes {
   public static final String STEP_NAME = "mcpGrantUserNameIndexes";
