@@ -4968,7 +4968,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     updated.setImpersonatedBy(impersonatedBy);
     // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
     updated.setId(original.getId());
-    evaluateRulesDeferredUntilInherited(updated);
+    evaluatePutRulesDeferredUntilInherited(original, updated);
     Optional<StagedChange> staged =
         admit(original, updated, ChangeActor.recorded(updatedBy, impersonatedBy), Edit.put());
     return staged
@@ -5329,6 +5329,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private void evaluateRulesDeferredUntilInherited(final T entity) {
     if (RuleEngine.dependsOnInheritedDomains(entity)) {
       RuleEngine.getInstance().evaluate(withInheritedOwnersAndDomains(entity));
+    }
+  }
+
+  /**
+   * The rules copy() left for now, on a PUT of an existing entity. A PUT that sends no owners or
+   * domains keeps the stored ones, so the rules see those, and inherited ones only when the entity
+   * has none of its own.
+   */
+  private void evaluatePutRulesDeferredUntilInherited(final T original, final T sent) {
+    if (RuleEngine.dependsOnInheritedDomains(sent)) {
+      final T asStored = JsonUtils.deepCopy(sent, entityClass);
+      asStored.setDomains(EntityUpdater.getEntityReferences(original.getDomains()));
+      if (EntityUpdater.getEntityReferences(sent.getOwners()).isEmpty()) {
+        asStored.setOwners(EntityUpdater.getEntityReferences(original.getOwners()));
+      }
+      RuleEngine.getInstance().evaluate(withInheritedOwnersAndDomains(asStored));
     }
   }
 
@@ -15135,6 +15151,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             restoreEntity(entity.getUpdatedBy(), original.getId());
           }
 
+          evaluatePutRulesDeferredUntilInherited(original, entity);
           EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
           updater.setOverrideMetadata(overrideMetadata);
           updater.updateWithDeferredStore();

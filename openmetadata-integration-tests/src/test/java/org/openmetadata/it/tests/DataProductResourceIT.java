@@ -1135,6 +1135,83 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         rejected.getMessage().contains("Data Product Domain Validation"), rejected.getMessage());
   }
 
+  /** A PUT that sends no domain keeps the table's own, so its data products are checked on it. */
+  @Test
+  void test_putWithoutDomainsChecksDataProductsAgainstTheStoredOwnDomain(TestNamespace ns)
+      throws Exception {
+    Domain own = createTestDomain(ns, "own_put_stored");
+    Domain parent = createTestDomain(ns, "parent_put_stored");
+    var schema = createSchemaWithDomain(ns, "schema_put_stored", parent);
+    Table table = createChildTable(ns, "table_put_stored", schema, own);
+    DataProduct ownProduct = createFinanceDataProduct(ns, "dp_put_stored_own", own);
+    DataProduct parentProduct = createFinanceDataProduct(ns, "dp_put_stored_parent", parent);
+    CreateTable put =
+        new CreateTable()
+            .withName(table.getName())
+            .withDatabaseSchema(schema.getFullyQualifiedName());
+
+    SdkClients.adminClient()
+        .tables()
+        .createOrUpdate(put.withDataProducts(List.of(ownProduct.getFullyQualifiedName())));
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tables()
+                    .createOrUpdate(
+                        put.withDataProducts(List.of(parentProduct.getFullyQualifiedName()))));
+
+    assertTrue(
+        rejected.getMessage().contains("Data Product Domain Validation"), rejected.getMessage());
+    Table stored =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "domains,dataProducts");
+    assertEquals(List.of(own.getId()), stored.getDomains().stream().map(d -> d.getId()).toList());
+    assertTrue(hasDataProduct(stored.getDataProducts(), ownProduct.getId()));
+    assertFalse(hasDataProduct(stored.getDataProducts(), parentProduct.getId()));
+  }
+
+  /** A bulk PUT of an existing table is checked per item against its inherited domain. */
+  @Test
+  void test_bulkPutChecksDataProductsAgainstTheInheritedDomain(TestNamespace ns) throws Exception {
+    Domain domain = createTestDomain(ns, "domain_bulk_put");
+    Domain other = createTestDomain(ns, "other_bulk_put");
+    var schema = createSchemaWithDomain(ns, "schema_bulk_put", domain);
+    Table table = createChildTable(ns, "table_bulk_put", schema, null);
+    DataProduct sameProduct = createFinanceDataProduct(ns, "dp_bulk_put_same", domain);
+    DataProduct otherProduct = createFinanceDataProduct(ns, "dp_bulk_put_other", other);
+
+    BulkOperationResult rejected =
+        SdkClients.adminClient()
+            .tables()
+            .bulkCreateOrUpdate(
+                List.of(
+                    new CreateTable()
+                        .withName(table.getName())
+                        .withDatabaseSchema(schema.getFullyQualifiedName())
+                        .withDataProducts(List.of(otherProduct.getFullyQualifiedName()))));
+    Table afterRejected =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    BulkOperationResult accepted =
+        SdkClients.adminClient()
+            .tables()
+            .bulkCreateOrUpdate(
+                List.of(
+                    new CreateTable()
+                        .withName(table.getName())
+                        .withDatabaseSchema(schema.getFullyQualifiedName())
+                        .withDataProducts(List.of(sameProduct.getFullyQualifiedName()))));
+
+    assertEquals(1, rejected.getNumberOfRowsFailed(), JsonUtils.pojoToJson(rejected));
+    assertTrue(
+        JsonUtils.pojoToJson(rejected).contains("Data Product Domain Validation"),
+        JsonUtils.pojoToJson(rejected));
+    assertFalse(hasDataProduct(afterRejected.getDataProducts(), otherProduct.getId()));
+    assertEquals(0, accepted.getNumberOfRowsFailed(), JsonUtils.pojoToJson(accepted));
+    Table stored = SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(hasDataProduct(stored.getDataProducts(), sameProduct.getId()));
+  }
+
   /** Inheriting owners onto the patched copy must not store the schema's owner on the table. */
   @Test
   void test_removingDirectOwnerFallsBackToInheritedOwnerWithoutStoringIt(TestNamespace ns)
