@@ -14,6 +14,12 @@ import { render, screen } from '@testing-library/react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import MembersTeamInfoWidgets from './MembersTeamInfoWidgets';
 
+let mockIsAdminUser = true;
+
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdminUser }),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) =>
@@ -52,6 +58,10 @@ const groupTeam = {
 } as Team;
 
 describe('MembersTeamInfoWidgets', () => {
+  beforeEach(() => {
+    mockIsAdminUser = true;
+  });
+
   it('renders the widget strip with the distinct user count', () => {
     render(
       <MembersTeamInfoWidgets canEdit team={groupTeam} onPatch={jest.fn()} />
@@ -94,5 +104,25 @@ describe('MembersTeamInfoWidgets', () => {
 
     expect(screen.queryByTestId('edit-domain')).not.toBeInTheDocument();
     expect(screen.queryByTestId('edit-email')).not.toBeInTheDocument();
+  });
+
+  it('lets an admin set the default persona', () => {
+    render(
+      <MembersTeamInfoWidgets canEdit team={groupTeam} onPatch={jest.fn()} />
+    );
+
+    expect(screen.getByTestId('persona-select')).toBeInTheDocument();
+  });
+
+  it('keeps the default persona read-only for a non-admin who may edit the team', () => {
+    mockIsAdminUser = false;
+
+    render(
+      <MembersTeamInfoWidgets canEdit team={groupTeam} onPatch={jest.fn()} />
+    );
+
+    expect(screen.getByTestId('team-persona')).toBeInTheDocument();
+    expect(screen.queryByTestId('persona-select')).not.toBeInTheDocument();
+    expect(screen.getByTestId('domain-select')).toBeInTheDocument();
   });
 });

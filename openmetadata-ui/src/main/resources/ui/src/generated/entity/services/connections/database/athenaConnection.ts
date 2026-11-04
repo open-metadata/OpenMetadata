@@ -66,9 +66,11 @@ export interface AthenaConnection {
      */
     type?: AthenaType;
     /**
-     * Athena workgroup.
+     * Athena workgroup that runs the ingestion queries and whose query history usage and
+     * lineage read. When empty, queries run in the default workgroup and query history is read
+     * from every enabled workgroup.
      */
-    workgroup: string;
+    workgroup?: string;
 }
 
 /**

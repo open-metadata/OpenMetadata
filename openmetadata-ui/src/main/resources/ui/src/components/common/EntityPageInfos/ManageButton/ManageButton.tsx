@@ -409,7 +409,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             isOkLoading={isEntityRestoring}
             okText={t('label.restore')}
             title={t('label.restore-entity', {
-              entity: entityType,
+              entity: formattedEntityType,
             })}
             onCancel={() => setShowReactiveModal(false)}
             onOk={handleRestore}>

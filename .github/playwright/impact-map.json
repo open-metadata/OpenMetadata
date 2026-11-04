@@ -608,6 +608,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/governance/**",
         "openmetadata-ui/src/main/resources/ui/src/generated/api/governance/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/governance/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/governance/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/governance/**",
         "openmetadata-spec/src/main/resources/json/schema/governance/workflows/**",
         "openmetadata-spec/src/main/resources/json/schema/api/governance/**"
