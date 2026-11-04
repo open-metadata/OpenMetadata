@@ -21,8 +21,3 @@ class TableReference:
     database: str | None
     schema: str | None
     table: str
-
-
-def normalize_table_reference(reference: TableReference) -> TableReference:
-    """Preserve the standard database/schema/table namespace."""
-    return reference

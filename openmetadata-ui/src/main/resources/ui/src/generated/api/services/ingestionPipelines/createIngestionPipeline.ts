@@ -410,6 +410,10 @@ export interface Pipeline {
      */
     schemaFilterPattern?: FilterPattern;
     /**
+     * BigQuery daily shard grouping. Omitted configuration remains disabled.
+     */
+    shardedTables?: BigQueryShardedTables;
+    /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      *
      * Regex to only fetch stored procedures that matches the pattern.
@@ -8312,6 +8316,19 @@ export enum AirflowConnectionType {
     VertexAI = "VertexAI",
     Vertica = "Vertica",
     Wherescape = "Wherescape",
+}
+
+/**
+ * BigQuery daily shard grouping. Omitted configuration remains disabled.
+ *
+ * Group native daily shard tables into stable logical families.
+ */
+export interface BigQueryShardedTables {
+    /**
+     * Group BigQuery daily shards into a stable logical table using the newest shard for
+     * columns and execution.
+     */
+    enabled?: boolean;
 }
 
 /**

@@ -4,9 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.BeforeAll;
@@ -28,54 +27,51 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 /**
  * "All entities" breadth gate for the default search configuration: seeds a small cohort spanning
  * every entity kind {@link EntityLoader} produces, reindexes, and asserts each kind's per-type
- * search index gained at least one seeded document — i.e. the default Settings &gt; Search config
+ * search index holds exactly the seeded documents — i.e. the default Settings &gt; Search config
  * actually indexes and makes every entity type searchable. This is a breadth gate; exact per-type
  * DB↔ES parity is covered by {@link DbToEsCountReconciliationIT}. Any per-type drift is reported in
  * one table rather than aborting on the first kind.
  *
- * <p>Counts are compared as a before/after <b>delta</b> on each per-type index (no fragile
- * name-prefix matching — some kinds, e.g. Query, are named by checksum). The relevancy
- * <em>mechanics</em> (boosts, field selection, highlight, limits) are covered on a representative
- * entity by {@link SearchRelevancyPreviewIT}.
+ * <p>Each kind is counted by the name prefix {@link EntityLoader} gives this test's entities, never
+ * as a whole-index total. The cluster is shared, so a whole-index count also moves with other
+ * tests' documents, for instance a previous test's deleted entities that the reindex prunes. The
+ * relevancy <em>mechanics</em> (boosts, field selection, highlight, limits) are covered on a
+ * representative entity by {@link SearchRelevancyPreviewIT}.
  */
 @ExtendWith(TestNamespaceExtension.class)
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class PerEntitySearchDefaultsIT {
 
   private static final int PER_KIND = 2;
-  // Breadth gate: require that AT LEAST ONE seeded doc of each kind lands in its index, not the
-  // full PER_KIND. A full reindex reconciles each index to the DB, so a pre-existing orphaned doc
-  // (indexed but DB-deleted — common on the shared external cluster after a cancelled run or
-  // async-delete lag) is pruned in the same pass, dragging an exact seeded-count delta below
-  // PER_KIND even when indexing is correct. Exact per-type DB/ES parity is covered by
-  // DbToEsCountReconciliationIT; here we only gate that every kind is indexed at all.
-  private static final int MIN_INDEXED_PER_KIND = 1;
   private static final int INGEST_WORKERS = 8;
   private static final int COLUMNS_PER_TABLE = 2;
   private static final Duration SETTLE_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration POLL = Duration.ofSeconds(2);
 
-  /** Every kind EntityLoader can seed, paired with its search index (entity) type. */
+  /**
+   * Every kind EntityLoader can seed, paired with its search index (entity) type and the name base
+   * EntityLoader prefixes its entities with.
+   */
   private static final List<KindMeta> KINDS =
       List.of(
-          new KindMeta(EntityKind.TABLE, "table"),
-          new KindMeta(EntityKind.TOPIC, "topic"),
-          new KindMeta(EntityKind.DASHBOARD, "dashboard"),
-          new KindMeta(EntityKind.PIPELINE, "pipeline"),
-          new KindMeta(EntityKind.CHART, "chart"),
-          new KindMeta(EntityKind.ML_MODEL, "mlmodel"),
-          new KindMeta(EntityKind.CONTAINER, "container"),
-          new KindMeta(EntityKind.SEARCH_INDEX, "searchIndex"),
-          new KindMeta(EntityKind.API_COLLECTION, "apiCollection"),
-          new KindMeta(EntityKind.API_ENDPOINT, "apiEndpoint"),
-          new KindMeta(EntityKind.STORED_PROCEDURE, "storedProcedure"),
-          new KindMeta(EntityKind.QUERY, "query"),
-          new KindMeta(EntityKind.DASHBOARD_DATA_MODEL, "dashboardDataModel"),
-          new KindMeta(EntityKind.GLOSSARY_TERM, "glossaryTerm"),
-          new KindMeta(EntityKind.TAG, "tag"),
-          new KindMeta(EntityKind.DOMAIN, "domain"),
-          new KindMeta(EntityKind.DATA_PRODUCT, "dataProduct"),
-          new KindMeta(EntityKind.TEST_CASE, "testCase"));
+          new KindMeta(EntityKind.TABLE, "table", "table"),
+          new KindMeta(EntityKind.TOPIC, "topic", "topic"),
+          new KindMeta(EntityKind.DASHBOARD, "dashboard", "dashboard"),
+          new KindMeta(EntityKind.PIPELINE, "pipeline", "pipeline"),
+          new KindMeta(EntityKind.CHART, "chart", "chart"),
+          new KindMeta(EntityKind.ML_MODEL, "mlmodel", "ml_model"),
+          new KindMeta(EntityKind.CONTAINER, "container", "container"),
+          new KindMeta(EntityKind.SEARCH_INDEX, "searchIndex", "search_index"),
+          new KindMeta(EntityKind.API_COLLECTION, "apiCollection", "api_collection"),
+          new KindMeta(EntityKind.API_ENDPOINT, "apiEndpoint", "api_endpoint"),
+          new KindMeta(EntityKind.STORED_PROCEDURE, "storedProcedure", "stored_proc"),
+          new KindMeta(EntityKind.QUERY, "query", "query"),
+          new KindMeta(EntityKind.DASHBOARD_DATA_MODEL, "dashboardDataModel", "data_model"),
+          new KindMeta(EntityKind.GLOSSARY_TERM, "glossaryTerm", "term"),
+          new KindMeta(EntityKind.TAG, "tag", "tag"),
+          new KindMeta(EntityKind.DOMAIN, "domain", "domain"),
+          new KindMeta(EntityKind.DATA_PRODUCT, "dataProduct", "data_product"),
+          new KindMeta(EntityKind.TEST_CASE, "testCase", "test_case"));
 
   private static ServerHandle server;
   private static IndexAliasInspector indices;
@@ -90,24 +86,19 @@ class PerEntitySearchDefaultsIT {
 
   @Test
   void everyEntityKindIsIndexedWithDefaultSettings(final TestNamespace ns) {
-    final Map<String, Long> beforeByType = new LinkedHashMap<>();
-    for (final KindMeta meta : KINDS) {
-      beforeByType.put(meta.type(), safeCount(meta.type()));
-    }
-
     EntityLoader.load(buildCohortSpec(), ns);
     final var run = ReindexHelpers.triggerSearchIndexAndWait(server);
     assertThat(run.getStatus().value()).isIn("success", "completed");
 
     final List<String> failures = new ArrayList<>();
     for (final KindMeta meta : KINDS) {
-      recordIfNotIndexed(meta, beforeByType.get(meta.type()), failures);
+      recordIfNotIndexed(meta, ns.prefix(meta.nameBase()) + "_", failures);
     }
 
     assertThat(failures)
         .as(
-            "every entity kind must index at least its seeded docs:%n%s",
-            String.join("\n", failures))
+            "every entity kind must index exactly its %d seeded docs:%n%s",
+            PER_KIND, String.join("\n", failures))
         .isEmpty();
   }
 
@@ -121,7 +112,7 @@ class PerEntitySearchDefaultsIT {
   }
 
   private static void recordIfNotIndexed(
-      final KindMeta meta, final long before, final List<String> failures) {
+      final KindMeta meta, final String namePrefix, final List<String> failures) {
     String index = null;
     String failure = null;
     try {
@@ -130,7 +121,7 @@ class PerEntitySearchDefaultsIT {
       failure = String.format("  %-22s no resolvable index: %s", meta.type(), e.getMessage());
     }
     if (index != null) {
-      failure = awaitIndexedOrDescribe(meta, index, before);
+      failure = awaitIndexedOrDescribe(meta, index, namePrefix);
     }
     if (failure != null) {
       failures.add(failure);
@@ -138,7 +129,8 @@ class PerEntitySearchDefaultsIT {
   }
 
   private static String awaitIndexedOrDescribe(
-      final KindMeta meta, final String index, final long before) {
+      final KindMeta meta, final String index, final String namePrefix) {
+    final AtomicLong indexed = new AtomicLong();
     String failure = null;
     try {
       Awaitility.await(meta.type() + " indexed")
@@ -147,27 +139,16 @@ class PerEntitySearchDefaultsIT {
           .pollDelay(Duration.ZERO)
           .ignoreExceptions()
           .untilAsserted(
-              () ->
-                  assertThat(search.count(index) - before)
-                      .isGreaterThanOrEqualTo((long) MIN_INDEXED_PER_KIND));
+              () -> {
+                indexed.set(search.countByNamePrefix(index, namePrefix));
+                assertThat(indexed.get()).isEqualTo(PER_KIND);
+              });
     } catch (final ConditionTimeoutException timeout) {
       failure =
-          String.format(
-              "  %-22s indexed delta=%d (expected >= %d)",
-              meta.type(), safeCount(meta.type()) - before, MIN_INDEXED_PER_KIND);
+          String.format("  %-22s indexed=%d (expected %d)", meta.type(), indexed.get(), PER_KIND);
     }
     return failure;
   }
 
-  private static long safeCount(final String type) {
-    long result = 0;
-    try {
-      result = search.count(indices.indexNameFor(type));
-    } catch (final RuntimeException ignored) {
-      result = 0;
-    }
-    return result;
-  }
-
-  private record KindMeta(EntityKind kind, String type) {}
+  private record KindMeta(EntityKind kind, String type, String nameBase) {}
 }

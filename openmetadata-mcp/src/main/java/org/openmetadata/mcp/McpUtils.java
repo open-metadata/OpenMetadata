@@ -4,9 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.servlet.http.HttpServletRequest;
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -140,16 +137,5 @@ public class McpUtils {
       LOG.error("Error during server startup", e);
       throw new RuntimeException("Failed to start MCP server", e);
     }
-  }
-
-  public static String readRequestBody(HttpServletRequest request) throws IOException {
-    StringBuilder body = new StringBuilder();
-    try (BufferedReader reader = request.getReader()) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        body.append(line);
-      }
-    }
-    return body.toString();
   }
 }

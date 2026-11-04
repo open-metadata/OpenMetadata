@@ -12,7 +12,7 @@
  */
 
 import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -115,6 +115,14 @@ function PipelineActionsDropdown({
         ? `${serviceName}.${ingestion.name}`
         : ingestion.fullyQualifiedName;
 
+      // A host that edits in place (e.g. the test suite pipeline drawer)
+      // takes precedence over navigating to an edit page.
+      if (handleEditClick) {
+        handleEditClick(fullyQualifiedName);
+
+        return;
+      }
+
       if (ingestion.pipelineType === PipelineType.TestSuite) {
         navigate(
           getTestSuiteIngestionPath(
@@ -126,18 +134,14 @@ function PipelineActionsDropdown({
         return;
       }
 
-      if (isUndefined(handleEditClick)) {
-        navigate(
-          getEditIngestionPath(
-            serviceCategory ?? '',
-            serviceName ?? '',
-            fullyQualifiedName,
-            ingestion.pipelineType
-          )
-        );
-      } else {
-        handleEditClick(fullyQualifiedName);
-      }
+      navigate(
+        getEditIngestionPath(
+          serviceCategory ?? '',
+          serviceName ?? '',
+          fullyQualifiedName,
+          ingestion.pipelineType
+        )
+      );
     },
     [ingestion, serviceCategory, serviceName, handleEditClick]
   );
