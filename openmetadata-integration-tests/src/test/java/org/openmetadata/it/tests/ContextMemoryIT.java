@@ -608,6 +608,10 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
             .toList();
     Set<UUID> allIds = memories.stream().map(ContextMemory::getId).collect(Collectors.toSet());
     Set<UUID> approvedId = Set.of(memories.getFirst().getId());
+    awaitSearchBackedListContains(
+        SdkClients.adminClient(),
+        memories,
+        "all pending-list fixtures must reach the search index");
 
     for (boolean searchBacked : List.of(false, true)) {
       for (int limit : List.of(10, 0)) {
