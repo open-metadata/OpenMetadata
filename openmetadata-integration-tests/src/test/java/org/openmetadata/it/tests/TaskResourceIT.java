@@ -4034,6 +4034,43 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     }
   }
 
+  @Test
+  void testEditingATaskPathToOneThatIsNotAFieldOfTheEntity_isRefused(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithColumns(ns, schema.getFullyQualifiedName());
+    String columnPath = "columns." + table.getColumns().get(0).getName() + ".description";
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("field-path-edit"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                    .withPayload(
+                        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+                            .withFieldPath(columnPath)
+                            .withNewDescription("x")));
+
+    InvalidRequestException refused =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/tasks/" + task.getId(),
+                        "[{\"op\":\"replace\",\"path\":\"/payload/fieldPath\","
+                            + "\"value\":\"columns.missing.description\"}]",
+                        org.openmetadata.sdk.network.RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build()));
+    assertTrue(refused.getMessage().contains("columns.missing.description"), refused.getMessage());
+  }
+
   // ==================== Multiple Columns Same Task ====================
 
   @Test
