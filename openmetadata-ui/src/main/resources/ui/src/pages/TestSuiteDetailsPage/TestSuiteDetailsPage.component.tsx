@@ -236,6 +236,7 @@ const TestSuiteDetailsPage = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
@@ -374,7 +375,10 @@ const TestSuiteDetailsPage = () => {
         ),
         children: (
           <div className="tw:w-full tw:p-4">
-            <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+            <TestSuitePipelineTab
+              testSuite={testSuite}
+              onPipelinesChange={handlePipelinesChange}
+            />
           </div>
         ),
       },

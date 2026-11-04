@@ -62,7 +62,7 @@ public class RdfPropertyMapper {
   private static final Set<String> STRUCTURED_PROPERTIES =
       Set.of("lifeCycle", "customProperties", "extension", "certification");
 
-  // Properties that never belong in the graph, for three reasons:
+  // Properties that never belong in the graph, for four reasons:
   //   1. Audit/helper data with no place in the graph: changeDescription, votes.
   //   2. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
   //      store rather than the knowledge graph: testCaseResult. A testCase carries its latest
@@ -71,18 +71,26 @@ public class RdfPropertyMapper {
   //   3. Authentication material, which must not become SPARQL-queryable metadata:
   //      identityProviderSubject is the IdP's 'sub' claim, stored only to bind an account to one
   //      provider identity. It carries no discovery value and is an identity correlator. Contrast
-  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping.
+  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping. The
+  //      CREDENTIAL_PROPERTIES below carry stored secrets: a service's connection, a pipeline's
+  //      source config and server connection, a user's password hash or bot token.
+  //      ADR:2026-10-30-the-rdf-projection-never-carries-stored-secrets
   //   4. Per-user UI state with no metadata meaning: isFirstTimeUser only decides whether the
   //      first-login welcome screen shows.
   //
   // These must not be fetched at all — see isIndexableEntityField.
-  private static final Set<String> NON_GRAPH_PROPERTIES =
+  static final Set<String> CREDENTIAL_PROPERTIES =
       Set.of(
-          "changeDescription",
-          "votes",
-          "testCaseResult",
           "identityProviderSubject",
-          "isFirstTimeUser");
+          "connection",
+          "sourceConfig",
+          "openMetadataServerConnection",
+          "authenticationMechanism");
+  private static final Set<String> NON_GRAPH_PROPERTIES =
+      Stream.concat(
+              Stream.of("changeDescription", "votes", "testCaseResult", "isFirstTimeUser"),
+              CREDENTIAL_PROPERTIES.stream())
+          .collect(Collectors.toUnmodifiableSet());
 
   // Properties that DO belong in the graph but are emitted by a dedicated structured-emission step
   // (emitStructuredProperties) rather than the generic field loop, so the generic loop must not
