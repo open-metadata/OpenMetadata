@@ -49,13 +49,12 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.source.connections import (
@@ -168,10 +167,10 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
     source_config: DriveServiceMetadataPipeline
     config: WorkflowSource
     _connection: BaseConnection | None = None
-    directory_source_state: set = set()  # noqa: RUF012
-    file_source_state: set = set()  # noqa: RUF012
-    spreadsheet_source_state: set = set()  # noqa: RUF012
-    worksheet_source_state: set = set()  # noqa: RUF012
+    directory_source_state = PerSourceState(set)
+    file_source_state = PerSourceState(set)
+    spreadsheet_source_state = PerSourceState(set)
+    worksheet_source_state = PerSourceState(set)
 
     @property
     def tags_registry(self) -> TagRegistry:
@@ -186,7 +185,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
     service_connection: DriveConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = DriveServiceTopology()
-    context = TopologyContextManager(topology)
 
     @property
     def name(self) -> str:

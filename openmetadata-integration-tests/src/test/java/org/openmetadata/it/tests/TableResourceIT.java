@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -28,14 +30,17 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -6663,6 +6668,89 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         "All returned tables should contain 'orders' in name");
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testRegexListTable_caseInsensitiveSubstring(boolean useFqn, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("prod_reporting").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create().name("finance").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchema otherSchema =
+        DatabaseSchemas.create()
+            .name("Finance_archive")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    for (String name : List.of("revenue_summary", "daily_Summary", "orders")) {
+      client
+          .tables()
+          .create(
+              new CreateTable()
+                  .withName(name)
+                  .withDatabaseSchema(schema.getFullyQualifiedName())
+                  .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    }
+    client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName("archive")
+                .withDatabaseSchema(otherSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    for (String mode : List.of("include", "exclude")) {
+      assertRegexTableNames(
+          client,
+          Map.of(
+              "database",
+              database.getFullyQualifiedName(),
+              "tableRegex",
+              "summary",
+              "regexMode",
+              mode,
+              "regexFilterByFqn",
+              Boolean.toString(useFqn)),
+          mode.equals("include")
+              ? Set.of("revenue_summary", "daily_Summary")
+              : Set.of("orders", "archive"));
+      assertRegexTableNames(
+          client,
+          Map.of(
+              "database",
+              database.getFullyQualifiedName(),
+              "databaseSchemaRegex",
+              "finance",
+              "regexMode",
+              mode,
+              "regexFilterByFqn",
+              Boolean.toString(useFqn)),
+          mode.equals("include")
+              ? Set.of("revenue_summary", "daily_Summary", "orders", "archive")
+              : Set.of());
+    }
+    assertRegexTableNames(
+        client,
+        Map.of(
+            "database",
+            database.getFullyQualifiedName(),
+            "tableRegex",
+            "^summary$",
+            "regexMode",
+            "include",
+            "regexFilterByFqn",
+            Boolean.toString(useFqn)),
+        Set.of());
+  }
+
+  private void assertRegexTableNames(
+      OpenMetadataClient client, Map<String, String> queryParams, Set<String> expected) {
+    ListResponse<Table> response =
+        client.tables().list(new ListParams().setQueryParams(queryParams));
+    assertEquals(
+        expected, response.getData().stream().map(Table::getName).collect(Collectors.toSet()));
+    assertEquals(expected.size(), response.getPaging().getTotal());
+  }
+
   @Test
   void testRegexListTable_noMatch(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -7201,9 +7289,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
     fetchedDb.setOwners(List.of(shared.USER1_REF));
+    long patchedAt = System.currentTimeMillis();
     client.databases().update(fetchedDb.getId().toString(), fetchedDb);
 
     String tableId = table.getId().toString();
+    try {
+      awaitInheritedOwner(client, mapper, tableId, shared);
+    } catch (ConditionTimeoutException timeout) {
+      fail(
+          "%s%n%s".formatted(timeout.getMessage(), ownerPropagationDiagnostics(tableId, patchedAt)),
+          timeout);
+    }
+  }
+
+  private void awaitInheritedOwner(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, SharedEntities shared) {
     Awaitility.await("Table search index should reflect inherited owner from database")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -7232,6 +7332,60 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                       .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
                   "Owner should match the user set on the database");
             });
+  }
+
+  /**
+   * The owner reaches the table through a background update-by-query whose result only the search
+   * engine keeps. On a timeout, report that result, how the child aliases it targeted resolve, and
+   * the table document, so a failure names its own cause.
+   */
+  private static String ownerPropagationDiagnostics(String tableId, long patchedAt) {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String prefix = nullOrEmpty(clusterAlias) ? "" : clusterAlias + "_";
+    String childAliases =
+        Stream.of("databaseSchema", "table", "storedProcedure", "testSuite", "testCase")
+            .map(alias -> prefix + alias)
+            .collect(Collectors.joining(","));
+    String tasksQuery =
+        """
+        {"size":20,"query":{"bool":{"filter":[
+          {"term":{"task.action":"indices:data/write/update/byquery"}},
+          {"range":{"task.start_time_in_millis":{"gte":%d}}}]}}}"""
+            .formatted(patchedAt - 1000);
+    String report;
+    try (Rest5Client client = TestSuiteBootstrap.createSearchClient()) {
+      report =
+          """
+          update-by-query tasks since the PATCH: %s
+          child aliases: %s
+          table document: %s"""
+              .formatted(
+                  searchEngine(client, "POST", "/.tasks/_search", tasksQuery),
+                  searchEngine(
+                      client, "GET", "/_alias/" + childAliases + "?ignore_unavailable=true", null),
+                  searchEngine(
+                      client, "GET", "/" + prefix + "table_search_index/_doc/" + tableId, null));
+    } catch (IOException | RuntimeException e) {
+      report = "search engine unavailable (%s)".formatted(e.getMessage());
+    }
+    return report;
+  }
+
+  private static String searchEngine(Rest5Client client, String method, String path, String body) {
+    String response;
+    try {
+      Request request = new Request(method, path);
+      if (body != null) {
+        request.setJsonEntity(body);
+      }
+      response =
+          new String(
+              client.performRequest(request).getEntity().getContent().readAllBytes(),
+              StandardCharsets.UTF_8);
+    } catch (Exception e) {
+      response = "unavailable (%s)".formatted(e.getMessage());
+    }
+    return response;
   }
 
   @Test

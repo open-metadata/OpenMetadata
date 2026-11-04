@@ -21,6 +21,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.metrics.MetricAuthorization;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -54,7 +55,9 @@ public class PatchEntityTool implements McpTool {
   // patch would skip. Derived by auditing every @PATCH endpoint under openmetadata-service for a
   // body that is not a bare patchInternal() delegation - re-run that audit before adding an entry
   // here or dropping one. What each entry protects:
+  //   announcement         authorizeAdminOrBot on system announcements (no entityLink)
   //   app                  system-app guard, scheduler teardown/reinstall
+  //   contextFile          Private/Shared visibility, owner-only restriction of sharing
   //   document             requirePublic - private doc types are not editable
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
@@ -64,11 +67,16 @@ public class PatchEntityTool implements McpTool {
   //   testCase             table-or-testCase authorization, sample cleanup
   //   testSuite            getAuthRequestsForUpdate authorization
   //   task                 restricted-field diff validation
+  //   team                 authorizeAdmin on defaultPersona
   //   user                 isAdmin / isBot / roles / teams authorization
   //   workflow             connection-secret decryptOrNullify
+  // metric and metricGroup are not listed: their resources' checks are shared, and execute() runs
+  // them through MetricAuthorization.
   private static final Set<String> DEDICATED_PATCH_LIFECYCLES =
       Set.of(
+          Entity.ANNOUNCEMENT,
           Entity.APPLICATION,
+          Entity.CONTEXT_FILE,
           Entity.DOCUMENT,
           Entity.EVENT_SUBSCRIPTION,
           Entity.INGESTION_PIPELINE,
@@ -78,6 +86,7 @@ public class PatchEntityTool implements McpTool {
           Entity.TEST_CASE,
           Entity.TEST_SUITE,
           Entity.TASK,
+          Entity.TEAM,
           Entity.USER,
           Entity.WORKFLOW);
 
@@ -108,6 +117,7 @@ public class PatchEntityTool implements McpTool {
         securityContext,
         new OperationContext(entityType, jsonPatch),
         new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
+    MetricAuthorization.authorizePatch(authorizer, securityContext, entityType, fqn, jsonPatch);
 
     // The response carries the patched entity, so this write answers a read as well: apply the
     // per-entity visibility rules the authorize() above cannot see, since they live outside the
@@ -131,7 +141,9 @@ public class PatchEntityTool implements McpTool {
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return McpResponseUtils.compactPatch(response.entity(), response.changeType());
+    return McpResponseUtils.compactPatch(
+        CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+        response.changeType());
   }
 
   private static void requireTarget(String entityType, String fqn) {

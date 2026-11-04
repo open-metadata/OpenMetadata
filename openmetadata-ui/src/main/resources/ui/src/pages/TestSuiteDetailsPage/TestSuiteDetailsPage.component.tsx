@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   DialogTrigger,
   Input,
@@ -21,7 +22,6 @@ import {
   ModalOverlay,
   Owner,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
@@ -118,27 +118,19 @@ const TestSuiteHeaderTitle = ({
           {name}
         </Typography>
       </Box>
-      <Tooltip
-        placement="top"
-        title={
+      <ButtonUtility
+        data-testid="entity-header-copy-button"
+        icon={Copy01}
+        size="lg"
+        tooltip={
           hasCopied
             ? t('message.link-copy-to-clipboard')
             : t('label.copy-item', {
                 item: t('label.url-uppercase'),
               })
-        }>
-        <Button
-          aria-label={t('label.copy-item', {
-            item: t('label.url-uppercase'),
-          })}
-          color="tertiary"
-          data-testid="entity-header-copy-button"
-          iconLeading={Copy01}
-          size="xs"
-          type="button"
-          onClick={onCopyEntityUrl}
-        />
-      </Tooltip>
+        }
+        onClick={onCopyEntityUrl}
+      />
       <LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />
     </Box>
   );
@@ -236,6 +228,7 @@ const TestSuiteDetailsPage = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
@@ -374,7 +367,10 @@ const TestSuiteDetailsPage = () => {
         ),
         children: (
           <div className="tw:w-full tw:p-4">
-            <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+            <TestSuitePipelineTab
+              testSuite={testSuite}
+              onPipelinesChange={handlePipelinesChange}
+            />
           </div>
         ),
       },

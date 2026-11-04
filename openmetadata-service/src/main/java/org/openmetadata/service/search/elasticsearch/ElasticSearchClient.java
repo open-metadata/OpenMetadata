@@ -77,7 +77,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -99,6 +101,9 @@ public class ElasticSearchClient implements SearchClient {
   // New Java API client support for migration
   @Getter protected final ElasticsearchClient newClient;
   private final Rest5Client lowLevelClient;
+
+  /** Caps bulk requests in flight on this client's connection pool, across all bulk sinks. */
+  @Getter private final BulkConnectionBudget bulkConnectionBudget;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
@@ -158,6 +163,7 @@ public class ElasticSearchClient implements SearchClient {
   public ElasticSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
     this.lowLevelClient = getLowLevelRestClient(config);
     this.newClient = createElasticSearchNewClient(lowLevelClient);
+    this.bulkConnectionBudget = BulkConnectionBudget.forHttpClientPool(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = newClient != null;
     isNewClientAvailable = newClient != null;
@@ -796,6 +802,20 @@ public class ElasticSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     entityManager.updateChildren(indexName, fieldAndValue, updates);
+  }
+
+  @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    return entityManager.updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return entityManager.childUpdateStatus(taskId);
   }
 
   @Override

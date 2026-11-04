@@ -23,10 +23,12 @@ import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addReviewers;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.USER;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -39,8 +41,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -61,8 +65,10 @@ import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.data.MetricObservability;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -81,6 +87,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
@@ -103,7 +110,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   private static final int ASSET_SCAN_BATCH_SIZE = 200;
   private static final int HIERARCHY_SCAN_BATCH_SIZE = 200;
   static final int MAX_OBSERVABILITY_ASSET_DETAILS = 1_000;
-  private static final String HIERARCHY_FIELDS =
+  // Fields every hierarchy row carries (tree roots, group members, detail context), so the list
+  // renders the same columns whichever endpoint a row came from.
+  static final String HIERARCHY_FIELDS =
       "owners,experts,reviewers,parent,childrenCount,metricGroup,domains,tags";
 
   private final MetricObservabilityBuilder observabilityBuilder =
@@ -309,9 +318,16 @@ public class MetricRepository extends EntityRepository<Metric> {
   private EntityReference getMetricGroup(Metric metric) {
     String groupId =
         daoCollection.metricDAO().findActiveGroupId(metric.getId(), Relationship.HAS.ordinal());
-    return groupId == null
-        ? null
-        : Entity.getEntityReferenceById(Entity.METRIC_GROUP, UUID.fromString(groupId), NON_DELETED);
+    return groupId == null ? null : resolveMetricGroupReference(UUID.fromString(groupId));
+  }
+
+  private EntityReference resolveMetricGroupReference(UUID groupId) {
+    try {
+      return Entity.getEntityReferenceById(Entity.METRIC_GROUP, groupId, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Skipping missing metric group {} while resolving membership", groupId);
+      return null;
+    }
   }
 
   @Override
@@ -355,20 +371,35 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (!fields.contains(FIELD_PARENT) || nullOrEmpty(metrics)) {
       return;
     }
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED);
-    Map<UUID, EntityReference> parents = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      parents.put(
-          UUID.fromString(record.getToId()),
-          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getFromId()), NON_DELETED));
-    }
+    Map<UUID, UUID> parentIdByChildId = new HashMap<>();
+    daoCollection
+        .relationshipDAO()
+        .findFromBatch(
+            entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, NON_DELETED)
+        .forEach(
+            record ->
+                parentIdByChildId.put(
+                    UUID.fromString(record.getToId()), UUID.fromString(record.getFromId())));
+    Map<UUID, EntityReference> parentsById = loadParentReferences(parentIdByChildId.values());
     for (Metric metric : metrics) {
-      metric.setParent(parents.get(metric.getId()));
+      UUID parentId = parentIdByChildId.get(metric.getId());
+      metric.setParent(parentId == null ? null : parentsById.get(parentId));
     }
+  }
+
+  /**
+   * Resolved with ALL: a soft-deleted parent keeps its relationship rows, so a NON_DELETED lookup
+   * threw "not found" and failed the whole page (e.g. listing with include=all after a recursive
+   * soft delete). The reference carries deleted=true instead.
+   */
+  private static Map<UUID, EntityReference> loadParentReferences(Collection<UUID> parentIds) {
+    if (parentIds.isEmpty()) {
+      return Map.of();
+    }
+    return Entity.getEntityReferencesByIds(METRIC, List.copyOf(new HashSet<>(parentIds)), ALL)
+        .stream()
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (left, right) -> left));
   }
 
   @Override
@@ -376,24 +407,40 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (!fields.contains(FIELD_CHILDREN) || nullOrEmpty(metrics)) {
       return;
     }
-    Map<UUID, List<EntityReference>> children = new HashMap<>();
+    Map<UUID, List<UUID>> childIdsByParentId = new HashMap<>();
+    daoCollection
+        .relationshipDAO()
+        .findToBatch(entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, METRIC)
+        .forEach(
+            record ->
+                childIdsByParentId
+                    .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+                    .add(UUID.fromString(record.getToId())));
+    Map<UUID, EntityReference> liveChildrenById =
+        loadLiveChildReferences(childIdsByParentId.values());
     for (Metric metric : metrics) {
-      children.put(metric.getId(), new ArrayList<>());
+      metric.setChildren(
+          childIdsByParentId.getOrDefault(metric.getId(), List.of()).stream()
+              .map(liveChildrenById::get)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toCollection(ArrayList::new)));
     }
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(
-                entityListToStrings(metrics), Relationship.CONTAINS.ordinal(), METRIC, METRIC);
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID parentId = UUID.fromString(record.getFromId());
-      EntityReference child =
-          Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getToId()), NON_DELETED);
-      children.get(parentId).add(child);
+  }
+
+  /**
+   * Soft delete keeps a child's CONTAINS row live, so a per-child NON_DELETED lookup threw "not
+   * found" and failed the whole page. A batch NON_DELETED lookup just omits deleted children,
+   * matching the single-entity {@link #getChildren}.
+   */
+  private static Map<UUID, EntityReference> loadLiveChildReferences(
+      Collection<List<UUID>> childIdLists) {
+    List<UUID> childIds = childIdLists.stream().flatMap(List::stream).distinct().toList();
+    if (childIds.isEmpty()) {
+      return Map.of();
     }
-    for (Metric metric : metrics) {
-      metric.setChildren(children.get(metric.getId()));
-    }
+    return Entity.getEntityReferencesByIds(METRIC, childIds, NON_DELETED).stream()
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (left, right) -> left));
   }
 
   private void fetchAndSetMetricGroups(List<Metric> metrics, EntityUtil.Fields fields) {
@@ -407,8 +454,7 @@ public class MetricRepository extends EntityRepository<Metric> {
             .findActiveGroups(entityListToStrings(metrics), Relationship.HAS.ordinal())) {
       groups.put(
           UUID.fromString(record.getToId()),
-          Entity.getEntityReferenceById(
-              Entity.METRIC_GROUP, UUID.fromString(record.getFromId()), NON_DELETED));
+          resolveMetricGroupReference(UUID.fromString(record.getFromId())));
     }
     for (Metric metric : metrics) {
       metric.setMetricGroup(groups.get(metric.getId()));
@@ -482,6 +528,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public List<Metric> updateManyEntitiesForImport(
       List<Metric> originals, List<Metric> updates, String updatedBy, String impersonatedBy) {
+    // The parent lives only in the CONTAINS edge, which the originals are read without. Load it so
+    // the base batch path can tell which parents a CSV moved metrics away from.
+    fetchAndSetParents(originals, getFields(FIELD_PARENT));
     List<Metric> updated =
         super.updateManyEntitiesForImport(originals, updates, updatedBy, impersonatedBy);
     reconcileImportedHierarchyGroups(updated);
@@ -955,16 +1004,6 @@ public class MetricRepository extends EntityRepository<Metric> {
       }
       recordChange(
           FIELD_PARENT, originalParent, updatedParent, true, MetricRepository::sameReferenceById);
-      // Both parents' search documents carry children/childrenCount, so refresh them or the counts
-      // drift until the next full reindex.
-      refreshParentDocument(originalParent);
-      refreshParentDocument(updatedParent);
-    }
-
-    private void refreshParentDocument(EntityReference parent) {
-      if (parent != null) {
-        EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(parent, null);
-      }
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
@@ -1020,11 +1059,49 @@ public class MetricRepository extends EntityRepository<Metric> {
     List<CollectionDAO.MetricDAO.HierarchyRow> rows = scan.rows();
     Map<UUID, Metric> metrics = loadMetricsById(hierarchyIds(rows, METRIC));
     metrics.replaceAll(
-        (id, metric) ->
-            sanitizeHierarchyMetricWithVisibleCount(metric, canViewMetric, canViewGroup));
+        (id, metric) -> sanitizeMetricRelations(metric, canViewMetric, canViewGroup));
     Map<UUID, MetricGroup> groups =
         loadGroupsById(hierarchyIds(rows, Entity.METRIC_GROUP), canViewMetric);
     return buildHierarchyResult(scan, limit, offset, metrics, groups);
+  }
+
+  /**
+   * Under a navbar domain pick, a group stays in the hierarchy when it is in the picked domain or
+   * holds a metric that is (e.g. a group with no domain whose metrics are all in the pick).
+   */
+  public Predicate<EntityReference> groupInDomainPick(
+      Optional<Set<UUID>> pickedGroups, Predicate<EntityReference> canViewMetric) {
+    MetricGroupRepository groups =
+        (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+    // The hierarchy tests a group once per row and again per metric in it, so each group's member
+    // scan is kept for the request.
+    Map<UUID, Boolean> holdsVisibleMetric = new java.util.concurrent.ConcurrentHashMap<>();
+    return group ->
+        pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
+            || holdsVisibleMetric.computeIfAbsent(
+                group.getId(), id -> groups.hasVisibleMemberMatching(id, null, canViewMetric));
+  }
+
+  /**
+   * As above, for a caller who can view every metric: the groups holding a picked metric are read
+   * in one batch, rather than scanning each group's members (which is capped in size).
+   */
+  public Predicate<EntityReference> groupInDomainPick(
+      Optional<Set<UUID>> pickedGroups, Set<UUID> pickedMetrics) {
+    Set<UUID> holdingPickedMetric =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                pickedMetrics.stream().map(UUID::toString).toList(),
+                Relationship.HAS.ordinal(),
+                Entity.METRIC_GROUP,
+                NON_DELETED)
+            .stream()
+            .map(relationship -> UUID.fromString(relationship.getFromId()))
+            .collect(java.util.stream.Collectors.toSet());
+    return group ->
+        pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
+            || holdingPickedMetric.contains(group.getId());
   }
 
   HierarchyScan scanUnrestrictedHierarchyRows(int limit, int offset, String nameLike) {
@@ -1172,11 +1249,7 @@ public class MetricRepository extends EntityRepository<Metric> {
       List<UUID> ids, Predicate<EntityReference> canViewMetric) {
     Map<UUID, MetricGroup> groups = loadGroupsById(ids);
     MetricGroupRepository repository = metricGroupRepository();
-    groups
-        .values()
-        .forEach(
-            group ->
-                group.setMetricCount(repository.visibleMetricCount(group.getId(), canViewMetric)));
+    groups.replaceAll((id, group) -> repository.sanitizeMembership(group, canViewMetric));
     return groups;
   }
 
@@ -1245,8 +1318,7 @@ public class MetricRepository extends EntityRepository<Metric> {
     while (parent != null && visited.add(parent.getId())) {
       Metric ancestor = get(null, parent.getId(), getFields(HIERARCHY_FIELDS));
       if (canViewMetric.test(ancestor.getEntityReference())) {
-        ancestors.add(
-            sanitizeHierarchyMetricWithVisibleCount(ancestor, canViewMetric, canViewGroup));
+        ancestors.add(sanitizeMetricRelations(ancestor, canViewMetric, canViewGroup));
       }
       parent = ancestor.getParent();
     }
@@ -1265,9 +1337,8 @@ public class MetricRepository extends EntityRepository<Metric> {
       result =
           repository.get(
               null, reference.getId(), repository.getFields("owners,domains,tags,metricCount"));
-      result = JsonUtils.deepCopy(result, MetricGroup.class);
+      result = repository.sanitizeMembership(result, canViewMetric);
       result.setMetrics(null);
-      result.setMetricCount(repository.visibleMetricCount(result.getId(), canViewMetric));
     }
     return result;
   }
@@ -1374,9 +1445,7 @@ public class MetricRepository extends EntityRepository<Metric> {
         ids.stream()
             .map(metrics::get)
             .filter(Objects::nonNull)
-            .map(
-                metric ->
-                    sanitizeHierarchyMetricWithVisibleCount(metric, canViewMetric, canViewGroup))
+            .map(metric -> sanitizeMetricRelations(metric, canViewMetric, canViewGroup))
             .toList();
     Paging paging = new Paging().withOffset(offset).withLimit(limit).withTotal(total);
     return new MetricPage(ordered, paging);
@@ -1402,16 +1471,188 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (sanitized.getMetricGroup() != null && !canViewGroup.test(sanitized.getMetricGroup())) {
       sanitized.setMetricGroup(null);
     }
+    if (sanitized.getChildren() != null) {
+      sanitized.setChildren(
+          sanitized.getChildren().stream()
+              .filter(canViewMetric)
+              .collect(Collectors.toCollection(ArrayList::new)));
+    }
+    if (sanitized.getRelatedMetrics() != null) {
+      sanitized.setRelatedMetrics(
+          sanitized.getRelatedMetrics().stream()
+              .filter(canViewMetric)
+              .collect(Collectors.toCollection(ArrayList::new)));
+    }
+    sanitizeRelationChanges(sanitized.getChangeDescription(), canViewMetric, canViewGroup);
+    sanitizeRelationChanges(
+        sanitized.getIncrementalChangeDescription(), canViewMetric, canViewGroup);
     return sanitized;
   }
 
-  private Metric sanitizeHierarchyMetricWithVisibleCount(
+  /**
+   * Every relation a metric response carries answers the caller's view permission: the reference
+   * fields, the derived children count, and the relation entries of the stored change
+   * descriptions. The hierarchy endpoints have always applied this; the generic reads and stored
+   * snapshots apply it here.
+   */
+  public Metric sanitizeMetricRelations(
       Metric metric,
       Predicate<EntityReference> canViewMetric,
       Predicate<EntityReference> canViewGroup) {
     Metric sanitized = sanitizeHierarchyMetric(metric, canViewMetric, canViewGroup);
-    sanitized.setChildrenCount(visibleChildCount(metric.getId(), canViewMetric));
+    if (metric.getChildrenCount() != null) {
+      sanitized.setChildrenCount(visibleChildCount(metric.getId(), canViewMetric));
+    }
     return sanitized;
+  }
+
+  /**
+   * Page-sized variant of {@link #sanitizeMetricRelations} for list responses: relation filtering
+   * is per row, and the visible children counts are computed with one relationship query and one
+   * reference load for the whole page instead of the per-metric scan {@link #visibleChildCount}
+   * runs.
+   */
+  public List<Metric> sanitizeMetricRelations(
+      List<Metric> metrics,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<Metric> sanitized =
+        metrics.stream()
+            .map(metric -> sanitizeHierarchyMetric(metric, canViewMetric, canViewGroup))
+            .collect(Collectors.toCollection(ArrayList::new));
+    Map<UUID, Integer> visibleCounts =
+        visibleChildrenCounts(
+            metrics.stream()
+                .filter(metric -> metric.getChildrenCount() != null)
+                .map(Metric::getId)
+                .toList(),
+            canViewMetric);
+    for (Metric metric : sanitized) {
+      if (metric.getChildrenCount() != null) {
+        metric.setChildrenCount(visibleCounts.getOrDefault(metric.getId(), 0));
+      }
+    }
+    return sanitized;
+  }
+
+  /**
+   * Visible children counts for a page of metrics: one chunked relationship query and one
+   * reference load for all parents, then one cached visibility test per child.
+   */
+  private Map<UUID, Integer> visibleChildrenCounts(
+      Collection<UUID> parentIds, Predicate<EntityReference> canViewMetric) {
+    Map<UUID, Integer> counts = new HashMap<>();
+    if (nullOrEmpty(parentIds)) {
+      return counts;
+    }
+    Map<UUID, List<UUID>> childIdsByParent = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record :
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                parentIds.stream().map(UUID::toString).toList(),
+                Relationship.CONTAINS.ordinal(),
+                METRIC,
+                METRIC)) {
+      childIdsByParent
+          .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+          .add(UUID.fromString(record.getToId()));
+    }
+    Set<UUID> childIds =
+        childIdsByParent.values().stream().flatMap(List::stream).collect(Collectors.toSet());
+    Map<UUID, EntityReference> referencesById = loadReferences(new ArrayList<>(childIds), METRIC);
+    for (UUID parentId : parentIds) {
+      int visible =
+          countVisibleReferences(
+              childIdsByParent.getOrDefault(parentId, List.of()).stream()
+                  .map(referencesById::get)
+                  .filter(Objects::nonNull)
+                  .toList(),
+              canViewMetric);
+      counts.put(parentId, visible);
+    }
+    return counts;
+  }
+
+  private static void sanitizeRelationChanges(
+      ChangeDescription changeDescription,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    if (changeDescription == null) {
+      return;
+    }
+    changeDescription.setFieldsAdded(
+        visibleRelationChanges(changeDescription.getFieldsAdded(), canViewMetric, canViewGroup));
+    changeDescription.setFieldsUpdated(
+        visibleRelationChanges(changeDescription.getFieldsUpdated(), canViewMetric, canViewGroup));
+    changeDescription.setFieldsDeleted(
+        visibleRelationChanges(changeDescription.getFieldsDeleted(), canViewMetric, canViewGroup));
+  }
+
+  private static List<FieldChange> visibleRelationChanges(
+      List<FieldChange> changes,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    List<FieldChange> visible = new ArrayList<>();
+    for (FieldChange change : listOrEmpty(changes)) {
+      Predicate<EntityReference> visibility =
+          relationVisibility(change.getName(), canViewMetric, canViewGroup);
+      if (visibility == null
+          || (referencesOnlyVisibleEntities(change.getOldValue(), visibility)
+              && referencesOnlyVisibleEntities(change.getNewValue(), visibility))) {
+        visible.add(change);
+      }
+    }
+    return visible;
+  }
+
+  private static Predicate<EntityReference> relationVisibility(
+      String fieldName,
+      Predicate<EntityReference> canViewMetric,
+      Predicate<EntityReference> canViewGroup) {
+    return switch (fieldName) {
+      case FIELD_PARENT, "relatedMetrics" -> canViewMetric;
+      case FIELD_METRIC_GROUP -> canViewGroup;
+      default -> null;
+    };
+  }
+
+  /**
+   * Whether a stored change value names only entities the caller may view. Relation field values
+   * are JSON-encoded references — one object for a single-valued field, an array for a list. A
+   * change entry naming an entity the caller may not view is dropped whole, so no part of the
+   * reference (id, name, description) leaves. Anything else — nulls, plain strings, payloads that
+   * are not references — names no entity and passes. Only the parsing tolerates failure: the
+   * visibility test runs outside it, so a failed authorization propagates rather than passing.
+   */
+  static boolean referencesOnlyVisibleEntities(
+      Object value, Predicate<EntityReference> visibility) {
+    return referencesIn(value).stream().allMatch(visibility);
+  }
+
+  private static List<EntityReference> referencesIn(Object value) {
+    List<EntityReference> references = List.of();
+    // FieldChange values are untyped: the updater records relation fields as JSON-encoded
+    // references and other fields as plain values, so only a JSON string can name an entity.
+    if (value instanceof String json && !json.isBlank()) {
+      try {
+        references = parseReferences(json.stripLeading());
+      } catch (RuntimeException notReferences) {
+        LOG.debug("Change value is not a reference payload: {}", notReferences.getMessage());
+      }
+    }
+    return references;
+  }
+
+  private static List<EntityReference> parseReferences(String json) {
+    List<EntityReference> references = List.of();
+    if (json.startsWith("[")) {
+      references =
+          listOrEmpty(JsonUtils.readValue(json, new TypeReference<List<EntityReference>>() {}));
+    } else if (json.startsWith("{")) {
+      references = List.of(JsonUtils.readValue(json, EntityReference.class));
+    }
+    return references;
   }
 
   int visibleChildCount(UUID metricId, Predicate<EntityReference> canViewMetric) {
@@ -1686,18 +1927,59 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   protected void postCreate(Metric metric) {
     super.postCreate(metric);
-    refreshMetricGroup(metric.getMetricGroup());
+    refreshSearchDocument(metric.getMetricGroup());
+  }
+
+  // The batch path (bulk API, CSV import) never calls postCreate(Metric), so refresh each group
+  // the new metrics landed in, once each. Their parents are refreshed by the base batch hook.
+  @Override
+  protected void postCreate(List<Metric> metrics) {
+    super.postCreate(metrics);
+    Set<UUID> refreshed = new HashSet<>();
+    listOrEmpty(metrics).stream()
+        .map(Metric::getMetricGroup)
+        .filter(group -> group != null && refreshed.add(group.getId()))
+        .forEach(this::refreshSearchDocument);
   }
 
   @Override
   protected void postDelete(Metric metric, boolean hardDelete) {
     super.postDelete(metric, hardDelete);
-    refreshMetricGroup(metric.getMetricGroup());
+    refreshSearchDocument(metric.getMetricGroup());
   }
 
-  private void refreshMetricGroup(EntityReference group) {
-    if (group != null) {
-      EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(group, null);
+  @Override
+  protected void postRestore(Metric metric) {
+    super.postRestore(metric);
+    refreshSearchDocument(metric.getMetricGroup());
+  }
+
+  // ADR:2026-11-03-a-metric-is-restored-with-its-parent-never-under-a-deleted-one
+  @Override
+  public void validateRestore(UUID id) {
+    Metric metric = find(id, ALL);
+    EntityReference parent = Boolean.TRUE.equals(metric.getDeleted()) ? getParent(metric) : null;
+    if (parent != null && Boolean.TRUE.equals(parent.getDeleted())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Metric '%s' cannot be restored while its parent '%s' is deleted. Restore '%s' to"
+                  + " bring back the whole hierarchy.",
+              metric.getName(), parent.getName(), parent.getName()));
+    }
+  }
+
+  @Override
+  protected List<EntityReference> getCountingParents(Metric metric) {
+    return metric.getParent() == null ? List.of() : List.of(metric.getParent());
+  }
+
+  // A group's search document carries metricCount, so it is refreshed whenever a metric joins,
+  // moves or leaves it, or the count drifts until the next full reindex. A cascade restore brings
+  // children back before their parent, so a group that is still deleted is skipped: the refresh
+  // could not load it and would only log an error.
+  private void refreshSearchDocument(EntityReference container) {
+    if (container != null && !Boolean.TRUE.equals(container.getDeleted())) {
+      EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(container, null);
     }
   }
 
@@ -1709,9 +1991,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public void postUpdate(Metric original, Metric updated) {
     super.postUpdate(original, updated);
-    refreshMetricGroup(original.getMetricGroup());
+    refreshSearchDocument(original.getMetricGroup());
     if (!sameReferenceById(original.getMetricGroup(), updated.getMetricGroup())) {
-      refreshMetricGroup(updated.getMetricGroup());
+      refreshSearchDocument(updated.getMetricGroup());
     }
   }
 }

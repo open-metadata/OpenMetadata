@@ -566,7 +566,7 @@ pure_eval==0.2.4
 py-spy==0.4.2
 pyOpenSSL==26.4.0
 pyarrow==25.0.1
-pyasn1==0.6.4
+pyasn1==0.6.5
 pyasn1_modules==0.4.2
 pybreaker==1.4.1
 pycountry==26.2.16
@@ -655,7 +655,7 @@ snowflake-connector-python==4.7.3
 snowflake-snowpark-python==1.55.0
 snowflake-sqlalchemy==1.11.1
 sortedcontainers==2.4.0
-soupsieve==2.9.2
+soupsieve==2.10
 spython==0.3.14
 sqlalchemy-bigquery==1.17.2
 sqlalchemy-spanner==1.20.1

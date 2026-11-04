@@ -1353,6 +1353,36 @@
   },
   {
     "method": "get",
+    "path": "/ontologies/reviews",
+    "query": {
+      "limit": "1",
+      "view": "created"
+    },
+    "status": 200,
+    "data": {
+      "data": [],
+      "paging": {
+        "total": 0
+      }
+    }
+  },
+  {
+    "method": "get",
+    "path": "/ontologies/reviews",
+    "query": {
+      "limit": "1",
+      "view": "pending"
+    },
+    "status": 200,
+    "data": {
+      "data": [],
+      "paging": {
+        "total": 0
+      }
+    }
+  },
+  {
+    "method": "get",
     "path": "/rdf/status",
     "query": {},
     "status": 200,

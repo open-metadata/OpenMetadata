@@ -230,7 +230,7 @@ const PlatformLineage = () => {
   );
 
   // Matches the height of the search box beside them in the AI header.
-  const buttonSize = isAiMode ? 'xl' : undefined;
+  const buttonSize = isAiMode ? 'xl' : 'lg';
 
   const actionButtons = useMemo(
     () => (
@@ -249,6 +249,7 @@ const PlatformLineage = () => {
           data-testid="lineage-config"
           icon={Settings01}
           size={buttonSize}
+          tooltip={t('label.lineage-config')}
           onClick={handleSettingsClick}
         />
       </div>

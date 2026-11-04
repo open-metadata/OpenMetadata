@@ -1,7 +1,9 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -223,25 +225,41 @@ public interface RdfStorageInterface extends AutoCloseable {
   void clearGraph(String graphUri);
 
   /**
-   * Compact the underlying storage to reclaim disk space after large deletes.
+   * Compacts this handle's dataset, waiting up to {@code maxWait}, and reports the outcome.
    *
-   * <p>Apache Jena TDB2 (the Fuseki backend) marks deleted triples as free space
-   * in its B+Tree indexes but never returns blocks to the OS, and its write-ahead
-   * journal grows monotonically until compaction is invoked. Without an explicit
-   * compaction call after {@code CLEAR ALL} / {@code DELETE WHERE}, the on-disk
-   * dataset keeps growing across re-index runs even though the live triple count
-   * stays bounded.
-   *
-   * <p>Implementations should run compaction synchronously (block until the task
-   * finishes on the server) so callers can safely resume writes against a fresh
-   * dataset directory. Failures should be logged and swallowed — a missing
-   * compaction degrades disk usage, not correctness, so it must not fail the
-   * caller's higher-level operation (e.g. the re-index run).
-   *
-   * <p>Default implementation is a no-op for storage backends that auto-compact
-   * or don't expose a compaction API.
+   * <p>Apache Jena TDB2 (the Fuseki backend) copies every index page a write touches and never
+   * reuses the old ones, so the dataset grows with every write, deletes included, until it is
+   * compacted. The outcome is reported, never thrown: a missing compaction costs disk, not
+   * correctness. Backends without compaction report {@link CompactionResult.Outcome#UNSUPPORTED}.
    */
-  default void compactStorage() {}
+  default CompactionResult compact(Duration maxWait) {
+    return CompactionResult.unsupported();
+  }
+
+  /**
+   * The data volume's size and free space, when the store reports them (the {@code
+   * openmetadata/fuseki} image's storage extension does at {@code /$/openmetadata/storage}). Empty when the store cannot tell.
+   */
+  default Optional<StorageFacts> storageFacts() {
+    return Optional.empty();
+  }
+
+  /**
+   * Compacts a paused serving dataset and waits until it no longer blocks writers. Exceeding
+   * {@code warningAfter} reports a warning rather than abandoning a task the store cannot cancel.
+   */
+  default CompactionResult compactAndAwait(Duration warningAfter) {
+    return compact(warningAfter);
+  }
+
+  /**
+   * Runs a SPARQL update as storage maintenance: within {@code timeout} rather than the
+   * per-request budget, and without counting towards request-path failure handling. A timeout
+   * throws {@link RdfWriteOutcomeUnknownException}, because the store may still apply it.
+   */
+  default void executeMaintenanceUpdate(String sparqlUpdate, Duration timeout) {
+    executeSparqlUpdate(sparqlUpdate);
+  }
 
   /**
    * Test connection to the remote store

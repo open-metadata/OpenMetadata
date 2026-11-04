@@ -20,6 +20,7 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
@@ -114,41 +115,48 @@ class UsageSource(QueryParserSource, ABC):
                         end_time=self.start + timedelta(days=days + 1),
                     )
                     logger.debug(f"Executing usage query: {query}")
-                    with engine.connect() as conn:
-                        rows = conn.execute(text(query))
-                        queries = []
-                        row_count = 0
-                        for row in rows:
-                            row_count += 1
-                            row = row._asdict()  # noqa: PLW2901
-                            try:
-                                row.update({k.lower(): v for k, v in row.items()})
-                                logger.debug(f"Processing row: {row}")
-                                query_type = row.get("query_type")
-                                query_text = self.format_query(row["query_text"])
-                                queries.append(
-                                    TableQuery(
-                                        query=query_text,
-                                        query_type=query_type,
-                                        exclude_usage=self.check_life_cycle_query(
-                                            query_type=query_type, query_text=query_text
-                                        ),
-                                        dialect=self.dialect.value,
-                                        userName=row["user_name"],
-                                        startTime=str(row["start_time"]),
-                                        endTime=str(row["end_time"]),
-                                        analysisDate=DateTime(row["start_time"]),
-                                        aborted=self.get_aborted_status(row),
-                                        databaseName=self.get_database_name(row),
-                                        duration=row.get("duration"),
-                                        serviceName=self.config.serviceName,
-                                        databaseSchema=self.get_schema_name(row),
-                                        cost=row.get("cost"),
+                    try:
+                        with engine.connect() as conn:  # pyright: ignore[reportOptionalMemberAccess]
+                            rows = conn.execute(text(query))
+                            queries = []
+                            row_count = 0
+                            for row in rows:
+                                row_count += 1
+                                row = row._asdict()  # noqa: PLW2901
+                                try:
+                                    row.update({k.lower(): v for k, v in row.items()})
+                                    logger.debug(f"Processing row: {row}")
+                                    query_type = row.get("query_type")
+                                    query_text = self.format_query(row["query_text"])
+                                    queries.append(
+                                        TableQuery(
+                                            query=query_text,
+                                            query_type=query_type,
+                                            exclude_usage=self.check_life_cycle_query(
+                                                query_type=query_type, query_text=query_text
+                                            ),
+                                            dialect=self.dialect.value,
+                                            userName=row["user_name"],
+                                            startTime=str(row["start_time"]),
+                                            endTime=str(row["end_time"]),
+                                            analysisDate=DateTime(row["start_time"]),
+                                            aborted=self.get_aborted_status(row),
+                                            databaseName=self.get_database_name(row),
+                                            duration=row.get("duration"),
+                                            serviceName=self.config.serviceName,  # pyright: ignore[reportArgumentType]
+                                            databaseSchema=self.get_schema_name(row),
+                                            cost=row.get("cost"),
+                                        )
                                     )
-                                )
-                            except Exception as exc:
-                                logger.debug(traceback.format_exc())
-                                logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
+                                except Exception as exc:
+                                    logger.debug(traceback.format_exc())
+                                    logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
+                    # Same guard as LineageSource.yield_table_query: an engine that cannot be read
+                    # must not end the reads of the engines after it.
+                    except (SQLAlchemyError, OSError) as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.error("Failed to fetch usage query log from a connection, skipping it: %s", exc)
+                        continue
                     logger.info(f"Processed {row_count} query log entries for usage")
                     self.warn_if_query_log_truncated(row_count, "usage")
                     yield TableQueries(queries=queries)

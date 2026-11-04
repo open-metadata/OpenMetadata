@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ReactElement, useCallback, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
@@ -21,6 +27,7 @@ import {
 import {
   getApplicationByName,
   patchApplication,
+  restoreApp,
   uninstallApp,
 } from '../../../../../../rest/applicationAPI';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -89,8 +96,9 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
-  useLimitStore: () => ({ getResourceLimit: jest.fn() }),
+  useLimitStore: () => ({ getResourceLimit: mockGetResourceLimit }),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
@@ -187,9 +195,10 @@ describe('AppDetail', () => {
       Trigger: true,
       Deploy: true,
     });
-    jest
-      .spyOn(applicationsClassBase, 'importSchema')
-      .mockResolvedValue({ type: 'object' });
+    jest.spyOn(applicationsClassBase, 'importSchema').mockResolvedValue({
+      type: 'object',
+      properties: { batchSize: { type: 'number' } },
+    });
     jest
       .spyOn(applicationsClassBase, 'getModalAppConfigurationComponent')
       .mockReturnValue(() => <div data-testid="config-form" />);
@@ -272,6 +281,9 @@ describe('AppDetail', () => {
       'href',
       'https://www.getcollate.io'
     );
+    // Same icon-to-text gap as the other meta items.
+    expect(screen.getByTestId('developer-website')).toHaveClass('tw:gap-1');
+    expect(screen.getByTestId('developer-website')).not.toHaveClass('tw:gap-0');
   });
 
   it('shows the hint toggle only on the configuration tab', async () => {
@@ -337,6 +349,74 @@ describe('AppDetail', () => {
     });
 
     expect(uninstallApp).toHaveBeenCalledWith('DataInsightsApplication', true);
+    expect(mockGetResourceLimit).toHaveBeenCalledWith('app', true, true);
+    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('treats the uninstall as done when only the usage-count refresh fails', async () => {
+    (uninstallApp as jest.Mock).mockResolvedValue({});
+    mockGetResourceLimit.mockRejectedValueOnce(new Error('limits down'));
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.uninstall' }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(uninstallApp).toHaveBeenCalledTimes(1);
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+  });
+
+  it('keeps the confirmation open when uninstall fails', async () => {
+    (uninstallApp as jest.Mock).mockRejectedValue(new Error('boom'));
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.uninstall' }));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(screen.getByTestId('app-action-confirm')).toBeInTheDocument();
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the confirmation is cancelled', async () => {
+    await renderDetail();
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.disable' }));
+    fireEvent.click(screen.getByTestId('app-action-confirm-cancel'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('app-action-confirm')).not.toBeInTheDocument()
+    );
+
+    expect(uninstallApp).not.toHaveBeenCalled();
+  });
+
+  it('restores a disabled app after confirmation', async () => {
+    (restoreApp as jest.Mock).mockResolvedValue({});
+    await renderDetail({ deleted: true });
+    render(lastHeader().actions as ReactElement);
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.restore' }));
+
+    expect(screen.getByTestId('app-action-confirm-confirm')).toHaveTextContent(
+      'label.restore'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('app-action-confirm-confirm'));
+    });
+
+    expect(restoreApp).toHaveBeenCalledWith('app-1');
     expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
   });
 
@@ -450,6 +530,24 @@ describe('AppDetail', () => {
 
     expect(patchApplication).not.toHaveBeenCalled();
     expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+  });
+
+  it('shows an empty configuration state when the schema has no properties', async () => {
+    jest.spyOn(applicationsClassBase, 'importSchema').mockResolvedValue({
+      type: 'object',
+      description: 'Nothing to configure',
+      properties: {},
+    });
+    await renderDetail();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'label.configuration' }));
+
+    expect(screen.getByTestId('app-config-empty')).toHaveTextContent(
+      'label.no-entity'
+    );
+    // The schema's description is untranslated backend text, so it is not shown.
+    expect(screen.queryByText('Nothing to configure')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('config-form')).not.toBeInTheDocument();
   });
 
   it('shows an empty state with the reason when the app has no schema and no tabs', async () => {

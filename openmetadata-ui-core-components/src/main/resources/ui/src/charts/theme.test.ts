@@ -53,7 +53,7 @@ describe('chart themes', () => {
     expect(DARK_CHART_THEME.emptyFill).toBe(DARK_CHART_THEME.grid);
   });
 
-  it('keeps the dark chrome colours', () => {
+  it('matches dark segment borders to the card surface', () => {
     expect(DARK_CHART_THEME).toEqual({
       isDark: true,
       axisText: '#a8aeb9',
@@ -62,7 +62,7 @@ describe('chart themes', () => {
       xAxisTitle: '#cecfd2',
       grid: '#373a41',
       emptyFill: '#373a41',
-      segmentBorder: '#0c0e12',
+      segmentBorder: '#22262f',
       tooltipBg: '#22262f',
       tooltipText: '#eef0f4',
       tooltipBorder: '#373a41',
