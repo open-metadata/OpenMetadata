@@ -44,6 +44,8 @@ import org.openmetadata.service.search.ColumnAggregator;
 import org.openmetadata.service.search.ColumnGridIndexConfigs;
 import org.openmetadata.service.search.ColumnMetadataGrouper;
 import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
@@ -65,6 +67,8 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 @Slf4j
 public class OpenSearchColumnAggregator implements ColumnAggregator {
   private final OpenSearchClient client;
+  private final RBACConditionEvaluator rbacConditionEvaluator =
+      new RBACConditionEvaluator(new OpenSearchQueryBuilderFactory());
 
   /**
    * Index configuration per entity type, derived from the child-field registry and shared with the
@@ -603,7 +607,10 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
           Query.of(q -> q.terms(t -> t.field(tagFQNField).terms(tv -> tv.value(tagValues)))));
     }
 
-    return Query.of(q -> q.bool(boolBuilder.build()));
+    return OpenSearchRbacQueries.withAccessPolicies(
+        Query.of(q -> q.bool(boolBuilder.build())),
+        request.getSubjectContext(),
+        rbacConditionEvaluator);
   }
 
   private boolean isIndexNotFoundException(OpenSearchException e) {
@@ -641,7 +648,10 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     addColumnNamePatternFilter(boolBuilder, request, columnNameKeyword);
     addTagFilters(boolBuilder, request, columnNameKeyword, columnNamesFromTagFilter);
 
-    return Query.of(q -> q.bool(boolBuilder.build()));
+    return OpenSearchRbacQueries.withAccessPolicies(
+        Query.of(q -> q.bool(boolBuilder.build())),
+        request.getSubjectContext(),
+        rbacConditionEvaluator);
   }
 
   private void addEntityTypeFilter(

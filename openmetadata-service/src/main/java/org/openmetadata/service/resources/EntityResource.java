@@ -1034,6 +1034,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    repository.validateRestore(id);
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     if (response == null) {
@@ -1090,6 +1091,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       }
       throw notDeleted;
     }
+    repository.validateRestore(id);
     String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();
@@ -1160,11 +1162,22 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     }
   }
 
+  /**
+   * Authorizes a CSV export ({@code VIEW_ALL}) or import ({@code EDIT_ALL}) of {@code name}: by
+   * default, of the entity that name identifies. A resource whose CSV names another entity type
+   * overrides this.
+   */
+  protected void authorizeCsv(
+      SecurityContext securityContext, String name, MetadataOperation operation) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, operation),
+        getResourceContextByName(name));
+  }
+
   public Response exportCsvInternalAsync(
       SecurityContext securityContext, String name, boolean recursive) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeCsv(securityContext, name, MetadataOperation.VIEW_ALL);
     CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
     CsvAsyncJob job =
         csvJobManager.createJob(
@@ -1322,9 +1335,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       boolean dryRun,
       boolean recursive,
       String versioningEntityType) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeCsv(securityContext, name, MetadataOperation.EDIT_ALL);
     CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
     CsvAsyncJob job =
         csvJobManager.createJob(
@@ -1343,9 +1354,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)
       throws IOException {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeCsv(securityContext, name, MetadataOperation.VIEW_ALL);
     return repository.exportToCsv(name, securityContext.getUserPrincipal().getName(), recursive);
   }
 
@@ -1383,9 +1392,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       String versioningEntityType,
       CsvImportProgressCallback progressCallback)
       throws IOException {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeCsv(securityContext, name, MetadataOperation.EDIT_ALL);
     CsvImportResult result =
         nullOrEmpty(versioningEntityType)
             ? repository.importFromCsv(

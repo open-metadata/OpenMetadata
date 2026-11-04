@@ -1686,15 +1686,16 @@ public class ListFilter extends Filter<ListFilter> {
           tableName == null
               ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s'))", fieldPath)
               : String.format("JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.%s'))", tableName, fieldPath);
-      String operator = exclude ? "NOT REGEXP" : "REGEXP";
-      return String.format("%s %s :%s", expr, operator, paramName + "Regex");
+      // Explicit flags keep filtering independent of the database's default collation.
+      return String.format(
+          "%sREGEXP_LIKE(%s, :%s, 'i')", exclude ? "NOT " : "", expr, paramName + "Regex");
     } else {
       String pgPath = "{" + fieldPath.replace(".", ",") + "}";
       String expr =
           tableName == null
               ? String.format("json #>> '%s'", pgPath)
               : String.format("%s.json #>> '%s'", tableName, pgPath);
-      String operator = exclude ? "!~" : "~";
+      String operator = exclude ? "!~*" : "~*";
       return String.format("%s %s :%s", expr, operator, paramName + "Regex");
     }
   }
