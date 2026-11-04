@@ -23,7 +23,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowLeft, Lightbulb05 } from '@openmetadata/ui-core-components/icons';
+import { ArrowLeft } from '@openmetadata/ui-core-components/icons';
 import {
   RegistryFieldsType,
   RegistryWidgetsType,
@@ -34,17 +34,18 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../../../../constants/Services.constant';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import type { SecurityConfiguration } from '../../../../../../rest/securityConfigAPI';
+import { FormHintDoc } from '../../../../../common/atoms/drawer/formHint/FormHintDoc';
+import { FormHintHeader } from '../../../../../common/atoms/drawer/formHint/FormHintHeader';
 import LdapRoleMappingWidget from '../../../../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
-import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { SecurityManagedPaths } from '../../../../../SettingsSso/SSOConfigurationForm/SSOConfigurationForm.interface';
 import SsoRolesSelectField from '../../../../../SettingsSso/SSOConfigurationForm/SsoRolesSelectField';
 import { PROVIDER_FILE_MAP } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
 import { SsoTestLoginContent } from '../../../../../SettingsSso/SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../../../../../SettingsSso/useSsoConfiguration';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
-import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
 import { getFieldDocsByName, toCoreUiSchema } from './SsoConfigureForm.utils';
 
 const FORM_BODY_TEST_ID = 'sso-configure-form-body';
@@ -280,12 +281,7 @@ const SsoConfigureFooter = ({
 };
 
 const renderFieldDoc = (markdown: string) => (
-  <div className="form-hint-doc">
-    <RichTextEditorPreviewerV1
-      enableSeeMoreVariant={false}
-      markdown={markdown}
-    />
-  </div>
+  <FormHintDoc markdown={markdown} />
 );
 
 /**
@@ -505,17 +501,7 @@ const SsoConfigureForm = ({
             />
             {showHint && (
               <FieldDocPopover
-                header={
-                  <Box align="center" direction="row" gap={2}>
-                    <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-                    <Typography
-                      className="tw:text-secondary"
-                      size="text-sm"
-                      weight="medium">
-                      {t('label.form-hint')}
-                    </Typography>
-                  </Box>
-                }
+                header={<FormHintHeader />}
                 renderDoc={renderFieldDoc}
                 variant="muted"
               />

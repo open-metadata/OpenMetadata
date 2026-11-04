@@ -622,11 +622,11 @@ test.describe(
 
         // Counted before the tab is opened, as its list loads only then.
         await expect(
-          page.getByRole('tab', { name: 'Data Model 1', exact: true })
+          page.getByRole('tab', { name: 'Data Models 1', exact: true })
         ).toBeVisible();
 
         await openAiModeServiceAssetTab(page, {
-          tabName: 'Data Model',
+          tabName: 'Data Models',
           listPath: 'dashboard/datamodels',
           serviceFqn,
         });

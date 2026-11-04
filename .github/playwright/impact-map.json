@@ -138,7 +138,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PlatformLineage/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
         "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
-        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts"
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCanvasEdgeRenderer.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EdgeMidpointUtils*"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
@@ -344,6 +347,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
         "openmetadata-ui/src/main/resources/ui/src/utils/GlossaryReview/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ChangeParentHierarchy/**",
+        "openmetadata-ui/src/main/resources/ui/src/interface/governance/glossary.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/glossaryAPI.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Glossary*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
@@ -926,6 +933,28 @@
       "specs": [
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts"
+      ]
+    },
+    {
+      "_comment": "TagsUtils builds the classification page's tag table actions (edit / delete / enable) and shared tag helpers used by the tag pages.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/TagsUtils.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/Tags.spec.ts",
+        "playwright/e2e/Pages/Tag.spec.ts",
+        "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts"
+      ]
+    },
+    {
+      "_comment": "In AI mode the home page's Customize button opens the standalone customize route; its header owns where closing (with or without unsaved changes) lands.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/CustomizablePageHeader/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/HomePageCustomizeExit.spec.ts"
       ]
     },
     {
@@ -1569,6 +1598,21 @@
       ],
       "projects": ["DomainIsolation"],
       "specs": ["playwright/e2e/Features/DomainIsolation/**/*.spec.ts"]
+    },
+    {
+      "_comment": "The Metric backend: hierarchy, restore and governance rules that the Metric specs drive through the API and the metric pages.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/MetricRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/metrics/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/MetricHierarchy.spec.ts",
+        "playwright/e2e/Features/MetricGovernance.spec.ts",
+        "playwright/e2e/Features/MetricAssets.spec.ts",
+        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
+        "playwright/e2e/VersionPages/MetricVersionPage.spec.ts"
+      ]
     }
   ]
 }

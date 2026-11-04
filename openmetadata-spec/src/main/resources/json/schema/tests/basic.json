@@ -227,6 +227,9 @@
       "javaType": "org.openmetadata.schema.tests.type.TestCaseEvaluationScope",
       "type": "object",
       "properties": {
+        "executionSource": {
+          "$ref": "../type/tableExecutionSource.json"
+        },
         "sampled": {
           "description": "Whether the run read a sample of the table. False when the test runs its own SQL, which ignores the configured sample.",
           "type": "boolean",

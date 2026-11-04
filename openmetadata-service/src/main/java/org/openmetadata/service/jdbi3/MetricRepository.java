@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -1062,6 +1063,45 @@ public class MetricRepository extends EntityRepository<Metric> {
     return buildHierarchyResult(scan, limit, offset, metrics, groups);
   }
 
+  /**
+   * Under a navbar domain pick, a group stays in the hierarchy when it is in the picked domain or
+   * holds a metric that is (e.g. a group with no domain whose metrics are all in the pick).
+   */
+  public Predicate<EntityReference> groupInDomainPick(
+      Optional<Set<UUID>> pickedGroups, Predicate<EntityReference> canViewMetric) {
+    MetricGroupRepository groups =
+        (MetricGroupRepository) Entity.getEntityRepository(Entity.METRIC_GROUP);
+    // The hierarchy tests a group once per row and again per metric in it, so each group's member
+    // scan is kept for the request.
+    Map<UUID, Boolean> holdsVisibleMetric = new java.util.concurrent.ConcurrentHashMap<>();
+    return group ->
+        pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
+            || holdsVisibleMetric.computeIfAbsent(
+                group.getId(), id -> groups.hasVisibleMemberMatching(id, null, canViewMetric));
+  }
+
+  /**
+   * As above, for a caller who can view every metric: the groups holding a picked metric are read
+   * in one batch, rather than scanning each group's members (which is capped in size).
+   */
+  public Predicate<EntityReference> groupInDomainPick(
+      Optional<Set<UUID>> pickedGroups, Set<UUID> pickedMetrics) {
+    Set<UUID> holdingPickedMetric =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                pickedMetrics.stream().map(UUID::toString).toList(),
+                Relationship.HAS.ordinal(),
+                Entity.METRIC_GROUP,
+                NON_DELETED)
+            .stream()
+            .map(relationship -> UUID.fromString(relationship.getFromId()))
+            .collect(java.util.stream.Collectors.toSet());
+    return group ->
+        pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
+            || holdingPickedMetric.contains(group.getId());
+  }
+
   HierarchyScan scanUnrestrictedHierarchyRows(int limit, int offset, String nameLike) {
     CollectionDAO.MetricDAO metricDAO = daoCollection.metricDAO();
     List<CollectionDAO.MetricDAO.HierarchyRow> rows =
@@ -1746,6 +1786,20 @@ public class MetricRepository extends EntityRepository<Metric> {
   protected void postRestore(Metric metric) {
     super.postRestore(metric);
     refreshSearchDocument(metric.getMetricGroup());
+  }
+
+  // ADR:2026-11-03-a-metric-is-restored-with-its-parent-never-under-a-deleted-one
+  @Override
+  public void validateRestore(UUID id) {
+    Metric metric = find(id, ALL);
+    EntityReference parent = Boolean.TRUE.equals(metric.getDeleted()) ? getParent(metric) : null;
+    if (parent != null && Boolean.TRUE.equals(parent.getDeleted())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Metric '%s' cannot be restored while its parent '%s' is deleted. Restore '%s' to"
+                  + " bring back the whole hierarchy.",
+              metric.getName(), parent.getName(), parent.getName()));
+    }
   }
 
   @Override
