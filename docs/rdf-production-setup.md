@@ -19,15 +19,19 @@ The deadline includes worker startup and input transfer. Smaller queries pay JVM
 on each request.
 
 Reserve additional container memory for the worker, beyond the server's heap and existing native
-memory allowance. Its JVM caps are 64 MiB heap, 64 MiB metaspace, 32 MiB code cache and 16 MiB direct
-buffers. These caps total 176 MiB, but do not bound the worker's total RSS. Measure the worker's
-peak RSS under your workload and leave headroom for its stacks, native allocations and file cache.
+memory allowance. The worker heap is 64 MiB plus 24 times the serialized input length, rounded up
+to MiB and capped at 256 MiB. Its other JVM caps are 64 MiB metaspace, 32 MiB code cache and 16 MiB
+direct buffers. These caps total at most 368 MiB, but do not bound the worker's total RSS. Measure
+the worker's peak RSS under your workload and leave headroom for stacks, native allocations and file cache.
 A container limit equal to the server's `-Xmx` cannot accommodate this worker. The query JVM
 protects the server heap, but the container's OOM killer can still terminate the server if the
 container is undersized.
 
 Keep the server's Java executable available and its temporary directory writable. Each request
 uses private temporary files capped at 32 MiB of input, 10 MiB of output and 4 KiB of status.
+The input cap bounds transport, not the size of every graph that can fit in memory. If parsing
+exhausts the worker heap, HTTP 400 identifies the ontology as too large to load. Query evaluation
+or inference can independently exhaust the execution budget, even for a smaller input.
 The server deletes them when the request ends and terminates the worker on timeout or cancellation.
 Source-model materialization still occurs in the server, so catalogs already too large to
 materialize need separate sizing. See

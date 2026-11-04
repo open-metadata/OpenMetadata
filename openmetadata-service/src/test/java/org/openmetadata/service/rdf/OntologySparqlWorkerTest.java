@@ -14,6 +14,7 @@
 package org.openmetadata.service.rdf;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,9 +22,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -37,13 +41,147 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 class OntologySparqlWorkerTest {
+  @TempDir private Path temporaryDirectory;
+
+  @Test
+  void queriesMultiMegabyteModelsWithDistinctNodes() throws Exception {
+    final Model model = distinctNodeModel(80_000);
+    assertTrue(serializedBytes(model) > 3 * 1024 * 1024);
+
+    assertTrue(service(model).query(UUID.randomUUID(), request("ASK {}")).body().contains("true"));
+    assertTrue(model.isClosed());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = SparqlQuery.Inference.class,
+      names = {"NONE", "RDFS", "OWL"})
+  void queriesMultiMegabyteGlossariesWithInference(final SparqlQuery.Inference inference)
+      throws Exception {
+    final Model model = glossaryModel();
+    assertTrue(serializedBytes(model) > 7 * 1024 * 1024);
+    final String query =
+        inference == SparqlQuery.Inference.NONE
+            ? "ASK {}"
+            : "ASK { <urn:glossary:concept:00000000> a <urn:glossary:Entry> }";
+
+    assertTrue(
+        service(model)
+            .query(UUID.randomUUID(), request(query).withInference(inference))
+            .body()
+            .contains("true"));
+    assertTrue(model.isClosed());
+  }
+
+  @Test
+  void reportsOntologySizeWhenParsingExhaustsTheWorkerHeap() throws Exception {
+    writeWorkerRequest(distinctNodeModel(80_000));
+    // A smaller heap forces parsing to fail before the query deadline, without GC timing races.
+    final ProcessBuilder builder =
+        new ProcessBuilder(
+                Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                "-Xmx64m",
+                "-XX:+UseSerialGC",
+                "-XX:ActiveProcessorCount=1",
+                "-XX:+ExitOnOutOfMemoryError",
+                "-cp",
+                System.getProperty("java.class.path"),
+                OntologySparqlQueryService.Worker.class.getName(),
+                temporaryDirectory.toString())
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD);
+    builder.environment().clear();
+    final Process process = builder.start();
+    try {
+      assertTrue(process.waitFor(60, TimeUnit.SECONDS));
+      assertEquals(3, process.exitValue());
+      final var failure = OntologySparqlWorker.memoryLimitFailure(temporaryDirectory);
+      assertTrue(failure.getMessage().contains("ontology"), failure.getMessage());
+      assertTrue(failure.getMessage().contains("loading"), failure.getMessage());
+    } finally {
+      process.destroyForcibly();
+      assertTrue(process.waitFor(10, TimeUnit.SECONDS));
+    }
+  }
+
+  private void writeWorkerRequest(final Model model) throws IOException {
+    try (final var output =
+        new DataOutputStream(Files.newOutputStream(temporaryDirectory.resolve("request")))) {
+      final byte[] query = "ASK {}".getBytes(StandardCharsets.UTF_8);
+      output.writeInt(query.length);
+      output.write(query);
+      output.writeUTF("");
+      output.writeUTF("");
+      output.writeInt(SparqlQueryLimits.TIMEOUT_MILLIS);
+      RDFDataMgr.write(output, model, RDFFormat.NTRIPLES_UTF8);
+    } finally {
+      model.close();
+    }
+  }
+
+  private long serializedBytes(final Model model) throws IOException {
+    final Path path = temporaryDirectory.resolve("ontology.nt");
+    try (final OutputStream output = Files.newOutputStream(path)) {
+      RDFDataMgr.write(output, model, RDFFormat.NTRIPLES_UTF8);
+    }
+    return Files.size(path);
+  }
+
+  private static Model distinctNodeModel(final int triples) {
+    final Model model = ModelFactory.createDefaultModel();
+    for (int index = 0; index < triples; index++) {
+      final String suffix = Integer.toHexString(index);
+      model.add(
+          model.createResource("urn:s:" + suffix),
+          model.createProperty("urn:p:" + suffix),
+          model.createResource("urn:o:" + suffix));
+    }
+    return model;
+  }
+
+  private static Model glossaryModel() {
+    final Model model = ModelFactory.createDefaultModel();
+    final var concept = model.createResource("urn:glossary:Concept");
+    concept.addProperty(RDFS.subClassOf, model.createResource("urn:glossary:Entry"));
+    model.createResource("urn:glossary:concept:00000000").addProperty(RDF.type, concept);
+    for (int index = 0; index < 12_000; index++) {
+      model
+          .createResource("urn:glossary:concept:%08x".formatted(index))
+          .addProperty(
+              model.createProperty("urn:glossary:type"),
+              model.createResource("urn:glossary:Concept"))
+          .addProperty(
+              model.createProperty("urn:glossary:label"), "Business concept %08x".formatted(index))
+          .addProperty(
+              model.createProperty("urn:glossary:definition"),
+              "Definition %08x: ".formatted(index)
+                  + "Metadata describing a business concept and its usage. ".repeat(3))
+          .addProperty(
+              model.createProperty("urn:glossary:scheme"),
+              model.createResource("urn:glossary:scheme"))
+          .addProperty(
+              model.createProperty("urn:glossary:broader"),
+              model.createResource("urn:glossary:group:%08x".formatted(index / 100)))
+          .addProperty(
+              model.createProperty("urn:glossary:related"),
+              model.createResource("urn:glossary:concept:%08x".formatted((index + 1) % 12_000)));
+    }
+    return model;
+  }
+
   @ParameterizedTest
   @ValueSource(ints = {-1, Integer.MAX_VALUE, 8})
   void refusesCorruptRequestLengthsBeforeAllocatingOrParsing(final int declaredLength)
@@ -59,6 +197,11 @@ class OntologySparqlWorkerTest {
   void failedExecutionReapsTheChildAndRemovesItsFilesBeforeReleasingCapacity(
       final boolean interruptCaller) throws Exception {
     final Model model = ModelFactory.createDefaultModel();
+    if (!interruptCaller) {
+      model
+          .createResource("urn:subject")
+          .addProperty(model.createProperty("urn:large"), "x".repeat(9 * 1024 * 1024));
+    }
     final String values =
         IntStream.range(0, 1_000).mapToObj(Integer::toString).collect(Collectors.joining(" "));
     final String query =
@@ -76,6 +219,9 @@ class OntologySparqlWorkerTest {
               .until(OntologySparqlWorkerTest::queryChild, Objects::nonNull);
       final String[] arguments = processArguments(worker);
       final Path directory = Path.of(arguments[arguments.length - 1]);
+      if (!interruptCaller) {
+        assertTrue(Arrays.asList(arguments).contains("-Xmx256m"));
+      }
 
       if (interruptCaller) {
         thread.interrupt();

@@ -31,8 +31,6 @@ import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.reasoner.ReasonerRegistry;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFParser;
 import org.apache.jena.sparql.exec.http.Service;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -255,7 +253,7 @@ public final class OntologySparqlQueryService {
                 resultFormat(request.getFormat(), query),
                 timeoutMillis(request.getTimeout()),
                 inference(request.getInference()));
-        RDFParser.create().source(input).lang(Lang.NTRIPLES).parse(model);
+        OntologySparqlWorker.readModel(directory, input, model);
         executeWithInference(model, validated, output);
       } finally {
         model.close();

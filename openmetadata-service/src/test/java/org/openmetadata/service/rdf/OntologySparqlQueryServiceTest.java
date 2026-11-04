@@ -67,10 +67,12 @@ class OntologySparqlQueryServiceTest {
     query.append('}');
     final Model model = ModelFactory.createDefaultModel();
 
-    assertThrows(
-        SparqlQueryLimits.QueryLimitExceededException.class,
-        () -> service(model).query(GLOSSARY_ID, request(query.toString())));
+    final var failure =
+        assertThrows(
+            SparqlQueryLimits.QueryLimitExceededException.class,
+            () -> service(model).query(GLOSSARY_ID, request(query.toString())));
 
+    assertTrue(failure.getMessage().contains("query or inference"), failure.getMessage());
     assertTrue(model.isClosed());
     assertTrue(
         service(modelWithStatement())

@@ -1,7 +1,7 @@
 # Ontology SPARQL runs in a disposable JVM with bounded query memory
 
 - **Status:** Proposed
-- **Revisions:** v1 2026-11-04 (initial)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (input-proportional heap and loading refusals)
 - **Deciders:** Pending maintainer review
 - **Guard:** OntologySparqlQueryServiceTest and reviewer
 - **Related:** [#37088](https://github.com/open-metadata/OpenMetadata/issues/37088), ANT-2026-J4XIPJA4
@@ -43,3 +43,30 @@ catalog materialization in the parent or total process RSS. Deployments must res
 beyond the server heap for the child's explicit caps and measured native overhead. A host or
 container OOM can still kill the parent. An OS memory boundary would be a separate deployment
 decision rather than an implied guarantee of this JVM limit.
+
+## Amendment: input-proportional heap and loading refusals (v2)
+
+The fixed 64 MiB heap above is replaced by a 64 MiB base plus 24 times the serialized request
+bytes, rounded up to MiB, with a hard ceiling of 256 MiB. The global concurrency and other JVM
+caps remain unchanged. Deployments must budget for the larger maximum child heap.
+
+A 3.16 MiB graph with 80,000 distinct subjects, predicates and objects exhausted the original
+heap while loading, although a 7.55 MiB glossary with 12,000 concepts and repeated vocabulary
+loaded successfully. Serialized length alone is not a safe admission threshold. Measurements
+over five fresh JVM runs per case with Java 21 and Jena 6.2 found about 14 times the input bytes
+retained for the distinct-node model, and about 18 times for the glossary after OWL Mini
+inference, excluding the baseline heap. The 24-times allowance adds margin above these
+observations; it is not a universal expansion bound. The regression tests execute both models
+and exercise NONE, RDFS and OWL.
+
+The 32 MiB limit remains a transport ceiling. Ontologies that exceed the maximum worker heap
+are refused. A private zero-byte loading marker survives a hard out-of-memory exit, so the
+parent distinguishes an ontology too large to parse from query/inference memory exhaustion.
+It removes the marker with the other temporary files before releasing admission. A real worker
+with a deliberately smaller heap checks parsing exhaustion and its classification without
+depending on whether GC thrashing reaches the normal request deadline first.
+
+Inference can grow far beyond the source graph: OWL Mini on the distinct-predicate fixture
+exhausted even a 512 MiB profiling JVM. Neither the byte allowance nor a lower transport cap
+can guarantee arbitrary inference fits. The disposable worker and its fixed ceiling remain
+the containment boundary.

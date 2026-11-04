@@ -32,8 +32,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.QueryCancelledException;
 import org.apache.jena.query.QueryDeniedException;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.riot.RDFParser;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryCapacityException;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryTimeoutException;
@@ -44,6 +46,10 @@ import org.openmetadata.service.rdf.SparqlQueryLimits.QueryLimitExceededExceptio
 final class OntologySparqlWorker implements AutoCloseable {
   private static final Semaphore PERMIT = new Semaphore(1);
   private static final int MAX_INPUT_BYTES = 32 * 1024 * 1024;
+  private static final int BASE_HEAP_MIB = 64;
+  private static final int MAX_HEAP_MIB = 256;
+  private static final int HEAP_BYTES_PER_INPUT_BYTE = 24;
+  private static final int MEBIBYTE = 1024 * 1024;
   private static final int MAX_QUERY_BYTES = 4 * SparqlQueryLimits.MAX_QUERY_CHARACTERS;
   private static final int MAX_STATUS_BYTES = 4096;
   private static final int MAX_DETAIL_CHARACTERS = 1000;
@@ -51,6 +57,7 @@ final class OntologySparqlWorker implements AutoCloseable {
   private static final String INPUT = "request";
   private static final String OUTPUT = "result";
   private static final String STATUS = "status";
+  private static final String LOADING_ONTOLOGY = "loading-ontology";
   private static final String OUTPUT_LIMIT_MESSAGE =
       "SPARQL result exceeds the maximum response size of %,d bytes"
           .formatted(SparqlQueryLimits.MAX_OUTPUT_BYTES);
@@ -119,12 +126,18 @@ final class OntologySparqlWorker implements AutoCloseable {
     }
   }
 
-  private ProcessBuilder processBuilder() {
+  private ProcessBuilder processBuilder() throws IOException {
+    final long heapMib =
+        Math.min(
+            MAX_HEAP_MIB,
+            BASE_HEAP_MIB
+                + (Files.size(directory.resolve(INPUT)) * HEAP_BYTES_PER_INPUT_BYTE + MEBIBYTE - 1)
+                    / MEBIBYTE);
     final ProcessBuilder builder =
         new ProcessBuilder(
             Path.of(System.getProperty("java.home"), "bin", "java").toString(),
             "-Xms16m",
-            "-Xmx64m",
+            "-Xmx" + heapMib + "m",
             "-Xss512k",
             "-XX:MaxMetaspaceSize=64m",
             "-XX:MaxDirectMemorySize=16m",
@@ -152,12 +165,19 @@ final class OntologySparqlWorker implements AutoCloseable {
       throw new QueryTimeoutException(timeoutMillis, exception);
     }
     if (process.exitValue() == HOTSPOT_OUT_OF_MEMORY_EXIT) {
-      throw new QueryLimitExceededException("SPARQL query exceeds the execution memory budget");
+      throw memoryLimitFailure(directory);
     }
     if (process.exitValue() != 0) {
       throw new IllegalStateException(
           "SPARQL worker exited unexpectedly with code " + process.exitValue());
     }
+  }
+
+  static QueryLimitExceededException memoryLimitFailure(final Path directory) {
+    return new QueryLimitExceededException(
+        Files.exists(directory.resolve(LOADING_ONTOLOGY))
+            ? "SPARQL ontology is too large for the worker memory budget while loading"
+            : "SPARQL query or inference exceeds the execution memory budget");
   }
 
   private String readResult() throws IOException {
@@ -253,7 +273,7 @@ final class OntologySparqlWorker implements AutoCloseable {
     if (directory == null) {
       return;
     }
-    for (final String name : new String[] {INPUT, OUTPUT, STATUS, ""}) {
+    for (final String name : new String[] {INPUT, OUTPUT, STATUS, LOADING_ONTOLOGY, ""}) {
       try {
         Files.deleteIfExists(directory.resolve(name));
       } catch (final IOException exception) {
@@ -276,6 +296,17 @@ final class OntologySparqlWorker implements AutoCloseable {
         new BufferedOutputStream(Files.newOutputStream(directory.resolve(OUTPUT))),
         SparqlQueryLimits.MAX_OUTPUT_BYTES,
         OUTPUT_LIMIT_MESSAGE);
+  }
+
+  static void readModel(final Path directory, final DataInputStream input, final Model model)
+      throws IOException {
+    final Path loading = directory.resolve(LOADING_ONTOLOGY);
+    // The marker survives ExitOnOutOfMemoryError, which bypasses exception handlers.
+    Files.createFile(
+        loading,
+        PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+    RDFParser.create().source(input).lang(Lang.NTRIPLES).parse(model);
+    Files.delete(loading);
   }
 
   static SparqlQuery readRequest(final DataInputStream input) throws IOException {
