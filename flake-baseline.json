@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-03T03:07:52Z",
+  "generatedAt": "2026-11-04T03:35:59Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "40155676742",
-      "sourceSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "recordedAt": "2026-10-25T03:28:13Z"
-    },
     {
       "runId": "40261121182",
       "sourceSha": "f862ad021059f748ac55880ffa495166c1836498",
@@ -53,12 +48,16 @@
       "runId": "41567061381",
       "sourceSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
       "recordedAt": "2026-11-03T03:07:52Z"
+    },
+    {
+      "runId": "41761758946",
+      "sourceSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "recordedAt": "2026-11-04T03:35:59Z"
     }
   ],
   "entries": {
     "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "Basic",
@@ -66,6 +65,16 @@
       "title": "Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
       "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": false
+    },
+    "ImportExport :: Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts :: Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource \u203a EditAll User: Complete export-import-validate flow": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "ImportExport",
+      "file": "Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
+      "title": "Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource \u203a EditAll User: Complete export-import-validate flow",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
     },
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it": {
       "observations": [
@@ -97,9 +106,48 @@
       "lastSeenSha": "3e14a88747128ecb043e28f981530cb415f55b51",
       "hardFailure": false
     },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a Save & go saves the edits, then leaves": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a Save & go saves the edits, then leaves",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a breadcrumb and side nav ask first and Escape keeps the edits": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a breadcrumb and side nav ask first and Escape keeps the edits",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a footer Cancel asks in a popover and Discard returns to the persona detail": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a footer Cancel asks in a popover and Discard returns to the persona detail",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a modal close asks first and Discard closes the settings modal": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a modal close asks first and Discard closes the settings modal",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
     "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -107,16 +155,6 @@
       "title": "Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card",
       "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": true
-    },
-    "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly": {
-      "observations": [
-        "40155676742"
-      ],
-      "project": "chromium",
-      "file": "Features/DataQuality/TestLibrary.spec.ts",
-      "title": "Test Library \u203a should display test platform badges correctly",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": false
     },
     "chromium :: Features/OntologyFirstRun.spec.ts :: Ontology Studio first run \u203a creates an ontology from scratch and lands in Edit with the New class panel": {
       "observations": [
@@ -170,7 +208,6 @@
     },
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -181,7 +218,6 @@
     },
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -192,7 +228,6 @@
     },
     "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -200,6 +235,16 @@
       "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
       "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": true
+    },
+    "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Features/Topic.spec.ts",
+      "title": "Topic entity specific tests \u203a Copy field link should have valid URL format",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": false
     },
     "chromium :: Pages/AIProfile/ProfileMembers.spec.ts :: AI Profile Members - cross-surface navigation \u203a Should navigate from the users page to a role detail": {
       "observations": [
@@ -220,6 +265,366 @@
       "title": "AI Profile Team Detail \u203a Should confirm a team move in a popover, not a modal",
       "lastSeenSha": "30f04fd3869cd6602c1f036941fba1cc8c103711",
       "hardFailure": false
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for apiCollection \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for apiCollection \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for apiEndpoint \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for apiEndpoint \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for chart \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for chart \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for container \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for container \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for dashboard \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for dashboard \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for dashboardDataModel \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for dashboardDataModel \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for dataProduct \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for dataProduct \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for database \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for database \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for databaseSchema \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for databaseSchema \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for domain \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for domain \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for glossaryTerm \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for glossaryTerm \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for metric \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for metric \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for mlmodel \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for mlmodel \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for pipeline \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for pipeline \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for searchIndex \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for searchIndex \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for storedProcedure \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for storedProcedure \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Date": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Date",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Date Time": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Date Time",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Duration": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Duration",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Email": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Email",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Entity Reference": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Entity Reference",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Entity Reference List": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Entity Reference List",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Enum": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Enum",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Hyperlink": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Hyperlink",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Integer": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Integer",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Markdown": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Markdown",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Number": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Number",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Number CP between operator sends gte/lte bounds (Issue #27482)": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Number CP between operator sends gte/lte bounds (Issue #27482)",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a SQL Query": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a SQL Query",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Table": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Table",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Time": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Time",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Time Interval": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Time Interval",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for table \u203a Timestamp": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for table \u203a Timestamp",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for tableColumn \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for tableColumn \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for topic \u203a String": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/CustomProperties.spec.ts",
+      "title": "Add update and delete custom properties for topic \u203a String",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
     },
     "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Add and update Security and SLA tabs": {
       "observations": [
@@ -243,7 +648,6 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service filter selection": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -254,7 +658,6 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service type filter selection": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -265,7 +668,6 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -276,7 +678,6 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -287,7 +688,6 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service filter selection": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -298,7 +698,6 @@
     },
     "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service type filter selection": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "chromium",
@@ -307,9 +706,38 @@
       "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": true
     },
+    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/TableSharding.spec.ts",
+      "title": "BigQuery sharded table identity \u203a persists metadata grouping enabled=false",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/TableSharding.spec.ts",
+      "title": "BigQuery sharded table identity \u203a persists metadata grouping enabled=true",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": true
+    },
+    "chromium :: Pages/TestSuiteDetailsPage.spec.ts :: Search test cases inside a bundle suite (AI mode) \u203a finds a test case by an upper-cased part of its name": {
+      "observations": [
+        "41761758946"
+      ],
+      "project": "chromium",
+      "file": "Pages/TestSuiteDetailsPage.spec.ts",
+      "title": "Search test cases inside a bundle suite (AI mode) \u203a finds a test case by an upper-cased part of its name",
+      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "hardFailure": false
+    },
     "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "search-nightly",
@@ -320,7 +748,6 @@
     },
     "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches": {
       "observations": [
-        "40155676742",
         "40261121182"
       ],
       "project": "search-nightly",
@@ -330,33 +757,6 @@
       "hardFailure": true
     }
   },
-  "stableIds": [
-    "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
-    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card",
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain",
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association",
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service filter selection",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service type filter selection",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service filter selection",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service type filter selection",
-    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords",
-    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches"
-  ],
-  "hardFailureStableIds": [
-    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card",
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain",
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association",
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service filter selection",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service type filter selection",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service filter selection",
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service type filter selection",
-    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords",
-    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches"
-  ]
+  "stableIds": [],
+  "hardFailureStableIds": []
 }
