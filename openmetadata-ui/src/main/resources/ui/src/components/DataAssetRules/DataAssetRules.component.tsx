@@ -30,7 +30,6 @@ import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
@@ -54,7 +53,6 @@ import { SearchOutputType } from '../Explore/AdvanceSearchProvider/AdvanceSearch
 import './DataAssetRules.less';
 
 export const useSemanticsRulesState = () => {
-  const { t } = useTranslation();
   const [semanticsRules, setSemanticsRules] = useState<SemanticsRule[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
@@ -78,11 +76,11 @@ export const useSemanticsRulesState = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [setSemanticsRules]);
+  }, []);
 
   useEffect(() => {
     fetchSemanticsRules();
-  }, []);
+  }, [fetchSemanticsRules]);
 
   const updateSemanticsRules = useCallback(
     async (configValues: SemanticsRule[]) => {
@@ -117,7 +115,7 @@ export const useSemanticsRulesState = () => {
         setIsSaveLoading(false);
       }
     },
-    []
+    [fetchSemanticsRules]
   );
 
   const toggleRuleEnabled = useCallback(
@@ -147,7 +145,7 @@ export const useSemanticsRulesState = () => {
         setIsSaveLoading(false);
       }
     },
-    []
+    [fetchSemanticsRules]
   );
 
   return {
@@ -423,7 +421,7 @@ export const useSemanticsRuleList = ({
         ),
       },
     ],
-    [t, onToggleRuleEnabled]
+    [onToggleRuleEnabled]
   );
 
   const dataAssetRuleList = useMemo(() => {
@@ -443,7 +441,14 @@ export const useSemanticsRuleList = ({
         </Grid.Item>
       </Grid>
     );
-  }, [semanticsRules, isLoading, isSaveLoading, columns]);
+  }, [
+    semanticsRules,
+    isLoading,
+    isSaveLoading,
+    columns,
+    addEditSemanticsRule,
+    deleteSemanticsRule,
+  ]);
 
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (
     <Box

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import {
@@ -24,7 +24,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { SemanticsRule } from '../../../generated/settings/settings';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import './DataAssetRulesPage.less';
 
@@ -38,16 +37,9 @@ const DataAssetRulesPage: React.FC = () => {
     toggleRuleEnabled,
   } = useSemanticsRulesState();
 
-  const onSemanticsRuleChange = useCallback(
-    async (updatedSemanticsRules: SemanticsRule[]) => {
-      await updateSemanticsRules(updatedSemanticsRules);
-    },
-    []
-  );
-
   const { addSemanticsRuleButton, semanticsRuleList } = useSemanticsRuleList({
     semanticsRules,
-    onSemanticsRuleChange,
+    onSemanticsRuleChange: updateSemanticsRules,
     onToggleRuleEnabled: toggleRuleEnabled,
     isSaveLoading,
     isLoading,
@@ -72,7 +64,7 @@ const DataAssetRulesPage: React.FC = () => {
         ),
       },
     ],
-    []
+    [t]
   );
 
   return (
