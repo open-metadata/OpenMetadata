@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { EntityReference } from '../../../generated/entity/type';
+import { getDomainStyles } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DataProductsContainer from './DataProductsContainer.component';
 
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainStyles: jest.fn(),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -106,10 +108,59 @@ const defaultProps = {
 describe('DataProductsContainer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getDomainStyles as jest.Mock).mockResolvedValue({ data: [] });
+  });
+
+  // Data product chips drew a plain grey badge whatever the data product's
+  // style; they now read its colour and icon by id, like domain chips.
+  it('draws each data product chip in its own colour and icon', async () => {
+    (getDomainStyles as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'dp-1',
+          type: 'dataProduct',
+          style: { color: '#F79009', iconURL: 'Tag01' },
+        },
+      ],
+    });
+
+    renderWithQueryClient(
+      <DataProductsContainer
+        {...defaultProps}
+        dataProducts={[
+          {
+            id: 'dp-1',
+            type: 'dataProduct',
+            name: 'orders',
+            fullyQualifiedName: 'orders',
+          },
+          {
+            id: 'dp-2',
+            type: 'dataProduct',
+            name: 'returns',
+            fullyQualifiedName: 'returns',
+          },
+        ]}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('data-product-orders')).toHaveStyle({
+        '--tag-color': '#F79009',
+      })
+    );
+
+    expect(screen.getByTestId('data-product-returns')).not.toHaveStyle({
+      '--tag-color': '#F79009',
+    });
+    expect(screen.getByTestId('data-product-orders')).toHaveAttribute(
+      'href',
+      expect.stringContaining('orders')
+    );
   });
 
   it('closes the picker when its button is pressed again, saving nothing', () => {
-    render(<DataProductsContainer {...defaultProps} />);
+    renderWithQueryClient(<DataProductsContainer {...defaultProps} />);
 
     fireEvent.click(screen.getByTestId('add-data-product'));
 
@@ -126,7 +177,7 @@ describe('DataProductsContainer', () => {
       '../../../rest/dataProductAPI'
     );
 
-    render(<DataProductsContainer {...defaultProps} />);
+    renderWithQueryClient(<DataProductsContainer {...defaultProps} />);
 
     fireEvent.click(screen.getByTestId('add-data-product'));
     fireEvent.click(screen.getByTestId('dps-fetch'));
@@ -146,7 +197,7 @@ describe('DataProductsContainer', () => {
       '../../../rest/dataProductAPI'
     );
 
-    render(
+    renderWithQueryClient(
       <DataProductsContainer
         {...defaultProps}
         requireDomainForDataProduct={false}
@@ -167,7 +218,9 @@ describe('DataProductsContainer', () => {
   });
 
   it('disables add button with no domain when rule is enabled', () => {
-    render(<DataProductsContainer {...defaultProps} activeDomains={[]} />);
+    renderWithQueryClient(
+      <DataProductsContainer {...defaultProps} activeDomains={[]} />
+    );
 
     expect(screen.getByTestId('add-data-product')).toBeDisabled();
     expect(
@@ -176,7 +229,7 @@ describe('DataProductsContainer', () => {
   });
 
   it('enables add button with no domain when rule is disabled', () => {
-    render(
+    renderWithQueryClient(
       <DataProductsContainer
         {...defaultProps}
         activeDomains={[]}
