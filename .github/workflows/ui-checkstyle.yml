@@ -226,6 +226,9 @@ jobs:
         uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
         with:
           path: ${{ env.UI_WORKING_DIRECTORY }}
+          # Binary visual baselines have no licence header and exceed Linux's
+          # per-environment-variable limit when thousands change in one PR.
+          files_ignore: '**/*.png'
 
       - name: Licence Header Check
         id: license

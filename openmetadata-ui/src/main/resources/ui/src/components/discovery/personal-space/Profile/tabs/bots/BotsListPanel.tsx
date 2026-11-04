@@ -470,10 +470,9 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
             <Tooltip excludeTriggerFromTabOrder title={tooltipContent}>
               <ButtonUtility
                 isDisabled
-                color="tertiary"
                 data-testid={`bot-delete-${bot.name}`}
                 icon={Trash01}
-                size="xs"
+                size="lg"
               />
             </Tooltip>
           );
@@ -492,10 +491,9 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
                 variant="primary"
                 onConfirm={() => handleRestore(bot)}>
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`bot-restore-${bot.name}`}
                   icon={RefreshCcw01}
-                  size="xs"
+                  size="lg"
                   tooltip={t('label.restore')}
                 />
               </ConfirmPopover>
@@ -508,10 +506,9 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
               entityName={getEntityName(bot)}
               entityType={EntityType.BOT}>
               <ButtonUtility
-                color="tertiary"
                 data-testid={`bot-delete-${bot.name}`}
                 icon={Trash01}
-                size="xs"
+                size="lg"
                 tooltip={tooltipContent}
               />
             </DeleteEntityPopover>

@@ -191,8 +191,8 @@ public final class DestinationSecrets {
   }
 
   /**
-   * The stored destination an incoming one updates: the one with its id, or, as a PUT carries no
-   * ids, the one stored at its position when that is of the same type and channel.
+   * The stored destination an incoming one updates: the one with its id, or, for one sent without
+   * an id of this alert, the one stored at its position when that is of the same type and channel.
    */
   static Optional<SubscriptionDestination> counterpart(
       List<SubscriptionDestination> stored, SubscriptionDestination destination, int position) {

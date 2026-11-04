@@ -304,6 +304,16 @@ class SessionServiceTest {
   }
 
   @Test
+  void acquireRefreshLease_withoutSessionCookie_leavesTheCookieAlone() {
+    when(request.getCookies()).thenReturn(null);
+
+    // Sent before a concurrent login's response set the pending-session cookie, an expiring
+    // Set-Cookie on this response would land after it and delete that login's session.
+    assertTrue(sessionService.acquireRefreshLease(request, response).isEmpty());
+    verify(response, never()).addHeader(eq("Set-Cookie"), any());
+  }
+
+  @Test
   void acquireRefreshLease_revokesASessionIssuedByAProviderNoLongerConfigured() {
     String sessionId = validSessionId('x');
     long now = System.currentTimeMillis();
