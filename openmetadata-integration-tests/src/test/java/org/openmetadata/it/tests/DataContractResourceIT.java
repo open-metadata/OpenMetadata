@@ -18,6 +18,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -2678,6 +2679,41 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
 
     assertTrue(updated.getReviewers() == null || updated.getReviewers().isEmpty());
+  }
+
+  @Test
+  void testContractResultsPreserveOwnersAndReviewers(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateDataContract request =
+        createMinimalRequest(ns)
+            .withOwners(List.of(SharedEntities.get().USER2_REF))
+            .withReviewers(List.of(SharedEntities.get().USER1_REF));
+    DataContract contract = client.dataContracts().create(request);
+    // A subsequent edit gives session consolidation a previous version with owners and reviewers.
+    request.setDescription("Reviewed contract");
+    contract = client.dataContracts().createOrUpdate(request);
+    assertTrue(contract.getVersion() > 0.1);
+
+    DataContractResult result =
+        new DataContractResult()
+            .withDataContractFQN(contract.getFullyQualifiedName())
+            .withTimestamp(System.currentTimeMillis())
+            .withExecutionTime(100L);
+    for (ContractExecutionStatus status :
+        List.of(ContractExecutionStatus.Running, ContractExecutionStatus.Success)) {
+      result =
+          client
+              .dataContracts()
+              .addResult(contract.getId(), result.withContractExecutionStatus(status));
+      DataContract stored =
+          client.dataContracts().get(contract.getId().toString(), "owners,reviewers");
+      assertEquals("Reviewed contract", stored.getDescription());
+      assertEquals(SharedEntities.get().USER2_REF.getId(), stored.getOwners().getFirst().getId());
+      assertEquals(
+          SharedEntities.get().USER1_REF.getId(), stored.getReviewers().getFirst().getId());
+      assertEquals(result.getId(), stored.getLatestResult().getResultId());
+      assertEquals(status, stored.getLatestResult().getStatus());
+    }
   }
 
   @Test
