@@ -47,7 +47,6 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
  */
 @Slf4j
 public class ViewPermissionFilter {
-
   private final Authorizer authorizer;
 
   public ViewPermissionFilter(Authorizer authorizer) {
@@ -82,6 +81,49 @@ public class ViewPermissionFilter {
             requestCheck(securityContext, MetadataOperation.VIEW_BASIC), reference, null);
   }
 
+  /**
+   * The {@code rows} the caller may read with every one of {@code operations}, in order. Each row
+   * must carry at least {@link ResourceContext#authorizationFields}; tags are batch-loaded into the
+   * rows only if a policy reads them. Never throws; a row whose check fails is left out.
+   */
+  public <T extends EntityInterface<?>> List<T> retainPermitted(
+      SecurityContext securityContext,
+      String entityType,
+      EntityRepository<T> repository,
+      List<T> rows,
+      List<MetadataOperation> operations) {
+    if (rows.isEmpty()) {
+      return rows;
+    }
+    AccessCheck check = requestCheck(securityContext, operations.toArray(MetadataOperation[]::new));
+    BulkFieldHydrator hydrator = tagHydrator(repository, rows);
+    List<T> permitted = new ArrayList<>(rows.size());
+    for (T row : rows) {
+      ResourceContext<T> context = new ResourceContext<>(entityType, row, repository, hydrator);
+      if (authorizeQuietly(
+          check, new EntityReference().withId(row.getId()).withType(entityType), context)) {
+        permitted.add(row);
+      }
+    }
+    return permitted;
+  }
+
+  /**
+   * Whether the caller may perform {@code operations} on {@code resource} as {@code context}
+   * describes it, for a row whose item endpoint authorizes it through another entity, as a test
+   * case is authorized through the table it tests. Never throws; anything but a clear allow denies.
+   */
+  public boolean isPermitted(
+      SecurityContext securityContext,
+      String resource,
+      List<MetadataOperation> operations,
+      ResourceContextInterface context) {
+    return authorizeQuietly(
+        requestCheck(securityContext, operations.toArray(MetadataOperation[]::new)),
+        new EntityReference().withType(resource),
+        context);
+  }
+
   private Set<UUID> viewableIds(AccessCheck check, List<EntityReference> references) {
     Set<UUID> viewable = new HashSet<>();
     bucketByType(references)
@@ -91,10 +133,11 @@ public class ViewPermissionFilter {
 
   // OperationContext is stateful - it drops operations as they are satisfied - so each decision
   // needs its own.
-  private AccessCheck requestCheck(SecurityContext securityContext, MetadataOperation operation) {
+  private AccessCheck requestCheck(
+      SecurityContext securityContext, MetadataOperation... operations) {
     return (reference, resource) ->
         authorizer.authorize(
-            securityContext, new OperationContext(reference.getType(), operation), resource);
+            securityContext, new OperationContext(reference.getType(), operations), resource);
   }
 
   /** One batch load and one hydrator per entity type, so cost scales with types, not references. */
@@ -116,8 +159,7 @@ public class ViewPermissionFilter {
 
   private <T extends EntityInterface<?>> BulkFieldHydrator tagHydrator(
       EntityRepository<T> repository, List<T> entities) {
-    return new BulkFieldHydrator(
-        Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
+    return BulkFieldHydrator.forTags(repository, entities);
   }
 
   @SuppressWarnings("unchecked")
@@ -156,7 +198,7 @@ public class ViewPermissionFilter {
    * caller's request.
    */
   private boolean authorizeQuietly(
-      AccessCheck check, EntityReference reference, ResourceContext<?> resolved) {
+      AccessCheck check, EntityReference reference, ResourceContextInterface resolved) {
     boolean viewable = false;
     try {
       check.authorize(reference, resolved != null ? resolved : lazyContext(reference));
