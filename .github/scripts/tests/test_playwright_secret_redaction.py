@@ -131,7 +131,6 @@ def test_summary_gates_on_every_event_that_actually_runs_the_shard_matrix():
     # or the summary will silently green-light a red matrix under it.
     for event in (
         "pull_request",
-        "pull_request_target",
         "merge_group",
         "schedule",
         "workflow_dispatch",

@@ -478,7 +478,8 @@ Ask which assertion goes red if the fix is reverted. The shapes seen in this win
 PR CI runs Java unit tests only. The ITs and Playwright run in the merge queue, so run them with
 `make java_affected_run` and `make playwright_affected_run`. Also check:
 
-- that `skip-pr-checks` or a missing `safe to test` label did not skip the job;
+- that `skip-pr-checks` did not skip the job, nor a fork or Dependabot origin (those PRs skip the jobs that
+  need secrets: Sonar, the Collate build, the data-access-request e2e);
 - that a path filter did not skip the only relevant suite;
 - that a new spec directory is collected by a Playwright project;
 - that each new IT and source file is owned in the impact maps.
