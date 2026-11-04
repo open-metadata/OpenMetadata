@@ -259,6 +259,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // delete the user's all password reset token as well , since already updated
     tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
+    userRepository.endSignIns(storedUser);
 
     // Update user about Password Change
     try {
@@ -315,6 +316,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
     // remove login/details from cache
     LoginAttemptCache.getInstance().recordSuccessfulLogin(userName);
+    userRepository.endSignIns(storedUser);
 
     // in case admin updates , send email to user
     if (request.getRequestType() == USER && getSmtpSettings().getEnableSmtpServer()) {

@@ -157,6 +157,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.IdentityEndpoint;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -636,11 +637,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context HttpServletResponse httpServletResponse,
       @Valid LogoutRequest request) {
     Date logoutTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
+    // The token retired is the one the filter verified for this request, never one from the body
+    // (ADR:2026-11-03-logout-retires-the-token-that-signed-the-request).
+    String verifiedToken =
+        JwtFilter.extractToken(httpServletRequest.getHeader(JwtFilter.AUTHORIZATION_HEADER));
     JwtTokenCacheManager.getInstance()
         .markLogoutEventForToken(
             new LogoutRequest()
                 .withUsername(securityContext.getUserPrincipal().getName())
-                .withToken(request.getToken())
+                .withToken(verifiedToken)
                 .withLogoutTime(logoutTime));
     if (isBasicAuth() && request.getRefreshToken() != null) {
       // need to clear the refresh token as well
