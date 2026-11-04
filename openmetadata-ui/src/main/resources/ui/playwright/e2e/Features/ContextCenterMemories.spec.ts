@@ -14,6 +14,8 @@
 import { expect, mergeTests } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { test as isolatedUserTest } from '../../support/fixtures/isolatedUser';
+import { TeamClass } from '../../support/team/TeamClass';
+import { deleteFixtureEntity } from '../../utils/apiResponse';
 import {
   chooseSelectOption,
   createNewPage,
@@ -529,6 +531,56 @@ test.describe(
     // ─── 4. Memory Row Card — Visible Metadata ──────────────────────────────
 
     test.describe('Memory Row Card Metadata', () => {
+      test('the panel links a team owner to its team rather than a user', async ({
+        page,
+      }) => {
+        const { apiContext, afterAction } = await getApiContext(page);
+        const team = new TeamClass();
+        let memoryId: string | undefined;
+        const title = `Team-owned memory ${uuid()}`;
+
+        try {
+          await team.create(apiContext);
+          const memory = await createMemoryViaApi(apiContext, {
+            name: `cc_memory_team_panel_${uuid()}`,
+            title,
+            question: 'Who owns this policy?',
+            answer: 'The operations team.',
+            owners: [{ id: team.responseData.id, type: 'team' }],
+            shareConfig: { visibility: 'Entity' },
+          });
+          memoryId = memory.id;
+
+          await navigateToMemories(page);
+          const row = await searchAndGetMemoryRow(page, title, memory.id);
+          await row.click();
+
+          const ownerLink = getMemoryDialog(page).getByTestId(
+            team.responseData.name
+          );
+          await expect(ownerLink).toHaveText(team.responseData.displayName);
+          await expect(ownerLink).toHaveAttribute(
+            'href',
+            new RegExp(
+              `(?:/teams/|#members/teams?/)${encodeURIComponent(
+                team.responseData.name
+              )}$`
+            )
+          );
+        } finally {
+          if (memoryId) {
+            await deleteFixtureEntity(
+              apiContext,
+              `${MEMORIES_API}/${memoryId}?hardDelete=true`
+            );
+          }
+          if (team.responseData.id) {
+            await team.delete(apiContext);
+          }
+          await afterAction();
+        }
+      });
+
       test('list and panel distinguish the owner from the last updater', async ({
         page,
       }) => {
