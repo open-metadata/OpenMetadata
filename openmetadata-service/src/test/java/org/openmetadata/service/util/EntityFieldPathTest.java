@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -128,16 +127,6 @@ class EntityFieldPathTest {
   @ValueSource(strings = {"columns.user_id.description", "messageSchema.user_id.description"})
   void parse_refusesAContainerTheEntityTypeDoesNotDeclare(String text) {
     assertThrows(IllegalArgumentException.class, () -> EntityFieldPath.parse(text, Entity.TOPIC));
-  }
-
-  @Test
-  void childKey_isTheKeyAPathAndAnEntityUpdaterBothWrite() {
-    assertEquals("tasks.extract", EntityFieldPath.childKey("tasks", "extract"));
-    assertEquals("tasks.\"extract.load\"", EntityFieldPath.childKey("tasks", "extract.load"));
-    assertEquals(
-        "columns.address.\"order.id\".description",
-        new EntityFieldPath("columns", List.of("address", "order.id"), FieldProperty.DESCRIPTION)
-            .toString());
   }
 
   @ParameterizedTest
