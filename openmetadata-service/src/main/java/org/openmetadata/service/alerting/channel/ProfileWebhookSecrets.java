@@ -47,8 +47,6 @@ public final class ProfileWebhookSecrets {
   private static final String SUBSCRIPTION = "subscription";
   private static final String PROFILE = "profile";
   private static final JsonPointer SUBSCRIPTIONS = JsonPointer.compile("/profile/subscription");
-  private static final List<String> CHANGE_DESCRIPTIONS =
-      List.of("changeDescription", "incrementalChangeDescription");
   private static final List<String> FIELD_CHANGE_LISTS =
       List.of("fieldsAdded", "fieldsUpdated", "fieldsDeleted");
   private static final List<String> FIELD_CHANGE_VALUES = List.of("oldValue", "newValue");
@@ -183,32 +181,6 @@ public final class ProfileWebhookSecrets {
     JsonNode tree = JsonUtils.valueToTree(changeDescription);
     transformChangeDescription(tree, ConfigSecrets::mask);
     return JsonUtils.treeToValue(tree, ChangeDescription.class);
-  }
-
-  /**
-   * Masks, in place, the profile webhook secrets of a user or a team as JSON: a stored row or one of
-   * its versions. Returns whether anything changed.
-   */
-  public static boolean maskEntityTree(JsonNode entity) {
-    return transformEntityTree(entity, ConfigSecrets::mask);
-  }
-
-  /**
-   * Encrypts, in place, the profile webhook secrets of a user or a team as JSON, in its profile and
-   * in the profile values its change descriptions record. Ciphertext is kept as it is, so running it
-   * again changes nothing. Returns whether anything changed.
-   */
-  public static boolean encryptEntityTree(JsonNode entity) {
-    return transformEntityTree(entity, ConfigSecrets::encrypt);
-  }
-
-  private static boolean transformEntityTree(
-      JsonNode entity, BiPredicate<JsonNode, List<JsonPointer>> transform) {
-    boolean changed = transformSubscriptions(entity.at(SUBSCRIPTIONS), transform);
-    for (String name : CHANGE_DESCRIPTIONS) {
-      changed |= transformChangeDescription(entity.path(name), transform);
-    }
-    return changed;
   }
 
   private static boolean transformSubscriptions(

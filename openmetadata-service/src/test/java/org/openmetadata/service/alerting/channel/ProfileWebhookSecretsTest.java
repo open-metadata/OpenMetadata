@@ -279,17 +279,6 @@ class ProfileWebhookSecretsTest {
   }
 
   @Test
-  void encryptingAStoredRowTwiceChangesNothing() {
-    JsonNode row =
-        JsonUtils.valueToTree(new User().withName("u").withProfile(profileWith(oauth2("s"))));
-
-    assertTrue(ProfileWebhookSecrets.encryptEntityTree(row));
-    String once = JsonUtils.pojoToJson(row);
-    assertFalse(ProfileWebhookSecrets.encryptEntityTree(row));
-    assertEquals(once, JsonUtils.pojoToJson(row));
-  }
-
-  @Test
   void aProfileWithoutWebhooksIsLeftAlone() {
     Profile images = new Profile();
 

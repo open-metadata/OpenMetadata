@@ -223,15 +223,6 @@ public final class DestinationSecrets {
     }
   }
 
-  /**
-   * Encrypts, in place, the secrets of an alert as JSON: a stored row or one of its versions, in its
-   * destinations and in the destination lists its change descriptions record. Ciphertext is kept as
-   * it is, so running it again changes nothing. Returns whether anything changed.
-   */
-  public static boolean encryptAlertTree(JsonNode alert) {
-    return transformAlert(alert, ConfigSecrets::encrypt);
-  }
-
   private static void maskAlert(JsonNode alert) {
     transformAlert(alert, ConfigSecrets::mask);
   }
