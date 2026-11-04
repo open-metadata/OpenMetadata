@@ -28,7 +28,14 @@ import {
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -600,6 +607,19 @@ const DomainTreeView = ({
     lastSelectedFqnRef.current = selectedFqn;
   }, [selectedFqn, clearPagingParams]);
 
+  // Assets and Data Products share the `currentPage` key. React Router applies
+  // the URL change in a transition, so the tab switch joins it; otherwise the
+  // new tab mounts first and fetches the previous tab's page.
+  const handleActiveTabChange = useCallback(
+    (tab: EntityTabs) => {
+      startTransition(() => {
+        clearPagingParams();
+        setActiveTab(tab);
+      });
+    },
+    [clearPagingParams]
+  );
+
   const handleSelectionChange = useCallback(
     (keys: Selection) => {
       if (keys === 'all') {
@@ -957,7 +977,7 @@ const DomainTreeView = ({
           isFollowing={isFollowing}
           isFollowingLoading={isFollowingLoading}
           refreshDomains={refreshAll}
-          onActiveTabChange={setActiveTab}
+          onActiveTabChange={handleActiveTabChange}
           onDelete={handleDomainDelete}
           onNavigate={handleNavigate}
           onRefresh={refreshAll}
@@ -977,6 +997,7 @@ const DomainTreeView = ({
     isDomainLoading,
     selectedDomain,
     activeTab,
+    handleActiveTabChange,
     handleFollowingToggle,
     isFollowing,
     isFollowingLoading,

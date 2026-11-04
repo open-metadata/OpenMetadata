@@ -326,15 +326,22 @@ describe('Domain tree pagination with the real URL paging hooks', () => {
     'starts the new domain on page one when it has %i products',
     async (total) => {
       secondDomainTotal = total;
-      renderTree();
+      renderTree('/domain', '?pageSize=25');
       await openProducts();
 
       expect(await screen.findByText('Domain1 product')).toBeInTheDocument();
-      expect(requests).toContainEqual({
-        domain: 'Domain1',
-        from: 50,
-        size: 25,
-      });
+
+      for (const from of [25, 50]) {
+        await waitFor(() => expect(screen.getByTestId('next')).toBeEnabled());
+        fireEvent.click(screen.getByTestId('next'));
+        await waitFor(() =>
+          expect(requests).toContainEqual({ domain: 'Domain1', from, size: 25 })
+        );
+      }
+
+      expect(
+        new URLSearchParams(window.location.search).get('currentPage')
+      ).toBe('3');
 
       act(() => mockSelectDomain(new Set(['Domain2'])));
       await waitFor(() =>
@@ -366,6 +373,23 @@ describe('Domain tree pagination with the real URL paging hooks', () => {
       ).toBe(JSON.stringify(getQueryFilterForDataProducts('Domain2')));
     }
   );
+
+  it('starts data products on page one when another tab left a page in the URL', async () => {
+    renderTree('/domain', '?currentPage=3&pageSize=25&keep=two#probe');
+    await screen.findByTestId('selected-domain');
+
+    await openProducts();
+
+    expect(await screen.findByText('Domain1 product')).toBeInTheDocument();
+    expect(requests).toEqual([{ domain: 'Domain1', from: 0, size: 25 }]);
+
+    const params = new URLSearchParams(window.location.search);
+
+    expect(params.has('currentPage')).toBe(false);
+    expect(params.get('pageSize')).toBe('25');
+    expect(params.get('keep')).toBe('two');
+    expect(window.location.hash).toBe('#probe');
+  });
 
   it.each(['/domain', '/data-marketplace/domains'])(
     'preserves query settings and history on %s',
