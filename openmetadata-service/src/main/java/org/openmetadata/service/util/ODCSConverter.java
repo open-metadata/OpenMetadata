@@ -16,6 +16,7 @@ package org.openmetadata.service.util;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.datacontract.odcs.ODCSImportIssues;
+import org.openmetadata.service.datacontract.odcs.ODCSPreservedFields;
 import org.openmetadata.service.datacontract.odcs.ODCSShapeNormalizer;
 import org.openmetadata.service.datacontract.odcs.ODCSSlaMapper;
 import org.slf4j.Logger;
@@ -65,7 +67,8 @@ import org.slf4j.LoggerFactory;
  */
 public class ODCSConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ODCSConverter.class);
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER =
+      new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
   private static final String OWNER_ROLE = "owner";
 
   private ODCSConverter() {}
@@ -89,6 +92,18 @@ public class ODCSConverter {
    * @return ODCSDataContract in ODCS v3.1.0 format
    */
   public static ODCSDataContract toODCS(
+      DataContract contract, List<ODCSQualityRule> additionalQualityRules) {
+    return MAPPER.convertValue(
+        toODCSDocument(contract, additionalQualityRules), ODCSDataContract.class);
+  }
+
+  public static JsonNode toODCSDocument(
+      DataContract contract, List<ODCSQualityRule> additionalQualityRules) {
+    JsonNode nativeDocument = MAPPER.valueToTree(toNativeODCS(contract, additionalQualityRules));
+    return ODCSPreservedFields.restore(contract.getOdcsPreservedFields(), nativeDocument);
+  }
+
+  private static ODCSDataContract toNativeODCS(
       DataContract contract, List<ODCSQualityRule> additionalQualityRules) {
     ODCSDataContract odcs = new ODCSDataContract();
 
@@ -163,7 +178,8 @@ public class ODCSConverter {
       distributeQualityRules(odcs, qualityRules);
     }
 
-    if (!nullOrEmpty(contract.getOdcsElementExtensions())) {
+    if (contract.getOdcsPreservedFields() == null
+        && !nullOrEmpty(contract.getOdcsElementExtensions())) {
       distributeElementExtensions(odcs, contract.getOdcsElementExtensions());
     }
 
@@ -208,6 +224,15 @@ public class ODCSConverter {
       EntityReference entityRef,
       String objectName,
       ODCSImportIssues issues) {
+    return fromODCS(odcs, entityRef, objectName, issues, MAPPER.valueToTree(odcs));
+  }
+
+  public static DataContract fromODCS(
+      ODCSDataContract odcs,
+      EntityReference entityRef,
+      String objectName,
+      ODCSImportIssues issues,
+      JsonNode original) {
     validateRequiredODCSFields(odcs);
 
     DataContract contract = new DataContract();
@@ -257,6 +282,11 @@ public class ODCSConverter {
       contract.setOdcsQualityRules(allQualityRules);
     }
 
+    contract.setOdcsPreservedFields(
+        ODCSPreservedFields.capture(
+            original,
+            MAPPER.valueToTree(toNativeODCS(contract, List.of())),
+            importedSchemaObjectName(odcs, entityRef, objectName).orElse(null)));
     List<ODCSElementExtension> elementExtensions = collectElementExtensions(odcs);
     if (!elementExtensions.isEmpty()) {
       contract.setOdcsElementExtensions(elementExtensions);
@@ -1014,6 +1044,9 @@ public class ODCSConverter {
             ? imported.getOdcsElementExtensions()
             : existing.getOdcsElementExtensions());
 
+    merged.setOdcsPreservedFields(
+        ODCSPreservedFields.merge(
+            existing.getOdcsPreservedFields(), imported.getOdcsPreservedFields()));
     merged.setVersion(existing.getVersion());
     merged.setCreatedAt(existing.getCreatedAt());
     merged.setCreatedBy(existing.getCreatedBy());
@@ -1065,6 +1098,10 @@ public class ODCSConverter {
     // Leaving null would read as "not specified" and be carried forward on the next write.
     replaced.setOdcsQualityRules(listOrEmpty(imported.getOdcsQualityRules()));
     replaced.setOdcsElementExtensions(listOrEmpty(imported.getOdcsElementExtensions()));
+    replaced.setOdcsPreservedFields(
+        imported.getOdcsPreservedFields() == null
+            ? MAPPER.createObjectNode()
+            : imported.getOdcsPreservedFields());
     replaced.setQualityExpectations(listOrEmpty(imported.getQualityExpectations()));
 
     return replaced;

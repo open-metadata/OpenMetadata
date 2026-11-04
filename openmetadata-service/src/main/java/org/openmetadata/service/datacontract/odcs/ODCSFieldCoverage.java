@@ -21,10 +21,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Reports the fields of an ODCS document that OpenMetadata does not import, or keeps only so the
- * document can be exported again. This is the catalogue of how each ODCS field is treated: a field
- * is mapped onto the contract, stored for export, or not imported, and any key ODCS does not
- * define is reported as unknown.
+ * Describes the native ODCS mappings and reports metadata retained only for export. Unknown fields
+ * are preserved without extending this catalogue; known mappings still decide what OpenMetadata
+ * applies to the contract.
  */
 public final class ODCSFieldCoverage {
   private static final String SCHEMA = "schema";
@@ -45,7 +44,7 @@ public final class ODCSFieldCoverage {
     NESTED
   }
 
-  private enum Section {
+  enum Section {
     ROOT,
     DESCRIPTION,
     SCHEMA_OBJECT,
@@ -86,6 +85,16 @@ public final class ODCSFieldCoverage {
   private static final Map<Section, Map<String, FieldRule>> CATALOGUE = catalogue();
 
   private ODCSFieldCoverage() {}
+
+  static boolean isMapped(Section section, String key) {
+    FieldRule rule = CATALOGUE.get(section).get(key);
+    return rule != null && rule.treatment() == Treatment.MAPPED;
+  }
+
+  static Section nestedSection(Section section, String key) {
+    FieldRule rule = CATALOGUE.get(section).get(key);
+    return rule == null ? null : rule.nested();
+  }
 
   /**
    * @param importedObject name of the schema object whose properties become the contract's columns;
@@ -164,13 +173,28 @@ public final class ODCSFieldCoverage {
             key,
             location,
             String.format("`%s` is kept for ODCS export but not shown in OpenMetadata.", key));
-        case NOT_IMPORTED -> issues.warning(
-            ODCSPaths.category(location),
-            key,
-            location,
-            String.format("`%s` is not imported. %s", key, rule.reason()));
+        case NOT_IMPORTED -> reportPreserved(key, location, rule.reason(), issues);
         case NESTED -> visitNested(value, rule.nested(), location, issues);
       }
+    }
+  }
+
+  private static void reportPreserved(
+      String key, String location, String reason, ODCSImportIssues issues) {
+    if (Set.of("version", "contractCreatedTs").contains(key) && !location.contains(".")) {
+      issues.warning(
+          ODCSPaths.category(location),
+          key,
+          location,
+          String.format("`%s` is not imported. %s", key, reason));
+    } else {
+      issues.info(
+          ODCSPaths.category(location),
+          key,
+          location,
+          String.format(
+              "`%s` is kept for ODCS export but not shown or applied in OpenMetadata. %s",
+              key, reason));
     }
   }
 
@@ -199,9 +223,17 @@ public final class ODCSFieldCoverage {
               "`%s` is not an ODCS field, so its rules are not imported; ODCS quality rules go under `quality`.",
               key);
     } else {
-      message = String.format("`%s` is not an ODCS field, so it is not imported.", key);
+      message =
+          String.format(
+              "`%s` is not mapped by this OpenMetadata version; it is kept for ODCS export but not shown or applied.",
+              key);
     }
-    issues.warning(ODCSPaths.category(location), key, location, message);
+    if (MISSPELLED_QUALITY_KEYS.contains(key)) {
+      issues.warning(
+          ODCSPaths.category(location), key, location, message + " The value is kept for export.");
+    } else {
+      issues.info(ODCSPaths.category(location), key, location, message);
+    }
   }
 
   /** Nothing is lost by leaving out an empty value or a default like {@code false} or -1. */

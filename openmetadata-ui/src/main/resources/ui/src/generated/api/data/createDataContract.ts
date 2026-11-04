@@ -49,6 +49,12 @@ export interface CreateDataContract {
      */
     odcsElementExtensions?: OdcsElementExtension[];
     /**
+     * ODCS metadata without a native OpenMetadata mapping, retained as a generic JSON document
+     * for export. Native fields remain authoritative. Omission on PUT preserves it; an empty
+     * object clears it.
+     */
+    odcsPreservedFields?: { [key: string]: any };
+    /**
      * ODCS quality rules for round-trip compatibility with ODCS export.
      */
     odcsQualityRules?: OdcsQualityRule[];

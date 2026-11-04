@@ -109,7 +109,9 @@ public final class ODCSImportAnalyzer {
               .orElse(null);
       ODCSFieldCoverage.report(original, importedObject, issues);
       contract =
-          Optional.of(ODCSConverter.fromODCS(odcs, request.entity(), request.objectName(), issues));
+          Optional.of(
+              ODCSConverter.fromODCS(
+                  odcs, request.entity(), request.objectName(), issues, original));
     } catch (IllegalArgumentException e) {
       issues.blocking(ODCSImportIssueCategory.SCHEMA, null, "schema", e.getMessage());
     }

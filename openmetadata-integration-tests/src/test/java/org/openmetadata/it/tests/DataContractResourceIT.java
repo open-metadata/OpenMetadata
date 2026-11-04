@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
 import java.net.URI;
@@ -3216,6 +3218,99 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(updated);
     assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
     assertTrue(updated.getDescription().contains("Updated via ODCS"));
+  }
+
+  @Test
+  void testGenericODCSMetadataSurvivesImportUpdateAndBothYamlExports(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: '1.0.0'
+        status: active
+        customProperties:
+          - property: enabled
+            value: false
+        futureSection:
+          nested: [1, null, false, {unknown: preserved}]
+          preciseAmount: 1234567890.1234567890123456789
+        schema:
+          - name: %s
+            logicalType: object
+            properties:
+              - name: email
+                logicalType: string
+                physicalType: VARCHAR
+                primaryKeyPosition: 2
+                futureColumnAttribute: {settings: [true, 1.25]}
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("generic_odcs"), table.getName());
+    DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yaml, table.getId(), "table", false);
+    assertNotNull(imported.getOdcsPreservedFields());
+    DataContract edited = editDescriptionAsNonODCSClient(table, imported);
+    assertNotNull(edited.getOdcsPreservedFields());
+    assertTrue(edited.getVersion() > imported.getVersion());
+
+    YAMLMapper mapper = new YAMLMapper();
+    JsonNode original = mapper.readTree(yaml);
+    String yamlById = SdkClients.adminClient().dataContracts().exportToODCSYaml(edited.getId());
+    JsonNode byId = mapper.readTree(yamlById);
+    JsonNode precise =
+        new YAMLMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+            .readTree(yamlById);
+    assertEquals(
+        "1234567890.1234567890123456789",
+        precise.at("/futureSection/preciseAmount").decimalValue().toPlainString());
+    JsonNode byName =
+        mapper.readTree(
+            SdkClients.adminClient()
+                .dataContracts()
+                .exportToODCSYamlByFqn(edited.getFullyQualifiedName()));
+    assertEquals(original.get("futureSection"), byId.get("futureSection"));
+    assertEquals(original.get("customProperties"), byId.get("customProperties"));
+    assertEquals(
+        original.at("/schema/0/properties/0/futureColumnAttribute"),
+        byId.at("/schema/0/properties/0/futureColumnAttribute"));
+    assertEquals("Description edited outside of ODCS", byId.at("/description/purpose").asText());
+    assertEquals(byId, byName);
+    ODCSDataContract jsonById =
+        SdkClients.adminClient().dataContracts().exportToODCS(edited.getId());
+    ODCSDataContract jsonByName =
+        SdkClients.adminClient().dataContracts().exportToODCSByFqn(edited.getFullyQualifiedName());
+    assertEquals(
+        original.get("futureSection"),
+        mapper.valueToTree(jsonById.getAdditionalProperties().get("futureSection")));
+    assertEquals(jsonById.getAdditionalProperties(), jsonByName.getAdditionalProperties());
+    assertEquals(
+        original.at("/schema/0/properties/0/futureColumnAttribute"),
+        mapper.valueToTree(
+            jsonById
+                .getSchema()
+                .getFirst()
+                .getProperties()
+                .getFirst()
+                .getAdditionalProperties()
+                .get("futureColumnAttribute")));
+
+    CreateDataContract clear =
+        new CreateDataContract()
+            .withName(edited.getName())
+            .withEntity(table.getEntityReference())
+            .withSchema(edited.getSchema())
+            .withOdcsPreservedFields(mapper.createObjectNode());
+    DataContract cleared = SdkClients.adminClient().dataContracts().createOrUpdate(clear);
+    JsonNode exported =
+        mapper.readTree(SdkClients.adminClient().dataContracts().exportToODCSYaml(cleared.getId()));
+    assertFalse(exported.has("futureSection"));
+    assertFalse(exported.has("customProperties"));
   }
 
   @Test

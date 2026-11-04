@@ -82,7 +82,7 @@ class ODCSFieldCoverageTest {
   void fieldsWithoutAnEquivalentAreReportedOncePerKey() throws JsonProcessingException {
     ODCSImportIssue businessName = issueFor("businessName");
 
-    assertEquals(ODCSImportIssueSeverity.WARNING, businessName.getSeverity());
+    assertEquals(ODCSImportIssueSeverity.INFO, businessName.getSeverity());
     assertEquals(ODCSImportIssueCategory.SCHEMA, businessName.getCategory());
     assertEquals(2, businessName.getOccurrences());
     assertEquals("schema[0].properties[0].businessName", businessName.getPath());
