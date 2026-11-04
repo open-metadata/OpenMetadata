@@ -221,9 +221,11 @@ public class SystemResourceIT {
                             .withFieldPath("description")
                             .withCurrentDescription(table.getDescription())
                             .withNewDescription("proposed")));
-    Settings before = EntityRulesUtil.getEntityRulesSettings(client);
+    // The generated with* setters mutate in place, so the original is kept as its own JSON copy.
+    String original = JsonUtils.pojoToJson(EntityRulesUtil.getEntityRulesSettings(client));
+    Settings withRule = JsonUtils.readValue(original, Settings.class);
     EntityRulesSettings rules =
-        new ObjectMapper().convertValue(before.getConfigValue(), EntityRulesSettings.class);
+        new ObjectMapper().convertValue(withRule.getConfigValue(), EntityRulesSettings.class);
     List<SemanticsRule> withTaskRule = new ArrayList<>(rules.getEntitySemantics());
     withTaskRule.add(
         new SemanticsRule()
@@ -234,7 +236,7 @@ public class SystemResourceIT {
             .withEnabled(true));
     try {
       EntityRulesUtil.updateSettings(
-          client, before.withConfigValue(rules.withEntitySemantics(withTaskRule)));
+          client, withRule.withConfigValue(rules.withEntitySemantics(withTaskRule)));
 
       client
           .tasks()
@@ -246,13 +248,12 @@ public class SystemResourceIT {
 
       assertEquals("after", client.tasks().get(task.getId().toString()).getDescription());
     } finally {
-      EntityRulesUtil.updateSettings(
-          client,
-          EntityRulesUtil.getEntityRulesSettings(client)
-              .withConfigValue(
-                  new ObjectMapper()
-                      .convertValue(before.getConfigValue(), EntityRulesSettings.class)));
+      EntityRulesUtil.updateSettings(client, JsonUtils.readValue(original, Settings.class));
     }
+    assertFalse(
+        JsonUtils.pojoToJson(EntityRulesUtil.getEntityRulesSettings(client))
+            .contains("tasksNeedADomain"),
+        "The temporary task rule must be gone after the test");
   }
 
   @Test
