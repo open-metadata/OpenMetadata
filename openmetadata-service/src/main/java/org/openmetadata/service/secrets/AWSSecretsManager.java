@@ -17,6 +17,7 @@ import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MA
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Objects;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -32,8 +33,8 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 @Slf4j
 public class AWSSecretsManager extends AWSBasedSecretsManager {
   private static final int MAX_SECRET_NAME_LENGTH = 512;
-  private static final Pattern SECRET_ARN_PREFIX =
-      Pattern.compile("^arn:[^:]+:secretsmanager:[^:]*:[^:]*:secret:");
+  private static final Pattern SECRET_ARN =
+      Pattern.compile("^arn:[^:]+:secretsmanager:[^:]*:[^:]*:secret:(.+?)(-[A-Za-z0-9]{6})?$");
   private static AWSSecretsManager instance = null;
   private SecretsManagerClient secretsClient;
 
@@ -105,10 +106,15 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
     return MAX_SECRET_NAME_LENGTH;
   }
 
-  /** A secret can also be read by its ARN, which ends with the secret's name. */
+  /**
+   * A secret can also be read by its ARN: the secret's name, followed in a full ARN by a hyphen and
+   * six random characters. A partial ARN leaves them out, so a name that itself ends in a hyphen and
+   * six letters or digits reads here as a full ARN; AWS advises against such names for that reason.
+   */
   @Override
   protected String canonicalSecretName(String secretName) {
-    return SECRET_ARN_PREFIX.matcher(secretName).replaceFirst("");
+    Matcher arn = SECRET_ARN.matcher(secretName);
+    return arn.matches() ? arn.group(1) : secretName;
   }
 
   public static AWSSecretsManager getInstance(SecretsConfig secretsConfig) {

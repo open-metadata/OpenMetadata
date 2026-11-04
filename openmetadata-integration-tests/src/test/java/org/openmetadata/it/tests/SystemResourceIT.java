@@ -65,7 +65,10 @@ import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -77,10 +80,12 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDefinition;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -93,21 +98,27 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.api.security.ResponseType;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -127,15 +138,19 @@ import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -163,6 +178,83 @@ import org.openmetadata.service.util.EntityUtil;
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class SystemResourceIT {
+
+  /** A task takes its target's domains in prepare; a PATCH must not hide them from the rules. */
+  @Test
+  void test_taskPatchKeepsItsTargetsInheritedDomainsForTheRules(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("task_rule_domain"))
+                    .withDescription("task rule domain")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name(ns.prefix("task_rule_db"))
+            .in(service.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("task_rule_schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Task task =
+        client
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("task_rule_task"))
+                    .withDescription("before")
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withCurrentDescription(table.getDescription())
+                            .withNewDescription("proposed")));
+    // The generated with* setters mutate in place, so the original is kept as its own JSON copy.
+    String original = JsonUtils.pojoToJson(EntityRulesUtil.getEntityRulesSettings(client));
+    Settings withRule = JsonUtils.readValue(original, Settings.class);
+    EntityRulesSettings rules =
+        new ObjectMapper().convertValue(withRule.getConfigValue(), EntityRulesSettings.class);
+    List<SemanticsRule> withTaskRule = new ArrayList<>(rules.getEntitySemantics());
+    withTaskRule.add(
+        new SemanticsRule()
+            .withName(ns.prefix("tasksNeedADomain"))
+            .withDescription("Tasks must belong to a domain")
+            .withRule("{\"!!\":[{\"var\":\"domains\"}]}")
+            .withEntityType(Entity.TASK)
+            .withEnabled(true));
+    try {
+      EntityRulesUtil.updateSettings(
+          client, withRule.withConfigValue(rules.withEntitySemantics(withTaskRule)));
+
+      client
+          .tasks()
+          .patch(
+              task.getId().toString(),
+              new ObjectMapper()
+                  .readTree(
+                      "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"after\"}]"));
+
+      assertEquals("after", client.tasks().get(task.getId().toString()).getDescription());
+    } finally {
+      EntityRulesUtil.updateSettings(client, JsonUtils.readValue(original, Settings.class));
+    }
+    assertFalse(
+        JsonUtils.pojoToJson(EntityRulesUtil.getEntityRulesSettings(client))
+            .contains("tasksNeedADomain"),
+        "The temporary task rule must be gone after the test");
+  }
 
   @Test
   void testDisabledGlossaryPropagationStillValidatesConflicts(TestNamespace ns) throws Exception {
