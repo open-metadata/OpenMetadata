@@ -200,7 +200,10 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
             {/* eslint-disable-next-line i18next/no-literal-string -- decorative middot separator */}
             {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
             {t('message.ran-for-duration', {
-              duration: convertMillisecondsToHumanReadableFormat(run.durationMs, 2),
+              duration: convertMillisecondsToHumanReadableFormat(
+                run.durationMs,
+                2
+              ),
             })}
           </div>
         </div>
