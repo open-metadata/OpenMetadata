@@ -5283,6 +5283,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     preparePatched(original, patch, user, null);
   }
 
+  /**
+   * The patched entity as the rules see it. Inheritance ran when original was loaded, not on the
+   * patched copy, so a patch that removes the own owners or domains must still show the inherited
+   * ones. It runs on a copy because some types' setInheritedFields also reload stored state, such
+   * as an alert's template or a user's team domains, which would undo the patch.
+   */
+  private T withInheritedOwnersAndDomains(final T updated) {
+    final T ruleFacts = JsonUtils.deepCopy(updated, entityClass);
+    setInheritedFields(ruleFacts, new Fields(allowedFields, "owners,domains", true));
+    return ruleFacts;
+  }
+
+  /** An entity the patch leaves with no domain of its own still belongs to its inherited ones. */
+  private void keepInheritedDomainsWhenNoneOwn(final T updated, final T ruleFacts) {
+    if (EntityUpdater.getEntityReferences(updated.getDomains()).isEmpty()) {
+      updated.setDomains(EntityUpdater.inheritedOnly(ruleFacts.getDomains()));
+    }
+  }
+
   private T preparePatched(T original, JsonPatch patch, String user, String impersonatedBy) {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
@@ -5304,13 +5323,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
     }
+    final T ruleFacts;
     try (var ignored = phase("patchInheritance")) {
-      // Inheritance ran when original was loaded, not on the patched copy: a patch that removes
-      // the direct owners or domains must leave the inherited ones visible to the rules.
-      setInheritedFields(updated, new Fields(allowedFields, "owners,domains", true));
+      ruleFacts = withInheritedOwnersAndDomains(updated);
+      keepInheritedDomainsWhenNoneOwn(updated, ruleFacts);
     }
     try (var ignored = phase("patchRuleEvaluation")) {
-      RuleEngine.getInstance().evaluateUpdate(original, updated);
+      RuleEngine.getInstance().evaluateUpdate(original, ruleFacts);
     }
 
     // Validate and populate owners
