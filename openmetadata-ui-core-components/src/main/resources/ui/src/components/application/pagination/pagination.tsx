@@ -9,6 +9,10 @@ import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import {
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_PAGE_SIZE_OPTIONS,
+} from './pagination.constants';
+import {
   ArrowLeft,
   ArrowRight,
   ChevronLeft,
@@ -407,8 +411,8 @@ interface PaginationCardWithControlsProps extends PaginationProps {
 export const PaginationCardWithControls = ({
   page = 1,
   total = 10,
-  pageSize = 10,
-  pageSizeOptions = [10, 25, 50],
+  pageSize = DEFAULT_PAGE_SIZE,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   className,
   minimal = false,
   onPageChange,
