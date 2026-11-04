@@ -111,6 +111,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { Task, TaskType } from '../../../../../generated/entity/tasks/task';
 import { TaskStatusBucket } from '../taskList.utils';
 import InboxTaskListToolbar from './InboxTaskListToolbar';
@@ -132,6 +133,8 @@ const props = {
   onGroupingChange: jest.fn(),
   typeFilter: [],
   onTypeFilterChange: jest.fn(),
+  sortOrder: SORT_ORDER.DESC,
+  onSortOrderChange: jest.fn(),
   tasks: TASKS,
 };
 
@@ -231,6 +234,19 @@ describe('InboxTaskListToolbar', () => {
     expect(screen.getByTestId('inbox-tasks-group-by-type')).toHaveTextContent(
       'label.type'
     );
+  });
+
+  it('names the sort order on the trigger and reports a change', () => {
+    render(<InboxTaskListToolbar {...props} />);
+
+    expect(screen.getByTestId('inbox-tasks-sort')).toHaveAttribute(
+      'data-trigger',
+      'label.sort-colon-value:label.newest-first'
+    );
+
+    fireEvent.click(screen.getByTestId(`inbox-tasks-sort-${SORT_ORDER.ASC}`));
+
+    expect(props.onSortOrderChange).toHaveBeenCalledWith(SORT_ORDER.ASC);
   });
 
   // Switching tab can unload every task of a chosen type; it must stay

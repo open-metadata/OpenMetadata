@@ -12,6 +12,7 @@
  */
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -19,37 +20,44 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Ontology } from '../../../../generated/entity/data/ontology';
+import { FindingSeverity } from '../../../../generated/api/data/ontologyReleaseValidation';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
-import { getOntologyReleaseStructure } from '../../../../rest/ontologyAPI';
+import { ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyPublication';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { getOntologyReleaseValidation } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
 const OntologyReleaseValidation = ({
-  ontology,
   release,
 }: {
-  ontology: Ontology;
   release?: OntologyRelease;
 }) => {
   const { t } = useTranslation();
-  const structure = useQuery({
+  const userId = useApplicationStore((store) => store.currentUser?.id);
+  const validation = useQuery({
     queryKey: [
-      'ontology-release-structure',
+      ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY,
       release?.id,
       release?.contentDigest,
+      release?.baseReleaseId,
+      userId,
     ],
     enabled: Boolean(release),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!release) {
         throw new Error('Missing ontology release');
       }
-      const report = await getOntologyReleaseStructure(release.id);
-      if (
-        report.releaseId !== release.id ||
-        report.contentDigest !== release.contentDigest
-      ) {
+      const report = await getOntologyReleaseValidation(release.id, signal);
+      const matchesRelease = [
+        report.releaseId === release.id,
+        report.contentDigest === release.contentDigest,
+        report.baseReleaseId === release.baseReleaseId,
+        report.structure.releaseId === release.id,
+        report.structure.contentDigest === release.contentDigest,
+      ].every(Boolean);
+      if (!matchesRelease) {
         throw new Error(
-          'Ontology structural report does not match the captured release'
+          'Ontology validation does not match the captured release'
         );
       }
 
@@ -58,89 +66,233 @@ const OntologyReleaseValidation = ({
     retry: false,
     gcTime: 0,
   });
-  const reviewers = (release?.reviewers ?? ontology.reviewers ?? []).filter(
-    (reviewer) => !reviewer.deleted
+  const report =
+    validation.isSuccess && !validation.isFetching
+      ? validation.data
+      : undefined;
+  const truncated = (shown: number, total: number) => (
+    <Typography color="secondary" size="text-xs">
+      {t('message.ontology-findings-truncated', { shown, total })}
+    </Typography>
   );
 
-  const structuralStatus = () => {
-    if (!structure.isSuccess) {
-      return t('label.not-checked');
+  const structureStatus = () => {
+    if (!report) {
+      return 'label.not-checked';
     }
 
-    return t(structure.data.valid ? 'label.passed' : 'label.failed');
+    return report.structure.valid ? 'label.passed' : 'label.failed';
+  };
+  const shaclStatus = () => {
+    if (report?.shacl.violationCount) {
+      return 'label.failed';
+    }
+
+    return report?.shacl.warningCount ? 'label.warning' : 'label.passed';
+  };
+  const renderStructure = () => (
+    <>
+      <Typography size="text-sm">
+        {t('label.structural-validation')}: {t(structureStatus())}
+      </Typography>
+      {report && (
+        <>
+          <Typography size="text-sm">
+            {t('message.ontology-structure-violations', {
+              count: report.structure.violationCount,
+            })}
+          </Typography>
+          {report.structure.violations.length > 0 && (
+            <ul className="tw:m-0 tw:flex tw:flex-col tw:gap-2 tw:pl-4">
+              {report.structure.violations.map((issue) => (
+                <li key={JSON.stringify(issue)}>
+                  <Typography
+                    className="tw:whitespace-pre-wrap tw:break-words"
+                    size="text-sm">
+                    {issue.violation.message}
+                  </Typography>
+                  <Typography color="secondary" size="text-xs">
+                    {issue.violation.path}
+                  </Typography>
+                </li>
+              ))}
+            </ul>
+          )}
+          {report.structure.violationCount >
+            report.structure.violations.length &&
+            truncated(
+              report.structure.violations.length,
+              report.structure.violationCount
+            )}
+        </>
+      )}
+    </>
+  );
+  const renderShacl = () => {
+    if (!report) {
+      return null;
+    }
+
+    return (
+      <>
+        <Typography as="h3" size="text-sm" weight="semibold">
+          {t('label.shacl-validation')}: {t(shaclStatus())}
+        </Typography>
+        <Typography data-testid="ontology-shacl-counts" size="text-sm">
+          {report.shacl.violationCount} {t('label.violation-plural')} ·{' '}
+          {report.shacl.warningCount} {t('label.warning-plural')}
+        </Typography>
+        {report.shacl.findings.length > 0 && (
+          <ul className="tw:m-0 tw:flex tw:flex-col tw:gap-2 tw:pl-4">
+            {report.shacl.findings.map((finding) => (
+              <li key={JSON.stringify(finding)}>
+                <Badge
+                  color={
+                    finding.severity === FindingSeverity.Violation
+                      ? 'error'
+                      : 'warning'
+                  }>
+                  {t(
+                    finding.severity === FindingSeverity.Violation
+                      ? 'label.violation'
+                      : 'label.warning'
+                  )}
+                </Badge>
+                <Typography
+                  className="tw:whitespace-pre-wrap tw:break-words"
+                  size="text-sm">
+                  {finding.message}
+                </Typography>
+                <Typography
+                  className="tw:break-words"
+                  color="secondary"
+                  size="text-xs">
+                  {finding.focusIri} · {finding.shapeIri}
+                </Typography>
+              </li>
+            ))}
+          </ul>
+        )}
+        {report.shacl.truncated &&
+          truncated(
+            report.shacl.findings.length,
+            report.shacl.violationCount + report.shacl.warningCount
+          )}
+      </>
+    );
+  };
+  const renderImpacts = () => {
+    if (!report) {
+      return null;
+    }
+
+    return (
+      <>
+        <Typography as="h3" size="text-sm" weight="semibold">
+          {t('label.deprecation-impact')}
+        </Typography>
+        <Typography color="secondary" size="text-xs">
+          {t('message.ontology-current-binding-impact')}
+        </Typography>
+        {report.deprecationImpacts.length === 0 && (
+          <Typography size="text-sm">
+            {t('message.ontology-no-deprecation-impact')}
+          </Typography>
+        )}
+        {report.deprecationImpacts.map((impact) => (
+          <Box direction="col" gap={2} key={impact.definition.id}>
+            <Typography size="text-sm" weight="semibold">
+              {getEntityName(impact.definition)}
+            </Typography>
+            <Typography
+              data-testid={'ontology-impact-count-' + impact.definition.id}
+              size="text-sm">
+              {impact.boundAssetCount} {t('label.bound-assets')}
+            </Typography>
+            <ul className="tw:m-0 tw:flex tw:flex-col tw:gap-1 tw:pl-4">
+              {impact.boundAssets.map((asset) => (
+                <li key={asset.id}>
+                  <Typography size="text-sm">{getEntityName(asset)}</Typography>
+                </li>
+              ))}
+            </ul>
+            {impact.boundAssetCount > impact.boundAssets.length &&
+              truncated(impact.boundAssets.length, impact.boundAssetCount)}
+            {[
+              {
+                label: 'label.subclass-plural',
+                entries: impact.subclasses,
+              },
+              {
+                label: 'label.domain-properties',
+                entries: impact.domainProperties,
+              },
+              {
+                label: 'label.range-properties',
+                entries: impact.rangeProperties,
+              },
+            ].map(({ label, entries }) => (
+              <Box direction="col" gap={1} key={label}>
+                <Typography color="secondary" size="text-xs">
+                  {t(label)}
+                </Typography>
+                {entries.length === 0 ? (
+                  <Typography size="text-sm">{t('label.none')}</Typography>
+                ) : (
+                  <ul className="tw:m-0 tw:flex tw:flex-col tw:gap-1 tw:pl-4">
+                    {entries.map((entry) => (
+                      <li key={entry.id}>
+                        <Typography size="text-sm">
+                          {getEntityName(entry)}
+                        </Typography>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Box>
+            ))}
+          </Box>
+        ))}
+      </>
+    );
   };
 
   return (
-    <Box direction="col" gap={4}>
-      <Card size="sm">
-        <Card.Header title={t('label.validation')} />
-        <Card.Content>
-          <Box direction="col" gap={3}>
-            <Typography color="secondary" size="text-xs">
-              {release
-                ? t('message.ontology-captured-validation', {
-                    version: release.semanticVersion ?? release.releaseRevision,
-                  })
-                : t('message.ontology-structure-after-capture')}
-            </Typography>
-            <Typography size="text-sm">
-              {t('label.structural-validation')}: {structuralStatus()}
-            </Typography>
-            {structure.isSuccess && !structure.data.valid && (
-              <Typography size="text-sm">
-                {t('message.ontology-structure-violations', {
-                  count: structure.data.violationCount,
-                })}
-              </Typography>
-            )}
-            {structure.isError && (
-              <Alert variant="error">
-                {t('message.ontology-review-unavailable')}
-                <Button
-                  color="secondary"
-                  size="sm"
-                  onPress={() => void structure.refetch()}>
-                  {t('label.retry')}
-                </Button>
-              </Alert>
-            )}
-            <Typography size="text-sm">
-              {t('label.logical-consistency')}: {t('label.not-checked')}
-            </Typography>
-          </Box>
-        </Card.Content>
-      </Card>
-      <Card size="sm">
-        <Card.Header title={t('label.reviewer-plural')} />
-        <Card.Content>
-          <Box direction="col" gap={2}>
-            <Typography color="secondary" size="text-xs">
-              {t('message.ontology-configured-reviewers')}
-            </Typography>
-            {reviewers.length ? (
-              reviewers.map((reviewer) => (
-                <Typography key={reviewer.id} size="text-sm">
-                  {getEntityName(reviewer)}
-                </Typography>
-              ))
-            ) : (
-              <Typography size="text-sm">
-                {t('message.ontology-no-reviewers')}
-              </Typography>
-            )}
-            {release && (
-              <Typography size="text-sm">
-                {t(
-                  `label.${release.entityStatus
-                    .toLowerCase()
-                    .replaceAll(' ', '-')}`
-                )}
-              </Typography>
-            )}
-          </Box>
-        </Card.Content>
-      </Card>
-    </Box>
+    <Card data-testid="ontology-release-validation" size="sm">
+      <Card.Header title={t('label.validation')} />
+      <Card.Content>
+        <Box direction="col" gap={3}>
+          <Typography color="secondary" size="text-xs">
+            {release
+              ? t('message.ontology-captured-validation', {
+                  version: release.semanticVersion ?? release.releaseRevision,
+                })
+              : t('message.ontology-structure-after-capture')}
+          </Typography>
+          {release && validation.isFetching && (
+            <Typography role="status">{t('label.loading')}</Typography>
+          )}
+          {validation.isError && (
+            <Alert variant="error">
+              {t('message.ontology-validation-unavailable')}
+              <Button
+                color="secondary"
+                size="sm"
+                onPress={() => void validation.refetch()}>
+                {t('label.retry')}
+              </Button>
+            </Alert>
+          )}
+          {renderStructure()}
+          {renderShacl()}
+          {renderImpacts()}
+
+          <Typography size="text-sm">
+            {t('label.logical-consistency')}: {t('label.not-checked')}
+          </Typography>
+        </Box>
+      </Card.Content>
+    </Card>
   );
 };
 

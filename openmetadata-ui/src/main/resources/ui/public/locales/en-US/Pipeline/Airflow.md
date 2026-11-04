@@ -33,7 +33,7 @@ $$section
 
 Select your underlying database connection. We support the <a href="https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html" target="_blank">official</a> backends from Airflow.
 
-Note that the **Backend Connection** is only used to extract metadata from a DAG running directly in your instance, for example to get the metadata out of <a href="https://docs.open-metadata.org/connectors/pipeline/airflow/gcp" target="_blank">GCS Composer</a>.
+Note that the **Backend Connection** is only used to extract metadata from a DAG running directly in your instance, for example to get the metadata out of <a href="https://docs.open-metadata.org/connectors/pipeline/airflow/gcp-composer" target="_blank">GCS Composer</a>.
 
 $$
 

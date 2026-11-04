@@ -26,6 +26,7 @@ import { CustomizeEditorProps } from './customizeEditor.types';
 import PersonaCustomizeView from './PersonaCustomizeView';
 
 const mockOnSave = jest.fn();
+let mockIsAiMode = false;
 const mockOnReset = jest.fn();
 
 const mockPersona: Persona = {
@@ -42,6 +43,10 @@ const mockDocument: Document = {
   entityType: EntityType.PAGE,
   data: { pages: [], navigation: null },
 } as Document;
+
+jest.mock('../../../../../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
+}));
 
 jest.mock('../../../../../../../rest/PersonaAPI', () => ({
   getPersonaByName: jest.fn(),
@@ -132,6 +137,7 @@ const renderView = (category: string) => {
 describe('PersonaCustomizeView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsAiMode = false;
     useCustomizeStore.setState({
       currentPage: null,
       currentPageType: null,
@@ -226,6 +232,19 @@ describe('PersonaCustomizeView', () => {
       expect(
         screen.getByTestId('persona-customize-footer')
       ).toBeInTheDocument();
+    }
+  );
+
+  it.each([
+    [false, 'navigation-editor'],
+    [true, 'ai-sidebar-editor'],
+  ])(
+    'opens the navigation category with the mode editor (AI mode: %s)',
+    async (isAiMode, editorTestId) => {
+      mockIsAiMode = isAiMode;
+      renderView('navigation');
+
+      expect(await screen.findByTestId(editorTestId)).toBeInTheDocument();
     }
   );
 

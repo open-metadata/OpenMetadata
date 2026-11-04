@@ -14,12 +14,25 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   Format,
+  Industry,
+  Layer,
   OntologyPackManifest,
 } from '../../generated/api/data/ontologyPackManifest';
-import { installOntologyPack, listOntologyPacks } from '../../rest/ontologyAPI';
+import { useIsAiMode } from '../../hooks/useAppMode';
+import {
+  getOntologyPackSample,
+  installOntologyPack,
+  listOntologyPacks,
+} from '../../rest/ontologyAPI';
 import OntologyLibrary from './OntologyLibrary';
 
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
+
 jest.mock('../../rest/ontologyAPI', () => ({
+  getOntologyPackSample: jest.fn(),
   installOntologyPack: jest.fn(),
   listOntologyPacks: jest.fn(),
 }));
@@ -35,12 +48,17 @@ const mockListPacks = listOntologyPacks as jest.MockedFunction<
 const mockInstallPack = installOntologyPack as jest.MockedFunction<
   typeof installOntologyPack
 >;
+const mockSample = getOntologyPackSample as jest.MockedFunction<
+  typeof getOntologyPackSample
+>;
 
 const FHIR_PACK: OntologyPackManifest = {
   abbreviation: 'FHIR',
   bundled: true,
   description: 'Healthcare concepts',
   id: 'fhir',
+  industry: Industry.Healthcare,
+  layer: Layer.L2,
   license: 'CC0-1.0',
   licenseUrl: 'https://example.com/license',
   modules: [
@@ -76,6 +94,7 @@ const EXTERNAL_PACK: OntologyPackManifest = {
   abbreviation: 'ISA',
   bundled: false,
   id: 'isa-95',
+  industry: Industry.Manufacturing,
   name: 'ISA-95',
 };
 const FIBO_PACK: OntologyPackManifest = {
@@ -83,6 +102,7 @@ const FIBO_PACK: OntologyPackManifest = {
   abbreviation: 'FIBO',
   description: 'A compact starter subset of financial concepts',
   id: 'fibo',
+  industry: Industry.Finance,
   name: 'FIBO Starter',
   standard: 'Financial Industry Business Ontology',
 };
@@ -109,6 +129,15 @@ describe('OntologyLibrary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockListPacks.mockResolvedValue({ packs: [FHIR_PACK, EXTERNAL_PACK] });
+    mockSample.mockResolvedValue({
+      packId: 'fhir',
+      version: '5.0.0',
+      moduleIds: ['core'],
+      conceptCount: 2,
+      relationCount: 1,
+      concepts: [],
+      relations: [],
+    });
   });
 
   it('renders bundled and catalogue-only standards distinctly', async () => {
@@ -160,7 +189,7 @@ describe('OntologyLibrary', () => {
       screen.getByTestId('ontology-pack-abbreviation-new-pack')
     ).toHaveTextContent(UNKNOWN_PACK.abbreviation);
 
-    fireEvent.click(screen.getByTestId('ontology-library-filter-fhir'));
+    fireEvent.click(screen.getByTestId('ontology-library-filter-healthcare'));
 
     expect(screen.getByTestId('ontology-pack-fhir')).toBeVisible();
     expect(screen.queryByTestId('ontology-pack-fibo')).not.toBeInTheDocument();
@@ -168,9 +197,9 @@ describe('OntologyLibrary', () => {
       screen.queryByTestId('ontology-pack-isa-95')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('ontology-library-filter-new-pack'));
+    fireEvent.click(screen.getByTestId('ontology-library-filter-finance'));
 
-    expect(screen.getByTestId('ontology-pack-new-pack')).toBeVisible();
+    expect(screen.getByTestId('ontology-pack-fibo')).toBeVisible();
     expect(screen.queryByTestId('ontology-pack-fhir')).not.toBeInTheDocument();
   });
 
@@ -275,5 +304,110 @@ describe('OntologyLibrary', () => {
       screen.queryByTestId('ontology-pack-install')
     ).not.toBeInTheDocument();
     expect(mockInstallPack).not.toHaveBeenCalled();
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('filters the catalogue, shows the pack count and closes from Cancel', async () => {
+      const onClose = jest.fn();
+      render(<OntologyLibrary onClose={onClose} />);
+
+      expect(await screen.findByTestId('ontology-pack-fhir')).toBeVisible();
+      expect(screen.getByTestId('ontology-library-count')).toHaveTextContent(
+        '2 label.ontology-plural'
+      );
+
+      fireEvent.click(
+        screen.getByTestId('ontology-library-filter-manufacturing')
+      );
+
+      expect(screen.getByTestId('ontology-pack-isa-95')).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-pack-fhir')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-library-cancel'));
+      fireEvent.click(screen.getByTestId('ontology-library-close'));
+
+      expect(onClose).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps module counts and the dry-run install path in the pack detail', async () => {
+      mockInstallPack.mockResolvedValueOnce(installResult(true));
+      render(<OntologyLibrary canInstall />);
+
+      fireEvent.click(await screen.findByTestId('ontology-pack-details-fhir'));
+      fireEvent.click(screen.getByTestId('ontology-module-clinical'));
+
+      expect(
+        screen.getByTestId('ontology-pack-concept-count')
+      ).toHaveTextContent('5');
+      expect(
+        screen.getByTestId('ontology-pack-relationship-count')
+      ).toHaveTextContent('3');
+      expect(
+        screen.queryByTestId('ontology-library-count')
+      ).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByTestId('ontology-pack-target-glossary'), {
+        target: { value: 'FHIR Reference' },
+      });
+      fireEvent.click(screen.getByTestId('ontology-pack-dry-run'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('ontology-pack-install')).toBeEnabled()
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-library-back'));
+
+      expect(
+        await screen.findByTestId('ontology-pack-catalogue')
+      ).toBeVisible();
+    });
+
+    it('draws the pack sample on the AI graph canvas in the pack detail', async () => {
+      mockSample.mockResolvedValue({
+        packId: 'fhir',
+        version: '5.0.0',
+        moduleIds: ['core'],
+        conceptCount: 2,
+        relationCount: 1,
+        concepts: [
+          { iri: 'urn:fhir:Patient', label: 'Patient' },
+          { iri: 'urn:fhir:Encounter', label: 'Encounter' },
+        ],
+        relations: [
+          {
+            label: 'subject',
+            propertyIri: 'urn:fhir:subject',
+            sourceIri: 'urn:fhir:Encounter',
+            targetIri: 'urn:fhir:Patient',
+          },
+        ],
+      });
+      render(<OntologyLibrary canInstall />);
+
+      fireEvent.click(await screen.findByTestId('ontology-pack-details-fhir'));
+
+      const sample = await screen.findByTestId('ontology-pack-sample');
+
+      expect(mockSample).toHaveBeenCalledWith('fhir', ['core']);
+      expect(sample).toHaveTextContent('Encounter');
+      expect(sample).toHaveTextContent('Patient');
+      expect(sample.parentElement).toHaveClass(
+        'tw:rounded-lg',
+        'tw:bg-secondary_alt'
+      );
+      expect(
+        screen.queryByTestId('ontology-pack-graph-preview')
+      ).not.toBeInTheDocument();
+    });
   });
 });

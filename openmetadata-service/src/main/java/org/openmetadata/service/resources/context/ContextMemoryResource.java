@@ -284,9 +284,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   private Response withVisibleEvidence(SecurityContext securityContext, Response response) {
     Response visible = response;
     if (response.getEntity() instanceof ContextMemory memory) {
-      ContextMemory copy = JsonUtils.deepCopy(memory, ContextMemory.class);
-      ContextMemoryEvidenceAccess.redactUnviewableQueries(
-          List.of(copy), authorizer, securityContext);
+      ContextMemory copy =
+          ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext);
       visible = Response.fromResponse(response).entity(copy).build();
     }
     return visible;
@@ -998,5 +997,26 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           RestoreEntity restore) {
     return withVisibleEvidence(
         securityContext, restoreEntity(uriInfo, securityContext, restore.getId()));
+  }
+
+  /**
+   * A snapshot is decided on its memory as it is now, as {@code /{id}/versions} decides it: making a
+   * memory private takes back the versions it was shared in.
+   */
+  @Override
+  protected List<ContextMemory> retainReadableHistory(
+      SecurityContext securityContext, List<ContextMemory> snapshots) {
+    return snapshots.isEmpty()
+        ? snapshots
+        : ContextMemoryVisibility.retainVisibleNow(
+            snapshots, currentMemories(snapshots), securityContext);
+  }
+
+  private List<ContextMemory> currentMemories(List<ContextMemory> snapshots) {
+    return repository.get(
+        null,
+        snapshots.stream().map(ContextMemory::getId).distinct().toList(),
+        getFields(ContextMemoryVisibility.guardFields(entityType, "")),
+        Include.ALL);
   }
 }

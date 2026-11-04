@@ -12,6 +12,7 @@
  */
 
 import { SlideoutMenu } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 
 export interface DrawerConfig {
@@ -24,6 +25,11 @@ export interface DrawerConfig {
   defaultOpen?: boolean;
   testId?: string;
   className?: string;
+  /**
+   * Animates width changes over the Form Hint column's 240ms collapse, so the
+   * drawer and the column move together instead of the drawer snapping first.
+   */
+  animateWidth?: boolean;
 }
 
 export const useDrawer = (config: DrawerConfig = {}) => {
@@ -57,7 +63,17 @@ export const useDrawer = (config: DrawerConfig = {}) => {
   const drawer = useMemo(
     () => (
       <SlideoutMenu
-        className={config.className}
+        className={({ isEntering, isExiting }) =>
+          // Not while sliding in or out: `duration-*` also sets the slide
+          // animation's duration.
+          classNames(
+            config.className,
+            config.animateWidth &&
+              !isEntering &&
+              !isExiting &&
+              'tw:transition-[max-width] tw:duration-[240ms] tw:ease-in-out'
+          )
+        }
         data-testid={config.testId}
         isDismissable={config.closeOnBackdrop !== false}
         isKeyboardDismissDisabled={config.closeOnEscape === false}
@@ -73,6 +89,7 @@ export const useDrawer = (config: DrawerConfig = {}) => {
       config.testId,
       config.closeOnBackdrop,
       config.className,
+      config.animateWidth,
       config.closeOnEscape,
       config.width,
       handleOpenChange,

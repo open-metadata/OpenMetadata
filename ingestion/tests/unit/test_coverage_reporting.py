@@ -19,6 +19,8 @@ from xml.etree import ElementTree as ET
 import pytest
 from coverage import CoverageData
 
+from ingestion.tests.utils.python_tooling import prepare_locked_tooling
+
 INGESTION_DIR = Path(__file__).resolve().parents[2]
 SOURCE_FILES = (
     "ingestion/source/metadata/atlas/metadata.py",
@@ -27,7 +29,7 @@ SOURCE_FILES = (
 
 
 @pytest.fixture
-def coverage_repository(tmp_path: Path) -> Path:
+def coverage_repository(tmp_path: Path, monkeypatch) -> Path:
     module = tmp_path / "ingestion"
     module.mkdir()
     for name in ("noxfile.py", "Makefile", "pyproject.toml"):
@@ -44,6 +46,7 @@ def coverage_repository(tmp_path: Path) -> Path:
     data = CoverageData(basename=str(module / ".coverage.unit"))
     data.add_lines({str(installed / relative): [1] for relative in SOURCE_FILES})
     data.write()
+    prepare_locked_tooling(tmp_path, monkeypatch)
     return tmp_path
 
 

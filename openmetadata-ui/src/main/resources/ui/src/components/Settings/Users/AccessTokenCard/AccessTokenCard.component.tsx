@@ -12,6 +12,7 @@
  */
 
 import { Card, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -19,7 +20,6 @@ import classNames from 'classnames';
 import { noop } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TrashIcon } from '../../../../assets/svg/ic-delete-token.svg';
 import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import {
@@ -71,7 +71,7 @@ const AccessTokenRevokeModal = ({
           <div className="scim-token-delete-modal">
             <div className="scim-modal-header  mb-4">
               <span className="scim-modal-icon">
-                <TrashIcon height={22} />
+                <Trash01 size={22} />
               </span>
             </div>
             <div className="flex flex-col gap-2">

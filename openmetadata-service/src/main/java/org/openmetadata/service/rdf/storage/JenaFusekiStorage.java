@@ -2,6 +2,7 @@ package org.openmetadata.service.rdf.storage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.google.common.base.Throwables;
 import com.google.common.base.Utf8;
 import io.micrometer.core.instrument.Metrics;
 import java.io.ByteArrayOutputStream;
@@ -19,12 +20,14 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -62,9 +65,10 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
+import org.apache.jena.web.HttpSC;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
-import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfGraphSerializer;
 import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -126,15 +130,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String REQUEST_OUTCOME_TIMEOUT = "timeout";
   private static final String REQUEST_OUTCOME_ERROR = "error";
   private static final String READINESS_PROBE = "readinessProbe";
-
-  // Compaction polls /$/tasks/{taskId} until the task reports finished. Fuseki
-  // does not stream progress, so we poll on a fixed cadence. Total budget is
-  // bounded so a hung compaction can never block the indexer indefinitely;
-  // exceeding the budget logs and returns — compaction may still be running on
-  // the server, the dataset stays operational, only the wait is abandoned.
-  private static final Duration COMPACT_HTTP_TIMEOUT = Duration.ofSeconds(30);
-  private static final long COMPACT_POLL_INTERVAL_MS = 2_000L;
-  private static final long COMPACT_MAX_WAIT_MS = 600_000L;
+  static final String STORAGE_REPORT_PATH = "/$/openmetadata/storage";
+  private static final Duration COMPACTION_RETRY_AFTER = Duration.ofSeconds(5);
 
   // Dedicated virtual-thread executor for the timeout wrapper. We deliberately
   // do NOT share ForkJoinPool.commonPool: a timed-out Jena call continues to
@@ -161,6 +158,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private final boolean streamingAppendEnabled;
   private final boolean gzipRequests;
   private final HttpClient streamingHttpClient;
+  private final FusekiCompaction compaction;
   private final LongConsumer retryDelayMs;
 
   private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
@@ -209,6 +207,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         config.getStreamingAppendEnabled() == null || config.getStreamingAppendEnabled();
     this.gzipRequests = Boolean.TRUE.equals(config.getGzipRequests());
     this.streamingHttpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
+    this.compaction =
+        new FusekiCompaction(
+            HttpClient.newBuilder().connectTimeout(connectTimeout).build(),
+            Clock.systemUTC(),
+            duration -> Thread.sleep(duration.toMillis()));
     this.retryDelayMs = retryDelayMs;
 
     this.connection = buildConnection(endpoint);
@@ -341,7 +344,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       final String datasetEndpoint, final RDFConnection datasetConnection) {
     final DatasetEndpoint dataset = requireDatasetEndpoint(datasetEndpoint);
     final UnionDefaultGraphProbe probe = UnionDefaultGraphProbe.unique();
-    writeProbe(dataset, datasetConnection, probe);
+    if (writeProbe(dataset, datasetConnection, probe)) {
+      requireProbeVisible(dataset, datasetConnection, probe);
+    }
+  }
+
+  private void requireProbeVisible(
+      final DatasetEndpoint dataset,
+      final RDFConnection datasetConnection,
+      final UnionDefaultGraphProbe probe) {
     final boolean visible;
     try {
       visible = runWithTimeout(() -> askProbe(datasetConnection, probe), READINESS_PROBE);
@@ -355,12 +366,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  private void writeProbe(
+  /**
+   * Writes the probe triple, or returns false when the store's disk guard refuses it: Fuseki is
+   * reachable but takes no writes until space is freed, and queued writes wait for that.
+   */
+  private boolean writeProbe(
       final DatasetEndpoint dataset,
       final RDFConnection datasetConnection,
       final UnionDefaultGraphProbe probe) {
     try {
       runWriteWithTimeout(() -> datasetConnection.update(probe.write()), READINESS_PROBE);
+      return true;
+    } catch (RdfStorageLowDiskException lowDisk) {
+      LOG.warn(
+          "Fuseki dataset '{}' is below its free-space reserve; its union default graph is checked"
+              + " once it accepts writes again",
+          dataset.datasetName());
+      return false;
     } catch (RdfWriteOutcomeUnknownException exception) {
       // Fuseki may still apply a write the client stopped waiting for.
       removeProbe(dataset, datasetConnection, probe);
@@ -844,17 +866,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     Future<T> future = TIMEOUT_EXECUTOR.submit(op::get);
     try {
       T result = future.get(timeoutMillis, TimeUnit.MILLISECONDS);
-      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_SUCCESS);
+      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_SUCCESS, timeoutMillis);
       return result;
     } catch (TimeoutException te) {
       // Cancellation interrupts work that is still queued for the writer. An active Jena HTTP
       // call may ignore interruption and therefore keeps the writer permit until it really exits.
       future.cancel(true);
-      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_TIMEOUT);
+      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_TIMEOUT, timeoutMillis);
       Metrics.counter(METRIC_FUSEKI_TIMEOUTS, TAG_OPERATION, description).increment();
       throw new RuntimeException(description + " timed out after " + timeoutMillis + "ms", te);
     } catch (ExecutionException ee) {
-      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_ERROR);
+      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_ERROR, timeoutMillis);
       Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
       if (cause instanceof RuntimeException re) {
         throw re;
@@ -863,7 +885,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     } catch (InterruptedException ie) {
       future.cancel(true);
       Thread.currentThread().interrupt();
-      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_ERROR);
+      recordRequestMetrics(description, startNanos, REQUEST_OUTCOME_ERROR, timeoutMillis);
       throw new RuntimeException(description + " interrupted", ie);
     }
   }
@@ -874,7 +896,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * no pipeline stat measured the storage round trip. The WARN threshold surfaces individual slow
    * requests with their operation name; the timer feeds dashboards/alerts.
    */
-  private void recordRequestMetrics(String description, long startNanos, String outcome) {
+  private void recordRequestMetrics(
+      String description, long startNanos, String outcome, long timeoutMillis) {
     long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
     Metrics.timer(METRIC_FUSEKI_REQUEST, TAG_OPERATION, description, TAG_OUTCOME, outcome)
         .record(elapsedMs, TimeUnit.MILLISECONDS);
@@ -884,7 +907,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           description,
           elapsedMs,
           outcome,
-          requestTimeoutMs);
+          timeoutMillis);
     }
   }
 
@@ -926,11 +949,49 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           description,
           timeoutMillis);
     } catch (RuntimeException exception) {
+      // Checked first: a 507 would otherwise read as an uncertain server error, and the refusal is
+      // thrown without its HttpException cause so no failure classifier counts it either.
+      if (isStorageGuardRefusal(exception)) {
+        throw new RdfStorageLowDiskException(description);
+      }
+      // A compaction this server did not pause for (a lost pause lease, an operator, an older
+      // server) blocks the write until it ends: retry it without counting a failure.
       if (RdfWriteRetry.isUncertain(exception)) {
-        throw new RdfWriteOutcomeUnknownException(description, exception);
+        throw isCompacting()
+            ? new RdfStorageMaintenanceException(
+                "compaction (" + description + " waited)", COMPACTION_RETRY_AFTER)
+            : new RdfWriteOutcomeUnknownException(description, exception);
       }
       throw exception;
     }
+  }
+
+  /**
+   * A write the store refused before applying it, such as a storage guard refusal, is a retry-later
+   * signal for the caller, not a write failure: it passes through unwrapped and unlogged.
+   */
+  private static void rethrowIfHeldBack(final Exception failure) {
+    final Optional<RdfStorageMaintenanceException> heldBack =
+        RdfStorageMaintenanceException.find(failure);
+    if (heldBack.isPresent()) {
+      throw heldBack.get();
+    }
+  }
+
+  /** Fuseki's storage guard answers 507 Insufficient Storage before the write reaches TDB2. */
+  static boolean isStorageGuardRefusal(final Throwable failure) {
+    return Throwables.getCausalChain(failure).stream()
+        .anyMatch(
+            cause ->
+                cause instanceof HttpException http
+                    && http.getStatusCode() == HttpSC.INSUFFICIENT_STORAGE_507);
+  }
+
+  private boolean isCompacting() {
+    final DatasetEndpoint info = parseDatasetEndpoint(endpoint);
+    return info != null
+        && compaction.isCompacting(
+            info.serverBaseUrl(), builder -> authenticated(builder, info.userInfo()));
   }
 
   // Union the translator's static "always managed" predicates with whatever
@@ -1175,6 +1236,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       // Keep INFO reserved for events ops actually want to grep for.
       LOG.debug("Bulk-reconciled {} entities in {}", requests.size(), KNOWLEDGE_GRAPH);
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to bulk-store {} entities in Fuseki", requests.size(), e);
       throw new RuntimeException("Failed to bulk-store entities in RDF", e);
     }
@@ -1341,6 +1403,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       runWriteWithRetry(() -> connection.update(request), "storeEntity");
       LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to store entity in Fuseki", e);
       throw new RuntimeException("Failed to store entity in RDF", e);
     }
@@ -1389,6 +1452,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       runWriteWithRetry(() -> connection.update(request), "storeRelationship");
       LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to store relationship in Fuseki", e);
       throw new RuntimeException("Failed to store relationship in RDF", e);
     }
@@ -1422,6 +1486,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           relationships.size(),
           effectiveSources.size());
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to bulk store relationships in Fuseki", e);
       throw new RuntimeException("Failed to bulk store relationships in RDF", e);
     }
@@ -1503,6 +1568,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.debug("Deleted entity {} from Fuseki", entityId);
       recordSuccess();
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to delete entity from Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
         recordFailure();
@@ -1613,12 +1679,27 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.debug("Executed SPARQL update on Fuseki");
       recordSuccess();
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to execute SPARQL update on Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       throw new RuntimeException("Failed to execute SPARQL update", e);
     }
+  }
+
+  /**
+   * Runs a maintenance update, such as the {@code CLEAR ALL} that starts an in-place rebuild, with
+   * its own budget. Fuseki cannot cancel a {@code CLEAR} once it starts, so a budget that is too
+   * short only abandons a clear that still completes; the request timeout of a single entity write
+   * is the wrong limit. It neither consults nor feeds the circuit breaker: a long maintenance
+   * request says nothing about whether Fuseki can serve entity writes.
+   */
+  @Override
+  public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
+    final UpdateRequest request = UpdateFactory.create(sparqlUpdate);
+    runWriteWithTimeout(
+        () -> connection.update(request), "maintenanceUpdate", Math.max(1, timeout.toMillis()));
   }
 
   @Override
@@ -1643,6 +1724,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.info("Loaded Turtle file into graph {} with {} triples", graphUri, model.size());
       recordSuccess();
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to load Turtle file into Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
         recordFailure();
@@ -1765,6 +1847,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       LOG.info("Cleared graph: {}", graphUri);
       recordSuccess();
     } catch (Exception e) {
+      rethrowIfHeldBack(e);
       LOG.error("Failed to clear graph on Fuseki", e);
       if (isCircuitBreakerFailure(e)) {
         recordFailure();
@@ -1774,217 +1857,88 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   /**
-   * Triggers Fuseki's TDB2 compaction admin endpoint and blocks until the
-   * background task completes. {@code deleteOld=true} tells Fuseki to swap the
-   * dataset directory and delete the old one once the new copy is fully written
-   * — this is the only way to physically reclaim disk after {@code CLEAR ALL}
-   * or large {@code DELETE WHERE} updates, because TDB2 deletes are logical
-   * (free-list marker) and the write-ahead journal grows monotonically.
-   *
-   * <p>Failures are logged and swallowed. A missing or failing compaction
-   * degrades disk usage, not correctness — the caller's higher-level
-   * operation (re-index, ontology reload, …) must not fail just because the
-   * Fuseki admin endpoint is unreachable or returns a non-2xx.
+   * Compacts the dataset this handle writes to, deleting the old generation once the new one
+   * serves. Fuseki blocks writers to the dataset for the whole copy, so callers that must not lose
+   * writes pause them first (see {@code RdfLiveWritePause}). Compaction is maintenance, not a
+   * request: it does not consult or feed the circuit breaker, because it is most needed exactly
+   * when Fuseki is struggling.
    */
   @Override
-  public void compactStorage() {
-    // Wrap the whole flow in a catch-all so any failure here is best-effort
-    // and never demotes a successful indexer run to FAILED. parseDatasetEndpoint
-    // already returns null on URI.create failure; this guard covers any other
-    // unexpected runtime exception that could surface from HTTP / JSON parsing.
-    //
-    // Skip the call entirely if the circuit breaker is open. The breaker
-    // trips on connect failures (Fuseki unreachable), and a compact-then-
-    // poll cycle would burn its two-call budget hitting timeouts on the
-    // same dead server. The next reindex run can try again once Fuseki
-    // recovers and the breaker closes.
-    if (isCircuitOpen()) {
-      LOG.warn("Skipping compaction; Fuseki circuit breaker is open");
-      return;
+  public CompactionResult compact(final Duration maxWait) {
+    return compact(maxWait, false);
+  }
+
+  @Override
+  public CompactionResult compactAndAwait(final Duration warningAfter) {
+    return compact(warningAfter, true);
+  }
+
+  private CompactionResult compact(final Duration maxWait, final boolean awaitCompletion) {
+    final DatasetEndpoint info = requireServerInfo("compact");
+    final UnaryOperator<HttpRequest.Builder> authenticate =
+        builder -> authenticated(builder, info.userInfo());
+    final CompactionResult result =
+        awaitCompletion
+            ? compaction.compactAndAwait(
+                info.serverBaseUrl(), info.datasetName(), maxWait, authenticate)
+            : compaction.compact(info.serverBaseUrl(), info.datasetName(), maxWait, authenticate);
+    if (result.outcome() != CompactionResult.Outcome.UNSUPPORTED) {
+      OntologyMetrics.recordCompaction(result.succeeded(), result.elapsed());
+      logCompaction(info.datasetName(), result);
     }
-    DatasetEndpoint info;
+    return result;
+  }
+
+  /** A compaction that does not succeed leaves the store growing until its disk fills. */
+  private static void logCompaction(final String dataset, final CompactionResult result) {
+    if (result.succeeded()) {
+      LOG.info("Compacted RDF dataset '{}' in {} ms", dataset, result.elapsed().toMillis());
+    } else {
+      LOG.error(
+          "Compaction of RDF dataset '{}' did not succeed ({}, task {}, after {} ms): {}",
+          dataset,
+          result.outcome(),
+          result.taskId(),
+          result.elapsed().toMillis(),
+          result.detail());
+    }
+  }
+
+  private HttpRequest.Builder authenticated(
+      final HttpRequest.Builder builder, final String endpointUserInfo) {
+    addBasicAuth(builder, username, password, endpointUserInfo);
+    return builder;
+  }
+
+  /**
+   * Reads the storage report of the {@code openmetadata/fuseki} image's storage extension. Stock
+   * Fuseki has no such endpoint,
+   * and a report that cannot be read is treated the same way: maintenance then runs on its
+   * schedule only.
+   */
+  @Override
+  public Optional<StorageFacts> storageFacts() {
+    final DatasetEndpoint info = requireServerInfo("storageFacts");
     try {
-      info = parseDatasetEndpoint(endpoint);
-    } catch (RuntimeException e) {
-      LOG.warn(
-          "Skipping compaction: could not parse Fuseki endpoint '{}'. Reason: {}",
-          maskUserInfo(endpoint),
-          e.getMessage());
-      return;
-    }
-    if (info == null) {
-      LOG.warn(
-          "Skipping compaction: could not parse dataset name from endpoint {}",
-          maskUserInfo(endpoint));
-      return;
-    }
-    try {
-      String taskId = startCompaction(info);
-      if (taskId == null) {
-        return;
-      }
-      waitForCompactionTask(info.serverBaseUrl(), info.userInfo(), taskId);
-    } catch (InterruptedException e) {
-      // Re-assert the interrupt flag so downstream blocking calls (e.g. the
-      // surrounding Quartz job's shutdown path) see the cancellation request.
-      // Swallowing it here without restoring the flag would silently turn a
-      // shutdown signal into a normal return.
+      final HttpResponse<String> response =
+          sendAdminRequest(
+              info.serverBaseUrl() + STORAGE_REPORT_PATH,
+              builder -> builder.timeout(Duration.ofSeconds(10)).GET(),
+              info.userInfo());
+      return response.statusCode() == 200
+          ? Optional.of(parseStorageFacts(response.body()))
+          : Optional.empty();
+    } catch (IOException | RuntimeException exception) {
+      LOG.debug("Fuseki storage report unavailable", exception);
+      return Optional.empty();
+    } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
-      LOG.warn(
-          "Compaction wait for Fuseki dataset '{}' was interrupted; "
-              + "the compact task may still be running on the server.",
-          info.datasetName());
-    } catch (IOException e) {
-      LOG.warn(
-          "Failed to compact Fuseki dataset '{}' — disk reclamation skipped, "
-              + "indexing will continue but on-disk usage may stay elevated.",
-          info.datasetName(),
-          e);
-    } catch (RuntimeException e) {
-      // The Javadoc on compactStorage promises "Failures are logged and
-      // swallowed". The HTTP path can throw IllegalArgumentException (URI),
-      // RdfStorageCircuitOpenException (if state flips mid-run), the
-      // timeout wrappers' RuntimeException re-throws, or any of
-      // Jena's runtime exceptions. Catch them all so a stray RuntimeException
-      // never demotes a successful reindex to FAILED.
-      LOG.warn(
-          "Unexpected runtime error compacting Fuseki dataset '{}' — disk "
-              + "reclamation skipped, indexing will continue.",
-          info.datasetName(),
-          e);
+      return Optional.empty();
     }
   }
 
-  private String startCompaction(DatasetEndpoint info) throws IOException, InterruptedException {
-    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
-    String compactUrl =
-        info.serverBaseUrl()
-            + "/$/compact/"
-            + encodePathSegment(info.datasetName())
-            + "?deleteOld=true";
-
-    HttpRequest.Builder requestBuilder =
-        HttpRequest.newBuilder()
-            .uri(URI.create(compactUrl))
-            .timeout(COMPACT_HTTP_TIMEOUT)
-            .header("Accept", "application/json")
-            .POST(HttpRequest.BodyPublishers.noBody());
-    addBasicAuth(requestBuilder, username, password, info.userInfo());
-
-    HttpResponse<String> response =
-        httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-
-    if (response.statusCode() != 200) {
-      LOG.warn(
-          "Fuseki compaction request returned HTTP {}: {} — older Fuseki versions or "
-              + "configurations without the /$/compact admin endpoint will report this; "
-              + "disk reclamation skipped.",
-          response.statusCode(),
-          response.body());
-      return null;
-    }
-
-    String taskId = extractTaskId(response.body());
-    if (taskId == null) {
-      LOG.warn(
-          "Fuseki compaction response missing taskId; cannot wait for completion. Body: {}",
-          response.body());
-      return null;
-    }
-    LOG.info("Started Fuseki compaction for dataset '{}' (taskId={})", info.datasetName(), taskId);
-    return taskId;
-  }
-
-  static String extractTaskId(String responseBody) {
-    if (responseBody == null || responseBody.isBlank()) {
-      return null;
-    }
-    try {
-      var node = JsonUtils.readTree(responseBody);
-      var taskNode = node.get("taskId");
-      return taskNode != null && !taskNode.isNull() ? taskNode.asText() : null;
-    } catch (JsonParsingException e) {
-      LOG.debug("Could not parse taskId from Fuseki compaction response: {}", responseBody, e);
-      return null;
-    }
-  }
-
-  private void waitForCompactionTask(String serverBaseUrl, String userInfo, String taskId)
-      throws InterruptedException {
-    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
-    String taskUrl = serverBaseUrl + "/$/tasks/" + encodePathSegment(taskId);
-    long deadline = System.currentTimeMillis() + COMPACT_MAX_WAIT_MS;
-    // Poll-then-sleep ordering: the very first iteration checks immediately so
-    // a compaction that finished by the time we'd issued the POST (the empty
-    // dataset case, which is the common one for recreateIndex=true) completes
-    // without a 2 s wait. Subsequent iterations sleep between requests.
-    boolean firstIteration = true;
-    while (System.currentTimeMillis() < deadline) {
-      if (!firstIteration) {
-        Thread.sleep(COMPACT_POLL_INTERVAL_MS);
-      }
-      firstIteration = false;
-      HttpRequest.Builder pollBuilder =
-          HttpRequest.newBuilder()
-              .uri(URI.create(taskUrl))
-              .timeout(COMPACT_HTTP_TIMEOUT)
-              .header("Accept", "application/json")
-              .GET();
-      addBasicAuth(pollBuilder, username, password, userInfo);
-      HttpResponse<String> pollResponse;
-      try {
-        pollResponse = httpClient.send(pollBuilder.build(), HttpResponse.BodyHandlers.ofString());
-      } catch (IOException e) {
-        LOG.warn("Polling Fuseki task {} failed; abandoning wait", taskId, e);
-        return;
-      }
-      if (pollResponse.statusCode() == 404) {
-        // Some Fuseki versions retire finished tasks from /$/tasks/{id} immediately.
-        // Treat 404-after-start as success — the task is no longer running.
-        LOG.info("Fuseki compaction task {} finished (task entry removed by server)", taskId);
-        return;
-      }
-      if (pollResponse.statusCode() != 200) {
-        LOG.warn(
-            "Polling Fuseki task {} returned HTTP {}: {}",
-            taskId,
-            pollResponse.statusCode(),
-            pollResponse.body());
-        return;
-      }
-      if (isTaskFinished(pollResponse.body())) {
-        LOG.info("Fuseki compaction task {} finished: {}", taskId, pollResponse.body());
-        return;
-      }
-      // Re-check the deadline AFTER the HTTP send. The loop-top check could
-      // pass with a few ms left, then the send could hang up to
-      // COMPACT_HTTP_TIMEOUT (30 s) before timing out — that would put total
-      // elapsed up to ~30 s past COMPACT_MAX_WAIT_MS before we'd otherwise
-      // notice. Break here so we abandon the wait promptly when the deadline
-      // is already blown by a slow-responding server.
-      if (System.currentTimeMillis() >= deadline) {
-        break;
-      }
-    }
-    LOG.warn(
-        "Fuseki compaction task {} did not finish within {} ms; abandoning wait. "
-            + "The task may still be running on the server.",
-        taskId,
-        COMPACT_MAX_WAIT_MS);
-  }
-
-  static boolean isTaskFinished(String responseBody) {
-    if (responseBody == null || responseBody.isBlank()) {
-      return false;
-    }
-    try {
-      var node = JsonUtils.readTree(responseBody);
-      var finished = node.get("finished");
-      return finished != null && !finished.isNull() && !finished.asText().isBlank();
-    } catch (JsonParsingException e) {
-      LOG.debug("Could not parse Fuseki task status response: {}", responseBody, e);
-      return false;
-    }
+  static StorageFacts parseStorageFacts(final String body) {
+    return JsonUtils.readValueLenient(body, StorageFacts.class);
   }
 
   @Override

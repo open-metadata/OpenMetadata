@@ -12,9 +12,9 @@
  */
 import {
   Box,
-  Button,
   Card,
   Divider,
+  Input,
   SkeletonParagraph,
   Tooltip,
   Typography,
@@ -42,12 +42,11 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getActivityEventHeaderText } from '../../../utils/FeedUtils';
 import {
+  canManageFeedPost,
   entityDisplayName,
   getEntityFQN,
   getEntityType,
-  isFeedPostAuthor,
 } from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -63,11 +62,13 @@ import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import FeedFieldPath from '../Shared/FeedFieldPath/FeedFieldPath';
 import {
+  ACTIONS_CLASS_NAME,
+  ACTIONS_CLEARANCE_CLASS_NAME,
   PANEL_HEADER_LAYOUT,
   SPACE_ITEM_CLASS_NAME,
 } from './ActivityFeedcardNew.constants';
 import {
-  getActionsClassName,
+  canManageConversation,
   getFooterVisibility,
   getFullCardBaseClassName,
   getFullCardBodyClassName,
@@ -78,10 +79,6 @@ import {
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
-);
-
-const CommentComposer = withSuspenseFallback(
-  lazy(() => import('../../common/CommentComposer/CommentComposer'))
 );
 
 const POST_SKELETON_KEYS = ['first', 'second', 'third'];
@@ -98,7 +95,7 @@ interface ActivityFeedCardNewProps {
   isOpenInDrawer?: boolean;
   isFeedWidget?: boolean;
   isFullSizeWidget?: boolean;
-  /** In the activity thread panel the conversation's Edit / Delete sit in a menu. */
+  /** The activity thread panels' compact header, Inbox-style footer and replies. */
   isThreadPanel?: boolean;
   /** Replaces the footer reply's default of opening the thread drawer. */
   onReplyPress?: () => void;
@@ -269,7 +266,6 @@ const ActivityFeedCardNew = ({
     isPostsLoading,
     postActivityComment,
     activityReplies,
-    focusReplyEditor,
   } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
@@ -418,18 +414,6 @@ const ActivityFeedCardNew = ({
     isThreadPanel,
   ]);
 
-  const feedHeaderText = useMemo(() => {
-    if (isActivityEvent && activity) {
-      return getActivityEventHeaderText(
-        activity.eventType,
-        activity.fieldName,
-        entityType
-      );
-    }
-
-    return t('label.conversation-lowercase');
-  }, [isActivityEvent, activity, entityType, t]);
-
   const timestampValue =
     post?.createdAt ?? feed?.createdAt ?? activity?.timestamp;
 
@@ -455,19 +439,19 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   }, []);
 
-  // Rendered unconditionally and revealed with CSS: gating the mount on hover
-  // put these permanently out of reach of the keyboard and screen readers.
-  const feedActions =
-    !isActivityEvent && !isPost && feed ? (
-      <ActivityFeedActions
-        asMenu={isThreadPanel}
-        className={getActionsClassName(isThreadPanel)}
-        conversation={feed}
-        conversationId={feed.id}
-        isReply={false}
-        onEditPost={() => setIsEditPost((current) => !current)}
-      />
-    ) : null;
+  const feedActions = canManageConversation(
+    currentUser,
+    feed,
+    !isActivityEvent && !isPost
+  ) ? (
+    <ActivityFeedActions
+      className={ACTIONS_CLASS_NAME}
+      conversation={feed}
+      conversationId={feed.id}
+      isReply={false}
+      onEditPost={() => setIsEditPost((current) => !current)}
+    />
+  ) : null;
 
   const posts = useMemo(() => {
     if (!showThread && !isOpenInDrawer) {
@@ -484,28 +468,25 @@ const ActivityFeedCardNew = ({
     }
 
     const replies = isActivityEvent ? activityReplies : feed?.replies ?? [];
-    // The thread panel reads as a conversation, oldest reply first, with the
-    // composer beneath; elsewhere the newest reply leads.
-    const orderedPosts = orderBy(
-      replies,
-      ['createdAt'],
-      [isThreadPanel ? 'asc' : 'desc']
-    );
+    const orderedPosts = orderBy(replies, ['createdAt'], ['desc']);
 
     if (orderedPosts.length === 0) {
       return null;
     }
 
+    // A thread panel's compact replies carry no padding of their own, so the
+    // list spaces them from the comment input and from each other.
     return (
       <Box
-        className={classNames('p-l-0 p-r-0', isThreadPanel && 'tw:gap-4')}
+        className={classNames(
+          'p-l-0 p-r-0',
+          isThreadPanel && 'tw:mt-4 tw:gap-4'
+        )}
         data-testid="feed-replies"
         direction="col">
         {orderedPosts.map((reply, index, arr) => {
           const conversationId = activity?.id ?? feed?.id ?? '';
-          const canManage =
-            isFeedPostAuthor(currentUser, reply.author) ||
-            Boolean(currentUser?.isAdmin);
+          const canManage = canManageFeedPost(currentUser, reply.author);
 
           return (
             <CommentCard
@@ -578,14 +559,14 @@ const ActivityFeedCardNew = ({
             className="card-style-feed-header"
             data-testid="headerText"
             size="text-sm">
-            {feedHeaderText}
+            {t('label.conversation-lowercase')}
           </Typography>
         )}
 
         {renderEntityLink}
       </Box>
     ),
-    [isPanelLayout, feedHeaderText, renderEntityLink, isThreadPanel]
+    [isPanelLayout, renderEntityLink, isThreadPanel, t]
   );
 
   const renderWidgetCard = () => (
@@ -651,7 +632,6 @@ const ActivityFeedCardNew = ({
             <FeedCardBodyNew
               activity={activity}
               feed={feed}
-              isActive={isActive}
               isEditPost={isEditPost}
               isFeedWidget={isFeedWidget}
               isForFeedTab={isForFeedTab}
@@ -664,7 +644,6 @@ const ActivityFeedCardNew = ({
             {isFullSizeWidget && !isActivityEvent && feed && (
               <div className="m-b-md">
                 <FeedCardFooterNew
-                  isForFeedTab
                   conversation={feed}
                   conversationId={feed.id}
                   isReply={isPost}
@@ -703,6 +682,42 @@ const ActivityFeedCardNew = ({
     isOpenInDrawer
   );
 
+  const renderCommentInput = (editorClassName?: string) =>
+    showFeedEditor ? (
+      <ActivityFeedEditorNew
+        // Revealed by a click on its trigger, so it takes focus.
+        focused
+        className={classNames(
+          'feed-editor activity-feed-editor-container-new',
+          editorClassName
+        )}
+        onSave={onSave}
+      />
+    ) : (
+      <Box gap={2}>
+        <div>
+          <UserPopOverCard userName={currentUser?.name ?? ''}>
+            <Box align="center">
+              <ProfilePicture
+                key={feedId}
+                name={currentUser?.name ?? ''}
+                width="32"
+              />
+            </Box>
+          </UserPopOverCard>
+        </div>
+
+        {/* Read-only: focusing it reveals the editor, which takes the focus. */}
+        <Input
+          isReadOnly
+          inputDataTestId="comments-input-field"
+          placeholder={t('message.input-placeholder')}
+          size="sm"
+          onFocus={() => setShowFeedEditor(true)}
+        />
+      </Box>
+    );
+
   const renderCommentsSection = () => (
     <Box className="activity-feed-comments-container" direction="col">
       {(showActivityFeedEditor || isOpenInDrawer) && (
@@ -710,68 +725,13 @@ const ActivityFeedCardNew = ({
           {t('label.comment-plural')}
         </Typography>
       )}
-      {showFeedEditor ? (
-        <ActivityFeedEditorNew
-          // Revealed by a click on its placeholder, so it takes focus.
-          focused
-          className={classNames(
-            'm-t-md feed-editor activity-feed-editor-container-new',
-            {
-              'm-b-md': shouldAddBottomMargin,
-            }
-          )}
-          onSave={onSave}
-        />
-      ) : (
-        <Box gap={2}>
-          <div>
-            <UserPopOverCard userName={currentUser?.name ?? ''}>
-              <Box align="center">
-                <ProfilePicture
-                  key={feedId}
-                  name={currentUser?.name ?? ''}
-                  width="32"
-                />
-              </Box>
-            </UserPopOverCard>
-          </div>
-
-          {/* Only opens the editor, so it is a button rather than an input. */}
-          <Button
-            ellipsis
-            className="tw:w-full tw:justify-start"
-            color="secondary"
-            data-testid="comments-input-field"
-            size="sm"
-            onPress={() => setShowFeedEditor(true)}>
-            {t('message.input-placeholder')}
-          </Button>
-        </Box>
+      {renderCommentInput(
+        classNames('m-t-md', { 'm-b-md': shouldAddBottomMargin })
       )}
 
       {posts}
     </Box>
   );
-
-  const renderThreadPanelComments = () => (
-    <Box
-      // Out to the card's edges past the body's 20px padding, so the rule
-      // spans the whole card; the content keeps its inset.
-      className="tw:-mx-5 tw:mt-4 tw:border-t tw:border-secondary tw:px-5 tw:pt-4"
-      data-testid="thread-panel-comments"
-      direction="col"
-      gap={4}>
-      {posts}
-      <CommentComposer
-        focused={focusReplyEditor}
-        placeHolder={t('label.reply-in-conversation')}
-        onSave={onSave}
-      />
-    </Box>
-  );
-
-  const renderReplies = () =>
-    isThreadPanel ? renderThreadPanelComments() : renderCommentsSection();
 
   const isContainerThread =
     showThread && entityRef?.type === EntityType.CONTAINER;
@@ -794,7 +754,9 @@ const ActivityFeedCardNew = ({
                 one-line (truncating) header would push past the card. */}
             <Box
               align={isContainerThread ? 'start' : 'center'}
-              className={headerLayout.row}
+              className={classNames(headerLayout.row, {
+                [ACTIONS_CLEARANCE_CLASS_NAME]: feedActions,
+              })}
               gap={2}
               itemClassName={headerLayout.rowItem}
               justify="start">
@@ -803,6 +765,7 @@ const ActivityFeedCardNew = ({
                   <ProfilePicture
                     key={feedId}
                     name={createdBy}
+                    size={headerLayout.avatarSize}
                     width={showThread ? '40' : '32'}
                   />
                 </Box>
@@ -854,7 +817,6 @@ const ActivityFeedCardNew = ({
             <FeedCardBodyNew
               activity={activity}
               feed={feed}
-              isActive={isActive}
               isEditPost={isEditPost}
               isForFeedTab={isForFeedTab}
               isPost={isPost}
@@ -875,7 +837,6 @@ const ActivityFeedCardNew = ({
                 )}
                 conversation={feed}
                 conversationId={feed.id}
-                isForFeedTab={isForFeedTab}
                 isReply={isPost}
                 reply={post}
                 showReplyCount={isThreadPanel}
@@ -894,7 +855,7 @@ const ActivityFeedCardNew = ({
             </div>
           )}
         </Box>
-        {isPanelLayout && renderReplies()}
+        {isPanelLayout && renderCommentsSection()}
         {feedActions}
       </Card.Content>
     </Card>

@@ -38,7 +38,7 @@ const MembersTeamDescription: FC<MembersTeamDescriptionProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Card className="tw:mx-8 tw:mb-6" variant="muted">
+    <Card className="tw:mx-8" variant="muted">
       <Card.Content className="tw:px-3">
         <Box direction="col" gap={2}>
           <Box align="center" direction="row" gap={2}>
@@ -47,10 +47,8 @@ const MembersTeamDescription: FC<MembersTeamDescriptionProps> = ({
             </Typography>
             {canEditDescInline && !isDescEditing && (
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-description-btn"
                 icon={Edit01}
-                size="xs"
                 tooltip={String(
                   t('label.edit-entity', { entity: t('label.description') })
                 )}

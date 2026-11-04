@@ -83,6 +83,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
       <div className="tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
         <Box className="tw:max-w-[50%] tw:w-full tw:mx-auto" direction="col">
           <CustomPropertyEditForm
+            fieldDocVariant="muted"
             formId="edit-custom-property-form"
             property={property}
             showHint={showHint}

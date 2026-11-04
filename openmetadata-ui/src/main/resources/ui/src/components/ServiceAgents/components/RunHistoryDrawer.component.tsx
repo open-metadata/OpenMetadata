@@ -376,7 +376,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               color="link-color"
               data-testid="agent-link-button"
               href={agentLinkProps.href}
-              iconTrailing={<LinkExternal02 size={12} />}
+              iconTrailing={LinkExternal02}
               target="_blank">
               {agentLinkProps.label}
             </Button>
@@ -389,7 +389,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               agent.status === 'failed' ? 'secondary-destructive' : 'secondary'
             }
             data-testid="raw-logs-button"
-            iconLeading={<AlignLeft size={15} />}
+            iconLeading={AlignLeft}
             isDisabled={isPending || isUnavailable}
             size="sm"
             onClick={() => onOpenLogs(agent)}>
@@ -400,7 +400,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               className="tw:font-semibold"
               color="primary"
               data-testid="drawer-run-now-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
+              iconLeading={PlayIcon}
               isDisabled={isPending || isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>

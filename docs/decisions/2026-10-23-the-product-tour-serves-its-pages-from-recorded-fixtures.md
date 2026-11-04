@@ -1,9 +1,10 @@
 # The product tour walks the real pages and serves them from recorded fixtures
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (no recorder or seed script in the repo; starting a tour drops server data cached before it)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (no recorder or seed script in the repo; starting a tour drops server data cached before it) · v3 2026-10-27 (in AI mode, /tour starts a fresh route cache)
 - **Deciders:** UI team
 - **Guard:** `openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ProductTour.spec.ts` (no tour page request reaches the server),
+  `openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/AppModeRoutes/AppModeRoutes.tour.test.tsx` (the tour opens without the pages, or the data, from before it),
   `openmetadata-ui/src/main/resources/ui/src/utils/product-tour/productTourMock.utils.test.ts`
 - **Related:** supersedes ADR:2026-10-13-the-product-tour-never-requests-its-mock-entity
 
@@ -36,7 +37,8 @@ page it visits, and would break the same way each time a page changes.
   memories) is created on that instance first, so no step is captured as an empty state.
 - Starting a tour drops what pages visited before it cached from the server (Explore's search
   cache, inactive queries), or a tour step would open on those assets and request their details,
-  which no fixture holds. Ending the tour reloads the page, so nothing the fixtures put into
+  which no fixture holds. In AI mode, `/tour` also starts a fresh route cache, or the tour would open
+  on pages kept alive from before it. Ending the tour reloads the page, so nothing the fixtures put into
   in-memory caches or stores outlives it. Code that writes fixture-derived data to persistent storage (localStorage) checks
   `isTourMockActive()` and skips the write, as pruning dismissed announcements does.
 - Components no longer check `isTourPage`.
