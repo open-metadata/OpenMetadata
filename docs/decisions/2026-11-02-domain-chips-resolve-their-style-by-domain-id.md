@@ -19,8 +19,10 @@ itself.
 - The server serves the styles from their one source. `GET /v1/domains/styles` (`DomainStyles`)
   returns the colour and icon of every domain and data product that has a style, never the cover
   image. Entities without a colour or an icon are omitted, so the list stays small. Callers need
-  `VIEW_BASIC` on domains.
-- `DomainStyleReader` reads only the styled rows (`listStyledJson` on the domain and data product
+  `VIEW_BASIC` on domains. The check is type-level, so a caller who passes it sees the colour and
+  icon of every styled domain and data product, including ones a domain-only role hides; these
+  carry no names, so this is accepted.
+- `DomainStyleReader` reads only the styled rows (`listStyles` on the domain and data product
   DAOs) on each request, with no server-side cache to invalidate.
 - The UI loads the list once into the React Query entry `['domain-styles']`. It is fresh for 5
   minutes, and refetched when the window regains focus only once it is older than that, since
