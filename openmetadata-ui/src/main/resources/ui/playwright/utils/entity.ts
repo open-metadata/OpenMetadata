@@ -717,8 +717,9 @@ export const removeTier = async (page: Page, endpoint: string) => {
 
 // The certification picker loads 50 at a time; searching reaches any certification.
 export const searchCertification = async (page: Page, name: string) => {
-  // A previous debounced query can finish after fill(), so match the requested term.
-  const query = `*${getEncodedFqn(escapeESReservedCharacters(name))}*`;
+  // A previous debounced query can finish after fill(). URLSearchParams has
+  // already decoded URI encoding, leaving the query's Elasticsearch escapes.
+  const query = `*${escapeESReservedCharacters(name)}*`;
   const searchResponse = page.waitForResponse((response) => {
     const url = new URL(response.url());
 
