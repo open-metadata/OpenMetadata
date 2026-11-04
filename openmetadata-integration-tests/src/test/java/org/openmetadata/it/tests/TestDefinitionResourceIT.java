@@ -57,6 +57,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
 
   // Disable tests that don't apply to TestDefinition
   {
+    supportsEntityStatus = false;
     supportsFollowers = false; // TestDefinition doesn't support followers
     supportsTags = false; // TestDefinition tags are handled differently
     supportsDataProducts = false; // TestDefinition doesn't support dataProducts

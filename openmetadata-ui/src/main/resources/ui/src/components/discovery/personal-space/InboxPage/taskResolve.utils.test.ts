@@ -23,6 +23,7 @@ jest.mock('../../../../rest/axiosClient', () => ({
   },
 }));
 
+import { TFunction } from 'i18next';
 import {
   Task,
   TaskAvailableTransition,
@@ -33,12 +34,17 @@ import {
 import { TaskFormSchema } from '../../../../rest/taskFormSchemasAPI';
 import { getDefaultTaskFormSchema } from '../../../../utils/TaskFormSchemaUtils';
 import {
+  applyActionLabels,
   buildResolveBody,
+  getReassignBlocker,
   getTaskActionInput,
   getTaskResolveActions,
   LEGACY_APPROVE_ACTION_ID,
   LEGACY_REJECT_ACTION_ID,
   needsTaskActionInput,
+  splitTaskActions,
+  TaskActionKind,
+  TaskResolveAction,
 } from './taskResolve.utils';
 
 const LABELS = { approve: 'Approve', reject: 'Reject' };
@@ -69,7 +75,96 @@ const DAR_REJECT: TaskAvailableTransition = {
   targetTaskStatus: TaskStatus.Rejected,
 };
 
+describe('applyActionLabels', () => {
+  const actions = [
+    {
+      id: 'approve',
+      label: 'Approve',
+      kind: 'approve',
+      requiresComment: false,
+    },
+    { id: 'reject', label: 'Reject', kind: 'reject', requiresComment: true },
+    {
+      id: 'reassign',
+      label: 'Reassign',
+      kind: 'assignee',
+      requiresComment: false,
+    },
+  ] as TaskResolveAction[];
+
+  // Workflow transitions arrive labelled generically; the type knows better.
+  it('renames approve and reject with the type wording, leaving others alone', () => {
+    expect(
+      applyActionLabels(actions, {
+        approve: 'Assign carol',
+        reject: 'Dismiss',
+      }).map((action) => action.label)
+    ).toEqual(['Assign carol', 'Dismiss', 'Reassign']);
+  });
+
+  it('keeps the server labels when the type names nothing', () => {
+    expect(applyActionLabels(actions, { reject: 'Dismiss' })[0].label).toBe(
+      'Approve'
+    );
+    expect(applyActionLabels(actions)).toEqual(actions);
+  });
+});
+
 describe('getTaskResolveActions', () => {
+  it('waits for workflow transitions for a release review', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({
+          type: TaskType.RequestApproval,
+          category: TaskCategory.Approval,
+          about: { id: 'release-id', type: 'ontologyRelease' },
+          availableTransitions: [],
+        }),
+        LABELS
+      )
+    ).toEqual([]);
+  });
+
+  // /close and the expiry timer leave the workflow transitions on the task; a
+  // task closed that way must not keep offering them.
+  it.each([
+    TaskStatus.Cancelled,
+    TaskStatus.Expired,
+    TaskStatus.Failed,
+    TaskStatus.Rejected,
+    TaskStatus.Completed,
+    TaskStatus.Revoked,
+  ])('offers no action on a %s workflow task', (status) => {
+    expect(
+      getTaskResolveActions(
+        makeTask({ status, availableTransitions: [DAR_APPROVE] }),
+        LABELS
+      )
+    ).toEqual([]);
+  });
+
+  it('keeps the transitions of a row that carries no status', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({ status: undefined, availableTransitions: [DAR_APPROVE] }),
+        LABELS
+      )
+    ).toHaveLength(1);
+  });
+
+  // A granted access request is closed, yet revoking it is a real action.
+  it('keeps the transitions of a closed but still actionable task', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({
+          status: TaskStatus.Granted,
+          availableTransitions: [DAR_APPROVE],
+        }),
+        LABELS
+      )
+    ).toHaveLength(1);
+  });
+
   it('maps the server transitions of a workflow task, classifying each kind', () => {
     const actions = getTaskResolveActions(
       makeTask({
@@ -146,6 +241,25 @@ describe('getTaskResolveActions', () => {
     }
   );
 
+  it('offers nothing on a Revise and resubmit task, which the next edit completes', () => {
+    const missing = makeTask({
+      category: TaskCategory.MetadataUpdate,
+      type: TaskType.MetadataCompletion,
+      payload: { missingFields: [] },
+    });
+
+    expect(
+      getTaskResolveActions(
+        {
+          ...missing,
+          payload: { missingFields: [], revision: { requestedBy: 'karan' } },
+        },
+        LABELS
+      )
+    ).toEqual([]);
+    expect(getTaskResolveActions(missing, LABELS)).not.toEqual([]);
+  });
+
   it('offers no legacy approve/reject for an incident, which resolves through its own transition', () => {
     expect(
       getTaskResolveActions(
@@ -208,6 +322,27 @@ describe('getTaskResolveActions', () => {
 describe('buildResolveBody', () => {
   const firstAction = (task: Task, schema?: TaskFormSchema) =>
     getTaskResolveActions(task, LABELS, schema);
+
+  it('sends an ontology review decision without an editable entity payload', () => {
+    const task = makeTask({
+      type: TaskType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'concept-id', type: 'ontologyRelease' },
+      availableTransitions: [DAR_REJECT],
+      payload: { proposedChanges: { description: 'captured definition' } },
+    });
+
+    expect(
+      buildResolveBody(firstAction(task)[0], task, {
+        comment: 'The definition needs a narrower scope',
+        payload: { proposedChanges: { description: 'edited during review' } },
+      })
+    ).toStrictEqual({
+      transitionId: 'reject',
+      resolutionType: 'Rejected',
+      comment: 'The definition needs a narrower scope',
+    });
+  });
 
   it('names the transition of a workflow action and omits a resolutionType the transition does not declare', () => {
     const task = makeTask({
@@ -420,5 +555,100 @@ describe('getTaskActionInput', () => {
       requiresAssignee: false,
       requiresRootCause: true,
     });
+  });
+});
+
+describe('splitTaskActions', () => {
+  const action = (
+    id: string,
+    kind: TaskActionKind,
+    label = id
+  ): TaskResolveAction => ({ id, kind, label, requiresComment: false });
+
+  it('puts approve in front and reject beside it', () => {
+    const layout = splitTaskActions([
+      action('approve', 'approve'),
+      action('reject', 'reject'),
+      action('reassign', 'assignee'),
+    ]);
+
+    expect(layout.primary?.id).toBe('approve');
+    expect(layout.secondary?.id).toBe('reject');
+    expect(layout.overflow.map((a) => a.id)).toEqual(['reassign']);
+  });
+
+  // An incident has no approve/reject: its real action is a plain transition,
+  // which must stay a button rather than hiding in the menu.
+  it('promotes the first plain transitions when there is no approve or reject', () => {
+    const layout = splitTaskActions([
+      action('resolve', 'other'),
+      action('acknowledge', 'other'),
+      action('escalate', 'other'),
+    ]);
+
+    expect(layout.primary?.id).toBe('resolve');
+    expect(layout.secondary?.id).toBe('acknowledge');
+    expect(layout.overflow.map((a) => a.id)).toEqual(['escalate']);
+  });
+
+  it('keeps a lone transition visible, with nothing beside it', () => {
+    const layout = splitTaskActions([action('revoke', 'other')]);
+
+    expect(layout.primary?.id).toBe('revoke');
+    expect(layout.secondary).toBeUndefined();
+    expect(layout.overflow).toEqual([]);
+  });
+
+  it('gives a reassign the free slot when only an approve competes for one', () => {
+    const layout = splitTaskActions([
+      action('approve', 'approve'),
+      action('reassign', 'assignee'),
+    ]);
+
+    expect(layout.primary?.id).toBe('approve');
+    expect(layout.secondary?.id).toBe('reassign');
+    expect(layout.overflow).toEqual([]);
+  });
+
+  it('offers nothing for a task with no actions', () => {
+    expect(splitTaskActions([])).toEqual({
+      primary: undefined,
+      secondary: undefined,
+      overflow: [],
+    });
+  });
+});
+
+describe('getReassignBlocker', () => {
+  const t = ((key: string, options?: { name?: string }) =>
+    options?.name ? `${key}:${options.name}` : key) as unknown as TFunction;
+  const aisha = {
+    id: 'u1',
+    type: 'user',
+    name: 'aisha.khan',
+    displayName: 'Aisha Khan',
+  };
+  const bob = { id: 'u2', type: 'user', name: 'bob', displayName: 'Bob' };
+
+  it.each([
+    ['picks the same assignee again', [aisha], [aisha]],
+    ['clears the current assignee', [aisha], []],
+  ])(
+    'names who is already assigned when the reassign %s',
+    (_, current, next) => {
+      expect(getReassignBlocker(current, next, t)).toBe(
+        'message.already-assigned-to-task:Aisha Khan'
+      );
+    }
+  );
+
+  it('lets a reassign to someone else through', () => {
+    expect(getReassignBlocker([aisha], [bob], t)).toBeUndefined();
+  });
+
+  it('asks for an assignee when a task with none gets an empty pick', () => {
+    expect(getReassignBlocker([], [], t)).toBe(
+      'message.field-text-is-required'
+    );
   });
 });

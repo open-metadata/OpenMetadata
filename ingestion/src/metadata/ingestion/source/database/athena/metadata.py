@@ -79,6 +79,8 @@ ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 ICEBERG_TABLE_TYPE = "ICEBERG"
+GLUE_VIEW_TABLE_TYPE = "VIRTUAL_VIEW"
+MAX_HIVE_VIEW_WARNINGS = 100
 
 ATHENA_INTERVAL_TYPE_MAP = {
     **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
@@ -115,6 +117,7 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
         self.external_location_map = {}
         self.schema_description_map = {}
         self.glue_client = None
+        self._hive_view_warning_count = 0
         self._init_custom_properties()
 
     def prepare(self):
@@ -142,7 +145,10 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
         return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
-        """Return tables with proper type detection using a single Glue API pass."""
+        """Return tables with proper type detection using a single Glue API pass.
+
+        Views are left to the view pass, which types them View with their definition.
+        """
         if self.glue_client:
             try:
                 results = []
@@ -152,10 +158,23 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
                     paginate_params["CatalogId"] = self.service_connection.catalogId
                 for page in paginator.paginate(**paginate_params):
                     for table in page.get("TableList", []):
+                        # Glue lists views too. Emitting them here would send each view twice and put
+                        # it under includeTables instead of includeViews. Checked before the Iceberg
+                        # branch because Glue also stamps Iceberg views with table_type=ICEBERG.
+                        if table.get("TableType") == GLUE_VIEW_TABLE_TYPE:
+                            continue
                         params = table.get("Parameters", {})
-                        table_type = (
-                            TableType.Iceberg if params.get("table_type") == ICEBERG_TABLE_TYPE else TableType.External
-                        )
+                        if params.get("table_type") == ICEBERG_TABLE_TYPE:
+                            # iceberg tables carry table_type=ICEBERG in the Glue DDL
+                            # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
+                            table_type = TableType.Iceberg
+                        elif self._is_delta_table(params):
+                            # Kept after the Iceberg check so a UniForm table carrying both markers
+                            # stays Iceberg. Athena DDL writes table_type=DELTA, Spark and the crawler
+                            # write spark.sql.sources.provider=delta; producers disagree on case.
+                            table_type = TableType.DeltaLake
+                        else:
+                            table_type = TableType.External
                         results.append(TableNameAndType(name=table["Name"], type_=table_type))
                 return results  # noqa: TRY300
             except Exception as exc:
@@ -165,6 +184,19 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
             TableNameAndType(name=name, type_=TableType.External)
             for name in self.inspector.get_table_names(schema_name) or []
         ]
+
+    @staticmethod
+    def _is_delta_table(parameters: dict | None) -> bool:
+        """A Delta table is marked by table_type=DELTA (Athena DDL) or
+        spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both
+        keys are compared case-insensitively. Mirrors GlueSource._is_delta_table but reads the
+        raw boto3 get_tables Parameters dict rather than the Glue TableParameters model."""
+        if not parameters:
+            return False
+        return any(
+            isinstance(parameters.get(key), str) and parameters[key].lower() == "delta"
+            for key in ("table_type", "spark.sql.sources.provider")
+        )
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
@@ -203,6 +235,72 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
             )
             return True, partition_details
         return False, None
+
+    def should_preserve_table_type_when_partitioned(self, table_type: TableType) -> bool:
+        return table_type == TableType.Iceberg or super().should_preserve_table_type_when_partitioned(table_type)
+
+    def _is_hive_view(self, table_name: str, schema_name: str) -> bool:
+        """Whether Glue stores this view in Hive form, whose definition SHOW CREATE VIEW cannot read.
+
+        Athena reads only its own views and Data Catalog views. Spark writes its views to Glue in Hive
+        form too, so they count as Hive views here.
+        """
+        if not self.glue_client:
+            return False
+        get_table_params = {"DatabaseName": schema_name, "Name": table_name}
+        if self.service_connection.catalogId:
+            get_table_params["CatalogId"] = self.service_connection.catalogId
+        try:
+            table = self.glue_client.get_table(**get_table_params).get("Table") or {}
+        except Exception:
+            logger.debug("Could not identify Glue view format for [%s.%s]", schema_name, table_name)
+            return False
+        if table.get("TableType") != GLUE_VIEW_TABLE_TYPE or table.get("ViewDefinition"):
+            return False
+        parameters = table.get("Parameters") or {}
+        original_text = table.get("ViewOriginalText") or ""
+        return bool(
+            (original_text or table.get("ViewExpandedText"))
+            and str(parameters.get("presto_view", "")).lower() != "true"
+            and not original_text.lstrip().startswith("/* Presto View:")
+        )
+
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> str | None:
+        if table_type == TableType.View and self._is_hive_view(table_name, schema_name):
+            context = self.context.get()
+            if self._hive_view_warning_count < MAX_HIVE_VIEW_WARNINGS:
+                table_fqn = cast(
+                    "str",
+                    fqn.build(
+                        self.metadata,
+                        Table,
+                        service_name=context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=context.database,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_name=schema_name,
+                        table_name=table_name,
+                        skip_es_search=True,
+                    ),
+                )
+                self.status.warning(
+                    key=table_fqn,
+                    reason="Athena cannot retrieve this Hive or Spark view definition with SHOW CREATE VIEW. "
+                    "The view was ingested without SQL; recreate it in Athena to make its definition available.",
+                )
+            elif self._hive_view_warning_count == MAX_HIVE_VIEW_WARNINGS:
+                self.status.warning(
+                    key=context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    reason="Additional Hive or Spark view definition warnings omitted "
+                    f"after {MAX_HIVE_VIEW_WARNINGS} views.",
+                )
+            self._hive_view_warning_count += 1
+            return None
+        return super().get_schema_definition(table_type, table_name, schema_name, inspector)
 
     def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """

@@ -29,7 +29,7 @@ const persona = new PersonaClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -69,7 +69,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await navigateToPersonaNavigation(page);
 
     // Verify page loads with expected elements
-    await expect(page.getByRole('tree')).toBeVisible();
+    await expect(page.getByRole('treegrid')).toBeVisible();
     await expect(page.getByTestId('save-button')).toBeVisible();
     await expect(page.getByTestId('reset-button')).toBeVisible();
 
@@ -156,8 +156,8 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     //   Make changes
     const navigateSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
-      .locator('.ant-switch');
+      .getByRole('row', { name: 'Insights', exact: true })
+      .locator('[data-testid^="navigation-switch-"]');
 
     await navigateSwitch.click();
 
@@ -205,9 +205,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     //   Make changes
     const domainSwitch = page
-      .locator('.ant-tree-title:has-text("Domains")')
+      .getByRole('row', { name: 'Domains', exact: true })
       .first()
-      .locator('.ant-switch');
+      .locator('[data-testid^="navigation-switch-"]');
 
     await domainSwitch.click();
 
@@ -248,10 +248,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
     // Wait for the tree to be fully ready
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
     const homeItem = treeItems.filter({
       has: page.getByText('Home', { exact: true }),
@@ -276,9 +276,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           x: firstItemBox.width / 2,
           y: firstItemBox.height / 2,
         },
+        // The middle of a row is a drop "on" it; its bottom edge drops after it.
         targetPosition: {
           x: secondItemBox.width / 2,
-          y: secondItemBox.height / 2 + 10,
+          y: secondItemBox.height - 2,
         },
       });
       await expect(treeItems.first()).not.toHaveText(firstItemText as string);
@@ -300,8 +301,8 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     const exploreSwitch = page.getByTestId('navigation-switch-/explore');
     const insightsSwitch = page
-      .locator('.ant-tree-title:has-text("Insights")')
-      .locator('.ant-switch')
+      .getByRole('row', { name: 'Insights', exact: true })
+      .locator('[data-testid^="navigation-switch-"]')
       .first();
 
     await exploreSwitch.click();
@@ -348,9 +349,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
     // Data Quality and Incident Manager are adjacent children of Observability
     // near the top of the tree, which keeps the drag reliable.
@@ -386,9 +387,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
           x: (dataQualityBox?.width ?? 0) / 2,
           y: (dataQualityBox?.height ?? 0) / 2,
         },
+        // The middle of a row is a drop "on" it; its bottom edge drops after it.
         targetPosition: {
           x: (incidentManagerBox?.width ?? 0) / 2,
-          y: (incidentManagerBox?.height ?? 0) / 2 + 10,
+          y: (incidentManagerBox?.height ?? 0) - 2,
         },
       });
 
@@ -412,7 +414,7 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await redirectToHomePage(page);
     await navigateToPersonaNavigation(page);
 
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
     await expect(dataQualityItem).toBeVisible();
     await expect(incidentManagerItem).toBeVisible();
 
@@ -453,9 +455,9 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await navigateToPersonaNavigation(page);
 
-    const treeItems = page.locator('.ant-tree-node-content-wrapper');
+    const treeItems = page.getByRole('treegrid').getByRole('row');
 
-    await expect(treeItems.first()).toBeVisible();
+    await expect(treeItems.filter({ visible: true })).not.toHaveCount(0);
 
     const testLibraryItem = treeItems.filter({
       has: page.getByText('Test Library', { exact: true }),
@@ -532,8 +534,10 @@ test.describe.serial('Settings Navigation Page Tests', () => {
 
     // The moved item is now rendered under the Data Marketplace section
     await expect(
-      page.locator('[data-testid="app-bar-item-test-library"]').first()
-    ).toBeVisible();
+      page
+        .locator('[data-testid="app-bar-item-test-library"]')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
 
     await page.click('[data-testid="data-marketplace-section"]');
 

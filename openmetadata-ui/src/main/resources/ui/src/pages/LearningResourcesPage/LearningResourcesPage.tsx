@@ -21,14 +21,16 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, SearchLg, Trash01 } from '@untitledui/icons';
+import {
+  Edit01,
+  Plus,
+  Search,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
-import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -41,6 +43,7 @@ import {
 } from '../../components/Learning/Learning.interface';
 import { LearningResourceCard } from '../../components/Learning/LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../../components/Learning/ResourcePlayer/ResourcePlayerModal.component';
+import { ResourceTypeIcon } from '../../components/Learning/ResourceTypeIcon/ResourceTypeIcon';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   PAGE_SIZE_BASE,
@@ -68,26 +71,6 @@ import { LearningResourceForm } from './LearningResourceForm.component';
 
 const CARD_GRID_STYLE: React.CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-};
-
-const RESOURCE_TYPE_ICONS: Record<
-  string,
-  React.FunctionComponent<React.SVGProps<SVGSVGElement>>
-> = {
-  Video: VideoIcon,
-  Storylane: StoryLaneIcon,
-};
-
-const getResourceTypeIcon = (type: string) => {
-  const Icon = RESOURCE_TYPE_ICONS[type] ?? VideoIcon;
-
-  return (
-    <Box
-      align="center"
-      className="tw:size-8 tw:shrink-0 tw:justify-center tw:rounded-md">
-      <Icon height={24} width={24} />
-    </Box>
-  );
 };
 
 const getCategoryLabel = (category: string) =>
@@ -245,20 +228,16 @@ export const LearningResourcesPage: React.FC = () => {
   const renderActionsCell = (record: LearningResource) => (
     <Box gap={2}>
       <ButtonUtility
-        aria-label={t('label.edit')}
-        color="secondary"
         data-testid={`edit-${record.name}`}
-        icon={<IconEdit height={14} width={14} />}
-        size="xs"
+        icon={Edit01}
+        size="lg"
         tooltip={t('label.edit')}
         onClick={() => handleEdit(record)}
       />
       <ButtonUtility
-        aria-label={t('label.delete')}
-        color="secondary"
         data-testid={`delete-${record.name}`}
-        icon={<Trash01 size={14} />}
-        size="xs"
+        icon={Trash01}
+        size="lg"
         tooltip={t('label.delete')}
         onClick={() => handleDelete(record)}
       />
@@ -270,7 +249,11 @@ export const LearningResourcesPage: React.FC = () => {
       case 'name':
         return (
           <Box align="center" className="tw:min-w-0" gap={2}>
-            {getResourceTypeIcon(record.resourceType)}
+            <Box
+              align="center"
+              className="tw:size-8 tw:shrink-0 tw:justify-center tw:rounded-md">
+              <ResourceTypeIcon resourceType={record.resourceType} />
+            </Box>
             <Typography
               ellipsis
               as="span"
@@ -359,7 +342,7 @@ export const LearningResourcesPage: React.FC = () => {
             <Box align="center" gap={2}>
               <Input
                 className="tw:max-w-86"
-                icon={SearchLg}
+                icon={Search}
                 placeholder={t('label.search-entity', {
                   entity: t('label.resource'),
                 })}
@@ -391,6 +374,7 @@ export const LearningResourcesPage: React.FC = () => {
                   {(col) => (
                     <Table.Head
                       id={col.id}
+                      isRowHeader={col.id === 'name'}
                       key={col.id}
                       label={col.label}
                       width={col.width}

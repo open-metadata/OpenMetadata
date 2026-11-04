@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import TestDefinitionTable from './TestDefinitionTable.component';
@@ -134,7 +134,9 @@ describe('TestDefinitionTable loading', () => {
     );
 
     expect(
-      screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+      within(
+        screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+      ).getByRole('switch')
     ).toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
@@ -157,7 +159,7 @@ describe('TestDefinitionTable loading', () => {
 
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).toBeEnabled();
 
     rerender(
       <TestDefinitionTable
@@ -171,7 +173,9 @@ describe('TestDefinitionTable loading', () => {
     );
 
     expect(
-      screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+      within(
+        screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+      ).getByRole('switch')
     ).toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
@@ -197,14 +201,16 @@ describe('TestDefinitionTable loading', () => {
     rerender(<TestDefinitionTable {...props} isLoading={false} />);
 
     expect(
-      screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+      within(
+        screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+      ).getByRole('switch')
     ).not.toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).toBeEnabled();
     expect(
       screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).toBeEnabled();
   });
 
   it('should leave the row controls usable once the refetch lands', () => {
@@ -215,11 +221,13 @@ describe('TestDefinitionTable loading', () => {
     );
 
     expect(
-      screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+      within(
+        screen.getByTestId('enable-switch-columnValuesToBeNotNull')
+      ).getByRole('switch')
     ).not.toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).toBeEnabled();
   });
 
   it('should not dim or mark the table busy when idle', () => {

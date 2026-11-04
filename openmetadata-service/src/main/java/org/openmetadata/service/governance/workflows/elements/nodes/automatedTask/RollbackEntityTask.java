@@ -16,6 +16,7 @@ import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.BatchExecutionPlan.NodeMode;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.RollbackEntityImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -31,6 +32,13 @@ public class RollbackEntityTask implements NodeInterface {
 
   public RollbackEntityTask(
       RollbackEntityTaskDefinition nodeDefinition, WorkflowConfiguration config) {
+    this(nodeDefinition, config, NodeMode.PER_ENTITY);
+  }
+
+  public RollbackEntityTask(
+      RollbackEntityTaskDefinition nodeDefinition,
+      WorkflowConfiguration config,
+      NodeMode batchMode) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -39,6 +47,7 @@ public class RollbackEntityTask implements NodeInterface {
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
     ServiceTask rollbackEntityTask = getRollbackEntityServiceTask(subProcessId, nodeDefinition);
+    batchMode.addTo(rollbackEntityTask);
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();

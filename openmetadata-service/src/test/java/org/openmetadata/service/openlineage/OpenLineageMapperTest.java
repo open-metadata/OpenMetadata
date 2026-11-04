@@ -43,6 +43,8 @@ import org.openmetadata.schema.api.lineage.openlineage.ParentJobFacet;
 import org.openmetadata.schema.api.lineage.openlineage.ParentRunFacet;
 import org.openmetadata.schema.api.lineage.openlineage.RunFacets;
 import org.openmetadata.schema.api.lineage.openlineage.SqlJobFacet;
+import org.openmetadata.schema.api.lineage.openlineage.UnresolvedEntity;
+import org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason;
 import org.openmetadata.schema.configuration.OpenLineageEventType;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.type.ColumnLineage;
@@ -64,7 +66,7 @@ class OpenLineageMapperTest {
 
   @Test
   void mapRunEvent_nullEvent_returnsEmptyList() {
-    List<AddLineage> result = mapper.mapRunEvent(null, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(null, UPDATED_BY).lineageRequests();
 
     assertTrue(result.isEmpty());
     verifyNoInteractions(entityResolver);
@@ -76,7 +78,7 @@ class OpenLineageMapperTest {
     event.setInputs(new ArrayList<>());
     event.setOutputs(List.of(createOutputDataset("ns", "output_table")));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertTrue(result.isEmpty());
   }
@@ -87,7 +89,7 @@ class OpenLineageMapperTest {
     event.setInputs(List.of(createInputDataset("ns", "input_table")));
     event.setOutputs(new ArrayList<>());
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertTrue(result.isEmpty());
   }
@@ -98,7 +100,7 @@ class OpenLineageMapperTest {
     event.setInputs(null);
     event.setOutputs(List.of(createOutputDataset("ns", "output_table")));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertTrue(result.isEmpty());
   }
@@ -109,7 +111,7 @@ class OpenLineageMapperTest {
     event.setInputs(List.of(createInputDataset("ns", "input_table")));
     event.setOutputs(List.of(createOutputDataset("ns", "output_table")));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertTrue(result.isEmpty());
   }
@@ -120,7 +122,7 @@ class OpenLineageMapperTest {
     event.setInputs(List.of(createInputDataset("ns", "input_table")));
     event.setOutputs(List.of(createOutputDataset("ns", "output_table")));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertTrue(result.isEmpty());
   }
@@ -131,7 +133,7 @@ class OpenLineageMapperTest {
     event.setInputs(List.of(createInputDataset("ns", "input_table")));
     event.setOutputs(List.of(createOutputDataset("ns", "output_table")));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertTrue(result.isEmpty());
   }
@@ -150,13 +152,12 @@ class OpenLineageMapperTest {
         createEntityReference("output-table-id", "service.db.schema.output_table");
     EntityReference pipelineRef = createPipelineReference("pipeline-id", "service.pipeline");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(pipelineRef);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString()))
+        .thenReturn(pipeline(pipelineRef));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     AddLineage lineage = result.get(0);
@@ -180,13 +181,11 @@ class OpenLineageMapperTest {
     EntityReference outputRef =
         createEntityReference("output-table-id", "service.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
   }
@@ -206,34 +205,103 @@ class OpenLineageMapperTest {
     EntityReference outputRef1 = createEntityReference("o1", "service.db.schema.output1");
     EntityReference outputRef2 = createEntityReference("o2", "service.db.schema.output2");
 
-    when(entityResolver.resolveTable(input1)).thenReturn(inputRef1);
-    when(entityResolver.resolveTable(input2)).thenReturn(inputRef2);
-    when(entityResolver.resolveOrCreateTable(eq(output1), eq(UPDATED_BY))).thenReturn(outputRef1);
-    when(entityResolver.resolveOrCreateTable(eq(output2), eq(UPDATED_BY))).thenReturn(outputRef2);
-    when(entityResolver.resolveOrCreateTable(eq(input1), eq(UPDATED_BY))).thenReturn(inputRef1);
-    when(entityResolver.resolveOrCreateTable(eq(input2), eq(UPDATED_BY))).thenReturn(inputRef2);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output1), eq(UPDATED_BY)))
+        .thenReturn(dataset(outputRef1));
+    when(entityResolver.resolveDataset(eq(output2), eq(UPDATED_BY)))
+        .thenReturn(dataset(outputRef2));
+    when(entityResolver.resolveDataset(eq(input1), eq(UPDATED_BY))).thenReturn(dataset(inputRef1));
+    when(entityResolver.resolveDataset(eq(input2), eq(UPDATED_BY))).thenReturn(dataset(inputRef2));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     // 2 outputs * 2 inputs = 4 lineage edges
     assertEquals(4, result.size());
   }
 
   @Test
-  void mapRunEvent_unresolvedOutput_skipsOutput() {
+  void mapRunEvent_unresolvedOutput_skipsOutputAndReportsIt() {
     OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
     OpenLineageInputDataset input = createInputDataset("ns", "input_table");
     OpenLineageOutputDataset output = createOutputDataset("ns", "output_table");
     event.setInputs(List.of(input));
     event.setOutputs(List.of(output));
 
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(null);
+    EntityReference inputRef = createEntityReference("i1", "service.db.schema.input_table");
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY)))
+        .thenReturn(
+            OpenLineageResolution.unresolved(UnresolvedReason.NAMESPACE_NOT_MAPPED, "no mapping"));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    OpenLineageEventPlan plan = mapper.mapRunEvent(event, UPDATED_BY);
 
-    assertTrue(result.isEmpty());
+    assertFalse(plan.skipped());
+    assertTrue(plan.lineageRequests().isEmpty());
+    assertEquals(1, plan.unresolvedDatasets().size());
+    UnresolvedEntity unresolved = plan.unresolvedDatasets().getFirst();
+    assertEquals("ns", unresolved.getNamespace());
+    assertEquals("output_table", unresolved.getName());
+    assertEquals(UnresolvedReason.NAMESPACE_NOT_MAPPED, unresolved.getReason());
+    assertEquals("no mapping", unresolved.getMessage());
+  }
+
+  @Test
+  void mapRunEvent_unresolvedJob_writesEdgesWithoutPipelineAndReportsJob() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+    OpenLineageInputDataset input = createInputDataset("ns", "input_table");
+    OpenLineageOutputDataset output = createOutputDataset("ns", "output_table");
+    event.setInputs(List.of(input));
+    event.setOutputs(List.of(output));
+
+    EntityReference inputRef = createEntityReference("i1", "service.db.schema.input_table");
+    EntityReference outputRef = createEntityReference("o1", "service.db.schema.output_table");
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolvePipeline("test-namespace", "test-job")).thenReturn(pipeline(null));
+
+    OpenLineageEventPlan plan = mapper.mapRunEvent(event, UPDATED_BY);
+
+    assertEquals(1, plan.lineageRequests().size());
+    assertNull(plan.lineageRequests().getFirst().getEdge().getLineageDetails().getPipeline());
+    assertTrue(plan.unresolvedDatasets().isEmpty());
+    assertEquals(1, plan.unresolvedJobs().size());
+    UnresolvedEntity job = plan.unresolvedJobs().getFirst();
+    assertEquals("test-namespace", job.getNamespace());
+    assertEquals("test-job", job.getName());
+    assertEquals(UnresolvedReason.PIPELINE_NOT_FOUND, job.getReason());
+  }
+
+  @Test
+  void mapRunEvent_datasetUnresolvedAsInputAndOutput_isReportedOnce() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+    OpenLineageInputDataset input = createInputDataset("ns", "shared_table");
+    OpenLineageOutputDataset output = createOutputDataset("ns", "shared_table");
+    event.setInputs(List.of(input));
+    event.setOutputs(List.of(output));
+
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(null));
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(null));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
+
+    OpenLineageEventPlan plan = mapper.mapRunEvent(event, UPDATED_BY);
+
+    assertEquals(1, plan.unresolvedDatasets().size());
+    assertEquals("shared_table", plan.unresolvedDatasets().getFirst().getName());
+  }
+
+  @Test
+  void mapRunEvent_filteredEvent_isSkippedWithoutResolvingAnything() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.START);
+    event.setInputs(List.of(createInputDataset("ns", "input_table")));
+    event.setOutputs(List.of(createOutputDataset("ns", "output_table")));
+
+    OpenLineageEventPlan plan = mapper.mapRunEvent(event, UPDATED_BY);
+
+    assertTrue(plan.skipped());
+    assertTrue(plan.lineageRequests().isEmpty());
+    assertTrue(plan.unresolvedDatasets().isEmpty());
+    verifyNoInteractions(entityResolver);
   }
 
   @Test
@@ -245,13 +313,11 @@ class OpenLineageMapperTest {
     event.setOutputs(List.of(output));
 
     EntityReference outputRef = createEntityReference("o1", "service.db.schema.output_table");
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(null);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
-    when(entityResolver.resolveTable(input)).thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(null));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertTrue(result.isEmpty());
   }
@@ -270,13 +336,11 @@ class OpenLineageMapperTest {
     EntityReference inputRef = createEntityReference("i1", "service.db.schema.input_table");
     EntityReference outputRef = createEntityReference("o1", "service.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     assertEquals(sqlQuery, result.get(0).getEdge().getLineageDetails().getSqlQuery());
@@ -300,19 +364,17 @@ class OpenLineageMapperTest {
     EntityReference parentPipelineRef =
         createPipelineReference("parent-pipe-id", "service.parent-namespace_parent-job");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline("parent-namespace", "parent-job", UPDATED_BY))
-        .thenReturn(parentPipelineRef);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline("parent-namespace", "parent-job"))
+        .thenReturn(pipeline(parentPipelineRef));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     assertEquals(parentPipelineRef, result.get(0).getEdge().getLineageDetails().getPipeline());
-    verify(entityResolver).resolveOrCreatePipeline("parent-namespace", "parent-job", UPDATED_BY);
-    verify(entityResolver, never())
-        .resolveOrCreatePipeline(eq("test-namespace"), eq("test-job"), eq(UPDATED_BY));
+    verify(entityResolver).resolvePipeline("parent-namespace", "parent-job");
+    verify(entityResolver, never()).resolvePipeline(eq("test-namespace"), eq("test-job"));
   }
 
   @Test
@@ -348,13 +410,11 @@ class OpenLineageMapperTest {
     EntityReference inputRef = createEntityReference("i1", "service.db.schema.input_table");
     EntityReference outputRef = createEntityReference("o1", "service.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     List<ColumnLineage> columnLineages =
@@ -407,13 +467,11 @@ class OpenLineageMapperTest {
     EntityReference inputRef = createEntityReference("i1", "service.db.schema.input_table");
     EntityReference outputRef = createEntityReference("o1", "service.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     List<ColumnLineage> columnLineages =
@@ -466,15 +524,12 @@ class OpenLineageMapperTest {
     EntityReference inputRef2 = createEntityReference("i2", "svc.db.schema.table2");
     EntityReference outputRef = createEntityReference("o1", "svc.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input1)).thenReturn(inputRef1);
-    when(entityResolver.resolveTable(input2)).thenReturn(inputRef2);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input1), eq(UPDATED_BY))).thenReturn(inputRef1);
-    when(entityResolver.resolveOrCreateTable(eq(input2), eq(UPDATED_BY))).thenReturn(inputRef2);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input1), eq(UPDATED_BY))).thenReturn(dataset(inputRef1));
+    when(entityResolver.resolveDataset(eq(input2), eq(UPDATED_BY))).thenReturn(dataset(inputRef2));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     // 2 lineage edges (output <- input1, output <- input2)
     assertEquals(2, result.size());
@@ -509,31 +564,29 @@ class OpenLineageMapperTest {
     EntityReference inputRef = createEntityReference("i1", "svc.db.schema.input_table");
     EntityReference outputRef = createEntityReference("o1", "svc.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
     // Test START event
     OpenLineageRunEvent startEvent = createBaseEvent(EventType.START);
     startEvent.setInputs(List.of(input));
     startEvent.setOutputs(List.of(output));
-    List<AddLineage> startResult = mapper.mapRunEvent(startEvent, UPDATED_BY);
+    List<AddLineage> startResult = mapper.mapRunEvent(startEvent, UPDATED_BY).lineageRequests();
     assertEquals(1, startResult.size());
 
     // Test FAIL event
     OpenLineageRunEvent failEvent = createBaseEvent(EventType.FAIL);
     failEvent.setInputs(List.of(input));
     failEvent.setOutputs(List.of(output));
-    List<AddLineage> failResult = mapper.mapRunEvent(failEvent, UPDATED_BY);
+    List<AddLineage> failResult = mapper.mapRunEvent(failEvent, UPDATED_BY).lineageRequests();
     assertEquals(1, failResult.size());
 
     // Test RUNNING event (should be skipped as it's not in the filter)
     OpenLineageRunEvent runningEvent = createBaseEvent(EventType.RUNNING);
     runningEvent.setInputs(List.of(input));
     runningEvent.setOutputs(List.of(output));
-    List<AddLineage> runningResult = mapper.mapRunEvent(runningEvent, UPDATED_BY);
+    List<AddLineage> runningResult = mapper.mapRunEvent(runningEvent, UPDATED_BY).lineageRequests();
     assertTrue(runningResult.isEmpty());
   }
 
@@ -547,22 +600,21 @@ class OpenLineageMapperTest {
     EntityReference inputRef = createEntityReference("i1", "svc.db.schema.input_table");
     EntityReference outputRef = createEntityReference("o1", "svc.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
     OpenLineageRunEvent completeEvent = createBaseEvent(EventType.COMPLETE);
     completeEvent.setInputs(List.of(input));
     completeEvent.setOutputs(List.of(output));
-    List<AddLineage> completeResult = mapper.mapRunEvent(completeEvent, UPDATED_BY);
+    List<AddLineage> completeResult =
+        mapper.mapRunEvent(completeEvent, UPDATED_BY).lineageRequests();
     assertEquals(1, completeResult.size());
 
     OpenLineageRunEvent startEvent = createBaseEvent(EventType.START);
     startEvent.setInputs(List.of(input));
     startEvent.setOutputs(List.of(output));
-    List<AddLineage> startResult = mapper.mapRunEvent(startEvent, UPDATED_BY);
+    List<AddLineage> startResult = mapper.mapRunEvent(startEvent, UPDATED_BY).lineageRequests();
     assertTrue(startResult.isEmpty());
   }
 
@@ -580,13 +632,11 @@ class OpenLineageMapperTest {
     EntityReference inputRef = createEntityReference("i1", "svc.db.schema.input_table");
     EntityReference outputRef = createEntityReference("o1", "svc.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     String description = result.get(0).getEdge().getLineageDetails().getDescription();
@@ -614,16 +664,12 @@ class OpenLineageMapperTest {
             .withType("container")
             .withFullyQualifiedName("storage.my-bucket.data_output");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(null);
-    when(entityResolver.isStorageDataset("gs://my-bucket")).thenReturn(true);
-    when(entityResolver.resolveContainer("gs://my-bucket", "data/output.csv"))
-        .thenReturn(containerRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY)))
+        .thenReturn(dataset(containerRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     assertEquals(containerRef, result.get(0).getEdge().getToEntity());
@@ -647,16 +693,12 @@ class OpenLineageMapperTest {
             .withType("container")
             .withFullyQualifiedName("storage.my-bucket.data_input");
 
-    when(entityResolver.resolveTable(input)).thenReturn(null);
-    when(entityResolver.isStorageDataset("s3://my-bucket")).thenReturn(true);
-    when(entityResolver.resolveContainer("s3://my-bucket", "data/input.parquet"))
-        .thenReturn(containerRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(null);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY)))
+        .thenReturn(dataset(containerRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     assertEquals(containerRef, result.get(0).getEdge().getFromEntity());
@@ -699,13 +741,11 @@ class OpenLineageMapperTest {
     EntityReference inputRef = createEntityReference("i1", "service.db.schema.input_table");
     EntityReference outputRef = createEntityReference("o1", "service.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     List<ColumnLineage> columnLineages =
@@ -726,13 +766,11 @@ class OpenLineageMapperTest {
     EntityReference inputRef = createEntityReference("i1", "svc.db.schema.input_table");
     EntityReference outputRef = createEntityReference("o1", "svc.db.schema.output_table");
 
-    when(entityResolver.resolveTable(input)).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreateTable(eq(output), eq(UPDATED_BY))).thenReturn(outputRef);
-    when(entityResolver.resolveOrCreateTable(eq(input), eq(UPDATED_BY))).thenReturn(inputRef);
-    when(entityResolver.resolveOrCreatePipeline(anyString(), anyString(), eq(UPDATED_BY)))
-        .thenReturn(null);
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
 
-    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY);
+    List<AddLineage> result = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
 
     assertEquals(1, result.size());
     assertNull(result.get(0).getEdge().getLineageDetails().getColumnsLineage());
@@ -756,6 +794,18 @@ class OpenLineageMapperTest {
 
   private OpenLineageOutputDataset createOutputDataset(String namespace, String name) {
     return new OpenLineageOutputDataset().withNamespace(namespace).withName(name);
+  }
+
+  private static OpenLineageResolution dataset(EntityReference ref) {
+    return ref == null
+        ? OpenLineageResolution.unresolved(UnresolvedReason.NOT_FOUND, "dataset not found")
+        : OpenLineageResolution.resolved(ref);
+  }
+
+  private static OpenLineageResolution pipeline(EntityReference ref) {
+    return ref == null
+        ? OpenLineageResolution.unresolved(UnresolvedReason.PIPELINE_NOT_FOUND, "no pipeline")
+        : OpenLineageResolution.resolved(ref);
   }
 
   private EntityReference createEntityReference(String id, String fqn) {

@@ -110,7 +110,7 @@ const openExplore = async (page: Page) => {
 const treeNode = (page: Page, title: string) =>
   page
     .getByTestId(`explore-tree-title-${title}`)
-    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
+    .locator('xpath=ancestor::*[@role="row"]');
 
 // A global-search term scopes every facet aggregation, so clear it before any
 // post-search facet interaction (the searchAndExpect* helpers leave the box
@@ -252,7 +252,9 @@ test('a browse-location deep link highlights the tree and clears on chip removal
 
     expect(page.url()).toContain('browsePath');
     await expect(page.getByTestId('browse-chip-entityType')).toBeVisible();
-    await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    await expect(
+      page.getByTestId('explore-tree').getByRole('row', { selected: true })
+    ).toBeVisible();
 
     browseUrl = page.url();
   });
@@ -262,7 +264,9 @@ test('a browse-location deep link highlights the tree and clears on chip removal
     await page.goto(browseUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    await expect(
+      page.getByTestId('explore-tree').getByRole('row', { selected: true })
+    ).toBeVisible();
     await expect(page.getByTestId('browse-chip-entityType')).toBeVisible();
   });
 
@@ -275,7 +279,9 @@ test('a browse-location deep link highlights the tree and clears on chip removal
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('browse-chip-entityType')).not.toBeVisible();
-    await expect(page.locator('.ant-tree-node-selected')).toHaveCount(0);
+    await expect(
+      page.getByTestId('explore-tree').getByRole('row', { selected: true })
+    ).toHaveCount(0);
   });
 });
 
@@ -290,11 +296,10 @@ test('selecting an asset type grays out and collapses incompatible categories', 
   // Databases).
   await test.step('Databases category is expanded', async () => {
     // Databases auto-expands on load, so wait for that rather than clicking its
-    // switcher: clicking would toggle the already-open node closed, and the
-    // loading-state spinner (class ant-tree-switcher-loading-icon, a substring
-    // match for "ant-tree-switcher") makes a switcher click ambiguous.
-    await expect(treeNode(page, 'Databases')).toHaveClass(
-      /ant-tree-treenode-switcher-open/
+    // expand button: clicking would toggle the already-open node closed.
+    await expect(treeNode(page, 'Databases')).toHaveAttribute(
+      'aria-expanded',
+      'true'
     );
   });
 
@@ -307,14 +312,17 @@ test('selecting an asset type grays out and collapses incompatible categories', 
     );
     await page.keyboard.press('Escape');
 
-    await expect(treeNode(page, 'Dashboards')).not.toHaveClass(
-      /ant-tree-treenode-disabled/
+    await expect(treeNode(page, 'Dashboards')).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
     );
-    await expect(treeNode(page, 'Databases')).toHaveClass(
-      /ant-tree-treenode-disabled/
+    await expect(treeNode(page, 'Databases')).toHaveAttribute(
+      'aria-disabled',
+      'true'
     );
-    await expect(treeNode(page, 'Databases')).not.toHaveClass(
-      /ant-tree-treenode-switcher-open/
+    await expect(treeNode(page, 'Databases')).not.toHaveAttribute(
+      'aria-expanded',
+      'true'
     );
   });
 });

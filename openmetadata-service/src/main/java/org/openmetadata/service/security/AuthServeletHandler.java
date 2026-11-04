@@ -11,4 +11,7 @@ public interface AuthServeletHandler {
   void handleCallback(HttpServletRequest req, HttpServletResponse resp);
 
   void handleRefresh(HttpServletRequest req, HttpServletResponse resp);
+
+  /** Releases what this handler holds, once a security reload has replaced it. */
+  default void close() {}
 }

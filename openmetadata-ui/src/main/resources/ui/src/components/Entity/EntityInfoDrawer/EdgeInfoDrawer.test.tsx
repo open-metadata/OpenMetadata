@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Edge, Node } from 'reactflow';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
 import EdgeInfoDrawer from './EdgeInfoDrawer.component';
@@ -78,10 +79,6 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
 jest.mock('../../Modals/ModalWithQueryEditor/ModalWithQueryEditor', () => {
   return jest.fn().mockImplementation(() => <div>ModalWithQueryEditor</div>);
 });
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-}));
 
 const mockOnEdgeDetailsUpdate = jest.fn();
 
@@ -177,6 +174,16 @@ describe('EdgeInfoDrawer Component', () => {
     expect(await screen.findAllByTestId('edit-button')).toHaveLength(1);
   });
 
+  it('should call onClose when the close button is pressed', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onClose = jest.fn();
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} onClose={onClose} />);
+
+    await user.click(await screen.findByTestId('drawer-close-icon'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('should render no query if no query is present', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
 
@@ -204,6 +211,36 @@ describe('EdgeInfoDrawer Component', () => {
     });
 
     expect(editButton).toBeInTheDocument();
+  });
+
+  it('should show no edge actions menu unless actions are provided', async () => {
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
+
+    await screen.findByText('label.description');
+
+    expect(screen.queryByTestId('edge-drawer-menu')).not.toBeInTheDocument();
+  });
+
+  it('should run the chosen edge action from the header menu', async () => {
+    const onEditPipeline = jest.fn();
+    const onDelete = jest.fn();
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        onDelete={onDelete}
+        onEditPipeline={onEditPipeline}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('edge-drawer-menu'));
+    fireEvent.click(await screen.findByText('label.edit-entity'));
+
+    expect(onEditPipeline).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('edge-drawer-menu'));
+    fireEvent.click(await screen.findByText('label.delete'));
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
   it('should not render edit button if has no edit access', async () => {

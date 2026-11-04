@@ -11,65 +11,12 @@
  *  limitations under the License.
  */
 import { toast } from '@openmetadata/ui-core-components';
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle,
-  InfoCircle,
-} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { get, isString } from 'lodash';
 import React from 'react';
-import type { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
-
-export const getIconAndClassName = (type: AlertBarProps['type']) => {
-  switch (type) {
-    case 'info':
-      return {
-        icon: InfoCircle,
-        className: 'info',
-        type: 'info',
-      };
-
-    case 'grey-info':
-      return {
-        icon: InfoCircle,
-        className: 'grey-info',
-        type: 'info',
-      };
-
-    case 'success':
-      return {
-        icon: CheckCircle,
-        className: 'success',
-        type: 'success',
-      };
-
-    case 'warning':
-      return {
-        icon: AlertTriangle,
-        className: 'warning',
-        type: 'warning',
-      };
-
-    case 'error':
-      return {
-        icon: AlertCircle,
-        className: 'error',
-        type: 'error',
-      };
-
-    default:
-      return {
-        icon: null,
-        className: '',
-        type: 'info',
-      };
-  }
-};
 
 interface AxiosErrorResolution {
   errorMessage: string | JSX.Element;

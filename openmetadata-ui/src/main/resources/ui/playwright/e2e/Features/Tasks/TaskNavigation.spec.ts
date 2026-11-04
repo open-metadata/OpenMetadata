@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
@@ -78,7 +79,7 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('clicking task in home feed widget should navigate to entity page', async ({
@@ -219,7 +220,7 @@ test.describe('Task Navigation - Entity Page', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should display tasks in entity activity feed tab', async ({ page }) => {
@@ -275,7 +276,7 @@ test.describe('Task Navigation - Entity Page', () => {
       await taskCard.click();
 
       // Should open drawer with task details
-      const drawer = page.locator('.ant-drawer-content');
+      const drawer = page.getByTestId('activity-feed-drawer');
 
       if (await drawer.isVisible({ timeout: 5000 })) {
         // Drawer should show task details
@@ -283,12 +284,6 @@ test.describe('Task Navigation - Entity Page', () => {
 
         // Should have task ID
         await expect(drawer.getByText(/TASK-/)).toBeVisible();
-
-        // Should have comments section
-        const commentsSection = drawer.locator(
-          '[data-testid="comments-section"], [data-testid="task-comments"]'
-        );
-        // Comments section might exist
       }
     }
   });
@@ -300,14 +295,6 @@ test.describe('Task Navigation - Entity Page', () => {
     const activityFeedTab = page.getByRole('tab', {
       name: /activity feeds & tasks/i,
     });
-    const countBadge = activityFeedTab.getByTestId('count');
-
-    let displayedCount = 0;
-    if (await countBadge.isVisible()) {
-      const countText = await countBadge.textContent();
-      displayedCount = parseInt(countText || '0', 10);
-    }
-
     // Click on tab and go to tasks
     await activityFeedTab.click();
     await waitForPageLoaded(page);
@@ -373,7 +360,7 @@ test.describe('Task Navigation - Notification Box', () => {
   });
 
   test('assignee should see task in notification box', async ({ page }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -407,7 +394,7 @@ test.describe('Task Navigation - Notification Box', () => {
   test('clicking task notification should navigate correctly', async ({
     page,
   }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -475,15 +462,15 @@ test.describe('Task Navigation - URL Validation', () => {
   test('navigating to /table/TASK-XXXXX should show 404 (invalid URL pattern)', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
 
     // This is a regression test - /table/TASK-00001 is an invalid URL
     // because TASK-00001 is a task ID, not a table FQN
     const tableNotFound = page.waitForResponse(
       (r) => r.url().includes('/api/v1/tables/name/TASK-00001'),
-      { timeout: 30000 }
+      { timeout: ACTION_TIMEOUT }
     );
-    await page.goto('/table/TASK-00001');
+    await page.goto('/table/TASK-00001', { waitUntil: 'domcontentloaded' });
     const response = await tableNotFound;
 
     expect(response.status()).toBe(404);
@@ -513,17 +500,19 @@ test.describe('Task Navigation - URL Validation', () => {
           assignees: [adminUser.responseData.name],
         },
       });
-      const task = await taskResponse.json();
+      expect(taskResponse.ok()).toBeTruthy();
 
       const page = await browser.newPage();
-      await adminUser.login(page);
+      await adminUser.signIn(page);
 
       // Navigate to task-related entity page
       // The correct pattern should be /table/{entityFqn}?activeTab=activity_feed
       const entityFqn = table.entityResponseData?.fullyQualifiedName;
 
       if (entityFqn) {
-        await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
+        await page.goto(`/table/${encodeURIComponent(entityFqn)}`, {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForPageLoaded(page);
 
         // Should NOT be 404
@@ -596,11 +585,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
     test.slow();
 
     await test.step('Log in and navigate to entity page', async () => {
-      await adminUser.login(page);
-      const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
-      await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
-      await waitForPageLoaded(page);
-      await waitForAllLoadersToDisappear(page);
+      await adminUser.signIn(page);
+      await table.visitEntityPage(page);
     });
 
     await test.step('Open Activity Feed & Tasks tab and stay there', async () => {
@@ -649,7 +635,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       await expect(notificationBox).toBeVisible();
 
       const latestNotification = notificationBox
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
+        .locator('li.notification-dropdown-list-btn')
         .first();
       await expect(latestNotification).toBeVisible();
 
@@ -689,8 +675,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
 
     try {
       await test.step('Log in both sessions', async () => {
-        await adminUser.login(adminPage);
-        await otherUser.login(userPage);
+        await adminUser.signIn(adminPage);
+        await otherUser.signIn(userPage);
       });
 
       await test.step('Admin navigates to entity Columns (Schema) tab', async () => {
@@ -703,9 +689,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       });
 
       await test.step('Other user navigates to entity Activity Feed & Tasks tab', async () => {
-        await userPage.goto(`/table/${encodeURIComponent(entityFqn)}`);
-        await waitForPageLoaded(userPage);
-        await waitForAllLoadersToDisappear(userPage);
+        await table.visitEntityPage(userPage);
         const feedResponse = userPage.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/activity') &&
@@ -751,7 +735,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         await expect(notificationBox).toBeVisible();
 
         const latestNotification = notificationBox
-          .locator('li.ant-list-item.notification-dropdown-list-btn')
+          .locator('li.notification-dropdown-list-btn')
           .first();
         await expect(latestNotification).toBeVisible();
 

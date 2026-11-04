@@ -11,16 +11,16 @@ public interface VectorIndexService {
 
   String VECTOR_EMBEDDING_ALIAS = "dataAssetEmbeddings";
 
-  Map<String, Object> generateEmbeddingFields(EntityInterface entity);
+  Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity);
 
-  void updateEntityEmbedding(EntityInterface entity, String entityIndexName);
+  void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName);
 
   /**
    * Multi-chunk write path (issue #4789): index one document per body chunk into the dedicated
    * chunk index so long articles are fully retrievable. Default is a no-op for backends without
    * chunk support.
    */
-  default void updateEntityEmbeddingChunks(EntityInterface entity) {}
+  default void updateEntityEmbeddingChunks(EntityInterface<?> entity) {}
 
   /** Remove all chunk documents for the given parent entity (hard/soft delete cleanup). */
   default void deleteEntityChunks(String parentId) {}
@@ -38,7 +38,7 @@ public interface VectorIndexService {
    * chunk documents (read by the semantic vector path). Implementations should embed each chunk
    * once and reuse chunk 0 for the entity doc; this default simply chains the two writes.
    */
-  default void updateEntityEmbeddings(EntityInterface entity, String entityIndexName) {
+  default void updateEntityEmbeddings(EntityInterface<?> entity, String entityIndexName) {
     updateEntityEmbedding(entity, entityIndexName);
     updateEntityEmbeddingChunks(entity);
   }

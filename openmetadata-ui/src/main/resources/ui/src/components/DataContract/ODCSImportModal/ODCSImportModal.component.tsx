@@ -37,7 +37,7 @@ import {
   Trash01,
   XCircle,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
@@ -1374,11 +1374,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                       </Box>
 
                       <ButtonUtility
-                        color="tertiary"
                         data-testid="remove-file-button"
-                        icon={<Trash01 size={16} />}
-                        size="sm"
-                        title={t('label.delete-entity', {
+                        icon={Trash01}
+                        size="lg"
+                        tooltip={t('label.delete-entity', {
                           entity: t('label.file'),
                         })}
                         onClick={handleRemoveFile}

@@ -58,6 +58,28 @@ describe('usePaging (integration)', () => {
     expect(result.current.handlePageSizeChange).toBe(firstHandlePageSizeChange);
   });
 
+  it('keeps handlePageChange stable across a page change', () => {
+    const { result } = renderHook(() => usePaging(), { wrapper });
+
+    const firstHandlePageChange = result.current.handlePageChange;
+
+    act(() => result.current.handlePageChange(2));
+
+    expect(result.current.currentPage).toBe(2);
+    expect(result.current.handlePageChange).toBe(firstHandlePageChange);
+  });
+
+  it('applies a functional page update to the latest page', () => {
+    const { result } = renderHook(() => usePaging(), { wrapper });
+
+    const initialHandlePageChange = result.current.handlePageChange;
+
+    act(() => result.current.handlePageChange(3));
+    act(() => initialHandlePageChange((page) => page + 1));
+
+    expect(result.current.currentPage).toBe(4);
+  });
+
   it('keeps a size off the app-wide scale out of the shared preference', () => {
     const { result } = renderHook(() => usePaging(12, GRID_SIZES), {
       wrapper: wrapperAt('/connections'),

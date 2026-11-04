@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, noop } from 'lodash';
 import { Bucket, ServiceTypes } from 'Models';
@@ -91,8 +93,9 @@ const ServiceInsightsTab = ({
   const [agentsInfo, setAgentsInfo] = useState<AgentsInfo[]>([]);
   const [collateAgentStatusLoading, setCollateAgentStatusLoading] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [totalAssetsCount, setTotalAssetsCount] =
-    useState<Array<TotalAssetsCount>>();
+  const [totalAssetsCount, setTotalAssetsCount] = useState<
+    Array<TotalAssetsCount>
+  >([]);
   const [liveAutoPilotStatusData, setLiveAutoPilotStatusData] = useState<
     WorkflowInstance | undefined
   >(workflowStatesData?.mainInstanceState);
@@ -363,10 +366,14 @@ const ServiceInsightsTab = ({
   }, [socket]);
 
   return (
-    <Row className="service-insights-tab" gutter={[16, 16]}>
-      <Col span={18}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
+    <Grid
+      className="layout-row layout-grid service-insights-tab"
+      style={getLayoutGutter(16, 16)}>
+      <Grid.Item className="layout-column" span={18}>
+        <Grid
+          className="layout-row layout-grid"
+          style={getLayoutGutter(16, 16)}>
+          <Grid.Item className="layout-column" span={24}>
             <AgentsStatusWidget
               agentsInfo={agentsInfo}
               isLoading={
@@ -375,30 +382,31 @@ const ServiceInsightsTab = ({
                 isIngestionPipelineLoading
               }
               liveAutoPilotStatusData={liveAutoPilotStatusData}
+              serviceDetails={serviceDetails}
             />
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <PlatformInsightsWidget
-              chartsData={getChartsDataFromWidgetName(
-                'PlatformInsightsWidget',
-                chartsResults
-              )}
+              chartsData={chartsResults?.platformInsightsChart ?? []}
               isLoading={isLoading}
+              serviceDetails={serviceDetails}
             />
-          </Col>
-        </Row>
-      </Col>
-      <Col span={6}>
+          </Grid.Item>
+        </Grid>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={6}>
         <TotalDataAssetsWidget
           isLoading={isLoading}
+          serviceDetails={serviceDetails}
           totalAssetsCount={totalAssetsCount}
         />
-      </Col>
+      </Grid.Item>
 
       {arrayOfWidgets.map(
         ({ Widget, name }) =>
           !isUndefined(Widget) && (
-            <Col
+            <Grid.Item
+              className="layout-column"
               key={name}
               span={
                 ['PIIDistributionWidget', 'TierDistributionWidget'].includes(
@@ -413,10 +421,10 @@ const ServiceInsightsTab = ({
                 serviceDetails={serviceDetails}
                 workflowStatesData={workflowStatesData}
               />
-            </Col>
+            </Grid.Item>
           )
       )}
-    </Row>
+    </Grid>
   );
 };
 

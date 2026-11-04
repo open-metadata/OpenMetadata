@@ -30,14 +30,15 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
 @Slf4j
-public class CreateResourceContext<T extends EntityInterface> implements ResourceContextInterface {
+public class CreateResourceContext<T extends EntityInterface<?>>
+    implements ResourceContextInterface {
   @NonNull @Getter private final String resource;
   private final EntityRepository<T> entityRepository;
   private final T entity; // Entity being created
-  private List<EntityInterface> parentEntities;
+  private List<EntityInterface<?>> parentEntities;
   // Resolved on first use by a service condition; the flag is separate because "no service" is a
   // valid null result.
-  private EntityInterface serviceEntity;
+  private EntityInterface<?> serviceEntity;
   private boolean serviceEntityLoaded;
 
   public CreateResourceContext(@NonNull String resource, @NotNull T entity) {
@@ -47,13 +48,24 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     setParents(entity);
   }
 
+  /** For an entity whose parents are not all stored yet (e.g. created by earlier import rows). */
+  public CreateResourceContext(
+      @NonNull String resource,
+      @NotNull T entity,
+      @NonNull List<? extends EntityInterface<?>> parents) {
+    this.resource = resource;
+    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+    this.entity = entity;
+    this.parentEntities = List.copyOf(parents);
+  }
+
   @Override
   public List<EntityReference> getOwners() {
     if (nullOrEmpty(parentEntities)) {
       return null;
     }
     List<EntityReference> owners = new ArrayList<>();
-    for (EntityInterface parent : parentEntities) {
+    for (EntityInterface<?> parent : parentEntities) {
       if (parent.getOwners() != null) {
         owners = mergedInheritedEntityRefs(owners, parent.getOwners());
       }
@@ -67,7 +79,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
       return Collections.emptyList();
     }
     List<TagLabel> tags = new ArrayList<>();
-    for (EntityInterface parent : parentEntities) {
+    for (EntityInterface<?> parent : parentEntities) {
       if (parent.getTags() != null) {
         tags.addAll(Entity.getEntityTags(parent.getEntityReference().getType(), parent));
       }
@@ -77,7 +89,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return entity;
   }
 
@@ -92,7 +104,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
 
     // Add inherited domains from parent entities
     if (!nullOrEmpty(parentEntities)) {
-      for (EntityInterface parent : parentEntities) {
+      for (EntityInterface<?> parent : parentEntities) {
         if (parent.getDomains() != null) {
           domains = mergedInheritedEntityRefs(domains, parent.getDomains());
         }
@@ -118,7 +130,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
       return null;
     }
     List<String> serviceEntityTypes = Entity.getServiceEntityTypes();
-    for (EntityInterface parent : parentEntities) {
+    for (EntityInterface<?> parent : parentEntities) {
       EntityReference parentReference = parent.getEntityReference();
       if (parentReference != null && serviceEntityTypes.contains(parentReference.getType())) {
         return parentReference; // the parent is the service itself
@@ -137,7 +149,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
    */
   @Override
   public List<TagLabel> getServiceTags() {
-    EntityInterface service = getServiceEntity();
+    EntityInterface<?> service = getServiceEntity();
     if (service == null) {
       return Collections.emptyList();
     }
@@ -159,7 +171,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
    * getEntityOrNull} rather than {@code getEntity} so a service deleted between the parent load and
    * this read does not raise from inside the authorization decision.
    */
-  private EntityInterface getServiceEntity() {
+  private EntityInterface<?> getServiceEntity() {
     if (!serviceEntityLoaded) {
       serviceEntity = Entity.getEntityOrNull(getServiceReference(), Entity.FIELD_TAGS, Include.ALL);
       serviceEntityLoaded = true;
@@ -183,7 +195,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     }
     try {
       // First, check direct parent, which are always singular
-      EntityInterface directParent = entityRepository.getParentEntity(entity, fields.toString());
+      EntityInterface<?> directParent = entityRepository.getParentEntity(entity, fields.toString());
       if (directParent != null) {
         parentEntities = List.of(directParent);
       } else {
@@ -195,7 +207,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     }
   }
 
-  private List<EntityInterface> resolveRootParentEntities(T entity, Fields fields) {
+  private List<EntityInterface<?>> resolveRootParentEntities(T entity, Fields fields) {
     try {
       List<EntityReference> rootReferences =
           switch (entityRepository.getEntityType()) {
@@ -207,7 +219,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
           };
 
       if (nullOrEmpty(rootReferences)) return null;
-      List<EntityInterface> parentEntities = new ArrayList<>();
+      List<EntityInterface<?>> parentEntities = new ArrayList<>();
 
       for (EntityReference rootReference : rootReferences) {
         if (rootReference == null || rootReference.getId() == null) {

@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
+import { SelectablePopoverProps } from '../AnchoredPopover/AnchoredPopover';
 
 export type UserSelectableListProps =
   | {
       hasPermission: boolean;
       selectedUsers: EntityReference[];
       children?: ReactNode;
-      popoverProps?: PopoverProps;
+      popoverProps?: SelectablePopoverProps;
+      /** Called when the list is dismissed without an update, for callers that own `popoverProps.open`. */
+      onClose?: () => void;
       filterCurrentUser?: boolean;
       includeBot?: boolean;
     } & (

@@ -11,14 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Task } from '../../../rest/tasksAPI';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component';
 
@@ -28,6 +25,7 @@ interface TaskListV1Props {
   onTaskClick?: (task: Task) => void;
   activeFeedId?: string;
   emptyPlaceholderText: ReactNode;
+  emptyPlaceholderDescription?: ReactNode;
   selectedTask?: Task;
   onAfterClose?: () => void;
   handlePanelResize?: (isFullWidth: boolean) => void;
@@ -41,6 +39,7 @@ const TaskListV1 = ({
   onTaskClick,
   activeFeedId,
   emptyPlaceholderText,
+  emptyPlaceholderDescription,
   selectedTask,
   onAfterClose,
   handlePanelResize,
@@ -90,19 +89,22 @@ const TaskListV1 = ({
         className="p-x-md no-data-placeholder-container h-full"
         data-testid="no-data-placeholder-container"
         id="taskData">
-        <ErrorPlaceHolderNew
-          icon={<FeedEmptyIcon height={140} width={140} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as="div" className="placeholder-text tw:break-words">
-            {emptyPlaceholderText}
-          </Typography>
-        </ErrorPlaceHolderNew>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={emptyPlaceholderDescription}
+            icon={<FeedEmptyIcon height={140} width={140} />}
+            title={emptyPlaceholderText}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={classNames('activity-feed-tab-padding')} id="taskData">
+    // Padding lives here, not in .activity-feed-tab-padding: that rule's stylesheet
+    // is not loaded on every page that renders this list (e.g. the incident tab).
+    <div className="tw:p-5" id="taskData">
       {tasks}
     </div>
   );

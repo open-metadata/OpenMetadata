@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { FC, useEffect, useState } from 'react';
@@ -87,14 +90,16 @@ const KnowledgePages: FC = () => {
         const quickLink = knowledgePage.page as QuickLink;
 
         return (
-          <Row
-            className={classNames({
+          <Grid
+            className={`layout-row layout-grid ${classNames({
               'm-b-sm': knowledgePages.length - 1 !== index,
-            })}
+            })}`}
             data-testid="article-entry"
-            gutter={[0, 4]}
-            key={knowledgePage.id}>
-            <Col className="d-flex items-center gap-2" span={24}>
+            key={knowledgePage.id}
+            style={{ ...getLayoutGutter(0, 4) }}>
+            <Grid.Item
+              className="layout-column d-flex items-center gap-2"
+              span={24}>
               <span>
                 {isQuickLink ? (
                   <LinkIcon
@@ -125,14 +130,17 @@ const KnowledgePages: FC = () => {
                         ),
                       }
                 }>
-                <Typography.Text
+                <Typography
                   className="article-header"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getEntityName(knowledgePage)}
-                </Typography.Text>
+                </Typography>
               </Link>
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         );
       })}
     </div>

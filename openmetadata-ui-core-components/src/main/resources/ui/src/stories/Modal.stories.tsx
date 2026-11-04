@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
-import { AlertTriangle, Building07, Mail01, User01 } from '@untitledui/icons';
+import { AlertTriangle, Building07, Mail01, User01 } from '../icons';
 import { Button } from '../components/base/buttons/button';
 import { Input } from '../components/base/input/input';
 import { TextArea } from '../components/base/textarea/textarea';
@@ -449,6 +449,49 @@ export const DarkOverlay: Story = {
                 </Button>
                 <Button color="primary-destructive">Delete</Button>
               </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
+};
+
+export const Fullscreen: Story = {
+  name: 'Fullscreen library',
+  render: () => {
+    const [isOpen, setIsOpen] = useState(true);
+    const [dark, setDark] = useState(false);
+    useEffect(() => {
+      document.body.classList.toggle('dark-mode', dark);
+
+      return () => document.body.classList.remove('dark-mode');
+    }, [dark]);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button onPress={() => setIsOpen(true)}>Open library</Button>
+        <ModalOverlay presentation="fullscreen">
+          <Modal>
+            <Dialog
+              showCloseButton
+              dividers="scroll"
+              title="Ontology library"
+              onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <div className="tw:mx-auto tw:w-full tw:max-w-5xl">
+                  <Button
+                    color="secondary"
+                    onPress={() => setDark((value) => !value)}>
+                    {dark ? 'Light theme' : 'Dark theme'}
+                  </Button>
+                  <p className="tw:mt-4 tw:text-primary">
+                    A full-page workflow keeps its header visible while the
+                    content scrolls.
+                  </p>
+                  <div className="tw:h-[120vh]" />
+                </div>
+              </Dialog.Content>
             </Dialog>
           </Modal>
         </ModalOverlay>

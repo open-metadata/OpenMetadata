@@ -25,7 +25,7 @@ from metadata.ingestion.source.database.athena.metadata import AthenaSource
 
 
 @pytest.fixture
-def source():
+def source(existing_tag_lookup):
     instance = object.__new__(AthenaSource)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
     instance.context = TopologyContextManager(instance.topology)
@@ -38,7 +38,7 @@ def source():
         return []
 
     instance.metadata.es_search_from_fqn.side_effect = search
-    instance.metadata.get_by_name.side_effect = AssertionError("Tag label lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.athena_lake_formation_client = object.__new__(AthenaLakeFormationClient)
     instance.athena_lake_formation_client.catalog_id = "123456789012"
     instance.athena_lake_formation_client.lake_formation_client = MagicMock()

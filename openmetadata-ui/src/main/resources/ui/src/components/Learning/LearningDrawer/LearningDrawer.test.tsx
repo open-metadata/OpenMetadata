@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
-import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  getLearningResourcesByContext,
+  LearningResource,
+} from '../../../rest/learningResourceAPI';
 import { LearningDrawer } from './LearningDrawer.component';
 
 jest.mock('../../../rest/learningResourceAPI', () => ({
@@ -21,9 +24,21 @@ jest.mock('../../../rest/learningResourceAPI', () => ({
 jest.mock('../LearningResourceCard/LearningResourceCard.component', () => ({
   LearningResourceCard: jest
     .fn()
-    .mockImplementation(({ resource }) => (
-      <div data-testid="learning-resource-card">{resource.name}</div>
-    )),
+    .mockImplementation(
+      ({
+        resource,
+        onClick,
+      }: {
+        resource: LearningResource;
+        onClick?: (resource: LearningResource) => void;
+      }) => (
+        <button
+          data-testid="learning-resource-card"
+          onClick={() => onClick?.(resource)}>
+          {resource.name}
+        </button>
+      )
+    ),
 }));
 
 jest.mock('../ResourcePlayer/ResourcePlayerModal.component', () => ({
@@ -167,6 +182,69 @@ describe('LearningDrawer', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('close-drawer')).toBeInTheDocument();
+    });
+  });
+
+  describe('when a resource card is clicked', () => {
+    const linkResource = {
+      id: '3',
+      name: 'Data Seeker Guide',
+      resourceType: 'Link',
+      categories: ['Discovery'],
+      source: { url: 'https://sharepoint.example.com/sites/data/guide' },
+      contexts: [{ pageId: 'glossary' }],
+    };
+    let openSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+      (getLearningResourcesByContext as jest.Mock).mockResolvedValue({
+        data: [...mockResources, linkResource],
+      });
+    });
+
+    afterEach(() => {
+      openSpy.mockRestore();
+    });
+
+    it('should open a Link resource in a new tab and keep the drawer open', async () => {
+      render(
+        <LearningDrawer
+          open
+          pageId="glossary"
+          title="Glossary"
+          onClose={mockOnClose}
+        />
+      );
+
+      fireEvent.click(await screen.findByText('Data Seeker Guide'));
+
+      expect(openSpy).toHaveBeenCalledWith(
+        'https://sharepoint.example.com/sites/data/guide',
+        '_blank',
+        'noopener,noreferrer'
+      );
+      expect(
+        screen.queryByTestId('resource-player-modal')
+      ).not.toBeInTheDocument();
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+
+    it('should open the resource player for a Video resource', async () => {
+      render(
+        <LearningDrawer
+          open
+          pageId="glossary"
+          title="Glossary"
+          onClose={mockOnClose}
+        />
+      );
+
+      fireEvent.click(await screen.findByText('Test Resource 1'));
+
+      expect(screen.getByTestId('resource-player-modal')).toBeInTheDocument();
+      expect(openSpy).not.toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
     });
   });
 });

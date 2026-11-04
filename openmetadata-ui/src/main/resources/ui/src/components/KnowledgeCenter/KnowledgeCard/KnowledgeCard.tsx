@@ -20,7 +20,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { OwnerType } from '../../../enums/user.enum';
@@ -44,14 +43,15 @@ import {
   addToKnowledgeCenterRecentViewed,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
-import { getSafeHttpUrl, stripMarkdown } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
-import { Trash01 } from '@untitledui/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
@@ -97,7 +97,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
           displayName={getEntityName(owners?.[0])}
           profileWidth={20}
           type={owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-          userName={owners?.[0].name || owners?.[0].displayName}
+          userName={owners[0].name ?? owners[0].displayName ?? ''}
         />
       ) : (
         <Typography
@@ -277,9 +277,10 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       <Box align="center" gap={1}>
         {editPermission && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-quick-link-btn"
-            icon={<EditIcon height={16} width={16} />}
+            icon={Edit01}
+            size="lg"
+            tooltip={t('label.edit')}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
@@ -289,9 +290,10 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         )}
         {canDelete && (
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-quick-link-btn"
-            icon={<Trash01 height={16} width={16} />}
+            icon={Trash01}
+            size="lg"
+            tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();

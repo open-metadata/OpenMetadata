@@ -42,11 +42,12 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 let adminUser: UserClass;
 
-const entityClasses = [
+const allEntityClasses = [
   ApiEndpointClass,
   TableClass,
   StoredProcedureClass,
@@ -63,12 +64,16 @@ const entityClasses = [
   WorksheetClass,
 ];
 
+const entityClasses = pickEntityMatrix(__filename, allEntityClasses, [
+  TableClass,
+]);
+
 let entities: InstanceType<(typeof entityClasses)[number]>[];
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },

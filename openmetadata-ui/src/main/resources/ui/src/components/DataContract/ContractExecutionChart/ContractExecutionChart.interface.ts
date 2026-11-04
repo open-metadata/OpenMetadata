@@ -23,5 +23,6 @@ export interface DataContractProcessedResultCharts {
   failed: number;
   success: number;
   aborted: number;
+  running: number;
   data: DataContractResult;
 }

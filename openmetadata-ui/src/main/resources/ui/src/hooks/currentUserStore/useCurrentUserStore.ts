@@ -47,6 +47,12 @@ export interface UserPreferences {
    * checkbox writes this field; runtime mode-switching does NOT touch it.
    */
   appMode: string | null;
+  timeFormat?: '12h' | '24h';
+  /**
+   * Whether the entity Lineage tab draws temporary tables between two tables
+   * (the lineage config dialog). Unset means shown.
+   */
+  showLineageTempTables?: boolean;
 }
 
 interface Store {

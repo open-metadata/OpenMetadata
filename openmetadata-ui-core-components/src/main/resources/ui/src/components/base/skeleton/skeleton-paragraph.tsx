@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { cx } from '@/utils/cx';
-import { Skeleton } from './skeleton';
+import { Skeleton, type SkeletonAnimation } from './skeleton';
 
 export interface SkeletonParagraphProps {
   /** Number of paragraph lines below the title. @default 3 */
@@ -19,17 +19,24 @@ export interface SkeletonParagraphProps {
   /** Whether to render a shorter title line above the rows. @default true */
   title?: boolean;
   className?: string;
+  /** @default "pulse" */
+  animation?: SkeletonAnimation;
 }
 
 export const SkeletonParagraph = ({
   rows = 3,
   title = true,
   className,
+  animation = 'pulse',
 }: SkeletonParagraphProps) => (
   <div className={cx('tw:flex tw:w-full tw:flex-col tw:gap-3', className)}>
-    {title && <Skeleton height={16} width="40%" />}
+    {title && <Skeleton animation={animation} height={16} width="40%" />}
     {Array.from({ length: rows }, (_, index) => (
-      <Skeleton key={index} width={index === rows - 1 ? '60%' : '100%'} />
+      <Skeleton
+        animation={animation}
+        key={index}
+        width={index === rows - 1 ? '60%' : '100%'}
+      />
     ))}
   </div>
 );

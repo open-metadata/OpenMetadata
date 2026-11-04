@@ -9,7 +9,6 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -69,7 +68,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
   public static String INCLUDE_SEARCH_FIELDS =
-      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound,duration,errorDetails";
+      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound,duration,errorDetails,evaluationScope";
 
   public enum OperationType {
     CREATE,
@@ -451,25 +450,11 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       dimResult.setTestCaseResultId(testCaseResult.getId());
       // Ensure timestamp matches the parent result
       dimResult.setTimestamp(testCaseResult.getTimestamp());
+      // A dimension is a group of the rows the run read, so it was measured on the same scope.
+      dimResult.setEvaluationScope(testCaseResult.getEvaluationScope());
 
       // Store each dimensional result
       dimensionResultRepository.storeDimensionResult(testCaseFQN, dimResult);
     }
-  }
-
-  public boolean hasTestCaseFailure(String fqn) throws IOException {
-    ResultList<TestCaseResult> testCaseResultResults =
-        listLatestFromSearch(
-            EntityUtil.Fields.EMPTY_FIELDS,
-            new SearchListFilter().addQueryParam("entityFQN", fqn),
-            "testCaseFQN.keyword",
-            null,
-            null,
-            null,
-            null,
-            null);
-    return testCaseResultResults.getData().stream()
-        .anyMatch(
-            testCaseResult -> testCaseResult.getTestCaseStatus().equals(TestCaseStatus.Failed));
   }
 }

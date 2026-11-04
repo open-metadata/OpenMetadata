@@ -17,7 +17,11 @@ import {
   Input,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Check, ChevronDown, SearchLg } from '@untitledui/icons';
+import {
+  Check,
+  ChevronDown,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -91,7 +95,7 @@ const getOptionTextClass = (state: {
   }
 
   if (state.isSelected) {
-    return 'tw:text-brand-700';
+    return 'tw:text-brand-secondary';
   }
 
   return 'tw:text-secondary';
@@ -203,7 +207,7 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
           <div className="tw:p-2">
             <Input
               data-testid={testId ? `${testId}-search` : undefined}
-              icon={SearchLg}
+              icon={Search}
               placeholder={t('label.search')}
               size="sm"
               value={query}
@@ -233,12 +237,7 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
             </Dropdown.Item>
           ) : (
             visibleOptions.map((opt) => (
-              <Dropdown.Item
-                className={(state) =>
-                  state.isSelected ? 'tw:[&>div]:!bg-brand-50' : ''
-                }
-                id={opt.value}
-                key={opt.value}>
+              <Dropdown.Item id={opt.value} key={opt.value}>
                 {(state) => (
                   <div className="tw:flex tw:w-full tw:items-center tw:justify-between tw:gap-2">
                     <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2">
@@ -259,7 +258,7 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
                     {state.isSelected && (
                       <Check
                         aria-hidden="true"
-                        className="tw:size-4 tw:shrink-0 tw:text-brand-700"
+                        className="tw:size-4 tw:shrink-0 tw:text-brand-secondary"
                         height={16}
                         width={16}
                       />

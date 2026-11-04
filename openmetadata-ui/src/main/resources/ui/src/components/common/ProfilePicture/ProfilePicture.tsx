@@ -12,8 +12,10 @@
  */
 
 import { Avatar } from '@openmetadata/ui-core-components';
+import { AiAgent } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { parseInt } from 'lodash';
-import { ComponentProps, useMemo, type ReactNode } from 'react';
+import { ComponentProps, CSSProperties, useMemo, type ReactNode } from 'react';
 import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../enums/permissions.enum';
@@ -42,6 +44,8 @@ const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
   64: '2xl',
   80: '2xl',
 };
+
+const AgentIcon = () => <AiAgent className="tw:size-5/8" />;
 
 const SMALL_LOADER_SIZES: CoreAvatarSize[] = ['xxs', 'xs'];
 
@@ -75,14 +79,55 @@ function getLoaderPlaceholder(
   );
 }
 
+// The outlined avatar is a pale 92%-light tint, which glares on a dark
+// surface, and inline styles cannot change with the theme. So the hue travels
+// as a CSS variable and these classes pick the lightness per theme: light
+// reproduces the original HSL exactly, dark uses a deep tint with a light
+// glyph. Dark also draws the ring in the fill's hue; the core Avatar would
+// otherwise tint it from the initial, mismatching the fill.
+const OUTLINED_AVATAR_CLASSES = [
+  'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]',
+  'tw:text-[hsl(var(--avatar-hue)_70%_40%)]',
+  'tw:dark:bg-[hsl(var(--avatar-hue)_40%_22%)]',
+  'tw:dark:text-[hsl(var(--avatar-hue)_85%_78%)]',
+  'tw:dark:border-[hsl(var(--avatar-hue)_45%_38%)]',
+].join(' ');
+const MATCHED_RING_CLASS = 'tw:border-[hsl(var(--avatar-hue)_70%_80%)]';
+
+function getAvatarClassName(
+  isSolid: boolean,
+  matchRingToFill: boolean,
+  className: string
+): string {
+  return classNames(
+    !isSolid && OUTLINED_AVATAR_CLASSES,
+    !isSolid && matchRingToFill && MATCHED_RING_CLASS,
+    className
+  );
+}
+
 function getAvatarStyle(
   isSolid: boolean,
-  color: string,
-  backgroundColor: string
+  hue: number,
+  color: string
+): CSSProperties {
+  return isSolid
+    ? { backgroundColor: color, color: '#fff' }
+    : ({ '--avatar-hue': hue } as CSSProperties);
+}
+
+// How the avatar is edged. The outlined look draws a contrast outline and a
+// tinted border; a borderless avatar takes the neutral variant, which has no
+// border, while its fill and text colors still come from the hue classes.
+function getAvatarEdge(
+  isSolid: boolean,
+  borderless: boolean,
+  matchRingToFill: boolean
 ) {
   return {
-    backgroundColor: isSolid ? color : backgroundColor,
-    color: isSolid ? '#fff' : color,
+    colorVariant: borderless ? ('neutral' as const) : undefined,
+    contrastBorder: !isSolid && !borderless,
+    matchRingToFill: matchRingToFill && !borderless,
   };
 }
 
@@ -100,7 +145,19 @@ interface Props extends UserData {
   className?: string;
   height?: string;
   isTeam?: boolean;
+  /** An AI agent: its icon on a plain circle, and no profile picture to fetch. */
+  isAgent?: boolean;
   avatarType?: 'solid' | 'outlined';
+  /**
+   * Draw the ring in the fill's hue. The core Avatar otherwise tints the ring
+   * from the initial alone, so e.g. a blue fill can get a pink ring.
+   */
+  matchRingToFill?: boolean;
+  /**
+   * A plain filled circle, with neither the contrast outline nor a ring. Wins
+   * over `matchRingToFill`.
+   */
+  borderless?: boolean;
 }
 
 const ProfilePicture = ({
@@ -110,12 +167,15 @@ const ProfilePicture = ({
   size,
   width,
   isTeam = false,
+  isAgent = false,
   avatarType = 'outlined',
+  matchRingToFill = false,
+  borderless = false,
 }: Props) => {
   const { permissions } = usePermissionProvider();
   const avatarName = displayName ?? name ?? '';
   const avatarSize = resolveAvatarSize(size, width);
-  const { color, character, backgroundColor } = getRandomColor(avatarName);
+  const { hue, color, character } = getRandomColor(avatarName);
   const isSolid = avatarType === 'solid';
 
   const viewUserPermission = useMemo(() => {
@@ -123,22 +183,37 @@ const ProfilePicture = ({
   }, [permissions]);
 
   const [profileURL, isPicLoading] = useUserProfile({
-    permission: viewUserPermission,
+    permission: viewUserPermission && !isAgent,
     name,
     isTeam,
   });
 
   const isLoadingWithoutUrl = isPicLoading && !profileURL;
+  const edge = getAvatarEdge(isSolid, borderless, matchRingToFill);
 
-  if (isTeam) {
+  if (isAgent) {
     return (
       <Avatar
         className={className}
+        colorVariant="plain"
+        data-testid="agent-avatar"
+        placeholderIcon={AgentIcon}
+        size={avatarSize}
+      />
+    );
+  }
+
+  // Teams have no picture of their own (useUserProfile only hands back the
+  // static teams icon URL), and an <img> of that SVG cannot follow the theme's
+  // currentColor, so the inline placeholder icon is drawn instead.
+  if (isTeam) {
+    return (
+      <Avatar
+        className={classNames('tw:text-fg-secondary', className)}
         contrastBorder={false}
         data-testid="profile-avatar"
         placeholderIcon={IconTeams}
         size={avatarSize}
-        src={profileURL || undefined}
         style={{ backgroundColor: 'transparent' }}
       />
     );
@@ -146,8 +221,9 @@ const ProfilePicture = ({
 
   return (
     <Avatar
-      className={className}
-      contrastBorder={!isSolid}
+      className={getAvatarClassName(isSolid, edge.matchRingToFill, className)}
+      colorVariant={edge.colorVariant}
+      contrastBorder={edge.contrastBorder}
       data-testid="profile-avatar"
       initials={isLoadingWithoutUrl ? undefined : character}
       placeholder={getLoaderPlaceholder(
@@ -157,7 +233,7 @@ const ProfilePicture = ({
       )}
       size={avatarSize}
       src={profileURL || undefined}
-      style={getAvatarStyle(isSolid, color, backgroundColor)}
+      style={getAvatarStyle(isSolid, hue, color)}
     />
   );
 };

@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, Route } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 
 import { redirectToHomePage } from '../../utils/common';
 import { test } from '../fixtures/pages';
@@ -278,7 +279,7 @@ test.describe('CsvJobsTray', () => {
     ]);
 
     await expect(page.locator('.csv-jobs-tray-item-success')).toHaveCount(1, {
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
     await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
   });
@@ -297,7 +298,7 @@ test.describe('CsvJobsTray', () => {
     ]);
 
     await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
     await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
   });

@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,23 +15,41 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.SearchServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateSearchIndex;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
+import org.openmetadata.service.security.mask.PIIMasker;
 
 /**
  * Integration tests for SearchIndex entity operations.
@@ -42,6 +61,18 @@ import org.openmetadata.service.resources.searchindex.SearchIndexResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearchIndex> {
+
+  private static final List<String> SAMPLE_MESSAGES =
+      List.of(
+          "{\"publicId\":1,\"payload\":{\"contact\":{\"details\":{\"email\":\"SAMPLE_SECRET_A\"}}}}",
+          "opaque SAMPLE_SECRET_B");
+
+  private enum SampleTagLocation {
+    ENTITY,
+    FIELD,
+    DEEP_FIELD,
+    NON_SENSITIVE
+  }
 
   private String defaultListService;
 
@@ -902,6 +933,348 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
         "User-curated description must be carried forward from the deleted (old-datatype) "
             + "field onto the added (new-datatype) field after re-ingestion — it must NOT be "
             + "lost");
+  }
+
+  // ===================================================================
+  // FIELD TAG CARRY-FORWARD ON dataType CHANGE (re-ingestion)
+  // ===================================================================
+  // Mirrors put_searchIndexFieldDescriptionCarriedForwardOnDataTypeChange_200 for the
+  // tag branch of the same carry-forward block in
+  // SearchIndexRepository.SearchIndexUpdater.updateSearchIndexFields. When a field's
+  // dataType changes between two ingestion runs the field is routed through the
+  // deleted+added path (EntityUtil.searchIndexFieldMatch matches on name AND dataType).
+  // The re-added (new-datatype) field must carry forward the user-applied tags from the
+  // deleted (old-datatype) field when the re-ingested field supplies no tags of its own —
+  // otherwise deleteTagsByTarget drops the tag_usage rows and applyTags re-applies only
+  // the (empty) re-ingested tags, silently losing user-applied tags. See the matching unit
+  // test carryForwardPreservesUserTagsWhenDataTypeChanges in openmetadata-service.
+  @Test
+  void put_searchIndexFieldTagsCarriedForwardOnDataTypeChange_200(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+    SharedEntities shared = SharedEntities.get();
+    TagLabel userTag = shared.PII_SENSITIVE_TAG_LABEL;
+
+    // 1. First ingestion: field "title" with dataType=TEXT and no tags.
+    CreateSearchIndex firstRequest = new CreateSearchIndex();
+    firstRequest.setName(ns.prefix("searchindex_tag_carryforward"));
+    firstRequest.setService(service.getFullyQualifiedName());
+    firstRequest.setFields(
+        Arrays.asList(
+            new SearchIndexField().withName("title").withDataType(SearchIndexDataType.TEXT),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT)));
+
+    SearchIndex created = createEntity(firstRequest);
+    SearchIndex fetched = getEntityWithFields(created.getId().toString(), "tags,fields");
+
+    // 2. User applies a MANUAL tag to the "title" field via the patch path.
+    fetched.getFields().get(0).setTags(new ArrayList<>(List.of(userTag)));
+    SearchIndex tagged = patchEntity(fetched.getId().toString(), fetched);
+    SearchIndex verifiedTag = getEntityWithFields(tagged.getId().toString(), "tags,fields");
+    List<TagLabel> fieldTagsBefore = verifiedTag.getFields().get(0).getTags();
+    assertNotNull(fieldTagsBefore);
+    assertFalse(fieldTagsBefore.isEmpty());
+    assertTrue(fieldTagsBefore.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())));
+
+    // 3. Simulated re-ingestion after a mapping change: "title" is now KEYWORD and, as the
+    //    ES/OS parser emits, carries no tags. The field is routed through the deleted+added
+    //    carry-forward branch.
+    SearchIndex update = new SearchIndex();
+    update.setId(verifiedTag.getId());
+    update.setName(verifiedTag.getName());
+    update.setService(verifiedTag.getService());
+    update.setUpdatedBy("admin");
+    searchindexFieldsForReingest(update);
+    SearchIndex reUpdated = patchEntity(verifiedTag.getId().toString(), update);
+
+    // 4. The re-added (KEYWORD) field must carry forward the user-applied tag.
+    SearchIndex verified = getEntityWithFields(reUpdated.getId().toString(), "tags,fields");
+    SearchIndexField titleField =
+        verified.getFields().stream()
+            .filter(f -> "title".equals(f.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("title field missing after re-ingestion"));
+    assertEquals(
+        SearchIndexDataType.KEYWORD,
+        titleField.getDataType(),
+        "The re-added field must have the new dataType after re-ingestion");
+    List<TagLabel> fieldTagsAfter = titleField.getTags();
+    assertNotNull(fieldTagsAfter, "User-applied tags must be carried forward, not dropped to null");
+    assertFalse(fieldTagsAfter.isEmpty(), "User-applied tags must survive the dataType change");
+    assertTrue(
+        fieldTagsAfter.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())),
+        "User-applied tag must be carried forward from the deleted (old-datatype) field onto "
+            + "the added (new-datatype) field after re-ingestion — it must NOT be lost");
+  }
+
+  // Non-regression for the tag carry-forward: when the re-added field already carries its
+  // own (connector-supplied) tag, the deleted field's user tags must NOT overwrite it.
+  @Test
+  void put_searchIndexFieldTagsNotOverwrittenByCarryForwardOnDataTypeChange_200(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+    SharedEntities shared = SharedEntities.get();
+    TagLabel userTag = shared.PII_SENSITIVE_TAG_LABEL;
+    TagLabel incomingTag = shared.PERSONAL_DATA_TAG_LABEL;
+
+    // 1. First ingestion: field "title" with dataType=TEXT and a user-applied tag.
+    CreateSearchIndex firstRequest = new CreateSearchIndex();
+    firstRequest.setName(ns.prefix("searchindex_tag_no_overwrite"));
+    firstRequest.setService(service.getFullyQualifiedName());
+    firstRequest.setFields(
+        Arrays.asList(
+            new SearchIndexField()
+                .withName("title")
+                .withDataType(SearchIndexDataType.TEXT)
+                .withTags(new ArrayList<>(List.of(userTag))),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT)));
+
+    SearchIndex created = createEntity(firstRequest);
+    SearchIndex fetched = getEntityWithFields(created.getId().toString(), "tags,fields");
+    List<TagLabel> tagsBefore = fetched.getFields().get(0).getTags();
+    assertNotNull(tagsBefore);
+    assertTrue(tagsBefore.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())));
+
+    // 2. Re-ingestion: "title" is now KEYWORD and carries its own (connector-supplied) tag.
+    SearchIndex update = new SearchIndex();
+    update.setId(fetched.getId());
+    update.setName(fetched.getName());
+    update.setService(fetched.getService());
+    update.setUpdatedBy("admin");
+    update.setFields(
+        Arrays.asList(
+            new SearchIndexField()
+                .withName("title")
+                .withDataType(SearchIndexDataType.KEYWORD)
+                .withTags(new ArrayList<>(List.of(incomingTag))),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT)));
+    SearchIndex reUpdated = patchEntity(fetched.getId().toString(), update);
+
+    // 3. The re-added field must keep the incoming tag, NOT the deleted field's user tag.
+    SearchIndex verified = getEntityWithFields(reUpdated.getId().toString(), "tags,fields");
+    SearchIndexField titleField =
+        verified.getFields().stream()
+            .filter(f -> "title".equals(f.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("title field missing after re-ingestion"));
+    assertEquals(SearchIndexDataType.KEYWORD, titleField.getDataType());
+    List<TagLabel> fieldTags = titleField.getTags();
+    assertNotNull(fieldTags);
+    assertTrue(
+        fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(incomingTag.getTagFQN())),
+        "The incoming (connector-supplied) tag must be preserved on the re-added field");
+    assertFalse(
+        fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())),
+        "The deleted field's user tag must NOT overwrite the incoming tag on the re-added field");
+  }
+
+  @ParameterizedTest
+  @EnumSource(SampleTagLocation.class)
+  void get_sampleData_appliesPersistedTagsAndPreservesStoredMessages(
+      SampleTagLocation location, TestNamespace ns) {
+    User owner = UserTestFactory.createUser(ns, "sample_owner");
+    User reader = UserTestFactory.createUser(ns, "sample_reader");
+    SearchIndex index = createSampleIndex(ns, location, owner.getEntityReference());
+    assertSampleTagPlacement(index, location);
+    putSampleData(index);
+
+    List<String> expected =
+        location == SampleTagLocation.NON_SENSITIVE
+            ? SAMPLE_MESSAGES
+            : List.of(PIIMasker.MASKED_VALUE);
+    assertSampleMessages(userClient(reader), index, expected);
+    assertSampleMessages(userClient(reader), index, expected);
+    assertSampleMessages(userClient(owner), index, SAMPLE_MESSAGES);
+    assertSampleMessages(SdkClients.adminClient(), index, SAMPLE_MESSAGES);
+  }
+
+  @Test
+  void get_sampleData_retainsOriginalsForBotAndTeamOwner(TestNamespace ns) {
+    User teamMember = UserTestFactory.createUser(ns, "sample_team_member");
+    Team team =
+        ns.trackRoot(
+            Entity.TEAM,
+            SdkClients.adminClient()
+                .teams()
+                .create(
+                    new CreateTeam()
+                        .withName(ns.shortPrefix("sample_team"))
+                        .withTeamType(CreateTeam.TeamType.GROUP)
+                        .withUsers(List.of(teamMember.getId()))));
+    SearchIndex index =
+        createSampleIndex(ns, SampleTagLocation.DEEP_FIELD, team.getEntityReference());
+    assertSampleTagPlacement(index, SampleTagLocation.DEEP_FIELD);
+    SearchIndex ownedIndex = getEntityWithFields(index.getId().toString(), "owners");
+    assertTrue(
+        ownedIndex.getOwners().stream().anyMatch(owner -> owner.getId().equals(team.getId())));
+    putSampleData(index);
+
+    assertSampleMessages(userClient(teamMember), index, SAMPLE_MESSAGES);
+    assertSampleMessages(SdkClients.botClient(), index, SAMPLE_MESSAGES);
+  }
+
+  @Test
+  void get_sampleData_deniesExplicitlyDeniedReadersIncludingOwners(TestNamespace ns) {
+    User denied = createSampleDeniedUser(ns);
+    SearchIndex index =
+        createSampleIndex(ns, SampleTagLocation.DEEP_FIELD, denied.getEntityReference());
+    putSampleData(index);
+    assertSampleDataDenied(userClient(denied), index);
+
+    SearchIndex fetched = getEntityWithFields(index.getId().toString(), "owners");
+    fetched.setOwners(List.of());
+    patchEntity(index.getId().toString(), fetched);
+    assertTrue(getEntityWithFields(index.getId().toString(), "owners").getOwners().isEmpty());
+    assertSampleDataDenied(userClient(denied), index);
+    assertSampleMessages(SdkClients.adminClient(), index, SAMPLE_MESSAGES);
+  }
+
+  @Test
+  void get_sampleData_withoutStoredSampleDoesNotInventMaskedMessages(TestNamespace ns) {
+    SearchIndex index = createSampleIndex(ns, SampleTagLocation.DEEP_FIELD, null);
+    User reader = UserTestFactory.createUser(ns, "empty_sample_reader");
+
+    assertNull(getSampleData(userClient(reader), index).getSampleData());
+  }
+
+  private SearchIndex createSampleIndex(
+      TestNamespace ns, SampleTagLocation location, EntityReference owner) {
+    CreateSearchIndex request = createRequest(ns.shortPrefix("sample_" + location.name()), ns);
+    SearchIndexField email = sampleField("email", SearchIndexDataType.KEYWORD);
+    SearchIndexField details =
+        sampleField("details", SearchIndexDataType.OBJECT).withChildren(List.of(email));
+    SearchIndexField contact =
+        sampleField("contact", SearchIndexDataType.OBJECT)
+            .withChildren(List.of(sampleField("city", SearchIndexDataType.KEYWORD), details));
+    SearchIndexField payload =
+        sampleField("payload", SearchIndexDataType.OBJECT).withChildren(List.of(contact));
+    SearchIndexField publicId = sampleField("publicId", SearchIndexDataType.KEYWORD);
+    request.setFields(List.of(publicId, payload));
+    if (owner != null) {
+      request.setOwners(List.of(owner));
+    }
+    TagLabel sensitive =
+        new TagLabel()
+            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    switch (location) {
+      case ENTITY -> request.setTags(List.of(sensitive));
+      case FIELD -> publicId.setTags(List.of(sensitive));
+      case DEEP_FIELD -> email.setTags(List.of(sensitive));
+      case NON_SENSITIVE -> email.setTags(
+          List.of(
+              new TagLabel()
+                  .withTagFQN("PII.NonSensitive")
+                  .withSource(TagLabel.TagSource.CLASSIFICATION)));
+    }
+    return createEntity(request);
+  }
+
+  private void assertSampleTagPlacement(SearchIndex index, SampleTagLocation location) {
+    SearchIndex persisted = getEntityWithFields(index.getId().toString(), "fields,tags");
+    SearchIndexField direct = persisted.getFields().getFirst();
+    SearchIndexField leaf =
+        persisted
+            .getFields()
+            .get(1)
+            .getChildren()
+            .getFirst()
+            .getChildren()
+            .get(1)
+            .getChildren()
+            .getFirst();
+    List<TagLabel> tags =
+        switch (location) {
+          case ENTITY -> persisted.getTags();
+          case FIELD -> direct.getTags();
+          case DEEP_FIELD, NON_SENSITIVE -> leaf.getTags();
+        };
+    String expectedTag =
+        location == SampleTagLocation.NON_SENSITIVE
+            ? "PII.NonSensitive"
+            : PIIMasker.SENSITIVE_PII_TAG;
+    assertTrue(tags.stream().anyMatch(tag -> expectedTag.equals(tag.getTagFQN())));
+    if (location != SampleTagLocation.ENTITY) {
+      assertTrue(persisted.getTags().isEmpty(), "Field tags must not become entity tags");
+    }
+  }
+
+  private static SearchIndexField sampleField(String name, SearchIndexDataType dataType) {
+    return new SearchIndexField().withName(name).withDataType(dataType);
+  }
+
+  private static OpenMetadataClient userClient(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static SearchIndex getSampleData(OpenMetadataClient client, SearchIndex index) {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/searchIndexes/" + index.getId() + "/sampleData",
+            null,
+            SearchIndex.class);
+  }
+
+  private static void putSampleData(SearchIndex index) {
+    SearchIndex response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/searchIndexes/" + index.getId() + "/sampleData",
+                new SearchIndexSampleData().withMessages(SAMPLE_MESSAGES),
+                SearchIndex.class);
+    assertEquals(SAMPLE_MESSAGES, response.getSampleData().getMessages());
+  }
+
+  private static void assertSampleMessages(
+      OpenMetadataClient client, SearchIndex index, List<String> expected) {
+    assertEquals(expected, getSampleData(client, index).getSampleData().getMessages());
+  }
+
+  private static void assertSampleDataDenied(OpenMetadataClient client, SearchIndex index) {
+    OpenMetadataException denied =
+        assertThrows(OpenMetadataException.class, () -> getSampleData(client, index));
+    assertEquals(403, denied.getStatusCode());
+    assertFalse(denied.toString().contains("SAMPLE_SECRET_A"));
+    assertFalse(denied.toString().contains("SAMPLE_SECRET_B"));
+  }
+
+  private static User createSampleDeniedUser(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(ns.shortPrefix("sample_deny_policy"))
+                        .withRules(
+                            List.of(
+                                new Rule()
+                                    .withName("denySampleData")
+                                    .withResources(List.of(Entity.SEARCH_INDEX))
+                                    .withOperations(List.of(MetadataOperation.VIEW_SAMPLE_DATA))
+                                    .withEffect(Rule.Effect.DENY)))));
+    Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(ns.shortPrefix("sample_deny_role"))
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    return ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ns.shortPrefix("sample_denied"))
+                    .withEmail(ns.shortPrefix("sample_denied") + "@test.om.org")
+                    .withRoles(List.of(role.getId()))));
   }
 
   private void searchindexFieldsForReingest(SearchIndex update) {

@@ -225,6 +225,16 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     }
   }
 
+  /**
+   * A hard delete derives a path for every credential field, including one whose secret was never
+   * written there (a field holding a user-supplied reference) or is already gone, so a missing
+   * secret must not fail the delete of the entity.
+   */
+  @Override
+  protected void deleteStoredSecret(String secretName) {
+    deleteSecret(secretName);
+  }
+
   private SecretsManagerException deleteFailure(String secretName, RuntimeException cause) {
     return new SecretsManagerException(
         String.format(

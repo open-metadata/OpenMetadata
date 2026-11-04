@@ -34,6 +34,10 @@ jest.mock('./StringUtils', () => ({
   ...jest.requireActual('./StringUtils'),
   bytesToSize: jest.fn(),
   getEncodedFqn: jest.fn(),
+}));
+
+jest.mock('./RichTextStringUtils', () => ({
+  ...jest.requireActual('./RichTextStringUtils'),
   stringToHTML: jest.fn().mockImplementation((value) => value),
 }));
 

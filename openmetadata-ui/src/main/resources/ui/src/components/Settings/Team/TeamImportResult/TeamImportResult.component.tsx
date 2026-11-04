@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
@@ -42,11 +44,15 @@ export const TeamImportResult = ({
         key: 'status',
         fixed: true,
         render: (status: TeamCSVRecord['status'], record) => {
+          // Limit successful status cells so they do not stretch the import table.
           return (
-            <Space
+            <Box
+              inline
               align="start"
+              className="layout-space layout-space-horizontal"
               data-testid="status-container"
-              // Added max width because in case of full success we don't want to occupied full width
+              gap={2}
+              itemClassName="layout-space-item"
               style={{ maxWidth: 200, minWidth: 100 }}>
               {status === Status.Success && (
                 <SuccessBadgeIcon
@@ -67,7 +73,7 @@ export const TeamImportResult = ({
                   {record.details}
                 </>
               )}
-            </Space>
+            </Box>
           );
         },
       },
@@ -78,9 +84,12 @@ export const TeamImportResult = ({
         fixed: true,
         render: (name: TeamCSVRecord['name*']) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {name}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -90,9 +99,12 @@ export const TeamImportResult = ({
         key: 'displayName',
         render: (displayName: TeamCSVRecord['displayName']) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {displayName || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -118,9 +130,12 @@ export const TeamImportResult = ({
         key: 'parent',
         render: (type: TeamCSVRecord['teamType*']) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {type || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -130,9 +145,12 @@ export const TeamImportResult = ({
         key: 'parent',
         render: (parent: TeamCSVRecord['parents*']) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {parent || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -142,9 +160,12 @@ export const TeamImportResult = ({
         key: 'Owner',
         render: (owner: TeamCSVRecord['Owner']) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {owner || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -154,9 +175,12 @@ export const TeamImportResult = ({
         key: 'isJoinable',
         render: (isJoinable: TeamCSVRecord['isJoinable']) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {isJoinable || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -166,9 +190,12 @@ export const TeamImportResult = ({
         key: 'defaultRoles',
         render: (role: TeamCSVRecord['defaultRoles']) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {role || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -178,9 +205,12 @@ export const TeamImportResult = ({
         key: 'policies',
         render: (policy: TeamCSVRecord['policies']) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {policy || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },

@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Input, Row, Select, Space, Tooltip, Typography } from 'antd';
+import {
+  Badge,
+  Box,
+  Input,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
   get,
   isArray,
@@ -23,7 +29,7 @@ import {
   startCase,
 } from 'lodash';
 import { ReactNode } from 'react';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
@@ -36,60 +42,75 @@ type KeyValuesProps = {
   serviceCategory: string;
 };
 
-// Renders a basic input field with label and optional tooltip
+export const renderConnectionDetailLabel = (
+  label = '',
+  description?: string
+) => (
+  <Box align="center" className="tw:w-1/3 tw:shrink-0 tw:pr-2" gap={1}>
+    <Typography className="tw:min-w-0 tw:break-all" color="secondary">
+      {label}:
+    </Typography>
+    {description && (
+      <Tooltip placement="bottom" title={description}>
+        <InfoCircle className="tw:size-3.5 tw:text-fg-quaternary" />
+      </Tooltip>
+    )}
+  </Box>
+);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getSchemaText = (
+  property: unknown,
+  key: 'description' | 'format' | 'title'
+) => {
+  if (!isRecord(property)) {
+    return undefined;
+  }
+  const value = property[key];
+
+  return typeof value === 'string' ? value : undefined;
+};
+
 const renderInputField = (
   key: string,
-  value: string,
+  value: unknown,
   description?: string,
   format?: string,
   title?: string
 ) => (
-  <Col key={key} span={12}>
-    <Row>
-      <Col className="d-flex items-center" span={8}>
-        <Space size={0}>
-          <p className="text-grey-muted m-0">{key || title}:</p>
-          {description && (
-            <Tooltip placement="bottom" title={description} trigger="hover">
-              <InfoCircleOutlined
-                className="m-x-xss"
-                style={{ color: '#C4C4C4' }}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      </Col>
-      <Col span={16}>
-        {isArray(value) ? (
-          <Select
-            allowClear={false}
-            bordered={false}
-            className="w-full border-none"
-            data-testid="input-field"
-            mode="multiple"
-            open={false}
-            removeIcon={null}
-            style={{ pointerEvents: 'none' }}
-            value={value}
-          />
-        ) : (
-          <Input
-            readOnly
-            className="w-full border-none"
-            data-testid="input-field"
-            type={format === 'password' ? 'password' : 'text'}
-            value={value}
-          />
-        )}
-      </Col>
-    </Row>
-  </Col>
+  <Box align="center" key={key}>
+    {renderConnectionDetailLabel(key || title, description)}
+    <Box className="tw:min-w-0 tw:flex-1">
+      {isArray(value) ? (
+        <Box data-testid="input-field" gap={1} wrap="wrap">
+          {/* Repeated values are valid in connection arrays, so value alone is not a unique key. */}
+          {value.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <Badge color="gray" key={`${item}-${index}`} size="sm" type="color">
+              {String(item)}
+            </Badge>
+          ))}
+        </Box>
+      ) : (
+        <Input
+          isReadOnly
+          aria-label={key || title}
+          inputDataTestId="input-field"
+          size="sm"
+          type={format === 'password' ? 'password' : 'text'}
+          value={String(value ?? '')}
+        />
+      )}
+    </Box>
+  </Box>
 );
 
 // Renders filter pattern fields
 const renderFilterPattern = (
   key: string,
-  value: { includes: string[]; excludes: string[] },
+  value: Record<string, unknown>,
   description?: string,
   title?: string
 ) => {
@@ -98,39 +119,27 @@ const renderFilterPattern = (
   }
 
   return (
-    <Col key={key} span={12}>
-      <Row>
-        <Col className="d-flex" span={8}>
-          <Space align="start" size={0}>
-            <p className="text-grey-muted m-0">{key || title}:</p>
-            {description && (
-              <Tooltip placement="bottom" title={description} trigger="hover">
-                <InfoCircleOutlined
-                  className="m-x-xss"
-                  style={{ color: '#C4C4C4' }}
-                />
-              </Tooltip>
-            )}
-          </Space>
-        </Col>
-        <Col className="filter-config" span={16}>
-          {Object.entries(value).map(([key, value]) => {
-            return isEmpty(value) ? null : (
-              <div
-                className="w-full flex flex-col"
-                key={`${key}-${JSON.stringify(value)}`}>
-                <Typography.Text className="key">{`${startCase(
-                  key
-                )}:`}</Typography.Text>
-                <Typography.Text className="value">
-                  {(value as string[]).join(', ')}
-                </Typography.Text>
-              </div>
-            );
-          })}
-        </Col>
-      </Row>
-    </Col>
+    <Box align="start" key={key}>
+      {renderConnectionDetailLabel(key || title, description)}
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
+        {Object.entries(value).map(([patternKey, patternValue]) =>
+          isEmpty(patternValue) ? null : (
+            <Box
+              direction="col"
+              key={`${patternKey}-${JSON.stringify(patternValue)}`}>
+              <Typography color="secondary">{`${startCase(
+                patternKey
+              )}:`}</Typography>
+              <Typography weight="semibold">
+                {Array.isArray(patternValue)
+                  ? patternValue.join(', ')
+                  : String(patternValue)}
+              </Typography>
+            </Box>
+          )
+        )}
+      </Box>
+    </Box>
   );
 };
 
@@ -148,10 +157,10 @@ const resolveRef = (
       return current;
     }
     const resolved = get(schema, ref.slice(2).split('/'));
-    if (!isObject(resolved)) {
+    if (!isRecord(resolved)) {
       return current;
     }
-    current = resolved as Record<string, unknown>;
+    current = resolved;
   }
 
   return current;
@@ -172,13 +181,13 @@ export const getSchemaProperties = (
   schema: Record<string, unknown>,
   depth = 0
 ): Record<string, unknown> => {
-  if (!isObject(schemaProperty) || depth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
+  if (!isRecord(schemaProperty) || depth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
     return {};
   }
 
-  const node = resolveRef(schemaProperty as Record<string, unknown>, schema);
-  if (isObject(node.properties)) {
-    return node.properties as Record<string, unknown>;
+  const node = resolveRef(schemaProperty, schema);
+  if (isRecord(node.properties)) {
+    return node.properties;
   }
 
   const branches = node.oneOf ?? node.anyOf;
@@ -219,10 +228,13 @@ export const getKeyValues = ({
         return null;
       }
 
-      // Handle non-object and array values
-      if (!isObject(value) || isArray(value)) {
-        const { description, format, title } = schemaPropertyObject[key] ?? {};
+      const property = schemaPropertyObject[key];
+      const description = getSchemaText(property, 'description');
+      const format = getSchemaText(property, 'format');
+      const title = getSchemaText(property, 'title');
 
+      // Handle non-object and array values
+      if (!isRecord(value)) {
         return renderInputField(key, value, description, format, title);
       }
 
@@ -238,8 +250,6 @@ export const getKeyValues = ({
           key as ServiceConnectionFilterPatternFields
         )
       ) {
-        const { description, title } = schemaPropertyObject[key] ?? {};
-
         return renderFilterPattern(key, value, description, title);
       }
 
@@ -255,7 +265,11 @@ export const getKeyValues = ({
       });
     });
   } catch {
-    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 };
 
@@ -269,16 +283,21 @@ const renderOneOfSchema = ({
 }: {
   schemaProperty: unknown;
   title: string;
-  value: unknown;
+  value: Record<string, unknown>;
   schema: Record<string, unknown>;
   serviceCategory: string;
 }): ReactNode => {
-  const subSchema = schemaProperty.oneOf.find(
-    (item: { title: string }) => item.title === title
-  )?.properties;
+  if (!isRecord(schemaProperty) || !Array.isArray(schemaProperty.oneOf)) {
+    return null;
+  }
+
+  const branch = schemaProperty.oneOf.find(
+    (item) => isRecord(item) && item.title === title
+  );
+  const subSchema = isRecord(branch) ? branch.properties : undefined;
 
   return (
-    subSchema &&
+    isRecord(subSchema) &&
     getKeyValues({
       obj: value,
       schemaPropertyObject: subSchema,
@@ -292,7 +311,7 @@ const renderOneOfSchema = ({
 const handleSpecialServiceConfig = (
   serviceType: string,
   key: string,
-  value: unknown,
+  value: Record<string, unknown>,
   schemaPropertyObject: Record<string, unknown>,
   schema: Record<string, unknown>,
   serviceCategory: string
@@ -301,7 +320,8 @@ const handleSpecialServiceConfig = (
   if (
     serviceType === EntityType.PIPELINE_SERVICE &&
     key === 'connection' &&
-    value.type?.toLowerCase() === 'airflow'
+    typeof value.type === 'string' &&
+    value.type.toLowerCase() === 'airflow'
   ) {
     return renderOneOfSchema({
       schemaProperty: schemaPropertyObject[key],
@@ -343,21 +363,25 @@ const handleSpecialServiceConfig = (
 // Handles database service config source
 const handleDatabaseConfigSource = (
   key: string,
-  value: unknown,
+  value: Record<string, unknown>,
   schemaPropertyObject: Record<string, unknown>,
   schema: Record<string, unknown>,
   serviceCategory: string
 ): ReactNode | null => {
-  if (!isObject(value.securityConfig)) {
+  const securityConfig = value.securityConfig;
+  if (!isRecord(securityConfig)) {
     return null;
   }
 
-  if (value.securityConfig.gcpConfig) {
-    const gcpConfigSchema = isObject(value.securityConfig.gcpConfig)
-      ? get(
-          schema,
-          'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
-          {}
+  if (securityConfig.gcpConfig) {
+    const gcpConfigSchema = isRecord(securityConfig.gcpConfig)
+      ? getSchemaProperties(
+          get(
+            schema,
+            'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues'
+          ),
+          securityConfig.gcpConfig,
+          schema
         )
       : getSchemaProperties(
           get(
@@ -369,8 +393,8 @@ const handleDatabaseConfigSource = (
         );
 
     return getKeyValues({
-      obj: isObject(value.securityConfig.gcpConfig)
-        ? value.securityConfig.gcpConfig
+      obj: isRecord(securityConfig.gcpConfig)
+        ? securityConfig.gcpConfig
         : value,
       schemaPropertyObject: gcpConfigSchema,
       schema,
@@ -378,30 +402,29 @@ const handleDatabaseConfigSource = (
     });
   }
 
-  const internalRef = '$ref';
-  const oneOf = 'oneOf';
+  const schemaProperty = schemaPropertyObject[key];
+  if (!isRecord(schemaProperty)) {
+    return null;
+  }
 
   if (
-    Object.keys(schemaPropertyObject[key]).includes(oneOf) &&
-    (value.securityConfig?.awsAccessKeyId ||
-      value.securityConfig?.awsSecretAccessKey)
+    'oneOf' in schemaProperty &&
+    (securityConfig.awsAccessKeyId || securityConfig.awsSecretAccessKey)
   ) {
     return getKeyValues({
-      obj: value.securityConfig,
-      schemaPropertyObject: get(
-        schema,
-        'definitions.S3Config.properties.securityConfig.properties',
-        {}
+      obj: securityConfig,
+      schemaPropertyObject: getSchemaProperties(
+        get(schema, 'definitions.S3Config.properties.securityConfig'),
+        securityConfig,
+        schema
       ),
       schema,
       serviceCategory,
     });
   }
 
-  if (Object.keys(schemaPropertyObject[key]).includes(internalRef)) {
-    const definition = schemaPropertyObject[key][internalRef]
-      .split('/')
-      .splice(2);
+  if (typeof schemaProperty.$ref === 'string') {
+    const definition = schemaProperty.$ref.split('/').splice(2);
 
     return getKeyValues({
       obj: value,
@@ -429,7 +452,7 @@ const getNestedConfigValue = ({
 }: {
   serviceType: string;
   key: string;
-  value: unknown;
+  value: Record<string, unknown>;
   schemaPropertyObject: Record<string, unknown>;
   schema: Record<string, unknown>;
   serviceCategory: string;

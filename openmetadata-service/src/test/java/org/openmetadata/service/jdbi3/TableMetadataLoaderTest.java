@@ -16,6 +16,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecordWithId;
@@ -24,7 +25,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 class TableMetadataLoaderTest {
   private final UUID tableId = UUID.randomUUID();
   private final EntityExtensionDAO dao = mock(EntityExtensionDAO.class);
-  private final TableMetadataLoader loader = new TableMetadataLoader(() -> dao);
+  private final CustomPropertyReferences references = mock(CustomPropertyReferences.class);
+  private final TableMetadataLoader loader =
+      new TableMetadataLoader(() -> dao, () -> references, Entity.TABLE);
 
   @Test
   void absentInputsDoNotRequireADatabase() {
@@ -32,7 +35,11 @@ class TableMetadataLoaderTest {
         new TableMetadataLoader(
             () -> {
               throw new AssertionError("No metadata was requested");
-            });
+            },
+            () -> {
+              throw new AssertionError("No references were requested");
+            },
+            Entity.TABLE);
 
     unavailable.loadMetrics(null, true);
     unavailable.loadMetrics(List.of(), true);

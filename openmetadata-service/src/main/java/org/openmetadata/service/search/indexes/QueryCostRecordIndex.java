@@ -25,6 +25,12 @@ public class QueryCostRecordIndex implements SearchIndex {
       query.setIncrementalChangeDescription(null);
       doc.put("query", query);
       doc.put("service", query.getService());
+      // Lift the query's access-control fields to the top level so search RBAC, which matches
+      // top-level owners/tags/domains, hides a cost record exactly as it hides the query. Without a
+      // top-level domain, hasDomain() treats the record as domainless and shows it to everyone.
+      doc.put("owners", query.getOwners());
+      doc.put("tags", query.getTags());
+      doc.put("domains", query.getDomains());
     } catch (EntityNotFoundException ex) {
       LOG.warn(
           "Query entity [{}] not found for QueryCostRecord, skipping indexing: {}",

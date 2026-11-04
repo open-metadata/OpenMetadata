@@ -48,19 +48,10 @@
         color: @grey-900;
         white-space: nowrap;
       }
-
-      .ant-divider-horizontal {
-        margin: 0;
-        width: 100%;
-      }
     }
 
     .contract-status-container {
-      display: flex;
-      align-items: baseline;
-      gap: var(--om-space-12);
-
-      .ant-typography {
+      .contract-status-label {
         color: @grey-700;
         font-size: var(--om-font-size-sm);
         font-weight: var(--om-font-weight-medium);
@@ -129,17 +120,6 @@
     display: flex;
     align-items: flex-start;
     gap: var(--om-space-12);
-
-    .rule-icon {
-      margin-top: var(--om-space-2);
-      font-size: var(--om-font-size-32);
-      color: transparent;
-
-      &.rule-icon-default {
-        font-size: var(--om-font-size-22);
-        color: @grey-600;
-      }
-    }
 
     .rule-item-content {
       display: flex;
@@ -226,21 +206,4 @@
       width: 32px;
     }
   }
-}
-.ant-tag.custom-tag {
-  border-radius: var(--om-radius-md);
-  padding: var(--om-space-2) @size-xs var(--om-space-2) var(--om-space-6);
-  font-size: @size-sm;
-  font-weight: @font-medium;
-  max-width: 100%;
-  text-wrap: auto;
-  border: none;
-}
-.ant-tag.custom-tag.ant-tag-purple {
-  background-color: @purple-6;
-  color: @purple-5;
-}
-.ant-tag.custom-tag.ant-tag-blue {
-  background-color: @blue-33;
-  color: @blue-34;
 }

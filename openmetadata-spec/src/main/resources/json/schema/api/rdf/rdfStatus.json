@@ -30,7 +30,7 @@
     "projectionState": {
       "$ref": "#/definitions/projectionState"
     },
-    "askCollateEnabled": {
+    "aiEnabled": {
       "description": "Whether optional AI-assisted Ontology routes may be rendered.",
       "type": "boolean"
     }
@@ -41,7 +41,7 @@
     "storageType",
     "inference",
     "projectionState",
-    "askCollateEnabled"
+    "aiEnabled"
   ],
   "additionalProperties": false
 }

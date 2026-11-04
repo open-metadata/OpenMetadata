@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, ReactNode } from 'react';
+import type { FC, FocusEventHandler, ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 
 export interface TreeSelectNode<T = unknown> {
   id: string;
@@ -32,6 +33,10 @@ export interface TreeSelectNode<T = unknown> {
   count?: number;
   /** Set when the loaded children are a truncated page, not the whole branch. */
   hasMoreChildren?: boolean;
+  /** Direct-child total; with `children.length` it gives the "N remaining" count. */
+  childrenTotal?: number;
+  /** Cursor for this branch's next page, echoed back as `after`. */
+  childrenCursor?: string;
   /**
    * When true, children of this node are mutually exclusive (radio buttons)
    * and this node itself will not render a selection control.
@@ -44,6 +49,10 @@ export interface TreeSelectDataFetcherParams {
   searchTerm?: string;
   parentId?: string;
   pageSize?: number;
+  /** Cursor from the previous page; set only when loading more of a branch. */
+  after?: string;
+  /** Every descendant in one response; a cascade cannot select a page. */
+  loadAll?: boolean;
   signal?: AbortSignal;
 }
 
@@ -51,6 +60,8 @@ export interface TreeSelectDataResponse<T = unknown> {
   nodes: TreeSelectNode<T>[];
   hasMore?: boolean;
   total?: number;
+  /** Cursor for the next page; required for `hasMore` to be actionable. */
+  nextCursor?: string;
 }
 
 export type TreeSelectDataFetcher<T = unknown> = (
@@ -73,6 +84,8 @@ export interface TreeSelectTriggerRenderProps {
 }
 
 export interface TreeSelectProps<T = unknown> {
+  id?: string;
+  'aria-label'?: string;
   /** Label text rendered above the field. */
   label?: string;
   /** Placeholder shown in the trigger when nothing is selected. */
@@ -82,6 +95,7 @@ export interface TreeSelectProps<T = unknown> {
   tooltip?: string;
   required?: boolean;
   disabled?: boolean;
+  isLoading?: boolean;
   isInvalid?: boolean;
   size?: 'sm' | 'md';
   autoFocus?: boolean;
@@ -148,6 +162,11 @@ export interface TreeSelectProps<T = unknown> {
    * cannot disagree.
    */
   renderSelectedItem?: (node: TreeSelectNode<T>) => ReactNode;
+  maxVisibleItems?: number;
+  /** Condense selected descendants under a selected parent in the trigger only. */
+  selectedDisplayStrategy?: 'all' | 'parent';
+  onFocus?: FocusEventHandler<HTMLDivElement>;
+  onBlur?: FocusEventHandler<HTMLDivElement>;
   /**
    * Handle a failed `fetchData` yourself. Without this the raw error message
    * is toasted, which for an HTTP transport is an untranslated string like
@@ -169,6 +188,11 @@ export interface TreeSelectProps<T = unknown> {
   commitMode?: TreeSelectCommitMode;
   /** Gap between trigger and dropdown, in px. @default 8 */
   offset?: number;
+  /**
+   * Fixed dropdown placement, e.g. `right top` beside a menu row. Omit to keep
+   * the default: below the trigger, mirrored right when there is no room.
+   */
+  placement?: Placement;
   /** Controls the dropdown; omit to let the component own its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;

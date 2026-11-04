@@ -16,6 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
+import { ApprovalMode } from '../../../../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
 
 jest.mock('./TriggerConfigSection', () => ({
@@ -71,6 +72,15 @@ jest.mock('./EventTriggerFilterSection', () => ({
   ),
 }));
 
+jest.mock('./ApprovalModeSection', () => ({
+  ApprovalModeSection: ({ approvalMode }: { approvalMode?: string }) => (
+    <div
+      data-approval-mode={approvalMode ?? ''}
+      data-testid="approval-mode-section-mock"
+    />
+  ),
+}));
+
 import { WorkflowConfigFormV1 } from './WorkflowConfigFormV1';
 
 const noop = () => {
@@ -119,6 +129,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowStartNodeFilterScheduleAndBatchEdit
         allowFullStartNodeConfiguration={false}
@@ -168,6 +179,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowFullStartNodeConfiguration={false}
         allowStartNodeFilterScheduleAndBatchEdit={false}
@@ -204,6 +216,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowFullStartNodeConfiguration
         allowStartNodeFilterScheduleAndBatchEdit
@@ -229,5 +242,48 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
     expect(
       screen.getByTestId('event-trigger-filter-section-mock')
     ).toHaveAttribute('data-lock-fields', 'false');
+  });
+
+  describe('approval mode', () => {
+    const eventConfig: NodeConfig = {
+      name: 'W',
+      description: '',
+      dataAssets: ['glossary'],
+      triggerType: WorkflowType.EVENT_BASED,
+      eventType: ['Updated'],
+      dataAssetFilters: [],
+      approvalMode: ApprovalMode.Enforce,
+    };
+
+    const renderForm = (config: NodeConfig) =>
+      renderWithWorkflowMode(
+        <WorkflowConfigFormV1
+          {...baseHandlers}
+          allowFullStartNodeConfiguration
+          allowScheduledTrigger
+          allowStartNodeFilterScheduleAndBatchEdit
+          availableDataAssets={[]}
+          availableEventTypes={[]}
+          availableExcludeFields={[]}
+          config={config}
+        />
+      );
+
+    it('shows the saved approval mode for an event based trigger', () => {
+      renderForm(eventConfig);
+
+      expect(screen.getByTestId('approval-mode-section-mock')).toHaveAttribute(
+        'data-approval-mode',
+        ApprovalMode.Enforce
+      );
+    });
+
+    it('hides the approval mode for a periodic batch trigger', () => {
+      renderForm({ ...eventConfig, triggerType: WorkflowType.PERIODIC_BATCH });
+
+      expect(
+        screen.queryByTestId('approval-mode-section-mock')
+      ).not.toBeInTheDocument();
+    });
   });
 });

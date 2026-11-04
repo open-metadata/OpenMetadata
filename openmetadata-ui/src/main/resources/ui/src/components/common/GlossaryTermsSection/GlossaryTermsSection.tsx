@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlossaryTag } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
+import {
+  Button,
+  ButtonUtility,
+  GlossaryTag,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { useEntityRules } from '../../../hooks/useEntityRules';
@@ -24,7 +28,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import GlossaryTermPicker from '../GlossaryTermPicker/GlossaryTermPicker';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { GlossaryTermsSectionProps } from './GlossaryTermsSection.interface';
 import './GlossaryTermsSection.less';
@@ -136,13 +139,10 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           isOpen={isEditing}
           multiple={entityRules.canAddMultipleGlossaryTerm}
           renderTrigger={({ toggle }) => (
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-glossary-terms"
-              disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.glossary-term-plural'),
               })}
               onClick={toggle}
@@ -174,11 +174,11 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
     if (!glossaryTerms.length) {
       return (
-        <span className="no-data-placeholder">
+        <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
           {t('label.no-entity-assigned', {
             entity: t('label.glossary-term-plural'),
           })}
-        </span>
+        </Typography>
       );
     }
 
@@ -204,8 +204,10 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             />
           ))}
           {glossaryTerms.length > maxVisibleGlossaryTerms && (
-            <button
+            <Button
               className="show-more-terms-button"
+              color="link-color"
+              size="xs"
               type="button"
               onClick={() => setShowAllTerms(!showAllTerms)}>
               {showAllTerms
@@ -213,7 +215,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
                 : `+${glossaryTerms.length - maxVisibleGlossaryTerms} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -232,9 +234,9 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       className="glossary-terms-section"
       data-testid="KnowledgePanel.GlossaryTerms">
       <div className="glossary-terms-header">
-        <Typography.Text className="glossary-terms-title">
+        <Typography size="text-xs" weight="semibold">
           {t('label.glossary-term-plural')}
-        </Typography.Text>
+        </Typography>
         {editButton}
       </div>
       <div className="glossary-terms-content" data-testid="glossary-container">

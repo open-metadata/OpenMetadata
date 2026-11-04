@@ -12,6 +12,7 @@
  */
 import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -25,10 +26,7 @@ test.describe('API docs should work properly', () => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'API', exact: true }).click();
 
-    await page
-      .getByTestId('fluid-container')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('fluid-container'));
     await page.locator('[data-content-id="overview"]').waitFor({
       state: 'visible',
     });

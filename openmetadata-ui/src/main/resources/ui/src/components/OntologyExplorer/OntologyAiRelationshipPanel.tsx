@@ -17,7 +17,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Stars02 } from '@untitledui/icons';
+import { Stars02 } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyRelationshipSuggestion } from '../../generated/api/data/ontologyRelationshipSuggestionList';

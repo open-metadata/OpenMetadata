@@ -32,7 +32,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { AiFormModal } from '../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import {
   BundleSuiteFormData,
@@ -49,7 +48,6 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   onClose,
   onSuccess,
   initialValues,
-  variant = 'drawer',
   title,
   headerActions,
   width = 736,
@@ -192,8 +190,6 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
     [handleFormSubmit, t]
   );
 
-  const isModalVariant = variant === 'modal';
-
   const bundleSuiteFormBody = (
     <BundleSuiteFormBody
       errorMessage={errorMessage}
@@ -255,54 +251,12 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   closeDrawerRef.current = closeDrawer;
 
   useEffect(() => {
-    if (isModalVariant) {
-      return;
-    }
     if (open) {
       openDrawer();
     } else if (isOpen) {
       closeDrawer();
     }
-  }, [isModalVariant, open, isOpen, openDrawer, closeDrawer]);
-
-  if (isModalVariant) {
-    return (
-      <AiFormModal
-        cancelTestId="cancel-button"
-        headerActions={headerActions}
-        isSubmitting={form.formState.isSubmitting}
-        open={open}
-        submitTestId="submit-button"
-        subtitle={t('message.page-sub-header-for-data-quality')}
-        title={
-          title ?? t('label.add-entity', { entity: t('label.bundle-suite') })
-        }
-        onClose={handleDrawerDismiss}
-        onSubmit={form.handleSubmit(
-          (data) =>
-            submitAndClose(
-              data,
-              handleFormSubmitWithErrorCapture,
-              handleDrawerDismiss
-            ),
-          () => scrollToError()
-        )}>
-        <HookForm
-          form={form}
-          onSubmit={form.handleSubmit(
-            (data) =>
-              submitAndClose(
-                data,
-                handleFormSubmitWithErrorCapture,
-                handleDrawerDismiss
-              ),
-            () => scrollToError()
-          )}>
-          {bundleSuiteFormBody}
-        </HookForm>
-      </AiFormModal>
-    );
-  }
+  }, [open, isOpen, openDrawer, closeDrawer]);
 
   return formDrawer;
 };

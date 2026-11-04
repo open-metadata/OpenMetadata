@@ -52,6 +52,7 @@ const PIPELINE_TYPE_TO_AGENT_TYPE: Record<PipelineType, string> = {
   [PipelineType.DataInsight]: 'Metadata',
   [PipelineType.ElasticSearchReindex]: 'Metadata',
   [PipelineType.PolicyAgent]: 'Metadata',
+  [PipelineType.ReverseMetadata]: 'Metadata',
   [PipelineType.TestSuite]: 'Data Quality',
 };
 

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Package, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -22,10 +23,8 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
 import { ENTITY_PATH } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
@@ -36,7 +35,7 @@ import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import { getQueryFilterForDataProducts } from '../../../../utils/DomainFilterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -121,19 +120,26 @@ const DataProductsTab = forwardRef(
 
     if (isEmpty(dataProducts) && !loading) {
       return (
-        <ErrorPlaceHolder
-          buttonId="data-product-add-button"
-          buttonTitle={t('label.add-entity', {
-            entity: t('label.data-product'),
-          })}
-          heading={t('message.no-data-message', {
-            entity: t('label.data-product-lowercase-plural'),
-          })}
-          icon={<FolderEmptyIcon />}
-          permission={permissions.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-          onClick={onAddDataProduct}
-        />
+        <div className="tw:relative tw:min-h-70">
+          <CreatePlaceholder
+            actions={[
+              {
+                color: 'primary',
+                iconLeading: Plus,
+                id: 'data-product-add-button',
+                key: 'add-data-product',
+                label: t('label.add-entity', {
+                  entity: t('label.data-product'),
+                }),
+                onPress: onAddDataProduct,
+              },
+            ]}
+            description={t('label.no-data-products-yet-description')}
+            icon={<Package className="tw:text-fg-brand-primary" />}
+            permission={permissions.Create}
+            title={t('label.no-data-products-yet')}
+          />
+        </div>
       );
     }
 

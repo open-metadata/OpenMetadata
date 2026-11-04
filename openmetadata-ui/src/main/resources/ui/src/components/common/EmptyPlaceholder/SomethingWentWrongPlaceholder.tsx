@@ -12,7 +12,7 @@
  */
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { AlertTriangle } from '@untitledui/icons';
+import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { SomethingWentWrongPlaceholderProps } from './EmptyPlaceholder.interface';
 import { resolveSingleAction } from './EmptyPlaceholder.utils';
@@ -43,8 +43,11 @@ const SomethingWentWrongPlaceholder = ({
         'reload',
         t('label.reload')
       )}
-      description={description ?? t('message.temporary-error-try-reloading')}
-      icon={icon ?? <AlertTriangle className="tw:text-secondary" />}
+      description={
+        description ??
+        (title ? undefined : t('message.temporary-error-try-reloading'))
+      }
+      icon={icon ?? <AlertTriangle />}
       title={title ?? t('message.something-went-wrong')}
       variant="blank"
       {...props}

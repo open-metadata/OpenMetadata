@@ -12,6 +12,7 @@
  */
 
 import { MlModelClass } from '../../../support/entity/MlModelClass';
+import { MlmodelServiceClass } from '../../../support/entity/service/MlmodelServiceClass';
 import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
@@ -20,5 +21,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'MlModel',
   reindexEntityType: 'mlmodel',
-  entityFactory: () => new MlModelClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () => new MlModelClass({ service: new MlmodelServiceClass() }),
 });

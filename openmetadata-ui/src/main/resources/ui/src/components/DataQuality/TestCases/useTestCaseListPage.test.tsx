@@ -22,12 +22,17 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  exportTestCasesInCSV,
+  getListTestCaseBySearch,
+} from '../../../rest/testAPI';
+import { getTestCaseExportFiltersFromSearch } from '../../../utils/DataQuality/DataQualityPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
 const mockNavigate = jest.fn();
+const mockShowModal = jest.fn();
 
 const mockLocation = { search: '' };
 
@@ -72,7 +77,7 @@ jest.mock('../../../pages/DataQuality/DataQualityProvider', () => ({
 jest.mock(
   '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
   () => ({
-    useEntityExportModalProvider: jest.fn(() => ({ showModal: jest.fn() })),
+    useEntityExportModalProvider: jest.fn(() => ({ showModal: mockShowModal })),
   })
 );
 
@@ -93,6 +98,7 @@ jest.mock('../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest
     .fn()
     .mockResolvedValue({ data: [], paging: { total: 0 } }),
+  exportTestCasesInCSV: jest.fn(),
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
@@ -122,6 +128,7 @@ const buildTestCase = (
 describe('useTestCaseListPage', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    mockShowModal.mockClear();
     mockLocation.search = '';
     mockPermissions.testCase = { ViewAll: true, ViewBasic: true };
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
@@ -174,14 +181,13 @@ describe('useTestCaseListPage', () => {
     expect(typeof current.testCaseSummary).toBe('object');
     expect(typeof current.pagingData).toBe('object');
     expect(typeof current.params).toBe('object');
-    expect(current.form).toBeDefined();
-    expect(typeof current.form).toBe('object');
 
     expect(typeof current.pagingData.pagingHandler).toBe('function');
 
     // On mount getTestCases seeds selectedFilter from DEFAULT_SELECTED_FILTERS
-    // (status, type, table, tags) merged with the (empty) URL params.
+    // (lastRun, status, type, table, tags) merged with the (empty) URL params.
     expect(current.selectedFilter).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.status,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.table,
@@ -238,10 +244,9 @@ describe('useTestCaseListPage', () => {
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
     act(() => {
-      result.current.handleFilterChange?.(
-        { testCaseStatus: TestCaseStatus.Failed },
-        {}
-      );
+      result.current.handleFilterChange({
+        testCaseStatus: TestCaseStatus.Failed,
+      });
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -368,20 +373,19 @@ describe('useTestCaseListPage', () => {
   });
 
   it('should remove an active filter and reset its form field when its menu item is clicked again', async () => {
-    const { result } = renderHook(() => useTestCaseListPage());
+    const form = { setFieldsValue: jest.fn(), resetFields: jest.fn() };
+    const { result } = renderHook(() => useTestCaseListPage({ form }));
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
-
-    const setFieldsSpy = jest
-      .spyOn(result.current.form, 'setFieldsValue')
-      .mockImplementation(() => undefined);
 
     act(() => {
       result.current.handleMenuClick({ key: 'testCaseStatus' });
     });
 
     expect(result.current.selectedFilter).not.toContain('testCaseStatus');
-    expect(setFieldsSpy).toHaveBeenCalledWith({ testCaseStatus: undefined });
+    expect(form.setFieldsValue).toHaveBeenCalledWith({
+      testCaseStatus: undefined,
+    });
   });
 
   it('should send the pinned request payload on mount with empty params', async () => {
@@ -411,6 +415,88 @@ describe('useTestCaseListPage', () => {
     // Default sort order is spread into the request.
     expect(payload.sortField).toBe('testCaseResult.timestamp');
     expect(payload.sortType).toBe('desc');
+  });
+
+  it('should open Bulk Edit with the filters the list sent to search', async () => {
+    mockPermissions.testCase = {
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+    };
+    mockLocation.search = QueryString.stringify(
+      {
+        testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+        testCaseType: 'column',
+        serviceName: 'sample_data',
+        searchValue: 'orders',
+        currentPage: 2,
+      },
+      { arrayFormat: 'brackets' }
+    );
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ serviceName: 'sample_data' })
+      )
+    );
+    const listParams = (getListTestCaseBySearch as jest.Mock).mock.calls.at(
+      -1
+    )?.[0];
+
+    act(() => {
+      result.current.extraDropdownContent
+        .find((item) => item.key === 'bulk-edit-button')
+        ?.onClick?.();
+    });
+
+    const [path, search] = (
+      mockNavigate.mock.calls.at(-1)?.[0] as string
+    ).split('?');
+
+    expect(path).toBe('/bulk/edit/testCase/*');
+    expect(getTestCaseExportFiltersFromSearch(search)).toEqual({
+      testCaseStatus: listParams.testCaseStatus,
+      testCaseType: listParams.testCaseType,
+      serviceName: listParams.serviceName,
+      q: listParams.q,
+    });
+    expect(listParams.q).toBe('orders');
+  });
+
+  it('should export only the test cases the filtered list shows', async () => {
+    mockLocation.search = QueryString.stringify(
+      {
+        testCaseType: 'all',
+        currentPage: 1,
+        testCaseStatus: [TestCaseStatus.Aborted],
+      },
+      { arrayFormat: 'brackets' }
+    );
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ testCaseStatus: [TestCaseStatus.Aborted] })
+      )
+    );
+    const listParams = (getListTestCaseBySearch as jest.Mock).mock.calls.at(
+      -1
+    )?.[0];
+
+    act(() => {
+      result.current.extraDropdownContent
+        .find((item) => item.key === 'export-button')
+        ?.onClick?.();
+    });
+    const [{ name, onExport }] = mockShowModal.mock.calls[0];
+    onExport(name, { recursive: true });
+
+    expect(exportTestCasesInCSV).toHaveBeenLastCalledWith('*', {
+      recursive: true,
+      testCaseStatus: listParams.testCaseStatus,
+      testCaseType: listParams.testCaseType,
+    });
   });
 
   it('should prefetch the default table and tag filter options on mount', async () => {
@@ -445,8 +531,10 @@ describe('useTestCaseListPage', () => {
     const byKey = (key: string) =>
       result.current.filters.find((descriptor) => descriptor.key === key);
 
-    // Descriptors track selectedFilter (defaults: table/type/status/tags).
+    // Descriptors track selectedFilter (defaults: lastRun/table/type/status/tags),
+    // with Last Run first.
     expect(result.current.filters.map((descriptor) => descriptor.key)).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.status,
@@ -526,16 +614,13 @@ describe('useTestCaseListPage', () => {
     );
   });
 
-  it('should surface date and multiselect control types for lastRun and platform filters', async () => {
+  it('should surface the date control type for the default lastRun filter and multiselect for platform', async () => {
     const { result } = renderHook(() => useTestCaseListPage());
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
     );
 
-    act(() => {
-      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.lastRun });
-    });
     act(() => {
       result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
     });
@@ -548,6 +633,7 @@ describe('useTestCaseListPage', () => {
     );
 
     expect(lastRunDescriptor?.controlType).toBe('date');
+    expect(lastRunDescriptor?.value).toBeUndefined();
     expect(platformDescriptor?.controlType).toBe('multiselect');
   });
 
@@ -615,25 +701,23 @@ describe('useTestCaseListPage', () => {
       tableFqn: 'svc.db.tbl',
     });
 
-    const { result } = renderHook(() => useTestCaseListPage());
+    const form = { setFieldsValue: jest.fn(), resetFields: jest.fn() };
+    const { result } = renderHook(() => useTestCaseListPage({ form }));
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
-
-    const resetFieldsSpy = jest
-      .spyOn(result.current.form, 'resetFields')
-      .mockImplementation(() => undefined);
 
     act(() => {
       result.current.clearAll();
     });
 
     expect(result.current.selectedFilter).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.status,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.tags,
     ]);
-    expect(resetFieldsSpy).toHaveBeenCalled();
+    expect(form.resetFields).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenLastCalledWith({
       search: 'searchValue=orders',
     });

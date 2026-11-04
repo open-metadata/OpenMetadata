@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.jackson.Jackson;
@@ -29,10 +30,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,10 +54,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
@@ -84,7 +84,6 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 class DriveFileUploadIT {
 
   private static final String S3_BUCKET = "test-bucket";
-  private static final String TIKA_TESSERACT_PATH_PROPERTY = "collate.tika.tesseract.path";
   private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
@@ -384,34 +383,6 @@ class DriveFileUploadIT {
     }
   }
 
-  private Path createFakeTesseractHome(String extractedText) throws IOException {
-    Path home = Files.createTempDirectory("fake-tesseract-home-");
-    Path executable = home.resolve("tesseract");
-    Files.writeString(
-        executable,
-        "#!/bin/sh\n"
-            + "if [ $# -eq 0 ] || [ \"$1\" = \"--version\" ]; then\n"
-            + "  echo \"tesseract 5.0.0\"\n"
-            + "  exit 0\n"
-            + "fi\n"
-            + "output_base=\"$2\"\n"
-            + "printf '%s\\n' \""
-            + extractedText
-            + "\" > \"${output_base}.txt\"\n",
-        StandardCharsets.UTF_8);
-    executable.toFile().setExecutable(true);
-    return home;
-  }
-
-  private void deleteRecursively(Path root) throws IOException {
-    if (root == null || Files.notExists(root)) {
-      return;
-    }
-    try (var paths = Files.walk(root)) {
-      paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
-    }
-  }
-
   @Test
   void testUploadPdfToS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-report.pdf");
@@ -539,40 +510,28 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testUploadedImageIsSearchableByOcrExtractedText(TestNamespace ns) throws Exception {
-    String uniqueToken =
-        "IMAGENEEDLE"
-            + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
-    Path fakeTesseractHome = createFakeTesseractHome("Revenue chart " + uniqueToken);
-    String originalPath = System.getProperty(TIKA_TESSERACT_PATH_PROPERTY);
+  void testUploadedImageIsStoredWithoutTextExtraction(TestNamespace ns) throws Exception {
+    byte[] content = createPngWithText("Revenue chart");
 
-    try {
-      System.setProperty(TIKA_TESSERACT_PATH_PROPERTY, fakeTesseractHome.toString());
-      byte[] content = createPngWithText(uniqueToken);
-
-      ContextFile file;
-      try (Response response =
-          uploadFile(
-              uniqueUploadedFileName(ns, "search-fixture.png"),
-              content,
-              ns.shortPrefix("Image Search"),
-              null)) {
-        String body = response.readEntity(String.class);
-        assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
-        file = JsonUtils.readValue(body, ContextFile.class);
-      }
-
-      awaitProcessed(file.getId(), uniqueToken);
-
-      assertSearchContainsFile(uniqueToken, file.getId());
-    } finally {
-      if (originalPath == null) {
-        System.clearProperty(TIKA_TESSERACT_PATH_PROPERTY);
-      } else {
-        System.setProperty(TIKA_TESSERACT_PATH_PROPERTY, originalPath);
-      }
-      deleteRecursively(fakeTesseractHome);
+    ContextFile file;
+    try (Response response =
+        uploadFile(
+            uniqueUploadedFileName(ns, "image-fixture.png"),
+            content,
+            ns.shortPrefix("Image Upload"),
+            null)) {
+      file = readCreatedContextFile(response, "Upload failed");
     }
+
+    UUID fileId = file.getId();
+    await()
+        .pollInterval(POLL_INTERVAL)
+        .atMost(EXTRACTION_TIMEOUT)
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    ProcessingStatus.Unsupported, fetchFile(fileId).getProcessingStatus()));
+    assertNull(fetchFile(fileId).getExtractedText());
   }
 
   @Test
@@ -602,6 +561,44 @@ class DriveFileUploadIT {
         rest.getById("v1/contextCenter/drive/files", file.getId(), "folder", ContextFile.class);
     assertNotNull(fetched.getFolder(), "File should be in folder");
     assertEquals(folder.getId(), fetched.getFolder().getId());
+  }
+
+  @Test
+  void testUploadIntoDomain(TestNamespace ns) throws Exception {
+    // The UI uploads under the navbar domain pick, so the file must not be left without a domain.
+    RestClient rest = RestClient.admin();
+    Domain domain =
+        rest.create(
+            "v1/domains",
+            new CreateDomain()
+                .withName(ns.prefix("upload-domain"))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("upload target"),
+            Domain.class);
+
+    ContextFile file;
+    try (FormDataMultiPart multipart = new FormDataMultiPart()) {
+      multipart.field("domain", domain.getFullyQualifiedName());
+      multipart.bodyPart(
+          new StreamDataBodyPart(
+              "file",
+              new ByteArrayInputStream(readFixture("/drive/sample-report.pdf")),
+              uniqueUploadedFileName(ns, "/drive/sample-report.pdf"),
+              MediaType.APPLICATION_OCTET_STREAM_TYPE));
+      Response response =
+          uploadTarget
+              .request()
+              .headers(adminAuthHeaders())
+              .post(Entity.entity(multipart, multipart.getMediaType()));
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      file = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile fetched =
+        rest.getById("v1/contextCenter/drive/files", file.getId(), "domains", ContextFile.class);
+    assertEquals(
+        List.of(domain.getId()), fetched.getDomains().stream().map(d -> d.getId()).toList());
   }
 
   @Test

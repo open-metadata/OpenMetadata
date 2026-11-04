@@ -12,15 +12,17 @@
  */
 
 import {
+  Avatar,
   Button,
+  ButtonUtility,
   CheckboxBase,
-  Tooltip,
-  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import {
+  MouseEvent,
   UIEventHandler,
   useCallback,
   useEffect,
@@ -28,7 +30,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
   ADD_USER_CONTAINER_HEIGHT,
   pagingObject,
@@ -40,7 +41,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
-import { UserTag } from '../UserTag/UserTag.component';
 import { SelectableListProps } from './SelectableList.interface';
 
 const RemoveIcon = ({
@@ -53,26 +53,21 @@ const RemoveIcon = ({
   const { t } = useTranslation();
 
   return (
-    <Tooltip
-      title={
+    <ButtonUtility
+      data-testid="remove-owner"
+      icon={XCircle}
+      size="xs"
+      tooltip={
         removeIconTooltipLabel ??
         t('label.remove-entity', {
           entity: t('label.owner-lowercase'),
         })
-      }>
-      <TooltipTrigger>
-        <button
-          className="tw:flex tw:items-center tw:justify-center tw:bg-transparent tw:border-0 tw:p-0 tw:cursor-pointer tw:text-tertiary hover:tw:text-primary"
-          data-testid="remove-owner"
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            removeOwner?.();
-          }}>
-          <IconRemoveColored aria-hidden className="tw:size-4" />
-        </button>
-      </TooltipTrigger>
-    </Tooltip>
+      }
+      onClick={(e: MouseEvent) => {
+        e.stopPropagation();
+        removeOwner?.();
+      }}
+    />
   );
 };
 
@@ -301,7 +296,10 @@ export const SelectableList = ({
       </div>
 
       {/* List body */}
-      <div className="tw:relative">
+      <div
+        className="tw:relative"
+        data-testid="selectable-list-body"
+        style={{ minHeight: height }}>
         {(fetching || updating) && (
           <div className="tw:flex tw:items-center tw:justify-center tw:py-4">
             <Loader size="small" />
@@ -313,7 +311,11 @@ export const SelectableList = ({
           </div>
         )}
         {uniqueOptions.length > 0 && (
-          <ul className="tw:p-0 tw:m-0 tw:list-none" ref={containerRef}>
+          <ul
+            className="tw:p-0 tw:m-0 tw:list-none"
+            ref={(element) => {
+              containerRef.current = element;
+            }}>
             <VirtualList
               className="selectable-list-virtual-list tw:px-2 tw:pb-2"
               data={uniqueOptions}
@@ -326,11 +328,12 @@ export const SelectableList = ({
                   <button
                     className={classNames(
                       'selectable-list-item',
-                      'tw:flex tw:w-full tw:items-center tw:justify-between tw:px-2 tw:py-2 tw:rounded-md tw:cursor-pointer tw:select-none tw:bg-transparent tw:border-0 tw:text-left',
-                      'hover:tw:bg-secondary',
-                      'focus-visible:tw:outline-2 focus-visible:tw:outline-brand-500',
+                      'tw:flex tw:w-full tw:items-center tw:justify-between tw:px-2 tw:py-2 tw:rounded-md tw:cursor-pointer tw:select-none tw:border-0 tw:text-left',
+                      'tw:hover:bg-primary_hover',
+                      'tw:focus-visible:outline-2 tw:focus-visible:outline-focus-ring',
                       {
-                        'tw:bg-brand-50 active': checkActiveSelectedItem(item),
+                        'tw:bg-active active': checkActiveSelectedItem(item),
+                        'tw:bg-transparent': !checkActiveSelectedItem(item),
                       }
                     )}
                     data-testid="owner-option"
@@ -344,11 +347,17 @@ export const SelectableList = ({
                       {customTagRenderer ? (
                         customTagRenderer(item)
                       ) : (
-                        <UserTag
-                          avatarType="outlined"
-                          id={item.name ?? ''}
-                          name={getEntityName(item)}
-                        />
+                        <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+                          <Avatar
+                            initials={getEntityName(item)
+                              .charAt(0)
+                              .toUpperCase()}
+                            size="xs"
+                          />
+                          <span className="tw:truncate tw:text-sm tw:text-primary">
+                            {getEntityName(item)}
+                          </span>
+                        </span>
                       )}
                     </div>
                     <div className="tw:flex tw:items-center tw:shrink-0 tw:ml-2">
@@ -376,7 +385,7 @@ export const SelectableList = ({
 
       {/* Footer — multiselect controls */}
       {multiSelect && (
-        <div className="tw:flex tw:items-center tw:justify-between tw:px-3 tw:py-3 tw:border-t tw:border-primary">
+        <div className="tw:flex tw:items-center tw:justify-between tw:gap-4 tw:px-3 tw:py-3 tw:border-t tw:border-primary">
           <Button
             color="link-gray"
             data-testid="clear-all-button"

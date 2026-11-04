@@ -12,7 +12,7 @@
  */
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { ChevronRight, RefreshCw01 } from '@untitledui/icons';
+import { ChevronRight, RefreshCw01 } from '../../../icons';
 import type {
   ComponentPropsWithRef,
   ComponentType,
@@ -208,9 +208,11 @@ export interface TreeItemContentProps {
   className?: string;
   /**
    * Optional icon component rendered between the chevron and the label.
-   * Accepts any `@untitledui/icons`-compatible component.
+   * Accepts any icon component from `@openmetadata/ui-core-components/icons`.
    */
-  icon?: ComponentType<HTMLAttributes<HTMLOrSVGElement>>;
+  icon?: ComponentType<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
   /** Additional CSS class name applied to the icon. */
   iconClassName?: string;
   /**

@@ -19,7 +19,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@openmetadata/ui-core-components/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -262,7 +262,7 @@ export const CustomPropertyPicker = ({
         <Input
           aria-label={searchLabel}
           className="tw:min-w-48 tw:flex-1"
-          icon={SearchLg}
+          icon={Search}
           inputDataTestId="custom-property-picker-search"
           isDisabled={isDisabled}
           placeholder={searchLabel}

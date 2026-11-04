@@ -19,8 +19,7 @@ import, storage, query, and result serialization:
 - **Triple terms**, including `rdf:reifies` statements and nested blank nodes, and **directional
   language-tagged literals** such as `"قطة"@ar--rtl`.
 - **Storage.** Entities reach Fuseki as RDF Thrift and land in TDB2 named graphs; both carry triple
-  terms and preserve the `rdf:dirLangString` datatype. Fuseki's Lucene text index (`text:query`)
-  indexes directional literals like any other string.
+  terms and preserve the `rdf:dirLangString` datatype.
 - **SPARQL 1.2.** `VERSION "1.2"` declarations, `TRIPLE()`/`LANGDIR()` expressions, and `<<( s p o )>>`
   patterns all execute. Both the administrator (`/v1/rdf/sparql`) and agent query paths return them;
   the agent path keeps its existing SELECT-only and graph-access restrictions.
@@ -203,7 +202,7 @@ rdf:
   shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
   dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
   strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
-  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
+  aiEnabled: ${RDF_AI_ENABLED:-false}
 ```
 
 ### Environment Variables
@@ -224,36 +223,46 @@ rdf:
 | `RDF_REMOTE_USERNAME` | Fuseki admin username | `admin` |
 | `RDF_REMOTE_PASSWORD` | Fuseki admin password | `admin` |
 | `RDF_DATASET` | Fuseki dataset name | `openmetadata` |
-| `RDF_INFERENCE_ENABLED` | Enable in-process full-graph inference | `false` |
-| `RDF_DEFAULT_INFERENCE_LEVEL` | Default inference selection | `NONE` |
-| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Legacy in-process safety limit | `100000` |
+| `RDF_INFERENCE_ENABLED` | Deprecated and ignored; OpenMetadata no longer runs reasoners in-process | `false` |
+| `RDF_DEFAULT_INFERENCE_LEVEL` | Deprecated and ignored | `NONE` |
+| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Deprecated and ignored | `100000` |
 | `RDF_MATERIALIZED_INFERENCE_ENABLED` | Enable durable per-rule inference graphs | `false` |
 | `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |
 | `RDF_STRICT_OWL_PROFILE` | Enforce supported OWL profile rules | `true` |
-| `RDF_ASK_COLLATE_ENABLED` | Enable Ontology Studio AI | `false` |
+| `RDF_AI_ENABLED` | Enable Ontology Studio AI | `false` |
+
+`RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of `RDF_AI_ENABLED`. Deriving
+glossary terms from Context Center memories is not an Ontology AI feature: it runs only when the
+configured `llmConfiguration.aiProviderClass` supplies a glossary-term deriver, which Collate's
+does and the built-in provider does not.
 
 ### Docker Compose Configuration
 
-The Fuseki container (`docker/development/docker-compose-fuseki.yml`):
+The Fuseki container (`docker/development/docker-compose-fuseki.yml`) runs the published image;
+[rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) explains each setting:
 
 ```yaml
 services:
   fuseki:
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:6.2.0
+    image: openmetadata/fuseki:6.2.0-318ff87
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"
     environment:
-      - FUSEKI_ADMIN_PASSWORD=admin
-      - FUSEKI_OPENMETADATA_PASSWORD=openmetadata-secret
-      - JVM_ARGS=-Xmx1500m -Xms256m
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
     volumes:
-      - fuseki-tdb2-data:/fuseki-data
+      - fuseki-store:/fuseki
 ```
+
+The Fuseki web UI and every dataset endpoint ask for the admin credentials; only `/$/ping` is
+anonymous.
 
 ## API Endpoints
 
@@ -300,12 +309,18 @@ Content-Type: application/json
 ```
 
 Unlike the admin endpoint above, this is a permissioned read surface for agent tools:
-it requires the `ExecuteSparqlQuery` operation on the `rdf` resource (granted by a policy
-that names it — wildcard `All`/`All` policies do not grant it). Only `SELECT` queries run,
+it requires the `ExecuteSparqlQuery` operation on the `rdf` resource. The seeded Data Consumer
+policy grants it through `DataConsumerPolicy-ExecuteSparqlQuery-Rule`, so every user inherits it
+by default; delete that rule to opt out, or add a role with a deny rule to remove it for specific
+users. Outside that rule, only a policy that names the operation grants it — wildcard `All`/`All`
+policies do not. Only `SELECT` queries run,
 with no `FROM`, `GRAPH`, or `SERVICE` clauses; inference is disabled; results carry a
 completeness status relative to the submitted query. Queries evaluate over the
 server-configured dataset without persona filtering and without asset-level
-authorization — callers must already be entitled to see the whole projected graph.
+authorization — callers must already be entitled to see the whole projected graph. If you
+restrict what users can view through custom policies, also remove
+`DataConsumerPolicy-ExecuteSparqlQuery-Rule`, or those users can query assets they cannot
+otherwise see.
 
 ### Get Glossary Term Relationship Graph
 ```bash
@@ -422,8 +437,8 @@ To clear all RDF data and start fresh:
 # Stop Fuseki
 docker compose -f docker/development/docker-compose-fuseki.yml down
 
-# Remove volume
-docker volume rm openmetadata_fuseki-data
+# Remove volume (Compose prefixes it with the project name)
+docker volume rm development_fuseki-store
 
 # Restart Fuseki
 docker compose -f docker/development/docker-compose-fuseki.yml up -d

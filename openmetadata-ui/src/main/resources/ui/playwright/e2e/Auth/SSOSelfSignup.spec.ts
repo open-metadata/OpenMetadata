@@ -28,6 +28,7 @@
  */
 
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { expect, test } from '../../support/fixtures/base';
 import { getApiContext } from '../../utils/common';
 import {
@@ -41,7 +42,7 @@ const completeOidcSelfSignup = async (page: Page): Promise<void> => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   const ssoButton = page.getByTestId('sso-login-button');
-  await ssoButton.waitFor({ state: 'visible', timeout: 30000 });
+  await ssoButton.waitFor({ state: 'visible', timeout: ACTION_TIMEOUT });
   await ssoButton.click();
 
   await page.waitForURL(

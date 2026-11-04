@@ -52,6 +52,7 @@ class MetadataCommands(Enum):
     LINEAGE = "lineage"
     APP = "app"
     AUTO_CLASSIFICATION = "classify"
+    INSTALL_CLASSIFICATION_MODELS = "install-classification-models"
     SCAFFOLD_CONNECTOR = "scaffold-connector"
 
 
@@ -163,6 +164,15 @@ def get_parser(args: list[str] | None = None):
             help="Workflow for running auto classification",
         )
     )
+    install_classification_models_parser = sub_parser.add_parser(
+        MetadataCommands.INSTALL_CLASSIFICATION_MODELS.value,
+        help="Install spaCy models for auto classification",
+    )
+    install_classification_models_parser.add_argument(
+        "--languages",
+        required=True,
+        help="Comma-separated ClassificationLanguage identifiers, for example en,es",
+    )
     webhook_args(
         sub_parser.add_parser(
             MetadataCommands.WEBHOOK.value,
@@ -258,6 +268,18 @@ def metadata(args: list[str] | None = None):
             sys.exit(1)
         else:
             run_scaffold_interactive()
+        return
+
+    if metadata_workflow == MetadataCommands.INSTALL_CLASSIFICATION_MODELS.value:
+        try:
+            from metadata.cli.install_classification_models import (
+                run_install_classification_models,
+            )
+
+            run_install_classification_models(contains_args["languages"])
+        except (RuntimeError, ValueError) as exc:
+            logger.error("Auto classification model provisioning failed: %s", exc)
+            sys.exit(1)
         return
 
     if metadata_workflow == MetadataCommands.WEBHOOK.value:

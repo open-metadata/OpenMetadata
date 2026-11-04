@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Check } from '@untitledui/icons';
+import {
+  Badge,
+  Box,
+  Table,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { Key, ReactElement, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDFTerm } from '../../generated/api/rdf/sparqlResponse';
@@ -68,6 +74,8 @@ interface ResultBodyParams {
   resultTable: ResultTable;
   result: SparqlPlaygroundResult;
   relationshipTypes: RelationshipType[];
+  emptyText: string;
+  tableLabel: string;
 }
 
 function renderResultBody({
@@ -78,6 +86,8 @@ function renderResultBody({
   resultTable,
   result,
   relationshipTypes,
+  emptyText,
+  tableLabel,
 }: ResultBodyParams): ReactElement {
   const showGraphView = resultView === 'graph' && hasResultGraph;
 
@@ -105,52 +115,65 @@ function renderResultBody({
     );
   }
 
+  if (resultTable.variables.length > 0 && resultTable.rows.length === 0) {
+    return (
+      <Box
+        align="center"
+        className="tw:min-h-14 tw:rounded-lg tw:border tw:border-dashed tw:border-primary tw:px-4 tw:py-3"
+        data-testid="ontology-sparql-no-rows"
+        justify="center">
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {emptyText}
+        </Typography>
+      </Box>
+    );
+  }
+
   if (conceptResults) {
     return (
-      <div
-        className="tw:flex tw:flex-wrap tw:gap-2"
-        data-testid="ontology-sparql-chips">
+      <Box data-testid="ontology-sparql-chips" gap={2} wrap="wrap">
         {conceptResults.map(({ key, value }) => (
-          <span
-            className="tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-primary"
-            key={key}>
+          <Badge color="gray" key={key} size="md" type="pill-color">
             {value}
-          </span>
+          </Badge>
         ))}
-      </div>
+      </Box>
     );
   }
 
   if (resultTable.variables.length > 0) {
     return (
-      <div className="tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary">
-        <table className="tw:w-full tw:border-collapse tw:text-xs">
-          <thead>
-            <tr>
-              {resultTable.variables.map((variable) => (
-                <th
-                  className="tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2 tw:text-left tw:font-semibold tw:text-secondary"
-                  key={variable}>
-                  {variable}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {resultTable.keyedRows.map(({ key, row }) => (
-              <tr key={key}>
-                {resultTable.variables.map((variable) => (
-                  <td
-                    className="tw:border-b tw:border-secondary tw:px-3 tw:py-2 tw:font-mono tw:text-xs tw:text-secondary"
-                    key={variable}>
-                    {getTermDisplayText(row[variable])}
-                  </td>
-                ))}
-              </tr>
+      <Box
+        className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
+        direction="col">
+        <Table
+          aria-label={tableLabel}
+          containerStyle={{ maxHeight: 384, overflowY: 'auto' }}
+          data-testid="ontology-sparql-result-table"
+          size="sm">
+          <Table.Header>
+            {resultTable.variables.map((variable, index) => (
+              <Table.Head
+                id={variable}
+                isRowHeader={index === 0}
+                key={variable}
+                label={variable}
+              />
             ))}
-          </tbody>
-        </table>
-      </div>
+          </Table.Header>
+          <Table.Body items={resultTable.keyedRows}>
+            {({ key, row }) => (
+              <Table.Row id={key}>
+                {resultTable.variables.map((variable) => (
+                  <Table.Cell key={variable}>
+                    {getTermDisplayText(row[variable])}
+                  </Table.Cell>
+                ))}
+              </Table.Row>
+            )}
+          </Table.Body>
+        </Table>
+      </Box>
     );
   }
 
@@ -207,19 +230,20 @@ const OntologyQueryResults = ({
   }, [result]);
 
   return (
-    <div data-testid="ontology-sparql-result">
-      <div className="tw:mb-3 tw:flex tw:items-center tw:justify-between tw:gap-3">
-        <div className="tw:flex tw:items-center tw:gap-1.5 tw:text-success-primary">
-          <Check aria-hidden="true" className="tw:size-3.5" />
-          <span
-            className="tw:text-xs tw:font-semibold"
-            data-testid="ontology-sparql-result-status">
+    <Box data-testid="ontology-sparql-result" direction="col" gap={3}>
+      <Box align="center" gap={3} justify="between">
+        <Box align="center" className="tw:text-utility-success-700" gap={2}>
+          <CheckCircle aria-hidden="true" className="tw:size-4" />
+          <Typography
+            data-testid="ontology-sparql-result-status"
+            size="text-sm"
+            weight="medium">
             {resultTable.rows.length}{' '}
             {t('label.result-plural').toLocaleLowerCase()}{' '}
             {/* eslint-disable-next-line i18next/no-literal-string -- decorative separator dot and ms unit */}
             <span aria-hidden="true">·</span> {result.durationMs} ms
-          </span>
-        </div>
+          </Typography>
+        </Box>
         {hasResultGraph ? (
           <Tabs
             selectedKey={resultView}
@@ -232,7 +256,7 @@ const OntologyQueryResults = ({
             <Tabs.Panel className="tw:hidden" id="graph" />
           </Tabs>
         ) : null}
-      </div>
+      </Box>
 
       {renderResultBody({
         resultView,
@@ -242,8 +266,10 @@ const OntologyQueryResults = ({
         resultTable,
         result,
         relationshipTypes,
+        emptyText: t('message.query-ran-without-results'),
+        tableLabel: t('label.result-plural'),
       })}
-    </div>
+    </Box>
   );
 };
 

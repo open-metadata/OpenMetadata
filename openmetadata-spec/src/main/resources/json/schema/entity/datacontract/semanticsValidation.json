@@ -18,6 +18,10 @@
       "description": "Total number of semantics rules.",
       "type": "integer"
     },
+    "skipped": {
+      "description": "Number of semantics rules not evaluated because they are disabled or do not apply to the entity's type.",
+      "type": "integer"
+    },
     "failedRules": {
       "description": "List of rules that failed validation.",
       "type": "array",

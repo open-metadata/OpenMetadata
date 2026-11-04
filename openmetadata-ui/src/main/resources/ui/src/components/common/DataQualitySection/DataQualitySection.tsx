@@ -18,6 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import '../../../styles/variables.less';
 import '../OverviewSection/OverviewSection.less';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
@@ -97,20 +98,18 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   ) : (
     <SectionWithEdit
       showEditButton={false}
-      title={
-        <div className="d-flex">
-          <Typography className="section-title mr-2">
-            {t('label.data-quality-test-plural')}
-          </Typography>
-          <Badge color="gray" size="sm">
-            {totalTests}
-          </Badge>
-        </div>
+      title={t('label.data-quality-test-plural')}
+      titleExtra={
+        <Badge color="gray" size="sm">
+          {totalTests}
+        </Badge>
       }
       onEdit={onEdit}>
       {totalTests === 0 ? (
         <div className="data-quality-section">
-          <span className="no-data-placeholder">{t('label.no-tests-run')}</span>
+          <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
+            {t('label.no-tests-run')}
+          </Typography>
         </div>
       ) : (
         <div className="data-quality-content">

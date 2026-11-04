@@ -4,6 +4,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -15,7 +16,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.json.JsonObject;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -32,9 +38,13 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -209,8 +219,15 @@ class TestCaseRepositoryTest {
       TestCaseRepository repository = boundaries.registerRepositories(entity);
 
       String callingThread = Thread.currentThread().getName();
-      repository.entitySpecificCleanup(
-          testCase(UUID.randomUUID(), "delete me", entityReference(Entity.TEST_SUITE, "suite")));
+      Runnable cleanup =
+          repository.preparePostDeleteCleanup(
+              List.of(
+                  testCase(
+                      UUID.randomUUID(),
+                      "delete me",
+                      entityReference(Entity.TEST_SUITE, "suite"))));
+      assertEquals(0, boundaries.timeSeriesDeletes.get());
+      cleanup.run();
 
       await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.timeSeriesDeletes.get() > 0);
       // A redundant second delete would push these past one, so the counts must *hold* at one for a
@@ -248,7 +265,9 @@ class TestCaseRepositoryTest {
           testCase(UUID.randomUUID(), "second", entityReference(Entity.TEST_SUITE, "s"))
               .withFullyQualifiedName(secondFqn);
 
-      repository.bulkEntitySpecificCleanup(List.of(first, second), "admin");
+      Runnable cleanup = repository.preparePostDeleteCleanup(List.of(first, second));
+      assertEquals(0, boundaries.timeSeriesDeletes.get());
+      cleanup.run();
 
       await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.searchDeletes.get() == 1);
       assertEquals(List.of(TEST_CASE_FQN, secondFqn), boundaries.deletedTestCaseFQNs.get());
@@ -261,6 +280,64 @@ class TestCaseRepositoryTest {
       assertEquals(
           Map.of("fqns", List.of(TEST_CASE_FQN, secondFqn)), boundaries.searchDeleteParams.get());
     }
+  }
+
+  @Test
+  void failingEntitiesAreLookedUpInBatchesAndMatchedExactly() throws Exception {
+    DeleteBoundaries boundaries = new DeleteBoundaries();
+    List<String> fqns = IntStream.range(0, 101).mapToObj(i -> "svc.db.schema.t" + i).toList();
+    Set<String> failing = Set.of("svc.db.schema.t57", "svc.db.schema.t100");
+    List<SearchListFilter> filters = new ArrayList<>();
+    when(boundaries.searchRepository.aggregate(
+            anyString(), eq(Entity.TEST_CASE), any(SearchAggregation.class), any()))
+        .thenAnswer(
+            invocation -> {
+              filters.add(invocation.getArgument(3));
+              return filterCounts(invocation.getArgument(0), failing);
+            });
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      TestCaseRepository repository = boundaries.registerRepositories(entity);
+
+      assertEquals(failing, repository.getEntitiesWithFailingTests(fqns, Include.NON_DELETED));
+      assertEquals(2, filters.size(), "101 entities take two batches of at most 100");
+      assertEquals(Include.NON_DELETED, filters.get(0).getInclude());
+
+      filters.clear();
+      repository.getEntitiesWithFailingTests(List.of("svc.db.schema.t1"), Include.ALL);
+      assertEquals(Include.ALL, filters.get(0).getInclude());
+    }
+  }
+
+  @Test
+  void failingTestsQueryKeepsUnusualCharactersInEntityNames() {
+    String fqn = "svc.db.\"quoted.name\".back\\slash";
+
+    JsonNode query = JsonUtils.readTree(TestCaseRepository.failingTestsQuery(List.of(fqn)));
+
+    assertEquals(fqn, query.at("/bool/filter/0/terms/originEntityFQN/0").asText());
+    assertEquals("Failed", query.at("/bool/filter/1/term/testCaseResult.testCaseStatus").asText());
+  }
+
+  @Test
+  void aMissingFilterResultFailsInsteadOfReadingAsNoFailure() {
+    JsonObject empty = JsonUtils.readJson("{}").asJsonObject();
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> TestCaseRepository.entitiesWithFailures(List.of("svc.db.schema.t"), empty));
+  }
+
+  /** A search response with one filter bucket per entity of the query's batch. */
+  private static JsonObject filterCounts(String query, Set<String> failing) {
+    JsonNode batch = JsonUtils.readTree(query).at("/bool/filter/0/terms/originEntityFQN");
+    Map<String, Object> aggregations = new HashMap<>();
+    for (int i = 0; i < batch.size(); i++) {
+      aggregations.put(
+          "filter#entity" + i,
+          Map.of("doc_count", failing.contains(batch.get(i).asText()) ? 1 : 0));
+    }
+    return JsonUtils.readJson(JsonUtils.pojoToJson(aggregations)).asJsonObject();
   }
 
   /**
@@ -283,6 +360,8 @@ class TestCaseRepositoryTest {
           mock(CollectionDAO.DataQualityDataTimeSeriesDAO.class);
       CollectionDAO.TestCaseDimensionResultTimeSeriesDAO dimensionDao =
           mock(CollectionDAO.TestCaseDimensionResultTimeSeriesDAO.class);
+      when(collectionDAO.relationshipDAO())
+          .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
       when(collectionDAO.testCaseDAO()).thenReturn(mock(CollectionDAO.TestCaseDAO.class));
       when(collectionDAO.testCaseResultTimeSeriesDao())
           .thenReturn(mock(CollectionDAO.TestCaseResultTimeSeriesDAO.class));

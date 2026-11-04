@@ -27,6 +27,7 @@ import {
   verifyExpandCollapseForSummaryPanel,
   verifyExpandCollapseNoDuplication,
 } from '../../utils/nestedColumnUpdatesUtils';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -197,9 +198,10 @@ test.describe('API Endpoint Entity Summary Panel - Nested columns with duplicate
     await dataAssestResponse;
     await waitForAllLoadersToDisappear(page);
 
-    const serviceSearchResponse = page.waitForResponse(
-      '**/api/v1/search/aggregate*'
-    );
+    const serviceSearchResponse = waitForAggregation(page, {
+      field: 'service.displayName.keyword',
+      value: apiService.service.name,
+    });
     // Interact with Service dropdown
     await page.getByTestId('search-dropdown-Service').click();
     await page.getByTestId('search-input').fill(apiService.service.name);

@@ -18,7 +18,7 @@ import {
   AccordionPanel,
   Badge,
   BadgeWithButton,
-  Button,
+  ButtonUtility,
   Grid,
   Input,
   Label,
@@ -27,7 +27,7 @@ import {
   RadioGroup,
   Select,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import {
@@ -217,13 +217,11 @@ function KeyValueList({
             : t('label.query-parameter-plural')}
         </span>
         {!isDisabled && (
-          <Button
-            aria-label={t('label.add')}
-            color="secondary"
+          <ButtonUtility
             data-testid={`add-${testIdPrefix}-button-${fieldName}`}
-            iconLeading={Plus}
-            size="xs"
-            onPress={() => append({ key: '', value: '' } as never)}
+            icon={Plus}
+            tooltip={t('label.add')}
+            onClick={() => append({ key: '', value: '' } as never)}
           />
         )}
       </div>
@@ -280,13 +278,12 @@ function KeyValueList({
             />
           </div>
           {!isDisabled && (
-            <Button
-              aria-label={t('label.remove')}
-              color="secondary"
+            <ButtonUtility
               data-testid={`remove-${testIdPrefix}-button-${fieldName}-${index}`}
-              iconLeading={Trash01}
-              size="xs"
-              onPress={() => remove(index)}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove')}
+              onClick={() => remove(index)}
             />
           )}
         </div>

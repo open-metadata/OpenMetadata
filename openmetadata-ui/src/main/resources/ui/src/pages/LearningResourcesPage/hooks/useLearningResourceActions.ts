@@ -18,6 +18,10 @@ import {
   deleteLearningResource,
   LearningResource,
 } from '../../../rest/learningResourceAPI';
+import {
+  opensInNewTab,
+  openUrlInNewTab,
+} from '../../../utils/platform/learning.utils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 interface UseLearningResourceActionsParams {
@@ -78,7 +82,7 @@ export const useLearningResourceActions = ({
     }
     setIsDeleting(true);
     try {
-      await deleteLearningResource(deletingResource.id);
+      await deleteLearningResource(deletingResource.id, true);
       showSuccessToast(
         t('server.entity-deleted-successfully', {
           entity: t('label.learning-resource'),
@@ -100,6 +104,11 @@ export const useLearningResourceActions = ({
   }, []);
 
   const handlePreview = useCallback((resource: LearningResource) => {
+    if (opensInNewTab(resource.resourceType)) {
+      openUrlInNewTab(resource.source.url);
+
+      return;
+    }
     setSelectedResource(resource);
     setIsPlayerOpen(true);
   }, []);

@@ -105,11 +105,11 @@ test.describe('Markdown', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Verify various markdown elements are rendered correctly
     const container = page.getByTestId('asset-description-container');
 
-    // check if read-more-button exists the perform click
-    const readMoreButton = page.getByTestId('read-more-button');
-    if (await readMoreButton.isVisible()) {
-      await readMoreButton.click();
-    }
+    // A glossary with no terms opens its description expanded, but the
+    // previewer renders collapsed first and expands in an effect. Clicking
+    // "more" raced that flip: the button became "less" and the click hung.
+    // Wait for the settled, expanded state instead of toggling it.
+    await expect(container.getByTestId('read-less-button')).toBeVisible();
 
     await expect(container.locator('h1')).toHaveText('Heading 1');
     await expect(container.locator('h2')).toHaveText('Heading 2');

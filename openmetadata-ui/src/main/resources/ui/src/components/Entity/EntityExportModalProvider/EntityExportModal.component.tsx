@@ -24,7 +24,7 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Loading01 } from '@untitledui/icons';
+import { Loading01 } from '@openmetadata/ui-core-components/icons';
 import { lowerCase } from 'lodash';
 import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

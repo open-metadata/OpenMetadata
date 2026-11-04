@@ -13,6 +13,7 @@
 
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,16 +21,38 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +71,80 @@ public class AuditLogResourceIT {
   private static final Logger LOG = LoggerFactory.getLogger(AuditLogResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String AUDIT_LOGS_PATH = "/v1/audit/logs";
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  @ExtendWith(TestNamespaceExtension.class)
+  void test_csvImportAuditLogMasksServiceConnection(boolean async, TestNamespace ns)
+      throws Exception {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final String password = "audit-import-password";
+    final String host = "warehouse.internal:3306";
+    final DatabaseService service =
+        ns.trackRoot(
+            Entity.DATABASE_SERVICE,
+            admin
+                .databaseServices()
+                .create(
+                    new CreateDatabaseService()
+                        .withName(ns.prefix("csv_audit_" + async))
+                        .withServiceType(DatabaseServiceType.Mysql)
+                        .withConnection(
+                            new DatabaseConnection()
+                                .withConfig(
+                                    new MysqlConnection()
+                                        .withHostPort(host)
+                                        .withUsername("etl")
+                                        .withAuthType(new basicAuth().withPassword(password))))));
+    for (String name : List.of("sales", "finance")) {
+      admin
+          .databases()
+          .create(
+              new CreateDatabase()
+                  .withName(name)
+                  .withService(service.getFullyQualifiedName())
+                  .withDescription("Before import"));
+    }
+    final String csv =
+        admin
+            .databaseServices()
+            .exportCsv(service.getFullyQualifiedName())
+            .replace("Before import", "After import");
+    if (async) {
+      admin.databaseServices().importCsvAsync(service.getFullyQualifiedName(), csv, false);
+    } else {
+      admin.databaseServices().importCsv(service.getFullyQualifiedName(), csv, false);
+    }
+
+    final Map<String, String> filters =
+        Map.of(
+            "entityType", Entity.DATABASE_SERVICE,
+            "entityFQN", service.getFullyQualifiedName(),
+            "eventType", EventType.ENTITY_UPDATED.value());
+    final JsonNode entries =
+        await()
+            .atMost(Duration.ofSeconds(60))
+            .until(
+                () ->
+                    MAPPER
+                        .readTree(executeGet(SdkClients.testUserClient(), AUDIT_LOGS_PATH, filters))
+                        .path("data"),
+                data -> data.size() == 1);
+    final JsonNode entry = entries.get(0);
+    assertFalse(entry.toString().contains(password));
+    assertFalse(entry.toString().contains("fernet:"));
+    assertFalse(entry.toString().contains(host));
+    for (JsonNode event :
+        List.of(entry.path("changeEvent"), MAPPER.readTree(entry.path("rawEventJson").asText()))) {
+      assertEquals(service.getId().toString(), event.path("entityId").asText());
+      assertEquals("bulkImport", event.at("/changeDescription/fieldsUpdated/0/name").asText());
+      assertTrue(event.path("entity").isTextual());
+      final JsonNode entity = MAPPER.readTree(event.path("entity").asText());
+      assertEquals(service.getName(), entity.path("name").asText());
+      assertTrue(entity.path("connection").isObject());
+      assertTrue(entity.at("/connection/config").isMissingNode());
+    }
+  }
 
   /**
    * Wait for the AuditLogConsumer to become active by creating a test entity and waiting for it to
@@ -1989,37 +2086,39 @@ public class AuditLogResourceIT {
   // ==================== Service Name Extraction Tests ====================
   // These tests verify the extractServiceName logic in AuditLogRepository
 
-  @Test
-  void test_serviceName_extractedFromEntityFQN() throws Exception {
-    // Verify serviceName is correctly extracted from entity FQN
-    // For "sample_data.ecommerce_db.shopify.raw_product_catalog", serviceName should be
-    // "sample_data"
-    OpenMetadataClient client = SdkClients.adminClient();
+  @ParameterizedTest
+  @ValueSource(strings = {"sample_data", "prod.db", "prod.us.east.db"})
+  @ExtendWith(TestNamespaceExtension.class)
+  void test_serviceName_extractedFromEntityFQN(String serviceName, TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName(ns.prefix(serviceName), ns);
+    final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    final Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
 
-    Map<String, String> params = new HashMap<>();
-    params.put("entityType", "table");
-    params.put("limit", "10");
+    final JsonNode entry = waitForTableCreatedAuditLog(client, table);
+    assertEquals(table.getFullyQualifiedName(), entry.path("entityFQN").asText());
+    assertEquals(service.getFullyQualifiedName(), entry.path("serviceName").asText());
+  }
 
-    String response = executeGet(client, AUDIT_LOGS_PATH, params);
-    assertNotNull(response);
-
-    Map<String, Object> result = MAPPER.readValue(response, new TypeReference<>() {});
-    java.util.List<Map<String, Object>> data =
-        (java.util.List<Map<String, Object>>) result.get("data");
-
-    for (Map<String, Object> entry : data) {
-      String entityFqn = (String) entry.get("entityFQN");
-      String serviceName = (String) entry.get("serviceName");
-
-      if (entityFqn != null && entityFqn.contains(".")) {
-        // Service name should be the first part of the FQN
-        String expectedServiceName = entityFqn.split("\\.")[0];
-        assertEquals(
-            expectedServiceName,
-            serviceName,
-            "serviceName should be first part of entityFQN: " + entityFqn);
-      }
-    }
+  private JsonNode waitForTableCreatedAuditLog(OpenMetadataClient client, Table table) {
+    final Map<String, String> params =
+        Map.of(
+            "entityType",
+            Entity.TABLE,
+            "entityFQN",
+            table.getFullyQualifiedName(),
+            "eventType",
+            EventType.ENTITY_CREATED.value(),
+            "limit",
+            "1");
+    return await("creation audit entry for " + table.getFullyQualifiedName())
+        .atMost(Duration.ofMillis(AUDIT_LOG_TIMEOUT_MS))
+        .pollInterval(Duration.ofMillis(AUDIT_LOG_POLL_INTERVAL_MS))
+        .until(
+            () -> MAPPER.readTree(executeGet(client, AUDIT_LOGS_PATH, params)).path("data"),
+            data -> data.isArray() && data.size() == 1)
+        .get(0);
   }
 
   @Test

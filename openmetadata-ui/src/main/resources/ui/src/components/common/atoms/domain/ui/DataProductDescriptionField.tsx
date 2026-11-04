@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
-import { stripMarkdown } from '../../../../../utils/StringUtils';
+import { stripMarkdown } from '../../../../../utils/RichTextStringUtils';
 
 export const DataProductDescriptionField = ({
   description,

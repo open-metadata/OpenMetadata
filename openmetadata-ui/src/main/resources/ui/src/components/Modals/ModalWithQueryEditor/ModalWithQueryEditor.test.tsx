@@ -32,7 +32,7 @@ describe('ModalWithQueryEditor', () => {
         onSave={onSaveMock}
       />
     );
-    const headerElement = getByTestId('header');
+    const headerElement = getByTestId('dialog-title');
 
     expect(headerElement).toBeInTheDocument();
     expect(headerElement).toHaveTextContent(header);

@@ -16,6 +16,12 @@
  */
 export interface GitSinkConfig {
     /**
+     * Without a signing key, push unsigned commits with git instead of committing through the
+     * GitHub API. Faster, but GitHub shows the commits as unverified, and branches that require
+     * signed commits reject them.
+     */
+    allowUnsignedFastPush?: boolean;
+    /**
      * Custom API base URL for GitHub Enterprise. Leave empty for github.com. Example:
      * https://github.mycompany.com/api
      */
@@ -45,6 +51,12 @@ export interface GitSinkConfig {
      * Configuration for retrying failed API calls.
      */
     retryConfig?: RetryConfiguration;
+    /**
+     * OpenPGP key the sink signs its pushed commits with. GitHub shows them as Verified when
+     * the key's public half is on the GitHub account of the key's email. Without it, commits go
+     * through the GitHub API, unless unsigned fast pushes are allowed.
+     */
+    signingKey?: CommitSigningKey;
     /**
      * Configuration for embedding sync metadata in output files.
      */
@@ -117,6 +129,24 @@ export interface RetryConfiguration {
      * Initial delay in seconds before first retry (doubles with each attempt).
      */
     retryDelaySeconds?: number;
+}
+
+/**
+ * OpenPGP key the sink signs its pushed commits with. GitHub shows them as Verified when
+ * the key's public half is on the GitHub account of the key's email. Without it, commits go
+ * through the GitHub API, unless unsigned fast pushes are allowed.
+ */
+export interface CommitSigningKey {
+    /**
+     * Passphrase of the private key, if it has one. Supports secret references.
+     */
+    passphrase?: string;
+    /**
+     * ASCII-armored OpenPGP private key (-----BEGIN PGP PRIVATE KEY BLOCK-----). Commits are
+     * authored as the key's first user ID with an email. Supports secret references (e.g.,
+     * secret:/path/to/key).
+     */
+    privateKey: string;
 }
 
 /**

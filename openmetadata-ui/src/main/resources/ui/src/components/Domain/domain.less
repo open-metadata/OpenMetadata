@@ -13,32 +13,21 @@
 @import (reference) '../../styles/variables.less';
 
 .domain-page-container {
-  background-color: var(--tw-color-bg-primary);
-  border: 1px solid var(--tw-color-gray-blue-100);
+  background-color: var(--tw-color-bg-canvas);
   border-radius: var(--om-radius-md);
   margin-bottom: var(--om-space-20);
 
   .grid-container {
     background: none;
-    padding-right: var(--om-space-1);
+    padding-right: 0;
   }
 
   .resizable-panels-layout {
     background: none !important;
   }
 
-  .custom-properties-card {
-    border: none;
-    padding: 0;
-  }
-
-  .assets-tab-container {
-    border: 1px solid var(--tw-color-gray-blue-100);
-  }
-
-  .grid-container > #KnowledgePanel\.LeftPanel {
-    border: none;
-    padding: 0;
+  .assistant-content & {
+    background-color: transparent;
   }
 
   .entity-header-title {
@@ -69,26 +58,6 @@
     width: 14px;
   }
 
-  .left-panel-documentation-tab > .ant-card:first-child {
-    border: none;
-  }
-
-  .left-panel-documentation-tab
-    > .ant-card:first-child
-    > .ant-card-body:first-child {
-    padding: 0;
-  }
-
-  .right-panel-documentation-tab > .ant-card:first-child {
-    border: none;
-  }
-
-  .right-panel-documentation-tab
-    > .ant-card:first-child
-    > .ant-card-body:first-child {
-    padding: 0 0 0 var(--om-space-18);
-  }
-
   &.domain-tree-view-variant {
     border: none;
   }
@@ -109,19 +78,6 @@
     .tiptap.ProseMirror {
       min-height: 150px;
     }
-  }
-}
-
-.ant-tooltip.domain-type-tooltip-container {
-  max-width: 750px;
-
-  .ant-tooltip-arrow-content::before {
-    background: var(--tw-color-bg-primary);
-  }
-
-  .ant-tooltip-inner {
-    background: var(--tw-color-bg-primary);
-    padding: var(--om-space-20);
   }
 }
 

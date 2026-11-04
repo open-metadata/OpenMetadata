@@ -33,7 +33,7 @@ type LearningResourceData = {
   name: string;
   displayName?: string;
   description?: string;
-  resourceType: 'Article' | 'Video' | 'Storylane';
+  resourceType: 'Article' | 'Video' | 'Storylane' | 'Link' | 'PDF';
   categories: string[];
   difficulty?: 'Intro' | 'Intermediate' | 'Advanced';
   source: LearningResourceSource;

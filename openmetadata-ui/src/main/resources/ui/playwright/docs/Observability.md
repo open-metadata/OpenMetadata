@@ -211,8 +211,8 @@
 | 7 | **TestCaseResult Permission Coverage** - User with TABLE.DELETE + TEST_CASE.DELETE can see delete option for test case | User with TABLE.DELETE + TEST_CASE.DELETE can see delete option for test case |
 | 8 | **TestCaseResult Permission Coverage** - User with only VIEW cannot see edit action and cannot POST results | User with only VIEW cannot see edit action and cannot POST results |
 | 9 | **TestCaseResult Permission Coverage** - User with only VIEW cannot PATCH results | User with only VIEW cannot PATCH results |
-| 10 | **TestCaseResult Permission Coverage** - User with only TEST_CASE.DELETE (no TABLE.DELETE) cannot DELETE results | User with only TEST_CASE.DELETE (no TABLE.DELETE) cannot DELETE results |
-| 11 | **TestCaseResult Permission Coverage** - User with only TABLE.DELETE (no TEST_CASE.DELETE) cannot DELETE results | User with only TABLE.DELETE (no TEST_CASE.DELETE) cannot DELETE results |
+| 10 | **TestCaseResult Permission Coverage** - User with only TEST_CASE.DELETE (no TABLE.DELETE) can DELETE results | User with only TEST_CASE.DELETE (no TABLE.DELETE) can DELETE results |
+| 11 | **TestCaseResult Permission Coverage** - User with only TABLE.DELETE (no TEST_CASE.DELETE) can DELETE results | User with only TABLE.DELETE (no TEST_CASE.DELETE) can DELETE results |
 
 </details>
 

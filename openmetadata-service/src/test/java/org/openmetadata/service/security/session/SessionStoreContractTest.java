@@ -79,6 +79,22 @@ public abstract class SessionStoreContractTest {
   }
 
   @Test
+  void create_thenFindById_keepsTheProviderTokensAndRenewalSchedule() {
+    long renewalDueAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(5);
+    UserSession session =
+        sample(UUID.randomUUID().toString(), SessionStatus.ACTIVE).toBuilder()
+            .providerRefreshToken("fernet:encrypted-provider-token")
+            .providerRenewalDueAt(renewalDueAt)
+            .build();
+    store.create(session);
+
+    UserSession found = store.findById(session.getId()).orElseThrow();
+
+    assertEquals("fernet:encrypted-provider-token", found.getProviderRefreshToken());
+    assertEquals(renewalDueAt, found.getProviderRenewalDueAt());
+  }
+
+  @Test
   void findById_returnsEmptyForUnknownId() {
     assertTrue(store.findById(UUID.randomUUID().toString()).isEmpty());
   }
@@ -167,6 +183,31 @@ public abstract class SessionStoreContractTest {
     assertTrue(
         store.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).isEmpty(),
         "REVOKED session must no longer appear in the ACTIVE per-user index");
+  }
+
+  @Test
+  void updateIfVersion_movesSessionBetweenActiveAndRefreshing() {
+    String userId = UUID.randomUUID().toString();
+    UserSession active = sample(userId, SessionStatus.ACTIVE);
+    store.create(active);
+
+    UserSession refreshing =
+        active.toBuilder().version(1L).status(SessionStatus.REFRESHING).build();
+    assertTrue(store.updateIfVersion(refreshing, 0L));
+    assertEquals(List.of(), sessionIds(userId, SessionStatus.ACTIVE));
+    assertEquals(List.of(active.getId()), sessionIds(userId, SessionStatus.REFRESHING));
+
+    UserSession reactivated =
+        refreshing.toBuilder().version(2L).status(SessionStatus.ACTIVE).build();
+    assertTrue(store.updateIfVersion(reactivated, 1L));
+    assertEquals(List.of(active.getId()), sessionIds(userId, SessionStatus.ACTIVE));
+    assertEquals(List.of(), sessionIds(userId, SessionStatus.REFRESHING));
+  }
+
+  private List<String> sessionIds(String userId, SessionStatus status) {
+    return store.findByUserIdAndStatus(userId, status, 10).stream()
+        .map(UserSession::getId)
+        .toList();
   }
 
   @Test

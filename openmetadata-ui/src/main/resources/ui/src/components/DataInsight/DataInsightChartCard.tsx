@@ -10,7 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row } from 'antd';
+import {
+  Button,
+  Card,
+  Grid,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
+import {
+  LineChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import {
   first,
@@ -25,11 +35,8 @@ import {
   startCase,
   toLower,
 } from 'lodash';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { ResponsiveContainer } from 'recharts';
-import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,
@@ -38,29 +45,37 @@ import {
   INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER,
   NO_OWNER_ADVANCE_SEARCH_FILTER,
 } from '../../constants/explore.constants';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
-import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
-import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../rest/DataInsightAPI';
-import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { entityChartColor } from '../../utils/ColorUtils';
-import { renderDataInsightLineChart } from '../../utils/DataInsightChartUtils';
+import {
+  axisTickFormatter,
+  updateActiveChartFilter,
+} from '../../utils/ChartUtils';
+import {
+  dataInsightColor,
+  getDataInsightLineSeries,
+  getDataInsightTooltip,
+  HIDDEN_CHART_LEGEND,
+} from '../../utils/DataInsightChartUtils';
 import {
   getQueryFilterForDataInsightChart,
   isPercentageSystemGraph,
 } from '../../utils/DataInsightPureUtils';
+import { customFormatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import PageHeader from '../PageHeader/PageHeader.component';
 import DataInsightProgressBar from './DataInsightProgressBar';
+import { useDataInsightProvider } from './DataInsightProvider/DataInsightProvider';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 interface DataInsightChartCardProps {
@@ -68,7 +83,27 @@ interface DataInsightChartCardProps {
   header: ReactNode;
   subHeader: ReactNode;
   listAssets?: boolean;
+  /**
+   * The `total_data_assets` series, fetched once by the parent tab and shared
+   * by the cards that read it. `undefined` while it is loading, `null` when
+   * the request failed.
+   */
+  totalAssets?: DataInsightCustomChartResult | null;
 }
+
+const EMPTY_CHART_RESULT: DataInsightCustomChartResult = { results: [] };
+
+const ABSOLUTE_VALUES_CHART: Partial<Record<SystemChartType, SystemChartType>> =
+  {
+    [SystemChartType.PercentageOfServiceWithDescription]:
+      SystemChartType.NumberOfDataAssetWithDescription,
+    [SystemChartType.PercentageOfDataAssetWithDescription]:
+      SystemChartType.NumberOfDataAssetWithDescription,
+    [SystemChartType.PercentageOfServiceWithOwner]:
+      SystemChartType.NumberOfDataAssetWithOwner,
+    [SystemChartType.PercentageOfDataAssetWithOwner]:
+      SystemChartType.NumberOfDataAssetWithOwner,
+  };
 
 interface AbsoluteValuesResult {
   results: Array<{ count: number; day: number }>;
@@ -236,6 +271,38 @@ const getChartLoadingState = (
   resultsLength: number
 ): boolean => isLoading || isKpiLoading || resultsLength === 0;
 
+/**
+ * The total-assets card draws the shared totals. Percentage cards derive their
+ * change from them, so they wait for the totals and fall back to the empty
+ * state if they failed, rather than showing a 0 change.
+ */
+const getCardDataState = ({
+  type,
+  totalAssets,
+  fetchedChartData,
+  isFetching,
+}: {
+  type: SystemChartType;
+  totalAssets: DataInsightChartCardProps['totalAssets'];
+  fetchedChartData: DataInsightCustomChartResult;
+  isFetching: boolean;
+}) => {
+  const isTotalAssetsChart = type === SystemChartType.TotalDataAssets;
+  const usesTotalAssets =
+    isTotalAssetsChart || ABSOLUTE_VALUES_CHART[type] !== undefined;
+  const totalAssetsFailed = usesTotalAssets && totalAssets === null;
+
+  return {
+    chartData:
+      isTotalAssetsChart || totalAssetsFailed
+        ? totalAssets ?? EMPTY_CHART_RESULT
+        : fetchedChartData,
+    isLoading:
+      (usesTotalAssets && totalAssets === undefined) ||
+      (!isTotalAssetsChart && isFetching),
+  };
+};
+
 const getProgressBarSuffix = (
   isPercentageGraph: boolean,
   type: SystemChartType
@@ -255,12 +322,13 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
     type === SystemChartType.PercentageOfDataAssetWithDescription;
 
   return (
-    <Col className="d-flex justify-end" span={24}>
-      <Link
+    <Grid.Item className="layout-column d-flex justify-end" span={24}>
+      <Button
+        color="tertiary"
         data-testid={`explore-asset-with-no-${
           isDescriptionType ? 'description' : 'owner'
         }`}
-        to={getExplorePath({
+        href={getExplorePath({
           tab: tabsInfo[SearchIndex.TABLE].path,
           isPersistFilters: true,
           extraParameters: {
@@ -270,20 +338,16 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
                 : NO_OWNER_ADVANCE_SEARCH_FILTER
             ),
           },
-        })}>
-        <Button
-          className="text-primary d-flex items-center gap-1"
-          size="small"
-          type="text">
-          {t('label.explore-asset-plural-with-type', {
-            type: isDescriptionType
-              ? t('label.no-description')
-              : t('label.no-owner'),
-          })}
-          <RightArrowIcon height={12} width={12} />
-        </Button>
-      </Link>
-    </Col>
+        })}
+        iconTrailing={ChevronRight}
+        size="xs">
+        {t('label.explore-asset-plural-with-type', {
+          type: isDescriptionType
+            ? t('label.no-description')
+            : t('label.no-owner'),
+        })}
+      </Button>
+    </Grid.Item>
   );
 };
 
@@ -292,18 +356,22 @@ export const DataInsightChartCard = ({
   header,
   subHeader,
   listAssets,
+  totalAssets,
 }: DataInsightChartCardProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const [chartData, setChartData] = useState<DataInsightCustomChartResult>({
-    results: [],
-  });
-  const [totalAssets, setTotalAssets] = useState<DataInsightCustomChartResult>({
-    results: [],
-  });
+  const isTotalAssetsChart = type === SystemChartType.TotalDataAssets;
+  const [fetchedChartData, setFetchedChartData] =
+    useState<DataInsightCustomChartResult>(EMPTY_CHART_RESULT);
   const [absoluteValues, setAbsoluteValues] = useState<AbsoluteValuesResult>({
     results: [],
   });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFetching, setIsFetching] = useState<boolean>(!isTotalAssetsChart);
+  const { chartData, isLoading } = getCardDataState({
+    type,
+    totalAssets,
+    fetchedChartData,
+    isFetching,
+  });
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
   const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');
@@ -314,65 +382,77 @@ export const DataInsightChartCard = ({
     entitiesSummary,
   } = useDataInsightProvider();
   const isPercentageGraph = isPercentageSystemGraph(type);
-  const chartColors = useDataInsightChartColors();
+  const palette = useChartPalette();
 
-  const { rightSideEntityList, latestData, graphData, changeInValue } =
-    useMemo(() => {
-      let changeInValue = 0;
+  const {
+    rankedEntities,
+    rightSideEntityList,
+    latestData,
+    graphData,
+    changeInValue,
+  } = useMemo(() => {
+    let changeInValue = 0;
 
-      const results = chartData.results ?? [];
-      const timeStampResults = groupBy(results, 'day');
+    const results = chartData.results ?? [];
+    const timeStampResults = groupBy(results, 'day');
 
-      const graphResults = Object.entries(timeStampResults).map(
-        ([key, value]) => {
-          const keys = value.reduce((acc, curr) => {
-            return { ...acc, [curr.group ?? 'count']: curr.count };
-          }, {});
+    const graphResults = Object.entries(timeStampResults).map(
+      ([key, value]) => {
+        const keys = value.reduce((acc, curr) => {
+          return { ...acc, [curr.group ?? 'count']: curr.count };
+        }, {});
 
-          return {
-            day: +key,
-            ...keys,
-          };
-        }
-      );
-
-      const finalData = sortBy(graphResults, 'day');
-
-      const latestData: Record<string, number> = omit(
-        last(finalData ?? {}),
-        'day'
-      );
-
-      const uniqueLabels = Object.entries(latestData)
-        .sort(([, valueA], [, valueB]) => valueB - valueA)
-        .map(([key]) => key);
-
-      if (type === SystemChartType.TotalDataAssets) {
-        changeInValue = computeTotalDataAssetsChange(latestData, finalData);
-      } else if (type === SystemChartType.TotalDataAssetsByTier) {
-        // TotalDataAssetsByTier when Considering NoTier as well it has the TotalAssets
-        changeInValue = computeTotalDataAssetsByTierChange(
-          latestData,
-          finalData,
-          timeStampResults
-        );
-      } else {
-        // Process TotalAssets and Absolute Values
-        changeInValue = computeDefaultChange(
-          totalAssets.results,
-          absoluteValues.results
-        );
+        return {
+          day: +key,
+          ...keys,
+        };
       }
+    );
 
-      return {
-        rightSideEntityList: uniqueLabels.filter((entity) =>
-          includes(toLower(entity), toLower(searchEntityKeyWord))
-        ),
+    const finalData = sortBy(graphResults, 'day');
+
+    const latestData: Record<string, number> = omit(
+      last(finalData ?? {}),
+      'day'
+    );
+
+    const uniqueLabels = Object.entries(latestData)
+      .sort(([, valueA], [, valueB]) => valueB - valueA)
+      .map(([key]) => key);
+
+    if (type === SystemChartType.TotalDataAssets) {
+      changeInValue = computeTotalDataAssetsChange(latestData, finalData);
+    } else if (type === SystemChartType.TotalDataAssetsByTier) {
+      // TotalDataAssetsByTier when Considering NoTier as well it has the TotalAssets
+      changeInValue = computeTotalDataAssetsByTierChange(
         latestData,
-        graphData: finalData,
-        changeInValue,
-      };
-    }, [chartData.results, searchEntityKeyWord]);
+        finalData,
+        timeStampResults
+      );
+    } else {
+      // Process TotalAssets and Absolute Values
+      changeInValue = computeDefaultChange(
+        totalAssets?.results ?? [],
+        absoluteValues.results
+      );
+    }
+
+    return {
+      rankedEntities: uniqueLabels,
+      rightSideEntityList: uniqueLabels.filter((entity) =>
+        includes(toLower(entity), toLower(searchEntityKeyWord))
+      ),
+      latestData,
+      graphData: finalData,
+      changeInValue,
+    };
+  }, [
+    type,
+    chartData.results,
+    totalAssets?.results,
+    absoluteValues.results,
+    searchEntityKeyWord,
+  ]);
 
   const targetValue = useMemo(() => {
     if (
@@ -428,74 +508,39 @@ export const DataInsightChartCard = ({
 
   const { t } = useTranslation();
 
-  const fetchData = async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async () => {
+    setIsFetching(true);
     try {
-      const filter = getQueryFilterForDataInsightChart(
-        chartFilter.team,
-        chartFilter.tier
-      );
-      if (
-        ![
-          SystemChartType.TotalDataAssets,
-          SystemChartType.TotalDataAssetsByTier,
-        ].includes(type)
-      ) {
-        const totalAssetsResponse = await getChartPreviewByName(
-          SystemChartType.TotalDataAssets,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setTotalAssets(totalAssetsResponse);
-      }
-
-      if (
-        [
-          SystemChartType.PercentageOfServiceWithDescription,
-          SystemChartType.PercentageOfDataAssetWithDescription,
-        ].includes(type)
-      ) {
-        const absoluteValuesResponse = await getChartPreviewByName(
-          SystemChartType.NumberOfDataAssetWithDescription,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setAbsoluteValues(absoluteValuesResponse);
-      } else if (
-        [
-          SystemChartType.PercentageOfServiceWithOwner,
-          SystemChartType.PercentageOfDataAssetWithOwner,
-        ].includes(type)
-      ) {
-        const absoluteValuesResponse = await getChartPreviewByName(
-          SystemChartType.NumberOfDataAssetWithOwner,
-          {
-            start: chartFilter.startTs,
-            end: chartFilter.endTs,
-            filter,
-          }
-        );
-        setAbsoluteValues(absoluteValuesResponse);
-      }
-
-      const response = await getChartPreviewByName(type, {
+      const params = {
         start: chartFilter.startTs,
         end: chartFilter.endTs,
-        filter,
-      });
-      setChartData(response);
+        filter: getQueryFilterForDataInsightChart(
+          chartFilter.team,
+          chartFilter.tier
+        ),
+      };
+      const absoluteValuesChart = ABSOLUTE_VALUES_CHART[type];
+      const [response, absoluteValuesResponse] = await Promise.all([
+        getChartPreviewByName(type, params),
+        absoluteValuesChart &&
+          getChartPreviewByName(absoluteValuesChart, params),
+      ]);
+      if (absoluteValuesResponse) {
+        setAbsoluteValues(absoluteValuesResponse);
+      }
+      setFetchedChartData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsFetching(false);
     }
-  };
+  }, [
+    type,
+    chartFilter.startTs,
+    chartFilter.endTs,
+    chartFilter.team,
+    chartFilter.tier,
+  ]);
 
   const handleLegendClick = (entity: string) => {
     setActiveKeys((prevActiveKeys) =>
@@ -511,14 +556,10 @@ export const DataInsightChartCard = ({
   };
 
   useEffect(() => {
-    !kpi.isLoading && fetchData();
-  }, [
-    chartFilter.startTs,
-    chartFilter.endTs,
-    chartFilter.team,
-    chartFilter.tier,
-    kpi.isLoading,
-  ]);
+    if (!kpi.isLoading && !isTotalAssetsChart) {
+      void fetchData();
+    }
+  }, [fetchData, kpi.isLoading, isTotalAssetsChart]);
 
   const rightSidePanelLabel = useMemo(() => {
     const config = RIGHT_SIDE_PANEL_LABEL_CONFIG[type];
@@ -532,25 +573,73 @@ export const DataInsightChartCard = ({
     );
   }, [type, isPercentageGraph, t]);
 
+  const series = useMemo(
+    () =>
+      getDataInsightLineSeries({
+        keys: rankedEntities,
+        palette,
+        activeKeys,
+        hoverKey: activeMouseHoverKey,
+        visibleKeys: rightSideEntityList,
+      }),
+    [
+      rankedEntities,
+      palette,
+      activeKeys,
+      activeMouseHoverKey,
+      rightSideEntityList,
+    ]
+  );
+  const xAxis = useMemo(
+    () => ({
+      formatter: (value: string | number) =>
+        customFormatDateTime(Number(value), 'MMM dd'),
+    }),
+    []
+  );
+  const yAxis = useMemo(
+    () =>
+      isPercentageGraph
+        ? {
+            formatter: (value: string | number) =>
+              axisTickFormatter(Number(value), '%'),
+          }
+        : undefined,
+    [isPercentageGraph]
+  );
+  const tooltip = useMemo(
+    () =>
+      getDataInsightTooltip<FinalDataPoint>({
+        timeKey: 'day',
+        isPercentage: isPercentageGraph,
+      }),
+    [isPercentageGraph]
+  );
+
   if (
     getChartLoadingState(isLoading, kpi.isLoading, chartData.results.length)
   ) {
     return (
-      <Card
-        className="data-insight-card"
-        id={type}
-        loading={isLoading}
-        title={
-          <PageHeader
-            data={{
-              header,
-              subHeader: t('message.field-insight', {
-                field: t('label.description-lowercase'),
-              }),
-            }}
-          />
-        }>
-        <EmptyGraphPlaceholder />
+      <Card className="data-insight-card" id={type}>
+        <Card.Header
+          title={
+            <PageHeader
+              data={{
+                header,
+                subHeader: t('message.field-insight', {
+                  field: t('label.description-lowercase'),
+                }),
+              }}
+            />
+          }
+        />
+        <Card.Content>
+          {isLoading ? (
+            <SkeletonParagraph rows={4} />
+          ) : (
+            <EmptyGraphPlaceholder />
+          )}
+        </Card.Content>
       </Card>
     );
   }
@@ -560,96 +649,113 @@ export const DataInsightChartCard = ({
       className="data-insight-card data-insight-card-chart"
       data-testid={`${type}-graph`}
       id={type}>
-      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-        <Col span={DI_STRUCTURE.leftContainerSpan}>
-          <PageHeader
-            data={{
-              header,
-              subHeader,
-            }}
-          />
-          <ResponsiveContainer
-            className="m-t-lg"
-            debounce={1}
-            height={GRAPH_HEIGHT}
-            id={`${type}-graph`}>
-            {renderDataInsightLineChart(
-              graphData,
-              rightSideEntityList,
-              activeKeys,
-              activeMouseHoverKey,
-              isPercentageGraph,
-              chartColors
-            )}
-          </ResponsiveContainer>
-        </Col>
-        <Col span={DI_STRUCTURE.rightContainerSpan}>
-          <Row gutter={[8, 16]}>
-            <Col span={24}>
-              <DataInsightProgressBar
-                changeInValue={changeInValue}
-                duration={selectedDays}
-                label={rightSidePanelLabel}
-                progress={round(totalValue, 2)}
-                showProgress={isPercentageGraph}
-                suffix={getProgressBarSuffix(isPercentageGraph, type)}
-                target={targetValue}
+      <Card.Content>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+          <Grid.Item
+            className="layout-column"
+            span={DI_STRUCTURE.leftContainerSpan}>
+            <PageHeader
+              data={{
+                header,
+                subHeader,
+              }}
+            />
+            <div className="m-t-lg" id={`${type}-graph`}>
+              <LineChart
+                ariaLabel={typeof header === 'string' ? header : type}
+                data={graphData}
+                height={GRAPH_HEIGHT}
+                legend={HIDDEN_CHART_LEGEND}
+                series={series}
+                tooltip={tooltip}
+                xAxis={xAxis}
+                xKey="day"
+                yAxis={yAxis}
               />
-            </Col>
-            <Col span={24}>
-              <Searchbar
-                removeMargin
-                searchValue={searchEntityKeyWord}
-                onSearch={setSearchEntityKeyWord}
-              />
-            </Col>
-            <Col className="chart-card-right-panel-container" span={24}>
-              <Row gutter={[8, 8]}>
-                {rightSideEntityList.map((entity, i) => {
-                  return (
-                    <Col
-                      className="entity-summary-container"
-                      key={entity}
-                      span={24}
-                      onClick={() => handleLegendClick(entity)}
-                      onMouseEnter={() => handleLegendMouseEnter(entity)}
-                      onMouseLeave={handleLegendMouseLeave}>
-                      <EntitySummaryProgressBar
-                        entity={startCase(entity)}
-                        isActive={
-                          activeKeys.length ? activeKeys.includes(entity) : true
-                        }
-                        label={`${round(latestData[entity] ?? 0, 2)}${
-                          isPercentageGraph ? '%' : ''
-                        }`}
-                        pluralize={
-                          ![
-                            SystemChartType.TotalDataAssetsByTier,
-                            SystemChartType.PercentageOfServiceWithDescription,
-                            SystemChartType.PercentageOfServiceWithOwner,
-                          ].includes(type)
-                        }
-                        progress={latestData[entity]}
-                        strokeColor={entityChartColor(i)}
-                      />
-                    </Col>
-                  );
-                })}
-              </Row>
-            </Col>
-            {activeKeys.length > 0 && (
-              <Col className="flex justify-end" span={24}>
-                <Button type="link" onClick={() => setActiveKeys([])}>
-                  {t('label.clear')}
-                </Button>
-              </Col>
-            )}
-          </Row>
-        </Col>
-        {listAssets && (
-          <ExploreAssetsLink t={t} tabsInfo={tabsInfo} type={type} />
-        )}
-      </Row>
+            </div>
+          </Grid.Item>
+          <Grid.Item
+            className="layout-column"
+            span={DI_STRUCTURE.rightContainerSpan}>
+            <Grid
+              className="layout-row layout-grid"
+              style={getLayoutGutter(8, 16)}>
+              <Grid.Item className="layout-column" span={24}>
+                <DataInsightProgressBar
+                  changeInValue={changeInValue}
+                  duration={selectedDays}
+                  label={rightSidePanelLabel}
+                  progress={round(totalValue, 2)}
+                  showProgress={isPercentageGraph}
+                  suffix={getProgressBarSuffix(isPercentageGraph, type)}
+                  target={targetValue}
+                />
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
+                <Searchbar
+                  removeMargin
+                  searchValue={searchEntityKeyWord}
+                  onSearch={setSearchEntityKeyWord}
+                />
+              </Grid.Item>
+              <Grid.Item
+                className="layout-column chart-card-right-panel-container"
+                span={24}>
+                <Grid
+                  className="layout-row layout-grid"
+                  style={getLayoutGutter(8, 8)}>
+                  {rightSideEntityList.map((entity) => {
+                    return (
+                      <Grid.Item
+                        className="layout-column entity-summary-container"
+                        key={entity}
+                        span={24}
+                        onClick={() => handleLegendClick(entity)}
+                        onMouseEnter={() => handleLegendMouseEnter(entity)}
+                        onMouseLeave={handleLegendMouseLeave}>
+                        <EntitySummaryProgressBar
+                          entity={startCase(entity)}
+                          isActive={
+                            activeKeys.length
+                              ? activeKeys.includes(entity)
+                              : true
+                          }
+                          label={`${round(latestData[entity] ?? 0, 2)}${
+                            isPercentageGraph ? '%' : ''
+                          }`}
+                          pluralize={
+                            ![
+                              SystemChartType.TotalDataAssetsByTier,
+                              SystemChartType.PercentageOfServiceWithDescription,
+                              SystemChartType.PercentageOfServiceWithOwner,
+                            ].includes(type)
+                          }
+                          progress={latestData[entity]}
+                          strokeColor={dataInsightColor(
+                            palette,
+                            rankedEntities,
+                            entity
+                          )}
+                        />
+                      </Grid.Item>
+                    );
+                  })}
+                </Grid>
+              </Grid.Item>
+              {activeKeys.length > 0 && (
+                <Grid.Item className="layout-column flex justify-end" span={24}>
+                  <Button color="link-color" onClick={() => setActiveKeys([])}>
+                    {t('label.clear')}
+                  </Button>
+                </Grid.Item>
+              )}
+            </Grid>
+          </Grid.Item>
+          {listAssets && (
+            <ExploreAssetsLink t={t} tabsInfo={tabsInfo} type={type} />
+          )}
+        </Grid>
+      </Card.Content>
     </Card>
   );
 };

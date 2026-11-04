@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Key01, Trash01 } from '@untitledui/icons';
+import { Key01, Trash01 } from '../../../icons';
 import { useEffect, useState } from 'react';
 import { Box } from '@/components/base/box/box';
 import { ButtonUtility } from '@/components/base/buttons/button-utility';
@@ -77,7 +77,6 @@ const StoredCredentialRow = ({
     </div>
 
     <ButtonUtility
-      color="tertiary"
       data-testid="credential-file-remove"
       icon={Trash01}
       isDisabled={isDisabled}
@@ -131,7 +130,6 @@ const SelectedFileChip = ({
     </div>
 
     <ButtonUtility
-      color="tertiary"
       data-testid="credential-file-remove"
       icon={Trash01}
       isDisabled={isDisabled}

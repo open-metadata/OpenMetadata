@@ -44,6 +44,43 @@ describe('Test EntityLink', () => {
     expect(EntityLink.getEntityType(entityLink)).toStrictEqual('table');
   });
 
+  it('Should parse a governanceAutomation entityLink', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    const automationLink = '<#E::governanceAutomation::tier_automation>';
+
+    expect(EntityLink.getEntityType(automationLink)).toStrictEqual(
+      'governanceAutomation'
+    );
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
+  it('Should parse an owners field entityLink', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    const ownersLink = '<#E::table::svc.db.schema.orders::owners>';
+
+    expect(EntityLink.getEntityField(ownersLink)).toStrictEqual('owners');
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
+  it('Should parse an announcement entityLink', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    const announcementLink = '<#E::announcement::maintenance_window>';
+
+    expect(EntityLink.getEntityType(announcementLink)).toStrictEqual(
+      'announcement'
+    );
+    expect(EntityLink.getEntityFqn(announcementLink)).toStrictEqual(
+      'maintenance_window'
+    );
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
   it('Should return the entityFqn from entityLink', () => {
     expect(EntityLink.getEntityFqn(entityLink)).toStrictEqual(
       'sample_data.ecommerce_db.shopify.dim_address'
@@ -137,5 +174,35 @@ describe('Test EntityLink', () => {
     const columnName = EntityLink.getTableColumnName(entityLink);
 
     expect(columnName).toStrictEqual('type');
+  });
+
+  /**
+   * An announcement may legitimately have no `entityLink` — the schema only
+   * requires description/startTime/endTime — and the widgets that list one call
+   * string methods on these accessors. Returning `undefined` from a signature
+   * that promises `string` crashed the whole page through the error boundary.
+   */
+  describe('with an empty or unparseable entity link', () => {
+    it.each(['', 'not-an-entity-link'])(
+      'should return a string, not undefined, for %p',
+      (link) => {
+        expect(EntityLink.getEntityFqn(link)).toStrictEqual('');
+        expect(EntityLink.getEntityType(link)).toStrictEqual('');
+        expect(EntityLink.getEntityColumnFqn(link)).toStrictEqual('');
+      }
+    );
+
+    it('should let callers use the fqn as a string without throwing', () => {
+      // The exact call that took down the MyData and Data Marketplace
+      // announcement widgets.
+      expect(() => EntityLink.getEntityFqn('').split('::')).not.toThrow();
+    });
+
+    it('should not leak the literal "undefined" as a column fqn', () => {
+      // `${undefined}` used to interpolate to the string "undefined" — a
+      // non-empty value that reads as a real FQN wherever it is rendered or
+      // compared. '' is falsy, so callers' existing guards catch it.
+      expect(EntityLink.getEntityColumnFqn('')).toStrictEqual('');
+    });
   });
 });

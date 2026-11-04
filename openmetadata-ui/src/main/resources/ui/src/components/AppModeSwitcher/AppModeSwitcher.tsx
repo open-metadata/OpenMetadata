@@ -11,8 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Popover, Typography } from '@openmetadata/ui-core-components';
-import { Check, ChevronUp } from '@untitledui/icons';
+import {
+  Badge,
+  Box,
+  HoverCard,
+  Popover,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Check,
+  ChevronRight,
+  ChevronUp,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -30,14 +40,12 @@ import {
   useIsAiMode,
   writeAppMode,
 } from '../../hooks/useAppMode';
+import { ClassicDeprecationCard } from './ClassicDeprecationNotice';
 
 const OPTION_ICON_BOX =
   'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-utility-blue-50 tw:border tw:border-utility-blue-100 tw:shrink-0';
 
-const BADGE_CLASS =
-  'tw:inline-flex tw:items-center tw:gap-1 tw:px-2 tw:py-0.5 tw:rounded-full ' +
-  'tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:text-utility-blue-700 tw:text-xs tw:font-semibold ' +
-  'tw:whitespace-nowrap tw:shrink-0';
+const CURRENT_CHECK_CLASS = 'tw:shrink-0 tw:text-fg-brand-primary';
 
 const AppModeSwitcherTrigger: React.FC<{
   compact?: boolean;
@@ -58,7 +66,7 @@ const AppModeSwitcherTrigger: React.FC<{
   triggerRef,
   onClick,
 }) => {
-  const iconSize = compact ? 12 : 16;
+  const iconSize = compact ? 12 : 20;
   const modeLabelText = compact ? modeLabel : modeLabelSentence;
 
   return (
@@ -68,7 +76,7 @@ const AppModeSwitcherTrigger: React.FC<{
       className={
         compact
           ? 'tw:flex tw:items-center tw:gap-1 tw:px-2 tw:py-1 tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:rounded-full tw:cursor-pointer tw:text-left'
-          : 'tw:flex tw:items-center tw:gap-1.5 tw:w-full tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:text-left'
+          : 'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:text-left'
       }
       data-testid="app-mode-switcher-trigger"
       ref={triggerRef}
@@ -93,19 +101,26 @@ const AppModeSwitcherTrigger: React.FC<{
         className={
           compact
             ? 'tw:text-[10px] tw:text-utility-blue-700 tw:font-semibold'
-            : 'tw:flex-1 tw:text-xs tw:text-secondary tw:font-semibold'
+            : 'tw:flex-1 tw:text-sm tw:text-secondary tw:font-medium'
         }>
         {modeLabelText}
       </span>
-      <ChevronUp
-        className={classNames(
-          'tw:shrink-0 tw:transition-transform tw:duration-150',
-          compact ? 'tw:text-utility-blue-500' : undefined,
-          { 'tw:rotate-180': isOpen }
-        )}
-        height={compact ? 10 : 11}
-        width={compact ? 10 : 11}
-      />
+      {compact ? (
+        <ChevronUp
+          className={classNames(
+            'tw:shrink-0 tw:text-utility-blue-500 tw:transition-transform tw:duration-150',
+            { 'tw:rotate-180': isOpen }
+          )}
+          height={10}
+          width={10}
+        />
+      ) : (
+        <ChevronRight
+          className="tw:shrink-0 tw:text-tertiary"
+          height={16}
+          width={16}
+        />
+      )}
     </button>
   );
 };
@@ -168,7 +183,7 @@ const AppModeSwitcher: React.FC<{
       <Popover
         containerClassName="tw:w-60"
         isOpen={isOpen}
-        placement={compact ? 'right' : 'top start'}
+        placement={compact ? 'right' : 'right bottom'}
         shouldCloseOnInteractOutside={(element) =>
           !triggerRef.current?.contains(element) &&
           !cardRef?.current?.contains(element)
@@ -183,35 +198,51 @@ const AppModeSwitcher: React.FC<{
             {t('label.switch-interface')}
           </p>
 
-          <button
-            className={classNames(
-              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
-              {
-                'tw:bg-utility-blue-50 tw:border-utility-blue-200': !isAiMode,
-                'tw:border-transparent tw:hover:bg-utility-blue-50': isAiMode,
-              }
-            )}
-            data-testid="app-mode-option-classic"
-            type="button"
-            onClick={handleClassicClick}>
-            <Box align="center" className={OPTION_ICON_BOX} justify="center">
-              <AppModeClassicIcon height={23} width={23} />
-            </Box>
-            <Box className="tw:flex-1 tw:min-w-0" direction="col">
-              <Typography
-                className="tw:text-primary"
-                size="text-sm"
-                weight="semibold">
-                {t('label.classic')}
-              </Typography>
-            </Box>
-            {!isAiMode && (
-              <span className={BADGE_CLASS} data-testid="classic-current-badge">
-                <Check height={12} width={12} />
-                {t('label.current')}
-              </span>
-            )}
-          </button>
+          <HoverCard
+            arrow
+            content={<ClassicDeprecationCard />}
+            offset={28}
+            placement="right">
+            <button
+              className={classNames(
+                'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
+                {
+                  'tw:bg-utility-blue-50 tw:border-utility-blue-200': !isAiMode,
+                  'tw:border-transparent tw:hover:bg-utility-blue-50': isAiMode,
+                }
+              )}
+              data-testid="app-mode-option-classic"
+              type="button"
+              onClick={handleClassicClick}>
+              <Box align="center" className={OPTION_ICON_BOX} justify="center">
+                <AppModeClassicIcon height={23} width={23} />
+              </Box>
+              <Box align="center" className="tw:flex-1 tw:min-w-0" gap={2}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="semibold">
+                  {t('label.classic')}
+                </Typography>
+                <Badge
+                  color="warning"
+                  data-testid="classic-deprecated-badge"
+                  size="sm">
+                  {t('label.deprecated')}
+                </Badge>
+              </Box>
+              {!isAiMode && (
+                <Check
+                  aria-hidden={false}
+                  aria-label={t('label.current')}
+                  className={CURRENT_CHECK_CLASS}
+                  data-testid="classic-current-badge"
+                  role="img"
+                  size={16}
+                />
+              )}
+            </button>
+          </HoverCard>
 
           <button
             className={classNames(
@@ -236,10 +267,14 @@ const AppModeSwitcher: React.FC<{
               </Typography>
             </Box>
             {isAiMode && (
-              <span className={BADGE_CLASS} data-testid="ai-current-badge">
-                <Check height={12} width={12} />
-                {t('label.current')}
-              </span>
+              <Check
+                aria-hidden={false}
+                aria-label={t('label.current')}
+                className={CURRENT_CHECK_CLASS}
+                data-testid="ai-current-badge"
+                role="img"
+                size={16}
+              />
             )}
           </button>
 

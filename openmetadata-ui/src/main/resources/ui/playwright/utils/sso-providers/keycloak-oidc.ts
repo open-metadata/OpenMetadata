@@ -28,6 +28,10 @@ import {
   KEYCLOAK_SEEDED_CREDS,
   performProviderLogin,
 } from './keycloak-saml';
+import {
+  endKeycloakSession,
+  trackPromptNoneNavigations,
+} from './silent-reauth';
 
 // Throwaway fixture credentials, committed like the realm user's password.
 const CLIENT = {
@@ -110,6 +114,7 @@ export const keycloakOidcConfidentialProviderFixture: SsoProviderFixture = {
   hasBackendIssuedRefreshCookie: true,
   usesPkce: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: true,
 
   signInButtonPattern: /(sign in|log in) with Keycloak/i,
 
@@ -173,4 +178,16 @@ export const keycloakOidcConfidentialProviderFixture: SsoProviderFixture = {
   },
 
   forceTokenExpiry,
+
+  // Without its session cookie /auth/refresh answers 401, the way it does
+  // once the OpenMetadata session expires or is revoked, while the Keycloak
+  // SSO session is untouched.
+  async breakSilentRenewal(page: Page) {
+    await page.context().clearCookies({ name: 'OM_SESSION' });
+  },
+
+  killIdpSession: endKeycloakSession,
+
+  trackSilentReauth: (page: Page) =>
+    trackPromptNoneNavigations(page, /\/api\/v1\/auth\/login/),
 };

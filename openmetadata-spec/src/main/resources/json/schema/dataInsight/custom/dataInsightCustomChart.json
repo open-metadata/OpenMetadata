@@ -6,7 +6,7 @@
     "type": "object",
     "javaType": "org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart",
     "javaInterfaces": [
-        "org.openmetadata.schema.EntityInterface"
+        "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"
     ],
     "properties": {
         "id": {

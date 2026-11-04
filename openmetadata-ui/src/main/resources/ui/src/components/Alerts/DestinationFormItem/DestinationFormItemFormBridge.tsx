@@ -18,11 +18,12 @@ import { useTranslation } from 'react-i18next';
 
 import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import DestinationFormItem from './DestinationFormItem.component';
+import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from './DestinationFormItem.constants';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
 
 export type DestinationFormFields = Pick<
   ModifiedCreateEventSubscription,
-  'destinations' | 'readTimeout' | 'resources' | 'timeout'
+  'destinations' | 'readTimeout' | 'timeout'
 >;
 
 export type DestinationFormValidator = () => Promise<void>;
@@ -37,7 +38,6 @@ function getDestinationFormFields(
   values: Partial<DestinationFormFields>
 ): Partial<DestinationFormFields> {
   return {
-    resources: values.resources,
     destinations: values.destinations,
     timeout: values.timeout,
     readTimeout: values.readTimeout,
@@ -65,16 +65,15 @@ function DestinationFormItemFormBridge({
     mode: 'onBlur',
   });
   const { getValues, reset, setError, trigger, watch } = methods;
-  const { destinations, readTimeout, resources, timeout } = values;
+  const { destinations, readTimeout, timeout } = values;
   const normalizedValues = useMemo(
     () =>
       getDestinationFormFields({
         destinations,
         readTimeout,
-        resources,
         timeout,
       }),
-    [destinations, readTimeout, resources, timeout]
+    [destinations, readTimeout, timeout]
   );
   // RHF mutates nested field-array objects, so synchronization snapshots must
   // not retain references to its live form state.
@@ -133,8 +132,10 @@ function DestinationFormItemFormBridge({
 
     if (isDestinationMissing) {
       // Controlled bridge resets can clear child errors before the parent
-      // validates, so the submit boundary owns the final visible error.
-      setError('destinations', {
+      // validates, so the submit boundary owns the final visible error. The
+      // `root.*` namespace keeps this manual array-level error separate from
+      // nested `destinations.*` field errors so row add/remove cannot wipe them.
+      setError(DESTINATIONS_MIN_COUNT_ERROR_PATH, {
         message: minimumDestinationError,
         type: 'manual',
       });

@@ -58,14 +58,48 @@ export const openAccessControlSettings = async (page: Page): Promise<void> => {
   await waitForAllLoadersToDisappear(page);
 };
 
+/**
+ * Return to the Access Control landing from a sub-panel via the breadcrumb. Clicking the
+ * breadcrumb before it is interactive (mid-transition from the previous panel) is the flake:
+ * the click no-ops and the landing never re-shows. Assert the link is visible first, then wait
+ * for the landing to actually render its cards — not just the container wrapper.
+ */
+export const returnToAccessControlLanding = async (
+  page: Page
+): Promise<void> => {
+  const breadcrumbLink = page
+    .getByTestId('profile-content-header')
+    .getByLabel('Breadcrumb')
+    .getByRole('link', { name: 'Access Control', exact: true });
+
+  await expect(breadcrumbLink).toBeVisible();
+  await breadcrumbLink.click();
+  await page
+    .getByTestId('access-control-landing')
+    .waitFor({ state: 'visible' });
+  await expect(page.getByTestId('access-control-card-roles')).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+};
+
+// The list renders Skeleton rows (not `loader`) while fetching, so wait for the list GET
+// itself; otherwise getElementWithPagination's 2s row wait can expire on a slow fetch.
 export const navigateToRolesPanel = async (page: Page): Promise<void> => {
+  const rolesResponse = page.waitForResponse(
+    (r) => r.url().includes('/api/v1/roles?') && r.request().method() === 'GET'
+  );
   await page.getByTestId('access-control-card-roles').click();
+  expect((await rolesResponse).status()).toBe(200);
   await page.getByTestId('roles-list-container').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
 
 export const navigateToPoliciesPanel = async (page: Page): Promise<void> => {
+  const policiesResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes('/api/v1/policies?') && r.request().method() === 'GET'
+  );
   await page.getByTestId('access-control-card-policies').click();
+  expect((await policiesResponse).status()).toBe(200);
   await page
     .getByTestId('policies-list-container')
     .waitFor({ state: 'visible' });

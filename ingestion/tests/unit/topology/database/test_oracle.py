@@ -13,7 +13,7 @@ Test Oracle using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -48,6 +48,8 @@ from metadata.ingestion.source.database.oracle.models import OracleStoredObject
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PACKAGES,
     ORACLE_GET_STORED_PROCEDURES,
+    ORACLE_GET_TABLE_NAMES,
+    ORACLE_GET_TEMPORARY_TABLE_NAMES,
     TEST_ORACLE_GET_STORED_PACKAGES,
 )
 
@@ -281,20 +283,22 @@ class OracleUnitTest(TestCase):
             VIEW_DDL = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
 
         mock_result = [MockViewRowWithViewDef(), MockViewRowWithViewDdl()]
-        mock_connection.execute.return_value = mock_result
+        mock_connection.execute.return_value.__iter__.side_effect = lambda: iter(mock_result)
         mock_connection.engine.url.database = "test_database"
 
-        get_all_view_definitions(mock_dialect, mock_connection, "dummy_query")
+        from metadata.ingestion.source.database.oracle.queries import ORACLE_VIEW_DEFINITIONS
 
-        assert hasattr(mock_dialect, "all_view_definitions")
-        assert (
-            "test_view_with_def",
-            "test_schema",
-        ) in mock_dialect.all_view_definitions
-        assert (
-            "test_view_with_ddl",
-            "test_schema",
-        ) in mock_dialect.all_view_definitions
+        definitions = dict(
+            get_all_view_definitions(
+                mock_dialect,
+                mock_connection,
+                ORACLE_VIEW_DEFINITIONS.format(prefix="DBA"),
+                "TEST_SCHEMA",
+            )
+        )
+
+        assert definitions.get(("test_view_with_def", "test_schema")) is not None
+        assert definitions.get(("test_view_with_ddl", "test_schema")) is not None
 
         expected_view_def_definition = (
             "CREATE OR REPLACE VIEW test_view_with_def AS SELECT * FROM test_table WHERE id > 0"
@@ -303,8 +307,8 @@ class OracleUnitTest(TestCase):
             "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
         )
 
-        assert mock_dialect.all_view_definitions[("test_view_with_def", "test_schema")] == expected_view_def_definition
-        assert mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")] == expected_view_ddl_definition
+        assert definitions.get(("test_view_with_def", "test_schema")) == expected_view_def_definition
+        assert definitions.get(("test_view_with_ddl", "test_schema")) == expected_view_ddl_definition
 
     def test_get_stored_procedures(self):
         """
@@ -365,6 +369,89 @@ class OracleUnitTest(TestCase):
         parameters = mock_conn.execute.call_args.args[1]
         assert "SAMPLE_SCHEMA" not in executed_query
         assert parameters == {"schema": "SAMPLE_SCHEMA"}
+
+
+class TestOracleTemporaryTables:
+    """Verify Oracle Global Temporary Table (GTT) ingestion path."""
+
+    def setup_method(self):
+        patcher = patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+        patcher.start()
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_oracle_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.oracle = OracleSource.create(mock_oracle_config["source"], metadata)
+        self.oracle.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        patcher.stop()
+
+    def _patch_inspector(self, regular=None, mviews=None):
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_names.return_value = regular or []
+        mock_inspector.get_mview_names.return_value = mviews or []
+        patcher = patch.object(
+            type(self.oracle),
+            "inspector",
+            new_callable=PropertyMock,
+            return_value=mock_inspector,
+        )
+        patcher.start()
+        return patcher
+
+    def _mock_engine_with_gtts(self, gtt_names):
+        mock_engine = MagicMock()
+        mock_engine.dialect = self.oracle.engine.dialect
+        mock_result = MagicMock()
+        mock_result.__iter__ = lambda self: iter([(n,) for n in gtt_names])
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.oracle.engine = mock_engine
+        return mock_conn
+
+    def test_temporary_tables_query_filters_on_duration_not_null(self):
+        """Sanity: GTT query selects rows where DURATION IS NOT NULL; regular query keeps DURATION IS NULL."""
+        assert "DURATION IS NOT NULL" in ORACLE_GET_TEMPORARY_TABLE_NAMES
+        assert "DURATION IS NULL" in ORACLE_GET_TABLE_NAMES
+
+    def test_default_excludes_temporary_tables(self):
+        """When includeTemporaryTables is False (default), GTTs are not fetched and engine.connect is not called."""
+        from metadata.generated.schema.entity.data.table import TableType
+
+        patcher = self._patch_inspector(regular=["regular_t"], mviews=["mv_t"])
+        try:
+            mock_engine = MagicMock()
+            self.oracle.engine = mock_engine
+
+            result = self.oracle.query_table_names_and_types("scott")
+
+            assert mock_engine.connect.called is False
+            types = {t.type_ for t in result}
+            assert TableType.Local not in types
+        finally:
+            patcher.stop()
+
+    def test_include_temporary_tables_yields_local_type(self):
+        """When includeTemporaryTables is True, GTTs are returned with TableType.Local."""
+        from metadata.generated.schema.entity.data.table import TableType
+
+        self.oracle.service_connection.includeTemporaryTables = True
+        patcher = self._patch_inspector(regular=["regular_t"], mviews=["mv_t"])
+        try:
+            mock_conn = self._mock_engine_with_gtts(["gtt_session", "gtt_txn"])
+
+            result = self.oracle.query_table_names_and_types("scott")
+
+            executed_query = str(mock_conn.execute.call_args[0][0])
+            assert "DURATION IS NOT NULL" in executed_query
+
+            by_name = {t.name: t.type_ for t in result}
+            assert by_name["regular_t"] == TableType.Regular
+            assert by_name["mv_t"] == TableType.MaterializedView
+            assert by_name["gtt_session"] == TableType.Local
+            assert by_name["gtt_txn"] == TableType.Local
+        finally:
+            patcher.stop()
 
 
 class TestOraclePreserveIdentifierCase:
@@ -542,11 +629,9 @@ class TestOracleViewDefinitionFallback:
 
     @staticmethod
     def _bulk_query_lowercase():
-        # Mirrors ORACLE_VIEW_DEFINITIONS: the LOWER() calls mean the cache keys
-        # are lowercased.
-        return (
-            'SELECT LOWER(v.view_name) AS "view_name", LOWER(v.owner) AS "schema", text AS "view_def" FROM DBA_VIEWS v'
-        )
+        from metadata.ingestion.source.database.oracle.queries import ORACLE_VIEW_DEFINITIONS
+
+        return ORACLE_VIEW_DEFINITIONS.format(prefix="DBA")
 
     def _make_connection(self, names_rows, texts=None, ddls=None, fail_text=(), fail_ddl=()):
         """Mock connection that routes each fallback query to canned results.
@@ -569,16 +654,16 @@ class TestOracleViewDefinitionFallback:
 
         def execute(clause, params=None):
             sql = str(clause)
-            if "GET_DDL" in sql:  # last-resort per-view GET_DDL
+            if sql.startswith("SELECT DBMS_METADATA.GET_DDL("):  # last-resort per-view GET_DDL
                 name = params["name"]
                 if name in fail_ddl:
                     raise DatabaseError("get_ddl", None, Exception("ORA-31603"))
                 return scalar_result(ddls.get(name))
             if "object_type" in sql:  # names-only fallback listing
                 res = MagicMock()
-                res.fetchall.return_value = names_rows
+                res.__iter__.side_effect = lambda: iter(names_rows)
                 return res
-            if ":name" in sql:  # single-row raw text/query read
+            if sql.lstrip().startswith(("SELECT text FROM", "SELECT query FROM")):
                 name = params["name"]
                 if name in fail_text:
                     raise DatabaseError("text", None, Exception("ORA-01406"))
@@ -619,15 +704,19 @@ class TestOracleViewDefinitionFallback:
             fail_ddl=("BAD_VIEW",),
         )
 
-        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
-
-        defs = dialect.all_view_definitions
+        defs = dict(
+            get_all_view_definitions(
+                dialect,
+                conn,
+                self._bulk_query_lowercase(),
+                "SAM",
+            )
+        )
         # Raw text is the primary source (no extra privileges needed).
-        assert defs[("good_view", "sam")] == "CREATE OR REPLACE VIEW GOOD_VIEW AS SELECT * FROM t"
-        assert defs[("mv1", "sam")] == "CREATE OR REPLACE VIEW MV1 AS SELECT count(*) FROM t"
+        assert defs.get(("good_view", "sam")) == "CREATE OR REPLACE VIEW GOOD_VIEW AS SELECT * FROM t"
+        assert defs.get(("mv1", "sam")) == "CREATE OR REPLACE VIEW MV1 AS SELECT count(*) FROM t"
         # NULL text falls back to GET_DDL, mirroring the bulk query.
-        assert defs[("null_text", "sam")] == "CREATE FORCE VIEW SAM.NULL_TEXT AS SELECT 1 FROM dual"
-        # A view that fails both reads is skipped, not fatal to the rest.
+        assert defs.get(("null_text", "sam")) == "CREATE FORCE VIEW SAM.NULL_TEXT AS SELECT 1 FROM dual"
         assert ("bad_view", "sam") not in defs
 
     def test_fallback_keeps_native_case_for_preserve_identifier_case(self):
@@ -643,9 +732,16 @@ class TestOracleViewDefinitionFallback:
         dialect.preserve_identifier_case = True
         conn = self._make_connection([("Sam", "MyView", "VIEW")], texts={"MyView": "SELECT 1"})
 
-        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+        definitions = dict(
+            get_all_view_definitions(
+                dialect,
+                conn,
+                self._bulk_query_lowercase(),
+                "Sam",
+            )
+        )
 
-        assert dialect.all_view_definitions[("MyView", "Sam")] == "CREATE OR REPLACE VIEW MyView AS SELECT 1"
+        assert definitions.get(("MyView", "Sam")) == "CREATE OR REPLACE VIEW MyView AS SELECT 1"
 
     def test_non_database_error_is_not_routed_through_fallback(self):
         """A non-DatabaseError during the bulk read must propagate, not trigger the fallback."""
@@ -664,7 +760,14 @@ class TestOracleViewDefinitionFallback:
         dialect = OracleDialect()
 
         with pytest.raises(ValueError):
-            get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+            dict(
+                get_all_view_definitions(
+                    dialect,
+                    conn,
+                    self._bulk_query_lowercase(),
+                    "SAM",
+                )
+            )
 
     def test_successful_bulk_fetch_does_not_trigger_fallback(self):
         """When the bulk fetch succeeds, definitions come from it and no fallback query runs."""
@@ -683,12 +786,19 @@ class TestOracleViewDefinitionFallback:
             view_ddl = None
 
         conn = MagicMock()
-        conn.execute.return_value = [Row()]
+        conn.execute.return_value.__iter__.side_effect = lambda: iter([Row()])
         conn.engine.url.database = "db"
         dialect = OracleDialect()
 
-        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+        definitions = dict(
+            get_all_view_definitions(
+                dialect,
+                conn,
+                self._bulk_query_lowercase(),
+                "SAM",
+            )
+        )
 
-        assert dialect.all_view_definitions[("v1", "sam")] == "CREATE OR REPLACE VIEW v1 AS SELECT 1 FROM dual"
+        assert definitions.get(("v1", "sam")) == "CREATE OR REPLACE VIEW v1 AS SELECT 1 FROM dual"
         # Only the bulk query executed: no names listing, no per-view reads.
         assert conn.execute.call_count == 1

@@ -302,7 +302,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       String keysetCursor = null;
       while (!stopped) {
         try {
-          ResultList<? extends EntityInterface> batch = source.readNextKeyset(keysetCursor);
+          ResultList<? extends EntityInterface<?>> batch = source.readNextKeyset(keysetCursor);
           keysetCursor = batch.getPaging().getAfter();
 
           if (batch.getData().isEmpty()) {
@@ -317,9 +317,9 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
           }
 
           extensions.beforeBatch(batch.getData());
-          record EntityFuture(EntityInterface entity, Future<Void> future) {}
+          record EntityFuture(EntityInterface<?> entity, Future<Void> future) {}
           List<EntityFuture> entityFutures = new ArrayList<>();
-          for (EntityInterface entity : batch.getData()) {
+          for (EntityInterface<?> entity : batch.getData()) {
             entityFutures.add(
                 new EntityFuture(
                     entity,

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FilterCondition } from './FiltersConfigForm.types';
 import { conditionKey } from './FiltersConfigForm.utils';
@@ -70,16 +70,13 @@ export function ConditionChip({
         {operatorLabel}
       </span>
       <span data-testid="value">{condition.value}</span>
-      <Button
-        aria-label={removeLabel}
-        className="tw:inline-grid tw:size-4 tw:place-items-center"
-        color="link-gray"
+      <ButtonUtility
         data-testid="remove-button"
+        icon={XClose}
         size="xs"
-        type="button"
-        onPress={onRemove}>
-        <XClose size={12} />
-      </Button>
+        tooltip={removeLabel}
+        onClick={onRemove}
+      />
     </span>
   );
 }

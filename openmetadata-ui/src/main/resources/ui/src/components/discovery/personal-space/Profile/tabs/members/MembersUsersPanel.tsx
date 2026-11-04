@@ -1,0 +1,513 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  ConfirmPopover,
+  TableCard,
+  Toggle,
+} from '@openmetadata/ui-core-components';
+import {
+  RefreshCcw01,
+  Trash01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+  pagingObject,
+} from '../../../../../../constants/constants';
+import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  EntityType,
+  TabSpecificField,
+} from '../../../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../../../enums/search.enum';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { User } from '../../../../../../generated/entity/teams/user';
+import { Include } from '../../../../../../generated/type/include';
+import { Paging } from '../../../../../../generated/type/paging';
+import { useAuth } from '../../../../../../hooks/authHooks';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
+import { searchQuery } from '../../../../../../rest/searchAPI';
+import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
+import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
+import type { ColumnsType } from '../../../../../common/Table/Table.interface';
+import Table from '../../../../../common/Table/TableV2';
+
+import type { MembersUsersPanelProps } from './Members.types';
+import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
+import { profileHash } from './profileHash.utils';
+
+const USER_FIELDS = [
+  TabSpecificField.PROFILE,
+  TabSpecificField.TEAMS,
+  TabSpecificField.ROLES,
+].join(',');
+
+const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
+  isAdmin,
+  onNavigate,
+  onSetHeader,
+}) => {
+  const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
+  const { permissions } = usePermissionProvider();
+  const { goTo } = useSettingsHash();
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const latestSearchIdRef = useRef(0);
+
+  // Only page + size go to the settings hash; cursors stay in state, so a
+  // reloaded page > 1 has no cursor to resume from and restarts at page 1.
+  const {
+    page: currentPage,
+    pageSize: hashPageSize,
+    setPage: setHashPage,
+  } = useHashPagingParams();
+  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const showPagination =
+    Boolean(paging.before || paging.after) ||
+    paging.total > pageSize ||
+    pageSize !== PAGE_SIZE_BASE;
+
+  const handlePageChange = useCallback(
+    (page: number) => setHashPage(page, undefined, undefined, pageSize),
+    [setHashPage, pageSize]
+  );
+  const handlePageSizeChange = useCallback(
+    (size: number) =>
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size),
+    [setHashPage]
+  );
+
+  const canCreateUser = useMemo(
+    () =>
+      isAdminUser ||
+      (!isEmpty(permissions) &&
+        checkPermission(Operation.Create, ResourceEntity.USER, permissions)),
+    [isAdminUser, permissions]
+  );
+
+  const fetchUsers = useCallback(
+    async (params?: { after?: string; before?: string }) => {
+      setIsLoading(true);
+      try {
+        const response = await getUsers({
+          fields: USER_FIELDS,
+          limit: pageSize,
+          isAdmin: isAdmin || undefined,
+          isBot: false,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
+          ...params,
+        });
+        setUsers(response.data);
+        setPaging(response.paging);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', { entity: t('label.user') })
+        );
+        setUsers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pageSize, isAdmin, showDeleted, setPaging, t]
+  );
+
+  const searchUsers = useCallback(
+    async (query: string, page = INITIAL_PAGING_VALUE) => {
+      const searchId = ++latestSearchIdRef.current;
+      setIsLoading(true);
+      try {
+        const response = await searchQuery({
+          query: `${WILD_CARD_CHAR}${query}${WILD_CARD_CHAR}`,
+          pageNumber: page,
+          pageSize,
+          searchIndex: SearchIndex.USER,
+          includeDeleted: showDeleted,
+          queryFilter: getTermQuery({
+            isBot: 'false',
+            ...(isAdmin && { isAdmin: 'true' }),
+          }),
+        });
+        if (searchId !== latestSearchIdRef.current) {
+          return;
+        }
+        const data = response.hits.hits.map(({ _source }) => _source as User);
+        setUsers(data);
+        setPaging({ total: response.hits.total.value });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setUsers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pageSize, isAdmin, showDeleted, setPaging]
+  );
+
+  // Writing an unchanged page to the hash is not free: it is a navigation.
+  const resetToFirstPage = useCallback(() => {
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
+  }, [currentPage, handlePageChange]);
+
+  const handleSearch = useCallback(
+    (value: string) => {
+      setSearchValue(value);
+      resetToFirstPage();
+      if (value) {
+        void searchUsers(value);
+      } else {
+        void fetchUsers();
+      }
+    },
+    [resetToFirstPage, fetchUsers, searchUsers]
+  );
+
+  const handleShowDeletedChange = useCallback(
+    (checked: boolean) => {
+      setShowDeleted(checked);
+      resetToFirstPage();
+      setSearchValue('');
+    },
+    [resetToFirstPage]
+  );
+
+  const handlePageNavigation = ({
+    currentPage: newPage,
+    cursorType,
+  }: PagingHandlerParams) => {
+    if (searchValue) {
+      handlePageChange(newPage);
+      void searchUsers(searchValue, newPage);
+
+      return;
+    }
+
+    const cursor = cursorType && paging[cursorType];
+
+    if (!cursorType || !cursor) {
+      return;
+    }
+
+    handlePageChange(newPage);
+    void fetchUsers({ [cursorType]: cursor });
+  };
+
+  const handleRestoreUser = useCallback(
+    async (user: User): Promise<boolean> => {
+      try {
+        await restoreUser(user.id);
+        showSuccessToast(
+          t('message.entity-restored-success', { entity: t('label.user') })
+        );
+        void fetchUsers();
+
+        return true;
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        return false;
+      }
+    },
+    [t, fetchUsers]
+  );
+
+  // Latest refetch closure. The pageSize/deleted effect runs on those keys only
+  // (plus mount) and must use the *current* search term + fetchers without
+  // re-firing on every keystroke — search-term changes are driven by the search
+  // input's own handler, so searchValue is deliberately not an effect dep.
+  const refetchUsers = useRef<() => void>(() => undefined);
+  refetchUsers.current = () => {
+    if (searchValue) {
+      void searchUsers(searchValue);
+    } else {
+      void fetchUsers();
+    }
+  };
+
+  useEffect(() => {
+    resetToFirstPage();
+    refetchUsers.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on size/deleted only
+  }, [pageSize, showDeleted]);
+
+  useEffect(() => {
+    if (!onSetHeader || !canCreateUser) {
+      onSetHeader?.({ actions: undefined });
+
+      return;
+    }
+    onSetHeader({
+      actions: (
+        <Button
+          color="primary"
+          data-testid="add-user"
+          size="xs"
+          onPress={() =>
+            onNavigate({ type: 'user-create', isAdmin: Boolean(isAdmin) })
+          }>
+          {t('label.add-entity', {
+            entity: t(isAdmin ? 'label.admin' : 'label.user'),
+          })}
+        </Button>
+      ),
+    });
+
+    return () => onSetHeader({ actions: undefined });
+  }, [canCreateUser, isAdmin, onNavigate, onSetHeader, t]);
+
+  const columns: ColumnsType<User> = useMemo(() => {
+    const usernameColumn = {
+      title: t('label.username'),
+      dataIndex: 'username',
+      key: 'username',
+      ellipsis: true,
+      render: (_: unknown, record: User) => (
+        <UserNameCell goTo={goTo} record={record} />
+      ),
+    };
+
+    const nameColumn = {
+      title: t('label.name'),
+      dataIndex: 'name',
+      key: 'name',
+      ellipsis: true,
+      render: (_: unknown, record: User) => getEntityName(record),
+    };
+
+    const teamsColumn = {
+      title: t('label.team-plural'),
+      dataIndex: 'teams',
+      key: 'teams',
+      render: (_: unknown, record: User) => (
+        <EntityLinksCell
+          emptyLabel={t('label.no-entity', { entity: t('label.team') })}
+          goTo={goTo}
+          items={record.teams}
+          targetFn={profileHash.team}
+        />
+      ),
+    };
+
+    const rolesColumn = {
+      title: t('label.role-plural'),
+      dataIndex: 'roles',
+      key: 'roles',
+      render: (_: unknown, record: User) => (
+        <EntityLinksCell
+          emptyLabel={t('label.no-entity', { entity: t('label.role') })}
+          goTo={goTo}
+          items={record.roles}
+          targetFn={profileHash.role}
+          testId="role-link"
+        />
+      ),
+    };
+
+    const actionColumn = {
+      title: t('label.action-plural'),
+      dataIndex: 'actions',
+      key: 'actions',
+      width: 90,
+      render: (_: unknown, record: User) => (
+        <Box align="center" direction="row" gap={2}>
+          {showDeleted && (
+            <ConfirmPopover
+              confirmText={t('label.restore')}
+              data-testid="restore-user-popover"
+              description={t('message.are-you-want-to-restore', {
+                entity: getEntityName(record),
+              })}
+              title={t('label.restore-entity', { entity: t('label.user') })}
+              variant="primary"
+              onConfirm={() => handleRestoreUser(record)}>
+              <ButtonUtility
+                aria-label={t('label.restore')}
+                data-testid={`restore-user-btn-${record.name}`}
+                icon={RefreshCcw01}
+                isDisabled={!isAdminUser}
+                size="lg"
+                tooltip={
+                  isAdminUser
+                    ? t('label.restore-entity', {
+                        entity: t('label.user'),
+                      })
+                    : t(ADMIN_ONLY_ACTION)
+                }
+              />
+            </ConfirmPopover>
+          )}
+
+          <DeleteEntityPopover
+            afterDeleteAction={() => handleSearch('')}
+            allowSoftDelete={!showDeleted}
+            data-testid="delete-user-popover"
+            entityId={record.id}
+            entityName={getEntityName(record)}
+            entityType={EntityType.USER}>
+            <ButtonUtility
+              aria-label={t('label.delete')}
+              data-testid={`delete-user-btn-${record.name}`}
+              icon={Trash01}
+              isDisabled={!isAdminUser}
+              size="lg"
+              tooltip={
+                isAdminUser
+                  ? t('label.delete-entity', {
+                      entity: t('label.user'),
+                    })
+                  : t(ADMIN_ONLY_ACTION)
+              }
+            />
+          </DeleteEntityPopover>
+        </Box>
+      ),
+    };
+
+    const baseColumns = [usernameColumn, nameColumn, teamsColumn];
+
+    if (!isAdmin) {
+      baseColumns.push(rolesColumn);
+    }
+
+    baseColumns.push(actionColumn);
+
+    return baseColumns;
+  }, [
+    showDeleted,
+    isAdminUser,
+    isAdmin,
+    t,
+    goTo,
+    handleRestoreUser,
+    handleSearch,
+  ]);
+
+  return (
+    <Box
+      className="tw:pt-1 tw:h-full tw:px-8 tw:pb-8"
+      data-testid="users-list-container"
+      direction="col">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
+        <div className="tw:overflow-y-auto">
+          <Table
+            className="user-list-table"
+            columns={columns}
+            data-testid="users-list-table"
+            dataSource={users}
+            extraTableFilters={
+              <Box align="center" direction="row" gap={2}>
+                <Toggle
+                  data-testid="show-deleted"
+                  isSelected={showDeleted}
+                  label={t('label.deleted')}
+                  size="sm"
+                  onChange={handleShowDeletedChange}
+                />
+              </Box>
+            }
+            loading={isLoading}
+            locale={{
+              emptyText: (
+                <Box
+                  align="center"
+                  className="tw:min-h-32 tw:relative"
+                  justify="center">
+                  <NoDataPlaceholder
+                    icon={<User01 />}
+                    title={t('label.no-entity-found', {
+                      entity: t('label.user-plural'),
+                    })}
+                  />
+                </Box>
+              ),
+            }}
+            pagination={false}
+            rowKey="id"
+            searchProps={{
+              containerClassName: 'tw:w-80!',
+              placeholder: `${t('label.search-for-type', {
+                type: t('label.user'),
+              })}...`,
+              searchValue,
+              typingInterval: 350,
+              onSearch: handleSearch,
+            }}
+            size="small"
+            variant="muted"
+          />
+        </div>
+        {showPagination && (
+          <NextPrevious
+            className="tw:py-3"
+            currentPage={currentPage}
+            isLoading={isLoading}
+            isNumberBased={Boolean(searchValue)}
+            pageSize={pageSize}
+            pageSizeOptions={[
+              PAGE_SIZE_BASE,
+              PAGE_SIZE_MEDIUM,
+              PAGE_SIZE_LARGE,
+            ]}
+            paging={paging}
+            pagingHandler={handlePageNavigation}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </TableCard.Root>
+    </Box>
+  );
+};
+
+export default MembersUsersPanel;

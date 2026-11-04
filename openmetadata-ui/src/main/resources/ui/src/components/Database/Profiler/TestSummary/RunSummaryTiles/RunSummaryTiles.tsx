@@ -70,7 +70,7 @@ const RunSummaryTiles = ({ results }: RunSummaryTilesProps) => {
     // Five across whenever the card is wide enough, as in the mock, wrapping
     // only when a narrow card cannot fit them.
     <div
-      className="tw:grid tw:grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] tw:gap-2.5"
+      className="tw:grid tw:grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] tw:gap-2.5"
       data-testid="run-summary-tiles">
       {tiles.map((tile) => (
         <Box

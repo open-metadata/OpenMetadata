@@ -16,7 +16,7 @@ import type { Column } from 'react-data-grid';
 import { VALIDATION_STEP } from '../../../constants/BulkImport.constant';
 import { EntityStatus } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
-import { CSVImportAsyncResponse } from '../../../interface/entity/csv.interface';
+import type { CSVImportJobType } from '../../../interface/entity/csv.interface';
 import type { getImportOperationSummary } from '../../../utils/CSV/CSV.utils';
 
 export type TranslateFn = (
@@ -88,22 +88,10 @@ export interface BulkEntityImportLocationState {
   selectedMetricNames?: string[];
 }
 
-export type CSVImportAsyncWebsocketResponse = {
-  jobId: string;
-  status: 'COMPLETED' | 'FAILED' | 'STARTED' | 'IN_PROGRESS';
-  result?: CSVImportResult;
-  error?: string | null;
-  progress?: number;
-  total?: number;
-  message?: string;
-};
-
-export type CSVImportAsyncJob = Partial<CSVImportAsyncWebsocketResponse> &
-  CSVImportAsyncResponse;
-
-export type CSVImportJobType =
-  | (Partial<CSVImportAsyncJob> & {
-      type: 'initialLoad';
-      initialResult: string;
-    })
-  | (Partial<CSVImportAsyncJob> & { type: 'onValidate' });
+// Canonical definitions live in the lower-layer csv.interface; re-exported here
+// for existing page-local importers.
+export type {
+  CSVImportAsyncJob,
+  CSVImportAsyncWebsocketResponse,
+} from '../../../interface/entity/csv.interface';
+export type { CSVImportJobType };

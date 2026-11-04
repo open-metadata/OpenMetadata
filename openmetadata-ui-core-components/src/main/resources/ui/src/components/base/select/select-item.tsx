@@ -2,7 +2,7 @@ import { Avatar } from '@/components/base/avatar/avatar';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
-import { Check } from '@untitledui/icons';
+import { Check } from '../../../icons';
 import { isValidElement, useContext } from 'react';
 import type { ListBoxItemProps as AriaListBoxItemProps } from 'react-aria-components';
 import {

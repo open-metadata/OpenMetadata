@@ -609,16 +609,84 @@ class KafkaconnectSource(PipelineServiceSource):
                 return dataset_entity
         return None
 
+    def _get_table_by_exact_name(
+        self,
+        dataset_details: KafkaConnectDatasetDetails,
+        service_names: list[str],
+    ) -> Table | None:
+        """
+        Resolve a table the connector config names exactly, in the services bound to the connector.
+
+        A search answers with its first hit, which is a same-named table in whichever service
+        was indexed first, and nothing downstream can tell it from the right one. A table found
+        by exact name in exactly one bound service is attributable. Found in none or in several,
+        it is not, so it gets no edge and the reason is logged.
+        """
+        matches = []
+        for service_name in service_names:
+            table_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=dataset_details.database,
+                schema_name=dataset_details.schema,
+                table_name=dataset_details.table,
+                skip_es_search=True,
+            )
+            table = self.metadata.get_by_name(entity=Table, fqn=table_fqn) if table_fqn else None
+            if table:
+                matches.append(table)
+        if len(matches) == 1:
+            return matches[0]
+
+        name = ".".join(
+            part for part in (dataset_details.database, dataset_details.schema, dataset_details.table) if part
+        )
+        if matches:
+            logger.warning(
+                "Table '%s' exists in more than one service bound to this connector (%s), so no lineage "
+                "is written for it. Set lineageInformation.dbServiceNames on this pipeline service to "
+                "the service the connector writes to.",
+                name,
+                ", ".join(model_str(table.fullyQualifiedName) for table in matches),
+            )
+        elif service_names:
+            logger.warning(
+                "Table '%s' was not found in the services bound to this connector (%s), so no lineage "
+                "is written for it until it is ingested there.",
+                name,
+                ", ".join(service_names),
+            )
+        else:
+            logger.warning(
+                "Table '%s' has no service bound to this connector to be looked up in, so no lineage "
+                "is written for it. Set lineageInformation.dbServiceNames on this pipeline service to "
+                "the service holding it.",
+                name,
+            )
+        return None
+
     def _get_table_entity(
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
     ) -> Table | None:
         """
-        Resolve the table a connector reads from or writes to, in order of confidence:
-        the service matched from the connector config, then any configured
+        Resolve the table a connector reads from or writes to.
+
+        A connector whose resolver binds its tables to a service type is looked up by exact name
+        in the services it binds, and nowhere else. Every other connector goes, in order of
+        confidence, through the service matched from the connector config, then any configured
         dbServiceNames, then a cross-service search.
         """
+        resolver = self._resolver_for(pipeline_details)
+        if resolver.target_service_type:
+            services = [
+                service for service in self.database_services if service.serviceType == resolver.target_service_type
+            ]
+            bound = resolver.target_service_names(pipeline_details.config or {}, services, self.get_db_service_names())
+            return self._get_table_by_exact_name(dataset_details, bound)
+
         # Priority 1: Use matched service from connector config
         result = self.get_service_from_connector_config(pipeline_details)
         if result.database_service_name:

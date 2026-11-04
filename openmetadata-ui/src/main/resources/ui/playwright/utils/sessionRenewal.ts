@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { BrowserContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { ProviderConfigOverride } from './ssoAuth';
 import { APP_STATE_KEY, OIDC_TOKEN_KEY } from './tokenStorage';
 
@@ -43,28 +44,6 @@ export const withShortSamlTokenValidity = (
           ...security,
           tokenValidity: tokenValiditySeconds,
         },
-      },
-    },
-  };
-};
-
-/** Seconds, no schema minimum, and governs OM's own JWT rather than the IdP's. */
-export const withShortOidcTokenValidity = (
-  base: ProviderConfigOverride,
-  tokenValiditySeconds: number = SHORT_ACCESS_TTL_SECONDS
-): ProviderConfigOverride => {
-  const oidcConfig =
-    (base.authenticationConfiguration.oidcConfiguration as
-      | Record<string, unknown>
-      | undefined) ?? {};
-
-  return {
-    ...base,
-    authenticationConfiguration: {
-      ...base.authenticationConfiguration,
-      oidcConfiguration: {
-        ...oidcConfig,
-        tokenValidity: tokenValiditySeconds,
       },
     },
   };
@@ -132,7 +111,7 @@ export const expireStoredToken = async (
   await page.waitForFunction(
     () => Boolean(navigator.serviceWorker?.controller),
     undefined,
-    { timeout: 30_000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
   return page.evaluate(

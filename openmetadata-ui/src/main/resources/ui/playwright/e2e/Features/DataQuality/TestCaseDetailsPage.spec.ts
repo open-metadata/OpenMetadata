@@ -15,11 +15,13 @@ import { expect } from '@playwright/test';
 import { escapeRegExp, isUndefined } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { ignoreClosedTarget } from '../../../support/fixtures/serverLoad';
 import { performAdminLogin } from '../../../utils/admin';
 import { selectOptionWithRetry } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
+  expectRunTestCaseDisabledWithReason,
   openTestCaseDetailsPage,
   verifyTestCaseLastRunBanner,
 } from '../../../utils/testCases';
@@ -219,16 +221,18 @@ test.describe(
       await expect(page.getByTestId('test-case-rail')).toContainText(
         'Configuration'
       );
+      // The test case inherits its definition's dimension, Integrity.
       await expect(card.getByTestId('configuration-category')).toHaveText(
-        'Table test'
+        'Table test · Integrity'
       );
 
+      // Rows are labelled with the parameters' display names.
       const minRow = card.getByTestId('configuration-parameter-minValue');
       const maxRow = card.getByTestId('configuration-parameter-maxValue');
 
-      await expect(minRow).toContainText('minValue');
+      await expect(minRow).toContainText('Min');
       await expect(minRow).toContainText('12');
-      await expect(maxRow).toContainText('maxValue');
+      await expect(maxRow).toContainText('Max');
       await expect(maxRow).toContainText('34');
     });
 
@@ -452,6 +456,95 @@ test.describe(
 );
 
 test.describe(
+  'Test Case Details Page - Configuration card',
+  { tag: ['@Observability'] },
+  () => {
+    let sqlTable: TableClass;
+    let sqlTestCaseFqn: string;
+
+    // Custom SQL tests run far past the mock's three lines; the block has to
+    // hold a query of any length without stretching the rail.
+    const longSql = [
+      'SELECT o.id',
+      'FROM orders AS o',
+      'WHERE 1 = 1',
+      ...Array.from(
+        { length: 117 },
+        (_, index) => `  AND o.id <> ${index + 1}`
+      ),
+    ].join('\n');
+
+    test.beforeAll(
+      'Create a custom SQL test with a 120-line query',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        sqlTable = new TableClass();
+        await sqlTable.create(apiContext);
+        const testCase = await sqlTable.createTestCase(apiContext, {
+          testDefinition: 'tableCustomSQLQuery',
+          parameterValues: [
+            { name: 'sqlExpression', value: longSql },
+            { name: 'strategy', value: 'ROWS' },
+          ],
+        });
+        sqlTestCaseFqn = testCase.fullyQualifiedName as string;
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await sqlTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('keeps a long SQL query inside a scrolling block', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, sqlTestCaseFqn);
+
+      const sql = page
+        .getByTestId('test-case-configuration-card')
+        .getByRole('region', { name: 'SQL Query' });
+
+      await expect(sql).toContainText('SELECT o.id');
+
+      // The block stops at 320px (max-h-80) and scrolls the rest of the query.
+      await expect
+        .poll(() => sql.evaluate((node) => node.clientHeight))
+        .toBeLessThanOrEqual(320);
+      await expect
+        .poll(() =>
+          sql.evaluate((node) => node.scrollHeight - node.clientHeight)
+        )
+        .toBeGreaterThan(0);
+
+      await test.step('A keyboard user can scroll to the end of the query', async () => {
+        await sql.focus();
+
+        await expect(sql).toBeFocused();
+
+        // Pressed on the locator, so the key reaches the block even if
+        // something else took focus in between.
+        await sql.press('End');
+
+        // Keyboard scrolling animates, so wait for the block to reach its end.
+        await expect
+          .poll(() =>
+            sql.evaluate(
+              (node) => node.scrollHeight - node.clientHeight - node.scrollTop
+            )
+          )
+          .toBeLessThanOrEqual(1);
+      });
+    });
+  }
+);
+
+test.describe(
   'Test Case Details Page - Result history chart',
   { tag: ['@Observability'] },
   () => {
@@ -511,14 +604,16 @@ test.describe(
 
       const chart = page.getByTestId('graph-container');
       // The aborted run sits on the value line itself, told apart by status.
+      // The runs are listed in a screen-reader-only list beside the SVG, so
+      // they are attached but never visible.
       const abortedPoint = chart.locator(
         '[data-testid="test-summary-point-value"][data-status="Aborted"]'
       );
 
       await test.step('The expectation line carries the asserted value', async () => {
-        await expect(chart.locator('.recharts-reference-line text')).toHaveText(
-          'Expected 10,000'
-        );
+        await expect(
+          chart.locator('svg text', { hasText: 'Expected 10,000' })
+        ).toBeVisible();
       });
 
       await test.step('A run that produced no value is still plotted', async () => {
@@ -526,24 +621,27 @@ test.describe(
       });
 
       await test.step('A single series draws no legend', async () => {
-        await expect(chart.locator('.recharts-legend-item')).toHaveCount(0);
+        await expect(
+          chart.locator('svg text', { hasText: /^value$/ })
+        ).toHaveCount(0);
       });
 
-      await test.step('Clicking a run moves the selection guide', async () => {
-        const guides = chart.locator('.recharts-reference-line line');
-        const before = await guides.evaluateAll((lines) =>
-          lines.map((line) => line.getAttribute('x1')).join(',')
-        );
+      await test.step('Selecting a run moves the selection to it', async () => {
+        const card = page.getByTestId('run-details-card');
 
-        await abortedPoint.click();
+        // The card opens on the newest run, which succeeded.
+        await expect(card).toHaveAttribute('data-status', 'Success');
 
-        await expect
-          .poll(async () =>
-            guides.evaluateAll((lines) =>
-              lines.map((line) => line.getAttribute('x1')).join(',')
-            )
-          )
-          .not.toBe(before);
+        // The newest run is the last of five; the aborted one is two before.
+        // Focus alone may not count as :focus-visible, so End starts the
+        // keyboard navigation, then Enter selects the run it rests on.
+        await chart.getByRole('group', { name: 'Test Case Results' }).focus();
+        await page.keyboard.press('End');
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('Enter');
+
+        await expect(card).toHaveAttribute('data-status', 'Aborted');
       });
     });
   }
@@ -781,6 +879,170 @@ test.describe(
             '[data-testid^="test-summary-point-"][data-status="Aborted"]'
           )
       ).toHaveCount(2);
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Missing and failed results',
+  { tag: ['@Observability'] },
+  () => {
+    let statesTable: TableClass;
+    let neverRunFqn: string;
+    let ranFqn: string;
+
+    const serverError = {
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 500, message: 'Internal Server Error' }),
+    };
+    const isResultsList = (url: URL) =>
+      url.pathname.includes('/dataQuality/testCases/testCaseResults/') &&
+      url.searchParams.has('startTs');
+
+    test.beforeAll(
+      'Create a scheduled test that never ran, and one with a failed run',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        statesTable = new TableClass();
+        await statesTable.create(apiContext);
+        // An hourly suite pipeline, so the test that never ran has a next run.
+        await statesTable.createTestSuiteAndPipelines(apiContext);
+
+        const rowCountTest = {
+          testDefinition: 'tableRowCountToEqual',
+          parameterValues: [{ name: 'value', value: 10000 }],
+        };
+        const neverRun = await statesTable.createTestCase(
+          apiContext,
+          rowCountTest
+        );
+        neverRunFqn = neverRun.fullyQualifiedName as string;
+
+        const ran = await statesTable.createTestCase(apiContext, rowCountTest);
+        ranFqn = ran.fullyQualifiedName as string;
+        await statesTable.addTestCaseResult(apiContext, ranFqn, {
+          result: 'Found rowCount=110 vs. the expected 10000',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '110' }],
+          timestamp: getCurrentMillis(),
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await statesTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('says a test that has never run has no runs yet, and that its scheduled run brings them', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, neverRunFqn);
+
+      await test.step('The result history has no tiles or run card', async () => {
+        const history = page.getByTestId('test-summary-container');
+
+        await expect(
+          history.getByTestId('test-summary-never-run')
+        ).toContainText('No runs recorded yet');
+        await expect(history.getByTestId('run-summary-tiles')).toHaveCount(0);
+        await expect(history.getByTestId('run-details-card')).toHaveCount(0);
+      });
+
+      await test.step('The banner asks for no pipeline: one is scheduled', async () => {
+        const banner = page.getByTestId(
+          'test-case-last-run-banner-not-run-yet'
+        );
+
+        await expect(banner).toContainText(
+          'This test has not run yet. Results will appear after its next scheduled run.'
+        );
+        await expect(banner.getByTestId('test-case-next-run')).toContainText(
+          'Next · in '
+        );
+      });
+    });
+
+    test('shows a failed results request as an error, and loads the run on retry', async ({
+      page,
+    }) => {
+      // Every results read fails until Retry, however many the page makes
+      // (a dev build mounts its effects twice).
+      let failResults = true;
+      await page.route(isResultsList, (route) =>
+        ignoreClosedTarget(route, () =>
+          failResults ? route.fulfill(serverError) : route.continue()
+        )
+      );
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      const history = page.getByTestId('test-summary-container');
+      const loadError = history.getByTestId('test-summary-load-error');
+
+      await test.step('The failure reads as one, not as an empty range', async () => {
+        await expect(loadError).toContainText(
+          'Error while fetching Test Case Results'
+        );
+        await expect(history.getByTestId('run-summary-tiles')).toHaveCount(0);
+      });
+
+      await test.step('Retry loads the run in place', async () => {
+        const resultsResponse = page.waitForResponse(
+          (response) =>
+            isResultsList(new URL(response.url())) &&
+            response.request().method() === 'GET'
+        );
+        failResults = false;
+        await loadError.getByRole('button', { name: 'Retry' }).click();
+        expect((await resultsResponse).status()).toBe(200);
+
+        await expect(
+          history.getByTestId('run-summary-runs').locator('[data-value]')
+        ).toHaveText('1');
+        await expect(loadError).toHaveCount(0);
+      });
+    });
+
+    test('says why Run now is disabled when the pipelines could not be read', async ({
+      page,
+    }) => {
+      await page.route(
+        (url) =>
+          url.pathname.endsWith('/api/v1/services/ingestionPipelines') &&
+          url.searchParams.get('pipelineType') === 'TestSuite',
+        // A poll can still be in flight when the page closes.
+        (route) => ignoreClosedTarget(route, () => route.fulfill(serverError))
+      );
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      await expectRunTestCaseDisabledWithReason(
+        page,
+        "Pipelines couldn't be loaded"
+      );
+    });
+
+    test('names every rail button, and nests none in another', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, ranFqn);
+
+      const rail = page.getByTestId('test-case-rail');
+
+      await expect(rail.getByTestId('edit-description')).toBeVisible();
+      await expect(rail.locator('button button')).toHaveCount(0);
+
+      for (const button of await rail.getByRole('button').all()) {
+        await expect(button).toHaveAccessibleName(/\S/);
+      }
     });
   }
 );

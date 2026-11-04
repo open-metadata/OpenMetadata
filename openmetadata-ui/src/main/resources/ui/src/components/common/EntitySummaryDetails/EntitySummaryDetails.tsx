@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Space } from 'antd';
-import Tooltip from 'antd/lib/tooltip';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
@@ -31,7 +29,6 @@ import { getTeamsUser } from '../../../utils/TeamUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import './entity-summary-details.style.less';
 
 export interface GetInfoElementsProps {
   data: ExtraInfo;
@@ -43,12 +40,13 @@ export interface GetInfoElementsProps {
 }
 
 const InfoIcon = ({ content }: { content: React.ReactNode }): JSX.Element => (
-  <Tooltip title={content}>
-    <Icon
-      alt="info-secondary"
-      component={IconInfoSecondary}
-      style={{ fontSize: '12px' }}
-    />
+  <Tooltip excludeTriggerFromTabOrder title={content}>
+    <span
+      aria-label="info-secondary"
+      className="tw:inline-flex tw:items-center tw:align-[-0.125em] tw:leading-none"
+      role="img">
+      <IconInfoSecondary height={12} width={12} />
+    </span>
   </Tooltip>
 );
 
@@ -268,7 +266,11 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
           {data.openInNewTab && (
             <>
               &nbsp;
-              <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+              <span
+                className="tw:inline-flex tw:items-center tw:align-[-0.125em] tw:leading-none"
+                role="img">
+                <IconExternalLink {...ICON_DIMENSION} />
+              </span>
             </>
           )}
         </a>
@@ -297,18 +299,21 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
 
     if (isTier) {
       return (
-        <Space
-          className={classNames(
-            'd-inline-block truncate link-text align-middle',
-            {
-              'w-52': (displayVal as string).length > 32,
-            }
-          )}
-          data-testid="tier-name"
-          direction="horizontal"
-          title={displayVal as string}>
-          <span data-testid="Tier">{displayVal}</span>
-        </Space>
+        <Tooltip
+          excludeTriggerFromTabOrder
+          title={displayVal as string}
+          triggerClassName="tw:inline-flex tw:min-w-0">
+          <div
+            className={classNames(
+              'd-inline-block truncate link-text align-middle',
+              {
+                'w-52': (displayVal as string).length > 32,
+              }
+            )}
+            data-testid="tier-name">
+            <span data-testid="Tier">{displayVal}</span>
+          </div>
+        </Tooltip>
       );
     }
 
@@ -320,13 +325,12 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
   }
 
   return (
-    <Space
-      className="entity-summary-details"
-      data-testid="entity-summary-details"
-      direction="horizontal">
+    <div
+      className="entity-summary-details tw:inline-flex tw:items-center tw:gap-2 tw:*:relative"
+      data-testid="entity-summary-details">
       {retVal}
       {displayVal && renderDisplayValue()}
-    </Space>
+    </div>
   );
 };
 

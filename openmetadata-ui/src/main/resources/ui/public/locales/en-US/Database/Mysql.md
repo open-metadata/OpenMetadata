@@ -10,15 +10,16 @@ To extract metadata the user used in the connection needs to have access to the 
 -- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
 CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
 
--- Grant select on a database
-GRANT SELECT ON world.* TO '<username>';
+-- Grant metadata access on a database, without access to its data
+GRANT SHOW VIEW, REFERENCES ON world.* TO '<username>';
 
--- Grant select on a database
-GRANT SELECT ON world.* TO '<username>';
-
--- Grant select on a specific object
-GRANT SELECT ON world.hello TO '<username>';
+-- Or grant data access as well, for the profiler, data quality tests, and sample data
+GRANT SELECT, SHOW VIEW ON world.* TO '<username>';
 ```
+
+The user needs `SHOW VIEW` to ingest view definitions. When the user has no `SELECT` on a view, `REFERENCES` lets the connector read the view's columns. Without `SELECT` or `REFERENCES`, the connector ingests views without columns.
+
+To ingest stored procedures and functions with their code, also run `GRANT SHOW_ROUTINE ON *.* TO '<username>';` (MySQL 8.0.20 and up). With only `EXECUTE`, the connector ingests them without their code.
 
 $$note
 OpenMetadata supports MySQL version `8.0.0` and up. 
@@ -37,7 +38,7 @@ GRANT SELECT ON mysql.general_log TO '<username>'@'<host>';
 ```
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">here</a>.
 
 You can find further information on the MySQL connector in the <a href="https://docs.open-metadata.org/connectors/database/mysql" target="_blank">docs</a>.
 

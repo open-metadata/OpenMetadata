@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { compare } from 'fast-json-patch';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,16 +92,18 @@ const CustomizableDataProductPage = ({
         pageTitle={t('label.customize-entity', {
           entity: t('label.data-product'),
         })}>
-        <Row className="customize-details-page" gutter={[0, 20]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid customize-details-page"
+          style={getLayoutGutter(0, 20)}>
+          <Grid.Item className="layout-column" span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
               personaName={getEntityName(personaDetails)}
               onReset={handleReset}
               onSave={handleSave}
             />
-          </Col>
-          <Col className="p-l-xs" span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column p-l-xs" span={24}>
             <EntityHeader
               breadcrumb={breadcrumbs}
               entityData={entityDummyData}
@@ -115,10 +119,10 @@ const CustomizableDataProductPage = ({
               }
               serviceName=""
             />
-          </Col>
+          </Grid.Item>
           {/* It will render cols inside the row */}
           <CustomizeTabWidget />
-        </Row>
+        </Grid>
       </PageLayoutV1>
     </NavigationBlocker>
   );

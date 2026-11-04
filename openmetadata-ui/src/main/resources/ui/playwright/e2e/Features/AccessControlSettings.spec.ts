@@ -28,6 +28,7 @@ import {
   navigateToRoleDetail,
   navigateToRolesPanel,
   openAccessControlSettings,
+  returnToAccessControlLanding,
   waitUntilAccessible,
 } from '../../utils/accessControl';
 import {
@@ -76,16 +77,7 @@ test.describe(
       });
 
       await test.step('Policies card navigates to policies list', async () => {
-        const landingVisible = page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
-        await page
-          .getByTestId('profile-content-header')
-          .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
-          .click();
-        await landingVisible;
-        await waitForAllLoadersToDisappear(page);
+        await returnToAccessControlLanding(page);
         const policiesResponse = page.waitForResponse('/api/v1/policies*');
         await page.getByTestId('access-control-card-policies').click();
         expect((await policiesResponse).status()).toBe(200);
@@ -94,16 +86,7 @@ test.describe(
       });
 
       await test.step('Permission Debugger card navigates to debugger panel', async () => {
-        const landingVisible = page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
-        await page
-          .getByTestId('profile-content-header')
-          .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
-          .click();
-        await landingVisible;
-        await waitForAllLoadersToDisappear(page);
+        await returnToAccessControlLanding(page);
         await page
           .getByTestId('access-control-card-permission-debugger')
           .click();
@@ -114,16 +97,7 @@ test.describe(
       });
 
       await test.step('Audit Logs card navigates to audit logs panel', async () => {
-        const landingVisible = page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
-        await page
-          .getByTestId('profile-content-header')
-          .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
-          .click();
-        await landingVisible;
-        await waitForAllLoadersToDisappear(page);
+        await returnToAccessControlLanding(page);
         const auditResponse = page.waitForResponse('/api/v1/audit/logs*');
         await page.getByTestId('access-control-card-audit-logs').click();
         expect((await auditResponse).status()).toBe(200);
@@ -188,6 +162,15 @@ test.describe(
 
           // No search in the list — verify via success toast
           await toastNotification(page, /successfully/i);
+        });
+
+        await test.step('Lands on the new role detail', async () => {
+          const detail = page.getByTestId('role-detail-container');
+
+          await expect(detail).toBeVisible();
+          await expect(
+            detail.getByTestId(DEFAULT_POLICIES.dataConsumerPolicy)
+          ).toBeVisible();
         });
       } finally {
         // Cleanup via API (the role was just created)
@@ -426,6 +409,9 @@ test.describe(
             })
             .click();
           await page.keyboard.press('Escape');
+          // The open option list sits over Save; under load it can still be
+          // closing when Save is clicked.
+          await expect(page.getByRole('listbox')).toBeHidden();
         });
 
         await test.step('Confirm adding policy', async () => {
@@ -497,7 +483,7 @@ test.describe(
             .getByTestId(`remove-${policyDisplayName}`)
             .waitFor({ state: 'visible' });
           await page.getByTestId(`remove-${policyDisplayName}`).click();
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          await expect(page.getByTestId('remove-entity-popover')).toBeVisible();
         });
 
         await test.step('Confirm removal', async () => {
@@ -506,7 +492,7 @@ test.describe(
               r.url().includes('/api/v1/roles') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId('confirm-button').click();
+          await page.getByTestId('remove-entity-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -583,8 +569,8 @@ test.describe(
           await page
             .getByTestId(`remove-${testUser.responseData.displayName}`)
             .click();
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
-          await page.getByTestId('confirm-button').click();
+          await expect(page.getByTestId('remove-entity-popover')).toBeVisible();
+          await page.getByTestId('remove-entity-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -635,7 +621,7 @@ test.describe(
           rolesContainer
         );
         await roleRow.getByTestId(`delete-action-${roleName}`).click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        await expect(page.getByTestId('delete-role-popover')).toBeVisible();
       });
 
       await test.step('Confirm deletion and verify toast', async () => {
@@ -644,7 +630,7 @@ test.describe(
             r.url().includes('/api/v1/roles') &&
             r.request().method() === 'DELETE'
         );
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('delete-role-popover-confirm').click();
         const deleteResponse = await deletePromise;
         expect(deleteResponse.status()).toBe(200);
         await toastNotification(page, /successfully/i);
@@ -677,7 +663,7 @@ test.describe(
 
       await test.step('Click delete role button in header', async () => {
         await page.getByTestId('delete-role-btn').click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        await expect(page.getByTestId('delete-role-popover')).toBeVisible();
       });
 
       await test.step('Confirm deletion and verify navigation back to list', async () => {
@@ -686,7 +672,7 @@ test.describe(
             r.url().includes('/api/v1/roles') &&
             r.request().method() === 'DELETE'
         );
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('delete-role-popover-confirm').click();
         const deleteResponse = await deletePromise;
         expect(deleteResponse.status()).toBe(200);
         await page
@@ -756,6 +742,11 @@ test.describe(
             try {
               await option.click({ timeout: 3000 });
 
+              const chip = resourcesAutocomplete.getByTestId(
+                'autocomplete-selected-item'
+              );
+              await chip.waitFor({ state: 'visible', timeout: 2000 });
+
               return true;
             } catch {
               return false;
@@ -774,6 +765,11 @@ test.describe(
 
             try {
               await option.click({ timeout: 3000 });
+
+              const chip = operationsAutocomplete.getByTestId(
+                'autocomplete-selected-item'
+              );
+              await chip.waitFor({ state: 'visible', timeout: 2000 });
 
               return true;
             } catch {
@@ -798,6 +794,13 @@ test.describe(
 
           // No search in the list — verify via success toast
           await toastNotification(page, /successfully/i);
+        });
+
+        await test.step('Lands on the new policy detail', async () => {
+          await expect(
+            page.getByTestId('policy-detail-container')
+          ).toBeVisible();
+          await expect(page.getByTestId(`rule-${ruleName}`)).toBeVisible();
         });
       } finally {
         if (createdPolicyId) {
@@ -882,7 +885,7 @@ test.describe(
         await navigateToPoliciesPanel(page);
         await navigateToPolicyDetail(page, policy.responseData.displayName);
 
-        await test.step('Rules tab (default) shows rule card', async () => {
+        await test.step('Rules tab (default) shows the rule row', async () => {
           await expect(
             page.getByTestId(`rule-${VIEW_ALL_RULE[0].name}`)
           ).toBeVisible();
@@ -1043,15 +1046,19 @@ test.describe(
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
       try {
-        await test.step('Existing seeded rule card is visible', async () => {
+        await test.step('Existing seeded rule row is visible', async () => {
           await expect(
             page.getByTestId(`rule-${VIEW_ALL_RULE[0].name}`)
           ).toBeVisible();
         });
 
-        await test.step('Click Add Rule button', async () => {
+        await test.step('Click Add Rule opens the rule page', async () => {
           await page.getByTestId('add-rule').click();
-          await page.getByTestId('rule-name').waitFor({ state: 'visible' });
+          await expect(page.getByTestId('rule-form-container')).toBeVisible();
+          await expect(page.getByTestId('policy-detail-container')).toHaveCount(
+            0
+          );
+          await expect(page.getByTestId('rule-name')).toBeVisible();
         });
 
         await test.step('Fill rule form', async () => {
@@ -1073,6 +1080,11 @@ test.describe(
               try {
                 await option.click({ timeout: 3000 });
 
+                const chip = resourcesAutocomplete.getByTestId(
+                  'autocomplete-selected-item'
+                );
+                await chip.waitFor({ state: 'visible', timeout: 2000 });
+
                 return true;
               } catch {
                 return false;
@@ -1093,6 +1105,11 @@ test.describe(
               try {
                 await option.click({ timeout: 3000 });
 
+                const chip = operationsAutocomplete.getByTestId(
+                  'autocomplete-selected-item'
+                );
+                await chip.waitFor({ state: 'visible', timeout: 2000 });
+
                 return true;
               } catch {
                 return false;
@@ -1102,18 +1119,21 @@ test.describe(
           await page.getByTestId('rule-name').click();
         });
 
-        await test.step('Save rule and verify new card appears', async () => {
+        await test.step('Save rule and verify the new row appears', async () => {
           const patchPromise = page.waitForResponse(
             (r) =>
               r.url().includes('/api/v1/policies') &&
               r.request().method() === 'PATCH'
           );
           await page
-            .getByTestId('policy-detail-container')
-            .getByRole('button', { name: 'Save' })
+            .getByTestId('rule-form-footer')
+            .getByTestId('submit-btn')
             .click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
+          await expect(
+            page.getByTestId('policy-detail-container')
+          ).toBeVisible();
           await expect(page.getByTestId(`rule-${newRuleName}`)).toBeVisible();
           // Original seeded rule is still present
           await expect(
@@ -1150,9 +1170,12 @@ test.describe(
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
       try {
-        await test.step('Click edit rule button', async () => {
+        await test.step('Click edit rule opens the rule page, prefilled', async () => {
           await page.getByTestId(`edit-rule-${existingRuleName}`).click();
-          await page.getByTestId('rule-name').waitFor({ state: 'visible' });
+          await expect(page.getByTestId('rule-form-container')).toBeVisible();
+          await expect(
+            page.getByTestId('rule-name').getByRole('textbox')
+          ).toHaveValue(existingRuleName);
         });
 
         await test.step('Change the rule name', async () => {
@@ -1168,14 +1191,17 @@ test.describe(
               r.request().method() === 'PATCH'
           );
           await page
-            .getByTestId('policy-detail-container')
-            .getByRole('button', { name: 'Save' })
+            .getByTestId('rule-form-footer')
+            .getByTestId('submit-btn')
             .click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
 
-        await test.step('Verify updated rule card appears', async () => {
+        await test.step('Verify the updated rule row appears', async () => {
+          await expect(
+            page.getByTestId('policy-detail-container')
+          ).toBeVisible();
           await expect(
             page.getByTestId(`rule-${updatedRuleName}`)
           ).toBeVisible();
@@ -1220,18 +1246,28 @@ test.describe(
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
       try {
+        await test.step('Cancelling the confirmation keeps the rule', async () => {
+          await page.getByTestId(`delete-rule-${extraRuleName}`).click();
+          await expect(page.getByTestId('delete-rule-popover')).toBeVisible();
+          await page.getByTestId('delete-rule-popover-cancel').click();
+          await expect(page.getByTestId('delete-rule-popover')).toBeHidden();
+          await expect(page.getByTestId(`rule-${extraRuleName}`)).toBeVisible();
+        });
+
         await test.step('Click delete rule button and confirm', async () => {
+          await page.getByTestId(`delete-rule-${extraRuleName}`).click();
+          await expect(page.getByTestId('delete-rule-popover')).toBeVisible();
           const patchPromise = page.waitForResponse(
             (r) =>
               r.url().includes('/api/v1/policies') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId(`delete-rule-${extraRuleName}`).click();
+          await page.getByTestId('delete-rule-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
 
-        await test.step('Rule card is gone', async () => {
+        await test.step('Rule row is gone', async () => {
           await expect(
             page.getByTestId(`rule-${extraRuleName}`)
           ).not.toBeVisible();
@@ -1290,13 +1326,13 @@ test.describe(
           await page
             .getByTestId(`remove-${role.responseData.displayName}`)
             .click();
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          await expect(page.getByTestId('remove-entity-popover')).toBeVisible();
           const patchPromise = page.waitForResponse(
             (r) =>
               r.url().includes('/api/v1/roles') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId('confirm-button').click();
+          await page.getByTestId('remove-entity-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -1380,13 +1416,13 @@ test.describe(
 
         await test.step('Click remove and confirm', async () => {
           await page.getByTestId(`remove-${orgTeam.name}`).click();
-          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          await expect(page.getByTestId('remove-entity-popover')).toBeVisible();
           const patchPromise = page.waitForResponse(
             (r) =>
               r.url().includes('/api/v1/teams') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId('confirm-button').click();
+          await page.getByTestId('remove-entity-popover-confirm').click();
           const patchResponse = await patchPromise;
           expect(patchResponse.status()).toBe(200);
         });
@@ -1434,7 +1470,7 @@ test.describe(
           policiesContainer
         );
         await policyRow.getByTestId(`delete-action-${policyName}`).click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        await expect(page.getByTestId('delete-policy-popover')).toBeVisible();
       });
 
       await test.step('Confirm deletion and verify toast', async () => {
@@ -1443,7 +1479,7 @@ test.describe(
             r.url().includes('/api/v1/policies') &&
             r.request().method() === 'DELETE'
         );
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('delete-policy-popover-confirm').click();
         const deleteResponse = await deletePromise;
         expect(deleteResponse.status()).toBe(200);
         await toastNotification(page, /successfully/i);
@@ -1476,7 +1512,7 @@ test.describe(
 
       await test.step('Click delete policy button in header', async () => {
         await page.getByTestId('delete-policy-btn').click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        await expect(page.getByTestId('delete-policy-popover')).toBeVisible();
       });
 
       await test.step('Confirm deletion and verify navigation back to list', async () => {
@@ -1485,7 +1521,7 @@ test.describe(
             r.url().includes('/api/v1/policies') &&
             r.request().method() === 'DELETE'
         );
-        await page.getByTestId('confirm-button').click();
+        await page.getByTestId('delete-policy-popover-confirm').click();
         const deleteResponse = await deletePromise;
         expect(deleteResponse.status()).toBe(200);
         await page
@@ -1681,23 +1717,22 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await test.step('Export modal opens with required elements', async () => {
+      await test.step('Export opens a popover with required elements', async () => {
         const exportBtn = page.getByTestId('export-audit-logs-button');
         await exportBtn.waitFor({ state: 'visible' });
         await exportBtn.click();
-        await page
-          .getByTestId('export-audit-logs-modal')
-          .waitFor({ state: 'visible' });
+        await expect(
+          page.getByTestId('export-audit-logs-popover')
+        ).toBeVisible();
 
         // Date range picker must be present
         await expect(
           page.getByTestId('export-date-range-picker')
         ).toBeVisible();
 
-        // Export (OK) button must be disabled until a date range is selected
-        const modalFooter = page.getByTestId('export-audit-logs-modal');
+        // Export (confirm) button must be disabled until a date range is selected
         await expect(
-          modalFooter.getByRole('button', { name: 'Export' })
+          page.getByTestId('export-audit-logs-popover-confirm')
         ).toBeDisabled();
       });
 
@@ -1714,16 +1749,16 @@ test.describe(
         await page.getByRole('button', { name: 'Apply' }).click();
 
         // Export button should now be enabled
-        const modalFooter = page.getByTestId('export-audit-logs-modal');
-        await expect(
-          modalFooter.getByRole('button', { name: 'Export' })
-        ).toBeEnabled();
+        const exportConfirm = page.getByTestId(
+          'export-audit-logs-popover-confirm'
+        );
+        await expect(exportConfirm).toBeEnabled();
 
         // Click export and wait for the export-job creation API call
         const exportPromise = page.waitForResponse((r) =>
           r.url().includes('/api/v1/audit/logs/export')
         );
-        await modalFooter.getByRole('button', { name: 'Export' }).click();
+        await exportConfirm.click();
         await exportPromise;
       });
     });

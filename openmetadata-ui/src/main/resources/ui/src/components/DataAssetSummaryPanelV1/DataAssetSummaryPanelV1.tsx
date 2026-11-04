@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -20,7 +20,6 @@ import { ENTITY_PATH } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { EntityReference } from '../../generated/entity/type';
@@ -344,7 +343,6 @@ export const DataAssetSummaryPanelV1 = ({
       ),
     [entityPermissions, dataAsset.deleted]
   );
-  const { isTourPage } = useTourProvider();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState<boolean>(false);
   const [statusCounts, setStatusCounts] = useState<TestCaseStatusCounts>({
     success: 0,
@@ -525,7 +523,7 @@ export const DataAssetSummaryPanelV1 = ({
 
   const init = useCallback(async () => {
     // Do not reset permissions to null when id is temporarily missing during re-renders
-    if (!dataAsset.id || isTourPage) {
+    if (!dataAsset.id) {
       return;
     }
 
@@ -570,13 +568,7 @@ export const DataAssetSummaryPanelV1 = ({
       dataAsset.id
     );
     setEntityPermissions(permissions);
-  }, [
-    dataAsset.id,
-    dataAsset.entityType,
-    entityType,
-    isTourPage,
-    getEntityPermission,
-  ]);
+  }, [dataAsset.id, dataAsset.entityType, entityType, getEntityPermission]);
 
   useEffect(() => {
     if (entityPermissions) {
@@ -647,7 +639,9 @@ export const DataAssetSummaryPanelV1 = ({
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
           <div className="owners-header">
-            <span className="owners-title">{t('label.owner-plural')}</span>
+            <Typography size="text-xs" weight="semibold">
+              {t('label.owner-plural')}
+            </Typography>
             {editOwnerPermission && (
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnerPermission)}
@@ -667,7 +661,7 @@ export const DataAssetSummaryPanelV1 = ({
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
               placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-lowercase-plural'),
+                entity: t('label.owner-plural'),
               })}
               showLabel={false}
             />
@@ -756,7 +750,9 @@ export const DataAssetSummaryPanelV1 = ({
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
         <div className="owners-header">
-          <span className="owners-title">{t('label.owner-plural')}</span>
+          <Typography size="text-xs" weight="semibold">
+            {t('label.owner-plural')}
+          </Typography>
           {editOwnerPermission && (
             <UserTeamSelectableList
               hasPermission={Boolean(editOwnerPermission)}
@@ -776,7 +772,7 @@ export const DataAssetSummaryPanelV1 = ({
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
             placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-lowercase-plural'),
+              entity: t('label.owner-plural'),
             })}
             showLabel={false}
           />
@@ -824,7 +820,9 @@ export const DataAssetSummaryPanelV1 = ({
           (dataAsset.owners as EntityReference[])?.length || 0
         }`}>
         <div className="owners-header">
-          <span className="owners-title">{t('label.owner-plural')}</span>
+          <Typography size="text-xs" weight="semibold">
+            {t('label.owner-plural')}
+          </Typography>
           {editOwnerPermission && (
             <UserTeamSelectableList
               hasPermission={Boolean(editOwnerPermission)}
@@ -844,7 +842,7 @@ export const DataAssetSummaryPanelV1 = ({
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
             placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-lowercase-plural'),
+              entity: t('label.owner-plural'),
             })}
             showLabel={false}
           />
@@ -914,7 +912,9 @@ export const DataAssetSummaryPanelV1 = ({
             (dataAsset.owners as EntityReference[])?.length || 0
           }`}>
           <div className="owners-header">
-            <span className="owners-title">{t('label.owner-plural')}</span>
+            <Typography size="text-xs" weight="semibold">
+              {t('label.owner-plural')}
+            </Typography>
             {editOwnerPermission && (
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnerPermission)}
@@ -934,7 +934,7 @@ export const DataAssetSummaryPanelV1 = ({
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
               placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-lowercase-plural'),
+                entity: t('label.owner-plural'),
               })}
               showLabel={false}
             />
@@ -986,6 +986,7 @@ export const DataAssetSummaryPanelV1 = ({
     statusCounts,
     entityPermissions,
     changeSummary,
+    t,
   ]);
 
   useEffect(() => {

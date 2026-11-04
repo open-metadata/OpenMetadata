@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.PageHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
@@ -57,7 +59,9 @@ import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -115,6 +119,9 @@ public class OpenSearchClient implements SearchClient {
   private final OpenSearchTransport transport;
   private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
 
+  /** Caps bulk requests in flight on this client's connection pool, across all bulk sinks. */
+  @Getter private final BulkConnectionBudget bulkConnectionBudget;
+
   private volatile OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
@@ -141,9 +148,11 @@ public class OpenSearchClient implements SearchClient {
       this.transport =
           MeteredOpenSearchTransport.wrap(
               createAwsSdk2Transport(config, awsConfig, this.awsHttpClient));
+      this.bulkConnectionBudget = BulkConnectionBudget.forAwsSdkClient();
     } else {
       this.awsHttpClient = null;
       this.transport = MeteredOpenSearchTransport.wrap(createApacheHttpClient5Transport(config));
+      this.bulkConnectionBudget = BulkConnectionBudget.forHttpClientPool(config);
     }
 
     this.newClient = createOpenSearchNewClient(transport);
@@ -390,10 +399,19 @@ public class OpenSearchClient implements SearchClient {
       SearchSortFilter searchSortFilter,
       String q,
       String queryString,
-      SubjectContext subjectContext)
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> memoryStatuses)
       throws IOException {
     return searchManager.listWithOffset(
-        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+        filter,
+        limit,
+        offset,
+        index,
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext,
+        memoryStatuses);
   }
 
   @Override
@@ -411,8 +429,9 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    return searchManager.searchBySourceUrl(sourceUrl);
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchBySourceUrl(sourceUrl, subjectContext);
   }
 
   @Override
@@ -423,6 +442,11 @@ public class OpenSearchClient implements SearchClient {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return ensureLineageBuilder().searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return ensureLineageBuilder().getLineageRoot(fqn);
   }
 
   @Override
@@ -518,9 +542,16 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
-    return searchManager.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchManager.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
 
   @Override
@@ -569,18 +600,24 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index);
+    return searchManager.getEntityTypeCounts(request, index, null);
   }
 
   @Override
   public Response getEntityTypeCounts(
       SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
-    return aggregationManager.getEntityTypeCounts(request, index, subjectContext);
+    return searchManager.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     return aggregationManager.aggregate(request);
+  }
+
+  @Override
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(request, subjectContext);
   }
 
   @Override
@@ -737,6 +774,20 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    return entityManager.updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return entityManager.childUpdateStatus(taskId);
+  }
+
+  @Override
   public void updateChildren(
       List<String> indexNames,
       String field,
@@ -744,6 +795,32 @@ public class OpenSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     entityManager.updateChildren(indexNames, field, values, updates);
+  }
+
+  @Override
+  public void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildrenByNestedField(
+        indexNames, docIds, nestedPaths, field, values, updates);
+  }
+
+  @Override
+  public void updateReferenceCopies(
+      List<String> indexNames,
+      List<String> nestedPaths,
+      List<String> objectPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateReferenceCopies(
+        indexNames, nestedPaths, objectPaths, field, values, updates);
   }
 
   @Override
@@ -1272,14 +1349,46 @@ public class OpenSearchClient implements SearchClient {
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchy(
       String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
-    return getPageHierarchyFromSearch(parentFqn, pageType, sortFilter, offset, limit);
+    return listPageHierarchy(parentFqn, pageType, sortFilter, offset, limit, null);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchy(
+      String parentFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    Query pages =
+        OpenSearchRbacQueries.withAccessPolicies(
+            buildPageHierarchyBoolQuery(parentFqn, pageType), caller, rbacConditionEvaluator);
+    return getPageHierarchyFromSearch(pages, sortFilter, offset, limit);
   }
 
   @Override
   @lombok.SneakyThrows
   public ResultList<PageHierarchy> listPageHierarchyForActivePage(
       String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
-    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, sortFilter, offset, limit);
+    return listPageHierarchyForActivePage(activeFqn, pageType, sortFilter, offset, limit, null);
+  }
+
+  @Override
+  @lombok.SneakyThrows
+  public ResultList<PageHierarchy> listPageHierarchyForActivePage(
+      String activeFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    Query pages =
+        OpenSearchRbacQueries.withAccessPolicies(
+            buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType),
+            caller,
+            rbacConditionEvaluator);
+    return getPageHierarchyFromSearchForActivePage(pages, sortFilter, offset, limit);
   }
 
   private List<SortOptions> buildPageHierarchySortOptions(SearchSortFilter sortFilter) {
@@ -1305,9 +1414,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearch(
-      String parentFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
-      throws IOException {
-    Query boolQuery = buildPageHierarchyBoolQuery(parentFqn, pageType);
+      Query boolQuery, SearchSortFilter sortFilter, int offset, int limit) throws IOException {
     List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =
@@ -1334,9 +1441,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   private ResultList<PageHierarchy> getPageHierarchyFromSearchForActivePage(
-      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit)
-      throws IOException {
-    Query boolQuery = buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+      Query boolQuery, SearchSortFilter sortFilter, int offset, int limit) throws IOException {
     List<SortOptions> sortOptions = buildPageHierarchySortOptions(sortFilter);
 
     os.org.opensearch.client.opensearch.core.SearchRequest searchRequest =

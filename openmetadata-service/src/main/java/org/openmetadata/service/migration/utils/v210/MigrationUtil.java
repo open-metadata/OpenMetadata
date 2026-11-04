@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.migration.utils.v210;
 
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +35,7 @@ import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 /**
@@ -193,20 +193,7 @@ public class MigrationUtil {
   }
 
   private boolean tableExists(String tableName) {
-    try (ResultSet tables =
-        handle
-            .getConnection()
-            .getMetaData()
-            .getTables(null, null, tableName, new String[] {"TABLE"})) {
-      while (tables.next()) {
-        if (tableName.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
-          return true;
-        }
-      }
-      return false;
-    } catch (Exception e) {
-      return false;
-    }
+    return MigrationTableUtil.tableExists(handle, tableName);
   }
 
   /**

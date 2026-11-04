@@ -6,7 +6,6 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -416,82 +415,6 @@ public final class Tables {
     public void forEach(
         java.util.function.Consumer<org.openmetadata.sdk.fluent.wrappers.FluentTable> action) {
       fetch().forEach(action);
-    }
-  }
-
-  // ==================== Fluent Entity ====================
-
-  public static class FluentTable {
-    private final Table table;
-    private final OpenMetadataClient client;
-    private boolean modified = false;
-
-    public FluentTable(Table table, OpenMetadataClient client) {
-      this.table = table;
-      this.client = client;
-    }
-
-    public Table get() {
-      return table;
-    }
-
-    public Table getTable() {
-      return table;
-    }
-
-    public FluentTable withDescription(String description) {
-      table.setDescription(description);
-      modified = true;
-      return this;
-    }
-
-    public FluentTable withDisplayName(String displayName) {
-      table.setDisplayName(displayName);
-      modified = true;
-      return this;
-    }
-
-    public FluentTable withOwners(List<EntityReference> owners) {
-      table.setOwners(owners);
-      modified = true;
-      return this;
-    }
-
-    public FluentTable withTags(List<TagLabel> tags) {
-      table.setTags(tags);
-      modified = true;
-      return this;
-    }
-
-    public FluentTable withDomains(List<EntityReference> domain) {
-      table.setDomains(domain);
-      modified = true;
-      return this;
-    }
-
-    public FluentTable withDataProducts(List<EntityReference> dataProducts) {
-      table.setDataProducts(dataProducts);
-      modified = true;
-      return this;
-    }
-
-    public FluentTable withColumns(List<Column> columns) {
-      table.setColumns(columns);
-      modified = true;
-      return this;
-    }
-
-    public FluentTable save() {
-      if (modified) {
-        Table updated = client.tables().update(table.getId().toString(), table);
-        table.setVersion(updated.getVersion());
-        modified = false;
-      }
-      return this;
-    }
-
-    public TableDeleter delete() {
-      return new TableDeleter(client, table.getId().toString());
     }
   }
 

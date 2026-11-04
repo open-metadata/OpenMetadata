@@ -58,7 +58,9 @@ export const waitForSearchIndexed = async (
         )}`
       : `fullyQualifiedName:${JSON.stringify(entityFqn)}`;
 
-  while (Date.now() - start < timeout) {
+  // Poll-first loop: always check after sleeping so an entity indexed during
+  // the final sleep window is not missed by a timeout check before the poll.
+  for (;;) {
     const response = await apiContext.get(
       `/api/v1/search/query?q=${encodeURIComponent(
         query
@@ -94,6 +96,10 @@ export const waitForSearchIndexed = async (
       )
     ) {
       return;
+    }
+
+    if (Date.now() - start >= timeout) {
+      break;
     }
 
     const delay = intervals[Math.min(intervalIdx, intervals.length - 1)];

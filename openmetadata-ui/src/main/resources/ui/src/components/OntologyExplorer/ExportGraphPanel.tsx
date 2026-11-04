@@ -12,7 +12,7 @@
  */
 
 import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
-import { Download01 } from '@untitledui/icons';
+import { Download01 } from '@openmetadata/ui-core-components/icons';
 import React, { useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -88,7 +88,7 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
       <Button
         color="secondary"
         data-testid={testId}
-        iconLeading={<Download01 height={20} width={20} />}
+        iconLeading={Download01}
         isDisabled={exporting}
         isLoading={exporting}
         size="sm">

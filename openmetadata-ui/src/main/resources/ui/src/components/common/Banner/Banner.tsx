@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Spin } from 'antd';
+import { InfoCircle, Loading01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { ReactComponent as ErrorIcon } from '../../../assets/svg/banner/ic-banner-error.svg';
@@ -31,7 +30,7 @@ const getIcon = (type: BannerProps['type']) => {
     case 'error':
       return <ErrorIcon />;
     case 'info':
-      return <InfoCircleOutlined className="info-icon" />;
+      return <InfoCircle aria-hidden className="info-icon tw:size-4" />;
     default:
       return <SuccessIcon />;
   }
@@ -43,10 +42,9 @@ const Banner: FC<BannerProps> = ({ type, message, className, isLoading }) => {
   return (
     <div className={classNames('message-banner-wrapper', type, className)}>
       {isLoading ? (
-        <Spin
-          className={`loading-spinner-${type}`}
-          indicator={<LoadingOutlined spin />}
-          size="small"
+        <Loading01
+          aria-hidden
+          className={`loading-spinner-${type} tw:size-3.5 tw:animate-spin`}
         />
       ) : (
         icon

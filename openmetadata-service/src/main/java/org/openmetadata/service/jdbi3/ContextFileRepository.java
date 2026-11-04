@@ -31,6 +31,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.drive.ContextFileResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -167,6 +168,33 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   @Override
+  protected void storeEntityWithVersion(
+      ContextFile file, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    if (expectedUpdatedAt == null) {
+      storeEntityWithVersion(file, update, expectedVersion);
+    } else {
+      EntityReference folder = file.getFolder();
+      file.withFolder(null);
+      try {
+        int updatedRows =
+            contextFileDAO.updateWithVersionAndTimestamp(
+                file.getId().toString(),
+                file.getFullyQualifiedName(),
+                serializeForStorage(file),
+                expectedVersion.toString(),
+                expectedUpdatedAt);
+        if (updatedRows == 0) {
+          throw new PreconditionFailedException(
+              "The entity has been modified by another user. Please refresh and retry.");
+        }
+        invalidate(file);
+      } finally {
+        file.withFolder(folder);
+      }
+    }
+  }
+
+  @Override
   public void storeRelationships(ContextFile file) {
     if (file.getFolder() != null) {
       addRelationship(
@@ -212,6 +240,17 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   private EntityReference getFolder(ContextFile file) {
     return getFromEntityRef(file.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
+  }
+
+  @Override
+  protected List<EntityReference> getCountingParents(ContextFile file) {
+    EntityReference folder = folderOf(file);
+    return folder == null ? List.of() : List.of(folder);
+  }
+
+  // The folder is kept out of the stored JSON, so a file loaded without it looks it up.
+  private EntityReference folderOf(ContextFile file) {
+    return file.getFolder() != null ? file.getFolder() : getFolder(file);
   }
 
   public ContextFile moveContextFile(UUID id, EntityReference newFolderRef, String user) {
@@ -264,6 +303,10 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public class ContextFileUpdater extends EntityUpdater {
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
+      // Consolidated edits still need distinct timestamps for conditional processing writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
     }
 
     @Override
@@ -276,6 +319,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
+      recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig(), true);
       updateFolder();
     }
 
@@ -306,6 +350,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   @Override
   protected void entitySpecificCleanup(ContextFile entityInterface) {
+    // Cleanup removes the edge to the folder before postDelete refreshes the folder's count. A
+    // hard-delete cascade skips that refresh, so it skips the lookup too.
+    if (!isInHardDeleteCascade()) {
+      entityInterface.setFolder(folderOf(entityInterface));
+    }
     List<ContextFileContent> contents =
         new ArrayList<>(contentRepository.listByContextFileId(entityInterface.getId()));
     if (contents.isEmpty()) {
@@ -336,6 +385,25 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public ContextFileContent getContentById(String id) {
     UUID contentId = parseUuid(id);
     return contentId == null ? null : contentRepository.getById(contentId);
+  }
+
+  /**
+   * Whether any live document is a view of this stored asset. A file can reach the Context Center
+   * from somewhere that has its own copy of the blob — a chat attachment — and that owner needs to
+   * know whether deleting its copy would take a document's content with it.
+   */
+  public boolean existsForAsset(String assetId) {
+    return assetId != null && contextFileDAO.countByAssetId(assetId) > 0;
+  }
+
+  /** The live documents that are views of this stored asset. */
+  public List<ContextFile> findByAsset(String assetId) {
+    if (assetId == null) {
+      return List.of();
+    }
+    return contextFileDAO.findByAssetId(assetId).stream()
+        .map(json -> JsonUtils.readValue(json, ContextFile.class))
+        .toList();
   }
 
   public List<ContextFile> listByExtractedSourceHash(String sourceHash, UUID excludeId) {

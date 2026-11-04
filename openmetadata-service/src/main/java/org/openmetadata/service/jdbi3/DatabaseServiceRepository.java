@@ -40,6 +40,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -91,7 +92,7 @@ public class DatabaseServiceRepository
             repository.getFields("name,owners,tags,domains,extension"),
             databaseService.getFullyQualifiedName());
 
-    databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    databases.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user, recursive)
         .exportAllCsv(databases, recursive, callback);
   }
@@ -167,7 +168,8 @@ public class DatabaseServiceRepository
               // Convert the CSV record to a List<String>
               List<String> recordList = new ArrayList<>();
               for (int i = 0; i < record.size(); i++) {
-                recordList.add(record.get(i));
+                // Child export cells are already escaped; restore so formatCsv escapes once.
+                recordList.add(CsvUtil.restoreFormula(record.get(i)));
               }
               // Add the record to the CSV file using the overridden addRecord method
               this.addRecord(csvFile, recordList);
@@ -195,7 +197,7 @@ public class DatabaseServiceRepository
     /**
      * Add entity to CSV file with entity type
      */
-    public <E extends EntityInterface> void addEntityToCSV(
+    public <E extends EntityInterface<?>> void addEntityToCSV(
         CsvFile csvFile, E entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());

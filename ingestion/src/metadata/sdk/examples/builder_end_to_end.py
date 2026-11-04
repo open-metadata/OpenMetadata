@@ -100,7 +100,6 @@ class DatabaseServiceBuilderPy:
                 supportsDBTExtraction=None,
                 supportsProfiler=None,
                 supportsQueryComment=None,
-                sampleDataStorageConfig=None,
                 supportsDataDiff=None,
                 supportsUsageExtraction=None,
                 supportsLineageExtraction=None,

@@ -20,8 +20,8 @@ import {
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronRight, Eye } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
-import { ChevronRight, Eye } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -134,11 +134,11 @@ function RegexDisclosure({
         color="link-color"
         iconLeading={
           <ChevronRight
+            data-icon
             className={classNames(
               'tw:transition-transform tw:duration-150',
               isOpen && 'tw:rotate-90'
             )}
-            size={13}
           />
         }
         size="sm"

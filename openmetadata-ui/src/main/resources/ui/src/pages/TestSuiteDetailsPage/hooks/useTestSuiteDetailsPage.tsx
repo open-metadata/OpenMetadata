@@ -72,6 +72,7 @@ import {
   ListTestCaseParamsBySearch,
   updateTestSuiteById,
 } from '../../../rest/testAPI';
+import { getTestCaseExportFilters } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -81,6 +82,7 @@ import { TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS } from '../TestSuiteDetailsPage.con
 import { UseTestSuiteDetailsPageResult } from '../TestSuiteDetailsPage.interface';
 import {
   isTestCaseListSynchronized,
+  isTestCaseRemovalIndexed,
   isUnfilteredTestCaseRequest,
 } from '../TestSuiteDetailsPage.utils';
 
@@ -257,6 +259,18 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
   const testCaseResult = testCaseResponse?.data ?? [];
   const ingestionPipelineCount = ingestionPipelineResponse?.paging.total ?? 0;
+
+  // The Pipelines tab reports its total after each load or delete, and its
+  // drawer adds pipelines in place; keep the tab badge on that total.
+  const handlePipelinesChange = useCallback(
+    (total: number) =>
+      queryClient.setQueryData<typeof ingestionPipelineResponse>(
+        testSuiteIngestionPipelinesQueryKey(testSuiteFQN),
+        (cached) =>
+          cached ? { ...cached, paging: { ...cached.paging, total } } : cached
+      ),
+    [queryClient, testSuiteFQN]
+  );
   const isTestCaseLoading = isTestCaseQueryFetching || isSynchronizingTestCases;
   const isLoading = isPermissionLoading || isTestSuiteLoading;
 
@@ -282,9 +296,20 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       testSuite?.deleted ?? false,
       navigate,
       showModal,
-      EntityType.TEST_SUITE
+      EntityType.TEST_SUITE,
+      getTestCaseExportFilters({
+        ...testCaseRequestParams,
+        q: normalizedTestCaseSearchQuery,
+      })
     );
-  }, [globalPermissions, testSuite, navigate, showModal]);
+  }, [
+    globalPermissions,
+    testSuite,
+    navigate,
+    showModal,
+    testCaseRequestParams,
+    normalizedTestCaseSearchQuery,
+  ]);
 
   const slashedBreadCrumb = useMemo(
     () => [
@@ -428,7 +453,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
   const refreshTestCasesUntilIndexed = useCallback(
     async (
-      authoritativeTotal: number | undefined,
+      isIndexed: (indexedTotal: number | undefined) => boolean,
       isCurrentTestSuite: () => boolean,
       targetTestSuiteId: string
     ) => {
@@ -464,7 +489,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             return;
           }
 
-          if (isTestCaseListSynchronized(indexedTotal, authoritativeTotal)) {
+          if (isIndexed(indexedTotal)) {
             break;
           }
 
@@ -532,7 +557,8 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         }
 
         await refreshTestCasesUntilIndexed(
-          authoritativeTotal,
+          (indexedTotal) =>
+            isTestCaseListSynchronized(indexedTotal, authoritativeTotal),
           isCurrentTestSuite,
           testSuiteId
         );
@@ -544,6 +570,37 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     },
     [testSuiteId, testSuiteFQN, queryClient, refreshTestCasesUntilIndexed]
   );
+
+  // Removal unlinks the relationship synchronously but the search index that
+  // backs the list catches up later, so a plain refetch can still return the
+  // removed rows.
+  const handleTestCasesRemoved = useCallback(async () => {
+    if (!testSuiteId) {
+      return;
+    }
+    const submittedTestSuiteFQN = testSuiteFQN;
+    const isCurrentTestSuite = () =>
+      submittedTestSuiteFQN === activeTestSuiteFQN.current;
+
+    try {
+      const updatedTestSuite = await queryClient.fetchQuery({
+        queryKey: testSuiteDetailsQueryKey(submittedTestSuiteFQN),
+        queryFn: testSuiteDetailsQueryFn(submittedTestSuiteFQN),
+      });
+      const authoritativeTotal = updatedTestSuite?.tests?.length;
+
+      await refreshTestCasesUntilIndexed(
+        (indexedTotal) =>
+          isTestCaseRemovalIndexed(indexedTotal, authoritativeTotal),
+        isCurrentTestSuite,
+        testSuiteId
+      );
+    } catch (error) {
+      if (isCurrentTestSuite()) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  }, [testSuiteId, testSuiteFQN, queryClient, refreshTestCasesUntilIndexed]);
 
   const updateTestSuiteData = useCallback(
     async (updatedTestSuite: TestSuite) => {
@@ -659,6 +716,25 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     [fetchTestCases, handlePageChange, pageSize]
   );
 
+  // Removing every row of a page past the first would otherwise leave the user
+  // on an empty page with results still available before it.
+  useEffect(() => {
+    if (
+      currentPage > 1 &&
+      testCaseResponse?.data.length === 0 &&
+      !isTestCaseQueryFetching &&
+      !isSynchronizingTestCases
+    ) {
+      handleTestCasePaging({ currentPage: currentPage - 1 });
+    }
+  }, [
+    currentPage,
+    testCaseResponse,
+    isTestCaseQueryFetching,
+    isSynchronizingTestCases,
+    handleTestCasePaging,
+  ]);
+
   const handleTestSuiteUpdate = useCallback(
     (testCase?: TestCase) => {
       if (testCase) {
@@ -741,6 +817,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains: entityRules.canAddMultipleDomains,
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
@@ -748,6 +825,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     handleTestCaseSearch,
     handleSortTestCase,
     handleAddTestCaseSubmit,
+    handleTestCasesRemoved,
     onUpdateOwner,
     handleDomainUpdate,
     onDescriptionUpdate,

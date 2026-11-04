@@ -190,8 +190,8 @@ class TestIngestionFlow:
 
     def test_yield_tag_emits_classification_only_when_tags_exist(self, tableau_source):
         source, _ = tableau_source
-        assert list(source.yield_tag(FLOW_SALES))
-        assert list(source.yield_tag(FLOW_MARKETING)) == []
+        assert list(source.yield_tag_details(FLOW_SALES))
+        assert list(source.yield_tag_details(FLOW_MARKETING)) == []
 
     def test_lineage_is_queried_once_per_flow_even_without_records(self, tableau_source):
         source, client = tableau_source

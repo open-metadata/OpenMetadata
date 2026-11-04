@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Skeleton } from 'antd';
-import Card from 'antd/lib/card/Card';
+import {
+  Button,
+  Card,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -27,7 +30,6 @@ import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
@@ -110,17 +112,18 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const errorPlaceHolder = useMemo(
     () => (
       <div className="h-full text-center w-full p-x-box">
-        <ErrorPlaceHolder
-          buttonId="add-persona-button"
-          className="border-none"
-          heading={t('label.persona')}
-          permission={isAdminUser}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.persona'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={handleAddNewPersona}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <CreatePlaceholder
+            buttonId="add-persona-button"
+            data-testid={`create-error-placeholder-${t('label.persona')}`}
+            heading={t('label.persona')}
+            permission={isAdminUser}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.persona'),
+            })}
+            onCreate={handleAddNewPersona}
+          />
+        </div>
       </div>
     ),
     [isAdminUser]
@@ -155,7 +158,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
         {errorPlaceHolder}
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />
@@ -184,8 +186,8 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
             </div>
             <div>
               <Button
+                color="primary"
                 data-testid="add-persona-button"
-                type="primary"
                 onClick={handleAddNewPersona}>
                 {t('label.add-entity', { entity: t('label.persona') })}
               </Button>
@@ -204,7 +206,9 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
                     data-testid="skeleton-card-loader"
                     key={key}>
                     <Card>
-                      <Skeleton active paragraph title />
+                      <Card.Content>
+                        <SkeletonParagraph />
+                      </Card.Content>
                     </Card>
                   </div>
                 ))
@@ -233,7 +237,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
 
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
-            persona={addEditPersona}
             onCancel={handlePersonalAddEditCancel}
             onSave={handlePersonaAddEditSave}
           />

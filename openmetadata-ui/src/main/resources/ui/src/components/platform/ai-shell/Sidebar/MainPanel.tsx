@@ -16,7 +16,6 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
-import DomainScopeControl from '../../../common/DomainScopeControl/DomainScopeControl';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarMainFooter,
@@ -65,10 +64,9 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
         <div className="ask-main-panel__header-actions">
           <ButtonUtility
             className="ask-main-panel__collapse-btn"
-            color="tertiary"
             data-testid="ask-collapse-btn"
             icon={CollapsePanelIcon}
-            size="sm"
+            size="lg"
             tooltip={t('label.collapse')}
             type="button"
             onClick={onCollapse}
@@ -111,7 +109,10 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
       </nav>
 
       {recentSlots.length > 0 ? (
-        <div className="ask-main-panel__chats" data-testid="ask-recent-region">
+        <div
+          className="ask-main-panel__chats"
+          data-testid="ask-recent-region"
+          data-tour-step="recent-chats">
           {recentSlots.map(({ key, component: Slot }) => (
             <Slot key={key} />
           ))}
@@ -119,9 +120,6 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
       ) : null}
 
       <div className="ask-main-panel__footer">
-        <div className="ask-main-panel__domain" data-testid="ask-domain-scope">
-          <DomainScopeControl />
-        </div>
         {footerSlots.length > 0 ? (
           footerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
         ) : (

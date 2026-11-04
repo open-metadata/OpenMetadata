@@ -108,25 +108,36 @@ def test_main_health_alerts_and_keeps_the_flake_baseline_off_main():
     assert "C0AC5T013V1" not in slack["run"]
 
 
-def test_merge_queue_failures_alert_ci_cleanup_without_checked_out_code():
-    steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
-        "steps"
-    ]
-    alert = [s for s in steps if "failure() && github.event_name == 'merge_group'" in s.get("if", "")]
-    assert {s["name"] for s in alert} >= {
-        "Build the merge-queue failure message",
-        "Post the merge-queue failure to Slack (ci-cleanup)",
-    }
-    download = next(s for s in alert if s["name"] == "Download failed merge-queue shard results")
+def test_merge_queue_failures_alert_ci_cleanup_only_through_the_dequeue_report():
+    # A failed run does not always dequeue its PR: when an entry ahead leaves,
+    # GitHub rebuilds the group and lets the old run finish. So the summary only
+    # annotates its failed tests, and the dequeue report, which fires on a real
+    # dequeue, folds them into the one #ci-cleanup alert.
+    job = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"]
+    assert "C0AC5T013V1" not in json.dumps(job)
+    steps = job["steps"]
+    download = next(s for s in steps if s["name"] == "Download failed merge-queue shard results")
     # Artifacts belong to the run, so an unscoped pattern would report tests
     # that failed only in an earlier attempt of a re-run.
     assert download["with"]["pattern"] == "playwright-results-json-*-a${{ github.run_attempt }}*"
-    build = next(s for s in alert if s.get("id") == "queue-slack")
-    assert "C0AC5T013V1" in build["run"]
-    # Queue runs never check out code in the summary job, so the alert must not
-    # run repository scripts.
-    assert ".github/scripts" not in build["run"]
-    assert 'select(.status == "unexpected")' in build["run"]
+    annotate = next(s for s in steps if s["name"] == "Annotate the failed merge-queue tests")
+    assert annotate["if"] == "${{ failure() && github.event_name == 'merge_group' }}"
+    # Queue runs never check out code in the summary job, so it must not run
+    # repository scripts.
+    assert ".github/scripts" not in annotate["run"]
+    assert 'select(.status == "unexpected")' in annotate["run"]
+    assert "::error title=Merge queue failed tests::" in annotate["run"]
+
+    dequeue = workflow("merge-queue-dequeue-report.yml")
+    assert dequeue[True]["pull_request_target"]["types"] == [
+        "dequeued",
+        "enqueued",
+        "synchronize",
+    ]
+    report = json.dumps(dequeue["jobs"]["report"])
+    assert "C0AC5T013V1" in report
+    assert "check_name=playwright-summary" in report
+    assert 'select(.title == \\"Merge queue failed tests\\")' in report
 
 
 def test_pr_summary_reads_the_flake_baseline_report_only():
@@ -143,22 +154,41 @@ def test_shard_status_records_execution_identity():
         assert f"{field}: ${field}" in status["run"]
 
 
-def test_merge_groups_upload_no_reports():
+TRACE_REPORT_STEPS = {
+    "Checkout",
+    "Download blob reports",
+    "Setup Node.js",
+    "Restore yarn package cache",
+    "Install report dependencies",
+    "Merge HTML report",
+    "Upload merged Playwright report",
+}
+
+
+def test_merge_groups_upload_only_the_trace_report():
     steps = workflow("playwright-postgresql-e2e.yml")["jobs"]["playwright-summary"][
         "steps"
     ]
     for step in steps:
+        condition = step.get("if", "")
+        if step["name"] in TRACE_REPORT_STEPS:
+            assert "merge_group" not in condition, step["name"]
+            assert "always()" in condition, step["name"]
+            continue
         if step["name"] == "Gate verified merge-group shards":
             continue
-        if "github.event_name == 'merge_group'" in step["if"]:
-            continue  # queue-only Slack alerts: inline, no reports or checkout
-        assert "github.event_name != 'merge_group'" in step["if"], step["name"]
-    # A green queue run costs no artifact storage, but a broken one must still
-    # leave evidence: re-running it locally is a different SHA on a moving base.
+        if "github.event_name == 'merge_group'" in condition:
+            continue  # queue-only Slack alerts: inline
+        assert "github.event_name != 'merge_group'" in condition, step["name"]
+    # Traces ship on every queue run so retry passes stay debuggable; the other
+    # uploads still leave evidence only when the shard failed or was cancelled.
     for step in shard_steps():
         if not step.get("uses", "").startswith("actions/upload-artifact"):
             continue
         condition = step["if"]
+        if step["name"] == "Upload Playwright blob report":
+            assert condition == "always()"
+            continue
         if "github.event_name != 'merge_group'" in condition:
             continue
         assert "failure()" in condition, step["name"]
@@ -248,7 +278,10 @@ def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
     ]
     build = next(s for s in steps if s.get("id") == "queue-flaky")
     assert "github.event_name == 'merge_group'" in build["if"]
-    assert "failure()" not in build["if"], "flakes are reported on green queue runs too"
+    # Only the green attempt posts, so a failed-then-rerun queue run alerts once.
+    assert build["if"].startswith("${{ success() &&"), build["if"]
+    post = next(s for s in steps if s["name"].startswith("Post merge-queue flaky"))
+    assert post["if"].startswith("${{ success() &&"), post["if"]
     assert "C0C008ZAK0V" in build["run"]  # #pw-health
     # Reads what the shards already emit instead of uploading reports.
     assert '"Retry pass in merge queue"' in build["run"]
@@ -261,6 +294,25 @@ def test_merge_queue_flaky_tests_alert_pw_health_from_annotations():
         "permissions"
     ]
     assert permissions.get("checks") == "read"
+
+
+def test_daily_report_reads_queue_results_and_posts_with_a_fallback():
+    daily = workflow("playwright-flaky-daily-report.yml")
+    assert daily["permissions"] == {"actions": "read", "checks": "read", "contents": "read"}
+    steps = daily["jobs"]["report"]["steps"]
+    post = next(s for s in steps if s["name"].startswith("Post to Slack"))
+    # An absent input compares equal to false, so the schedule is named explicitly.
+    assert post["if"] == "${{ github.event_name == 'schedule' || inputs.post_to_slack }}"
+    # A failed HTML upload must not end the job before the text fallback posts.
+    assert post.get("continue-on-error") is True
+    fallback = next(s for s in steps if s["name"].startswith("Post a text fallback"))
+    assert fallback["if"] == "${{ steps.post.outcome == 'failure' }}"
+    assert fallback["with"]["method"] == "chat.postMessage"
+    assert fallback["with"]["payload-file-path"].endswith("/slack-fallback.json")
+    # The fallback message tells readers which artifact to download.
+    upload = next(s for s in steps if s["name"] == "Upload the report")
+    assert upload["with"]["name"] == "playwright-flaky-report"
+    assert steps.index(upload) < steps.index(post)
 
 
 def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
@@ -289,3 +341,47 @@ def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     [warning] = [line for line in result.stdout.splitlines() if line.startswith("::warning")]
     message = warning.split("::", 2)[2].replace("%0A", "\n").replace("%25", "%")
     assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(titles)
+
+
+def test_dequeue_report_labels_conflicts_and_evicts_main_conflicts():
+    dequeue = workflow("merge-queue-dequeue-report.yml")
+    jobs = dequeue["jobs"]
+    # The report itself must still fire only on a real dequeue.
+    assert "github.event.action == 'dequeued'" in jobs["report"]["if"]
+    label = next(
+        s for s in jobs["report"]["steps"] if s["name"] == "Label what the entry conflicts with"
+    )
+    assert label["if"] == "${{ steps.event.outputs.reason == 'MERGE_CONFLICT' }}"
+    # Labelling must never skip the dequeue comment or the Slack alert.
+    assert label["continue-on-error"] is True
+    run = label["run"]
+    # CONFLICTING against main means rebase; MERGEABLE means only an entry ahead.
+    assert run.index("CONFLICTING)") < run.index('label="merge conflict"')
+    assert run.index("MERGEABLE)") < run.index('label="queue conflict"')
+    # The conflict note goes into the PR comment, never the #ci-cleanup text.
+    comment = next(
+        s for s in jobs["report"]["steps"] if s["name"] == "Comment the checks that caused the dequeue"
+    )["run"]
+    assert "{ echo; cat conflict.txt; } >> body.md" in comment
+    assert "conflict.txt > detail.txt" not in comment
+    assert "conflict.txt >> detail.txt" not in comment
+    # UNKNOWN must never be guessed into a label.
+    assert "still UNKNOWN; leaving the PR unlabelled" in run
+
+    assert dequeue[True]["push"]["branches"] == ["main"]
+    evict = jobs["evict-main-conflicts"]
+    assert evict["if"] == "${{ github.event_name == 'push' }}"
+    run = evict["steps"][0]["run"]
+    # GitHub handles entries it is building; only QUEUED ones that conflict
+    # with main are dequeued.
+    assert 'select(.state == "QUEUED")' in run
+    assert '[ "$state" = "CONFLICTING" ] || continue' in run
+    assert run.index('if [ "$DRY_RUN" = "true" ]') < run.index("dequeuePullRequest")
+    # One entry's label/comment failure must not stop the remaining evictions.
+    assert '|| echo "::warning::could not label #$pr"' in run
+    assert '|| echo "::warning::could not comment on #$pr"' in run
+
+    clear = jobs["clear-conflict-labels"]
+    # synchronize fires on every push; skip unless a label is there to clear.
+    assert "contains(github.event.pull_request.labels.*.name, 'merge conflict')" in clear["if"]
+    assert "contains(github.event.pull_request.labels.*.name, 'queue conflict')" in clear["if"]

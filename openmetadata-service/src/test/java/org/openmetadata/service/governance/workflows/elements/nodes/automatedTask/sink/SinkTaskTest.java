@@ -14,11 +14,13 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
+import java.util.List;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.FlowElement;
@@ -27,8 +29,11 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.SubProcess;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.elements.NodeFactory;
+import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SinkTask;
 
 class SinkTaskTest {
@@ -335,6 +340,54 @@ class SinkTaskTest {
     assertTrue(
         namespaceMapExt.getStringValue().contains(ENTITY_LIST_VARIABLE),
         "entityList should be auto-added to namespace map");
+  }
+
+  @Test
+  void onlyAFailureEdgeLeavingTheNodeCountsAsAFailureBranch() {
+    EdgeDefinition failureEdge = edge("gitSink", "notifyOwners", "failure");
+
+    assertTrue(SinkTask.isFailureHandledByBranch("gitSink", List.of(failureEdge)));
+    assertFalse(
+        SinkTask.isFailureHandledByBranch("gitSink", List.of(edge("gitSink", "end", "success"))));
+    assertFalse(
+        SinkTask.isFailureHandledByBranch("gitSink", List.of(edge("gitSink", "end", null))));
+    assertFalse(
+        SinkTask.isFailureHandledByBranch(
+            "gitSink", List.of(edge("otherSink", "notifyOwners", "failure"))));
+  }
+
+  @Test
+  void deployedSinkTaskCarriesWhetherItsFailureIsRoutedToABranch() {
+    SinkTaskDefinition definition = createSinkTaskDefinition("gitSink", "git");
+    WorkflowConfiguration config = createWorkflowConfiguration(false);
+    List<EdgeDefinition> edges =
+        List.of(edge("gitSink", "end", "success"), edge("gitSink", "notifyOwners", "failure"));
+
+    assertEquals(
+        "true",
+        failureHandledByBranchField(NodeFactory.createNode(definition, config, "wf", edges)));
+    assertEquals(
+        "false",
+        failureHandledByBranchField(
+            NodeFactory.createNode(
+                definition, config, "wf", List.of(edge("gitSink", "end", "success")))));
+    assertEquals("false", failureHandledByBranchField(new SinkTask(definition, config)));
+  }
+
+  private String failureHandledByBranchField(NodeInterface sinkTask) {
+    Process process = new Process();
+    sinkTask.addToWorkflow(new BpmnModel(), process);
+    ServiceTask serviceTask =
+        (ServiceTask) findSubProcess(process, "gitSink").getFlowElement("gitSink.executeSink");
+    return serviceTask.getFieldExtensions().stream()
+        .filter(ext -> SinkTask.FAILURE_HANDLED_BY_BRANCH_FIELD.equals(ext.getFieldName()))
+        .findFirst()
+        .map(FieldExtension::getStringValue)
+        .orElse(null);
+  }
+
+  private static EdgeDefinition edge(String from, String to, String condition) {
+    return new EdgeDefinition().withFrom(from).withTo(to).withCondition(condition);
   }
 
   private SubProcess findSubProcess(Process process, String id) {

@@ -56,7 +56,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('@untitledui/icons', () => {
+jest.mock('@openmetadata/ui-core-components/icons', () => {
   const Icon = () => <svg />;
 
   // A Proxy rather than a fixed list: the nav rail and the empty-state config each pull their own

@@ -67,11 +67,12 @@ const renderPreview = (
   definition: TestDefinition,
   params: Record<string, unknown>,
   target?: string,
-  profilerConfig?: TableProfilerConfig
+  profilerConfig?: TableProfilerConfig,
+  useDynamicAssertion?: boolean
 ) => {
   const Wrapper = () => {
     const form = useForm<FormValues>({
-      defaultValues: { params } as FormValues,
+      defaultValues: { params, useDynamicAssertion } as FormValues,
     });
 
     return (
@@ -193,6 +194,76 @@ describe('ThresholdPreview', () => {
     );
   });
 
+  describe('a dynamic assertion, whose bounds are learned at run time', () => {
+    // The static-bound inputs are hidden in dynamic mode, but the form still
+    // holds values prefilled from a saved test case — the sentence must not
+    // quote them as the pass/fail range.
+    const statisticalDefinition = definitionOf('tableRowCountToBeBetween', [
+      { name: 'minValue' },
+      { name: 'maxValue' },
+    ]);
+
+    it('describes the tolerance around the learned bounds', () => {
+      renderPreview(
+        statisticalDefinition,
+        { minValue: 100, maxValue: 200, threshold: 10 },
+        undefined,
+        undefined,
+        true
+      );
+
+      expect(sentence()).toBe(
+        'Fail when the measured value falls outside the learned bounds, allowing a deviation of 10.'
+      );
+      expect(sentence()).not.toContain('100');
+      expect(
+        screen.queryByTestId('threshold-zero-bound-warning')
+      ).not.toBeInTheDocument();
+    });
+
+    it('previews with no static bounds at all', () => {
+      renderPreview(
+        statisticalDefinition,
+        { threshold: 5, thresholdUnit: { id: 'PERCENTAGE' } },
+        undefined,
+        undefined,
+        true
+      );
+
+      expect(sentence()).toBe(
+        'Fail when the measured value falls outside the learned bounds, allowing a deviation of 5%.'
+      );
+    });
+
+    it('drops the deviation clause when the threshold is zero', () => {
+      renderPreview(
+        statisticalDefinition,
+        { minValue: 100 },
+        undefined,
+        undefined,
+        true
+      );
+
+      expect(sentence()).toBe(
+        'Fail when the measured value falls outside the learned bounds.'
+      );
+    });
+
+    it('keeps the row-countable tolerance, which bounds cannot affect', () => {
+      renderPreview(
+        definitionOf('columnValuesToBeNotNull'),
+        { threshold: 1, thresholdUnit: { id: 'PERCENTAGE' } },
+        'email',
+        undefined,
+        true
+      );
+
+      expect(sentence()).toBe(
+        'Fail when more than 1% of rows in email fail this test.'
+      );
+    });
+  });
+
   it('reads the custom SQL query through its operator and strategy', () => {
     renderPreview(
       definitionOf('tableCustomSQLQuery', [
@@ -219,18 +290,38 @@ describe('ThresholdPreview', () => {
     );
   });
 
-  it('says the unit is ignored when custom SQL is given a percentage', () => {
+  it('reads a custom SQL percentage as a share of the table rows', () => {
     renderPreview(definitionOf('tableCustomSQLQuery', [{ name: 'operator' }]), {
       operator: { id: '<=' },
       threshold: 10,
       thresholdUnit: { id: 'PERCENTAGE' },
     });
 
-    // The sentence states the raw-count reading that will actually run.
-    expect(sentence()).toBe('Pass when the query returns at most 10 row(s).');
+    expect(sentence()).toBe(
+      'Pass when the query returns at most 10% of table rows.'
+    );
     expect(
-      screen.getByTestId('threshold-unit-not-enforced-warning')
-    ).toHaveTextContent('the threshold unit is not applied');
+      screen.queryByTestId('threshold-unit-not-enforced-warning')
+    ).not.toBeInTheDocument();
+  });
+
+  it('reads a COUNT strategy percentage as a share of the table rows', () => {
+    renderPreview(
+      definitionOf('tableCustomSQLQuery', [
+        { name: 'operator' },
+        { name: 'strategy' },
+      ]),
+      {
+        operator: { id: '>' },
+        strategy: { id: 'COUNT' },
+        threshold: 1,
+        thresholdUnit: { id: 'PERCENTAGE' },
+      }
+    );
+
+    expect(sentence()).toBe(
+      'Pass when the number the query returns is more than 1% of table rows.'
+    );
   });
 
   it('warns that the in-set threshold needs Match enum, instead of promising one', () => {
@@ -267,13 +358,9 @@ describe('ThresholdPreview', () => {
   });
 
   it('warns instead of promising a tolerance no validator applies', () => {
-    renderPreview(
-      definitionOf('columnValuesToBeBetween', [
-        { name: 'minValue' },
-        { name: 'maxValue' },
-      ]),
-      { minValue: 1, maxValue: 10, threshold: 5 }
-    );
+    renderPreview(definitionOf('columnValuesToBeAtExpectedLocation'), {
+      threshold: 5,
+    });
 
     expect(
       screen.queryByTestId('threshold-preview-sentence')

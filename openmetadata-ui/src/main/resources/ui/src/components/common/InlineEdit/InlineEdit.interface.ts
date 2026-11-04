@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonProps, SpaceProps } from 'antd';
+import { ButtonUtilityProps } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 
 export interface InlineEditProps {
@@ -19,8 +19,8 @@ export interface InlineEditProps {
   onCancel: () => void;
   // onSave it can be API call or normal function
   onSave: () => void | Promise<void>;
-  direction?: SpaceProps['direction'];
+  direction?: 'horizontal' | 'vertical';
   isLoading?: boolean;
-  cancelButtonProps?: ButtonProps;
-  saveButtonProps?: ButtonProps;
+  cancelButtonProps?: ButtonUtilityProps;
+  saveButtonProps?: ButtonUtilityProps;
 }

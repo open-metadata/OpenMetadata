@@ -13,12 +13,14 @@
 import {
   Box,
   Button,
+  Divider,
   PageHeader,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Divider, Space } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -27,8 +29,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
@@ -38,13 +38,13 @@ import {
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import EntityDetailHeader from '../../components/common/EntityDetailHeader/EntityDetailHeader.component';
 import { EntityDetailTab } from '../../components/common/EntityDetailHeader/EntityDetailHeader.interface';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../components/common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../components/common/Loader/Loader';
@@ -76,14 +76,12 @@ import {
   TIER_CATEGORY,
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
-import { TAGS_DOCS } from '../../constants/docs.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../enums/Assets.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -112,6 +110,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { revokeEditPermissions } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -211,6 +210,7 @@ const TagPage = () => {
   const {
     permissions: tagPermissions,
     canEditAll: tagCanEditAll,
+    canEditDomains: tagCanEditDomains,
     error: tagPermissionsError,
   } = useEntityPermissions(
     ResourceEntity.TAG,
@@ -289,13 +289,20 @@ const TagPage = () => {
     if (tagItem) {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
+      if (!isEditable) {
+        return {
+          editTagsPermission: false,
+          disabledAwarePermissions: revokeEditPermissions(tagPermissions),
+        };
+      }
+
       return {
-        editTagsPermission: isEditable && tagCanEditAll,
+        editTagsPermission: tagCanEditAll,
         disabledAwarePermissions: {
           ...tagPermissions,
-          EditOwners:
-            isEditable && (tagCanEditAll || tagPermissions.EditOwners),
-          EditAll: isEditable && tagCanEditAll,
+          EditOwners: tagCanEditAll || tagPermissions.EditOwners,
+          EditDomains: tagCanEditDomains,
+          EditAll: tagCanEditAll,
         },
       };
     }
@@ -309,7 +316,7 @@ const TagPage = () => {
     // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
     // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
     // (Task 8 Batches 3–4) of fixing missing deps in passing.
-  }, [tagPermissions, tagCanEditAll, tagItem]);
+  }, [tagPermissions, tagCanEditAll, tagCanEditDomains, tagItem]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
@@ -449,10 +456,6 @@ const TagPage = () => {
     }
   };
 
-  const handleAddTagClick = () => {
-    navigate(ROUTES.TAGS);
-  };
-
   const fetchClassificationTagAssets = useCallback(async () => {
     try {
       const res = await searchQuery({
@@ -521,7 +524,7 @@ const TagPage = () => {
                 description={t('message.rename-entity', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={EditIcon}
+                icon={Edit01}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -590,7 +593,7 @@ const TagPage = () => {
                     entityType: t('label.tag-lowercase'),
                   }
                 )}
-                icon={IconDelete}
+                icon={Trash01}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -623,7 +626,7 @@ const TagPage = () => {
           />
         ),
         key: EntityTabs.OVERVIEW,
-        children: <GenericTab type={PageType.Tag} variant="flat" />,
+        children: <GenericTab type={PageType.Tag} />,
       },
       {
         label: (
@@ -795,7 +798,7 @@ const TagPage = () => {
 
     const disabledBadge = tagItem.disabled ? (
       <>
-        <Divider className="m-x-xs h-6" type="vertical" />
+        <Divider className="m-x-xs h-6 tw:self-center" orientation="vertical" />
         <StatusBadge
           dataTestId="disabled"
           label={t('label.disabled')}
@@ -809,10 +812,15 @@ const TagPage = () => {
     }
 
     return (
-      <Space>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={2}
+        itemClassName="layout-space-item">
         {statusBadge}
         {disabledBadge}
-      </Space>
+      </Box>
     );
   }, [tagItem]);
 
@@ -833,22 +841,20 @@ const TagPage = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('tag', tagFqn)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError('tag', tagFqn)}
+        />
+      </div>
     );
   }
 
   if (!tagItem) {
     return (
-      <ErrorPlaceHolder
-        buttonId="add-tag"
-        className="mt-0-important"
-        doc={TAGS_DOCS}
-        heading={t('label.tag')}
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-        onClick={handleAddTagClick}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
     );
   }
 

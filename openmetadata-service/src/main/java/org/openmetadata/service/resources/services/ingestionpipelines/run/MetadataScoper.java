@@ -53,7 +53,7 @@ public class MetadataScoper implements SourceConfigScoper {
   }
 
   @Override
-  public Map<String, Object> sourceConfigOverride(EntityInterface table) {
+  public Map<String, Object> sourceConfigOverride(EntityInterface<?> table) {
     Map<String, Object> override = new HashMap<>(tableFilterScoper.sourceConfigOverride(table));
     override.put("markDeletedTables", false);
     override.put("markDeletedSchemas", false);

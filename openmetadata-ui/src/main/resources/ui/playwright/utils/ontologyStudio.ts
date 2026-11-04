@@ -12,11 +12,10 @@
  */
 
 import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
-import { SidebarItem } from '../constant/sidebar';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
-import { sidebarClick } from '../utils/sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
 
 export interface GraphTermRef {
@@ -27,56 +26,42 @@ export interface GraphTermRef {
 export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
-  const studioGlossaryMenu = page.getByTestId('ontology-glossary-menu-trigger');
-  if (await studioGlossaryMenu.isVisible()) {
-    if ((await studioGlossaryMenu.getAttribute('aria-expanded')) !== 'true') {
-      await studioGlossaryMenu.click();
-    }
-    const glossaryOption = page.getByTestId(glossaryId);
-    await glossaryOption.scrollIntoViewIfNeeded();
-    await glossaryOption.click();
-    await expect(studioGlossaryMenu).toHaveAttribute('aria-expanded', 'false');
-    await expect(studioGlossaryMenu).toHaveAttribute(
-      'data-selected-glossary-id',
-      glossaryId
-    );
-
-    return;
+  const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
+  if ((await scopeMenu.getAttribute('aria-expanded')) !== 'true') {
+    await scopeMenu.click();
   }
-
-  await page.getByTestId('search-dropdown-glossaryIds').click();
-  await page.getByTestId(glossaryId).click();
-  const termsResponse = waitForResponseWithStatus(
-    page,
-    (response) =>
-      response.request().method() === 'GET' &&
-      response.url().includes('/api/v1/glossaryTerms'),
-    200,
-    { timeout: 30000 }
+  const glossaryOption = page.getByTestId(glossaryId);
+  await glossaryOption.scrollIntoViewIfNeeded();
+  await glossaryOption.click();
+  await expect(scopeMenu).toHaveAttribute('aria-expanded', 'false');
+  await expect(scopeMenu).toHaveAttribute(
+    'data-scope-key',
+    `glossary:${glossaryId}`
   );
-  await page.getByTestId('update-btn').click();
-  await termsResponse;
 }
 
 export async function navigateToOntologyStudio(page: Page) {
-  await redirectToHomePage(page);
   const glossaryResponse = waitForResponseWithStatus(
     page,
     (response) =>
       response.request().method() === 'GET' &&
       response.url().includes('/api/v1/glossaries'),
     200,
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
-  await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
+  await page.goto('/governance/ontology?scope=glossary:all');
   await glossaryResponse;
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await expect(page.getByTestId('ontology-scope-menu-trigger')).toHaveAttribute(
+    'data-scope-key',
+    'glossary:all'
+  );
 }
 
 export async function waitForGraphLoaded(page: Page) {
   await expect(page.getByTestId('ontology-graph-loading')).not.toBeVisible({
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 }
 
@@ -96,7 +81,7 @@ export async function releaseOntologyEditLease(
     .catch(() => undefined);
   await page.getByTestId('mode-tab-view').click();
   await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-    'aria-pressed',
+    'aria-selected',
     'true'
   );
   await expect(
@@ -554,7 +539,7 @@ export async function waitForMoreNodesThan(
       }
     },
     count,
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
 }
 export async function applyMultiGlossaryFilter(
@@ -571,7 +556,7 @@ export async function applyMultiGlossaryFilter(
       response.request().method() === 'GET' &&
       response.url().includes('/api/v1/glossaryTerms'),
     200,
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
   await page.getByTestId('update-btn').click();
   await termsResponse;

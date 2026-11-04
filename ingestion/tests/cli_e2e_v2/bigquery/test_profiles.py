@@ -129,8 +129,8 @@ def test_system_profile_attributes_dml_to_its_table(cli, bigquery, bigquery_prof
 
 
 @pytest.mark.e2e_contract("profile.partition.default")
-def test_profiler_defaults_to_latest_day_partition(cli, bigquery, bigquery_partitioned_table):
-    """Without a partition config, BigQuery profiling must read only [CURRENT_DATE - 1 DAY, ...)."""
+def test_profiler_uses_default_three_day_partition_window(cli, bigquery, bigquery_partitioned_table):
+    """Without a partition config, BigQuery profiling reads the inferred three-day window."""
     table = bigquery_partitioned_table
     filters = _only(table)
     cli.run(bigquery.invocation(MetadataPipeline(includeStoredProcedures=False), filters=filters))
@@ -139,5 +139,5 @@ def test_profiler_defaults_to_latest_day_partition(cli, bigquery, bigquery_parti
     )
     cli.run(bigquery.invocation(profiler_options(), filters=filters))
     expect.poll(bigquery.profile_query(table)).satisfies(
-        column_has_metrics("id", valuesCount=1, nullCount=0, min=1, max=1)
+        column_has_metrics("id", valuesCount=2, nullCount=0, min=1, max=2)
     )

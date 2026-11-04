@@ -20,6 +20,7 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { useAdvanceSearch } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -36,6 +37,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     hideFocusOutline,
     iconLeading,
     iconTrailing,
+    isDisabled,
+    isLoading: _isLoading,
     onClick,
     onPress,
     size,
@@ -45,6 +48,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     hideFocusOutline?: boolean;
     iconLeading?: import('react').ReactNode;
     iconTrailing?: import('react').ReactNode;
+    isDisabled?: boolean;
+    isLoading?: boolean;
     onClick?: () => void;
     onPress?: () => void;
     size?: string;
@@ -52,6 +57,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <button
       data-hide-focus-outline={hideFocusOutline}
       data-size={size}
+      disabled={isDisabled}
       type="button"
       onClick={onPress ?? onClick}
       {...rest}>
@@ -181,23 +187,39 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div data-testid="explore-pagination" />
   );
 
+  const { Badge, Tabs } = jest.requireActual(
+    '@openmetadata/ui-core-components'
+  );
+
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
   return {
     Alert,
+    Badge,
+    BadgeWithButton: actual.BadgeWithButton,
     Box,
     Button,
+    ButtonUtility: actual.ButtonUtility,
     Card,
+    Dialog: actual.Dialog,
     Divider,
     Dropdown,
+    Modal: actual.Modal,
+    ModalOverlay: actual.ModalOverlay,
     PaginationCardWithControls,
+    RadioButton: actual.RadioButton,
+    RadioGroup: actual.RadioGroup,
+    Skeleton: actual.Skeleton,
+    Tabs,
     Toggle,
     Typography,
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
-  Edit05: () => <span data-testid="edit-05-icon" />,
+  Edit01: () => <span data-testid="edit-01-icon" />,
   FilterFunnel01: () => <span data-testid="filter-funnel-icon" />,
   Trash01: () => <span data-testid="trash-icon" />,
   XCircle: () => <span data-testid="x-circle-icon" />,
@@ -236,6 +258,17 @@ jest.mock('react-router-dom', () => ({
       {children}
     </a>
   ),
+}));
+
+jest.mock('../common/DomainFilterChip/DomainFilterChip.component', () => ({
+  DomainFilterChip: () => <div data-testid="domain-filter-chip" />,
+}));
+
+const mockIsAiMode = jest.fn().mockReturnValue(false);
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: () => mockIsAiMode(),
 }));
 
 jest.mock('../Explore/ExploreTree/ExploreTree', () => {
@@ -302,54 +335,6 @@ jest.mock(
     })),
   })
 );
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Modal: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        open,
-        onCancel,
-        onOk,
-        okButtonProps,
-        okText,
-        cancelText,
-        className,
-        'data-testid': dataTestId,
-      }: {
-        children?: React.ReactNode;
-        open?: boolean;
-        onCancel?: () => void;
-        onOk?: () => void;
-        okButtonProps?: { disabled?: boolean };
-        okText?: React.ReactNode;
-        cancelText?: React.ReactNode;
-        className?: string;
-        'data-testid'?: string;
-      }) =>
-        open ? (
-          <div className={className} data-testid={dataTestId} role="dialog">
-            {children}
-            <button type="button" onClick={onCancel}>
-              {cancelText}
-            </button>
-            <button
-              disabled={okButtonProps?.disabled}
-              type="button"
-              onClick={onOk}>
-              {okText}
-            </button>
-          </div>
-        ) : null
-    ),
-  Alert: jest
-    .fn()
-    .mockImplementation(({ message }: { message?: React.ReactNode }) => (
-      <span>{message ?? 'Index Not Found Alert'}</span>
-    )),
-}));
 
 jest.mock('../SearchedData/SearchedData', () =>
   jest.fn().mockReturnValue(<div>SearchedData</div>)
@@ -463,7 +448,11 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsAiMode.mockReturnValue(false);
     window.location.search = '';
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '',
+    }));
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
@@ -486,6 +475,31 @@ describe('ExploreV1', () => {
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
   });
 
+  it('lists entity types as selectable tabs while searching', () => {
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?search=customer',
+    }));
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    const leftPanel = screen.getByTestId('explore-left-panel');
+    const tablesTab = within(leftPanel).getByTestId('tables-tab');
+
+    expect(leftPanel).toHaveAttribute('role', 'tablist');
+    expect(tablesTab).toHaveAttribute('aria-selected', 'true');
+    expect(within(tablesTab).getByTestId('filter-count')).toHaveTextContent(
+      '60'
+    );
+
+    fireEvent.click(tablesTab);
+
+    expect(onChangeSearchIndex).not.toHaveBeenCalled();
+
+    fireEvent.click(within(leftPanel).getByTestId('databases-tab'));
+
+    expect(onChangeSearchIndex).toHaveBeenCalledWith('database');
+  });
+
   it('normalizes out-of-range current page to the last available page', async () => {
     render(<ExploreV1 {...props} currentPage={999} pageSize={10} />, {
       wrapper: Wrapper,
@@ -505,6 +519,21 @@ describe('ExploreV1', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('query-bar-empty-text')).toBeInTheDocument();
   });
+
+  // AI mode shows the chip in its search header instead.
+  it.each([
+    [false, 1],
+    [true, 0],
+  ])(
+    'with AI mode %s, renders %i domain chips under the filters',
+    (isAiMode, count) => {
+      mockIsAiMode.mockReturnValue(isAiMode);
+
+      render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+      expect(screen.queryAllByTestId('domain-filter-chip')).toHaveLength(count);
+    }
+  );
 
   it('uses the query-panel Clear action when a browse filter is active', () => {
     render(
@@ -611,7 +640,7 @@ describe('ExploreV1', () => {
   it('should show the index not found alert, if get isElasticSearchIssue true in prop', () => {
     render(<ExploreV1 {...props} isElasticSearchIssue />, { wrapper: Wrapper });
 
-    expect(screen.getByText('Index Not Found Alert')).toBeInTheDocument();
+    expect(screen.getByText('server.indexing-error')).toBeInTheDocument();
 
     expect(screen.queryByText('SearchedData')).not.toBeInTheDocument();
   });

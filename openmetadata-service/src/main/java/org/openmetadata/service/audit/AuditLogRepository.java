@@ -1,7 +1,7 @@
 package org.openmetadata.service.audit;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldValue;
+import static org.openmetadata.service.audit.AuditFieldValues.getFieldValue;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -735,7 +735,7 @@ public class AuditLogRepository {
 
   /**
    * Extract a human-readable value from a field change. Reuses the existing formatting logic from
-   * {@link org.openmetadata.service.formatter.field.DefaultFieldFormatter#getFieldValue}.
+   * {@link AuditFieldValues#getFieldValue}.
    */
   private String extractFieldValue(FieldChange field) {
     Object newValue = field.getNewValue();

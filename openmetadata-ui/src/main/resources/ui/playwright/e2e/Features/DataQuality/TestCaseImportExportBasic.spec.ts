@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
@@ -75,7 +76,7 @@ const test = base.extend<{
 }>({
   testCaseEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await testCaseEditUser.login(page);
+    await testCaseEditUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -258,8 +259,10 @@ test.describe(
           await page.locator('[type="file"]').waitFor({ state: 'attached' });
           await page.setInputFiles('[type="file"]', csvFilePath);
           await startCsvPreview(page);
-          await expect(page.getByText(/INVALID_HEADER/i).first()).toBeVisible({
-            timeout: 30000,
+          await expect(
+            page.getByText(/INVALID_HEADER/i).filter({ visible: true })
+          ).not.toHaveCount(0, {
+            timeout: ACTION_TIMEOUT,
           });
         });
       } finally {

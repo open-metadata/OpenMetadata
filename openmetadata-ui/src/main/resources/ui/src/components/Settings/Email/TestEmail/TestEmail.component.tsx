@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormProps, Input, Modal } from 'antd';
+import {
+  FormField,
+  HookForm,
+  Input,
+  SimpleModal,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../../constants/constants';
+import { EMAIL_REG_EX } from '../../../../constants/regex.constants';
 import { testEmailConnection } from '../../../../rest/settingConfigAPI';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 
@@ -22,12 +28,16 @@ interface TesEmailProps {
   onCancel: () => void;
 }
 
+interface TestEmailFormValues {
+  email: string;
+}
+
 const TestEmail = ({ onCancel }: TesEmailProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<TestEmailFormValues>({ defaultValues: { email: '' } });
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSubmit: FormProps['onFinish'] = async (values) => {
+  const handleSubmit = async (values: TestEmailFormValues) => {
     try {
       setIsLoading(true);
       const res = await testEmailConnection(values);
@@ -41,44 +51,54 @@ const TestEmail = ({ onCancel }: TesEmailProps) => {
   };
 
   return (
-    <Modal
-      destroyOnClose
-      open
-      closable={false}
-      closeIcon={null}
+    <SimpleModal
+      isOpen
       data-testid="test-email-modal"
-      maskClosable={false}
-      okButtonProps={{
-        htmlType: 'submit',
-        id: 'test-email-form',
-        form: 'test-email-form',
-        loading: isLoading,
-      }}
+      isDismissable={false}
+      isOkLoading={isLoading}
       okText={t('label.test')}
       title={t('label.test-email-connection')}
-      onCancel={onCancel}>
-      <Form
+      onCancel={onCancel}
+      onOk={form.handleSubmit(handleSubmit)}>
+      <HookForm
         data-testid="test-email-form"
         form={form}
         id="test-email-form"
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSubmit}>
-        <Form.Item
-          label={t('label.email')}
+        onSubmit={form.handleSubmit(handleSubmit)}>
+        <FormField
+          control={form.control}
           name="email"
-          rules={[{ type: 'email', required: true }]}>
-          <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of test-email form
-            autoFocus
-            data-testid="test-email-input"
-            placeholder={t('label.enter-entity', {
-              entity: t('label.email-lowercase'),
-            })}
-          />
-        </Form.Item>
-      </Form>
-    </Modal>
+          rules={{
+            required: t('message.field-text-is-required', {
+              fieldText: t('label.email'),
+            }),
+            pattern: {
+              value: EMAIL_REG_EX,
+              message: t('message.entity-is-not-valid', {
+                entity: t('label.email'),
+              }),
+            },
+          }}>
+          {({ field, fieldState }) => (
+            <Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of test-email form
+              autoFocus
+              isRequired
+              hint={fieldState.error?.message}
+              inputDataTestId="test-email-input"
+              isInvalid={fieldState.invalid}
+              label={t('label.email')}
+              placeholder={t('label.enter-entity', {
+                entity: t('label.email-lowercase'),
+              })}
+              value={field.value}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+            />
+          )}
+        </FormField>
+      </HookForm>
+    </SimpleModal>
   );
 };
 

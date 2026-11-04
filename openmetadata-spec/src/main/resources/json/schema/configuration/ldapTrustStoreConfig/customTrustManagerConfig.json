@@ -22,7 +22,8 @@
     },
     "trustStoreFilePassword": {
       "description": "Truststore file password",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "trustStoreFileFormat": {
       "description": "Truststore file format",

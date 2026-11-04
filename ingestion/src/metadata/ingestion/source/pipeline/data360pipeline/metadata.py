@@ -19,6 +19,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -41,6 +42,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -65,7 +67,6 @@ from metadata.ingestion.source.pipeline.data360pipeline.models import (
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -79,6 +80,16 @@ class Data360PipelineSource(PipelineServiceSource):
     """
 
     service_connection: Data360PipelineConnection
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
+        super().__init__(config, metadata)
+        # Tracks whether every Data 360 pipeline listing completed this run.
+        # The topology runner swallows producer exceptions and still runs the
+        # root node's post_process (``mark_pipelines_as_deleted``) unconditionally,
+        # so a partial listing would otherwise be reconciled as the full live set
+        # and soft-delete pipelines whose type was never fetched. Mirrors
+        # Airflow's ``_dag_listing_complete`` flag.
+        self._pipeline_listing_complete = True
 
     @property
     def pagination_limit(self) -> int:
@@ -164,10 +175,53 @@ class Data360PipelineSource(PipelineServiceSource):
                 yield details
 
     def get_pipelines_list(self) -> Iterable[DataCloudPipelineDetails]:  # pyright: ignore[reportIncompatibleMethodOverride]
-        """Yields all Data 360 pipeline objects."""
-        yield from self._get_datastreams()
-        yield from self._get_calculated_insights()
-        yield from self._get_datatransforms()
+        """Yields all Data 360 pipeline objects.
+
+        The three listings (DataStreams, Calculated Insights, Data Transforms) are
+        independent API calls. Previously they were chained with bare ``yield from``
+        calls, so an exception in any one aborted the remaining listings and left
+        ``pipeline_source_state`` incomplete — yet ``mark_pipelines_as_deleted`` still
+        ran against that partial set and soft-deleted pipelines whose type was never
+        fetched. We now isolate each listing so a failure is recorded (the listing is
+        flagged incomplete) without breaking the chain, mirroring the Airflow
+        ``_dag_listing_complete`` mitigation.
+        """
+        self._pipeline_listing_complete = True
+        for getter, listing_name in (
+            (self._get_datastreams, "DataStreams"),
+            (self._get_calculated_insights, "Calculated Insights"),
+            (self._get_datatransforms, "Data Transforms"),
+        ):
+            try:
+                yield from getter()
+            except Exception as exc:
+                self._pipeline_listing_complete = False
+                self.status.failed(
+                    error=StackTraceError(
+                        name=f"{listing_name} Listing",
+                        error=f"Unexpected error while fetching {listing_name}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Skip stale-pipeline deletion when the listing was incomplete.
+
+        The topology runner runs the root node's ``post_process`` (this method)
+        unconditionally, even after the producer raised — so if any of the three
+        Data 360 listings failed, ``pipeline_source_state`` is a partial live set.
+        Reconciling against it would soft-delete pipelines that still exist but were
+        never fetched. When the listing is incomplete we skip deletion entirely, the
+        same mitigation Airflow applies for an incomplete DAG listing.
+        """
+        if not self._pipeline_listing_complete:
+            logger.warning(
+                "Skipping stale-pipeline deletion: Data 360 pipeline listing was "
+                "incomplete due to a fetch error, so the live set is partial and "
+                "would delete pipelines that still exist."
+            )
+            return
+        yield from super().mark_pipelines_as_deleted()
 
     def get_pipeline_name(self, pipeline_details: DataCloudPipelineDetails) -> str:
         return pipeline_details.get_name()
@@ -187,12 +241,7 @@ class Data360PipelineSource(PipelineServiceSource):
             "name": EntityName(pipeline_details.get_name()),
             "displayName": pipeline_details.get_display_name(),
             "service": FullyQualifiedEntityName(self.context.get().pipeline_service),  # pyright: ignore[reportAttributeAccessIssue]
-            "tags": get_tag_labels(
-                self.metadata,
-                pipeline_details.get_tags(),
-                Data360Constant.TAG_CLASSIFICATION_NAME,
-                bool(self.source_config.includeTags),
-            ),
+            "tags": self.get_tag_by_fqn(self.get_pipeline_fqn(pipeline_details)),
             "tasks": [
                 Task(
                     name=pipeline_details.get_name(),
@@ -246,14 +295,16 @@ class Data360PipelineSource(PipelineServiceSource):
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yields tags associated with the pipeline."""
         try:
-            tags = pipeline_details.get_tags()
-            yield from get_ometa_tag_and_classification(
-                tags=tags,
-                classification_name=Data360Constant.TAG_CLASSIFICATION_NAME,
-                tag_description="Data360 Tags",
-                classification_description="Tags associated with Salesforce Data 360",
-                include_tags=bool(self.source_config.includeTags),
-            )
+            for tag_name in pipeline_details.get_tags():
+                yield from self.register_tag(
+                    entity_fqn=self.get_pipeline_fqn(pipeline_details),
+                    definition=TagDefinition(
+                        classification_name=Data360Constant.TAG_CLASSIFICATION_NAME,
+                        tag_name=tag_name,
+                        tag_description="Data360 Tags",
+                        classification_description="Tags associated with Salesforce Data 360",
+                    ),
+                )
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(

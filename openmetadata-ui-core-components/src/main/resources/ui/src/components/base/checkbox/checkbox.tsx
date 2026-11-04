@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from 'react';
+import { forwardRef } from 'react';
 import {
   Checkbox as AriaCheckbox,
   type CheckboxProps as AriaCheckboxProps,
@@ -33,7 +34,7 @@ export const CheckboxBase = ({
         (isSelected || isIndeterminate) &&
           'tw:bg-brand-solid tw:after:outline-brand-solid',
         isDisabled &&
-          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:after:outline-disabled',
+          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:dark:bg-disabled tw:after:outline-disabled',
         isFocusVisible &&
           'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
         className
@@ -89,13 +90,13 @@ interface CheckboxProps extends AriaCheckboxProps {
   hint?: ReactNode;
 }
 
-export const Checkbox = ({
-  label,
-  hint,
-  size = 'sm',
-  className,
-  ...ariaCheckboxProps
-}: CheckboxProps) => {
+export const Checkbox = forwardRef<
+  HTMLLabelElement,
+  Omit<CheckboxProps, 'ref'>
+>(function Checkbox(
+  { label, hint, size = 'sm', className, ...ariaCheckboxProps },
+  ref
+) {
   const sizes = {
     xs: {
       root: 'tw:gap-2',
@@ -122,12 +123,14 @@ export const Checkbox = ({
       {...ariaCheckboxProps}
       className={(state) =>
         cx(
-          'tw:flex tw:items-start',
+          // relative contains react-aria's absolutely positioned hidden input.
+          'tw:relative tw:flex tw:items-start',
           state.isDisabled && 'tw:cursor-not-allowed',
           sizes[size].root,
           typeof className === 'function' ? className(state) : className
         )
-      }>
+      }
+      ref={ref}>
       {({ isSelected, isIndeterminate, isDisabled, isFocusVisible }) => (
         <>
           <CheckboxBase
@@ -166,5 +169,5 @@ export const Checkbox = ({
       )}
     </AriaCheckbox>
   );
-};
+});
 Checkbox.displayName = 'Checkbox';

@@ -32,6 +32,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityReference;
@@ -176,7 +177,7 @@ public abstract class ServiceEntityRepository<
           .getConnection()
           .setConfig(
               SecretsManagerFactory.getSecretsManager()
-                  .encryptServiceConnectionConfig(
+                  .prepareServiceConnectionConfig(
                       service.getConnection().getConfig(),
                       service.getServiceType().value(),
                       service.getName(),
@@ -202,6 +203,39 @@ public abstract class ServiceEntityRepository<
   @Override
   public void storeEntity(T service, boolean update) {
     store(service, update);
+  }
+
+  // ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage
+  @Override
+  protected void store(T service, boolean update, Double expectedVersion) {
+    encryptConnection(service);
+    super.store(service, update, expectedVersion);
+  }
+
+  @Override
+  protected void storeMany(List<T> services) {
+    services.forEach(this::encryptConnection);
+    super.storeMany(services);
+  }
+
+  @Override
+  protected void updateMany(List<T> services) {
+    services.forEach(this::encryptConnection);
+    super.updateMany(services);
+  }
+
+  private void encryptConnection(T service) {
+    if (service.getConnection() != null) {
+      service
+          .getConnection()
+          .setConfig(
+              SecretsManagerFactory.getSecretsManager()
+                  .encryptServiceConnectionConfig(
+                      service.getConnection().getConfig(),
+                      service.getServiceType().value(),
+                      service.getName(),
+                      serviceType));
+    }
   }
 
   @Override
@@ -236,10 +270,11 @@ public abstract class ServiceEntityRepository<
   protected void postDelete(T service, boolean hardDelete) {
     super.postDelete(service, hardDelete);
     invalidateServiceAttributes(service);
-    // A matchAnyServiceName condition left pointing at a deleted service silently stops matching,
-    // so a Deny rule meant to hide that service's assets would quietly grant access instead.
-    // Only on hard delete: a soft-deleted service still resolves (the snapshot reads Include.ALL)
-    // and so still hides its assets, and rewriting the condition would not survive a restore.
+    // A hard-deleted service takes its assets with it, so a matchAnyServiceName call naming it
+    // can match nothing; it is rewritten to false so a later service reusing the name does not
+    // inherit the rule. Only on hard delete: a soft-deleted service still resolves (the snapshot
+    // reads Include.ALL) and so still hides its assets, and rewriting the condition would not
+    // survive a restore.
     if (hardDelete && !anotherServiceGoesByName(service.getName(), service.getId())) {
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
@@ -337,7 +372,7 @@ public abstract class ServiceEntityRepository<
   private boolean serviceWithNameExists(
       String serviceEntityType, String name, UUID excludedServiceId) {
     try {
-      EntityInterface other =
+      EntityInterface<?> other =
           Entity.getEntityByName(serviceEntityType, name, "", Include.NON_DELETED);
       return !other.getId().equals(excludedServiceId);
     } catch (EntityNotFoundException e) {
@@ -373,11 +408,17 @@ public abstract class ServiceEntityRepository<
 
     /**
      * {@code serviceAttributes} is a plain inline object, so recording the change is all that is
-     * needed for it to persist and appear in the change description.
+     * needed for it to persist and appear in the change description. A PUT that omits the field
+     * preserves any admin-set value instead of wiping it, mirroring the PUT guard on style and
+     * extension; send an explicit non-null {@link ServiceAttributes} (or a PATCH) to clear it.
      */
     private void updateServiceAttributes() {
-      recordChange(
-          "serviceAttributes", original.getServiceAttributes(), updated.getServiceAttributes());
+      ServiceAttributes updatedAttributes = updated.getServiceAttributes();
+      if (operation == Operation.PUT && updatedAttributes == null) {
+        updated.setServiceAttributes(original.getServiceAttributes());
+        return;
+      }
+      recordChange("serviceAttributes", original.getServiceAttributes(), updatedAttributes);
     }
 
     private void updateConnection() {
