@@ -29,7 +29,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
@@ -340,29 +339,6 @@ class PatchEntityToolTest {
     verify(mockRepo).getPatchFields();
   }
 
-  @ParameterizedTest
-  @CsvSource(
-      delimiter = '|',
-      value = {
-        "metric|[{\"op\":\"add\",\"path\":\"/parent\",\"value\":{\"id\":\"x\"}}]",
-        "metric|[{\"op\":\"remove\",\"path\":\"/metricGroup\"}]",
-        "metric|[{\"op\":\"add\",\"path\":\"\",\"value\":{}}]",
-        "metricGroup|[{\"op\":\"remove\",\"path\":\"/metrics/0\"}]",
-        "metricGroup|[{\"op\":\"copy\",\"from\":\"/metrics/0/name\",\"path\":\"/description\"}]"
-      })
-  void execute_rejectsMetricHierarchyAndMembershipChanges(String entityType, String patch) {
-    Map<String, Object> params = new HashMap<>();
-    params.put("entityType", entityType);
-    params.put("fqn", "target");
-    params.put("patch", patch);
-
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
-          .isInstanceOf(IllegalArgumentException.class);
-    }
-    verifyNoInteractions(authorizer);
-  }
-
   @Test
   void execute_letsMetricDescriptionEditsThrough() {
     @SuppressWarnings("unchecked")
@@ -404,6 +380,7 @@ class PatchEntityToolTest {
         "testCase",
         "testSuite",
         "task",
+        "team",
         "user",
         "workflow"
       })

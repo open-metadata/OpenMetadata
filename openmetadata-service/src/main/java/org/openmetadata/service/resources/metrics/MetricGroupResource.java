@@ -48,7 +48,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -413,8 +412,7 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
       @Valid CreateMetricGroup create) {
     MetricGroup metricGroup =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(metricGroup, false);
-    authorizeMembershipMutation(securityContext, null, metricGroup);
+    MetricAuthorization.authorizeGroupCreate(authorizer, securityContext, metricGroup);
     return withoutMembers(
         sanitizeMembership(securityContext, create(uriInfo, securityContext, metricGroup)));
   }
@@ -444,7 +442,8 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
     if (original != null) {
       original = repository.getWithMembers(original.getId(), Include.NON_DELETED);
     }
-    authorizeMembershipMutation(securityContext, original, metricGroup);
+    MetricAuthorization.authorizeMembershipMutation(
+        authorizer, securityContext, original, metricGroup);
     return withoutMembers(
         sanitizeMembership(securityContext, createOrUpdate(uriInfo, securityContext, metricGroup)));
   }
@@ -466,21 +465,9 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
         securityContext,
         new OperationContext(entityType, patch),
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
-    MetricGroup original = repository.getWithMembers(id, Include.NON_DELETED);
-    boolean addressesMembers = addressesMembers(patch);
-    if (addressesMembers) {
-      authorizeMemberView(securityContext, original);
-    }
-    MetricGroup updated;
-    try {
-      updated = JsonUtils.applyPatch(original, patch, MetricGroup.class);
-    } catch (JsonException e) {
-      // The JSON-P message prints the document the operation failed on, members included.
-      throw new IllegalArgumentException("The JSON Patch cannot be applied to the metric group");
-    }
-    repository.prepareInternal(updated, true);
-    authorizeMembershipMutation(securityContext, original, updated);
-    if (!addressesMembers) {
+    MetricGroup original = repository.get(null, id, repository.getPatchFields());
+    MetricAuthorization.authorizeGroupPatch(authorizer, securityContext, original, patch);
+    if (!MetricAuthorization.addressesMembers(patch)) {
       return withoutMembers(patchInternal(uriInfo, securityContext, id, patch));
     }
     try {
@@ -512,29 +499,6 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
                     .add("value", members));
     patch.toJsonArray().forEach(operations::add);
     return Json.createPatch(operations.build());
-  }
-
-  public static boolean addressesMembers(JsonPatch patch) {
-    return patch.toJsonArray().stream()
-        .map(JsonValue::asJsonObject)
-        .anyMatch(
-            operation ->
-                pointsAtMembers(operation.getString("path", null))
-                    || pointsAtMembers(operation.getString("from", null)));
-  }
-
-  private static boolean pointsAtMembers(String pointer) {
-    return pointer != null
-        && (pointer.isEmpty() || pointer.equals("/metrics") || pointer.startsWith("/metrics/"));
-  }
-
-  private void authorizeMemberView(SecurityContext securityContext, MetricGroup group) {
-    for (EntityReference metric : listOrEmpty(group.getMetrics())) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.METRIC, MetadataOperation.VIEW_BASIC),
-          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
-    }
   }
 
   // The PATCH response answers with the same membership-derived fields as a read, so it answers
@@ -732,42 +696,6 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
         | IllegalArgumentException exception) {
       return false;
     }
-  }
-
-  private void authorizeMembershipMutation(
-      SecurityContext securityContext, MetricGroup original, MetricGroup updated) {
-    for (EntityReference metric : membershipMutationTargets(original, updated)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.METRIC, MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
-    }
-  }
-
-  static List<EntityReference> membershipMutationTargets(
-      MetricGroup original, MetricGroup updated) {
-    Map<UUID, EntityReference> originalMembers = new LinkedHashMap<>();
-    Map<UUID, EntityReference> updatedMembers = new LinkedHashMap<>();
-    for (EntityReference metric : listOrEmpty(original == null ? null : original.getMetrics())) {
-      originalMembers.put(metric.getId(), metric);
-    }
-    for (EntityReference metric : listOrEmpty(updated.getMetrics())) {
-      updatedMembers.put(metric.getId(), metric);
-    }
-    List<EntityReference> affected = new ArrayList<>();
-    originalMembers.forEach(
-        (id, metric) -> {
-          if (!updatedMembers.containsKey(id)) {
-            affected.add(metric);
-          }
-        });
-    updatedMembers.forEach(
-        (id, metric) -> {
-          if (!originalMembers.containsKey(id)) {
-            affected.add(metric);
-          }
-        });
-    return affected;
   }
 
   private AuthorizedBulk authorizeBulkMetrics(SecurityContext securityContext, BulkAssets request) {

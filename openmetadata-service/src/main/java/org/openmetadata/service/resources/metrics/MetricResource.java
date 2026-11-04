@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -56,7 +55,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -86,7 +84,6 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
@@ -117,8 +114,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   static final String FIELDS =
       "owners,experts,reviewers,relatedMetrics,followers,tags,extension,domains,dataProducts,parent,children,childrenCount,metricGroup";
   private static final String ROOT_METRICS_PARENT = "null";
-  private static final List<String> RELATION_FIELDS =
-      List.of("parent", "metricGroup", "children", "relatedMetrics");
 
   public MetricResource(Authorizer authorizer, Limits limits) {
     super(Entity.METRIC, authorizer, limits);
@@ -626,9 +621,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
     Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(metric, false);
-    authorizeHierarchyDestinations(securityContext, null, metric);
-    authorizeRequestedAssets(securityContext, metric);
+    MetricAuthorization.authorizeMetricCreate(authorizer, securityContext, metric);
     return sanitizeRelations(securityContext, create(uriInfo, securityContext, metric));
   }
 
@@ -664,18 +657,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
     if (original != null) {
       original = repository.get(null, original.getId(), repository.getFields("parent,metricGroup"));
     }
-    authorizeHierarchyChange(securityContext, original, metric);
-    authorizeRequestedAssets(securityContext, metric);
-  }
-
-  /** Linking an asset exposes it on the metric, so require the VIEW access /assets/add requires. */
-  private void authorizeRequestedAssets(SecurityContext securityContext, Metric metric) {
-    for (EntityReference asset : listOrEmpty(metric.getAssets())) {
-      if (!canViewAsset(securityContext, asset)) {
-        throw new AuthorizationException(
-            String.format("Not authorized to view the requested asset %s", asset.getId()));
-      }
-    }
+    MetricAuthorization.authorizeHierarchyChange(authorizer, securityContext, original, metric);
+    MetricAuthorization.authorizeRequestedAssets(authorizer, securityContext, metric);
   }
 
   @PUT
@@ -873,10 +856,19 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    validateMetricPatch(patch);
-    if (patchMutatesHierarchy(patch)) {
-      preauthorizeHierarchyPatch(securityContext, id, patch);
+    if (MetricAuthorization.patchMutatesHierarchy(patch)) {
+      // Simulating the patch reads the stored metric and its errors quote it, so the caller must be
+      // allowed to patch the metric first - the same check patchInternal makes.
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, patch),
+          getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     }
+    MetricAuthorization.authorizeMetricPatch(
+        authorizer,
+        securityContext,
+        patch,
+        () -> repository.get(null, id, repository.getPatchFields()));
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -906,157 +898,18 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    validateMetricPatch(patch);
-    if (patchMutatesHierarchy(patch)) {
-      preauthorizeHierarchyPatch(securityContext, fqn, patch);
+    if (MetricAuthorization.patchMutatesHierarchy(patch)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, patch),
+          getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     }
+    MetricAuthorization.authorizeMetricPatch(
+        authorizer,
+        securityContext,
+        patch,
+        () -> repository.getByName(null, fqn, repository.getPatchFields()));
     return patchInternal(uriInfo, securityContext, fqn, patch);
-  }
-
-  private void preauthorizeHierarchyPatch(
-      SecurityContext securityContext, UUID metricId, JsonPatch patch) {
-    // Simulating the patch reads the stored metric and its errors quote it, so the caller must be
-    // allowed to patch the metric first - the same check patchInternal makes.
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, patch),
-        getResourceContextById(metricId, ResourceContextInterface.Operation.PATCH));
-    Metric original = repository.get(null, metricId, repository.getFields("parent,metricGroup"));
-    authorizePatchedHierarchy(securityContext, original, patch);
-  }
-
-  private void preauthorizeHierarchyPatch(
-      SecurityContext securityContext, String metricFqn, JsonPatch patch) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, patch),
-        getResourceContextByName(metricFqn, ResourceContextInterface.Operation.PATCH));
-    Metric original =
-        repository.getByName(null, metricFqn, repository.getFields("parent,metricGroup"));
-    authorizePatchedHierarchy(securityContext, original, patch);
-  }
-
-  private void authorizePatchedHierarchy(
-      SecurityContext securityContext, Metric original, JsonPatch patch) {
-    Metric updated = JsonUtils.applyPatch(original, patch, Metric.class);
-    repository.prepareInternal(updated, true);
-    authorizeHierarchyChange(securityContext, original, updated);
-  }
-
-  private void authorizeHierarchyChange(
-      SecurityContext securityContext, Metric original, Metric updated) {
-    boolean changed = original == null || hierarchyMembershipChanged(original, updated);
-    if (changed) {
-      if (original != null) {
-        authorizeHierarchyMutation(securityContext, original.getId());
-      }
-      authorizeHierarchyDestinations(securityContext, original, updated);
-    }
-  }
-
-  void authorizeHierarchyDestinations(
-      SecurityContext securityContext, Metric original, Metric updated) {
-    for (EntityReference destination : hierarchyDestinations(original, updated)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(destination.getType(), MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(
-              destination.getType(), destination.getId(), destination.getFullyQualifiedName()));
-    }
-  }
-
-  static List<EntityReference> hierarchyDestinations(Metric original, Metric updated) {
-    List<EntityReference> destinations = new ArrayList<>();
-    if (original == null || hierarchyMembershipChanged(original, updated)) {
-      if (updated.getParent() != null) {
-        destinations.add(updated.getParent());
-      }
-      if (updated.getMetricGroup() != null) {
-        destinations.add(updated.getMetricGroup());
-      }
-    }
-    return destinations;
-  }
-
-  private void authorizeHierarchyMutation(SecurityContext securityContext, UUID metricId) {
-    for (EntityReference metric : repository.hierarchySubtree(metricId)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.METRIC, MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(Entity.METRIC, metric.getId(), metric.getFullyQualifiedName()));
-    }
-  }
-
-  static boolean hierarchyMembershipChanged(Metric original, Metric updated) {
-    return !sameReference(original.getParent(), updated.getParent())
-        || !sameReference(original.getMetricGroup(), updated.getMetricGroup());
-  }
-
-  private static boolean sameReference(EntityReference left, EntityReference right) {
-    return left == right
-        || (left != null && right != null && Objects.equals(left.getId(), right.getId()));
-  }
-
-  public static boolean patchMutatesHierarchy(JsonPatch patch) {
-    Set<String> fields = JsonUtils.extractPatchedFields(patch);
-    return fields.contains("parent") || fields.contains("metricGroup");
-  }
-
-  public static void validateMetricPatch(JsonPatch patch) {
-    // The read-only and hierarchy guards work from the field names a patch touches. An operation on
-    // the document root rewrites every field, parent and metricGroup included, while naming none
-    // (ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply).
-    if (patchesDocumentRoot(patch)) {
-      throw new IllegalArgumentException(
-          "A metric patch operation must name a field; the document root can't be patched");
-    }
-    if (copiesRelationElsewhere(patch)) {
-      throw new IllegalArgumentException(
-          "A metric patch can't copy or move a value out of the document root or out of "
-              + String.join(", ", RELATION_FIELDS)
-              + " into another field");
-    }
-    Set<String> fields = JsonUtils.extractPatchedFields(patch);
-    if (fields.contains("assets")) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.readOnlyAttribute(Entity.METRIC, "assets"));
-    }
-    if (fields.contains("children")) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.readOnlyAttribute(Entity.METRIC, "children"));
-    }
-    if (fields.contains("childrenCount")) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.readOnlyAttribute(Entity.METRIC, "childrenCount"));
-    }
-  }
-
-  private static boolean patchesDocumentRoot(JsonPatch patch) {
-    return patch.toJsonArray().stream()
-        .anyMatch(operation -> "".equals(operation.asJsonObject().getString("path", null)));
-  }
-
-  // Responses drop the relation references the caller may not view, but a copy/move is authorized
-  // by its target path only (e.g. copy /parent/description into /description needs
-  // EditDescription).
-  private static boolean copiesRelationElsewhere(JsonPatch patch) {
-    return patch.toJsonArray().stream()
-        .map(JsonValue::asJsonObject)
-        .filter(operation -> operation.containsKey("from"))
-        .anyMatch(
-            operation -> {
-              String from = operation.getString("from", "");
-              String fromField = topLevelField(from);
-              return from.isEmpty()
-                  || (RELATION_FIELDS.contains(fromField)
-                      && !fromField.equals(topLevelField(operation.getString("path", ""))));
-            });
-  }
-
-  private static String topLevelField(String pointer) {
-    String stripped = pointer.startsWith("/") ? pointer.substring(1) : pointer;
-    int slash = stripped.indexOf('/');
-    return slash < 0 ? stripped : stripped.substring(0, slash);
   }
 
   // The PATCH response answers with the same relation fields as a read, so it answers the same
@@ -1492,19 +1345,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
 
   private boolean canAccessEntity(
       SecurityContext securityContext, EntityReference entity, MetadataOperation operation) {
-    boolean result = true;
-    try {
-      OperationContext operationContext = new OperationContext(entity.getType(), operation);
-      authorizer.authorize(
-          securityContext,
-          operationContext,
-          new ResourceContext<>(entity.getType(), entity.getId(), entity.getFullyQualifiedName()));
-    } catch (AuthorizationException
-        | EntityNotFoundException
-        | IllegalArgumentException exception) {
-      result = false;
-    }
-    return result;
+    return MetricAuthorization.canAccess(authorizer, securityContext, entity, operation);
   }
 
   private AuthorizedBulk authorizeAssets(SecurityContext securityContext, BulkAssets request) {
