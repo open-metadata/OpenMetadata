@@ -13,8 +13,8 @@ name: py-tests
 on:
   merge_group:
   workflow_dispatch:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -68,25 +68,6 @@ jobs:
       matrix:
         py-version: ["3.10", "3.11", "3.12"]
     steps:
-
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -161,24 +142,6 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
-
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -283,10 +246,10 @@ jobs:
         run: rm pom.xml
         shell: bash
 
-        # we have to pass these args values since we are working with the 'pull_request_target' trigger
+      # Fork and Dependabot PRs get no secrets, so they skip the PR analysis.
       - name: Push Results in PR to Sonar
         id: push-to-sonar
-        if: ${{ github.event_name == 'pull_request_target'}}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@v7
         env:
@@ -298,13 +261,13 @@ jobs:
 
       # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
       - name: Wait to retry 'Push Results in PR to Sonar'
-        if: ${{ github.event_name == 'pull_request_target' && steps.push-to-sonar.outcome != 'success' }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.push-to-sonar.outcome != 'success' }}
         run: sleep 20s
         shell: bash
 
       - name: Retry 'Push Results in PR to Sonar'
         uses: SonarSource/sonarqube-scan-action@v7
-        if: ${{ github.event_name == 'pull_request_target' && steps.push-to-sonar.outcome != 'success' }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.push-to-sonar.outcome != 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}

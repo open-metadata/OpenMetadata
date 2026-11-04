@@ -11,12 +11,10 @@
 
 name: Python Checkstyle
 
-# read-write repo token
-# access to secrets
 on:
   merge_group:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
       - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
@@ -34,26 +32,16 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     permissions:
       pull-requests: write
+    env:
+      FAILURE_HELP: |
+        **The Python checkstyle failed.**
+
+        Please run `make py_format` and `py_format_check` in the root of your repository and commit the changes to this PR.
+        You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
+
+        You can install the pre-commit hooks with `make install_test precommit_install`.
 
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -84,20 +72,18 @@ jobs:
           make generate
           make py_format_check
 
+      # Fork and Dependabot PRs get a read-only token, so they get no comment; everyone gets the
+      # job summary and the error annotation from the next step.
       - name: Create a comment in the PR with the instructions
-        if: ${{ steps.style.outcome != 'success' && github.event_name == 'pull_request_target' }}
+        if: ${{ steps.style.outcome != 'success' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            **The Python checkstyle failed.**
+          body: ${{ env.FAILURE_HELP }}
 
-            Please run `make py_format` and `py_format_check` in the root of your repository and commit the changes to this PR.
-            You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
-
-            You can install the pre-commit hooks with `make install_test precommit_install`.
-
-      - name: Python checkstyle failed, check the comment in the PR
+      - name: Python checkstyle failed
         if: steps.style.outcome != 'success'
         run: |
+          echo "$FAILURE_HELP" >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Python checkstyle failed::Run 'make py_format' in the repository root and commit the changes. The Code style check step shows what failed."
           exit 1

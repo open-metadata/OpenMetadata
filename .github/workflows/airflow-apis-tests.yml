@@ -12,8 +12,8 @@
 
 name: airflow-apis-tests
 on:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'openmetadata-airflow-apis/**'
 
@@ -38,24 +38,6 @@ jobs:
           large-packages: false
           docker-images: false
           swap-storage: true
-    - name: Wait for the labeler
-      uses: lewagon/wait-on-check-action@v1.3.4
-      if: ${{ github.event_name == 'pull_request_target' }}
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        check-name: Team Label
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        wait-interval: 90
-
-    - name: Verify PR labels
-      uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-      if: ${{ github.event_name == 'pull_request_target' }}
-      with:
-        github-token: '${{ secrets.GITHUB_TOKEN }}'
-        valid-labels: 'safe to test'
-        pull-request-number: '${{ github.event.pull_request.number }}'
-        disable-reviews: true  # To not auto approve changes
-
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -112,9 +94,10 @@ jobs:
         # fix coverage xml report for github
         sed -i 's/openmetadata_managed_apis/\/github\/workspace\/openmetadata-airflow-apis\/openmetadata_managed_apis/g' openmetadata-airflow-apis/ci-coverage.xml
 
+    # Fork and Dependabot PRs get no secrets, so they skip the PR analysis.
     - name: Push Results in PR to Sonar
       uses: sonarsource/sonarcloud-github-action@master
-      if: ${{ github.event_name == 'pull_request_target' }}
+      if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
