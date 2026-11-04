@@ -5304,6 +5304,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
     }
+    try (var ignored = phase("patchInheritance")) {
+      // Inheritance ran when original was loaded, not on the patched copy: a patch that removes
+      // the direct owners or domains must leave the inherited ones visible to the rules.
+      setInheritedFields(updated, new Fields(allowedFields, "owners,domains", true));
+    }
     try (var ignored = phase("patchRuleEvaluation")) {
       RuleEngine.getInstance().evaluateUpdate(original, updated);
     }
@@ -11851,7 +11856,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               removedDomains,
               entityReferenceMatch)) {
         updateDomains(original, origDomains, writtenDomains);
-        updated.setDomains(writtenDomains);
+        // Inherited domains are not written, but an entity without its own still holds them.
+        updated.setDomains(
+            writtenDomains.isEmpty() ? inheritedOnly(updated.getDomains()) : writtenDomains);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -11997,6 +12004,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     private static EntityReference getEntityReference(EntityReference reference) {
       // Don't use the inherited entity reference in update
       return reference == null || Boolean.TRUE.equals(reference.getInherited()) ? null : reference;
+    }
+
+    private static List<EntityReference> inheritedOnly(List<EntityReference> references) {
+      return listOrEmpty(references).stream()
+          .filter(r -> Boolean.TRUE.equals(r.getInherited()))
+          .collect(Collectors.toList());
     }
 
     private static List<EntityReference> getEntityReferences(List<EntityReference> references) {

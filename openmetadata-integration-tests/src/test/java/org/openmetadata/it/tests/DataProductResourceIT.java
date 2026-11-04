@@ -938,6 +938,114 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         "A finance data product must stay on a descendant table that still inherits finance");
   }
 
+  @Test
+  void test_updatesToAssetWithInheritedDomainAndDataProductPassDomainValidation(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "finance_inherited_update");
+    var schema = createSchemaWithDomain(ns, "schema_inherited_update", finance);
+    Table table = createChildTable(ns, "table_inherited_update", schema, null);
+    DataProduct product = createFinanceDataProduct(ns, "dp_inherited_update", finance);
+
+    bulkAddAssets(
+        product.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    Table current = SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts");
+    assertTrue(
+        hasDataProduct(current.getDataProducts(), product.getId()),
+        "The data product must attach to a table whose domain is inherited");
+
+    current.setDescription("edited with an inherited domain");
+    current.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN("PII.Sensitive")
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.MANUAL)));
+    SdkClients.adminClient().tables().update(current.getId().toString(), current);
+
+    Table updated =
+        SdkClients.adminClient().tables().get(table.getId().toString(), "dataProducts,tags");
+    assertEquals("edited with an inherited domain", updated.getDescription());
+    assertTrue(hasDataProduct(updated.getDataProducts(), product.getId()));
+    assertTrue(
+        updated.getTags().stream().anyMatch(t -> "PII.Sensitive".equals(t.getTagFQN())),
+        "The tag update must not be rejected by Data Product Domain Validation");
+  }
+
+  @Test
+  void test_dataProductFromAnotherDomainIsStillRejectedOnInheritedDomainAsset(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "finance_inherited_reject");
+    Domain hr = createTestDomain(ns, "hr_inherited_reject");
+    var schema = createSchemaWithDomain(ns, "schema_inherited_reject", finance);
+    Table table = createChildTable(ns, "table_inherited_reject", schema, null);
+    DataProduct hrProduct = createFinanceDataProduct(ns, "dp_hr_reject", hr);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            bulkAddAssetsWithResult(
+                hrProduct.getFullyQualifiedName(),
+                new BulkAssets().withAssets(List.of(table.getEntityReference()))));
+
+    assertFalse(
+        hasDataProduct(
+            SdkClients.adminClient()
+                .tables()
+                .get(table.getId().toString(), "dataProducts")
+                .getDataProducts(),
+            hrProduct.getId()),
+        "An inherited domain must be compared, not ignored, so a mismatching product is rejected");
+  }
+
+  /**
+   * The devrel repro: a table with a direct domain and a data product loses the direct domain and
+   * falls back to the one it inherits from its schema; the data product is then added back from
+   * the table page (field-only PATCH, as the UI sends it) and the table is edited.
+   */
+  @Test
+  void test_dataProductOnTableThatFallsBackToInheritedDomain(TestNamespace ns) throws Exception {
+    Domain banking = createTestDomain(ns, "banking_fallback");
+    var schema = createSchemaWithDomain(ns, "schema_fallback", banking);
+    Table table = createChildTable(ns, "table_fallback", schema, banking);
+    DataProduct product = createFinanceDataProduct(ns, "dp_fallback", banking);
+    String tableId = table.getId().toString();
+
+    patchTable(
+        tableId,
+        "[{\"op\":\"add\",\"path\":\"/dataProducts\",\"value\":["
+            + refJson(product.getId(), "dataProduct")
+            + "]}]");
+    patchTable(tableId, "[{\"op\":\"remove\",\"path\":\"/domains/0\"}]");
+
+    Table afterRemoval = SdkClients.adminClient().tables().get(tableId, "domains,dataProducts");
+    assertTrue(
+        afterRemoval.getDomains().stream().allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "The table must now inherit its domain from the schema");
+
+    patchTable(
+        tableId,
+        "[{\"op\":\"add\",\"path\":\"/dataProducts\",\"value\":["
+            + refJson(product.getId(), "dataProduct")
+            + "]}]");
+    patchTable(
+        tableId,
+        "[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[{\"tagFQN\":\"PII.Sensitive\",\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]}]");
+
+    Table updated = SdkClients.adminClient().tables().get(tableId, "domains,dataProducts,tags");
+    assertTrue(hasDataProduct(updated.getDataProducts(), product.getId()));
+    assertTrue(updated.getTags().stream().anyMatch(t -> "PII.Sensitive".equals(t.getTagFQN())));
+  }
+
+  private static String refJson(UUID id, String type) {
+    return "{\"id\":\"" + id + "\",\"type\":\"" + type + "\"}";
+  }
+
+  private static void patchTable(String tableId, String patch) throws Exception {
+    SdkClients.adminClient().tables().patch(tableId, new ObjectMapper().readTree(patch));
+  }
+
   private DataProduct createFinanceDataProduct(TestNamespace ns, String suffix, Domain finance) {
     return createEntity(
         new CreateDataProduct()

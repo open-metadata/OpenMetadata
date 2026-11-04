@@ -217,4 +217,64 @@ class RuleEngineTest {
 
     assertTrue(failed.isEmpty(), "Rule evaluating to true should pass");
   }
+
+  private static final String DATA_PRODUCT_DOMAIN_RULE =
+      "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"},{\"var\":\"domains\"}]}";
+  private static final String OWNERSHIP_RULE =
+      "{\"multipleUsersOrSingleTeamOwnership\":{\"var\":\"owners\"}}";
+
+  private static EntityReference ref(String type) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type).withName(type);
+  }
+
+  @Test
+  void dataProductWithoutAnyDomainFailsTheDomainRule() {
+    Map<String, Object> facts =
+        Map.of("dataProducts", List.of(ref(Entity.DATA_PRODUCT)), "domains", List.of());
+
+    assertEquals(false, RuleEngine.getInstance().apply(DATA_PRODUCT_DOMAIN_RULE, facts));
+  }
+
+  @Test
+  void inheritedDomainSatisfiesTheDataProductDomainRule() {
+    EntityReference dataProduct = ref(Entity.DATA_PRODUCT);
+    EntityReference domain = ref(Entity.DOMAIN).withInherited(true);
+    Map<String, Object> facts =
+        Map.of("dataProducts", List.of(dataProduct), "domains", List.of(domain));
+    var relationshipRepository =
+        mock(org.openmetadata.service.jdbi3.EntityRelationshipRepository.class);
+    var collectionDao =
+        mock(
+            org.openmetadata.service.jdbi3.CollectionDAO.class,
+            org.mockito.Answers.RETURNS_DEEP_STUBS);
+    when(collectionDao
+            .relationshipDAO()
+            .findFrom(
+                dataProduct.getId(),
+                Entity.DATA_PRODUCT,
+                org.openmetadata.schema.type.Relationship.CONTAINS.ordinal()))
+        .thenReturn(List.of());
+    when(relationshipRepository.getEntityReferences(
+            org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any()))
+        .thenReturn(List.of(domain.withInherited(null)));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getEntityRelationshipRepository).thenReturn(relationshipRepository);
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDao);
+
+      assertEquals(true, RuleEngine.getInstance().apply(DATA_PRODUCT_DOMAIN_RULE, facts));
+    }
+  }
+
+  @Test
+  void inheritedOwnersAreCheckedByTheOwnershipRule() {
+    EntityReference team = ref(Entity.TEAM).withInherited(true);
+    EntityReference otherTeam = ref(Entity.TEAM).withInherited(true);
+
+    assertEquals(
+        true, RuleEngine.getInstance().apply(OWNERSHIP_RULE, Map.of("owners", List.of(team))));
+    assertEquals(
+        false,
+        RuleEngine.getInstance().apply(OWNERSHIP_RULE, Map.of("owners", List.of(team, otherTeam))));
+  }
 }
