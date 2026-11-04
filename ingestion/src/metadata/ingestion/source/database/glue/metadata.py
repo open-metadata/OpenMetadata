@@ -54,7 +54,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.topology import TopologyContextManager, TopologyNode
+from metadata.ingestion.models.topology import TopologyNode
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
@@ -125,7 +125,6 @@ class GlueSource(
     """
 
     topology = GlueServiceTopology()
-    context = TopologyContextManager(topology)
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()

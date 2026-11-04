@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.glue.data_quality import (
     build_test_case_name,
     build_test_definition_name,
     parse_dqdl_rule,
+    safe_name,
     to_score_result,
     to_test_case_result,
 )
@@ -96,7 +97,7 @@ GLUE_CONFIG = {
 CATALOG_RESULT = {
     "ResultId": "dqresult-catalog",
     "Score": 0.5,
-    "RulesetName": "orders ruleset",
+    "RulesetName": "orders_ruleset",
     "DataSource": {"GlueTable": {"DatabaseName": "sales", "TableName": "orders", "CatalogId": CATALOG_ID}},
     "StartedOn": datetime(2026, 10, 1, 11, 58, tzinfo=timezone.utc),
     "CompletedOn": COMPLETED_ON,
@@ -178,7 +179,7 @@ def fake_glue(*results: dict) -> MagicMock:
     glue.list_data_quality_results.return_value = {"Results": [{"ResultId": r["ResultId"]} for r in results]}
     glue.batch_get_data_quality_result.return_value = {"Results": list(results)}
     glue.list_data_quality_rulesets.return_value = {
-        "Rulesets": [{"Name": "orders ruleset", "Description": "Checks on the orders table"}]
+        "Rulesets": [{"Name": "orders_ruleset", "Description": "Checks on the orders table"}]
     }
     return glue
 
@@ -235,10 +236,21 @@ class TestParseDqdlRule:
 
 class TestNaming:
     def test_test_case_name_is_stable_and_keyed_on_rule_text(self):
-        first = build_test_case_name("orders ruleset", "IsComplete", 'IsComplete "order_id"')
-        assert first == build_test_case_name("orders ruleset", "IsComplete", 'IsComplete "order_id"')
-        assert first != build_test_case_name("orders ruleset", "IsComplete", 'IsComplete "customer_id"')
+        first = build_test_case_name("orders_ruleset", "IsComplete", 'IsComplete "order_id"')
+        assert first == build_test_case_name("orders_ruleset", "IsComplete", 'IsComplete "order_id"')
+        assert first != build_test_case_name("orders_ruleset", "IsComplete", 'IsComplete "customer_id"')
         assert first.startswith("orders_ruleset_IsComplete_")
+
+    def test_rulesets_that_normalize_alike_keep_distinct_names(self):
+        assert safe_name("orders_check") == "orders_check"
+        dotted, spaced = safe_name("orders.check"), safe_name("orders check")
+        assert dotted.startswith("orders_check_")
+        assert len({"orders_check", dotted, spaced}) == 3
+
+    def test_long_names_are_capped_and_stay_distinct(self):
+        first, second = safe_name("r" * 254 + "1"), safe_name("r" * 254 + "2")
+        assert first != second
+        assert len(first) <= 110
 
     def test_column_rule_on_a_table_gets_its_own_definition(self):
         assert build_test_definition_name("IsComplete", EntityType.COLUMN) == "glueIsComplete"
@@ -291,12 +303,12 @@ class TestGlueDataQualityClient:
         glue = MagicMock()
         glue.list_data_quality_rulesets.return_value = {
             "Rulesets": [
-                {"Name": "orders ruleset", "Description": "Checks on orders"},
+                {"Name": "orders_ruleset", "Description": "Checks on orders"},
                 {"Name": "other ruleset", "Description": "Not run in this window"},
             ]
         }
-        assert GlueDataQualityClient(glue).ruleset_descriptions({"orders ruleset"}) == {
-            "orders ruleset": "Checks on orders"
+        assert GlueDataQualityClient(glue).ruleset_descriptions({"orders_ruleset"}) == {
+            "orders_ruleset": "Checks on orders"
         }
 
 
@@ -346,7 +358,7 @@ class TestYieldGlueDataQuality:
         rights, _ = run(build_source(metadata, fake_glue(CATALOG_RESULT)))
 
         (suite,) = of_type(rights, OMetaLogicalTestSuiteSample)
-        assert suite.test_suite.displayName == f"AWS Glue DQ - {SERVICE} - orders ruleset"
+        assert suite.test_suite.displayName == f"AWS Glue DQ - {SERVICE} - orders_ruleset"
         assert suite.test_suite.description.root == "Checks on the orders table"
         assert [model_str(t.fullyQualifiedName) for t in suite.test_cases] == [score_fqn]
 
@@ -603,7 +615,7 @@ class TestYieldGlueDataQuality:
         )
         run(source)
 
-        assert source.status.filtered == [{"orders ruleset": "Glue Data Quality ruleset filtered out"}]
+        assert source.status.filtered == [{"orders_ruleset": "Glue Data Quality ruleset filtered out"}]
 
     @pytest.mark.parametrize(
         "pipeline_filter",
@@ -725,6 +737,29 @@ class TestYieldGlueDataQuality:
         assert "search is unavailable" in error.error
         assert "not found" not in error.error
         assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
+
+
+def test_two_glue_sources_keep_their_own_topology_context():
+    first, second = object.__new__(GlueSource), object.__new__(GlueSource)
+
+    assert first.context is not second.context
+    first.context.get().__dict__["database_service"] = "glue_a"
+    assert second.context.get().__dict__.get("database_service") != "glue_a"
+
+
+def test_a_ruleset_name_at_glues_maximum_still_gets_its_suite():
+    long_ruleset = "r" * 255
+    metadata = FakeOpenMetadata()
+    long_score_fqn = f"{TABLE_FQN}.{safe_name(long_ruleset)}_score"
+    score_fqn = f"{TABLE_FQN}.orders_ruleset_score"
+    metadata.test_cases.update({fqn: make_test_case(fqn) for fqn in (long_score_fqn, score_fqn)})
+    long_run = {**CATALOG_RESULT, "ResultId": "dqresult-long", "RulesetName": long_ruleset}
+    rights, lefts = run(build_source(metadata, fake_glue(CATALOG_RESULT, long_run)))
+
+    assert lefts == []
+    suites = of_type(rights, OMetaLogicalTestSuiteSample)
+    assert len(suites) == 2
+    assert all(len(suite.test_suite.name.root) <= 256 for suite in suites)
 
 
 def test_data_quality_runs_after_every_inherited_post_process_step():

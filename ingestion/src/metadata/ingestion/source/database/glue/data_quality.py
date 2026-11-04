@@ -101,6 +101,7 @@ BATCH_GET_LIMIT = 100
 LIST_PAGE_SIZE = 1000
 CACHE_SIZE = 1000
 ACCESS_DENIED_CODES = frozenset({"AccessDenied", "AccessDeniedException"})
+NAME_PART_MAX_LENGTH = 100
 # Without them the server omits fields the client's TestCase model requires.
 TEST_CASE_FIELDS = ["testDefinition", "testSuite"]
 
@@ -181,7 +182,14 @@ def build_test_definition_name(rule_type: str, entity_type: EntityType) -> str:
 
 
 def safe_name(value: str) -> str:
-    return _UNSAFE_NAME_CHARS.sub("_", value).strip("_") or "glue"
+    """`value` as a name part. When replacing unsafe characters changes it, or it runs past
+    NAME_PART_MAX_LENGTH, a hash of the raw value keeps two distinct values from sharing a
+    name, and so a history; capped parts keep suite names within their 256 characters."""
+    safe = _UNSAFE_NAME_CHARS.sub("_", value).strip("_") or "glue"
+    if safe == value and len(safe) <= NAME_PART_MAX_LENGTH:
+        return safe
+    digest = hashlib.sha1(value.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
+    return f"{safe[:NAME_PART_MAX_LENGTH]}_{digest}"
 
 
 def build_test_case_name(scope: str, rule_type: str, rule: str) -> str:
@@ -620,22 +628,36 @@ class GlueDataQualityMixin:
         # Suites are global; the service keeps two accounts' same-named rulesets apart.
         service = self.context.get().database_service
         for scope, test_case_fqns in suites.items():
-            test_cases = [
-                test_case
-                for test_case_fqn in sorted(test_case_fqns)
-                if (test_case := self.metadata.get_by_name(entity=TestCase, fqn=test_case_fqn, fields=TEST_CASE_FIELDS))
-            ]
-            if not test_cases:
-                continue
-            description = descriptions.get(scope)
-            yield Either(
-                left=None,
-                right=OMetaLogicalTestSuiteSample(
-                    test_suite=CreateTestSuiteRequest(
-                        name=TestSuiteEntityName(f"AWS Glue DQ - {safe_name(service)} - {safe_name(scope)}"),
-                        displayName=f"AWS Glue DQ - {service} - {scope}",
-                        description=Markdown(description or f"Test cases of AWS Glue Data Quality ruleset [{scope}]."),
+            try:
+                yield from self._ruleset_suite(service, scope, test_case_fqns, descriptions.get(scope))
+            except Exception as exc:
+                yield Either(
+                    right=None,
+                    left=StackTraceError(
+                        name=f"Glue Data Quality suite [{scope}]",
+                        error=f"Could not group the test cases of ruleset [{scope}] in a suite: {exc}",
+                        stackTrace=traceback.format_exc(),
                     ),
-                    test_cases=test_cases,
+                )
+
+    def _ruleset_suite(
+        self, service: str, scope: str, test_case_fqns: set[str], description: str | None
+    ) -> Iterable[Either]:
+        test_cases = [
+            test_case
+            for test_case_fqn in sorted(test_case_fqns)
+            if (test_case := self.metadata.get_by_name(entity=TestCase, fqn=test_case_fqn, fields=TEST_CASE_FIELDS))
+        ]
+        if not test_cases:
+            return
+        yield Either(
+            left=None,
+            right=OMetaLogicalTestSuiteSample(
+                test_suite=CreateTestSuiteRequest(
+                    name=TestSuiteEntityName(f"AWS Glue DQ - {safe_name(service)} - {safe_name(scope)}"),
+                    displayName=f"AWS Glue DQ - {service} - {scope}",
+                    description=Markdown(description or f"Test cases of AWS Glue Data Quality ruleset [{scope}]."),
                 ),
-            )
+                test_cases=test_cases,
+            ),
+        )
