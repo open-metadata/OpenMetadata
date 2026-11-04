@@ -55,8 +55,8 @@ rewrite also left the previous list's cells behind.
   sends one small write and reads the projection back the same way; reads do not grow TDB2's files.
   On `scripts/rdf-live-update-benchmark.sh` (200 tables of 300 columns, 1,000 writes per scenario,
   one Fuseki container), dataset growth per write fell from about 20 MB to 0 for unchanged
-  updates, 173 KB for a moved column tag and 205 KB for a new description; the payload fell from
-  344 MB to under 0.5 MB per scenario.
+  updates, 173 KB for a moved column tag and 184 KB for a new description, read-back included;
+  the payload fell from 344 MB to under 0.5 MB per scenario.
 - Limits. A write is repaired only from writes queued ahead of it. A write *sent* after it with an
   older projection, such as a reindex chunk read before the entity changed, leaves its stale
   triples until the entity's next write, as it did before this decision. An unchanged update sends
