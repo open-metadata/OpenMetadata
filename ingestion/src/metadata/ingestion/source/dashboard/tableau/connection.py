@@ -101,6 +101,18 @@ CONNECTED_APP_REJECTED = (
     "username, that the connected app is enabled, and that the Site Name matches the site it belongs to. "
     f"A call outside the token's scopes is rejected the same way; OpenMetadata requests {', '.join(CONNECTED_APP_SCOPES)}."
 )
+CONNECTED_APP_METADATA_API_FLOOR = (
+    "Tableau documents that a connected app can use the Metadata API only on Tableau Cloud and on Tableau "
+    "Server 2023.3 or later; on an older Tableau Server, use a Personal Access Token."
+)
+OWNERS_NOT_FOUND_FIX = (
+    "Owners could not be resolved. Grant the user permission to read users on the site, or "
+    "disable owner ingestion in the service configuration."
+)
+DATA_MODELS_FIX = (
+    "The Tableau Metadata API returned no data sources for the workbook. Enable the "
+    "Metadata API on the Tableau instance."
+)
 
 
 def _status_of(error: BaseException) -> int | None:
@@ -160,8 +172,7 @@ TABLEAU_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(TableauOwnersNotFound)).diagnose(
         "Owner information not available",
-        fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
-        "disable owner ingestion in the service configuration.",
+        fix=OWNERS_NOT_FOUND_FIX,
     ),
     when(Matchers.exception(TableauUpstreamTablesRedacted)).diagnose(
         "Source table names are hidden from this account",
@@ -173,8 +184,7 @@ TABLEAU_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(TableauDataModelsException)).diagnose(
         "Data sources could not be read",
-        fix="The Tableau Metadata API returned no data sources for the workbook. Enable the "
-        "Metadata API on the Tableau instance.",
+        fix=DATA_MODELS_FIX,
         doc=METADATA_API_DOC,
     ),
     when(Matchers.contains("in incorrect format")).diagnose(
@@ -190,9 +200,12 @@ TABLEAU_CONNECTED_APP_ERRORS = ErrorPack(
     # The owner lookup swallows the 401, so a token without the users scope surfaces here instead.
     when(Matchers.exception(TableauOwnersNotFound)).diagnose(
         "Owner information not available",
-        fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
-        "disable owner ingestion in the service configuration. The connected app's token also needs "
-        "the tableau:users:read scope.",
+        fix=f"{OWNERS_NOT_FOUND_FIX} The connected app's token also needs the tableau:users:read scope.",
+    ),
+    when(Matchers.exception(TableauDataModelsException)).diagnose(
+        "Data sources could not be read",
+        fix=f"{DATA_MODELS_FIX} {CONNECTED_APP_METADATA_API_FLOOR}",
+        doc=METADATA_API_DOC,
     ),
 ).including(TABLEAU_ERRORS)
 

@@ -233,7 +233,7 @@ def test_tableau_errors_are_diagnosed(error, title):
     assert TABLEAU_PIPELINE_ERRORS.classify(error).title == title
 
 
-# TSC raises FailedSignInError for any 401, so a flow call outside the JWT's scopes lands here.
+# TSC raises FailedSignInError for a 401 with a Tableau error body, so a flow call outside the JWT's scopes lands here.
 SCOPE_REJECTION = FailedSignInError(
     "401002", "Unauthorized Access", "Invalid authentication credentials were provided."
 )
@@ -247,11 +247,22 @@ def test_a_rejected_flow_call_names_the_connected_app_checks_and_scopes():
     assert "tableau:flows:read" in diagnosis.remediation
 
 
-def test_a_pat_pipeline_connection_keeps_the_pat_hint():
-    remediation = TableauPipelineConnection(_config()).checks().errors.classify(SCOPE_REJECTION).remediation
+def test_a_rejected_lineage_query_names_the_server_floor_for_a_connected_app():
+    errors = TableauPipelineConnection(_config(authType=CONNECTED_APP)).checks().errors
 
-    assert "connected app" not in remediation
-    assert "tableau:" not in remediation
+    diagnosis = errors.classify(GraphQLError([{"message": "Validation error"}]))
+
+    assert diagnosis.title == "Metadata API rejected the query"
+    assert "Tableau Server 2023.3" in diagnosis.remediation
+
+
+def test_a_pat_pipeline_connection_keeps_the_pat_hints():
+    errors = TableauPipelineConnection(_config()).checks().errors
+
+    for error in (SCOPE_REJECTION, GraphQLError([{"message": "Validation error"}])):
+        remediation = errors.classify(error).remediation
+        assert "connected app" not in remediation
+        assert "tableau:" not in remediation
 
 
 def test_certificate_temp_files_are_removed_when_sign_in_fails():

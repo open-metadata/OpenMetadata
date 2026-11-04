@@ -48,6 +48,7 @@ from metadata.generated.schema.security.credentials.tableauConnectedAppAuth impo
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.tableau.connection import (
+    CONNECTED_APP_METADATA_API_FLOOR,
     CONNECTED_APP_REJECTED,
     METADATA_API_DOC,
     TABLEAU_ERRORS,
@@ -70,6 +71,12 @@ logger = ingestion_logger()
 PREP_CONDUCTOR_DOC = "https://help.tableau.com/current/prep/en-us/prep_conductor_overview.htm"
 API_VERSIONS_DOC = "https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_versions.htm"
 JOBS_DOC = "https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_ref_jobs_tasks_and_schedules.htm"
+
+METADATA_API_REJECTED_FIX = (
+    "The Tableau Metadata API answered but rejected the flow query, so pipelines and runs will be "
+    "ingested without lineage. Check the Metadata API is enabled on Tableau Server (it is always on for "
+    "Tableau Cloud) and that the user can see flows through it."
+)
 
 NO_FLOWS_CAVEAT = Diagnosis(
     title="No Prep flows visible",
@@ -119,16 +126,19 @@ TABLEAU_PIPELINE_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(GraphQLError)).diagnose(
         "Metadata API rejected the query",
-        fix="The Tableau Metadata API answered but rejected the flow query, so pipelines and runs will be "
-        "ingested without lineage. Check the Metadata API is enabled on Tableau Server (it is always on for "
-        "Tableau Cloud) and that the user can see flows through it.",
+        fix=METADATA_API_REJECTED_FIX,
         doc=METADATA_API_DOC,
     ),
 ).including(TABLEAU_ERRORS)
 
-# TSC raises FailedSignInError for every 401, including a call outside the connected app token's scopes.
+# TSC raises FailedSignInError for a 401 with a Tableau error body, including a call outside the token's scopes.
 TABLEAU_PIPELINE_CONNECTED_APP_ERRORS = ErrorPack(
     when(Matchers.exception(FailedSignInError)).diagnose("Authentication failed", fix=CONNECTED_APP_REJECTED),
+    when(Matchers.exception(GraphQLError)).diagnose(
+        "Metadata API rejected the query",
+        fix=f"{METADATA_API_REJECTED_FIX} {CONNECTED_APP_METADATA_API_FLOOR}",
+        doc=METADATA_API_DOC,
+    ),
 ).including(TABLEAU_PIPELINE_ERRORS)
 
 

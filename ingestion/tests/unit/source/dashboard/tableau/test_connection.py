@@ -412,6 +412,13 @@ def test_unresolvable_owners_name_the_users_scope_for_a_connected_app():
     assert "tableau:users:read" in diagnosis.remediation
 
 
+def test_unreadable_data_models_name_the_server_floor_for_a_connected_app():
+    diagnosis = TableauConnection(_connected_app_config()).checks().errors.classify(TableauDataModelsException("nope"))
+
+    assert diagnosis.title == "Data sources could not be read"
+    assert "Tableau Server 2023.3" in diagnosis.remediation
+
+
 def test_a_pat_connection_keeps_the_pat_hints():
     errors = (
         TableauConnection(
@@ -421,7 +428,7 @@ def test_a_pat_connection_keeps_the_pat_hints():
         .errors
     )
 
-    for error in (SCOPE_REJECTION, TableauOwnersNotFound("nope")):
+    for error in (SCOPE_REJECTION, TableauOwnersNotFound("nope"), TableauDataModelsException("nope")):
         remediation = errors.classify(error).remediation
         assert "connected app" not in remediation
         assert "tableau:" not in remediation
