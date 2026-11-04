@@ -606,8 +606,12 @@ test.describe(
           await page.goto(`/table/${column?.fullyQualifiedName ?? ''}`);
           await expect(page.getByTestId('table-linked-concepts')).toBeVisible();
 
-          // The column route opens its detail drawer over the page in AI mode.
-          await page.keyboard.press('Escape');
+          // useFqnDeepLink opens the column drawer in an effect once the columns
+          // load, after the concepts section is already visible, in both modes.
+          const drawer = page.locator('.column-detail-panel');
+          await expect(drawer).toBeVisible();
+          await drawer.getByTestId('close-button').click();
+          await expect(drawer).toBeHidden();
           await section.getByTestId('table-linked-concept-link').click();
           await expect(page).toHaveURL(
             new RegExp(`/governance/ontology\\?ontology=${ontology.id}`)
