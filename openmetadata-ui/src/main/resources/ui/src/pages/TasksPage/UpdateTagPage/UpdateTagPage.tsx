@@ -47,6 +47,7 @@ import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import { fetchEntityDetail } from '../../../utils/TaskEntityFetchUtils';
+import { buildTaskFieldPath } from '../../../utils/TaskFieldPathUtils';
 import {
   getColumnObjectByPath,
   getTaskAssignee,
@@ -54,7 +55,6 @@ import {
   getTaskFieldColumns,
   getTaskMessage,
 } from '../../../utils/TaskFieldUtils';
-import { buildTaskFieldPath } from '../../../utils/TaskFieldPathUtils';
 import {
   applyTaskFormSchemaDefaults,
   getResolvedTaskFormSchema,

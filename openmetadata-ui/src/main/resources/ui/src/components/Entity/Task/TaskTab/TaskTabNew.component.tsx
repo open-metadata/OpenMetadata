@@ -99,7 +99,6 @@ import {
   formatDate,
   formatIsoDuration,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getTaskFieldName } from '../../../../utils/TaskFieldPathUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
@@ -120,6 +119,7 @@ import {
   generateOptions,
 } from '../../../../utils/TaskAssigneeUtils';
 import { resolveCommentPermissions } from '../../../../utils/TaskCommentUtils';
+import { getTaskFieldName } from '../../../../utils/TaskFieldPathUtils';
 import {
   applyTaskFormSchemaDefaults,
   getDefaultTaskFormSchema,

@@ -56,7 +56,6 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
-import { getTaskFieldName } from '../../../utils/TaskFieldPathUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getErrorText } from '../../../utils/StringUtils';
@@ -65,6 +64,7 @@ import {
   isRecognizerFeedbackTask,
   isTagsTaskType,
 } from '../../../utils/TaskActionUtils';
+import { getTaskFieldName } from '../../../utils/TaskFieldPathUtils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
