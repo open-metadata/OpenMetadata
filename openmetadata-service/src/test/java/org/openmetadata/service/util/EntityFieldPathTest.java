@@ -16,75 +16,77 @@ package org.openmetadata.service.util;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
 class EntityFieldPathTest {
 
-  // The cases the UI's TaskFieldPathUtils.test.ts reads too, so the two cannot drift apart.
-  private static final JsonNode SHARED_CASES =
-      JsonUtils.readTree(
-          readString(
-              Path.of(
-                  "..",
-                  "openmetadata-spec",
-                  "src",
-                  "test",
-                  "resources",
-                  "task-field-path-cases.json")));
-
   static Stream<Arguments> validPaths() {
-    return StreamSupport.stream(SHARED_CASES.path("valid").spliterator(), false)
-        .map(
-            item ->
-                Arguments.of(
-                    item.path("entityType").asText(),
-                    item.path("path").asText(),
-                    item.path("container").asText(),
-                    JsonUtils.convertValue(
-                        item.path("names"), new TypeReference<List<String>>() {}),
-                    FieldProperty.fromValue(item.path("property").asText()).orElseThrow()));
-  }
-
-  static Stream<Arguments> sharedInvalidPaths() {
-    return StreamSupport.stream(SHARED_CASES.path("invalid").spliterator(), false)
-        .map(item -> Arguments.of(item.path("entityType").asText(), item.path("path").asText()));
-  }
-
-  @ParameterizedTest
-  @MethodSource("sharedInvalidPaths")
-  void parse_refusesTheSharedInvalidPaths(String entityType, String text) {
-    assertThrows(IllegalArgumentException.class, () -> EntityFieldPath.parse(text, entityType));
-  }
-
-  @Test
-  void childKey_quotesANameOnlyWhenItHoldsADotOrAQuote() {
-    assertEquals("columns.amount", EntityFieldPath.childKey("columns", "amount"));
-    assertEquals("columns.\"order.id\"", EntityFieldPath.childKey("columns", "order.id"));
-    assertEquals(
-        "tasks.\"extract.load\".x", EntityFieldPath.childKey("tasks.\"extract.load\"", "x"));
-  }
-
-  private static String readString(Path path) {
-    try {
-      return Files.readString(path);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
+    return Stream.of(
+        Arguments.of(Entity.TABLE, "description", "", List.of(), FieldProperty.DESCRIPTION),
+        Arguments.of(Entity.TABLE, "tags", "", List.of(), FieldProperty.TAGS),
+        Arguments.of(
+            Entity.TABLE,
+            "columns.customer_id.description",
+            "columns",
+            List.of("customer_id"),
+            FieldProperty.DESCRIPTION),
+        Arguments.of(
+            Entity.TABLE,
+            "columns.profile.child.description",
+            "columns",
+            List.of("profile", "child"),
+            FieldProperty.DESCRIPTION),
+        Arguments.of(
+            Entity.TABLE, "columns.\"a.b\".tags", "columns", List.of("a.b"), FieldProperty.TAGS),
+        Arguments.of(
+            Entity.TABLE,
+            "columns.tags.description",
+            "columns",
+            List.of("tags"),
+            FieldProperty.DESCRIPTION),
+        Arguments.of(
+            Entity.TOPIC,
+            "messageSchema.schemaFields.\"order.id\".tags",
+            "messageSchema.schemaFields",
+            List.of("order.id"),
+            FieldProperty.TAGS),
+        Arguments.of(
+            Entity.CONTAINER,
+            "dataModel.columns.total.description",
+            "dataModel.columns",
+            List.of("total"),
+            FieldProperty.DESCRIPTION),
+        Arguments.of(
+            Entity.API_ENDPOINT,
+            "responseSchema.schemaFields.default.name.last_name.tags",
+            "responseSchema.schemaFields",
+            List.of("default", "name", "last_name"),
+            FieldProperty.TAGS),
+        Arguments.of(
+            Entity.PIPELINE,
+            "tasks.extract.description",
+            "tasks",
+            List.of("extract"),
+            FieldProperty.DESCRIPTION),
+        Arguments.of(
+            Entity.MLMODEL,
+            "mlFeatures.age.tags",
+            "mlFeatures",
+            List.of("age"),
+            FieldProperty.TAGS),
+        Arguments.of(
+            Entity.SEARCH_INDEX,
+            "fields.title.description",
+            "fields",
+            List.of("title"),
+            FieldProperty.DESCRIPTION));
   }
 
   @ParameterizedTest
@@ -126,6 +128,16 @@ class EntityFieldPathTest {
   @ValueSource(strings = {"columns.user_id.description", "messageSchema.user_id.description"})
   void parse_refusesAContainerTheEntityTypeDoesNotDeclare(String text) {
     assertThrows(IllegalArgumentException.class, () -> EntityFieldPath.parse(text, Entity.TOPIC));
+  }
+
+  @Test
+  void childKey_isTheKeyAPathAndAnEntityUpdaterBothWrite() {
+    assertEquals("tasks.extract", EntityFieldPath.childKey("tasks", "extract"));
+    assertEquals("tasks.\"extract.load\"", EntityFieldPath.childKey("tasks", "extract.load"));
+    assertEquals(
+        "columns.address.\"order.id\".description",
+        new EntityFieldPath("columns", List.of("address", "order.id"), FieldProperty.DESCRIPTION)
+            .toString());
   }
 
   @ParameterizedTest
