@@ -251,4 +251,16 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
                     + "-AbCdEf",
                 owner));
   }
+
+  @Test
+  void aFullOrPartialArnResolvesToTheSecretsName() {
+    String name = "/prefix/openmetadata/pipeline/abc/key";
+    String arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:" + name;
+    OwnedSecrets ownedSecrets = secretsManager.ownedSecrets();
+
+    assertEquals(name, ownedSecrets.resolvedName(SecretsManager.SECRET_FIELD_PREFIX + name));
+    assertEquals(name, ownedSecrets.resolvedName(SecretsManager.SECRET_FIELD_PREFIX + arn));
+    assertEquals(
+        name, ownedSecrets.resolvedName(SecretsManager.SECRET_FIELD_PREFIX + arn + "-AbC123"));
+  }
 }

@@ -1,9 +1,9 @@
 # An owned credential's secret key is derived from its owner's id
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-04 (references compared by resolved name)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `OwnedSecretsTest`, `AzureKVSecretsManagerTest`
+- **Guard:** `OwnedSecretsTest`, `AzureKVSecretsManagerTest`, `AWSSecretsManagerTest`
 - **Related:** `SecretOwner`, `OwnedSecrets`
 
 ## Context
@@ -34,6 +34,11 @@ whole life, and it has to be valid as it is on every supported provider.
   as they are.
 - A delete removes only references inside the owner's namespace, and a failed delete is logged
   rather than failing the write it belongs to.
+- References are compared by the name the provider resolves them to, never as text: Azure Key
+  Vault names are case-insensitive, and AWS reads a secret by its ARN as well as its name, with or
+  without the ARN's random suffix. `retire` deletes what a write stopped referring to by that
+  comparison, so a secret the write still reads under another spelling stays, and `resolvedName`
+  gives callers the same comparison.
 - `rekey` copies a secret from another key of the managed namespace to the owner's key and never
   deletes the source, because copies of a configuration outside the database may still point at it.
   It copies whatever value the reference holds and does not check who wrote it, so a caller passes
