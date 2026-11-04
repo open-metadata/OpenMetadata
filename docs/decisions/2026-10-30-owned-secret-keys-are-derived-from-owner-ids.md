@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-30 (initial)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `OwnedSecretsTest`
+- **Guard:** `OwnedSecretsTest`, `AzureKVSecretsManagerTest`
 - **Related:** `SecretOwner`, `OwnedSecrets`
 
 ## Context
@@ -19,7 +19,15 @@ whole life, and it has to be valid as it is on every supported provider.
   by the owner's ids, each id written as lowercase base32. The field key is the first 64 bits of the
   SHA-256 of the field's RFC 6901 path inside the owner, also in base32. Every segment uses only
   `[a-z0-9]`, which every provider accepts as it is.
-- Each save of a field writes the same key; the provider keeps the value's history.
+- Each save of a field writes the same key; the provider keeps the value's history. The one
+  exception is a key another field of the same value still refers to: a list element keyed by its
+  position can take the place of a removed one, so its new value gets a key of its own instead of
+  overwriting the secret the other field reads.
+- On a provider that keeps a deleted secret's name reserved (Azure Key Vault soft delete), a write
+  to an owned key recovers the deleted secret and then writes it, and deletes it again if that write
+  fails. An owned key only ever held that owner's field, so the value it brings back is the owner's
+  own. Keys outside `OwnedSecrets` are not recovered, since one may have held another entity's
+  value.
 - A `secret:` reference into the managed namespace is kept when it lies in the owner's own
   namespace, or when the owner already holds it. References outside the managed namespace are left
   as they are.

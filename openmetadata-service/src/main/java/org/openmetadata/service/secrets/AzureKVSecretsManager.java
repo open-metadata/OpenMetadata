@@ -1,6 +1,7 @@
 package org.openmetadata.service.secrets;
 
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.exception.ResourceNotFoundException;
 import com.azure.core.util.polling.SyncPoller;
 import com.azure.identity.ClientSecretCredentialBuilder;
@@ -13,12 +14,15 @@ import com.azure.security.keyvault.secrets.models.SecretProperties;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
+@Slf4j
 public class AzureKVSecretsManager extends ExternalSecretsManager {
   private static final int MAX_SECRET_NAME_LENGTH = 127;
+  private static final int HTTP_CONFLICT = 409;
 
   private static AzureKVSecretsManager instance = null;
   private SecretClient client;
@@ -91,6 +95,73 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
     // so there is no need to read the secret first to choose between create and update.
     throttle();
     storeSecret(secretName, secretValue);
+  }
+
+  /**
+   * Key Vault keeps a deleted secret's name for its retention period and refuses a new secret under
+   * it with a 409, so an owner that clears a credential and sets it again would fail until then.
+   * Recovering the deleted secret frees the name and keeps soft delete and purge protection intact.
+   * If the write after the recovery fails, the secret is deleted again so it is not left live.
+   */
+  @Override
+  protected void upsertOwnedSecret(String secretName, String secretValue) {
+    try {
+      upsertSecret(secretName, secretValue);
+    } catch (SecretsManagerException e) {
+      if (!isConflict(e)) {
+        throw e;
+      }
+      recoverDeletedSecret(secretName);
+      upsertRecoveredSecret(secretName, secretValue);
+    }
+  }
+
+  private void recoverDeletedSecret(String secretName) {
+    throttle();
+    try {
+      client.beginRecoverDeletedSecret(secretName).waitForCompletion();
+    } catch (RuntimeException e) {
+      throw new SecretsManagerException(
+          String.format(
+              "Secret [%s] was deleted and Key Vault keeps its name until it is purged; "
+                  + "recovering it failed: %s",
+              secretName, e.getMessage()),
+          e);
+    }
+  }
+
+  private void upsertRecoveredSecret(String secretName, String secretValue) {
+    try {
+      upsertSecret(secretName, secretValue);
+    } catch (SecretsManagerException e) {
+      deleteRecoveredSecret(secretName);
+      throw e;
+    }
+  }
+
+  private void deleteRecoveredSecret(String secretName) {
+    try {
+      deleteSecret(secretName);
+    } catch (SecretsManagerException e) {
+      LOG.warn(
+          "Secret [{}] was recovered to be written, the write failed and deleting it again failed "
+              + "too; delete it from the vault: {}",
+          secretName,
+          e.getMessage());
+    }
+  }
+
+  private static boolean isConflict(Throwable throwable) {
+    boolean conflict = false;
+    Throwable cause = throwable;
+    for (int depth = 0; cause != null && !conflict && depth < MAX_CAUSE_CHAIN_DEPTH; depth++) {
+      conflict =
+          cause instanceof HttpResponseException httpError
+              && httpError.getResponse() != null
+              && httpError.getResponse().getStatusCode() == HTTP_CONFLICT;
+      cause = cause.getCause();
+    }
+    return conflict;
   }
 
   @Override

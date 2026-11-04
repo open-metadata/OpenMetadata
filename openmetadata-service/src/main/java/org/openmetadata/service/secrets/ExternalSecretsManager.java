@@ -42,7 +42,7 @@ public abstract class ExternalSecretsManager extends SecretsManager {
    */
   static final String RATE_LIMIT_PERMITS_PER_SECOND = "rateLimitPermitsPerSecond";
 
-  private static final int MAX_CAUSE_CHAIN_DEPTH = 25;
+  static final int MAX_CAUSE_CHAIN_DEPTH = 25;
 
   private final SecretsManagerRateLimiter rateLimiter;
 
@@ -130,8 +130,17 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   @Override
   protected String storeOwnedValue(String fieldName, String secretId, String value) {
     rejectReservedPlaceholder(fieldName, value);
-    upsertSecret(secretId, value);
+    upsertOwnedSecret(secretId, value);
     return SECRET_FIELD_PREFIX + secretId;
+  }
+
+  /**
+   * Writes a secret under a key derived from its owner. A provider that keeps a deleted secret's
+   * name reserved overrides this to take the name back: an owned key only ever held one field of
+   * one owner, so what it restores is that owner's own earlier value.
+   */
+  protected void upsertOwnedSecret(String secretName, String secretValue) {
+    upsertSecret(secretName, secretValue);
   }
 
   @Override
