@@ -27,7 +27,7 @@ export type ChipPalette = {
 };
 
 export type ChipTriggerProps = {
-  chipRef: RefObject<HTMLButtonElement | null>;
+  chipRef: RefObject<HTMLButtonElement>;
   dataTestId: string;
   chipLabel: string;
   palette: ChipPalette;

@@ -13,13 +13,43 @@
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
+import { Kind } from '../../../../generated/entity/data/ontologyProperty';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { listOntologyAxioms } from '../../../../rest/ontologyAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyDefinitionList from '../OntologyAuthoringWorkspace/OntologyDefinitionList';
 import OntologyAxiomEditor from '../OntologyAxiomEditor/OntologyAxiomEditor';
 
-const OntologyAxiomWorkspace = ({ ontology }: { ontology: Ontology }) => {
+const OntologyAxiomWorkspace = ({
+  ontology,
+  onWorkingChange,
+}: {
+  ontology: Ontology;
+  onWorkingChange?: () => void;
+}) => {
+  const { model } = useOntologyStudioModel(ontology);
+  const references = model
+    ? {
+        concepts: model.concepts
+          .filter(
+            (concept) => concept.conceptType !== OntologyConceptType.SkosConcept
+          )
+          .map((concept) => ({
+            iri: concept.iri,
+            label: getEntityName(concept),
+          })),
+        properties: model.properties
+          .filter((property) => property.kind !== Kind.Annotation)
+          .map((property) => ({
+            iri: property.iri,
+            kind: property.kind,
+            label: getEntityName(property),
+          })),
+      }
+    : undefined;
   const { permissions } = usePermissionProvider();
   const { canCreate } = getDerivedPermissionFlags(
     permissions[ResourceEntity.ONTOLOGY_AXIOM] ?? DEFAULT_ENTITY_PERMISSION,
@@ -31,12 +61,14 @@ const OntologyAxiomWorkspace = ({ ontology }: { ontology: Ontology }) => {
       canCreate={canCreate}
       definitionType="axiom"
       load={(params, signal) => listOntologyAxioms(ontology.id, params, signal)}
-      ontology={ontology}>
+      ontology={ontology}
+      onWorkingChange={onWorkingChange}>
       {(axiom, canEdit, onSaved) => (
         <OntologyAxiomEditor
           axiom={axiom}
           canEdit={canEdit}
           ontology={ontology}
+          references={references}
           onSaved={onSaved}
         />
       )}

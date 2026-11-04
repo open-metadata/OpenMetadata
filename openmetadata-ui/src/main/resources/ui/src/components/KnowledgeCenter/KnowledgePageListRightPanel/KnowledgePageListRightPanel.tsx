@@ -13,7 +13,6 @@
 import {
   Box,
   Card,
-  EmptyPlaceholder,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -43,6 +42,7 @@ import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getTags } from '../../../rest/tagAPI';
 import { getLink } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import BookMarkWidget from '../BookMarkWidget/BookMarkWidget';
 
 export interface KnowledgePageListRightPanelProps {
@@ -169,7 +169,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
   if (!isLoading && isEmpty(quickLinksByTag) && !refreshTagsCategory) {
     return (
       <Card className="tw:relative tw:flex-1 tw:h-full tw:p-5">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={
             permissions.Create
               ? [
@@ -184,7 +184,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
                 ]
               : []
           }
-          icon={<QuickLink className="tw:text-secondary" />}
+          icon={<QuickLink />}
           title={t('label.quick-link-plural')}
         />
       </Card>

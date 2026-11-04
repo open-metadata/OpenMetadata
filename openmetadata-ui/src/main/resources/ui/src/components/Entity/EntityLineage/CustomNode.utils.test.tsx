@@ -15,10 +15,12 @@ import { ReactFlowProvider } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
 import {
   ColumnContent,
   getCollapseHandle,
   getExpandHandle,
+  getNodeClassNames,
 } from './CustomNode.utils';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -319,5 +321,37 @@ describe('Custom Node Utils', () => {
 
       expect(mockSetSelectedColumn).not.toHaveBeenCalled();
     });
+  });
+
+  describe('getNodeClassNames base node fill', () => {
+    const classesFor = (state: {
+      isSelected?: boolean;
+      showDqTracing?: boolean;
+    }) =>
+      getNodeClassNames({
+        isBaseNode: true,
+        isSelected: false,
+        showDqTracing: false,
+        isTraced: false,
+        isChildrenListExpanded: false,
+        ...state,
+      });
+
+    it.each([{}, { showDqTracing: true }])(
+      'paints the base fill on an unselected base node (%o)',
+      (state) => {
+        expect(classesFor(state)).toContain(BASE_NODE_FILL_CLASS);
+      }
+    );
+
+    it.each([{ isSelected: true }, { isSelected: true, showDqTracing: true }])(
+      'leaves the fill to the selected state (%o)',
+      (state) => {
+        const classes = classesFor(state);
+
+        expect(classes).toContain('lineage-base-node');
+        expect(classes).not.toContain(BASE_NODE_FILL_CLASS);
+      }
+    );
   });
 });

@@ -31,6 +31,47 @@ class SearchMetadataCleanTest {
   }
 
   @Test
+  void aMetricHitShowsWhereItSitsInTheHierarchy() {
+    Map<String, Object> cleaned =
+        hit(
+            Map.of(
+                "entityType",
+                "metric",
+                "parent",
+                Map.of("type", "metric", "fullyQualifiedName", "ActiveCustomers"),
+                "metricGroup",
+                Map.of("type", "metricGroup", "fullyQualifiedName", "CustomerKPIs"),
+                "childrenCount",
+                0));
+
+    assertEquals("ActiveCustomers", cleaned.get("parent"));
+    assertEquals("CustomerKPIs", cleaned.get("metricGroup"));
+    assertEquals(
+        0,
+        cleaned.get("childrenCount"),
+        "without the hierarchy an agent cannot tell a variant from its canonical metric");
+  }
+
+  @Test
+  void aRequestedMetricExpressionIsCappedLikeEveryMetricSummary() {
+    String longSql = "SELECT " + "x".repeat(2000);
+    Map<String, Object> cleaned =
+        SearchMetadataTool.cleanSearchResult(
+            new HashMap<>(
+                Map.of(
+                    "entityType",
+                    "metric",
+                    "metricExpression",
+                    Map.of("language", "SQL", "code", longSql))),
+            List.of("metricExpression"));
+
+    String code = ((Map<?, ?>) cleaned.get("metricExpression")).get("code").toString();
+    assertTrue(
+        code.length() < longSql.length() && code.endsWith("..."),
+        "one long SQL body must not push the other hits out of the response budget");
+  }
+
+  @Test
   void aShortDescriptionCarriesNoTruncationMarker() {
     Map<String, Object> cleaned =
         hit(Map.of("entityType", "table", "description", "One row per customer address."));

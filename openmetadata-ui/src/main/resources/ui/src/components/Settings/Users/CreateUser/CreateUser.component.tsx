@@ -570,8 +570,8 @@ const CreateUser = ({
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
-      <Box gap={1} justify="end">
-        <Button color="link-color" data-testid="cancel-user" onClick={onCancel}>
+      <Box gap={3} justify="end">
+        <Button color="secondary" data-testid="cancel-user" onClick={onCancel}>
           {t('label.cancel')}
         </Button>
         <Button

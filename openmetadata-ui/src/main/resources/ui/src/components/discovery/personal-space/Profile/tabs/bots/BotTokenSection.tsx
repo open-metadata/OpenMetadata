@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   Card,
+  ConfirmPopover,
   Input,
   Select,
   Typography,
@@ -43,11 +44,13 @@ import { TOKEN_EXPIRY_OPTIONS } from './BotToken.constants';
 
 interface BotTokenSectionProps {
   botUserData: User;
+  isDisabled?: boolean;
   onTokenUpdate: () => Promise<void>;
 }
 
 const BotTokenSection: React.FC<BotTokenSectionProps> = ({
   botUserData,
+  isDisabled = false,
   onTokenUpdate,
 }) => {
   const { t } = useTranslation();
@@ -120,8 +123,12 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
     try {
       await revokeUserToken(botUserData.id);
       await onTokenUpdate();
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsUpdating(false);
     }
@@ -145,7 +152,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
         className="tw:p-4.5 tw:px-6 tw:border-b tw:border-subtle"
         direction="row"
         justify="between">
-        <Box direction="col" gap={0.5}>
+        <Box className="tw:gap-0.5" direction="col">
           <Typography data-testid="center-panel" size="text-sm" weight="medium">
             {t('label.om-jwt-token')}
           </Typography>
@@ -155,19 +162,27 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
         </Box>
         <Box direction="row" gap={2}>
           {jwtToken ? (
-            <Button
-              color="secondary-destructive"
-              data-testid="revoke-button"
-              isLoading={isUpdating}
-              size="sm"
-              onPress={handleRevoke}>
-              {t('label.revoke-token')}
-            </Button>
+            <ConfirmPopover
+              confirmText={t('label.revoke-token')}
+              data-testid="revoke-token-popover"
+              description={t('message.are-you-sure-to-revoke-access')}
+              title={t('message.are-you-sure')}
+              onConfirm={handleRevoke}>
+              <Button
+                color="secondary-destructive"
+                data-testid="revoke-button"
+                isDisabled={isDisabled}
+                isLoading={isUpdating}
+                size="sm">
+                {t('label.revoke-token')}
+              </Button>
+            </ConfirmPopover>
           ) : (
             !isEditing && (
               <Button
                 color="primary"
                 data-testid="auth-mechanism"
+                isDisabled={isDisabled}
                 size="sm"
                 onPress={() => setIsEditing(true)}>
                 {t('label.generate-new-token')}
@@ -180,10 +195,10 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
       {/* Body */}
       <div className="tw:p-5 tw:px-6">
         {jwtToken && !isEditing && (
-          <Box direction="col" gap={2.5}>
+          <Box className="tw:gap-2.5" direction="col">
             <Box align="start" direction="row" gap={2}>
               <Input
-                readOnly
+                isReadOnly
                 className="tw:flex-1"
                 data-testid="token"
                 type="password"
@@ -198,7 +213,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
                 {t('label.copy')}
               </Button>
             </Box>
-            <Box direction="col" gap={1.5}>
+            <Box className="tw:gap-1.5" direction="col">
               <Box
                 align="center"
                 className="tw:text-fg-warning-primary tw:my-2.5"

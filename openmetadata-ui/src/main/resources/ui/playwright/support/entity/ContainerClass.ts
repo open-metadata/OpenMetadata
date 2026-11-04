@@ -23,7 +23,9 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
+  EntityIdentity,
   okJson,
+  requireEntityIdentity,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
@@ -66,7 +68,8 @@ export class ContainerClass extends EntityClass {
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: Container = {} as Container;
+  entityResponseData: Container & EntityIdentity = {} as Container &
+    EntityIdentity;
   childResponseData: ResponseDataType = {} as ResponseDataType;
   childArrayResponseData: ResponseDataType[] = [];
 
@@ -180,13 +183,16 @@ export class ContainerClass extends EntityClass {
 
     // `dataModel` is in ContainerResource.FIELDS, so a by-name lookup omits it
     // unless asked — and childrenSelectorId below reads dataModel.columns[0].
-    this.entityResponseData = await createOrFetch(apiContext, {
-      label: 'ContainerClass.create container',
-      createPath: '/api/v1/containers',
-      fqnSegments: [this.service.name, this.entity.name],
-      fields: 'dataModel',
-      data: this.entity,
-    });
+    this.entityResponseData = requireEntityIdentity(
+      await createOrFetch<Container>(apiContext, {
+        label: 'ContainerClass.create container',
+        createPath: '/api/v1/containers',
+        fqnSegments: [this.service.name, this.entity.name],
+        fields: 'dataModel',
+        data: this.entity,
+      }),
+      'ContainerClass.create'
+    );
 
     if (isUndefined(customChildContainer)) {
       const childContainer = {
@@ -257,7 +263,10 @@ export class ContainerClass extends EntityClass {
         }
       )
     );
-    this.entityResponseData = await okJson(response, 'ContainerClass.patch');
+    this.entityResponseData = requireEntityIdentity(
+      await okJson<Container>(response, 'ContainerClass.patch'),
+      'ContainerClass.patch'
+    );
 
     return {
       entity: this.entityResponseData,
@@ -277,7 +286,10 @@ export class ContainerClass extends EntityClass {
     service: ResponseDataType;
     ownedRootPath?: string;
   }): void {
-    this.entityResponseData = data.entity;
+    this.entityResponseData = requireEntityIdentity(
+      data.entity,
+      'ContainerClass.set'
+    );
     this.serviceResponseData = data.service;
     this.ownedRootPath = data.ownedRootPath;
     this.entity.name = data.entity.name;

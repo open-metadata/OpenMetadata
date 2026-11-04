@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
@@ -23,7 +23,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -41,10 +42,10 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Table } from '../../generated/entity/data/table';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -65,6 +66,7 @@ import {
 import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
 import { getExplorePath, getExploreTabPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { findShardedFamilies } from '../../utils/TableShardingUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   QueryFieldInterface,
@@ -78,13 +80,12 @@ const EXPLORE_PAGE_SIZE_OPTIONS = [
 ];
 
 const ExplorePageV1: FC<unknown> = () => {
+  const { t } = useTranslation();
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
     searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { isTourOpen, tourMockSearchResults, tourMockSearchHitCounts } =
-    useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
   const { isNLPActive, isNLPEnabled } = useSearchStore();
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
@@ -376,12 +377,6 @@ const ExplorePageV1: FC<unknown> = () => {
   const getCached = useExploreCache((s) => s.getCached);
   const setCached = useExploreCache((s) => s.setCached);
 
-  useEffect(() => {
-    if (isTourOpen && tourMockSearchHitCounts) {
-      setSearchHitCounts(tourMockSearchHitCounts);
-    }
-  }, [isTourOpen, tourMockSearchHitCounts]);
-
   // Create a dependency string to trigger fetch only when dependencies actually change. Also
   // doubles as the SWR cache key for {@link useExploreCache}.
   const fetchDependencies = useMemo(() => {
@@ -651,10 +646,45 @@ const ExplorePageV1: FC<unknown> = () => {
   };
 
   useEffect(() => {
-    if (!isTourOpen) {
-      performFetch();
-    }
-  }, [isTourOpen, fetchDependencies]);
+    performFetch();
+  }, [fetchDependencies]);
+
+  const [shardedFamilies, setShardedFamilies] = useState<Table[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setShardedFamilies([]);
+    const combined = getCombinedQueryFilterObject(
+      advancedSearchQuickFilters,
+      browseQueryFilter
+    );
+    findShardedFamilies(
+      searchQueryParam ?? '',
+      queryFilter,
+      combined,
+      showDeleted,
+      controller.signal
+    )
+      .then((tables) => {
+        if (!controller.signal.aborted) {
+          setShardedFamilies(tables);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setShardedFamilies([]);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    searchQueryParam,
+    queryFilter,
+    advancedSearchQuickFilters,
+    browseQueryFilter,
+    showDeleted,
+  ]);
 
   const handleAdvanceSearchQuickFiltersChange = useCallback(
     (filter?: QueryFilterInterface) => {
@@ -667,16 +697,44 @@ const ExplorePageV1: FC<unknown> = () => {
   return (
     <ExploreV1
       activeTabKey={searchIndex}
+      additionalSearchResults={
+        shardedFamilies.length > 0 && (
+          <section aria-label={t('label.matching-sharded-families')}>
+            <Box className="tw:mb-4" direction="col" gap={3}>
+              <Typography size="text-sm" weight="semibold">
+                {t('label.matching-sharded-families')}
+              </Typography>
+              <Box direction="col" gap={2}>
+                {shardedFamilies.map((table) => (
+                  <Link
+                    key={table.id}
+                    to={`/table/${encodeURIComponent(
+                      table.fullyQualifiedName ?? ''
+                    )}`}>
+                    <Typography
+                      as="span"
+                      className="tw:break-all"
+                      color="brand"
+                      size="text-sm">
+                      {table.fullyQualifiedName}
+                    </Typography>
+                  </Link>
+                ))}
+              </Box>
+            </Box>
+          </section>
+        )
+      }
       aggregations={updatedAggregations}
       browseFields={browseFields}
       browseQueryFilter={browseQueryFilter}
       currentPage={currentPage}
       isElasticSearchIssue={showIndexNotFoundAlert}
-      loading={isLoading && !isTourOpen}
+      loading={isLoading}
       pageSize={pageSize}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
-      searchResults={isTourOpen ? tourMockSearchResults : searchResults}
+      searchResults={searchResults}
       showDeleted={showDeleted}
       showRankingDetails={showRankingDetails}
       sortOrder={sortOrder}
@@ -699,23 +757,28 @@ const ExplorePageV1: FC<unknown> = () => {
   );
 };
 
-const ExplorePageV1WithLayout = withPageLayout(
-  withAdvanceSearch(ExplorePageV1)
+const ExplorePageV1WithAdvanceSearch = withAdvanceSearch(ExplorePageV1);
+
+// Both modes pin the page to the available height so the results panel fills
+// what the filters leave and scrolls inside it; the shell around it never scrolls.
+const ExplorePageV1WithFullHeightLayout = withPageLayout(
+  ExplorePageV1WithAdvanceSearch,
+  { fullHeight: true }
 );
 
 // AI-mode presentation: an AI search header rendered above the shared Explore
 // page, with layout overrides that keep the embedded page in the AI flow.
 const EXPLORE_MODE_PAGE_CLASS_NAME =
-  'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary tw:dark:bg-secondary';
+  'tw:flex tw:h-full tw:flex-col tw:overflow-hidden tw:bg-primary tw:dark:bg-secondary';
 
 const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
   'tw:mt-2 tw:w-full tw:shrink-0 tw:px-2';
 
+// The full-height page fills what the search card leaves: `--om-page-height`
+// is the viewport calc everywhere else, so it is rebound to this box.
 const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
-  'tw:flex tw:h-full tw:flex-col tw:bg-primary tw:dark:bg-secondary',
+  'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:bg-primary tw:dark:bg-secondary tw:[--om-page-height:100%]',
   'tw:[&_.explore-page]:!bg-primary tw:dark:[&_.explore-page]:!bg-secondary',
-  'tw:[&_.page-layout-v1-vertical-scroll]:!overflow-visible',
-  "tw:[&_[data-testid='page-layout-v1']]:!overflow-visible",
   "tw:[&>[data-testid='loader']]:tw:m-auto"
 );
 
@@ -736,7 +799,7 @@ const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = ({
   const isAiMode = useIsAiMode();
 
   if (!isAiMode) {
-    return <ExplorePageV1WithLayout pageTitle={pageTitle} />;
+    return <ExplorePageV1WithFullHeightLayout pageTitle={pageTitle} />;
   }
 
   return (
@@ -750,7 +813,7 @@ const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = ({
       <Box
         className={EXPLORE_MODE_CONTENT_CLASS_NAME}
         data-testid="explore-content">
-        <ExplorePageV1WithLayout pageTitle={pageTitle} />
+        <ExplorePageV1WithFullHeightLayout pageTitle={pageTitle} />
       </Box>
     </Box>
   );

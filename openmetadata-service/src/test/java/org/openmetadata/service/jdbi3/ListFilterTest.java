@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -15,6 +17,43 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
+  @ParameterizedTest
+  @CsvSource({"true,include", "true,exclude", "false,include", "false,exclude"})
+  void fqnRegexUsesCaseInsensitiveSearch(boolean mysql, String mode) {
+    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig config = mock(DatasourceConfig.class);
+      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
+      when(config.isMySQL()).thenReturn(mysql);
+      for (String axis : List.of("database", "databaseSchema", "table")) {
+        for (boolean useFqn : List.of(false, true)) {
+          ListFilter filter = new ListFilter();
+          filter.addQueryParam(axis + "Regex", "Summary");
+          filter.addQueryParam(axis + "RegexField", axis.equals("table") ? "name" : axis + ".name");
+          filter.addQueryParam("regexMode", mode);
+          filter.addQueryParam("regexFilterByFqn", Boolean.toString(useFqn));
+          String condition =
+              switch (axis) {
+                case "database" -> filter.getDatabaseCondition("table_entity");
+                case "databaseSchema" -> filter.getDatabaseSchemaCondition("table_entity");
+                default -> filter.getTableNameRegexCondition("table_entity");
+              };
+          String field =
+              (axis.equals("table") ? "" : axis + ".") + (useFqn ? "fullyQualifiedName" : "name");
+          String expected =
+              mysql
+                  ? String.format(
+                      "%sREGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(table_entity.json, '$.%s')), :%sRegex, 'i')",
+                      mode.equals("exclude") ? "NOT " : "", field, axis)
+                  : String.format(
+                      "table_entity.json #>> '{%s}' %s :%sRegex",
+                      field.replace(".", ","), mode.equals("exclude") ? "!~*" : "~*", axis);
+          assertTrue(condition.contains(expected), condition);
+          assertEquals("Summary", filter.getQueryParam(axis + "Regex"));
+        }
+      }
+    }
+  }
+
   @Test
   void test_escapeApostrophe() {
     assertEquals("abcd", ListFilter.escape("abcd"));
@@ -138,6 +177,23 @@ class ListFilterTest {
     filter.addQueryParam("testCaseStatus", "Failed");
     condition = filter.getCondition("foo");
     assertEquals("WHERE foo.deleted = FALSE AND status = :testCaseStatus", condition);
+  }
+
+  @Test
+  void getCondition_executionAssetIds() {
+    // /api/v1/agentExecutions?agentId=… must reach the WHERE clause — without it the listing
+    // ignored the filter and returned another application's records.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("agentId", "agent-id");
+    String condition = filter.getCondition();
+    assertTrue(condition.contains("agentId = :agentId"), condition);
+
+    filter = new ListFilter();
+    filter.addQueryParam("serverId", "server-id");
+    condition = filter.getCondition();
+    assertTrue(condition.contains("serverId = :serverId"), condition);
+
+    assertFalse(new ListFilter().getCondition().contains("agentId"));
   }
 
   @Test
@@ -767,5 +823,77 @@ class ListFilterTest {
     filter.addQueryParam("systemAnnouncement", "false");
 
     assertTrue(filter.getCondition().contains("entityLink IS NOT NULL"));
+  }
+
+  private static final String POSTGRES_ENTITY_LINK_HASH_CONDITION =
+      "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+  private static final String MYSQL_ENTITY_LINK_HASH_CONDITION = "entityLinkHash = :entityLinkHash";
+  private static final String ENTITY_LINK_CONDITION = "entityLink = :entityLink";
+  private static final String MD5_CALL = "md5(";
+  private static final String ENTITY_LINK_HASH_PARAM = "entityLinkHash";
+  private static final String WORKFLOW_INSTANCE_ID_PARAM = "workflowInstanceId";
+  private static final String WORKFLOW_INSTANCE_ID_CONDITION =
+      "workflowInstanceId = :workflowInstanceId";
+
+  /**
+   * The run list for an entity is only an index lookup when its condition is exactly the key of
+   * idx_wf_instance_entity_link from the 2.0.7 migration: md5(COALESCE(entityLink, '')) on
+   * PostgreSQL, the entityLinkHash virtual column on MySQL. Any drift in either text silently turns
+   * the lookup back into a scan of every run.
+   */
+  @Test
+  void entityLinkHashCondition_matchesTheEntityLinkIndexKeyOnEachDialect() {
+    final ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    filter.addQueryParam(ENTITY_LINK_HASH_PARAM, "0cc175b9c0f1b6a831c399e269772661");
+
+    final String postgres = filter.getCondition();
+    assertTrue(postgres.contains(POSTGRES_ENTITY_LINK_HASH_CONDITION));
+    assertTrue(postgres.contains(ENTITY_LINK_CONDITION));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      final DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      final String mysql = filter.getCondition();
+      assertTrue(mysql.contains(MYSQL_ENTITY_LINK_HASH_CONDITION));
+      assertFalse(mysql.contains(MD5_CALL));
+    }
+  }
+
+  @Test
+  void entityLinkHashCondition_absentWhenNotRequested() {
+    final ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    assertFalse(filter.getCondition().contains(ENTITY_LINK_HASH_PARAM));
+  }
+
+  @Test
+  void workflowInstanceIdCondition_appliedOnlyWhenRequested() {
+    final ListFilter filter = new ListFilter(null);
+    assertFalse(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_PARAM));
+
+    filter.addQueryParam(WORKFLOW_INSTANCE_ID_PARAM, "11111111-1111-1111-1111-111111111111");
+    assertTrue(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_CONDITION));
+  }
+
+  // A null include means "no deletion scoping" — an explicit ALL — never the no-arg
+  // NON_DELETED default, whose deleted clause is invalid on the time-series tables that
+  // have no deleted column. Consumers of getInclude() must never observe a null.
+  @Test
+  void aNullIncludeIsAnExplicitAllThatEmitsNoDeletedClause() {
+    final ListFilter filter = new ListFilter(null);
+
+    assertEquals(Include.ALL, filter.getInclude());
+    assertEquals("", filter.getIncludeCondition(null));
+    assertFalse(filter.getCondition().contains("deleted"));
+  }
+
+  @Test
+  void theNoArgConstructorKeepsTheNonDeletedDefaultForEntityTables() {
+    assertEquals(Include.NON_DELETED, new ListFilter().getInclude());
+    assertEquals("deleted = FALSE", new ListFilter().getIncludeCondition(null));
+    assertEquals("deleted = TRUE", new ListFilter(Include.DELETED).getIncludeCondition(null));
+    assertEquals("", new ListFilter(Include.ALL).getIncludeCondition(null));
   }
 }

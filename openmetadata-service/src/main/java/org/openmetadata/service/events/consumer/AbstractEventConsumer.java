@@ -59,6 +59,8 @@ public abstract class AbstractEventConsumer implements Job {
   private List<Long> polledOffsets = List.of();
   private TickStopSignal stopSignal;
   private boolean stoppedEarly;
+  // Set while the reader has pointed the ledger past events no handler has finished.
+  private boolean batchUnfinished;
 
   protected EventSubscription eventSubscription;
 
@@ -143,8 +145,7 @@ public abstract class AbstractEventConsumer implements Job {
   }
 
   public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
-    var records =
-        Entity.getCollectionDAO().changeEventDAO().listWithOffset((int) batchSize, offset);
+    var records = Entity.getCollectionDAO().changeEventDAO().listWithOffset(batchSize, offset);
     CursorPlan cursorPlan =
         planCursor(offset, ledger.gapWaitSince(), records, System.currentTimeMillis());
     ledger.readUpTo(cursorPlan.offset(), cursorPlan.pendingGapSince());
@@ -245,16 +246,19 @@ public abstract class AbstractEventConsumer implements Job {
     openTick();
     beginTick();
     TickMemory.begin(stopSignal);
+    boolean cameBack = false;
     try {
       doInit(context);
       if (kind().readsChangeEvents()) {
         readAndPublish(context);
       }
+      cameBack = true;
     } catch (Exception e) {
       LOG.error("Tick of alert {} failed at position {}", alert.getName(), ledger.position(), e);
+      cameBack = true;
     } finally {
       TickMemory.end();
-      finishTick(context);
+      finishTick(context, cameBack);
     }
   }
 
@@ -262,6 +266,7 @@ public abstract class AbstractEventConsumer implements Job {
   protected void openTick() {
     this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
     this.stoppedEarly = false;
+    this.batchUnfinished = false;
   }
 
   /** Set when this tick should end after the event, or the batch, it is working on. */
@@ -276,6 +281,8 @@ public abstract class AbstractEventConsumer implements Job {
     if (latestOffset > ledger.position()) {
       ledger.noteOpening();
     }
+    // The reader points the ledger at the end of the batch before any event in it is parsed.
+    batchUnfinished = true;
     ResultList<ChangeEvent> batch = pollEvents(ledger.position(), eventSubscription.getBatchSize());
     List<ChangeEvent> events = new ArrayList<>(batch.getData());
     if (interruptedBefore >= SET_ASIDE_FIRST_EVENT_AT && !events.isEmpty()) {
@@ -287,6 +294,7 @@ public abstract class AbstractEventConsumer implements Job {
     boolean wholeBatchAtOnce = kind() == ConsumerKind.BATCH && !careful;
     if (wholeBatchAtOnce || !canStopBetweenEvents) {
       publish(events);
+      batchUnfinished = false;
     } else {
       publishOneByOne(events, careful, context);
     }
@@ -313,6 +321,7 @@ public abstract class AbstractEventConsumer implements Job {
     // The reader pointed the ledger at the end of the batch. Until an event is finished, the
     // position may only move past what was set aside.
     ledger.readUpTo(skipped > 0 ? polledOffsets.get(skipped - 1) : ledger.position(), 0L);
+    batchUnfinished = false;
     int processed = 0;
     while (processed < events.size() && !mustStopBefore(processed)) {
       publishIsolated(events.get(processed));
@@ -366,9 +375,9 @@ public abstract class AbstractEventConsumer implements Job {
         false);
   }
 
-  private void finishTick(JobExecutionContext context) {
+  private void finishTick(JobExecutionContext context, boolean cameBack) {
     try {
-      commitThisTick(context);
+      commitThisTick(context, cameBack);
       restartTimetableIfBehind(context);
       runAgainAtOnceIfStoppedForTime(context);
     } finally {
@@ -391,13 +400,31 @@ public abstract class AbstractEventConsumer implements Job {
     }
   }
 
-  // However the commit ends, this tick came back: only one that never does was interrupted.
-  private void commitThisTick(JobExecutionContext context) {
+  // However the commit ends, this tick came back, unless an Error is unwinding it, as an
+  // out-of-memory would. That tick was interrupted like one that never came back: its note stays,
+  // at the position it committed, so the event it was on is set aside after enough attempts.
+  private void commitThisTick(JobExecutionContext context, boolean cameBack) {
     try {
+      if (!cameBack) {
+        forgetUnfinishedBatch();
+      }
       beforeCommit();
       commit(context);
     } finally {
-      ledger.clearOpeningNote();
+      if (cameBack) {
+        ledger.clearOpeningNote();
+      } else {
+        ledger.keepOpeningNote();
+      }
+    }
+  }
+
+  // The reader pointed the ledger at the end of a batch before any of it was finished; an Error
+  // while it was read, set aside or handled whole leaves none of it finished, so the position
+  // stays where it was.
+  private void forgetUnfinishedBatch() {
+    if (batchUnfinished) {
+      ledger.readUpTo(ledger.position(), ledger.gapWaitSince());
     }
   }
 

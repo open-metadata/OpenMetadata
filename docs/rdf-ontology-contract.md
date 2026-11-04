@@ -127,8 +127,19 @@ each entity removes it, and a full rebuild removes it everywhere.
 
 Glossary terms retain configurable relations, external mappings and their existing tag assignments.
 The unreleased `realizedIn`, class-kind and property-authoring fields have been removed. Native
-ontology definitions use their own entities and approved release graph; native links to data assets
-are a separate follow-up. See ADR:2026-10-17-glossaries-do-not-own-ontology-models.
+ontology definitions use their own entities and approved release graph. Native asset links and
+property-to-column assignments live separately in `ontology.conceptBindings` entity extensions.
+The concept bindings API returns only currently authorized targets; its revision is independent of
+semantic working revisions, release digests and RDF import/export. See
+ADR:2026-10-17-glossaries-do-not-own-ontology-models and
+ADR:2026-10-19-native-concept-bindings-remain-operational-metadata.
+
+Native library preview uses the verified pack catalog and selected modules, then the same native
+change-set preview/apply path as file import. Plain SKOS preferred labels and definitions project
+onto native display names and descriptions; canonical export uses `rdfs:label` and `rdfs:comment`.
+Conflicting annotations are rejected. SKOS relation predicates retain their exact IRIs as object
+property assertions. In particular, `skos:broader` is not an OWL subclass and does not confer
+property inheritance. See ADR:2026-10-19-native-ontology-imports-use-working-drafts.
 
 ## Custom extension values
 

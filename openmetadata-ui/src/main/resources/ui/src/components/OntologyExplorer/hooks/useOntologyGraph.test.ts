@@ -12,6 +12,8 @@
  */
 import type { Graph, GraphData } from '@antv/g6';
 import {
+  buildDataModeTermStyle,
+  buildStudioNodeStyle,
   canEndRelationship,
   findBadgeIndex,
   isDataModeAssetBadgeShape,
@@ -19,6 +21,30 @@ import {
   isGraphTopologySynced,
   stripNodePositionsForDataMode,
 } from './useOntologyGraph';
+
+describe('selected studio node canvas colors', () => {
+  it('passes resolved brand colors to the canvas stroke and halo', () => {
+    const style = buildStudioNodeStyle(
+      { id: 'concept' },
+      { isSelected: true },
+      undefined
+    );
+
+    expect(style.stroke).not.toContain('var(');
+    expect(style.haloStroke).toBe(style.stroke);
+    expect(style.haloFill).not.toContain('var(');
+  });
+});
+
+describe('data mode term label colors', () => {
+  it('keeps the inverse label fill on the colored pill instead of the canvas background', () => {
+    const style = buildDataModeTermStyle({ id: 'term' }, { label: 'Accounts' });
+
+    expect(style.labelFill).not.toBe('var(--tw-color-bg-primary)');
+    expect(style.labelFill).not.toContain('var(');
+    expect(style.labelFill).not.toBe(style.labelBackgroundFill);
+  });
+});
 
 jest.mock('@antv/g6', () => ({
   Circle: class {},

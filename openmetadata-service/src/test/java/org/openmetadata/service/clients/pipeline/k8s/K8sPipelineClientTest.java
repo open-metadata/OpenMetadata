@@ -96,6 +96,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
@@ -1656,6 +1657,8 @@ class K8sPipelineClientTest {
 
       assertEquals("http://localhost:8585/api", connection.getHostPort());
       assertEquals(AuthProvider.OPENMETADATA, connection.getAuthProvider());
+      assertEquals(VerifySSL.NO_SSL, connection.getVerifySSL());
+      assertNull(connection.getSslConfig());
       assertEquals("ingestion-token", connection.getSecurityConfig().getJwtToken());
     }
   }

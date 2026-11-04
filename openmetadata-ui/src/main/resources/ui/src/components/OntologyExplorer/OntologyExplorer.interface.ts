@@ -20,6 +20,7 @@ import {
   LayoutType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
+import { RelationTypeOptionGroup } from './RelationshipTypePicker.interface';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 export type OntologyStudioSurface = 'graph' | 'tree' | 'term';
@@ -86,7 +87,18 @@ export interface OntologyNode {
   isDraft?: boolean;
   isOptimistic?: boolean;
   isDataModeSeed?: boolean;
+  lineageNotes?: LineageNote[];
   proposal?: OntologyProposalRef;
+}
+
+export interface LineageNote {
+  direction: 'upstream' | 'downstream';
+  label: string;
+}
+
+export interface LineageEnd {
+  nodeId: string;
+  label: string;
 }
 
 export interface OntologyEdge {
@@ -103,12 +115,14 @@ export interface OntologyEdge {
   createdAt?: number;
   relationshipType?: EntityReference;
   proposal?: OntologyProposalRef;
+  lineage?: { from: LineageEnd; to: LineageEnd };
 }
 
 export type OntologyEdgeKind =
   | 'ontology'
   | 'assetBinding'
-  | 'semanticProjection';
+  | 'semanticProjection'
+  | 'observedLineage';
 
 export interface OntologyGraphData {
   nodes: OntologyNode[];
@@ -173,7 +187,12 @@ export interface OntologyGraphProps {
   isAuthoringMode?: boolean;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
+  /** Edge colours for relation types that are not glossary relationship types. */
+  relationColors?: Record<string, string>;
+  relationTypeGroups?: RelationTypeOptionGroup[];
+  canCreateRelationType?: boolean;
   studioMode?: boolean;
+  keepCanvasOnAdd?: boolean;
   onCreateRelation?: (
     fromId: string,
     toId: string,
@@ -295,5 +314,6 @@ export interface BuildGraphDataProps {
   graphSearchHighlight?: GraphSearchHighlightInput | null;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
+  relationColors?: Record<string, string>;
   studioMode?: boolean;
 }

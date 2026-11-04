@@ -60,7 +60,16 @@ export const renderTruncatedPath = (path: string) => {
     .split('>')
     .map((label, index) => ({ id: String(index), label: label.trim() }));
 
-  return <Breadcrumbs items={items} maxItems={2} size="xs" type="text" />;
+  return (
+    // first + … + last at 80px each fits the summary panel's lineage card.
+    <Breadcrumbs
+      items={items}
+      maxItemWidth={80}
+      maxItems={2}
+      size="xs"
+      type="text"
+    />
+  );
 };
 
 export const addBaseNodeDepthToNodes = (

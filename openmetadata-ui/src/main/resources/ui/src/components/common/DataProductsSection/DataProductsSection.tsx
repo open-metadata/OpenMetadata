@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
@@ -163,18 +164,18 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       (!displayActiveDomains || displayActiveDomains.length === 0)
     ) {
       return (
-        <Typography className="no-data-placeholder">
+        <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
           {t('message.select-domain-to-add-data-product')}
         </Typography>
       );
     }
 
     return (
-      <span className="no-data-placeholder">
+      <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
         {t('label.no-entity-assigned', {
           entity: t('label.data-product-plural'),
         })}
-      </span>
+      </Typography>
     );
   }, [isLoading, displayActiveDomains, requireDomainForDataProduct, t]);
 

@@ -33,6 +33,7 @@ import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.ServerSocket;
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -77,6 +78,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
@@ -92,7 +94,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -136,13 +137,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  private static final String RDF_CONTAINER_IMAGE_PROPERTY = "rdfContainerImage";
   private static final String RDF_CONTAINER_TMPFS_SIZE_PROPERTY = "rdfContainerTmpfsSize";
   // Three TDB2 datasets and compaction generations exceed the old single-dataset 256 MiB cap.
   private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "8g";
-  private static final int FUSEKI_PORT = 3030;
+  private static final int FUSEKI_PORT = FusekiTestImage.PORT;
   private static final String FUSEKI_DATASET = "openmetadata";
-  private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
+  private static final String FUSEKI_ADMIN_PASSWORD = FusekiTestImage.ADMIN_PASSWORD;
 
   // K3s (Kubernetes) configuration for pipeline scheduler tests (on-demand)
   private static final String K3S_IMAGE = "rancher/k3s:v1.27.4-k3s1";
@@ -536,6 +536,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return "redis".equalsIgnoreCase(cacheProvider);
   }
 
+  /** The Redis container of the Redis lane; null when the suite runs without Redis. */
+  public static GenericContainer<?> getRedisContainer() {
+    return REDIS_CONTAINER;
+  }
+
   public static String getRedisUrl() {
     return redisUrl;
   }
@@ -578,19 +583,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     LOG.info("Fuseki started: {}", fusekiEndpoint);
   }
 
-  /** Creates an isolated Fuseki instance with the server's assembler and write extension. */
+  /** Creates an isolated Fuseki instance configured as OpenMetadata deployments run it. */
   public static GenericContainer<?> createFusekiContainer() {
     final GenericContainer<?> container =
-        fusekiContainer()
-            .withExposedPorts(FUSEKI_PORT)
-            .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("JVM_ARGS", System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
-            .waitingFor(
-                Wait.forHttp("/$/ping")
-                    .forPort(FUSEKI_PORT)
-                    .forStatusCode(200)
-                    .withStartupTimeout(Duration.ofMinutes(2)))
+        FusekiTestImage.forOpenMetadata(
+                System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
             // Increase file descriptor limits for parallel test execution
             .withCreateContainerCmdModifier(
                 cmd ->
@@ -602,9 +599,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     if (Boolean.parseBoolean(System.getProperty("rdfContainerTmpfs", "true"))) {
       // Scale runs opt out so disk and page-cache measurements describe persistent TDB2 storage.
       container.withTmpFs(
-          Map.of(
-              "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
-              "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
+          Map.of(FusekiTestImage.DATABASES_PATH, "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
     }
     if (Boolean.getBoolean("rdfContainerStablePort")) {
       // Docker can allocate a different ephemeral host port on restart.
@@ -632,16 +627,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   /** The isolated metadata database, for scale resource sampling. */
   public static GenericContainer<?> getDatabaseContainer() {
     return DATABASE_CONTAINER;
-  }
-
-  private static GenericContainer<?> fusekiContainer() {
-    final String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY);
-    if (image != null && !image.isBlank()) {
-      return new GenericContainer<>(DockerImageName.parse(image));
-    }
-    return new GenericContainer<>(
-        new ImageFromDockerfile()
-            .withFileFromPath(".", Paths.get(getProjectRoot(), "docker", "rdf-store")));
   }
 
   private void startK3s() {
@@ -1458,24 +1443,32 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /**
-   * Returns the Fuseki SPARQL query endpoint URL.
+   * Returns the Fuseki SPARQL query endpoint URL of the dataset the server is serving.
    */
   public static String getFusekiQueryEndpoint() {
-    return getFusekiEndpoint() + "/sparql";
+    return getServingFusekiEndpoint() + "/sparql";
   }
 
   /**
-   * Returns the Fuseki SPARQL update endpoint URL.
+   * Returns the Fuseki SPARQL update endpoint URL of the dataset the server is serving.
    */
   public static String getFusekiUpdateEndpoint() {
-    return getFusekiEndpoint() + "/update";
+    return getServingFusekiEndpoint() + "/update";
   }
 
   /**
-   * Returns the Fuseki Graph Store Protocol endpoint URL.
+   * Returns the Fuseki Graph Store Protocol endpoint URL of the dataset the server is serving.
    */
   public static String getFusekiDataEndpoint() {
-    return getFusekiEndpoint() + "/data";
+    return getServingFusekiEndpoint() + "/data";
+  }
+
+  // A blue/green promotion moves serving off the configured dataset for the rest of the suite, so
+  // direct store access follows the durable serving pointer instead of the configured endpoint.
+  private static String getServingFusekiEndpoint() {
+    final RdfRepository repository = RdfRepository.getInstanceOrNull();
+    final String dataset = repository == null ? FUSEKI_DATASET : repository.activeDatasetName();
+    return URI.create(getFusekiEndpoint()).resolve(dataset).toString();
   }
 
   /**

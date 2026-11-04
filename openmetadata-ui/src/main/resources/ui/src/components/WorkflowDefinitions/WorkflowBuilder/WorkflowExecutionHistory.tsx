@@ -12,12 +12,15 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { StatusType } from '../../../components/common/StatusBadge/StatusBadge.interface';
@@ -28,6 +31,7 @@ import {
   PAGE_SIZE_BASE,
 } from '../../../constants/constants';
 import { getStatusMapping } from '../../../constants/WorkflowBuilder.constants';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import {
@@ -44,7 +48,6 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
@@ -61,6 +64,7 @@ export const WorkflowExecutionHistory: React.FC<
   const workflowFqn = workflowFqnProp ?? routeFqn;
   const [instances, setInstances] = useState<WorkflowInstance[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<AxiosError>();
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(PAGE_SIZE_BASE);
@@ -196,6 +200,7 @@ export const WorkflowExecutionHistory: React.FC<
 
       try {
         setLoading(true);
+        setLoadError(undefined);
         const response = await getWorkflowInstancesByFQN(workflowFqn, {
           limit: pageSize,
           ...(offsetCursor ? { offset: offsetCursor } : {}),
@@ -203,7 +208,7 @@ export const WorkflowExecutionHistory: React.FC<
         setInstances(response.data ?? []);
         setPaging(response.paging);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        setLoadError(error as AxiosError);
         setInstances([]);
       } finally {
         setLoading(false);
@@ -229,12 +234,40 @@ export const WorkflowExecutionHistory: React.FC<
 
   const isEmpty = !loading && instances.length === 0;
 
+  if (loadError && !loading) {
+    return (
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        {loadError.response?.status === ClientErrors.FORBIDDEN ? (
+          <PermissionPlaceholder
+            permissionValue={t('label.view-entity', {
+              entity: t('label.execution-history'),
+            })}
+          />
+        ) : (
+          <SomethingWentWrongPlaceholder
+            title={t('server.entity-fetch-error', {
+              entity: t('label.execution-history'),
+            })}
+            onReload={() => {
+              // The retry reads the first page, so the pager must show page 1.
+              setCurrentPage(1);
+              fetchExecutionHistory();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
   if (!workflowFqn || isEmpty) {
     return (
       <div
         className="tw:relative tw:flex-1 tw:min-h-0"
         data-testid="workflow-execution-history-empty">
-        <NoDataPlaceholder />
+        <NoDataPlaceholder
+          description={t('message.no-runs-recorded-yet')}
+          icon={<ClockRewind className="tw:text-secondary" />}
+        />
       </div>
     );
   }

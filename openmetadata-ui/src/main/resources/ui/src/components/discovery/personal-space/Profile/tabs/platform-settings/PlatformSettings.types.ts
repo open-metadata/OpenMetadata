@@ -90,7 +90,8 @@ export interface PlatformSettingsPageProps {
   onSaveState?: (state: unknown) => void;
 }
 
-export interface PlatformSettingsFormProps {
+export interface PlatformSettingsFormProps
+  extends Pick<PlatformSettingsPageProps, 'savedState' | 'onSaveState'> {
   showHint: boolean;
   itemId?: string;
   onNavigate: (view: PlatformSettingsView) => void;
