@@ -41,6 +41,7 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
@@ -199,8 +200,11 @@ def build_source(
 
 
 def run(source: GlueSource) -> tuple[list, list]:
+    """The records the sink receives, less the flush Barrier (asserted on its own)."""
     rights, lefts = [], []
     for either in source.yield_glue_data_quality():
+        if isinstance(either.right, Barrier):
+            continue
         (rights if either.right is not None else lefts).append(either.right or either.left)
     return rights, lefts
 
@@ -492,6 +496,7 @@ class TestYieldGlueDataQuality:
 
         assert len(lefts) == 1
         assert "ThrottlingException" in lefts[0].error
+        assert "glue:ListDataQualityResults" not in lefts[0].error
         assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
 
     def test_filtered_ruleset_is_reported_once(self):
@@ -551,11 +556,68 @@ class TestYieldGlueDataQuality:
     def test_result_without_catalog_id_uses_the_catalog_its_schema_was_ingested_from(self):
         result = {**CATALOG_RESULT, "DataSource": {"GlueTable": {"DatabaseName": "sales", "TableName": "orders"}}}
         source = build_source(FakeOpenMetadata(), fake_glue(result))
-        source.schema_catalog_id_map["sales"] = CATALOG_ID
+        source.schema_catalog_ids["sales"] = {CATALOG_ID}
         rights, lefts = run(source)
 
         assert lefts == []
         assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
+
+    def test_result_without_catalog_id_on_a_database_in_several_catalogs_is_reported_not_guessed(self):
+        result = {**CATALOG_RESULT, "DataSource": {"GlueTable": {"DatabaseName": "sales", "TableName": "orders"}}}
+        source = build_source(FakeOpenMetadata(), fake_glue(result))
+        source.schema_catalog_ids["sales"] = {CATALOG_ID, "222222222222"}
+        rights, lefts = run(source)
+
+        assert of_type(rights, CreateTestCaseRequest) == []
+        (error,) = lefts
+        assert f"is in catalogs {CATALOG_ID}, 222222222222" in error.error
+
+    def test_result_without_catalog_id_on_a_database_the_pipeline_did_not_ingest_is_filtered(self):
+        result = {**CATALOG_RESULT, "DataSource": {"GlueTable": {"DatabaseName": "sales", "TableName": "orders"}}}
+        source = build_source(FakeOpenMetadata(), fake_glue(result))
+        rights, lefts = run(source)
+
+        assert (rights, lefts) == ([], [])
+        assert source.status.filtered == [
+            {"Glue table [sales.orders]": "Glue Data Quality result on a Glue database the pipeline did not ingest"}
+        ]
+
+    def test_flushes_the_sink_before_resolving_any_table(self):
+        records = list(build_source(FakeOpenMetadata(), fake_glue(CATALOG_RESULT)).yield_glue_data_quality())
+
+        assert isinstance(records[0].right, Barrier)
+        assert not any(isinstance(record.right, Barrier) for record in records[1:])
+
+    def test_malformed_result_fails_alone_and_the_run_continues(self):
+        null_metric = {
+            **CATALOG_RESULT,
+            "ResultId": "dqresult-null-metric",
+            "RuleResults": [
+                {
+                    "Name": "Rule_1",
+                    "Description": "RowCount > 0",
+                    "Result": "PASS",
+                    "EvaluatedMetrics": {"Dataset.*.RowCount": None},
+                }
+            ],
+        }
+        malformed = {"ResultId": "dqresult-malformed", "RuleResults": [{"Name": "Rule_1"}]}
+        next_run = {
+            **CATALOG_RESULT,
+            "ResultId": "dqresult-next",
+            "CompletedOn": datetime(2026, 10, 2, tzinfo=timezone.utc),
+        }
+        rights, lefts = run(build_source(FakeOpenMetadata(), fake_glue(null_metric, malformed, next_run)))
+
+        (error,) = lefts
+        assert error.name == "Glue Data Quality result dqresult-malformed"
+        assert "glue:ListDataQualityResults" not in error.error
+        results = {r.test_case_results.timestamp.root for r in of_type(rights, OMetaTestCaseResultsSample)}
+        assert results == {COMPLETED_ON_MS, int(datetime(2026, 10, 2, tzinfo=timezone.utc).timestamp() * 1000)}
+        null_result = next(
+            r.test_case_results for r in of_type(rights, OMetaTestCaseResultsSample) if "RowCount" in r.test_case_name
+        )
+        assert null_result.testResultValue == []
 
     def test_failed_search_is_reported_as_itself_and_retried_for_the_next_result(self):
         athena_fqn = "athena.awsdatacatalog.sales.orders"

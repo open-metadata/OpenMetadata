@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
+from botocore.exceptions import ClientError
+
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
@@ -57,6 +59,7 @@ from metadata.generated.schema.type.basic import (
     Timestamp,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.tests_data import (
     OMetaLogicalTestSuiteSample,
     OMetaTestCaseResultsSample,
@@ -97,6 +100,7 @@ logger = ingestion_logger()
 BATCH_GET_LIMIT = 100
 LIST_PAGE_SIZE = 1000
 CACHE_SIZE = 1000
+ACCESS_DENIED_CODES = frozenset({"AccessDenied", "AccessDeniedException"})
 # Without them the server omits fields the client's TestCase model requires.
 TEST_CASE_FIELDS = ["testDefinition", "testSuite"]
 
@@ -198,7 +202,9 @@ def to_test_case_result(rule_result: DataQualityRuleResult, finished_at: datetim
         testCaseStatus=status,
         result=rule_result.EvaluationMessage or f"Rule {rule_result.Result.upper()}",
         testResultValue=[
-            TestResultValue(name=name, value=str(value)) for name, value in (rule_result.EvaluatedMetrics or {}).items()
+            TestResultValue(name=name, value=str(value))
+            for name, value in (rule_result.EvaluatedMetrics or {}).items()
+            if value is not None
         ],
     )
 
@@ -260,6 +266,17 @@ def _unresolved_errors(unresolved: dict[str, _Unresolved]) -> Iterable[Either]:
         )
 
 
+def _listing_error(exc: Exception) -> StackTraceError:
+    # Only a denial is fixed by granting permissions; naming them for a throttle would mislead.
+    denied = isinstance(exc, ClientError) and exc.response.get("Error", {}).get("Code") in ACCESS_DENIED_CODES
+    hint = f" Data Quality ingestion needs {DATA_QUALITY_PERMISSIONS}." if denied else ""
+    return StackTraceError(
+        name="Glue Data Quality results",
+        error=f"Could not read Glue Data Quality results, so the remaining results were skipped: {exc}.{hint}",
+        stackTrace=traceback.format_exc(),
+    )
+
+
 class GlueDataQualityClient:
     """Reads Glue Data Quality results. None of these operations has a boto3
     paginator, so each listing follows NextToken by hand."""
@@ -290,13 +307,14 @@ class GlueDataQualityClient:
         ):
             yield [description["ResultId"] for description in page]
 
-    def list_results(self, started_after: datetime) -> Iterator[DataQualityResult]:
+    def list_results(self, started_after: datetime) -> Iterator[dict[str, Any]]:
         """Each listing page is fetched in full before the next one is requested, so a
-        failure on a later page keeps every result of the earlier ones."""
+        failure on a later page keeps every result of the earlier ones. Results come back
+        unparsed, so one malformed result fails only itself."""
         for result_ids in self.list_result_id_pages(started_after):
             yield from self.get_results(result_ids)
 
-    def get_results(self, result_ids: Iterable[str]) -> Iterator[DataQualityResult]:
+    def get_results(self, result_ids: Iterable[str]) -> Iterator[dict[str, Any]]:
         batch: list[str] = []
         for result_id in result_ids:
             batch.append(result_id)
@@ -306,13 +324,12 @@ class GlueDataQualityClient:
         if batch:
             yield from self._batch_get(batch)
 
-    def _batch_get(self, result_ids: list[str]) -> Iterator[DataQualityResult]:
+    def _batch_get(self, result_ids: list[str]) -> Iterator[dict[str, Any]]:
         response = self._glue.batch_get_data_quality_result(ResultIds=result_ids)
         missing = response.get("ResultsNotFound") or []
         if missing:
             logger.debug(f"Glue Data Quality results no longer available: {missing}")
-        for result in response.get("Results", []):
-            yield DataQualityResult.model_validate(result)
+        yield from response.get("Results", [])
 
     def ruleset_descriptions(self) -> LRUCache[str]:
         descriptions: LRUCache[str] = LRUCache(CACHE_SIZE)
@@ -347,7 +364,7 @@ class GlueDataQualityMixin:
     service_connection: GlueConnection
     context: Any
     glue_filters: GlueFilters
-    schema_catalog_id_map: dict[str, str]
+    schema_catalog_ids: dict[str, set[str]]
 
     def yield_glue_data_quality(self) -> Iterable[Either]:
         config: GlueDataQualityConfiguration | None = self.service_connection.dataQualityConfig
@@ -363,29 +380,23 @@ class GlueDataQualityMixin:
             end_ts=datetime_to_timestamp(now, milliseconds=True),
         )
 
+        # The bulk sink may still hold the tables this run created; they must exist before results resolve them.
+        yield Either(right=Barrier(reason="glue_data_quality"))  # pyright: ignore[reportCallIssue]
         try:
-            for result in client.list_results(started_after):
+            for raw_result in client.list_results(started_after):
                 try:
-                    yield from self._process_dq_result(result, run)
+                    yield from self._process_dq_result(DataQualityResult.model_validate(raw_result), run)
                 except Exception as exc:
                     yield Either(
                         right=None,
                         left=StackTraceError(
-                            name=f"Glue Data Quality result {result.ResultId}",
+                            name=f"Glue Data Quality result {raw_result.get('ResultId')}",
                             error=f"Unexpected error processing Glue Data Quality result: {exc}",
                             stackTrace=traceback.format_exc(),
                         ),
                     )
         except Exception as exc:
-            yield Either(
-                right=None,
-                left=StackTraceError(
-                    name="Glue Data Quality results",
-                    error=f"Could not read Glue Data Quality results, so the remaining results were skipped: {exc}."
-                    f" Data Quality ingestion needs {DATA_QUALITY_PERMISSIONS}.",
-                    stackTrace=traceback.format_exc(),
-                ),
-            )
+            yield Either(right=None, left=_listing_error(exc))
 
         yield from _unresolved_errors(run.unresolved)
         yield from self._yield_ruleset_suites(run.suites, client)
@@ -399,12 +410,7 @@ class GlueDataQualityMixin:
         if filter_by_fqn(run.config.rulesetFilterPattern, scope):
             self._report_filtered(run, scope, "Glue Data Quality ruleset filtered out")
             return
-        if self._excluded_by_pipeline_filters(result):
-            # The pipeline never ingests these tables, so the results cannot resolve; failing
-            # them would mark a pipeline scoped on purpose as failed.
-            self._report_filtered(
-                run, _evaluated_target(result), "Glue Data Quality result on a table the pipeline filters out"
-            )
+        if self._skip_out_of_scope(result, run):
             return
 
         table = self._resolve_dq_table(result, run)
@@ -523,26 +529,46 @@ class GlueDataQualityMixin:
             self.metadata,
             entity_type=Table,
             service_name=self.context.get().database_service,
-            database_name=self.service_connection.databaseName or self._catalog_id(source),
+            database_name=self.service_connection.databaseName or self._catalog_of(source),
             schema_name=source.DatabaseName,
             table_name=source.TableName[:TABLE_NAME_MAX_LENGTH],
             skip_es_search=True,
         )
 
-    def _catalog_id(self, source: GlueDataQualityTable) -> str | None:
-        """CatalogId is optional in a result; the schema's own catalog is what ingestion used."""
-        return source.CatalogId or self.schema_catalog_id_map.get(source.DatabaseName)
+    def _catalog_of(self, source: GlueDataQualityTable) -> str | None:
+        """The catalog the evaluated table was ingested from. CatalogId is optional in a
+        result; the Glue database's catalog stands in only when one ingested catalog holds it."""
+        if source.CatalogId:
+            return source.CatalogId
+        catalogs = self.schema_catalog_ids.get(source.DatabaseName, set())
+        return next(iter(catalogs)) if len(catalogs) == 1 else None
 
-    def _excluded_by_pipeline_filters(self, result: DataQualityResult) -> bool:
-        """Whether the pipeline's database, schema or table filters leave the evaluated
-        Glue table out. Mapped ETL results name their table explicitly, so they are kept."""
+    def _skip_out_of_scope(self, result: DataQualityResult, run: _RunState) -> bool:
+        """Report and skip a result on a Glue table this pipeline does not ingest: it cannot
+        resolve, and failing it would mark a pipeline scoped on purpose as failed. Mapped ETL
+        results name their table explicitly, so they are kept."""
         source = result.DataSource.table if result.DataSource else None
         if source is None:
             return False
-        database = {"Name": source.DatabaseName, "CatalogId": self._catalog_id(source)}
-        return self.glue_filters.excludes_database(database) or self.glue_filters.excludes_table(
+        target = _evaluated_target(result)
+        catalog = self._catalog_of(source)
+        if catalog is None and not self.service_connection.databaseName:
+            catalogs = sorted(self.schema_catalog_ids.get(source.DatabaseName, set()))
+            if catalogs:
+                reason = f"the result names no catalog and Glue database [{source.DatabaseName}] is in catalogs {', '.join(catalogs)}"
+                run.unresolved.setdefault(target, _Unresolved(reason=reason)).count += 1
+            else:
+                self._report_filtered(
+                    run, target, "Glue Data Quality result on a Glue database the pipeline did not ingest"
+                )
+            return True
+        database = {"Name": source.DatabaseName, "CatalogId": catalog}
+        if self.glue_filters.excludes_database(database) or self.glue_filters.excludes_table(
             database, source.TableName
-        )
+        ):
+            self._report_filtered(run, target, "Glue Data Quality result on a table the pipeline filters out")
+            return True
+        return False
 
     def _report_filtered(self, run: _RunState, target: str, reason: str) -> None:
         if target not in run.filtered:

@@ -143,6 +143,8 @@ class GlueSource(
 
         self.schema_description_map = {}
         self.schema_catalog_id_map = {}
+        # A Glue database name can repeat across catalogs; the single-value map above keeps only the last.
+        self.schema_catalog_ids: dict[str, set[str]] = {}
         self.external_location_map = {}
         self._init_custom_properties()
         with close_on_failure(self._connection):
@@ -268,6 +270,7 @@ class GlueSource(
                         self.schema_description_map[schema.Name] = Markdown(schema.Description)
                     if schema.CatalogId:
                         self.schema_catalog_id_map[schema.Name] = schema.CatalogId
+                        self.schema_catalog_ids.setdefault(schema.Name, set()).add(schema.CatalogId)
                         catalog_ids_seen.add(schema.CatalogId)
                     yield schema.Name
                 except Exception as exc:

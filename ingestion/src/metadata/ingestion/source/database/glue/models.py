@@ -99,7 +99,8 @@ class DataQualityRuleResult(BaseModel):
     Description: str | None = None
     EvaluatedRule: str | None = None
     EvaluationMessage: str | None = None
-    EvaluatedMetrics: dict[str, float] | None = None
+    # Glue types the values NullableDouble.
+    EvaluatedMetrics: dict[str, float | None] | None = None
 
     @property
     def rule(self) -> str:

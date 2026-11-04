@@ -31,7 +31,8 @@ another system, and its `TestPlatform` enum had no value for Glue.
    - **Test cases:** one per rule, named `<ruleset>_<RuleType>_<sha1(rule)[:8]>`. The name is keyed
      on the rule text, not on Glue's positional `Rule_N`. `<ruleset>` is the result's
      `RulesetName`, else its `EvaluationContext`, else its `JobName` (ETL job results carry no
-     ruleset name), with every run of characters outside `A-Za-z0-9_-` replaced by `_`.
+     ruleset name), with every run of characters outside `A-Za-z0-9_-` replaced by `_`, leading and
+     trailing `_` stripped, and `glue` used if nothing is left.
    - **Ruleset score:** each ruleset also gets a `<ruleset>_score` test case.
    - **Status:** PASS → `Success`, FAIL → `Failed`, ERROR → `Aborted`.
    - **Result timestamp:** the run's `CompletedOn`, else its `StartedOn`.
@@ -39,8 +40,12 @@ another system, and its `TestPlatform` enum had no value for Glue.
    `databaseFilterPattern`, `schemaFilterPattern` and `tableFilterPattern` keep that table, the
    same scope the metadata ingestion and its test connection use
    (ADR:2026-10-27-glue-test-connection-probes-what-ingestion-reads). A result outside that scope
-   is reported as filtered, not as a failure. `etlJobMappings` name their table explicitly and
-   are not filtered.
+   is reported as filtered, not as a failure. So is a result that names no `CatalogId` on a Glue
+   database no ingested catalog holds; when several do, it is reported as ambiguous, not guessed.
+   `etlJobMappings` name their table explicitly and are not filtered. `includeTables` and
+   `includeViews` are not applied: a result does not say whether its table is a view.
+5. **Ordering:** the step starts with a sink flush (`Barrier`), so the tables this run created
+   exist before any result resolves them.
 
 ## Consequences
 
