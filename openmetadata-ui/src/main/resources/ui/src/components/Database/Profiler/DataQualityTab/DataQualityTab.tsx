@@ -176,13 +176,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     : NoDataPlaceholder;
   const navigate = useNavigate();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
-  // The modals animate out after selectedTestCase is cleared; keep the last name
-  // so their titles don't flash an empty "" while closing.
+  // Set on open, never cleared: the modals animate out after selectedTestCase is
+  // cleared, and their titles would otherwise flash an empty "" while closing.
   const [modalTestCaseName, setModalTestCaseName] = useState('');
-  const selectedTestCaseName = getEntityName(selectedTestCase?.data);
-  if (selectedTestCase && selectedTestCaseName !== modalTestCaseName) {
-    setModalTestCaseName(selectedTestCaseName);
-  }
   const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [testCaseStatus, setTestCaseStatus] = useState<
     TestCaseResolutionStatus[]
@@ -302,16 +298,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const handleEdit = (record: TestCase) => {
     setSelectedTestCase({ data: record, action: 'UPDATE' });
+    setModalTestCaseName(getEntityName(record));
     setActiveRecordId(null);
   };
 
   const handleDelete = (record: TestCase) => {
     setSelectedTestCase({ data: record, action: 'DELETE' });
+    setModalTestCaseName(getEntityName(record));
     setActiveRecordId(null);
   };
 
   const handleRestore = (record: TestCase) => {
     setSelectedTestCase({ data: record, action: 'RESTORE' });
+    setModalTestCaseName(getEntityName(record));
     setActiveRecordId(null);
   };
 
