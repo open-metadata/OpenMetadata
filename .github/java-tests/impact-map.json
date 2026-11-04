@@ -481,6 +481,7 @@
       "tests": [
         "org/openmetadata/it/tests/search/**",
         "*Search*IT",
+        "InheritedField*IT",
         "*Index*IT",
         "*Reindex*IT",
         "*Alias*IT",
