@@ -6592,7 +6592,8 @@
     "group": "Home widgets",
     "path": "/",
     "ready": {
-      "testId": "topic-card-pipelineStatus"
+      "text": "Customer sync",
+      "within": "topic-card-pipelineStatus"
     },
     "target": {
       "testId": "topic-card-pipelineStatus"
