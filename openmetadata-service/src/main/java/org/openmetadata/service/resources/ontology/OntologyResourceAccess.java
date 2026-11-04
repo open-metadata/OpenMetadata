@@ -34,8 +34,8 @@ final class OntologyResourceAccess {
       final EntityRepository<T> repository) {
     final String type = repository.getEntityType();
     final List<T> batch = definitions.stream().map(repository.getEntityClass()::cast).toList();
-    final String fields = Entity.entityHasField(type, "reviewers") ? "owners,reviewers" : "owners";
-    repository.setFieldsInBulk(repository.getFields(fields), batch);
+    // Every attribute a condition reads; setFieldsInBulk clears the fields it is not asked for.
+    repository.setFieldsInBulk(ResourceContext.authorizationFields(repository), batch);
     batch.forEach(
         definition ->
             authorizer.authorize(

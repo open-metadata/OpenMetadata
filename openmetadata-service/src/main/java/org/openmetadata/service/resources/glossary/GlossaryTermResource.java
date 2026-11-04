@@ -328,15 +328,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         Entity.GLOSSARY_TERM,
         () -> termListParent(parentTermParam, listGlossaryId, parentTermFQNParam));
 
-    ResultList<GlossaryTerm> terms;
-    if (before != null) { // Reverse paging
-      terms =
-          repository.listBefore(
-              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
-    } else { // Forward paging or first page
-      terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, terms);
+    return addHref(
+        uriInfo,
+        readableListPage(uriInfo, securityContext, fields, filter, limitParam, before, after));
   }
 
   @GET
@@ -442,7 +436,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       // Uses efficient database-level search and pagination
       result = repository.searchGlossaryTermsByParentFQN(null, search);
     }
-
+    retainReadableRows(securityContext, fields, result);
     return addHref(uriInfo, result);
   }
 

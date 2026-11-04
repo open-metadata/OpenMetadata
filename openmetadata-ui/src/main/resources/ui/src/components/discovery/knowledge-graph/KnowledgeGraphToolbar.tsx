@@ -30,7 +30,7 @@ import {
 import {
   BookClosed,
   Dataflow02,
-  Expand01,
+  Maximize01,
   Minimize01,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
@@ -531,7 +531,7 @@ const KnowledgeGraphToolbar = ({
             data-testid={
               viewport.isFullscreen ? 'exit-full-screen' : 'full-screen'
             }
-            icon={viewport.isFullscreen ? Minimize01 : Expand01}
+            icon={viewport.isFullscreen ? Minimize01 : Maximize01}
             size="lg"
             onClick={viewport.onFullscreen}
           />
