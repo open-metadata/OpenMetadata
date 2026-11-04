@@ -199,7 +199,10 @@ describe('Description', () => {
 
     expect(edit).toHaveAttribute('data-testid', 'edit-description');
     expect(ButtonUtility).toHaveBeenCalledWith(
-      expect.objectContaining({ color: 'tertiary' }),
+      expect.objectContaining({
+        'data-testid': 'edit-description',
+        icon: Edit01,
+      }),
       expect.anything()
     );
     expect(Button).not.toHaveBeenCalledWith(
@@ -224,12 +227,13 @@ describe('Description', () => {
   it('should use the core Edit01 icon for the edit button', () => {
     render(<Description {...defaultProps} />);
 
-    const editButtonProps = (Button as unknown as jest.Mock).mock.calls
-      .map(([props]) => props)
-      .find((props) => props['data-testid'] === 'edit-description');
-
-    // Same pencil as WidgetEditButton; every EditIconButton now defaults to Edit01.
-    expect(editButtonProps?.iconLeading).toBe(Edit01);
+    expect(ButtonUtility).toHaveBeenCalledWith(
+      expect.objectContaining({
+        'data-testid': 'edit-description',
+        icon: Edit01,
+      }),
+      expect.anything()
+    );
   });
 
   it('should hide the edit button when edit access is not granted', () => {

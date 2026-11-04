@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Collapse,
+  Expand,
+  RefreshCcw01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
@@ -47,7 +51,6 @@ import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
@@ -323,9 +326,11 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     }
 
     return (
-      <AlignRightIconButton
-        className={isTabExpanded ? 'rotate-180' : ''}
-        title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+      <ButtonUtility
+        data-testid="tab-expand-button"
+        icon={isTabExpanded ? Collapse : Expand}
+        size="lg"
+        tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
         onClick={toggleTabExpanded}
       />
     );

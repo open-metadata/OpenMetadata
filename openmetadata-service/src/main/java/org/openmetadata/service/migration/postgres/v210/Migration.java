@@ -26,6 +26,7 @@ import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementM
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
+import static org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
@@ -50,6 +51,7 @@ import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
+import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
@@ -117,6 +119,15 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, POSTGRES));
+    // Lineage edges written before pipelines were type-restricted can name any entity — a database
+    // service among them — which the edge copied into the downstream search document
+    // (ANT-2026-RL0ZDKB8). Clear those references from the stored edges; each one is logged for
+    // credential rotation. DB-agnostic, so it also runs on MySQL.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        LineageEdgePipelineCleanupMigration.STEP_NAME,
+        () -> clearNonPipelineEdgePipelines(collectionDAO));
     runOnce(
         migrationDAO,
         getVersion(),
