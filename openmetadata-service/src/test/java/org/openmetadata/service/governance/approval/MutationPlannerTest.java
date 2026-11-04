@@ -359,31 +359,29 @@ class MutationPlannerTest {
   @Test
   void mergeAndRebaseKeepAChangeToATagLabelsStateInsideAColumn() {
     JsonNode suggested =
-        json("{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'}]},{'name':'b'}]}");
+        json("{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'}]}]}");
     List<MutationOp> confirm =
         MutationPlanner.plan(
             suggested,
-            json(
-                "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Confirmed'}]},{'name':'b'}]}"),
+            json("{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Confirmed'}]}]}"),
             Set.of("columns"),
             Set.of("columns"));
-    List<MutationOp> describeB =
+    List<MutationOp> addY =
         MutationPlanner.plan(
             suggested,
             json(
-                "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'}]},{'name':'b','description':'d'}]}"),
+                "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'},{'tagFQN':'Y'}]}]}"),
             Set.of("columns"),
             Set.of("columns"));
-    JsonNode expected =
-        json(
-            "[{'name':'a','tags':[{'tagFQN':'X','state':'Confirmed'}]},{'name':'b','description':'d'}]");
-
-    List<MutationOp> merged = MutationPlanner.merge(confirm, describeB);
     JsonNode published =
         json(
-            "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'}]},{'name':'b','description':'d'}]}");
+            "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'},{'tagFQN':'Y'}]}]}");
+
+    List<MutationOp> merged = MutationPlanner.merge(addY, confirm);
     List<MutationOp> rebased = MutationPlanner.rebase(published, confirm);
 
+    JsonNode expected =
+        json("[{'name':'a','tags':[{'tagFQN':'X','state':'Confirmed'},{'tagFQN':'Y'}]}]");
     assertEquals(expected, JsonUtils.readTree(merged.get(0).getValue()));
     assertEquals(1, rebased.size());
     assertEquals(expected, JsonUtils.readTree(rebased.get(0).getValue()));
