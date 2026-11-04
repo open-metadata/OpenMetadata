@@ -113,7 +113,7 @@ export const ButtonGroup: StoryObj = {
 export const CardWithControls: StoryObj = {
   render: () => {
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(15);
     const totalPages = Math.max(Math.ceil(TOTAL_ITEMS / pageSize), 1);
 
     return (
@@ -121,6 +121,7 @@ export const CardWithControls: StoryObj = {
         <PaginationCardWithControls
           page={page}
           pageSize={pageSize}
+          pageSizeOptions={[15, 25, 50]}
           total={totalPages}
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
