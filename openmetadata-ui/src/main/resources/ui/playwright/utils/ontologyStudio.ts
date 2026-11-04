@@ -55,9 +55,18 @@ export async function findOntologyInQueryPicker(
   );
   const showMore = page.getByTestId('ontology-query-picker-show-more');
   await expect(page.getByTestId('ontology-query-picker')).toBeVisible();
-  while ((await option.count()) === 0 && (await showMore.count()) > 0) {
-    await showMore.click();
-  }
+  await expect
+    .poll(
+      async () => {
+        if ((await option.count()) === 0 && (await showMore.count()) > 0) {
+          await showMore.click();
+        }
+
+        return option.count();
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(1);
 
   return option;
 }
