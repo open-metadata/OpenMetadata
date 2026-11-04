@@ -57,9 +57,16 @@ export interface OwnerProps {
   avatarSize?: AvatarSize;
   /** Show the "Owners" section label in non-compact view. */
   showLabel?: boolean;
-  /** Render a dash (—) instead of nothing when owners is empty. */
+  /**
+   * Show `--` even when `placeHolder` is set. With no owners the component
+   * already shows `--` unless `placeHolder` names the empty state.
+   */
   showDashPlaceholder?: boolean;
-  /** Label text for the owners section; defaults to no label. */
+  /**
+   * Under a label (`showLabel`), the label text (default "Owners"). Otherwise
+   * the empty-state text (e.g. "No Assignee"), shown with a user glyph instead
+   * of `--`.
+   */
   placeHolder?: string;
   /** Override display names keyed by owner id. */
   ownerDisplayName?: Map<string, ReactNode>;

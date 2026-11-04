@@ -24,6 +24,72 @@ describe('Owner empty placeholder', () => {
     expect(screen.getByTestId('no-owner-icon')).toBeInTheDocument();
   });
 
+  it.each([
+    ['compact', {}],
+    ['compact with permission but no selector', { hasPermission: true }],
+    ['non-compact without a label', { isCompactView: false, showLabel: false }],
+    ['non-compact under a label', { isCompactView: false }],
+    [
+      'non-compact header with an edit selector',
+      {
+        isCompactView: false,
+        selectorContent: <button type="button">edit</button>,
+      },
+    ],
+    [
+      'inline with an edit selector',
+      {
+        isCompactView: false,
+        selectorContent: <button type="button">edit</button>,
+        showLabel: false,
+      },
+    ],
+  ])(
+    'shows -- with no glyph when the empty state is not named (%s)',
+    (_, props) => {
+      render(<Owner owners={[]} {...props} />);
+
+      expect(screen.getByTestId('owner-empty-placeholder')).toHaveTextContent(
+        /^--$/
+      );
+      expect(screen.queryByTestId('no-owner-icon')).not.toBeInTheDocument();
+    }
+  );
+
+  it('keeps a named empty state and its glyph instead of --', () => {
+    render(<Owner owners={[]} placeHolder="No Assignee" showLabel={false} />);
+
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveTextContent(
+      'No Assignee'
+    );
+    expect(screen.getByTestId('no-owner-icon')).toBeInTheDocument();
+  });
+
+  it('shows -- under a label, where placeHolder is the label', () => {
+    render(<Owner isCompactView={false} owners={[]} placeHolder="Assignee" />);
+
+    expect(screen.getByText('Assignee')).toBeInTheDocument();
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveTextContent(
+      /^--$/
+    );
+  });
+
+  it('forces -- over a named empty state with showDashPlaceholder', () => {
+    render(
+      <Owner
+        showDashPlaceholder
+        owners={[]}
+        placeHolder="No Assignee"
+        showLabel={false}
+      />
+    );
+
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveTextContent(
+      /^--$/
+    );
+    expect(screen.queryByTestId('no-owner-icon')).not.toBeInTheDocument();
+  });
+
   it('does not render the no-owner-icon when an owner is present', () => {
     render(
       <Owner
