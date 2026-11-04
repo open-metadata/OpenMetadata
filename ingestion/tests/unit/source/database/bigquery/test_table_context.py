@@ -18,12 +18,16 @@ from uuid import uuid4
 import pytest
 from google.auth.credentials import AnonymousCredentials
 from google.cloud.bigquery import Client, ConnectionProperty, QueryJobConfig, SchemaField
+from google.cloud.bigquery.table import RowIterator
 from sqlalchemy import create_engine, func, select, text
 
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import SQATestSuiteInterface
+from metadata.data_quality.validations.runtime_param_setter.rule_library_sql_expression_params_setter import (
+    RuleLibrarySqlExpressionParamsSetter,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.connectionBasicType import ConnectionArguments
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import DatabaseServiceProfilerPipeline
@@ -32,6 +36,7 @@ from metadata.generated.schema.security.credentials.gcpCredentials import GCPImp
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
 from metadata.ingestion.source.database.bigquery.connection import BigQueryConnection, get_connection_url
 from metadata.ingestion.source.database.bigquery.service_spec import ServiceSpec
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.bigquery_utils import copy_service_config
 from metadata.utils.importer import import_from_module
 from metadata.utils.profiler_utils import database_entities_cache
@@ -141,9 +146,10 @@ def table_context():
     database_entities_cache.clear()
 
 
+@pytest.mark.parametrize("sharded", [False, True])
 @pytest.mark.parametrize("auth", ["driver", "external", "impersonation", "api_endpoint"])
 @pytest.mark.parametrize("kind", ["sampler", "test_suite", "profiler"])
-def test_observability_queries_preserve_target_and_billing(table_context, auth, kind, monkeypatch):
+def test_observability_queries_preserve_target_and_billing(table_context, auth, kind, sharded, monkeypatch):
     monkeypatch.setattr("google.auth.default", lambda **_: (AnonymousCredentials(), "decoy"))
     monkeypatch.setattr(
         "metadata.utils.bigquery_utils.get_gcp_impersonate_credentials", lambda **_: AnonymousCredentials()
@@ -168,12 +174,38 @@ def test_observability_queries_preserve_target_and_billing(table_context, auth, 
 
     def query_and_wait(client, query, **kwargs):
         queries.append((client, query, {**kwargs, "job_config": deepcopy(kwargs["job_config"])}))
-        schema = [SchemaField("row_count", "INTEGER")] if "count(" in query.lower() else []
-        return SimpleNamespace(schema=schema, total_rows=0, num_dml_affected_rows=None)
+        query_schema = [SchemaField("row_count" if "count(" in query.lower() else "amount", "INTEGER")]
+
+        return RowIterator(
+            client=client,
+            api_request=None,
+            path="/synthetic/query",
+            schema=query_schema,
+            total_rows=0,
+            first_page_response={"rows": [], "totalRows": "0"},
+        )
 
     # Retain the real Client, SQLAlchemy dialect and DBAPI; replace the network job boundary.
     monkeypatch.setattr("google.cloud.bigquery._job_helpers.query_and_wait", query_and_wait)
     table, _, metadata = table_context
+    if sharded:
+        table.name = "amounts_yyyymmdd"
+        table.tableType = TableType.Sharded
+        table.tableSharding = {
+            "prefix": "amounts_",
+            "suffixFormat": "YYYYMMDD",
+            "representative": {
+                "databaseName": "target",
+                "schemaName": "dataset",
+                "tableName": "amounts_20260102",
+                "shardDate": "2026-01-02",
+            },
+            "shardCount": 2,
+            "firstShardDate": "2026-01-01",
+            "lastShardDate": "2026-01-02",
+        }
+        table = Table.model_validate(table.model_dump())
+    before_table = table.model_dump()
     sampler = import_from_module(ServiceSpec.sampler_class)(connection, metadata, table)
     interface = None
     if kind == "sampler":
@@ -189,9 +221,23 @@ def test_observability_queries_preserve_target_and_billing(table_context, auth, 
         )
         session = interface.session
     try:
-        session.execute(text("SELECT * FROM `dataset`.`amounts` WHERE amount < :limit"), {"limit": 0})
+        runner = QueryRunner(session=session, dataset=sampler.raw_dataset, raw_dataset=sampler.raw_dataset)
+        reference = runner.get_table_reference()
+        session.execute(text(f"SELECT * FROM {reference} WHERE amount < :limit"), {"limit": 0})
         session.rollback()
         session.execute(select(func.count().label("row_count")).select_from(sampler.raw_dataset))
+        if kind == "sampler":
+            sample = sampler.fetch_sample_data()
+            assert sample.rows == []
+            assert sample.executionSource == (table.tableSharding.representative if sharded else None)
+            sampler.sample_query = f"SELECT amount FROM {reference}"
+            custom_sample = sampler.fetch_sample_data()
+            assert custom_sample.rows == []
+            assert custom_sample.executionSource is None
+        if sharded:
+            setter = RuleLibrarySqlExpressionParamsSetter(metadata, connection, table, sampler)
+            with pytest.raises(ValueError, match="Rule-library SQL is not supported for sharded tables yet"):
+                setter.get_parameters(None)
     finally:
         session.close()
         sampler.session_factory.remove()
@@ -199,8 +245,15 @@ def test_observability_queries_preserve_target_and_billing(table_context, auth, 
         if interface and kind == "profiler":
             interface.session_factory.remove()
             interface.connection.dispose()
-    assert len(queries) == 2
-    for client, _, kwargs in queries:
+    assert table.model_dump() == before_table
+    physical_name = "amounts_20260102" if sharded else "amounts"
+    assert sampler.raw_dataset.__table__.name == physical_name
+    assert physical_name in reference
+    assert "amounts_yyyymmdd" not in reference
+    assert len(queries) == (4 if kind == "sampler" else 2)
+    for client, query, kwargs in queries:
+        assert physical_name in query
+        assert "amounts_yyyymmdd" not in query
         assert client.project == "billing-project"
         assert kwargs["project"] == "billing-project"
         assert kwargs["location"] == "eu"
