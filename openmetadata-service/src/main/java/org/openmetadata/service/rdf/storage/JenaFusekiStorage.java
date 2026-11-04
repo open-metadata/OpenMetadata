@@ -959,7 +959,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       if (RdfWriteRetry.isUncertain(exception)) {
         throw isCompacting()
             ? new RdfStorageMaintenanceException(
-                "compaction (" + description + " waited)", COMPACTION_RETRY_AFTER, true)
+                "compaction (" + description + " waited)", COMPACTION_RETRY_AFTER)
             : new RdfWriteOutcomeUnknownException(description, exception);
       }
       throw exception;
@@ -1301,18 +1301,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     throwIfCircuitOpen(OPERATION_STORE_ENTITY);
     String entityUri = buildEntityUri(entityType, entityId.toString());
     try {
-      RdfEntityWritePlanner.Plan plan =
+      final RdfEntityWriteResult result =
           new RdfEntityWritePlanner(this::readForEntityWrite)
-              .plan(entityUri, entityModel, strategy);
-      if (plan.sendsUpdate()) {
-        sendEntityUpdate(plan.update());
-      } else {
+              .write(entityUri, entityModel, strategy, this::sendEntityUpdate);
+      if (!result.changesGraph()) {
         // Nothing was sent, so the write's read is its only proof Fuseki answers.
         recordSuccess();
       }
-      recordEntityWrite(plan.result());
-      LOG.debug("Stored entity {} in graph {}: {}", entityId, KNOWLEDGE_GRAPH, plan.result());
-      return plan.result();
+      recordEntityWrite(result);
+      LOG.debug("Stored entity {} in graph {}: {}", entityId, KNOWLEDGE_GRAPH, result);
+      return result;
     } catch (Exception e) {
       rethrowIfHeldBack(e);
       LOG.error("Failed to store entity in Fuseki", e);

@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.GraphMemFactory;
@@ -30,7 +31,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
  * Decides what one entity write sends to the store. TDB2 never edits in place: every index block a
  * write touches is copied and the old one freed only by compaction, so deleting and reinserting an
  * unchanged projection costs as much disk as rewriting it. The planner reads the stored projection
- * and sends only the triples that differ, or nothing. It only reads; the caller sends the update.
+ * and sends only the triples that differ, or nothing.
  */
 final class RdfEntityWritePlanner {
   /** Bounds the VALUES block of one existence read; reads are cheap, a huge query is not. */
@@ -48,6 +49,39 @@ final class RdfEntityWritePlanner {
     boolean sendsUpdate() {
       return !update.isEmpty();
     }
+  }
+
+  /**
+   * Plans the write, sends it through {@code send}, and repairs it when another write interfered. A
+   * difference is computed from a read, and a write already queued for TDB2's writer when that read
+   * ran, such as a request OpenMetadata stopped waiting for or a server that died sending it,
+   * commits between the read and this update. TDB2 admits writers in arrival order, so once this
+   * update has returned every such write has committed: reading the projection back shows whether
+   * one interfered, and a replacement, whose delete is evaluated when it applies, repairs it (see
+   * ADR:2026-11-03-live-rdf-entity-writes-send-only-the-changed-triples).
+   */
+  RdfEntityWriteResult write(
+      final String entityUri,
+      final Model projection,
+      final RdfEntityWriteStrategy strategy,
+      final Consumer<String> send) {
+    final Plan plan = plan(entityUri, projection, strategy);
+    if (plan.sendsUpdate()) {
+      send.accept(plan.update());
+    }
+    final boolean interfered =
+        plan.result().outcome() == RdfEntityWriteResult.Outcome.CHANGED_TRIPLES
+            && !holds(entityUri, projection);
+    if (interfered) {
+      send.accept(replacementPlan(entityUri, projection).update());
+    }
+    return interfered ? RdfEntityWriteResult.CORRECTED : plan.result();
+  }
+
+  /** Whether the store now holds exactly the projection: one more difference would send nothing. */
+  private boolean holds(final String entityUri, final Model projection) {
+    return plan(entityUri, projection, RdfEntityWriteStrategy.DIFFERENCE).result()
+        == RdfEntityWriteResult.UNCHANGED;
   }
 
   Plan plan(final String entityUri, final Model projection, final RdfEntityWriteStrategy strategy) {

@@ -183,21 +183,7 @@ public final class RdfLiveWriteStore {
                 .one());
   }
 
-  /** Delivers one queued write. */
-  @FunctionalInterface
-  public interface Delivery {
-    /**
-     * @param redelivered whether an earlier attempt of this write failed after it may have reached
-     *     the store, which can still be applying it
-     */
-    void deliver(String payload, boolean redelivered);
-  }
-
   public boolean processNext(final Consumer<String> write) {
-    return processNext((payload, redelivered) -> write.accept(payload));
-  }
-
-  public boolean processNext(final Delivery write) {
     return jdbi.inTransaction(
         TransactionIsolationLevel.READ_COMMITTED,
         handle -> {
@@ -221,7 +207,7 @@ public final class RdfLiveWriteStore {
         });
   }
 
-  private boolean processHead(final Handle handle, final Delivery write) {
+  private boolean processHead(final Handle handle, final Consumer<String> write) {
     final Entry entry = head(handle);
     if (entry == null || entry.nextAttemptAt() > clock.millis()) {
       return false;
@@ -229,7 +215,7 @@ public final class RdfLiveWriteStore {
     OntologyMetrics.recordRdfQueueLag(
         Duration.ofMillis(Math.max(0, clock.millis() - entry.createdAt())));
     try {
-      write.deliver(entry.payload(), entry.failedBefore());
+      write.accept(entry.payload());
     } catch (RuntimeException exception) {
       return recordFailure(handle, entry, exception);
     }
@@ -272,26 +258,13 @@ public final class RdfLiveWriteStore {
     return false;
   }
 
-  /**
-   * The write waits for maintenance without using an attempt. One held up by a compaction after it
-   * reached the store records the error too: the store may apply it once the compaction ends, so
-   * its redelivery must not trust what the store holds before then.
-   */
+  /** Nothing reached the store, so the write waits for maintenance without using an attempt. */
   private void deferForMaintenance(
       final Handle handle, final Entry entry, final RdfStorageMaintenanceException maintenance) {
-    final long nextAttemptAt = clock.millis() + maintenance.getRetryAfter().toMillis();
-    if (maintenance.isRequestPending()) {
-      handle.execute(
-          "UPDATE rdf_live_write_queue SET nextAttemptAt = ?, lastError = ? WHERE id = ?",
-          nextAttemptAt,
-          failureReason(maintenance),
-          entry.id());
-    } else {
-      handle.execute(
-          "UPDATE rdf_live_write_queue SET nextAttemptAt = ? WHERE id = ?",
-          nextAttemptAt,
-          entry.id());
-    }
+    handle.execute(
+        "UPDATE rdf_live_write_queue SET nextAttemptAt = ? WHERE id = ?",
+        clock.millis() + maintenance.getRetryAfter().toMillis(),
+        entry.id());
     LOG.debug("Live RDF write {} waits for storage maintenance", entry.id());
   }
 
@@ -425,8 +398,7 @@ public final class RdfLiveWriteStore {
   private static Entry head(final Handle handle) {
     return handle
         .createQuery(
-            "SELECT id, payload, createdAt, attempts, nextAttemptAt, lastError IS NOT NULL AS failedBefore "
-                + "FROM rdf_live_write_queue ORDER BY id LIMIT 1")
+            "SELECT id, payload, createdAt, attempts, nextAttemptAt FROM rdf_live_write_queue ORDER BY id LIMIT 1")
         .map(
             (result, context) ->
                 new Entry(
@@ -434,23 +406,12 @@ public final class RdfLiveWriteStore {
                     result.getString("payload"),
                     result.getLong("createdAt"),
                     result.getInt("attempts"),
-                    result.getLong("nextAttemptAt"),
-                    result.getBoolean("failedBefore")))
+                    result.getLong("nextAttemptAt")))
         .findOne()
         .orElse(null);
   }
 
-  /**
-   * @param failedBefore whether an earlier attempt failed or was held up after it may have reached
-   *     the store: every such attempt records its error
-   */
-  private record Entry(
-      long id,
-      String payload,
-      long createdAt,
-      int attempts,
-      long nextAttemptAt,
-      boolean failedBefore) {}
+  private record Entry(long id, String payload, long createdAt, int attempts, long nextAttemptAt) {}
 
   private record QueueHead(long createdAt, int attempts) {}
 }

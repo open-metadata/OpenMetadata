@@ -26,7 +26,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -65,8 +64,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
-import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
-import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
@@ -81,7 +78,6 @@ class RdfLiveWriteTest {
   private LineageDetails currentLineageDetails;
   private boolean lineageEdgeExists = true;
   private final Set<UUID> softDeleted = new HashSet<>();
-  private final List<RdfEntityWriteStrategy> entityWriteStrategies = new ArrayList<>();
   private final RdfRepository repository = repository();
 
   @AfterEach
@@ -290,25 +286,6 @@ class RdfLiveWriteTest {
     assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
   }
 
-  @Test
-  void onlyARedeliveredEntityUpdateReplacesTheStoredProjection() {
-    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", Entity.TABLE);
-    currentEntity = new Table().withId(UUID.randomUUID()).withName("table");
-    final RdfLiveWrite update = RdfLiveWrite.EntityUpdate.capture(currentEntity);
-    final RdfLiveWriter.Application application = RdfUpdater.liveWriteApplication(repository);
-
-    application.apply(update, false);
-    application.apply(update, true);
-    application.apply(update, false);
-
-    assertEquals(
-        List.of(
-            RdfEntityWriteStrategy.DIFFERENCE,
-            RdfEntityWriteStrategy.REPLACE,
-            RdfEntityWriteStrategy.DIFFERENCE),
-        entityWriteStrategies);
-  }
-
   private void replay(final RdfLiveWrite command) {
     final RdfLiveWrite restored =
         JsonUtils.readValue(JsonUtils.pojoToJson(command), RdfLiveWrite.class);
@@ -330,12 +307,10 @@ class RdfLiveWriteTest {
             call -> {
               requireAvailable();
               dataset.getNamedModel(GRAPH).add((Model) call.getArgument(2));
-              entityWriteStrategies.add(call.getArgument(3));
-              return RdfEntityWriteResult.REPLACED;
+              return null;
             })
         .when(storage)
-        .storeEntity(
-            anyString(), any(UUID.class), any(Model.class), any(RdfEntityWriteStrategy.class));
+        .storeEntity(anyString(), any(UUID.class), any(Model.class));
     final CollectionDAO.RelationshipTypeDAO types = mock(CollectionDAO.RelationshipTypeDAO.class);
     when(types.findEntityByName("broader", Include.NON_DELETED))
         .thenReturn(

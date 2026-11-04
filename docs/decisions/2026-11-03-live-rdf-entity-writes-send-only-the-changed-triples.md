@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-11-03 (initial)
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** `RdfEntityWritePlannerTest`, `RdfOwnedResourcesTest`, `RdfEntityDiffWriteIT`,
-  `RdfLiveWriteRecoveryIT`, `RdfLiveWriterTest`, `InferenceInvalidatingRdfStorageTest`,
+  `EntityWriteCircuitBreakerTest`, `InferenceInvalidatingRdfStorageTest`,
   `AssertedGraphTrackingRdfStorageTest`
 - **Related:** #36671, #36437,
   ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule
@@ -32,36 +32,46 @@ rewrite also left the previous list's cells behind.
 - List cells are named `<entity>/list/<URL-encoded predicate>/<index>` and are owned by the entity,
   so a write deletes the cells of a list it replaces or removes. A list stored with blank cells is
   replaced once, cells included.
-- A queued write whose earlier attempt failed or was held up after reaching Fuseki is redelivered as
-  a replacement. Fuseki can still be applying that attempt after OpenMetadata stopped waiting: its
-  HTTP client has no request timeout and `arq:updateTimeout` does not count the wait for TDB2's
-  writer. A read taken meanwhile does not see the attempt, so a difference or a skip computed from it
-  could leave the attempt's triples, or miss ones it deleted. A replacement evaluates its delete when
-  Fuseki applies it. The queue row carries the signal: every failed attempt records `lastError`,
-  and a write held up by a compaction records it too, without using an attempt. The row is read by
-  whichever server drains next, so it holds across restarts and servers and nothing is evicted.
-- Bulk reindex writes, relationship writes and the rebuild journal are unchanged; the journal keeps
-  the full projection, because the rebuild dataset is projected on its own.
+- After sending a difference, the write reads the projection back and replaces it whole when it
+  differs (outcome `corrected`). A difference is computed from a read, and a write already queued
+  for TDB2's writer when that read ran commits between the read and the update: a request
+  OpenMetadata stopped waiting for (its HTTP client has no request timeout and `arq:updateTimeout`
+  does not count the wait for the writer), a reindex chunk that timed out, or the request of a
+  server that died sending it. TDB2 admits writers in arrival order (a fair semaphore in Jena
+  6.2.0), so once the update has returned every write queued before it has committed, and the
+  read-back sees them. A replacement evaluates its delete when Fuseki applies it, so it leaves the
+  projection regardless. Nothing outside the write marks it uncertain, so no queue state, restart or
+  server boundary is involved.
+- Bulk reindex writes, relationship writes and the rebuild journal are unchanged: journal replay
+  replaces, because a read and a read-back per replayed write would spend the promotion's replay
+  budget. The journal keeps the full projection, because the rebuild dataset is projected on its own.
 
 ## Consequences
 
-- An unchanged update costs one read and no write transaction; a small change costs one small write.
+- An unchanged update sends no write: it reads the entity's scope, plus one existence read per
+  1,000 triples it emits outside that scope (tag labels, referenced entities). A changed update
+  sends one small write and reads the projection back the same way; reads do not grow TDB2's files.
   On `scripts/rdf-live-update-benchmark.sh` (200 tables of 300 columns, 1,000 writes per scenario,
   one Fuseki container), dataset growth per write fell from about 20 MB to 0 for unchanged
   updates, 173 KB for a moved column tag and 205 KB for a new description; the payload fell from
   344 MB to under 0.5 MB per scenario.
-- Every queue entry that failed before is redelivered as a full replacement. Such writes are rare,
-  and a replacement is what every write cost before this decision.
-- Limits of the redelivery rule. Fuseki decides the order in which an abandoned request and its
-  retry apply; if the abandoned request applies last, the graph is wrong until the entity's next
-  write, as it was before this decision. Writes outside the queue are not retried and already mark
-  the projection degraded on failure. A dead-lettered write leaves the projection degraded, and a
-  reindex repairs it.
+- Limits. A write is repaired only from writes queued ahead of it. A write *sent* after it with an
+  older projection, such as a reindex chunk read before the entity changed, leaves its stale
+  triples until the entity's next write, as it did before this decision. An unchanged update sends
+  nothing, so a stale write still queued in Fuseki that commits after it is not repaired either;
+  before this decision a replacement queued behind it would have been. Right after a compaction
+  ends, the writers it held race for TDB2's writer in no set order, so a stale one can commit after
+  the read-back. A dead-lettered write leaves the projection degraded, and a reindex repairs it.
 - Resources a projection emits but its entity does not own keep their stale triples, as before:
   lifecycle and access details, table constraints, profile measurements, pipeline runs and
   `datasetByFqn` nodes. Cleaning them up, and list cells or blank nodes earlier writes left attached
   to nothing, is a follow-up; a successful `recreateIndex: true` reindex removes all of them today.
 - During a rolling upgrade an older server can still fully rewrite an entity. Its delete does not
   know the named list cells, so the cells of the list it replaces stay until a reindex.
+- Exports in Turtle and RDF/XML (`GET /v1/rdf/entity/{type}/{id}`) show a list as named
+  `rdf:first`/`rdf:rest` resources instead of a `( … )` collection, which only blank cells can be
+  written as. The graph means the same and SPARQL `rdf:rest*/rdf:first` paths still match; JSON-LD
+  export does not use the cells.
 - Revisit if relationship writes, which still delete and reinsert their edge, show up in disk growth,
-  or if Fuseki gains a way to make an update conditional on what it read.
+  if `corrected` writes become common (Fuseki timing out routinely), or if a Jena upgrade stops
+  admitting writers in arrival order.

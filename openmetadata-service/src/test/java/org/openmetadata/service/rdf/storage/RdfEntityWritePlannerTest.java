@@ -244,10 +244,42 @@ class RdfEntityWritePlannerTest {
       projection.createResource("urn:shared:" + index).addProperty(RDFS.label, "label " + index);
     }
 
+    // A changed write reads its scope and three chunks, then the same again to check what it left.
     diff.write(TABLE_URI, projection);
-    assertEquals(4, diff.reads.get());
-    assertEquals(RdfEntityWriteResult.UNCHANGED, diff.write(TABLE_URI, projection));
     assertEquals(8, diff.reads.get());
+    assertEquals(RdfEntityWriteResult.UNCHANGED, diff.write(TABLE_URI, projection));
+    assertEquals(12, diff.reads.get());
+  }
+
+  /**
+   * A write already queued for TDB2's writer when the difference was read, such as a reindex chunk
+   * OpenMetadata stopped waiting for or a request from a server that died, commits between the read
+   * and the update. The update alone would leave that write's description next to the new one.
+   */
+  @Test
+  void aWriteThatCommitsBetweenTheReadAndTheUpdateIsReplacedAway() {
+    final Table table = table(List.of(column("id"), column("amount")));
+    writeBoth(TABLE_URI, table.withDescription("old"));
+    final String queuedAhead =
+        JenaFusekiStorage.buildEntityUpsertUpdate(
+            TABLE_URI, translator.toRdf(copy(table).withDescription("middle")));
+    diff.commitAfterNextRead(queuedAhead);
+
+    final RdfEntityWriteResult result = writeBoth(TABLE_URI, table.withDescription("latest"));
+
+    assertEquals(RdfEntityWriteResult.CORRECTED, result);
+    assertSameGraph();
+  }
+
+  @Test
+  void aChangedWriteNobodyInterferedWithIsNotReplaced() {
+    final Table table = table(List.of(column("id"), column("amount")));
+    writeBoth(TABLE_URI, table.withDescription("old"));
+
+    final RdfEntityWriteResult result = writeBoth(TABLE_URI, table.withDescription("latest"));
+
+    assertEquals(RdfEntityWriteResult.Outcome.CHANGED_TRIPLES, result.outcome());
+    assertEquals(2, diff.updates.size(), "only the first write and the difference were sent");
   }
 
   private List<Table> versionsOf(final Table table) {
@@ -416,6 +448,7 @@ class RdfEntityWritePlannerTest {
     private final List<String> updates = new ArrayList<>();
     private final AtomicInteger reads = new AtomicInteger();
     private final RdfEntityWritePlanner planner = new RdfEntityWritePlanner(this::construct);
+    private String queuedAhead;
 
     Model graph() {
       return dataset.getNamedModel(GRAPH);
@@ -427,19 +460,30 @@ class RdfEntityWritePlannerTest {
 
     RdfEntityWriteResult write(
         final String uri, final Model projection, final RdfEntityWriteStrategy strategy) {
-      final RdfEntityWritePlanner.Plan plan = planner.plan(uri, projection, strategy);
-      if (plan.sendsUpdate()) {
-        updates.add(plan.update());
-        UpdateAction.parseExecute(plan.update(), dataset);
-      }
-      return plan.result();
+      return planner.write(uri, projection, strategy, this::send);
+    }
+
+    /** Commits {@code update} after the next read, as a write queued ahead in TDB2 would. */
+    void commitAfterNextRead(final String update) {
+      queuedAhead = update;
+    }
+
+    private void send(final String update) {
+      updates.add(update);
+      UpdateAction.parseExecute(update, dataset);
     }
 
     private Model construct(final String query) {
       reads.incrementAndGet();
+      final Model result;
       try (QueryExecution execution = QueryExecutionFactory.create(query, dataset)) {
-        return execution.execConstruct();
+        result = execution.execConstruct();
       }
+      if (queuedAhead != null) {
+        UpdateAction.parseExecute(queuedAhead, dataset);
+        queuedAhead = null;
+      }
+      return result;
     }
 
     @Override

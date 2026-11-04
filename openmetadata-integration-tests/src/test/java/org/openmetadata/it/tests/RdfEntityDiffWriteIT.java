@@ -117,18 +117,17 @@ public class RdfEntityDiffWriteIT {
   }
 
   @Test
-  void anUnchangedProjectionReachesFusekiOnce() throws Exception {
+  void aSecondDeliveryOfAnUnchangedProjectionSendsNoUpdate() throws Exception {
     final Table table = wideTable();
     final long before = updateRequests(DIFF_DATASET);
 
     final RdfEntityWriteResult first = diff.storeEntity(TABLE, TABLE_ID, translator.toRdf(table));
-    final RdfEntityWriteResult redelivery =
-        diff.storeEntity(TABLE, TABLE_ID, translator.toRdf(table));
+    final RdfEntityWriteResult second = diff.storeEntity(TABLE, TABLE_ID, translator.toRdf(table));
 
     assertEquals(RdfEntityWriteResult.Outcome.CHANGED_TRIPLES, first.outcome());
     assertEquals(
         RdfEntityWriteResult.UNCHANGED,
-        redelivery,
+        second,
         "the projection TDB2 returns, canonical literals included, must read as unchanged");
     assertEquals(before + 1, updateRequests(DIFF_DATASET));
   }

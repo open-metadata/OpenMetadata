@@ -24,36 +24,29 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.RequestEntityCache;
 
 class RdfLiveWriterTest {
   private final Queue<String> persisted = new ArrayDeque<>();
   private final List<RdfLiveWrite> applied = new ArrayList<>();
-  private final List<Boolean> redeliveries = new ArrayList<>();
-  private final Set<String> failedBefore = new HashSet<>();
   private final AtomicReference<Runnable> pendingTask = new AtomicReference<>();
   private final AtomicInteger dispatched = new AtomicInteger();
   private final AtomicBoolean reject = new AtomicBoolean();
   private final RdfLiveWriter writer =
       new RdfLiveWriter(
           store(),
-          (command, redelivered) -> {
-            applied.add(command);
-            redeliveries.add(redelivered);
-          },
+          applied::add,
           task -> {
             if (reject.get()) {
               throw new RejectedExecutionException("executor full");
@@ -104,20 +97,6 @@ class RdfLiveWriterTest {
   }
 
   @Test
-  void aWriteWhoseEarlierAttemptFailedIsAppliedAsARedelivery() {
-    final RdfLiveWrite first = new RdfLiveWrite.EntityUpdate("table", UUID.randomUUID());
-    final RdfLiveWrite retried = new RdfLiveWrite.EntityUpdate("table", UUID.randomUUID());
-    writer.enqueue(first);
-    writer.enqueue(retried);
-    failedBefore.add(JsonUtils.pojoToJson(retried));
-
-    runPending();
-
-    assertEquals(List.of(first, retried), applied);
-    assertEquals(List.of(false, true), redeliveries);
-  }
-
-  @Test
   void retriesHaveABoundedExponentialBackoff() {
     assertEquals(1000, RdfLiveWriteStore.retryDelayMillis(1));
     assertEquals(2000, RdfLiveWriteStore.retryDelayMillis(2));
@@ -135,7 +114,7 @@ class RdfLiveWriterTest {
     final RdfLiveWriter cachingWriter =
         new RdfLiveWriter(
             store(),
-            (command, redelivered) -> {
+            command -> {
               cachedAtStart.add(cachedTable(tableId));
               RequestEntityCache.putById(
                   Entity.TABLE,
@@ -171,15 +150,14 @@ class RdfLiveWriterTest {
     final RdfLiveWriteStore store = mock(RdfLiveWriteStore.class);
     doAnswer(call -> persisted.add(call.getArgument(0))).when(store).enqueue(anyString());
     when(store.pendingWrites()).thenAnswer(call -> (long) persisted.size());
-    when(store.processNext(any(RdfLiveWriteStore.Delivery.class)))
+    when(store.processNext(any()))
         .thenAnswer(
             call -> {
               if (persisted.isEmpty()) {
                 return false;
               }
-              final RdfLiveWriteStore.Delivery delivery = call.getArgument(0);
-              final String payload = persisted.remove();
-              delivery.deliver(payload, failedBefore.contains(payload));
+              final Consumer<String> apply = call.getArgument(0);
+              apply.accept(persisted.remove());
               return true;
             });
     return store;

@@ -18,28 +18,18 @@ import lombok.Getter;
 
 /**
  * A write to the RDF store was held back, or held up, because storage maintenance is running or the
- * store is low on disk. Retrying after {@link #getRetryAfter()} is safe, and the write is not a
- * delivery failure: the live-write queue retries it without using up an attempt, and it does not
- * trip the circuit breaker. A write that was held up after reaching the store ({@link
- * #isRequestPending()}) may still apply once maintenance ends, so its retry must not trust a read
- * taken before then.
+ * store is low on disk. RDF writes are idempotent, so retrying after {@link #getRetryAfter()} is
+ * always safe, and the write is not a delivery failure: the live-write queue retries it without
+ * using up an attempt, and it does not trip the circuit breaker.
  */
 @Getter
 public sealed class RdfStorageMaintenanceException extends RuntimeException
     permits RdfStorageLowDiskException {
   private final transient Duration retryAfter;
-  private final boolean requestPending;
 
   public RdfStorageMaintenanceException(final String maintenanceJob, final Duration retryAfter) {
-    this(maintenanceJob, retryAfter, false);
-  }
-
-  /** @param requestPending whether the store received the write and may still apply it */
-  public RdfStorageMaintenanceException(
-      final String maintenanceJob, final Duration retryAfter, final boolean requestPending) {
     super("RDF storage maintenance " + maintenanceJob + " is running; retry in " + retryAfter);
     this.retryAfter = retryAfter;
-    this.requestPending = requestPending;
   }
 
   /** The maintenance refusal behind {@code failure}, if that is what it was. */

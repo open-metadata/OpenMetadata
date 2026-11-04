@@ -19,13 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -50,7 +47,6 @@ import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
-import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.testcontainers.containers.GenericContainer;
 
 /** Durable delivery through real MySQL/PostgreSQL transactions and HTTP/TDB2 writes. */
@@ -158,53 +154,6 @@ public class RdfLiveWriteRecoveryIT {
               .path("count")
               .path("value")
               .asInt());
-    }
-  }
-
-  /**
-   * An entity write delivered again after an attempt that may still be applying in Fuseki must not
-   * be computed from what Fuseki holds now. The queue row says so to whichever server drains it
-   * next, including one started after the failure.
-   */
-  @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
-  void onlyAWriteWhoseEarlierAttemptMayStillApplyIsRedelivered(
-      final RdfTestDatabase.Backend backend) {
-    try (Fixture fixture = new Fixture(backend)) {
-      final List<Boolean> redeliveries = new ArrayList<>();
-      final RdfLiveWriteStore.Delivery recordRedelivery =
-          (payload, redelivered) -> redeliveries.add(redelivered);
-      fixture.primary.enqueue(insert(0));
-      fixture.primary.enqueue(insert(1));
-      fixture.primary.enqueue(insert(2));
-
-      assertFalse(
-          fixture.primary.processNext(
-              (payload, redelivered) -> {
-                throw new RdfStorageMaintenanceException("pause", Duration.ofSeconds(1));
-              }));
-      fixture.clock.advance(1000);
-      assertTrue(fixture.other.processNext(recordRedelivery));
-
-      assertFalse(
-          fixture.primary.processNext(
-              (payload, redelivered) -> {
-                throw new RdfStorageMaintenanceException(
-                    "compaction (storeEntity waited)", Duration.ofSeconds(1), true);
-              }));
-      fixture.clock.advance(1000);
-      assertTrue(fixture.newStore().processNext(recordRedelivery));
-
-      assertFalse(
-          fixture.primary.processNext(
-              (payload, redelivered) -> {
-                throw new IllegalStateException("storeEntity timed out");
-              }));
-      fixture.clock.advance(1000);
-      assertTrue(fixture.other.processNext(recordRedelivery));
-
-      assertEquals(List.of(false, true, true), redeliveries);
-      assertEquals(0, fixture.other.pendingWrites());
     }
   }
 

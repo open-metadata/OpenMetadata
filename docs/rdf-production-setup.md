@@ -425,14 +425,17 @@ data to copy it into.
 Live entity writes therefore send only what changed. The writer reads what Fuseki holds for the
 entity, deletes the triples the new projection no longer has and inserts the ones it adds; an update
 that changes nothing in the projection, such as an ingestion re-sending unchanged metadata, sends no
-write at all and leaves inference results valid. Three cases still replace the projection whole: a
-queued write retried after a failed or held-up attempt, which may still be applying in Fuseki; an
-entity stored before list cells had stable names, once; and a change larger than the projection,
-such as a rename. Reindexing is unchanged. Triples earlier releases left behind, such as list cells
-no entity points to any more, stay until a successful `recreateIndex: true` run rebuilds the graph
+write at all and leaves inference results valid. After sending a difference the writer reads the
+projection back; if a write queued ahead of it in Fuseki, such as a request OpenMetadata stopped
+waiting for, committed in between, it replaces the projection whole. Two other cases replace it
+whole too: an entity stored before list cells had stable names, once; and a change larger than the
+projection, such as a rename. Reindexing and journal replay are unchanged. Triples earlier releases
+left behind, such as list cells no entity points to any more, stay until a successful
+`recreateIndex: true` run rebuilds the graph
 (ADR:2026-11-03-live-rdf-entity-writes-send-only-the-changed-triples). Watch
-`rdf.fuseki.entity.writes` by `outcome` (`unchanged`, `changed_triples`, `replaced`) and
-`rdf.fuseki.payload.bytes{operation=storeEntity}` to see what live writes cost.
+`rdf.fuseki.entity.writes` by `outcome` (`unchanged`, `changed_triples`, `replaced`, `corrected`)
+and `rdf.fuseki.payload.bytes{operation=storeEntity}` to see what live writes cost; `corrected`
+counts writes another write interfered with, which only happens while Fuseki is timing out.
 
 OpenMetadata compacts the serving dataset itself:
 

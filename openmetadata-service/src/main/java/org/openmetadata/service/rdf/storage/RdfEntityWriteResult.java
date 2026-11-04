@@ -20,6 +20,7 @@ import java.util.Objects;
 public record RdfEntityWriteResult(Outcome outcome, long deletedTriples, long insertedTriples) {
   public static final RdfEntityWriteResult UNCHANGED = new RdfEntityWriteResult(Outcome.UNCHANGED);
   public static final RdfEntityWriteResult REPLACED = new RdfEntityWriteResult(Outcome.REPLACED);
+  public static final RdfEntityWriteResult CORRECTED = new RdfEntityWriteResult(Outcome.CORRECTED);
 
   public enum Outcome {
     /** The store already held the projection; nothing was sent. */
@@ -27,7 +28,12 @@ public record RdfEntityWriteResult(Outcome outcome, long deletedTriples, long in
     /** Only the triples that differed were deleted and inserted. */
     CHANGED_TRIPLES,
     /** The projection was replaced whole. */
-    REPLACED;
+    REPLACED,
+    /**
+     * The difference was sent, but the projection read back afterwards differed: a write queued
+     * ahead of it had committed in between, so the projection was then replaced whole.
+     */
+    CORRECTED;
 
     public String tag() {
       return name().toLowerCase(Locale.ROOT);
