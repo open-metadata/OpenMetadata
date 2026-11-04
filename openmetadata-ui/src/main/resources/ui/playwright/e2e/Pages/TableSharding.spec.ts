@@ -131,10 +131,8 @@ test.describe('BigQuery sharded table identity', { tag: '@Discovery' }, () => {
   });
 
   for (const enabled of [true, false]) {
-    test(`persists metadata grouping enabled=${enabled}`, async ({
-      adminPage,
-      browser,
-    }) => {
+    const title = `persists metadata grouping enabled=${enabled}`;
+    test(title, { tag: '@ingestion' }, async ({ adminPage, browser }) => {
       test.slow();
       const serviceName = service.entity.name;
       const { apiContext, afterAction } = await performAdminLogin(browser);
