@@ -14,6 +14,7 @@
 package org.openmetadata.service.tasks;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 
@@ -88,10 +90,25 @@ class TaskFieldTargetTest {
   }
 
   @Test
-  void aDescriptionTaskWithoutAFieldPath_isRefused() {
-    Task task = task(TaskEntityType.DescriptionUpdate, Map.of("newDescription", "x"));
+  void aTaskWithoutAFieldPath_isAboutTheEntityItself() {
+    Task description = task(TaskEntityType.DescriptionUpdate, Map.of("newDescription", "x"));
+    Task tags = task(TaskEntityType.TagUpdate, Map.of());
 
-    assertThrows(BadRequestException.class, () -> TaskFieldTarget.require(task));
+    TaskFieldTarget.fillDefault(description);
+    TaskFieldTarget.fillDefault(tags);
+
+    assertEquals("description", fieldPathOf(description));
+    assertEquals("tags", fieldPathOf(tags));
+    assertDoesNotThrow(() -> TaskFieldTarget.require(description));
+  }
+
+  @Test
+  void aWrittenFieldPathIsKept() {
+    Task task = descriptionTask("columns.amount.description");
+
+    TaskFieldTarget.fillDefault(task);
+
+    assertEquals("columns.amount.description", fieldPathOf(task));
   }
 
   @Test
@@ -150,6 +167,10 @@ class TaskFieldTargetTest {
     Task task = descriptionTask("columns.missing.description");
 
     assertDoesNotThrow(() -> TaskFieldTarget.requireToApply(task, declined, null));
+  }
+
+  private static String fieldPathOf(Task task) {
+    return JsonUtils.valueToTree(task.getPayload()).path("fieldPath").asText(null);
   }
 
   private static Task descriptionTask(String fieldPath) {

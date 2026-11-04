@@ -13,6 +13,8 @@
  */
 package org.openmetadata.service.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
@@ -57,6 +59,21 @@ public final class TaskFieldTarget {
   private record Declared(Target target, String fieldPath) {}
 
   private TaskFieldTarget() {}
+
+  /**
+   * Writes the entity-level path into a task that names none: an omitted field path means the
+   * entity itself, and it is stored written out so every stored task carries one.
+   */
+  public static void fillDefault(Task task) {
+    JsonNode payload = payloadNode(task.getPayload());
+    targetOf(task, payload)
+        .filter(target -> nullOrEmpty(payload.path(target.payloadKey()).asText(null)))
+        .ifPresent(
+            target -> {
+              ((ObjectNode) payload).put(target.payloadKey(), target.property().value());
+              task.setPayload(JsonUtils.convertValue(payload, Map.class));
+            });
+  }
 
   /** Refuses filing a task whose field path names no field of its entity with the property. */
   public static void require(Task task) {

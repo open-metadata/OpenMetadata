@@ -403,6 +403,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // patch guard together stop the year-9999 / Infinity / past-date exploits on PATCH.
     if (!update) {
       TaskFieldValidator.validateDataAccessRequestExpiry(task);
+      TaskFieldTarget.fillDefault(task);
       TaskFieldTarget.require(task);
     }
     validateNoDuplicateActiveDataAccessRequest(task);
@@ -2098,6 +2099,7 @@ public class TaskRepository extends EntityRepository<Task> {
           TaskFieldValidator.validateDataAccessRequestExpiry(updated);
         }
       }
+      TaskFieldTarget.fillDefault(updated);
       TaskFieldTarget.requireChanged(original, updated);
       recordChange(
           FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);

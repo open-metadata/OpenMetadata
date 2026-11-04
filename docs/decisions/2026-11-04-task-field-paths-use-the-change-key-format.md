@@ -18,7 +18,8 @@ parent (#36615).
 A task's field path is `<container>.<name>[.<child name>...].<property>`, with names quoted as in an
 FQN when they contain a dot, or `description` / `tags` alone for the entity itself. It is the key
 the entity's own change descriptions and change summaries use, for example
-`columns.address.city.description` or `messageSchema.schemaFields."order.id".tags`.
+`columns.address.city.description` or `messageSchema.schemaFields."order.id".tags`. A task filed
+without a path is about the entity itself, and the server stores that path written out.
 
 - The property is always present and must be the one the task changes.
 - The container must be one `ChildFieldResolver` declares for the entity's type.
