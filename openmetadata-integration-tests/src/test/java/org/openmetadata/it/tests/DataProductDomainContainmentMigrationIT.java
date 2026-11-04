@@ -44,6 +44,7 @@ import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmen
 @ExtendWith(TestNamespaceExtension.class)
 class DataProductDomainContainmentMigrationIT {
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String DOMAIN_RULE = "Data Product Domain Validation";
   private static final String TAG_ONLY_PATCH =
       "[{\"op\":\"add\",\"path\":\"/tags/0\",\"value\":{\"tagFQN\":\"PII.Sensitive\","
           + "\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}}]";
@@ -58,20 +59,33 @@ class DataProductDomainContainmentMigrationIT {
     addAsset(product, table);
     pointContainmentAt(product.getId(), newDomain.getId(), oldDomain.getId());
 
-    assertThrows(
-        InvalidRequestException.class,
-        () -> patchTags(table),
-        "A product still containing its old domain rejects a tag-only edit of its asset");
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> patchTags(table),
+            "A product still containing its old domain rejects a tag-only edit of its asset");
+    assertTrue(rejected.getMessage().contains(DOMAIN_RULE), rejected.getMessage());
 
-    int repaired =
-        DataProductDomainContainmentRepair.repair(
-            Entity.getCollectionDAO().relationshipDAO(), List.of(product.getId().toString()));
-
-    assertEquals(1, repaired);
+    assertEquals(1, repair(product));
     assertEquals(Set.of(newDomain.getId().toString()), containedDomains(product.getId()));
     Table updated = patchTags(table);
     assertTrue(
         updated.getTags().stream().map(TagLabel::getTagFQN).anyMatch("PII.Sensitive"::equals));
+    assertEquals(0, repair(product), "A repaired product needs nothing on a second run");
+  }
+
+  @Test
+  void migrationRevivesSoftDeletedContainmentOfTheShownDomain(TestNamespace ns) {
+    Domain domain = createDomain(ns, "containment_revive");
+    DataProduct product = createDataProduct(ns, domain);
+    softDeleteContainment(product.getId(), domain.getId());
+
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                DataProductDomainContainmentRepair.repairAll(handle, Entity.getCollectionDAO()));
+
+    assertEquals(Set.of(domain.getId().toString()), containedDomains(product.getId()));
   }
 
   @Test
@@ -79,11 +93,7 @@ class DataProductDomainContainmentMigrationIT {
     Domain domain = createDomain(ns, "containment_match");
     DataProduct product = createDataProduct(ns, domain);
 
-    int repaired =
-        DataProductDomainContainmentRepair.repair(
-            Entity.getCollectionDAO().relationshipDAO(), List.of(product.getId().toString()));
-
-    assertEquals(0, repaired);
+    assertEquals(0, repair(product));
     assertEquals(Set.of(domain.getId().toString()), containedDomains(product.getId()));
   }
 
@@ -148,6 +158,26 @@ class DataProductDomainContainmentMigrationIT {
                     .bind("oldDomain", oldDomainId.toString())
                     .bind("product", productId.toString())
                     .bind("shownDomain", shownDomainId.toString())
+                    .bind("relation", Relationship.CONTAINS.ordinal())
+                    .execute());
+  }
+
+  private static int repair(DataProduct product) {
+    return DataProductDomainContainmentRepair.repair(
+        Entity.getCollectionDAO().relationshipDAO(), List.of(product.getId().toString()));
+  }
+
+  private static void softDeleteContainment(UUID productId, UUID domainId) {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "UPDATE entity_relationship SET deleted = TRUE WHERE toId = :product "
+                            + "AND fromId = :domain AND fromEntity = 'domain' "
+                            + "AND toEntity = 'dataProduct' AND relation = :relation")
+                    .bind("product", productId.toString())
+                    .bind("domain", domainId.toString())
                     .bind("relation", Relationship.CONTAINS.ordinal())
                     .execute());
   }
