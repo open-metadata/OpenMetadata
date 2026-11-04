@@ -132,6 +132,23 @@ describe('Table variant', () => {
       'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover'
     );
   });
+
+  it('marks only an empty body with the data-empty hook the hover rules skip', () => {
+    const { container: populated } = renderTable();
+    const { container: empty } = render(
+      <Table aria-label="empty-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+        </Table.Header>
+        <Table.Body renderEmptyState={() => 'nothing here'}>{[]}</Table.Body>
+      </Table>
+    );
+
+    expect(populated.querySelector('tbody')).not.toHaveAttribute('data-empty');
+    expect(empty.querySelector('tbody')).toHaveAttribute('data-empty');
+  });
 });
 
 describe('Table selection', () => {
