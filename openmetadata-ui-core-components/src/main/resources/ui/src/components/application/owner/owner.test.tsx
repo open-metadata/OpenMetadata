@@ -222,3 +222,87 @@ describe('Owner href resolver (in-app profile link)', () => {
     window.history.replaceState(null, '', '/');
   });
 });
+
+describe('Owner inherited badge', () => {
+  const inheritedUser = {
+    id: 'u1',
+    name: 'user1',
+    type: 'user',
+    inherited: true,
+  };
+  const inheritedTeam = {
+    id: 't1',
+    name: 'team1',
+    type: 'team',
+    inherited: true,
+  };
+  const directUser = { id: 'u2', name: 'user2', type: 'user' };
+
+  afterEach(() => {
+    setOwnerHrefResolver(undefined);
+  });
+
+  it('marks only inherited owners in the compact view', () => {
+    render(<Owner owners={[inheritedUser, directUser]} />);
+
+    expect(screen.getAllByTestId('inherited-owner-icon')).toHaveLength(1);
+  });
+
+  it('marks an inherited team owner in the non-compact view', () => {
+    render(<Owner isCompactView={false} owners={[inheritedTeam]} />);
+
+    expect(screen.getByTestId('inherited-owner-icon')).toBeInTheDocument();
+  });
+
+  it('marks inherited owners inside the non-compact avatar stack', () => {
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[inheritedUser, inheritedTeam, directUser]}
+      />
+    );
+
+    expect(screen.getAllByTestId('inherited-owner-icon')).toHaveLength(2);
+  });
+
+  it('renders no badge when no owner is inherited', () => {
+    render(<Owner isCompactView={false} owners={[directUser]} />);
+
+    expect(
+      screen.queryByTestId('inherited-owner-icon')
+    ).not.toBeInTheDocument();
+  });
+
+  it('names inherited owners as inherited in the stacked avatar links', () => {
+    setOwnerHrefResolver((o) => `/users/${o.name}`);
+
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[inheritedUser, inheritedTeam, directUser]}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: /^user1, \S/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'user2' })).toBeVisible();
+  });
+
+  it('scales the badge with the avatar size', () => {
+    const { unmount } = render(
+      <Owner avatarSize={24} owners={[inheritedUser]} />
+    );
+
+    expect(screen.getByTestId('inherited-owner-icon')).toHaveAttribute(
+      'width',
+      '10'
+    );
+
+    unmount();
+    render(<Owner avatarSize={64} owners={[inheritedUser]} />);
+
+    expect(screen.getByTestId('inherited-owner-icon')).toHaveAttribute(
+      'width',
+      '20'
+    );
+  });
+});

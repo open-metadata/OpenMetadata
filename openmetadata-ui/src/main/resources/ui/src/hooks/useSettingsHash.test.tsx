@@ -100,6 +100,32 @@ describe('useSettingsHash', () => {
     expect(result.current.state.params).toEqual({ page: '2' });
   });
 
+  it('should merge updateParams into the current view params', () => {
+    const { result } = renderHook(() => useSettingsHash(), { wrapper });
+
+    act(() =>
+      result.current.setHash('members', 'users', { pageSize: '25', page: '3' })
+    );
+    act(() => result.current.updateParams({ page: '1' }));
+
+    expect(result.current.state.subPath).toBe('users');
+    expect(result.current.state.params).toEqual({ pageSize: '25', page: '1' });
+  });
+
+  it('should drop a stale updateParams once the view has navigated away', () => {
+    const { result } = renderHook(() => useSettingsHash(), { wrapper });
+
+    act(() => result.current.setHash('members', 'users'));
+    // Captured before navigating, like a debounced search's page reset.
+    const staleUpdateParams = result.current.updateParams;
+    act(() => result.current.setHash('access-control', 'roles/DataSteward'));
+    act(() => staleUpdateParams({ page: '1' }));
+
+    expect(result.current.state.tab).toBe('access-control');
+    expect(result.current.state.subPath).toBe('roles/DataSteward');
+    expect(result.current.state.params).toEqual({});
+  });
+
   it('should preserve the surrounding query string when setting a hash', () => {
     const { result } = renderHook(
       () => ({ location: useLocation(), settings: useSettingsHash() }),
