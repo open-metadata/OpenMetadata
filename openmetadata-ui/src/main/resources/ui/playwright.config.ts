@@ -218,7 +218,10 @@ const reporters: ReporterDescription[] = [
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
+const visualCapture = process.env.PW_SHARD_LANE === 'visual';
+
 export default defineConfig({
+  ...(visualCapture ? { updateSnapshots: 'all' as const } : {}),
   testDir: './playwright/e2e',
   outputDir: './playwright/output/test-results',
   // Omit {projectName} and {platform} from snapshot filenames so a single
@@ -226,8 +229,9 @@ export default defineConfig({
   // Edge lines in the lineage PNG are pure bezier geometry (no text/fonts)
   // and render identically across platforms; the threshold in toMatchSnapshot
   // absorbs any minor anti-aliasing differences in the node-card text areas.
-  snapshotPathTemplate:
-    '{testDir}/{testFileDir}/__snapshots__/{testFileName}-snapshots/{arg}{ext}',
+  snapshotPathTemplate: visualCapture
+    ? '{testDir}/../output/test-results/visual-generated/{testFileDir}/__snapshots__/{testFileName}-snapshots/{arg}{ext}'
+    : '{testDir}/{testFileDir}/__snapshots__/{testFileName}-snapshots/{arg}{ext}',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -245,7 +249,12 @@ export default defineConfig({
   // Keep every visual difference in the report; other lanes retain fail-fast limits.
   maxFailures: process.env.PW_SHARD_LANE === 'visual' ? 0 : 50,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: reporters,
+  reporter: visualCapture
+    ? [
+        ...reporters,
+        ['./playwright/reporters/VisualBaselineCaptureReporter.ts'],
+      ]
+    : reporters,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
