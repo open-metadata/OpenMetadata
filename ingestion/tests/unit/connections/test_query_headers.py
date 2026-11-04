@@ -9,17 +9,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Query header injection for SQL Server and Azure SQL.
+Query header injection for SQL Server, Azure SQL and Microsoft Fabric.
 """
+
+from functools import partial
 
 import pytest
 
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.microsoftFabricConnection import (
+    MicrosoftFabricConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
+from metadata.ingestion.connections.builders import create_generic_db_connection
 from metadata.ingestion.connections.headers import (
     inject_inline_query_header,
     inject_query_header_by_conn,
@@ -131,12 +137,28 @@ class TestInlineQueryHeader:
         [
             MssqlConnection(username="u", hostPort="h:1433", database="d"),
             AzureSQLConnection(username="u", hostPort="h:1433", database="d"),
+            MicrosoftFabricConnection(hostPort="h", tenantId="t", clientId="c", authType={"clientSecret": "s"}),
         ],
+        ids=["mssql", "azuresql", "microsoftfabric"],
     )
-    def test_both_sql_server_connections_dispatch_to_the_inline_header(self, connection):
+    def test_sql_server_family_connections_dispatch_to_the_inline_header(self, connection):
         statement, _ = inject_query_header_by_conn(connection, None, None, "SELECT 1 AS a", None, None, False)
 
         assert statement.startswith("SELECT " + HEADER_START)
+
+    def test_a_fabric_engine_attaches_the_header(self):
+        """supportsQueryComment on the Fabric connection is what makes the engine tag its statements at all"""
+        connection = MicrosoftFabricConnection(hostPort="h", tenantId="t", clientId="c", authType={"clientSecret": "s"})
+        engine = create_generic_db_connection(connection, lambda _: "sqlite://", lambda _: {})
+
+        taggers = [
+            listener
+            for listener in engine.dispatch.before_cursor_execute
+            if isinstance(listener, partial) and listener.func is inject_query_header_by_conn
+        ]
+
+        assert len(taggers) == 1
+        assert taggers[0].args[0] is connection
 
 
 class TestQueryStoreFilter:

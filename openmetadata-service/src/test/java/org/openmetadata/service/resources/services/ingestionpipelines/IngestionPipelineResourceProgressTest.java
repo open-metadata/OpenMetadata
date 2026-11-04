@@ -15,17 +15,43 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.security.Authorizer;
 
 class IngestionPipelineResourceProgressTest {
+
+  @Test
+  void serviceProgressRejectsNonServiceEntityTypes() {
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getServiceEntityTypes).thenReturn(List.of(Entity.DATABASE_SERVICE));
+      entities
+          .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+          .thenReturn(mock(IngestionPipelineRepository.class));
+      IngestionPipelineResource resource =
+          new IngestionPipelineResource(mock(Authorizer.class), mock(Limits.class));
+
+      assertThrows(
+          BadRequestException.class,
+          () -> resource.streamServiceProgress(null, null, null, Entity.TABLE, "svc"));
+    }
+  }
 
   private static Method findStreamServiceProgressMethod() {
     return Arrays.stream(IngestionPipelineResource.class.getMethods())

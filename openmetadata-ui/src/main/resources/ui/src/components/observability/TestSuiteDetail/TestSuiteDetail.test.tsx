@@ -100,6 +100,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       {children}
     </button>
   );
+  const ButtonUtility = ({
+    icon: _icon,
+    size: _size,
+    tooltip,
+    ...props
+  }: any) => <button aria-label={tooltip} {...props} />;
   const Dialog = Object.assign(
     ({ children }: any) => <div role="dialog">{children}</div>,
     { Content: ({ children }: any) => <div>{children}</div> }
@@ -165,6 +171,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .EmptyPlaceholder,
     Box,
     Button,
+    ButtonUtility,
     CloseButton,
     Dialog,
     DialogTrigger,

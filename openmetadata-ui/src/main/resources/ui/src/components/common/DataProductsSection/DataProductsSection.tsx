@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataProductTag, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  DataProductTag,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
@@ -25,7 +30,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
 import DataProductsSelectList from '../../DataProducts/DataProductsSelectList/DataProductsSelectList';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { DataProductsSectionProps } from './DataProductsSection.interface';
 import './DataProductsSection.less';
@@ -248,12 +252,10 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       selectedDataProducts={displayDataProducts}
       onOpenChange={handlePopoverOpenChange}
       onSubmit={handleSaveWithDataProducts}>
-      <EditIconButton
-        newLook
+      <ButtonUtility
         data-testid="edit-data-products"
-        disabled={false}
-        size="small"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.data-product-plural'),
         })}
       />

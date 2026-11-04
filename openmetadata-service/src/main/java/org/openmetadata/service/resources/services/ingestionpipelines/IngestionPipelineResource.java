@@ -2065,6 +2065,9 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "Service progress stream",
             content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS)),
+        @ApiResponse(responseCode = "400", description = "Invalid service entity type"),
+        @ApiResponse(responseCode = "403", description = "Service access denied"),
+        @ApiResponse(responseCode = "404", description = "Service not found"),
         @ApiResponse(responseCode = "503", description = "Progress tracking is not configured")
       })
   public void streamServiceProgress(
@@ -2079,14 +2082,23 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string"))
           @PathParam("serviceFqn")
           String serviceFqn) {
+    if (!Entity.getServiceEntityTypes().contains(serviceType)) {
+      throw new BadRequestException("Invalid service entity type: " + serviceType);
+    }
     OperationContext operationContext =
         new OperationContext(serviceType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(
         securityContext, operationContext, new ResourceContext<>(serviceType, null, serviceFqn));
+    ServiceProgressSubscriber subscriber =
+        new ServiceProgressSubscriber(
+            authorizer,
+            securityContext,
+            openMetadataApplicationConfig,
+            Entity.getEntityReferenceByName(serviceType, serviceFqn, Include.NON_DELETED));
     if (!repository.isProgressTrackingEnabled()) {
       throw new ServiceUnavailableException("Progress tracking is not configured");
     }
-    repository.streamServiceProgress(serviceFqn, eventSink, sse);
+    repository.streamServiceProgress(serviceFqn, eventSink, sse, subscriber);
   }
 
   @PUT

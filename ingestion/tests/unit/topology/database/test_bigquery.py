@@ -465,6 +465,7 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description")
     def test_yield_database_schema(self, get_schema_description):
         get_schema_description.return_value = "Some description with it's own\nnew line"
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
         assert EXPTECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.bq_source.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
         ]
