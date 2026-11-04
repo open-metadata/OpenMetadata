@@ -34,7 +34,7 @@ separately, together with the other feed broadcasts.
 ## Consequences
 
 A list page can hold fewer rows than `limit`; its cursors are unchanged, so a client keeps paging.
-Its `paging.total` is reduced by the announcements hidden on that page, which makes it exact when the
-result fits one page; announcements hidden on later pages are still counted. Counting exactly would
-need the visibility filter before pagination.
-Resolving the linked entities costs one batched relationship read per page.
+Its `paging.total` counts only the announcements the caller may view across every page, so a badge
+built from it matches what the caller can load. For a non-admin that count reads every announcement
+the filter matches and resolves their assets in one more batched pass; announcements are few, and
+admins skip it. Resolving the linked entities costs one batched relationship read per page.

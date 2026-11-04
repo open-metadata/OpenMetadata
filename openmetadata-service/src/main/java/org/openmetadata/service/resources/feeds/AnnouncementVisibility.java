@@ -28,11 +28,13 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * An entity announcement is shown on its asset, so reading one needs the ViewBasic that asset
@@ -65,17 +67,21 @@ public final class AnnouncementVisibility {
   }
 
   /**
-   * Leaves out of {@code page} the announcements on assets the caller may not view, and takes them
-   * off its total; announcements hidden on other pages are still counted there.
+   * Leaves out of {@code page} the announcements on assets the caller may not view, and counts its
+   * total over every visible match of {@code filter}, so hidden ones on other pages are not counted.
    */
   public static ResultList<Announcement> filterVisible(
-      ResultList<Announcement> page, Authorizer authorizer, SecurityContext securityContext) {
-    List<Announcement> visible = filterVisible(page.getData(), authorizer, securityContext);
-    int hidden = page.getData().size() - visible.size();
-    if (hidden > 0 && page.getPaging() != null && page.getPaging().getTotal() != null) {
-      page.getPaging().setTotal(Math.max(page.getPaging().getTotal() - hidden, visible.size()));
+      ResultList<Announcement> page,
+      ListFilter filter,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    if (!isAdmin(securityContext)) {
+      page.setData(filterVisible(page.getData(), authorizer, securityContext));
+      if (page.getPaging() != null) {
+        List<Announcement> matches = repository().listAll(Fields.EMPTY_FIELDS, filter);
+        page.getPaging().setTotal(filterVisible(matches, authorizer, securityContext).size());
+      }
     }
-    page.setData(visible);
     return page;
   }
 
@@ -83,7 +89,7 @@ public final class AnnouncementVisibility {
   public static List<Announcement> filterVisible(
       List<Announcement> announcements, Authorizer authorizer, SecurityContext securityContext) {
     List<Announcement> visible = announcements;
-    if (!DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+    if (!isAdmin(securityContext)) {
       Map<UUID, EntityReference> linked = repository().getLinkedEntities(announcements);
       Set<UUID> viewable =
           new ViewPermissionFilter(authorizer)
@@ -109,6 +115,10 @@ public final class AnnouncementVisibility {
     EntityReference entity = linked.get(announcement.getId());
     return nullOrEmpty(announcement.getEntityLink())
         || (entity != null && viewable.contains(entity.getId()));
+  }
+
+  private static boolean isAdmin(SecurityContext securityContext) {
+    return DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
   }
 
   private static AnnouncementRepository repository() {

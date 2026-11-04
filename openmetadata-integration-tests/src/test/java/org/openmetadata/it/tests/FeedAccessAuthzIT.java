@@ -346,6 +346,42 @@ class FeedAccessAuthzIT {
   }
 
   @Test
+  void listAnnouncements_totalCountsOnlyViewable(TestNamespace ns) throws Exception {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("ann-total"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Scopes the announcement total check"));
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    createAnnouncement(
+        ns, inDomain(createTable(schema, ns.shortPrefix("tot_h"), List.of(PII_SENSITIVE)), domain));
+    createAnnouncement(
+        ns, inDomain(createTable(schema, ns.shortPrefix("tot_s"), List.of()), domain));
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("ann_total"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+
+    JsonNode first = announcementPage(denied, domain, null);
+    JsonNode second =
+        announcementPage(denied, domain, first.path("paging").path("after").asText(null));
+    assertEquals(1, first.path("paging").path("total").asInt(), "first page total");
+    assertEquals(1, second.path("paging").path("total").asInt(), "second page total");
+    assertEquals(
+        2,
+        announcementPage(SdkClients.adminClient(), domain, null)
+            .path("paging")
+            .path("total")
+            .asInt(),
+        "admins count every announcement");
+  }
+
+  @Test
   void readAnnouncement_afterAssetRename_checksAsset(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     Glossary glossary =
@@ -743,6 +779,32 @@ class FeedAccessAuthzIT {
     List<String> ids = new ArrayList<>();
     MAPPER.readTree(get(client, path)).path("data").forEach(e -> ids.add(e.path("id").asText()));
     return ids;
+  }
+
+  private static Table inDomain(Table table, Domain domain) throws Exception {
+    patch(
+        SdkClients.adminClient(),
+        "/v1/tables/" + table.getId(),
+        "[{\"op\":\"add\",\"path\":\"/domains\",\"value\":[{\"id\":\""
+            + domain.getId()
+            + "\",\"type\":\"domain\"}]}]");
+    return table;
+  }
+
+  /** One page of size one of the announcements in {@code domain}, from {@code after}. */
+  private static JsonNode announcementPage(OpenMetadataClient client, Domain domain, String after)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("domain", domain.getFullyQualifiedName())
+            .queryParam("limit", "1");
+    if (after != null) {
+      options.queryParam("after", after);
+    }
+    return MAPPER.readTree(
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ANNOUNCEMENTS_PATH, null, options.build()));
   }
 
   /** Every active entity announcement the client is shown, across all pages. */
