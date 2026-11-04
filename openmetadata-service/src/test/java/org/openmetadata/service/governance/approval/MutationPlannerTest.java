@@ -357,6 +357,48 @@ class MutationPlannerTest {
   }
 
   @Test
+  void mergeAndRebaseKeepAChangeToATagLabelsStateInsideAColumn() {
+    JsonNode suggested =
+        json("{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'}]},{'name':'b'}]}");
+    List<MutationOp> confirm =
+        MutationPlanner.plan(
+            suggested,
+            json(
+                "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Confirmed'}]},{'name':'b'}]}"),
+            Set.of("columns"),
+            Set.of("columns"));
+    List<MutationOp> describeB =
+        MutationPlanner.plan(
+            suggested,
+            json(
+                "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'}]},{'name':'b','description':'d'}]}"),
+            Set.of("columns"),
+            Set.of("columns"));
+    JsonNode expected =
+        json(
+            "[{'name':'a','tags':[{'tagFQN':'X','state':'Confirmed'}]},{'name':'b','description':'d'}]");
+
+    List<MutationOp> merged = MutationPlanner.merge(confirm, describeB);
+    JsonNode published =
+        json(
+            "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'}]},{'name':'b','description':'d'}]}");
+    List<MutationOp> rebased = MutationPlanner.rebase(published, confirm);
+
+    assertEquals(expected, JsonUtils.readTree(merged.get(0).getValue()));
+    assertEquals(1, rebased.size());
+    assertEquals(expected, JsonUtils.readTree(rebased.get(0).getValue()));
+  }
+
+  @Test
+  void threeWayTakesTheirReferenceWholeWhenBothSidesPickedADifferentOne() {
+    JsonNode base = json("{'id':'1','name':'a'}");
+    JsonNode ours = json("{'id':'2','name':'b','displayName':'B'}");
+    JsonNode theirs = json("{'id':'3','name':'c'}");
+
+    assertEquals(theirs, MutationPlanner.threeWay(base, ours, theirs));
+  }
+
+  @Test
   void threeWayFallsBackToTheirsForAListWithoutNames() {
     JsonNode base = json("[1,2]");
 

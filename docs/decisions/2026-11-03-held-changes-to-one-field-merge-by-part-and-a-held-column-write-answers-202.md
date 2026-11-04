@@ -7,7 +7,9 @@
   `rebaseReplaysAPendingColumnEditOntoThePublishedColumns`,
   `threeWayLetsTheirsWinWhereBothChangedTheSamePart`,
   `threeWayDropsAnElementOneSideRemovedAndKeepsAnotherSidesAddition`,
-  `threeWayFallsBackToTheirsForAListWithoutNames`); `ChangeRequestImportAndBulkIT`
+  `threeWayFallsBackToTheirsForAListWithoutNames`,
+  `mergeAndRebaseKeepAChangeToATagLabelsStateInsideAColumn`,
+  `threeWayTakesTheirReferenceWholeWhenBothSidesPickedADifferentOne`); `ChangeRequestImportAndBulkIT`
   (`heldColumnWritesAnswerAcceptedAndKeepEachColumnsEdit`)
 - **Related:** #32038 (the approval gate); open-metadata/ai-platform#2019, #1863
 
@@ -30,6 +32,9 @@ and dropped the impersonating bot, so no client could tell it had not been publi
   element has an identity or a `name`; a part only one side changed takes that side's value, and
   where both changed the same part differently the later change wins, as before. A value with no
   such structure (a scalar, a list of unnamed elements) is replaced whole, as before.
+- The replay matches elements by identity but compares their content in full, so an edit to an
+  element's other fields (a tag label's `state` or `labelType`) is a change to that element. Two
+  references with different identities are never merged key by key: the later one is taken whole.
 - A held column write answers `202 Accepted` with `X-OpenMetadata-Pending-Change` naming the
   request, like a held entity PATCH, keeps the impersonating actor, and records no parent change
   event, since nothing was published.

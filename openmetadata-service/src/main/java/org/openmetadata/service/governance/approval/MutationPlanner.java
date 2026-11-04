@@ -150,13 +150,14 @@ public final class MutationPlanner {
    * {@code base} changed into both {@code ours} and {@code theirs}, as one value. Objects merge key
    * by key and lists whose elements all carry an identity or a name merge element by element, so
    * edits to different parts both survive. Wherever both sides changed the same part differently,
-   * {@code theirs} wins.
+   * {@code theirs} wins. Parts are compared by content, so an edit to an element's other fields,
+   * such as a tag label's state, counts as a change to that element.
    */
   static JsonNode threeWay(JsonNode base, JsonNode ours, JsonNode theirs) {
     JsonNode merged = theirs;
-    if (sameValue(base, theirs)) {
+    if (sameContent(base, theirs)) {
       merged = ours;
-    } else if (!sameValue(base, ours) && !sameValue(ours, theirs)) {
+    } else if (!sameContent(base, ours) && !sameContent(ours, theirs)) {
       merged = mergeBothChanged(base, ours, theirs);
     }
     return merged;
@@ -164,7 +165,8 @@ public final class MutationPlanner {
 
   private static JsonNode mergeBothChanged(JsonNode base, JsonNode ours, JsonNode theirs) {
     JsonNode merged = theirs;
-    if (ours.isObject() && theirs.isObject() && (base.isObject() || base.isNull())) {
+    boolean sameElement = Objects.equals(identityOf(ours), identityOf(theirs));
+    if (ours.isObject() && theirs.isObject() && sameElement && (base.isObject() || base.isNull())) {
       merged = mergeObjects(base, ours, theirs);
     } else if (isNamedList(base) && isNamedList(ours) && isNamedList(theirs)) {
       merged = mergeLists(base, ours, theirs);
@@ -215,7 +217,7 @@ public final class MutationPlanner {
       element = threeWay(orNull(base), ours, theirs);
     } else if (base == null) {
       element = ours != null ? ours : theirs;
-    } else if (theirs != null && !sameValue(base, theirs)) {
+    } else if (theirs != null && !sameContent(base, theirs)) {
       element = theirs;
     }
     return element;
@@ -442,6 +444,10 @@ public final class MutationPlanner {
 
   private static boolean sameValue(JsonNode left, JsonNode right) {
     return Objects.equals(normalize(left), normalize(right));
+  }
+
+  private static boolean sameContent(JsonNode left, JsonNode right) {
+    return orNull(left).equals(orNull(right));
   }
 
   private static JsonNode normalize(JsonNode value) {
