@@ -1871,8 +1871,7 @@ class PowerBIUnitTest(TestCase):
         `--` inside a /* block comment */ does not hide the rest of the query
         """
         result = self.powerbi._extract_tables_from_sql(
-            "SELECT o.id#(lf)FROM dbo.orders o /* -- legacy */#(lf)"
-            "JOIN dbo.customers c ON c.id = o.customer_id",
+            "SELECT o.id#(lf)FROM dbo.orders o /* -- legacy */#(lf)JOIN dbo.customers c ON c.id = o.customer_id",
             "MyDb",
             "server",
         )
