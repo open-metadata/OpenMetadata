@@ -50,6 +50,7 @@ import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { captureRecoverableStorageState } from '../../utils/storageStateRecovery';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // ─── Cleanup Sets ─────────────────────────────────────────────────────────────
@@ -107,7 +108,7 @@ const test = base.extend<object, { documentSession: DocumentSession }>({
           // A worker's fixture cleanup must not cover another worker's controls.
           await use({
             apiContext,
-            storageState: await context.storageState({ indexedDB: true }),
+            storageState: await captureRecoverableStorageState(context),
           });
         } finally {
           await disposeApiContext();

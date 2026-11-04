@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
-import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-format-add-column-after.svg';
 import { ReactComponent as IconAddRowAfter } from '../../../assets/svg/ic-format-add-row-after.svg';
 import { ReactComponent as IconDeleteColumn } from '../../../assets/svg/ic-format-delete-column.svg';
@@ -160,48 +160,41 @@ const TableMenu = (props: TableMenuProps) => {
     <div className="table-menu" ref={menuRef}>
       <Box align="center" gap={4}>
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Add row after current row"
-          icon={<IconAddRowAfter style={{ verticalAlign: 'middle' }} />}
+          icon={IconAddRowAfter}
+          size="lg"
           tooltip="Add row after current row"
           onClick={() => editor.chain().focus().addRowAfter().run()}
         />
 
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Add column after current column"
-          icon={<IconAddColumnAfter style={{ verticalAlign: 'middle' }} />}
+          icon={IconAddColumnAfter}
+          size="lg"
           tooltip="Add column after current column"
           onClick={() => editor.chain().focus().addColumnAfter().run()}
         />
 
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Delete current row"
-          icon={<IconDeleteRow style={{ verticalAlign: 'middle' }} />}
+          icon={IconDeleteRow}
+          size="lg"
           tooltip="Delete current row"
           onClick={() => editor.chain().focus().deleteRow().run()}
         />
 
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Delete current col"
-          icon={<IconDeleteColumn style={{ verticalAlign: 'middle' }} />}
+          icon={IconDeleteColumn}
+          size="lg"
           tooltip="Delete current column"
           onClick={() => editor.chain().focus().deleteColumn().run()}
         />
 
         <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
           data-testid="Delete table"
-          icon={
-            <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
-          }
+          icon={Trash01}
+          size="lg"
           tooltip="Delete table"
           onClick={() => {
             editor.chain().focus().deleteTable().run();

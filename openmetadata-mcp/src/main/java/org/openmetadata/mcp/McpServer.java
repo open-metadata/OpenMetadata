@@ -13,7 +13,9 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
+import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.mcp.server.transport.JsonRpcErrorBody;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
@@ -82,7 +84,7 @@ public class McpServer implements McpServerProvider {
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
-    addStatelessTransport(contextHandler, tools, prompts, config);
+    addStatelessTransport(contextHandler, tools, prompts);
   }
 
   /**
@@ -143,8 +145,7 @@ public class McpServer implements McpServerProvider {
   private void addStatelessTransport(
       MutableServletContextHandler contextHandler,
       List<McpSchema.Tool> tools,
-      List<McpSchema.Prompt> prompts,
-      OpenMetadataApplicationConfig config) {
+      List<McpSchema.Prompt> prompts) {
     try {
       McpSchema.ServerCapabilities serverCapabilities = buildServerCapabilities();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
@@ -157,27 +158,7 @@ public class McpServer implements McpServerProvider {
       org.openmetadata.service.security.jwt.JWTTokenGenerator jwtGenerator =
           org.openmetadata.service.security.jwt.JWTTokenGenerator.getInstance();
 
-      // Create the appropriate authenticator based on the current auth provider.
-      // LDAP uses LdapAuthenticator for credential validation via LDAP bind;
-      // all other providers use BasicAuthenticator for DB-based validation.
-      org.openmetadata.service.security.auth.AuthenticatorHandler credentialAuthenticator;
-      org.openmetadata.schema.api.security.AuthenticationConfiguration currentAuthConfig =
-          SecurityConfigurationManager.getCurrentAuthConfig();
-      if (currentAuthConfig != null
-          && currentAuthConfig.getProvider()
-              == org.openmetadata.schema.services.connections.metadata.AuthProvider.LDAP) {
-        credentialAuthenticator = new org.openmetadata.service.security.auth.LdapAuthenticator();
-        credentialAuthenticator.init(config);
-        LOG.info("LdapAuthenticator initialized for MCP OAuth credential validation");
-      } else {
-        credentialAuthenticator = new org.openmetadata.service.security.auth.BasicAuthenticator();
-        credentialAuthenticator.init(config);
-        LOG.info("BasicAuthenticator initialized for MCP OAuth credential validation");
-      }
-
-      org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider authProvider =
-          new org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider(
-              jwtGenerator, credentialAuthenticator);
+      UserSSOOAuthProvider authProvider = new UserSSOOAuthProvider(jwtGenerator);
 
       // Get allowed origins from MCP configuration (database-backed)
       List<String> allowedOrigins = getAllowedOriginsFromConfig();
@@ -222,9 +203,7 @@ public class McpServer implements McpServerProvider {
       // Register Basic Auth / LDAP login handler with the transport provider.
       // The /mcp/* wildcard servlet intercepts all /mcp/ paths, so dedicated servlets at
       // /mcp/login can't be reached. Instead, the transport provider delegates internally.
-      org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet basicAuthLoginServlet =
-          new org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet(
-              authProvider, credentialAuthenticator);
+      BasicAuthLoginServlet basicAuthLoginServlet = new BasicAuthLoginServlet(authProvider);
       statelessOauthTransport.setBasicAuthLoginServlet(basicAuthLoginServlet);
       LOG.info("Registered Basic Auth login handler in transport provider");
 
@@ -332,7 +311,7 @@ public class McpServer implements McpServerProvider {
 
   protected McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpStatelessServerFeatures.SyncToolSpecification(
-        tool, (context, req) -> runCallback(() -> executeTool(tool, context, req)));
+        tool, (context, req) -> runCallback(tool.name(), () -> executeTool(tool, context, req)));
   }
 
   private McpSchema.CallToolResult executeTool(
@@ -367,6 +346,7 @@ public class McpServer implements McpServerProvider {
         prompt,
         (context, arguments) ->
             runCallback(
+                prompt.name(),
                 () ->
                     promptsContext.callPrompt(
                         securityContextFrom(context), prompt.name(), arguments)));
@@ -391,7 +371,7 @@ public class McpServer implements McpServerProvider {
    * exception's own message. A token the server could not confirm becomes an {@link McpError} that
    * reads as temporarily unavailable, without that message, which names the principal.
    */
-  private static <T> T runCallback(Supplier<T> callback) {
+  private static <T> T runCallback(String name, Supplier<T> callback) {
     PerRequestContextCleaner.clear();
     try {
       return callback.get();
@@ -399,6 +379,14 @@ public class McpServer implements McpServerProvider {
       LOG.debug("MCP callback token could not be confirmed", e);
       throw McpError.builder(JsonRpcErrorBody.UNAVAILABLE)
           .message(CredentialUnavailableException.CLIENT_MESSAGE)
+          .build();
+    } catch (VirtualMachineError | LinkageError e) {
+      // Reactor treats these as fatal: it drops them on the worker instead of failing the call, so
+      // the request waiting for the reply would hold its thread until the server restarts. The
+      // name is logged because a stack overflow's trace keeps only the deepest frames.
+      LOG.error("MCP callback {} failed", name, e);
+      throw McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+          .message("The server could not complete this call")
           .build();
     } finally {
       PerRequestContextCleaner.clear();

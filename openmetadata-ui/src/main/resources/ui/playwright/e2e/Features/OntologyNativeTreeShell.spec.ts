@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Locator, Page, Response } from '@playwright/test';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import {
   AxiomType,
   CreateOntologyAxiom,
@@ -23,20 +21,11 @@ import { SparqlQuerySettings } from '../../../src/generated/configuration/sparql
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyConceptBindingsResponse } from '../../../src/generated/type/ontologyConceptBindingsResponse';
+import { BUNDLED_GLOSSARY_QUERY_TEMPLATES } from '../../constant/ontology';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
-
-const canonicalQuerySettings: SparqlQuerySettings = JSON.parse(
-  readFileSync(
-    resolve(
-      __dirname,
-      '../../../../../../../../openmetadata-service/src/main/resources/json/data/settings/sparqlQuerySettings.json'
-    ),
-    'utf8'
-  )
-);
 
 const armQueryLibraryResponses = (page: Page) => [
   page.waitForResponse(
@@ -61,7 +50,7 @@ const expectLoadedNativeLibrary = async (page: Page, responses: Response[]) => {
   await expect(rail).toContainText('Shared queries');
   await expect(rail).toContainText('My queries');
   const settings: SparqlQuerySettings = await responses[1].json();
-  for (const seed of canonicalQuerySettings.queryTemplates) {
+  for (const seed of BUNDLED_GLOSSARY_QUERY_TEMPLATES) {
     const stored = settings.queryTemplates.find(
       (template) => template.id === seed.id
     );

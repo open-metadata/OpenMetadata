@@ -63,12 +63,16 @@ class UserSSOOAuthProviderTest {
   private static final String CLIENT_ID = "client-1";
 
   private static McpPendingAuthRequest samplePendingRequest() {
+    return samplePendingRequest(MCP_REDIRECT_URI);
+  }
+
+  private static McpPendingAuthRequest samplePendingRequest(String redirectUri) {
     return new McpPendingAuthRequest(
         AUTH_REQUEST_ID,
         CLIENT_ID,
         "codeChallenge-123456789012345678901234567890123456789012",
         "S256",
-        MCP_REDIRECT_URI,
+        redirectUri,
         MCP_STATE,
         List.of("openid", "profile"),
         "pac4j-state-abc",
@@ -130,7 +134,7 @@ class UserSSOOAuthProviderTest {
         response, AUTH_REQUEST_ID, "login_required", "User not logged in");
 
     String html = body.toString();
-    // The MCP client's redirect_uri is the target of the auto-redirect.
+    // The MCP client's redirect_uri is the target of the page's return link.
     assertThat(html).contains(MCP_REDIRECT_URI);
     // OAuth error response parameters per RFC 6749 §4.1.2.1. The free-text description is
     // deliberately not relayed; only the canonical error code is.
@@ -149,6 +153,51 @@ class UserSSOOAuthProviderTest {
     // Status + content type for an HTML page.
     verify(response).setStatus(HttpServletResponse.SC_OK);
     verify(response).setContentType("text/html; charset=UTF-8");
+  }
+
+  @Test
+  void handleSSOErrorCallback_remoteWebCallbackGetsALinkNotANavigation() throws Exception {
+    // MCP_REDIRECT_URI is an https callback any client could have registered, so the page must
+    // not send the browser there by itself.
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    stubRegisteredClient(clientRepo);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = captureHtmlResponse(response);
+
+    newProvider(pendingRepo, clientRepo, ISSUER)
+        .handleSSOErrorCallback(response, AUTH_REQUEST_ID, "login_required", null);
+
+    assertThat(body.toString())
+        .contains("href=\"" + MCP_REDIRECT_URI + "?")
+        .contains("error=login_required")
+        .contains("Return to https://mcp-client.example.com")
+        .doesNotContain("http-equiv")
+        .doesNotContain("<script");
+  }
+
+  @Test
+  void handleSSOErrorCallback_loopbackCallbackStillNavigatesByItself() throws Exception {
+    // A desktop or IDE client waits on a loopback port, so the page returns it there unprompted.
+    String loopback = "http://127.0.0.1:33418/callback";
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID))
+        .thenReturn(samplePendingRequest(loopback));
+    OAuthClientInformation client = mock(OAuthClientInformation.class);
+    when(client.validateRedirectUri(URI.create(loopback))).thenReturn(URI.create(loopback));
+    when(clientRepo.findByClientId(CLIENT_ID)).thenReturn(client);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = captureHtmlResponse(response);
+
+    newProvider(pendingRepo, clientRepo, ISSUER)
+        .handleSSOErrorCallback(response, AUTH_REQUEST_ID, "login_required", null);
+
+    assertThat(body.toString())
+        .contains("http-equiv=\"refresh\"")
+        .contains(loopback + "?")
+        .doesNotContain("Return to");
   }
 
   @Test
@@ -673,6 +722,37 @@ class UserSSOOAuthProviderTest {
     }
     verifyNoInteractions(codeRepo);
     verify(pendingRepo, never()).delete(anyString());
+  }
+
+  @Test
+  void handleSSOCallbackWithDbState_keepsTheGrantUnderTheAccountsOwnName() throws Exception {
+    // A SAML NameID keeps the provider's casing; the account it resolves to is lowercase.
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    when(pendingRepo.storeConsent(eq(AUTH_REQUEST_ID), anyString(), anyString())).thenReturn(true);
+    UserSSOOAuthProvider provider =
+        newProvider(pendingRepo, clientRepositoryWithRegisteredClient(), ISSUER);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    captureHtmlResponse(response);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SecurityConfigurationManager> config =
+            mockStatic(SecurityConfigurationManager.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.USER, "Alice", "", Include.NON_DELETED))
+          .thenReturn(new User().withName(USER_NAME));
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withBaseUrl(MCP_BASE_URL));
+      provider.handleSSOCallbackWithDbState(
+          mock(HttpServletRequest.class),
+          response,
+          "Alice",
+          "alice@corp.example",
+          "mcp:" + AUTH_REQUEST_ID);
+    }
+
+    verify(pendingRepo).storeConsent(eq(AUTH_REQUEST_ID), anyString(), eq(USER_NAME));
   }
 
   @Test

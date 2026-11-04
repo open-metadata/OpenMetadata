@@ -8,12 +8,13 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.data.PipelineStatus;
-import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.AlertType;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.PrefixCondition;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
@@ -112,25 +113,17 @@ class StalePipelineExecutionTest {
   @DisplayName("only notification and observability subscriptions suppress history")
   void watermarkAppliesOnlyToAlertingSubscriptions() {
     assertTrue(
-        AlertMatching.alertingWatermark(
-                subscription(CreateEventSubscription.AlertType.OBSERVABILITY), WATERMARK)
-            != null);
+        AlertMatching.alertingWatermark(subscription(AlertType.OBSERVABILITY), WATERMARK) != null);
     assertTrue(
-        AlertMatching.alertingWatermark(
-                subscription(CreateEventSubscription.AlertType.NOTIFICATION), WATERMARK)
-            != null);
+        AlertMatching.alertingWatermark(subscription(AlertType.NOTIFICATION), WATERMARK) != null);
+    assertFalse(AlertMatching.alertingWatermark(subscription(AlertType.CUSTOM), WATERMARK) != null);
     assertFalse(
         AlertMatching.alertingWatermark(
-                subscription(CreateEventSubscription.AlertType.CUSTOM), WATERMARK)
-            != null);
-    assertFalse(
-        AlertMatching.alertingWatermark(
-                subscription(CreateEventSubscription.AlertType.GOVERNANCE_WORKFLOW_CHANGE_EVENT),
-                WATERMARK)
+                subscription(AlertType.GOVERNANCE_WORKFLOW_CHANGE_EVENT), WATERMARK)
             != null);
   }
 
-  private static EventSubscription subscription(CreateEventSubscription.AlertType alertType) {
+  private static EventSubscription subscription(AlertType alertType) {
     return new EventSubscription().withId(UUID.randomUUID()).withAlertType(alertType);
   }
 
@@ -145,9 +138,9 @@ class StalePipelineExecutionTest {
     EventFilterRule rule =
         new EventFilterRule()
             .withName("trigger")
-            .withEffect(ArgumentsInput.Effect.EXCLUDE)
+            .withEffect(Effect.EXCLUDE)
             .withCondition("matchPipelineState({'Failed'})")
-            .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+            .withPrefixCondition(PrefixCondition.AND);
     FilteringRules rules =
         new FilteringRules()
             .withResources(List.of("pipeline"))

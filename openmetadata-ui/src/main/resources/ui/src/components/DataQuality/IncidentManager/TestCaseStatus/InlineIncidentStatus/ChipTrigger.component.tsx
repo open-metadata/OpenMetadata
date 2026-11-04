@@ -139,7 +139,8 @@ export const ChipTrigger = ({
         {hasEditPermission && (
           <ChevronIcon
             aria-hidden
-            className="tw:size-4 tw:shrink-0 tw:text-[var(--chip-color)]"
+            className="tw:shrink-0 tw:text-[var(--chip-color)]"
+            size={16}
           />
         )}
       </span>
