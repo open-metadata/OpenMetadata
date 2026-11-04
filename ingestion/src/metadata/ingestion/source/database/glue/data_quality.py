@@ -335,7 +335,7 @@ class GlueDataQualityClient:
         response = self._glue.batch_get_data_quality_result(ResultIds=result_ids)
         missing = response.get("ResultsNotFound") or []
         if missing:
-            logger.debug(f"Glue Data Quality results no longer available: {missing}")
+            logger.debug("Glue Data Quality results no longer available: %s", missing)
         yield from response.get("Results", [])
 
     def ruleset_descriptions(self, names: Collection[str]) -> dict[str, str]:
@@ -418,7 +418,7 @@ class GlueDataQualityMixin:
         scope = result.scope
         finished_at = result.finished_at
         if not scope or not finished_at:
-            logger.debug(f"Skipping Glue Data Quality result {result.ResultId}: no ruleset or run time")
+            logger.debug("Skipping Glue Data Quality result %s: no ruleset or run time", result.ResultId)
             return
         if filter_by_fqn(run.config.rulesetFilterPattern, result.filter_name or scope):
             self._report_filtered(run, scope, "Glue Data Quality ruleset filtered out")
@@ -625,7 +625,7 @@ class GlueDataQualityMixin:
         try:
             descriptions = client.ruleset_descriptions(suites.keys())
         except Exception as exc:
-            logger.warning(f"Could not list Glue Data Quality rulesets, using default suite descriptions: {exc}")
+            logger.warning("Could not list Glue Data Quality rulesets, using default suite descriptions: %s", exc)
             descriptions = {}
 
         # Suites are global; the service keeps two accounts' same-named rulesets apart.
