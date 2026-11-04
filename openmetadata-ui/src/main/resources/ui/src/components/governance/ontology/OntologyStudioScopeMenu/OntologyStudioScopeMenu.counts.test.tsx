@@ -99,6 +99,7 @@ it('counts only the rows matching the search', async () => {
   await screen.findByTestId('ontology-scope-ont-4');
 
   expect(screen.queryByTestId('ontology-scope-ont-3')).toBeNull();
+
   // Model 4 and Model 40 to 44 match; Model 4 is already cached from the first page.
   await waitFor(() => expect(listOntologyConcepts).toHaveBeenCalledTimes(5));
 });
