@@ -47,11 +47,15 @@ public class IndependentOntologyReviewFilterIT extends BaseOntologyApprovalIT {
   @Test
   void anOntologyFilterFindsItsReviewBeyondTheFirstHundredOpenReviews(TestNamespace ns)
       throws Exception {
+    // The server lists reviews newest-first by creation time, so the oldest and newest are only
+    // known when each is requested alone, before and after the concurrent batch.
+    final OntologyRelease oldest = requestReview(ns, "filteredOldest");
     final List<OntologyRelease> releases = new ArrayList<>();
+    releases.add(oldest);
     final ExecutorService pool = Executors.newFixedThreadPool(8);
     try {
       final List<Callable<OntologyRelease>> work = new ArrayList<>();
-      for (int index = 0; index < OPEN_REVIEWS; index++) {
+      for (int index = 1; index < OPEN_REVIEWS - 1; index++) {
         final String name = "filtered" + index;
         work.add(() -> requestReview(ns, name));
       }
@@ -61,6 +65,8 @@ public class IndependentOntologyReviewFilterIT extends BaseOntologyApprovalIT {
     } finally {
       pool.shutdown();
     }
+    final OntologyRelease newest = requestReview(ns, "filteredNewest");
+    releases.add(newest);
     Awaitility.await()
         .atMost(Duration.ofSeconds(120))
         .untilAsserted(
@@ -71,9 +77,6 @@ public class IndependentOntologyReviewFilterIT extends BaseOntologyApprovalIT {
                             release ->
                                 current(release).getEntityStatus() == EntityStatus.IN_REVIEW),
                     "every release is in review"));
-
-    final OntologyRelease oldest = releases.get(0);
-    final OntologyRelease newest = releases.get(releases.size() - 1);
 
     assertFalse(
         listed(null, oldest).contains(oldest.getId().toString()),
