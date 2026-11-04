@@ -33,6 +33,7 @@ import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsB
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -76,8 +77,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
    * {@code OpenSearchRequestBuilder#build} apply its org-wide-only default instead.
    */
   private void applyContextMemoryVisibility(
-      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
-    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder, String queryFilter) {
+    OMQueryBuilder visibilityBuilder =
+        MEMORY_VISIBILITY.buildVisibilityFilter(
+            subjectContext,
+            ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+            ContextMemoryAnchorPins.ofQueryFilters(queryFilter));
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -86,28 +91,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     }
   }
 
-  /**
-   * ANDs the caller's policy conditions into an aggregation query. Aggregations run over whole
-   * indexes, so without this a caller can read documents they are denied on the corresponding
-   * listing. A {@code null} or exempt subject (admin, or access control disabled) is left
-   * unfiltered. Bots are not exempt: they are policy-evaluated like any other caller.
-   */
   private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
-    if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-      return query;
-    }
-    OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-    if (rbacQueryBuilder == null) {
-      // Fail closed: policies had to be applied for this caller (access control on, not admin/bot)
-      // but produced no query. Returning the unfiltered query would leak; match nothing instead.
-      return Query.of(qb -> qb.matchNone(m -> m));
-    }
-    Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
-    if (query == null) {
-      return rbacQuery;
-    }
-    final Query existingQuery = query;
-    return Query.of(qb -> qb.bool(b -> b.must(existingQuery).filter(rbacQuery)));
+    return OpenSearchRbacQueries.withAccessPolicies(query, subjectContext, rbacConditionEvaluator);
   }
 
   /**
@@ -122,6 +107,26 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     return query == null
         ? memoryFilter
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
+
+  /**
+   * ANDs the caller's RBAC policy and per-subject ContextMemory visibility into the aggregation
+   * query, mirroring {@code OpenSearchSearchManager#applyRbacCondition}. A {@code null} or exempt
+   * subject (admin, or access control disabled) is left unfiltered by RBAC. An identifiable subject
+   * gets its own memory visibility filter (admins are limited to searchable statuses only); a
+   * {@code null} or unidentifiable subject falls back to the org-wide-only memory filter so the
+   * aggregation never leaks private memories.
+   */
+  private Query applySubjectFilters(Query query, SubjectContext subjectContext) {
+    Query rbacFiltered = applyRbacQuery(query, subjectContext);
+    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query memoryFilter = ((OpenSearchQueryBuilder) visibilityBuilder).buildV2();
+      return rbacFiltered == null
+          ? memoryFilter
+          : Query.of(q -> q.bool(b -> b.must(rbacFiltered).filter(memoryFilter)));
+    }
+    return restrictToOrgWideMemories(rbacFiltered);
   }
 
   /**
@@ -160,6 +165,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
+    return aggregate(request, null);
+  }
+
+  @Override
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot perform aggregation.");
       throw new IOException("OpenSearch client is not available");
@@ -212,7 +223,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      searchRequestBuilder.query(restrictToOrgWideMemories(query));
+      searchRequestBuilder.query(applySubjectFilters(query, subjectContext));
 
       String aggregationField =
           SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
@@ -601,7 +612,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
 
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder, request.getQueryFilter());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

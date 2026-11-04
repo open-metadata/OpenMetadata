@@ -27,7 +27,7 @@ const DEFAULT_VIEWS: PageViewMode[] = [PageViewMode.Table, PageViewMode.Card];
 
 const getIconElement = (mode: PageViewMode, isActive: boolean) => {
   const iconClass = `tw:size-4 ${
-    isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'
+    isActive ? 'tw:text-utility-brand-600' : 'tw:text-fg-secondary'
   }`;
   switch (mode) {
     case PageViewMode.Card:
@@ -50,6 +50,7 @@ const ViewToggle: FC<ViewToggleProps> = ({
   return (
     <ButtonGroup
       disallowEmptySelection
+      className="tw:shrink-0"
       selectedKeys={new Set([value])}
       size="sm"
       onSelectionChange={(keys) => {
@@ -64,7 +65,7 @@ const ViewToggle: FC<ViewToggleProps> = ({
         return (
           <ButtonGroupItem
             aria-label={mode}
-            className={isActive ? '!tw:bg-brand-primary' : ''}
+            className={isActive ? 'tw:bg-brand-primary!' : ''}
             data-testid={`${mode}-view-toggle`}
             iconLeading={getIconElement(mode, isActive)}
             id={mode}

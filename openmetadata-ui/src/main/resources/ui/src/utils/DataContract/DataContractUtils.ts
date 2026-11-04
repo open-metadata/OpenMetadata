@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RuleObject } from 'antd/lib/form';
 import { dump } from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
+import { DateTime } from 'luxon';
 import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
 import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
 import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
@@ -40,19 +40,10 @@ import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
 import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
 import { getTermQuery } from '../SearchPureUtils';
 
-export const semanticRuleValidator = (_: RuleObject, value: string) => {
-  if (isEmpty(value) || value === '""' || value === '{}') {
-    return Promise.reject(
-      new Error(
-        t('message.field-text-is-required', {
-          fieldText: t('label.rule'),
-        })
-      )
-    );
-  }
-
-  return Promise.resolve();
-};
+export const semanticRuleValidator = (value?: string) =>
+  isEmpty(value) || value === '""' || value === '{}'
+    ? t('message.field-text-is-required', { fieldText: t('label.rule') })
+    : true;
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
@@ -356,7 +347,12 @@ export const generateMonthTickPositions = (
   const tickPositions: string[] = [];
 
   for (const item of processedData) {
-    const monthKey = new Date(item.displayTimestamp).toISOString().slice(0, 7); // YYYY-MM format
+    // Group runs in the same timezone `formatMonth` renders in (luxon's default
+    // zone, i.e. the browser's local zone) so tick selection and the month name
+    // painted on each tick agree, even for runs near a UTC month boundary.
+    const monthKey = DateTime.fromMillis(item.displayTimestamp).toFormat(
+      'yyyy-MM'
+    );
     if (!uniqueMonths.has(monthKey)) {
       uniqueMonths.add(monthKey);
       // Use the first occurrence of each month as the tick position

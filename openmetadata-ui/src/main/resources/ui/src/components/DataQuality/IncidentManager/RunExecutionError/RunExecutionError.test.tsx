@@ -162,6 +162,50 @@ describe('RunExecutionError', () => {
     );
   });
 
+  describe('a long message', () => {
+    beforeEach(() => {
+      // jsdom does no layout: the message measures as three lines tall unless a test says otherwise.
+      jest
+        .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+        .mockReturnValue(63);
+      jest
+        .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+        .mockReturnValue(63);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('clamps it to three lines, with a toggle that shows the rest', () => {
+      jest
+        .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+        .mockReturnValue(400);
+      renderError({ errorDetails: { message: 'x '.repeat(1000) } });
+
+      const message = screen.getByTestId('run-execution-error-message');
+      const more = screen.getByRole('button', { name: 'label.more-lowercase' });
+
+      expect(message).toHaveClass('tw:line-clamp-3');
+      expect(more).toHaveAttribute('aria-expanded', 'false');
+
+      fireEvent.click(more);
+
+      expect(message).not.toHaveClass('tw:line-clamp-3');
+      expect(
+        screen.getByRole('button', { name: 'label.less-lowercase' })
+      ).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('offers no toggle for a message that fits', () => {
+      renderError({ errorDetails: { message: 'connection timed out' } });
+
+      expect(
+        screen.queryByRole('button', { name: 'label.more-lowercase' })
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it('falls back to the plain-text result without structured details', () => {
     renderError({ result: 'Error computing row count' });
 

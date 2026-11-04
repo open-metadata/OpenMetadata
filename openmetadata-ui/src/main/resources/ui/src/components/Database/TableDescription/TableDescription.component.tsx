@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
+
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -20,7 +22,6 @@ import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.compon
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import DescriptionSourceBadge from '../../common/DescriptionSourceBadge/DescriptionSourceBadge';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
@@ -96,24 +97,28 @@ const TableDescription = ({
   }, [columnData, suggestionData]);
 
   return (
-    <Space
-      className="hover-icon-group w-full d-flex"
+    <Box
+      align="stretch"
+      className="layout-space hover-icon-group w-full d-flex"
       data-testid="description"
-      direction="vertical"
-      id={`field-description-${index}`}>
+      direction="col"
+      gap={2}
+      id={`field-description-${index}`}
+      itemClassName="layout-space-item">
       {descriptionContent}
       <DescriptionSourceBadge
         changeSummaryEntry={changeSummary?.[changeSummaryKey]}
       />
 
       {!suggestionData && !isReadOnly ? (
-        <div className="d-flex items-baseline gap-4">
+        <div className="d-flex items-center gap-2">
           {hasEditPermission && (
-            <EditIconButton
+            <ButtonUtility
               className="hover-cell-icon"
               data-testid="edit-button"
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              size="xs"
+              tooltip={t('label.edit-entity', {
                 entity: t('label.description'),
               })}
               onClick={onClick}
@@ -129,7 +134,7 @@ const TableDescription = ({
           />
         </div>
       ) : null}
-    </Space>
+    </Box>
   );
 };
 

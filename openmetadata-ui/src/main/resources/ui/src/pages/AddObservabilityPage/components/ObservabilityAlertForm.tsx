@@ -11,27 +11,38 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
+import { useEffect, useState } from 'react';
+import { FormProvider, useWatch, Watch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.constants';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { AlertAiFormValidationErrors } from '../../../components/observability/Alerts/AlertAiFormFields.interface';
+import { validateAlertAiForm } from '../../../components/observability/Alerts/AlertAiFormFieldsValidationUtils';
 import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  ModifiedCreateEventSubscription,
-  ObservabilityAlertFormProps,
-} from '../AddObservabilityPage.interface';
+  applyAlertValueChanges,
+  getClassicAlertInitialValues,
+} from '../../../utils/Alerts/ClassicAlertForm.utils';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
+
+const NO_ERRORS: AlertAiFormValidationErrors = {};
 
 function ObservabilityAlertForm({
   alert,
   breadcrumb,
   extraFormButtons,
   extraFormWidgets,
-  filterResources,
   form,
   handleCancel,
   handleSave,
@@ -46,86 +57,127 @@ function ObservabilityAlertForm({
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
   const { t } = useTranslation();
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  // `compute` re-renders this form only when the errors change, not on every keystroke.
+  const currentErrors = useWatch({
+    control: form.control,
+    compute: (values) => validateAlertAiForm(values, t),
+  });
+  const validationErrors: AlertAiFormValidationErrors = hasSubmitted
+    ? currentErrors
+    : NO_ERRORS;
+  const { reset } = form;
+  useEffect(() => {
+    if (alert) {
+      reset(getClassicAlertInitialValues(alert));
+    }
+  }, [alert, reset]);
+  const submit = async (data: ModifiedCreateEventSubscription) => {
+    const errors = validateAlertAiForm(data, t);
+    setHasSubmitted(true);
+    if (errors.destinations) {
+      form.setError(DESTINATIONS_MIN_COUNT_ERROR_PATH, {
+        message: errors.destinations,
+        type: 'manual',
+      });
+    }
+    if (Object.keys(errors).length === 0) {
+      await handleSave(data);
+    }
+  };
+  const onValuesChange = (changes: Partial<ModifiedCreateEventSubscription>) =>
+    applyAlertValueChanges(form.setValue, changes);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      rowGap="4">
+      <Grid.Item className="layout-column" span={24}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography as="h5" size="text-md" weight="semibold">
           {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
             entity: t('label.alert'),
           })}
         </Typography>
         <Typography>{t('message.alerts-description')}</Typography>
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
-        <Form<ModifiedCreateEventSubscription>
-          form={form}
-          initialValues={{
-            ...alert,
-            displayName: getEntityName(alert),
-            resources: alert?.filteringRules?.resources,
-          }}
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleSave}>
-          <Row gutter={[20, 20]}>
-            <AlertSelectionProvider value={selection}>
-              <ObservabilityAlertFormFields
-                alert={alert}
-                extraFormWidgets={extraFormWidgets}
-                filterResources={filterResources}
-                form={form}
-                isLoading={isLoading}
-                shouldShowActionsSection={shouldShowActionsSection}
-                shouldShowFiltersSection={shouldShowFiltersSection}
-                templateResourcePermission={templateResourcePermission}
-                templates={templates}
-              />
-            </AlertSelectionProvider>
+      <Grid.Item className="layout-column" span={24}>
+        <FormProvider {...form}>
+          <HookForm
+            form={form}
+            validationBehavior="aria"
+            onSubmit={form.handleSubmit(submit, () => setHasSubmitted(true))}>
+            <Grid
+              className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
+              rowGap="5">
+              <AlertSelectionProvider value={selection}>
+                <ObservabilityAlertFormFields
+                  alert={alert}
+                  extraFormWidgets={extraFormWidgets}
+                  form={form}
+                  isLoading={isLoading}
+                  shouldShowActionsSection={shouldShowActionsSection}
+                  shouldShowFiltersSection={shouldShowFiltersSection}
+                  templateResourcePermission={templateResourcePermission}
+                  templates={templates}
+                  validationErrors={validationErrors}
+                />
+              </AlertSelectionProvider>
 
-            {!isUndefined(inlineAlertDetails) && (
-              <Col span={24}>
-                <InlineAlert {...inlineAlertDetails} />
-              </Col>
-            )}
+              {!isUndefined(inlineAlertDetails) && (
+                <Grid.Item className="layout-column" span={24}>
+                  <InlineAlert {...inlineAlertDetails} />
+                </Grid.Item>
+              )}
 
-            <Col span={24}>
-              <div className="flex justify-end gap-2">
-                <Button
-                  data-testid="cancel-button"
-                  type="text"
-                  onClick={handleCancel}>
-                  {t('label.cancel')}
-                </Button>
+              <Grid.Item className="layout-column" span={24}>
+                <Box gap={2} justify="end">
+                  <Button
+                    color="tertiary"
+                    data-testid="cancel-button"
+                    size="sm"
+                    onPress={handleCancel}>
+                    {t('label.cancel')}
+                  </Button>
 
-                {Object.entries(extraFormButtons).map(
-                  ([name, ButtonComponent]) => (
-                    <ButtonComponent
-                      alertDetails={alert}
-                      formRef={form}
-                      key={name}
-                      templateResourcePermission={templateResourcePermission}
-                      templates={templates}
-                    />
-                  )
-                )}
-                <Button
-                  data-testid="save-button"
-                  htmlType="submit"
-                  loading={saving}
-                  type="primary">
-                  {t('label.save')}
-                </Button>
-              </div>
-            </Col>
-          </Row>
-        </Form>
-      </Col>
-    </Row>
+                  {Object.entries(extraFormButtons).map(
+                    ([name, ButtonComponent]) => (
+                      <Watch
+                        control={form.control}
+                        key={name}
+                        render={(values) => (
+                          <ButtonComponent
+                            alertDetails={alert}
+                            templateResourcePermission={
+                              templateResourcePermission
+                            }
+                            templates={templates}
+                            values={values}
+                            onValuesChange={onValuesChange}
+                          />
+                        )}
+                      />
+                    )
+                  )}
+                  <Button
+                    color="primary"
+                    data-testid="save-button"
+                    isLoading={saving}
+                    size="sm"
+                    type="submit">
+                    {t('label.save')}
+                  </Button>
+                </Box>
+              </Grid.Item>
+            </Grid>
+          </HookForm>
+        </FormProvider>
+      </Grid.Item>
+    </Grid>
   );
 }
 

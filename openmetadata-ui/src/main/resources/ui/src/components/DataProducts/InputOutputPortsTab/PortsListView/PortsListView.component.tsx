@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { SkeletonParagraph } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import {
   forwardRef,
@@ -23,7 +25,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -185,13 +186,15 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             minHeight: 0,
           }}>
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <Row gutter={[16, 16]}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(16, 16) }}>
               {[1, 2, 3].map((key) => (
-                <Col key={key} span={24}>
+                <Grid.Item className="layout-column" key={key} span={24}>
                   <SkeletonParagraph rows={2} />
-                </Col>
+                </Grid.Item>
               ))}
-            </Row>
+            </Grid>
           </div>
         </div>
       );
@@ -214,9 +217,11 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             overflowX: 'hidden',
             minHeight: 0,
           }}>
-          <Row gutter={[16, 16]}>
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(16, 16) }}>
             {ports.map((port) => (
-              <Col key={port.id} span={24}>
+              <Grid.Item className="layout-column" key={port.id} span={24}>
                 <ExploreSearchCard
                   showEntityIcon
                   actionPopoverContent={
@@ -231,7 +236,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                                 description={t('label.remove-entity', {
                                   entity: t('label.port'),
                                 })}
-                                icon={DeleteIcon}
+                                icon={Trash01}
                                 id="delete-port"
                                 name={t('label.remove')}
                               />
@@ -250,9 +255,9 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                   showTags={false}
                   source={port}
                 />
-              </Col>
+              </Grid.Item>
             ))}
-          </Row>
+          </Grid>
         </div>
 
         {showPagination && (

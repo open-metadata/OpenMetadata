@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
-import DomainScopeControl from '../../../common/DomainScopeControl/DomainScopeControl';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarRailFooter,
@@ -162,14 +165,15 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
           ) : (
             <SidebarBrand variant="rail" />
           )}
-          <button
-            aria-label={t('label.expand')}
+          <ButtonUtility
             className="ask-rail__expand-btn"
             data-testid="ask-rail-expand-btn"
-            type="button"
-            onClick={onToggle}>
-            <ExpandPanelIcon height={20} width={20} />
-          </button>
+            icon={ExpandPanelIcon}
+            size="lg"
+            tooltip={t('label.expand')}
+            tooltipPlacement="right"
+            onClick={onToggle}
+          />
         </div>
       </div>
 
@@ -192,9 +196,6 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
       ) : null}
 
       <div className="ask-rail__profile">
-        <div className="ask-rail__domain" data-testid="ask-rail-domain-scope">
-          <DomainScopeControl variant="icon" />
-        </div>
         {footerSlots.length > 0 ? (
           footerSlots.map(({ key, component: Slot }) => <Slot key={key} />)
         ) : (

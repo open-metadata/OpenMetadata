@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -73,6 +74,9 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ODPSConverter;
@@ -120,6 +124,13 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       return Response.status(Response.Status.BAD_REQUEST).entity(result).build();
     }
     return Response.ok().entity(result).build();
+  }
+
+  // An asset write can hold assets for approval; a failed one still answers 400.
+  private Response buildBulkAssetsResponse(BulkOperationResult result, boolean dryRun) {
+    return result.getStatus() == ApiStatus.FAILURE
+        ? buildBulkOperationResponse(result)
+        : ApprovalGate.bulkResponse(result, dryRun);
   }
 
   private void validatePortFields(String fieldsParam) {
@@ -409,8 +420,10 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
@@ -446,8 +459,10 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
+        Boolean.TRUE.equals(request.getDryRun()));
   }
 
   @PUT
@@ -485,8 +500,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkAddInputPorts(name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddInputPorts(name, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -524,9 +540,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveInputPorts(
-            name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveInputPorts(name, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -564,8 +580,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkAddOutputPorts(name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddOutputPorts(name, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -603,9 +620,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveOutputPorts(
-            name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveOutputPorts(name, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -645,8 +662,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(
-        repository.bulkAddInputPorts(fqn, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddInputPorts(fqn, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -686,9 +704,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveInputPorts(
-            fqn, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveInputPorts(fqn, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -728,8 +746,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(
-        repository.bulkAddOutputPorts(fqn, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddOutputPorts(fqn, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -769,9 +788,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveOutputPorts(
-            fqn, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveOutputPorts(fqn, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PATCH
@@ -901,9 +920,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid org.openmetadata.schema.api.VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -1069,7 +1086,10 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok(repository.getDataProductAssets(id, limit, offset)).build();
+    return Response.ok(
+            repository.getDataProductAssets(
+                id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1116,7 +1136,10 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok(repository.getDataProductAssetsByName(fqn, limit, offset)).build();
+    return Response.ok(
+            repository.getDataProductAssetsByName(
+                fqn, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1134,7 +1157,12 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       })
   public Response getAllDataProductsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllDataProductsWithAssetsCount();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContext());
+    java.util.Map<String, Integer> result =
+        repository.getAllDataProductsWithAssetsCount(securityContext);
     return Response.ok(result).build();
   }
 

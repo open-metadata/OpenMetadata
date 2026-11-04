@@ -85,6 +85,22 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
     e.stopPropagation();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.(resource);
+    }
+  };
+
+  const interactiveProps = onClick
+    ? {
+        'aria-label': resource.displayName || resource.name,
+        role: 'button',
+        tabIndex: 0,
+        onKeyDown: handleKeyDown,
+      }
+    : undefined;
+
   const renderDescription = () =>
     resource.description ? (
       <>
@@ -187,6 +203,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
 
   return (
     <Box
+      {...interactiveProps}
       className={classNames(
         'tw:w-full tw:min-w-0 tw:p-5 tw:rounded-xl tw:bg-primary tw:border tw:border-secondary tw:shadow-xs tw:transition-all',
         onClick && 'tw:cursor-pointer tw:hover:shadow-md'

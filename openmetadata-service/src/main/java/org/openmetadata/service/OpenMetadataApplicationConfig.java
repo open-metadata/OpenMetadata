@@ -34,6 +34,8 @@ import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
+import org.openmetadata.schema.configuration.CdnConfiguration;
+import org.openmetadata.schema.configuration.ConfigSourceConfiguration;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.configuration.SentryConfiguration;
@@ -52,6 +54,7 @@ import org.openmetadata.service.config.StartupConfiguration;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 
 @Getter
@@ -77,6 +80,17 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("authenticationConfiguration")
   private AuthenticationConfiguration authenticationConfiguration;
+
+  @JsonProperty("configSource")
+  @Valid
+  private ConfigSourceConfiguration configSourceConfiguration;
+
+  public ConfigSourceConfiguration getConfigSourceConfiguration() {
+    if (configSourceConfiguration == null) {
+      configSourceConfiguration = new ConfigSourceConfiguration();
+    }
+    return configSourceConfiguration;
+  }
 
   @JsonProperty("jwtTokenConfiguration")
   private JWTTokenConfiguration jwtTokenConfiguration;
@@ -206,6 +220,18 @@ public class OpenMetadataApplicationConfig extends Configuration {
     return cacheConfig;
   }
 
+  @JsonProperty("credentialVerification")
+  @Valid
+  private CredentialVerificationConfig credentialVerification =
+      CredentialVerificationConfig.defaults();
+
+  public CredentialVerificationConfig getCredentialVerification() {
+    if (credentialVerification == null) {
+      credentialVerification = CredentialVerificationConfig.defaults();
+    }
+    return credentialVerification;
+  }
+
   @JsonProperty("bulkOperation")
   @Valid
   private BulkOperationConfiguration bulkOperationConfiguration;
@@ -250,12 +276,22 @@ public class OpenMetadataApplicationConfig extends Configuration {
     return asyncOperationsConfiguration;
   }
 
+  @JsonProperty("cdn")
+  private CdnConfiguration cdnConfiguration;
+
   @JsonProperty("qos")
   private QoSConfiguration qosConfiguration;
 
   @JsonProperty("cacheMemory")
   @Valid
   private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
+
+  public CdnConfiguration getCdnConfiguration() {
+    if (cdnConfiguration == null) {
+      cdnConfiguration = new CdnConfiguration();
+    }
+    return cdnConfiguration;
+  }
 
   public QoSConfiguration getQosConfiguration() {
     if (qosConfiguration == null) {

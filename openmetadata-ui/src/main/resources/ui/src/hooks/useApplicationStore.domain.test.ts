@@ -75,6 +75,26 @@ describe('useApplicationStore domain synchronization', () => {
     expect(domainState.activeDomainEntityRef).toEqual(singleDomain);
   });
 
+  it('writes the pick once for a restricted user, so other tabs do not reload twice', () => {
+    const picks: string[] = [];
+    const unsubscribe = useDomainStore.subscribe((state, previous) => {
+      if (state.activeDomain !== previous.activeDomain) {
+        picks.push(state.activeDomain);
+      }
+    });
+
+    act(() => {
+      useDomainStore.getState().updateActiveDomain(singleDomain);
+    });
+    picks.length = 0;
+    act(() => {
+      useApplicationStore.getState().setCurrentUser(restrictedSingleDomainUser);
+    });
+    unsubscribe();
+
+    expect(picks).toEqual([]);
+  });
+
   it('does not restrict an admin user even when they hold the role', () => {
     act(() => {
       useApplicationStore.getState().setCurrentUser(adminUser);
@@ -84,6 +104,31 @@ describe('useApplicationStore domain synchronization', () => {
 
     expect(domainState.isDomainRestricted).toBe(false);
     expect(domainState.activeDomain).toBe(DEFAULT_DOMAIN_VALUE);
+  });
+
+  it('restores the selection persisted on the user into the navbar', () => {
+    act(() => {
+      useApplicationStore
+        .getState()
+        .setCurrentUser({ ...adminUser, defaultDomain: singleDomain });
+    });
+
+    const domainState = useDomainStore.getState();
+
+    expect(domainState.activeDomain).toBe('Engineering');
+    expect(domainState.activeDomainEntityRef).toEqual(singleDomain);
+  });
+
+  it('drops a cached selection when the user has none persisted', () => {
+    act(() => {
+      useDomainStore.getState().updateActiveDomain(singleDomain);
+      useApplicationStore.getState().setCurrentUser(adminUser);
+    });
+
+    const domainState = useDomainStore.getState();
+
+    expect(domainState.activeDomain).toBe(DEFAULT_DOMAIN_VALUE);
+    expect(domainState.activeDomainEntityRef).toBeUndefined();
   });
 
   it('clears domain restriction state on logout', () => {

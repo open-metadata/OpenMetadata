@@ -13,18 +13,14 @@
 
 package org.openmetadata.service.util;
 
-import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.schema.type.EntityReference;
 
 /**
  * Utility for resolving and updating fields in entities using field paths.
@@ -43,72 +39,11 @@ public class FieldPathUtils {
   private FieldPathUtils() {}
 
   /**
-   * Update a field's description in the entity and apply the change via patch.
-   *
-   * @param entity The entity to update
-   * @param repository The entity repository
-   * @param user The user making the change
-   * @param fieldPath The field path (e.g., "columns::customer_id::description")
-   * @param newDescription The new description value
-   * @return true if update was successful
-   */
-  public static boolean updateFieldDescription(
-      EntityInterface entity,
-      EntityRepository<?> repository,
-      String user,
-      String fieldPath,
-      String newDescription) {
-    return updateFieldDescription(entity, repository, user, fieldPath, newDescription, null);
-  }
-
-  /**
-   * Update a field's description, recording where the new text came from.
-   *
-   * <p>The source rides the patch, so one versioned write carries the provenance into the change
-   * summary and, through the normal lifecycle, the search document's {@code descriptionSource}.
-   *
-   * @param changeSource provenance of the new text, or null to leave it defaulted
-   */
-  public static boolean updateFieldDescription(
-      EntityInterface entity,
-      EntityRepository<?> repository,
-      String user,
-      String fieldPath,
-      String newDescription,
-      ChangeSource changeSource) {
-
-    // Take snapshot before modification
-    String originalJson = JsonUtils.pojoToJson(entity);
-
-    // Parse field path and update in memory
-    boolean updated = setFieldDescription(entity, fieldPath, newDescription);
-    if (!updated) {
-      LOG.warn("[FieldPathUtils] Could not update field at path: {}", fieldPath);
-      return false;
-    }
-
-    // Generate patch from diff
-    String updatedJson = JsonUtils.pojoToJson(entity);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-
-    if (patch == null || patch.toJsonArray().isEmpty()) {
-      LOG.debug("[FieldPathUtils] No changes detected for field path: {}", fieldPath);
-      return true; // No changes needed
-    }
-
-    // Apply patch
-    repository.patch(null, entity.getId(), user, patch, changeSource, null);
-    LOG.info(
-        "[FieldPathUtils] Updated description at '{}' in entity '{}'", fieldPath, entity.getName());
-    return true;
-  }
-
-  /**
    * Locate the nested field POJO addressed by {@code fieldPath} (e.g. a Column or SchemaField).
    * Returns empty when the path cannot be resolved. Callers can then read/mutate the POJO via
    * its own getters/setters and generate a JSON patch against the parent entity.
    */
-  public static Optional<Object> findField(EntityInterface entity, String fieldPath) {
+  public static Optional<Object> findField(EntityInterface<?> entity, String fieldPath) {
     FieldPathComponents components = parseFieldPath(fieldPath);
     if (components == null) {
       return Optional.empty();
@@ -123,7 +58,7 @@ public class FieldPathUtils {
    * @param fieldPath The field path (e.g., "columns::customer_id::description")
    * @return the current description if the field path could be resolved
    */
-  public static Optional<String> getFieldDescription(EntityInterface entity, String fieldPath) {
+  public static Optional<String> getFieldDescription(EntityInterface<?> entity, String fieldPath) {
     if (fieldPath == null
         || fieldPath.isEmpty()
         || fieldPath.equals("description")
@@ -141,11 +76,13 @@ public class FieldPathUtils {
   }
 
   /**
-   * Set description on a field identified by field path.
-   * Modifies the entity in memory.
+   * Set description on a field identified by field path. Modifies the entity in memory; saving it
+   * is the caller's job.
+   *
+   * @return false when the field path cannot be resolved
    */
-  private static boolean setFieldDescription(
-      EntityInterface entity, String fieldPath, String description) {
+  public static boolean setFieldDescription(
+      EntityInterface<?> entity, String fieldPath, String description) {
 
     // Handle entity-level description
     if (fieldPath == null
@@ -233,7 +170,7 @@ public class FieldPathUtils {
                   String.join(".", Arrays.copyOfRange(parts, 1, fieldEnd)));
           return new FieldPathComponents(parts[0], fieldName, property);
         }
-      } catch (ParseCancellationException | IllegalArgumentException e) {
+      } catch (IllegalArgumentException e) {
         LOG.warn("[FieldPathUtils] Could not parse dot field path: {}", fieldPath, e);
       }
     }
@@ -243,7 +180,7 @@ public class FieldPathUtils {
 
   /** Navigate entity structure and set description on target field. */
   private static boolean navigateAndSetDescription(
-      EntityInterface entity, FieldPathComponents components, String description) {
+      EntityInterface<?> entity, FieldPathComponents components, String description) {
     List<?> fieldList = resolveContainerList(entity, components.containerName());
     if (fieldList == null) {
       LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
@@ -254,7 +191,7 @@ public class FieldPathUtils {
 
   /** Navigate entity structure and get the description on the target field. */
   private static Optional<String> navigateAndGetDescription(
-      EntityInterface entity, FieldPathComponents components) {
+      EntityInterface<?> entity, FieldPathComponents components) {
     List<?> fieldList = resolveContainerList(entity, components.containerName());
     if (fieldList == null) {
       LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
@@ -269,11 +206,32 @@ public class FieldPathUtils {
    *
    * <p>The registry is consulted before the plain reflective getter so that a container segment on
    * a registry type always means what the registry says it means. Falling back to the getter only
-   * serves entity types the registry does not cover, for example a dashboard's charts.
+   * serves entity types the registry does not cover.
+   *
+   * <p>The reflective fallback refuses a list whose elements are {@link EntityReference}. An
+   * EntityReference is a projection of a separate entity (e.g. a dashboard's charts reference a
+   * Chart), not an editable child POJO: mutating it in memory, diffing the parent, and patching the
+   * parent is silently reverted by the parent repository's {@code prepare()}, which rebuilds the
+   * references from the persisted child entities. Returning null here surfaces the no-op as a
+   * visible failure instead of reporting success while doing nothing.
    */
-  private static List<?> resolveContainerList(EntityInterface entity, String container) {
+  private static List<?> resolveContainerList(EntityInterface<?> entity, String container) {
     List<?> fromRegistry = ChildFieldResolver.containerListFor(entity, container);
-    return fromRegistry != null ? fromRegistry : getFieldList(entity, container);
+    if (fromRegistry != null) {
+      return fromRegistry;
+    }
+    List<?> reflective = getFieldList(entity, container);
+    if (reflective != null
+        && !reflective.isEmpty()
+        && reflective.get(0) instanceof EntityReference) {
+      LOG.warn(
+          "[FieldPathUtils] '{}' resolves to an EntityReference list on {}; "
+              + "child must be patched directly, not through the parent",
+          container,
+          entity.getClass().getSimpleName());
+      return null;
+    }
+    return reflective;
   }
 
   /**
@@ -369,7 +327,7 @@ public class FieldPathUtils {
 
   /** Navigate the parsed components to the target field POJO. */
   private static Optional<Object> locateField(
-      EntityInterface entity, FieldPathComponents components) {
+      EntityInterface<?> entity, FieldPathComponents components) {
     String container = components.containerName();
     String fieldName = components.fieldName();
 
@@ -509,7 +467,7 @@ public class FieldPathUtils {
   }
 
   /** Get a field list from entity by name (columns, fields, schemaFields, etc.). */
-  private static List<?> getFieldList(EntityInterface entity, String listName) {
+  private static List<?> getFieldList(EntityInterface<?> entity, String listName) {
     Object result =
         ChildFieldResolver.invokeGetter(entity, ChildFieldResolver.getterName(listName));
     return result instanceof List<?> ? (List<?>) result : null;

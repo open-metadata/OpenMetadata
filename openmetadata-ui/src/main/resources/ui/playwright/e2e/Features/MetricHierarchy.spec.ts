@@ -20,7 +20,8 @@ import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { openDeleteModal } from '../../utils/asyncDelete';
+import { selectOptionWithRetry, uuid } from '../../utils/common';
 import { setupUserWithPolicy } from '../../utils/permission';
 import { performUserLogin } from '../../utils/user';
 
@@ -497,20 +498,29 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         );
       });
       // Keep the search scoped so the status filter runs on this root, not the whole seeded catalog.
-      await page.getByRole('button', { name: 'Status', exact: true }).click();
-      await page.getByRole('menuitemradio', { name: 'Approved' }).click();
+      await selectOptionWithRetry(
+        page.getByRole('button', { name: 'Status', exact: true }),
+        page.getByRole('menuitemradio', { name: 'Approved' })
+      );
       await statusResponse;
       await expect(rootRow.getByTestId('metric-status-pill')).toContainText(
         'Approved'
       );
 
-      await page.getByRole('button', { name: 'Customize' }).click();
-      await page
-        .getByRole('button', { name: 'Description', exact: true })
-        .click();
-      await expect(
-        page.getByRole('columnheader', { name: 'Description' })
-      ).toHaveCount(0);
+      const descriptionHeader = page
+        .getByRole('grid', { name: 'Metrics' })
+        .getByRole('columnheader', { name: 'Description' });
+      // Description is visible by default; prove it before hiding it so the
+      // absence check below cannot pass against an unrendered grid.
+      await expect(descriptionHeader).toBeVisible();
+
+      await selectOptionWithRetry(
+        page.getByTestId('column-dropdown'),
+        page.getByTestId('column-menu-item-description')
+      );
+
+      await expect(descriptionHeader).toHaveCount(0);
+      await expect(rootRow.getByTestId('metric-status-pill')).toBeVisible();
     } finally {
       if (root) {
         await apiContext.delete(
@@ -1003,6 +1013,45 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       expect(allowed.ok()).toBeTruthy();
     } finally {
+      await afterAction();
+    }
+  });
+
+  test('warns on the metric page that deleting a metric deletes its child metrics', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+    const suffix = uuid();
+    const parentName = `pw-metric-delwarn-parent-${suffix}`;
+    let parent: MetricResponse | undefined;
+
+    try {
+      parent = await createMetric(apiContext, parentName);
+      await createMetric(
+        apiContext,
+        `pw-metric-delwarn-child-${suffix}`,
+        parentName
+      );
+
+      await page.goto(`/metric/${parentName}`);
+      await openDeleteModal(page);
+
+      const deleteModal = page.getByTestId('delete-modal');
+
+      await expect(deleteModal).toContainText(
+        `Any child metrics under "${parentName}" will be soft deleted as well.`
+      );
+      await expect(deleteModal).toContainText(
+        `Any child metrics under "${parentName}" will be permanently deleted as well.`
+      );
+    } finally {
+      if (parent) {
+        await apiContext.delete(
+          `/api/v1/metrics/${parent.id}?hardDelete=true&recursive=true`
+        );
+      }
       await afterAction();
     }
   });

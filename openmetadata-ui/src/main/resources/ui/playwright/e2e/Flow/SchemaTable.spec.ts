@@ -82,14 +82,6 @@ const crudColumnDisplayName = async (
   );
 };
 
-test.beforeEach(
-  async ({ editDescriptionPage, editTagsPage, editGlossaryTermPage }) => {
-    await redirectToHomePage(editDescriptionPage);
-    await redirectToHomePage(editTagsPage);
-    await redirectToHomePage(editGlossaryTermPage);
-  }
-);
-
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await table.create(apiContext);

@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -95,10 +94,9 @@ export const FrequentlyJoinedTables = ({
 
       {hasMoreElement ? (
         <Button
-          className="show-more-tags-button"
+          color="link-color"
           data-testid="read-button"
-          size="small"
-          type="link"
+          size="xs"
           onClick={handleShowMore}>
           {visibleCount === joinedTables.length
             ? t('label.less')

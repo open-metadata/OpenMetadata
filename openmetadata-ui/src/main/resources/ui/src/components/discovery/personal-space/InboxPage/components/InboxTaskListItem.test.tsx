@@ -23,7 +23,8 @@ jest.mock('./ClampedText', () => ({
 
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
-  default: () => <div />,
+  default: ({ isAgent }: { isAgent?: boolean }) =>
+    isAgent ? <span data-testid="agent-avatar" /> : <div />,
 }));
 
 jest.mock('../taskTitle.utils', () => ({
@@ -119,6 +120,29 @@ describe('InboxTaskListItem', () => {
     expect(screen.getByText('Olivia Rhye')).toBeInTheDocument();
     expect(screen.getByText('dim_customers')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  it('names the agent that proposed the term instead of its bot', () => {
+    render(
+      <InboxTaskListItem
+        task={
+          {
+            ...task,
+            createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+            payload: {
+              proposal: { provider: 'automation', agent: 'Glossary Agent' },
+            },
+          } as unknown as Task
+        }
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('agent-avatar')).toBeInTheDocument();
+    expect(screen.getByText('Glossary Agent')).toBeInTheDocument();
+    expect(
+      screen.queryByText('aiautomationapplicationbot')
+    ).not.toBeInTheDocument();
   });
 
   // The type is carried by the list's group header, so repeating it on every

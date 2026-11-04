@@ -14,6 +14,8 @@ package org.openmetadata.service.aicontext;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -23,18 +25,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Mode B of the AI Context Platform: given a natural-language question and no chosen asset, run a
@@ -54,21 +61,26 @@ public class AIContextFinder {
   private static final int SEARCH_K = 100;
   private static final int CHUNK_DEDUP_OVERSAMPLE = 3;
   private static final int MAX_ASSETS_PER_ITEM = 10;
+  private static final String METRIC_HIERARCHY_FIELDS = "parent,childrenCount";
   private static final int MAX_CONTENT_CHARS = 2000;
 
   private final SubjectContext subjectContext;
+  private final Predicate<KnowledgeItem> canView;
 
   public AIContextFinder() {
-    this(null);
+    this(null, item -> true);
   }
 
   /**
    * @param subjectContext the caller's subject, threaded into the candidate-asset search so
    *     glossary-routed candidates are RBAC-filtered to assets the caller can see. Null means
    *     server-internal use with no caller to scope to.
+   * @param canView the caller's per-item check; a knowledge hit it rejects is neither returned nor
+   *     routed to candidate assets.
    */
-  public AIContextFinder(SubjectContext subjectContext) {
+  public AIContextFinder(SubjectContext subjectContext, Predicate<KnowledgeItem> canView) {
     this.subjectContext = subjectContext;
+    this.canView = canView;
   }
 
   public record CandidateAsset(String fullyQualifiedName, String entityType, String via) {}
@@ -95,11 +107,44 @@ public class AIContextFinder {
   }
 
   /**
+   * The vector index carries no metric hierarchy, so a parent metric and its variants came back as
+   * unrelated items. It is read from the entity store instead: a chunk is rewritten only when its
+   * embedded text changes, so a count kept there would go stale when a variant is added. Only the
+   * find_context tool calls this: ai-platform parses the REST find response strictly, so an older
+   * ai-platform would drop every item carrying a field its spec does not know.
+   */
+  public static void attachMetricHierarchy(List<KnowledgeItem> items) {
+    List<KnowledgeItem> metrics =
+        items.stream().filter(item -> item.getType() == KnowledgeItem.Type.METRIC).toList();
+    if (!metrics.isEmpty()) {
+      MetricRepository repository = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+      Map<String, Metric> byName =
+          repository
+              .getByNames(
+                  null,
+                  metrics.stream().map(KnowledgeItem::getFullyQualifiedName).toList(),
+                  repository.getFields(METRIC_HIERARCHY_FIELDS),
+                  Include.NON_DELETED)
+              .stream()
+              .collect(Collectors.toMap(Metric::getFullyQualifiedName, Function.identity()));
+      metrics.forEach(item -> withHierarchy(item, byName.get(item.getFullyQualifiedName())));
+    }
+  }
+
+  private static void withHierarchy(KnowledgeItem item, Metric metric) {
+    if (metric != null) {
+      item.withParent(metric.getParent()).withChildrenCount(metric.getChildrenCount());
+    }
+  }
+
+  /**
    * Items are keyed by type + FQN. The vector index holds one document per body chunk — a long
    * article matches once per relevant chunk and would otherwise appear repeatedly, blowing the
    * caller's size budget with duplicates; first (highest-scoring) chunk wins. Type is part of the
    * key because knowledge types can share an FQN (a metric and a page both named "Revenue") — an
-   * FQN-only key would drop the second item along with the assets it routes to.
+   * FQN-only key would drop the second item along with the assets it routes to. A hit the caller
+   * cannot view is skipped before routing, so the assets it would route to are not suggested
+   * through it.
    */
   void collectHit(
       Map<String, Object> hit,
@@ -108,7 +153,7 @@ public class AIContextFinder {
     KnowledgeItem item = toKnowledgeItem(hit);
     if (item != null) {
       String itemKey = item.getType().value() + ":" + item.getFullyQualifiedName();
-      if (!items.containsKey(itemKey)) {
+      if (!items.containsKey(itemKey) && canView.test(item)) {
         items.put(itemKey, item);
         for (CandidateAsset asset : routeToAssets(hit, item)) {
           // FQNs are only unique per entity type (a chart and a dashboard under the same service
@@ -232,21 +277,11 @@ public class AIContextFinder {
     List<EntityReference> refs = new ArrayList<>();
     try {
       SearchRequest request =
-          new SearchRequest()
-              .withQuery(
-                  String.format(
-                      "** AND (tags.tagFQN:\"%s\")", ReindexingUtil.escapeDoubleQuotes(tagFqn)))
-              .withSize(MAX_ASSETS_PER_ITEM)
-              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-              .withFrom(0)
-              .withFetchSource(true)
-              .withTrackTotalHits(false)
-              .withSortFieldParam("_score")
-              .withDeleted(false)
-              .withSortOrder("desc")
-              // Routing only reads identity fields; restricting _source keeps the tag search
-              // light on assets with large documents (wide tables, long descriptions).
-              .withIncludeSourceFields(List.of("fullyQualifiedName", "entityType"));
+          tagSearchRequest(
+              tagFqn,
+              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS),
+              MAX_ASSETS_PER_ITEM,
+              List.of());
       Response response = Entity.getSearchRepository().search(request, subjectContext);
       parseTagHits((String) response.getEntity(), refs);
     } catch (Exception e) {
@@ -255,7 +290,39 @@ public class AIContextFinder {
     return refs;
   }
 
-  private static void parseTagHits(String json, List<EntityReference> refs) {
+  /**
+   * The tag is matched by a filter, never by query text: the data-asset query builders also run the
+   * text through a multi_match over every search field, so a long FQN there overflows OpenSearch's
+   * 1024-clause limit and fails most shards.
+   */
+  static SearchRequest tagSearchRequest(
+      String tagFqn, String index, int size, List<String> excludedTypes) {
+    return new SearchRequest()
+        .withQuery("*")
+        .withQueryFilter(taggedWith(tagFqn, excludedTypes))
+        .withSize(size)
+        .withIndex(index)
+        .withFrom(0)
+        .withFetchSource(true)
+        .withTrackTotalHits(false)
+        .withSortFieldParam("_score")
+        .withDeleted(false)
+        .withSortOrder("desc")
+        // Routing only reads identity fields; restricting _source keeps the tag search
+        // light on assets with large documents (wide tables, long descriptions).
+        .withIncludeSourceFields(List.of("fullyQualifiedName", "entityType"));
+  }
+
+  private static String taggedWith(String tagFqn, List<String> excludedTypes) {
+    Map<String, Object> bool = new LinkedHashMap<>();
+    bool.put("filter", Map.of("term", Map.of(TAGS_FQN, tagFqn)));
+    if (!excludedTypes.isEmpty()) {
+      bool.put("must_not", Map.of("terms", Map.of(ENTITY_TYPE, excludedTypes)));
+    }
+    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", bool)));
+  }
+
+  static void parseTagHits(String json, List<EntityReference> refs) {
     ArrayNode hits = (ArrayNode) JsonUtils.extractValue(json, "hits", "hits");
     if (hits != null) {
       for (JsonNode hit : hits) {

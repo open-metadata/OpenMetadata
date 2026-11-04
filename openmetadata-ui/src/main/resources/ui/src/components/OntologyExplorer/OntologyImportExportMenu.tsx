@@ -11,54 +11,186 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { Download01 } from '@openmetadata/ui-core-components/icons';
-import { useState } from 'react';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Select,
+} from '@openmetadata/ui-core-components';
+import {
+  Download01,
+  SwitchVertical01,
+} from '@openmetadata/ui-core-components/icons';
+import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Ontology } from '../../generated/entity/data/ontology';
+import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useIsAiMode } from '../../hooks/useAppMode';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import OntologyNativeImportDialog from '../governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
+import OntologyReleaseExportModal from '../governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal';
 import OntologyImportExportModal from './OntologyImportExportModal';
 
-interface OntologyImportExportMenuProps {
+interface ImportExportCounts {
+  readonly relationCount: string;
+  readonly termCount: string;
+}
+
+interface GlossaryImportExportProps extends ImportExportCounts {
+  readonly kind: 'glossary';
   readonly glossary?: Glossary;
   readonly glossaries: Glossary[];
   readonly isAdminUser: boolean;
-  readonly termCount: string;
-  readonly relationCount: string;
 }
 
-const OntologyImportExportMenu = ({
-  glossary,
-  glossaries,
-  isAdminUser,
-  termCount,
-  relationCount,
-}: OntologyImportExportMenuProps) => {
+interface NativeOntologyExportProps {
+  readonly kind: 'ontology';
+  readonly ontology: Ontology;
+  readonly canImport: boolean;
+  readonly onApplied: () => void;
+  readonly onOpen?: () => void;
+}
+
+type OntologyImportExportMenuProps =
+  | GlossaryImportExportProps
+  | NativeOntologyExportProps
+  | {
+      readonly kind: 'allOntologies';
+      readonly isCatalogEmpty: boolean;
+      readonly ontologies: Ontology[];
+      readonly onApplied: () => void;
+    };
+
+const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [isOpen, setIsOpen] = useState(false);
+  const guard = useOntologyDraftGuard();
+  const [selectedOwner, setSelectedOwner] = useState<Ontology>();
+  const { canEditAll } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY,
+    { id: selectedOwner?.id ?? '' },
+    {
+      enabled: props.kind === 'allOntologies' && Boolean(selectedOwner),
+      deleted: selectedOwner?.deleted,
+    }
+  );
+  const options = useMemo(
+    () =>
+      props.kind === 'allOntologies'
+        ? props.ontologies.map((owner) => ({
+            id: owner.id,
+            label: getEntityName(owner),
+            isDisabled: owner.deleted,
+          }))
+        : [],
+    [props]
+  );
+  const renderModal = (): ReactNode => {
+    if (!isOpen) {
+      return null;
+    }
+    if (props.kind === 'allOntologies') {
+      if (props.isCatalogEmpty) {
+        return <OntologyNativeImportDialog onClose={() => setIsOpen(false)} />;
+      }
+      if (selectedOwner) {
+        return (
+          <OntologyReleaseExportModal
+            canImport={canEditAll}
+            ontology={selectedOwner}
+            onApplied={props.onApplied}
+            onClose={() => {
+              setSelectedOwner(undefined);
+              setIsOpen(false);
+            }}
+          />
+        );
+      }
+
+      return (
+        <ModalOverlay
+          isDismissable
+          isOpen
+          onOpenChange={(open) => setIsOpen(open)}>
+          <Modal>
+            <Dialog
+              dividers="scroll"
+              title={t('label.import-export')}
+              onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <Select
+                  data-testid="ontology-import-target-picker"
+                  items={options}
+                  label={t('label.select-entity', {
+                    entity: t('label.ontology'),
+                  })}
+                  selectedKey={null}
+                  onSelectionChange={(key) =>
+                    setSelectedOwner(
+                      props.ontologies.find((owner) => owner.id === key)
+                    )
+                  }>
+                  {(item) => (
+                    <Select.Item
+                      id={item.id}
+                      isDisabled={item.isDisabled}
+                      label={item.label}
+                    />
+                  )}
+                </Select>
+              </Dialog.Content>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      );
+    }
+    if (props.kind === 'ontology') {
+      return (
+        <OntologyReleaseExportModal
+          canImport={props.canImport}
+          ontology={props.ontology}
+          onApplied={props.onApplied}
+          onClose={() => setIsOpen(false)}
+        />
+      );
+    }
+
+    return (
+      <OntologyImportExportModal
+        glossaries={props.glossaries}
+        glossary={props.glossary}
+        isAdminUser={props.isAdminUser}
+        relationCount={props.relationCount}
+        termCount={props.termCount}
+        onClose={() => setIsOpen(false)}
+      />
+    );
+  };
 
   return (
     <>
       <Button
-        className="tw:gap-[7px]! tw:rounded-[9px]! tw:border tw:border-primary tw:px-3! tw:py-[7px]! tw:text-xs! tw:font-semibold! tw:shadow-none! tw:before:hidden tw:after:outline-0!"
+        aria-label={t('label.import-export')}
         color="secondary"
         data-testid="ontology-import-export-trigger"
-        iconLeading={
-          <Download01 className="tw:size-[15px] tw:text-fg-brand-primary" />
-        }
+        iconLeading={isAiMode ? Download01 : SwitchVertical01}
         size="sm"
-        onPress={() => setIsOpen(true)}>
-        {t('label.import-export')}
-      </Button>
-      {isOpen ? (
-        <OntologyImportExportModal
-          glossaries={glossaries}
-          glossary={glossary}
-          isAdminUser={isAdminUser}
-          relationCount={relationCount}
-          termCount={termCount}
-          onClose={() => setIsOpen(false)}
-        />
-      ) : null}
+        tooltip={t('label.import-export')}
+        onPress={() =>
+          guard(() => {
+            if (props.kind === 'ontology') {
+              props.onOpen?.();
+            }
+            setIsOpen(true);
+          })
+        }
+      />
+      {renderModal()}
     </>
   );
 };

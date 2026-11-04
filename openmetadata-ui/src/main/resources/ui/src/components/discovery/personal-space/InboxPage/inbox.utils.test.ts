@@ -52,16 +52,25 @@ jest.mock('../../../../rest/conversationsAPI', () => ({
 
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  INBOX_ACTIVITY_FILTER_PARAM,
+  INBOX_MY_ASSETS_ACTIVITY_PATH,
+  PERSONAL_SPACE_ROUTES,
+} from '../personalSpace.constants';
+import {
+  ActivityFilter,
   applyReaction,
   formatInboxCount,
   formatInboxDate,
   formatInboxDateTime,
   getActivityChange,
   getActivityEventLabel,
+  getActivityKindType,
   getFeedSortTimestamp,
+  getInboxTabBadge,
   isSameLocalDay,
   isTaskOpen,
   pairFieldChanges,
+  parseActivityFilter,
   sendReaction,
 } from './inbox.utils';
 
@@ -72,6 +81,28 @@ const mockRemoveConversationReaction = removeConversationReaction as jest.Mock;
 const t = ((key: string) => key) as TFunction;
 
 describe('inbox.utils', () => {
+  describe('parseActivityFilter', () => {
+    it('accepts every Activity sub-tab and ignores anything else', () => {
+      Object.values(ActivityFilter).forEach((filter) =>
+        expect(parseActivityFilter(filter)).toBe(filter)
+      );
+
+      expect(parseActivityFilter('bogus')).toBeUndefined();
+      expect(parseActivityFilter(null)).toBeUndefined();
+    });
+
+    // The landing page spells this link out so it need not import this module;
+    // a renamed filter would otherwise send it to All without a failing test.
+    it('pins the landing My Assets link to the My Assets filter', () => {
+      const url = new URL(INBOX_MY_ASSETS_ACTIVITY_PATH, 'http://localhost');
+
+      expect(url.pathname).toBe(PERSONAL_SPACE_ROUTES.INBOX_ACTIVITY);
+      expect(
+        parseActivityFilter(url.searchParams.get(INBOX_ACTIVITY_FILTER_PARAM))
+      ).toBe(ActivityFilter.MyAssets);
+    });
+  });
+
   describe('isTaskOpen', () => {
     const task = (status: string, type: string) =>
       ({ status, type } as unknown as Task);
@@ -194,6 +225,55 @@ describe('inbox.utils', () => {
       ).toBe('message.activity-changed-tier');
     });
 
+    // The card's badge reads the kind the same way as its sentence.
+    it.each([
+      [
+        'a tier carried as tags',
+        activity(
+          ActivityEventType.TagsUpdated,
+          'tags',
+          tags('Tier.Tier2'),
+          tags('Tier.Tier1')
+        ),
+        ActivityEventType.TierUpdated,
+      ],
+      [
+        "a column's tags carried as the asset's",
+        activity(
+          ActivityEventType.TagsUpdated,
+          'columns.email.tags',
+          undefined,
+          tags('PII.Sensitive')
+        ),
+        ActivityEventType.ColumnTagsUpdated,
+      ],
+      [
+        "an asset's tags",
+        activity(
+          ActivityEventType.TagsUpdated,
+          'tags',
+          undefined,
+          tags('PII.Sensitive')
+        ),
+        ActivityEventType.TagsUpdated,
+      ],
+      [
+        "a column's description carried as the asset's",
+        activity(
+          ActivityEventType.DescriptionUpdated,
+          'columns.email.description'
+        ),
+        ActivityEventType.ColumnDescriptionUpdated,
+      ],
+      [
+        'an owner change',
+        activity(ActivityEventType.OwnerUpdated, 'owners'),
+        ActivityEventType.OwnerUpdated,
+      ],
+    ])('reads %s as its kind', (_, event, kind) => {
+      expect(getActivityKindType(event)).toBe(kind);
+    });
+
     it('uses the field name for a generic EntityUpdated', () => {
       expect(
         getActivityEventLabel(
@@ -245,6 +325,18 @@ describe('inbox.utils', () => {
     // never more than the list shows.
     it('marks a floor under the cap with a plus, not as 99+', () => {
       expect(formatInboxCount({ total: 30, isCapped: true })).toBe('30+');
+    });
+  });
+
+  describe('getInboxTabBadge', () => {
+    it('formats a count for the tab', () => {
+      expect(getInboxTabBadge({ total: 128, isCapped: false })).toBe('99+');
+    });
+
+    // A tab with nothing to count shows no badge, not a "0".
+    it('drops the badge when there is nothing to count', () => {
+      expect(getInboxTabBadge({ total: 0, isCapped: false })).toBeUndefined();
+      expect(getInboxTabBadge(undefined)).toBeUndefined();
     });
   });
 

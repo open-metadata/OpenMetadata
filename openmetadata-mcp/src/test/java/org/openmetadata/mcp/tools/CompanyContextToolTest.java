@@ -18,11 +18,13 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,12 +36,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -80,6 +82,7 @@ class CompanyContextToolTest {
         result.get("error").toString().contains("not both and not neither"),
         result.get("error").toString());
     assertEquals(0, result.get("returnedCount"));
+    assertEquals(400, result.get("statusCode"));
   }
 
   @Test
@@ -293,7 +296,7 @@ class CompanyContextToolTest {
         "pill-fqn",
         sharedWith(
             memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
-                .withEntityStatus(EntityStatus.DEPRECATED),
+                .withEntityStatus(ContextMemoryStatus.DEPRECATED),
             "bob"));
     CatalogSecurityContext securityContext = securityContextFor("bob");
 
@@ -416,6 +419,7 @@ class CompanyContextToolTest {
                 new MemorySharedPrincipal()
                     .withPrincipal(
                         new EntityReference()
+                            .withId(userId(userName))
                             .withType(Entity.USER)
                             .withName(userName)
                             .withFullyQualifiedName(userName))));
@@ -433,12 +437,19 @@ class CompanyContextToolTest {
 
   private <T> T withSubject(
       CatalogSecurityContext securityContext, String userName, Callable<T> body) throws Exception {
+    entityMock
+        .when(() -> Entity.getEntityByName(eq(Entity.USER), eq(userName), anyString(), any()))
+        .thenReturn(new User().withId(userId(userName)).withName(userName));
     try (MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       subjects
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(new SubjectContext(new User().withName(userName), null, null));
       return body.call();
     }
+  }
+
+  private static UUID userId(String userName) {
+    return UUID.nameUUIDFromBytes(userName.getBytes(StandardCharsets.UTF_8));
   }
 
   private ContextMemory memory(
@@ -448,7 +459,7 @@ class CompanyContextToolTest {
         .withFullyQualifiedName(fqn)
         .withQuestion("Q")
         .withAnswer("A")
-        .withEntityStatus(EntityStatus.APPROVED)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withSourceType(sourceType)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }

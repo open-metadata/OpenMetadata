@@ -29,7 +29,17 @@ import { AddNewMenu } from '../AddNewMenu/AddNewMenu';
  * (breadcrumb→title, title→subtitle, action gap, padding) is owned by
  * `PageHeader` per the Figma spec.
  */
-export const MarketplaceOverviewHeader: FC = () => {
+interface MarketplaceOverviewHeaderProps {
+  /**
+   * In the persona customize preview the header is shown for layout fidelity
+   * only: "Add New" (creates real entities) is hidden and search is disabled.
+   */
+  isCustomizeView?: boolean;
+}
+
+export const MarketplaceOverviewHeader: FC<MarketplaceOverviewHeaderProps> = ({
+  isCustomizeView = false,
+}) => {
   const { t } = useTranslation();
 
   return (
@@ -42,7 +52,7 @@ export const MarketplaceOverviewHeader: FC = () => {
               label: '',
               ariaLabel: t('label.data-marketplace'),
               icon: MarketplaceIcon,
-              href: ROUTES.DATA_MARKETPLACE,
+              href: isCustomizeView ? undefined : ROUTES.DATA_MARKETPLACE,
             },
             { label: t('label.data-marketplace') },
           ]}
@@ -53,9 +63,10 @@ export const MarketplaceOverviewHeader: FC = () => {
       data-testid="marketplace-overview-header"
       title={
         <SearchHeaderRow
-          actions={<AddNewMenu />}
+          actions={isCustomizeView ? undefined : <AddNewMenu />}
           search={
             <MarketplaceSearchInput
+              isDisabled={isCustomizeView}
               placeholder={t('label.search-for-type', {
                 type: `${t('label.data-product-plural')}, ${t(
                   'label.domain-plural'

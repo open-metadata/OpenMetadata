@@ -1,6 +1,5 @@
 package org.openmetadata.service.security.auth;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 import static jakarta.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
@@ -12,13 +11,11 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LDAP_MISSING_ATTR;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAILED_LOGIN_ATTEMPT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.unboundid.ldap.sdk.Attribute;
-import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.GetEntryLDAPConnectionPoolHealthCheck;
 import com.unboundid.ldap.sdk.LDAPConnection;
@@ -33,7 +30,6 @@ import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
 import freemarker.template.TemplateException;
-import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
@@ -286,37 +282,50 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   private void performLdapBind(String userDn, String reqPassword, User dummy) {
-    BindResult bindingResult = null;
+    ResultCode resultCode = bind(userDn, reqPassword);
+    if (ResultCode.SUCCESS.equals(resultCode)) {
+      LoginAttemptCache.getInstance().recordSuccessfulLogin(dummy.getEmail());
+      return;
+    }
+    if (ResultCode.INVALID_CREDENTIALS.equals(resultCode)) {
+      recordFailedLogin(dummy);
+      throw new CustomExceptionMessage(
+          UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
+    }
+    LOG.error("LDAP bind failed with unexpected result: {}", resultCode.getName());
+    throw new CustomExceptionMessage(
+        INTERNAL_SERVER_ERROR, "LDAP_AUTH_ERROR", "Authentication failed: " + resultCode.getName());
+  }
+
+  /**
+   * The bind's result code. UnboundID reports a rejected bind by throwing rather than by returning a
+   * result, so a wrong password arrives as an exception carrying {@code INVALID_CREDENTIALS}.
+   */
+  ResultCode bind(String userDn, String reqPassword) {
     LDAPConnection userConnection = null;
     try {
       userConnection = openConnection(ldapConfiguration, new LDAPConnectionOptions());
-
-      // Perform the bind operation
-      bindingResult = userConnection.bind(userDn, reqPassword);
-      if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
-        return;
+      return userConnection.bind(userDn, reqPassword).getResultCode();
+    } catch (LDAPException ex) {
+      if (ResultCode.INVALID_CREDENTIALS.equals(ex.getResultCode())) {
+        return ResultCode.INVALID_CREDENTIALS;
       }
-
-      if (Objects.equals(
-          bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
-        recordFailedLoginAttempt(dummy.getEmail(), dummy.getName());
-        throw new CustomExceptionMessage(
-            UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
-      }
+      throw ldapFailure(ex);
     } catch (Exception ex) {
-      handleLdapException(ex);
+      throw ldapFailure(ex);
     } finally {
       if (userConnection != null) {
         userConnection.close();
       }
     }
+  }
 
-    LOG.error(
-        "LDAP bind failed with unexpected result: {}", bindingResult.getResultCode().getName());
-    throw new CustomExceptionMessage(
-        INTERNAL_SERVER_ERROR,
-        "LDAP_AUTH_ERROR",
-        "Authentication failed: " + bindingResult.getResultCode().getName());
+  private void recordFailedLogin(User dummy) {
+    try {
+      recordFailedLoginAttempt(dummy.getEmail(), dummy.getName());
+    } catch (TemplateException | IOException e) {
+      LOG.warn("Could not send the failed-login notice for {}", dummy.getName(), e);
+    }
   }
 
   @Override
@@ -379,7 +388,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         }
 
         String ldapEmail = emailAttr.getValue();
-        if (!email.equalsIgnoreCase(ldapEmail)) {
+        if (!SecurityUtil.sameIdentifier(email, ldapEmail)) {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
 
@@ -639,7 +648,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
-      throw new BadRequestException("Token Cannot be Null or Empty String");
+      throw new AuthenticationException("Refresh token is required. Please login again.");
     }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser =
@@ -674,10 +683,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     RefreshToken storedRefreshToken =
         (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new CustomExceptionMessage(
-          BAD_REQUEST,
-          PASSWORD_RESET_TOKEN_EXPIRED,
-          "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
+      throw new AuthenticationException("Refresh token expired. Please login again.");
     }
 
     // just delete the existing token
@@ -709,7 +715,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  private void handleLdapException(Exception ex) {
+  private CustomExceptionMessage ldapFailure(Exception ex) {
     if (ex instanceof LDAPException ldapEx) {
       ResultCode resultCode = ldapEx.getResultCode();
       String errorMessage = ldapEx.getMessage();
@@ -723,23 +729,23 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           || errorMessage.contains("Connection reset")
           || errorMessage.contains("No route to host")) {
         LOG.error("LDAP connection error during authentication: {}", errorMessage);
-        throw new CustomExceptionMessage(
+        return new CustomExceptionMessage(
             SERVICE_UNAVAILABLE,
             "LDAP_CONNECTION_ERROR",
             "Unable to connect to authentication server. Please try again later.");
       }
       LOG.error("LDAP error during authentication: {}", errorMessage);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR, "LDAP_ERROR", "Authentication server error: " + errorMessage);
     } else if (ex instanceof GeneralSecurityException) {
       LOG.error("SSL/TLS error during LDAP authentication", ex);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
           "LDAP_SSL_ERROR",
           "SSL/TLS configuration error: " + ex.getMessage());
     } else {
       LOG.error("Unexpected error during LDAP authentication", ex);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
           "LDAP_UNEXPECTED_ERROR",
           "Unexpected authentication error: " + ex.getMessage());

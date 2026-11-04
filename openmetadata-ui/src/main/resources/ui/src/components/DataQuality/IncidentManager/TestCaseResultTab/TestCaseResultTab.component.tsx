@@ -22,7 +22,6 @@ import { ChangeDescription } from '../../../../generated/tests/testCase';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
-import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getParameterValueDiffRows } from '../../../../utils/EntityVersionUtils';
 import Description from '../../../common/EntityDescription/Description';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
@@ -37,6 +36,7 @@ import { ConfigurationParameterRow } from './TestCaseConfigurationCard/TestCaseC
 import { TestCaseSidePanelProps } from './TestCaseResultTab.interface';
 import {
   canEditTestCaseParameters,
+  formatParameterValue,
   getResultTabGridClass,
   hasAdditionalComponents,
   resolveIsSidePanelVisible,
@@ -73,7 +73,7 @@ function TestCaseSidePanel({
     <div
       className="transition-all-200ms tw:min-w-0"
       data-testid="test-case-rail">
-      <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+      <Box className="tw:w-full" direction="col" gap={4}>
         <div className="tw:w-full">
           <TestCaseConfigurationCard
             isVersionPage={isVersionPage}
@@ -93,6 +93,7 @@ function TestCaseSidePanel({
             description={description}
             entityType={EntityType.TEST_CASE}
             hasEditAccess={hasEditDescriptionPermission}
+            headerVariant="widget"
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionChange}
           />
@@ -139,15 +140,12 @@ function TestCaseSidePanel({
             onSave={handleDataProductsSave}
           />
         </div>
-      </div>
+      </Box>
     </div>
   );
 }
 
-const TestCaseResultTab = ({
-  showSidePanel,
-  editVariant = getDefaultTestCaseFormVariant(),
-}: TestCaseTabProps) => {
+const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
@@ -207,17 +205,29 @@ const TestCaseResultTab = ({
    * page the rows are the parameters' diff.
    */
   const parameterRows = useMemo<ConfigurationParameterRow[]>(() => {
-    const dataQualityDimension =
-      testCaseData?.dataQualityDimension?.displayName ??
-      testCaseData?.dataQualityDimension?.name;
+    const definitions = new Map(
+      testDefinition?.parameterDefinition?.map((definition) => [
+        definition.name,
+        definition,
+      ])
+    );
+    const labelOf = (name = '') => definitions.get(name)?.displayName ?? name;
     let rows: ConfigurationParameterRow[] = [];
 
     if (versionDiff) {
-      rows = [...versionDiff.rows];
+      rows = versionDiff.rows.map((row) => ({
+        ...row,
+        name: row.label,
+        label: labelOf(row.label),
+      }));
     } else if (!testCaseData?.useDynamicAssertion) {
       rows = withoutSqlParams.map((param) => ({
-        label: param.name ?? '',
-        value: param.value ?? '',
+        name: param.name,
+        label: labelOf(param.name),
+        value: formatParameterValue(
+          param.value,
+          definitions.get(param.name)?.dataType
+        ),
       }));
     }
 
@@ -228,22 +238,14 @@ const TestCaseResultTab = ({
       });
     }
 
-    if (!isVersionPage && dataQualityDimension) {
-      rows.push({
-        label: t('label.data-quality-dimension'),
-        value: dataQualityDimension,
-      });
-    }
-
     return rows;
   }, [
     versionDiff,
     withoutSqlParams,
-    isVersionPage,
     testCaseData?.useDynamicAssertion,
     showComputeRowCount,
     computeRowCountDisplay,
-    testCaseData?.dataQualityDimension,
+    testDefinition?.parameterDefinition,
     t,
   ]);
 
@@ -251,7 +253,8 @@ const TestCaseResultTab = ({
     <div className="tw:@container">
       <div
         className={classNames(
-          'p-md test-case-result-tab tw:grid tw:w-full tw:gap-2.5',
+          // The mock's 22px between the results and the rail.
+          'p-md test-case-result-tab tw:grid tw:w-full tw:gap-5.5',
           getResultTabGridClass(isSidePanelVisible)
         )}
         data-testid="test-case-result-tab-container">
@@ -289,7 +292,6 @@ const TestCaseResultTab = ({
                 open={isParameterEdit}
                 showDocPanel={false}
                 testCase={testCaseData}
-                variant={editVariant}
                 onClose={handleCancelParameter}
                 onUpdate={setTestCase}
               />

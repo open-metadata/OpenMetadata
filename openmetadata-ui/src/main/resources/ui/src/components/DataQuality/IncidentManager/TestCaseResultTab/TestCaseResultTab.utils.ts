@@ -14,6 +14,33 @@
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { TestDataType } from '../../../../generated/tests/testDefinition';
+import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
+
+const NUMERIC_PARAMETER_TYPES = new Set<TestDataType | undefined>([
+  TestDataType.Decimal,
+  TestDataType.Double,
+  TestDataType.Float,
+  TestDataType.Int,
+  TestDataType.Number,
+]);
+
+/**
+ * A number parameter reads like the page's other numbers, thousands grouped.
+ * Only the definition's type says it is a number: a regex or a column name
+ * can look like one.
+ */
+export const formatParameterValue = (
+  value: string | undefined,
+  dataType: TestDataType | undefined
+) => {
+  const number = NUMERIC_PARAMETER_TYPES.has(dataType)
+    ? toFiniteNumber(value)
+    : undefined;
+
+  return isUndefined(number) ? value ?? '' : formatNumber(number);
+};
 
 export const shouldShowEditParameterButton = (
   hasEditPermission: boolean | undefined,

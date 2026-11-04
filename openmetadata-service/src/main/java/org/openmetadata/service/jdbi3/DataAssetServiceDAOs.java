@@ -271,7 +271,7 @@ public interface DataAssetServiceDAOs {
         ListFilter filter, int limit, String beforeName, String beforeId) {
 
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       // By default, root will be false. We won't filter the results then
       if (!root) {
@@ -289,7 +289,7 @@ public interface DataAssetServiceDAOs {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       if (!root) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
@@ -302,7 +302,7 @@ public interface DataAssetServiceDAOs {
     @Override
     default int listCount(ListFilter filter) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       if (!root) {
         return EntityDAO.super.listCount(filter);
@@ -696,7 +696,7 @@ public interface DataAssetServiceDAOs {
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
@@ -708,7 +708,7 @@ public interface DataAssetServiceDAOs {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
@@ -720,7 +720,7 @@ public interface DataAssetServiceDAOs {
     @Override
     default int listCount(ListFilter filter) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listCount(filter);
       }
@@ -821,7 +821,7 @@ public interface DataAssetServiceDAOs {
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
@@ -833,7 +833,7 @@ public interface DataAssetServiceDAOs {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
@@ -845,7 +845,7 @@ public interface DataAssetServiceDAOs {
     @Override
     default int listCount(ListFilter filter) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listCount(filter);
       }
@@ -946,7 +946,7 @@ public interface DataAssetServiceDAOs {
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
@@ -958,7 +958,7 @@ public interface DataAssetServiceDAOs {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
@@ -970,7 +970,7 @@ public interface DataAssetServiceDAOs {
     @Override
     default int listCount(ListFilter filter) {
       boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       if (!root) {
         return EntityDAO.super.listCount(filter);
       }

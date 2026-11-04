@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { ReactNode } from 'react';
 import EntityListSkeleton from '../../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './widget-wrapper.less';
@@ -35,7 +36,10 @@ const WidgetWrapper = ({
 }: WidgetWrapperProps) => {
   return (
     <Card
-      className={`widget-wrapper-container card-widget ${className}`}
+      className={classNames(
+        'widget-wrapper-container card-widget tw:flex tw:h-full tw:flex-col',
+        className
+      )}
       data-testid={dataTestId}>
       {/* Header stays visible during loading */}
       {header}

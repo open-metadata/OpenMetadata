@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { TableClass } from '../../../support/entity/TableClass';
+import { TeamClass } from '../../../support/team/TeamClass';
+import { createNewPage } from '../../../utils/common';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import { enableAiAppMode } from '../../Utils/appMode';
 import { expect, test } from './fixtures';
 
@@ -48,6 +54,8 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
     await test.step('AI not-found page is rendered (not an infinite redirect loop)', async () => {
       await expect(page).toHaveURL(/\/404$/);
       await expect(page.getByTestId('ai-not-found-page')).toBeVisible();
+      // Full page like the classic 404: no AI shell sidebar.
+      await expect(page.getByTestId('ask-sidebar')).not.toBeAttached();
     });
   });
 
@@ -80,6 +88,116 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
     await test.step('The AI My Data page renders in the AI shell at /my-data', async () => {
       await expect(page).toHaveURL(/\/my-data$/);
       await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+    });
+  });
+
+  // In AI mode a settings link opens the settings modal over the current page
+  // (ADR:2026-10-21-settings-pages-are-classic-only). It must keep the page's
+  // query string: react-router resolves a bare `#hash` target with an empty one.
+  test('a team owner link opens the team in the settings modal and keeps the query string', async ({
+    page,
+    browser,
+  }) => {
+    const table = new TableClass();
+    const team = new TeamClass();
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    try {
+      await test.step('Create a table owned by a team', async () => {
+        await team.create(apiContext);
+        await table.create(apiContext);
+        await table.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/owners',
+              value: [{ id: team.responseData.id, type: 'team' }],
+            },
+          ],
+        });
+      });
+
+      const teamName = team.responseData.name;
+      let pageUrl = new URL('http://placeholder');
+
+      await test.step('Open the table page with a query string in AI mode', async () => {
+        await enableAiAppMode(page);
+        await page.goto(
+          `/table/${getEncodedFqn(
+            table.entityResponseData.fullyQualifiedName ?? ''
+          )}?pwKeep=1`,
+          { waitUntil: 'domcontentloaded' }
+        );
+        await waitForAllLoadersToDisappear(page);
+        await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+
+        pageUrl = new URL(page.url());
+
+        expect(pageUrl.searchParams.get('pwKeep')).toBe('1');
+      });
+
+      await test.step('Click the team in the owner popover', async () => {
+        // The owner chip's testid is the owner's display name, not its name.
+        await page
+          .getByTestId('owner-link')
+          .getByTestId(team.responseData.displayName)
+          .hover();
+        const popover = page.getByTestId('user-popover-card');
+        await expect(popover).toBeVisible();
+        await popover.getByTestId('team-name').click();
+      });
+
+      await test.step('The modal opens on the team over the same page and query', async () => {
+        await expect
+          .poll(() => {
+            const url = new URL(page.url());
+
+            return `${url.pathname}${url.search}${url.hash}`;
+          })
+          .toBe(
+            `${pageUrl.pathname}${
+              pageUrl.search
+            }#members/teams/${encodeURIComponent(teamName)}`
+          );
+        await expect(page.getByTestId('ai-profile-page')).toBeVisible();
+        await expect(page.getByTestId('team-detail')).toBeVisible();
+      });
+    } finally {
+      await table.delete(apiContext);
+      await team.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // /my-data is the personal-space My Data page in AI mode; the home landing
+  // page only renders at /, so the sidebar Home item has to point there.
+  test('opens the home landing page from the sidebar Home item in AI mode', async ({
+    page,
+  }) => {
+    await enableAiAppMode(page);
+    const homeNavItem = page.getByTestId('ask-nav-item-home');
+
+    await test.step('Start on a page Home does not own', async () => {
+      await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(page);
+      await expect(homeNavItem).not.toHaveClass(/ask-nav-item--active/);
+    });
+
+    await test.step('Home opens the landing page at / and is highlighted', async () => {
+      await homeNavItem.click();
+
+      await expect(page).toHaveURL((url) => url.pathname === '/');
+      await expect(page.getByTestId('home-landing-page')).toBeVisible();
+      await expect(homeNavItem).toHaveClass(/ask-nav-item--active/);
+    });
+
+    await test.step('Home is not highlighted on the personal-space /my-data page', async () => {
+      await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page).toHaveURL(/\/my-data$/);
+      await expect(homeNavItem).not.toHaveClass(/ask-nav-item--active/);
     });
   });
 

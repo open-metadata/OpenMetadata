@@ -128,16 +128,15 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
               <Typography ellipsis as="p" size="text-sm" weight="medium">
                 {item.name}
               </Typography>
-              <Typography as="p" className="tw:text-gray-500" size="text-xs">
+              <Typography as="p" className="tw:text-quaternary" size="text-xs">
                 {getReadableFileSize(item.size)}
               </Typography>
             </div>
             <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
               <ButtonUtility
-                color="tertiary"
                 data-testid={`download-attachment-${item.id}`}
-                icon={<Download01 size={14} />}
-                size="sm"
+                icon={Download01}
+                size="lg"
                 tooltip={t('label.download')}
                 onClick={() => handleDownload(item)}
               />

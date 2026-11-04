@@ -33,17 +33,23 @@ on:
       - "docker/rdf-store/**"
       - ".github/scripts/classify_test_outcome.py"
       - ".github/workflows/integration-tests-mysql-elasticsearch.yml"
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  # Integration tests run in the merge queue (plus main pushes and manual dispatch), not on
+  # PRs: before review, `make java_affected_run` runs the ITs a PR impacts on the author's
+  # machine. PRs still trigger this workflow because `integration-tests-mysql-elasticsearch` is a
+  # required check: every job is skipped by its `if:`, so no runner starts, and GitHub counts a
+  # skipped required check as passing. With no PR trigger the check would hang at "Expected —
+  # waiting for status".
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-  pull-requests: read
   checks: write
 
 concurrency:
+  # Merge-queue, push and dispatch runs key on the run id, so they never cancel each other.
   group: integration-tests-mysql-es-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 jobs:
   # Detect whether relevant paths changed. When no matching files are modified
   # the downstream job is skipped via its `if` condition.
@@ -52,9 +58,8 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
-    # pull_request_target uses the GitHub API and does not require a checkout. Merge
-    # queue runs check out the merge-queue commit so dorny can diff against
+    if: ${{ github.event_name != 'pull_request' }}
+    # Merge queue runs check out the merge-queue commit so dorny can diff against
     # merge_group.base_sha and skip the heavy work when nothing backend-relevant
     # changed. Push and workflow_dispatch remain force-true — push is already
     # gated by the trigger paths above, and workflow_dispatch is an explicit
@@ -71,7 +76,7 @@ jobs:
           persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        if: ${{ github.event_name == 'merge_group' }}
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
@@ -99,29 +104,9 @@ jobs:
     timeout-minutes: 60
     if: ${{ needs.changes.outputs.backend == 'true' }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true
-
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v6
@@ -140,7 +125,7 @@ jobs:
       - name: Build and Bundle Integration Test Runtime
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           project_version="$(mvn --quiet --non-recursive help:evaluate \
             -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
@@ -239,12 +224,9 @@ jobs:
           docker-images: false
           swap-storage: true
 
-      # The required build job verifies `safe to test` before this fan-out can run.
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v6
@@ -485,7 +467,8 @@ jobs:
     needs: [changes, integration-test-build, integration-test-lanes]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    # Skipped on PRs (see the trigger comment): a skipped required check counts as passing.
+    if: ${{ always() && github.event_name != 'pull_request' }}
     steps:
       - name: Verify Maven Integration Test Lanes
         env:

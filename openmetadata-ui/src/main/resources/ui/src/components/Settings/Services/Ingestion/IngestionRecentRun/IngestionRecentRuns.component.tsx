@@ -13,11 +13,11 @@
 
 import {
   Badge,
+  Box,
   HoverCard,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -153,7 +153,10 @@ export const IngestionRecentRuns = <
   }
 
   return (
-    <Space className={classNames} size={5}>
+    <Box
+      inline
+      align="center"
+      className={classNamesFunc('tw:gap-1.25', classNames)}>
       {isEmpty(recentRunStatus) ? (
         <Typography data-testid="pipeline-status">
           {NO_DATA_PLACEHOLDER}
@@ -206,6 +209,6 @@ export const IngestionRecentRuns = <
           pipelineStatus={selectedStatus}
         />
       )}
-    </Space>
+    </Box>
   );
 };

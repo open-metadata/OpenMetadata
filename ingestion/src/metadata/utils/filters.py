@@ -76,6 +76,28 @@ def _filter(filter_pattern: FilterPattern | None, name: str | None) -> bool:
     return False
 
 
+def _filter_server_compatible(
+    filter_pattern: FilterPattern | None,
+    name: str | None,
+) -> bool:
+    """Apply case-insensitive substring filters, as the listing API does.
+
+    Includes take precedence when both lists are configured, matching
+    ``_build_regex_from_filter``. Explicit regex anchors remain effective.
+    """
+    if not filter_pattern:
+        return False
+    if not name:
+        return True
+
+    validate_regex(filter_pattern.includes)
+    validate_regex(filter_pattern.excludes)
+
+    if filter_pattern.includes:
+        return not any(re.search(regex, name, re.IGNORECASE) for regex in filter_pattern.includes)
+    return any(re.search(regex, name, re.IGNORECASE) for regex in filter_pattern.excludes or [])
+
+
 def filter_by_schema(schema_filter_pattern: FilterPattern | None, schema_name: str) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
@@ -100,6 +122,17 @@ def filter_by_table(table_filter_pattern: FilterPattern | None, table_name: str)
     :return: True for filtering, False otherwise
     """
     return _filter(table_filter_pattern, table_name)
+
+
+def filter_by_column(column_filter_pattern: FilterPattern | None, column_name: str) -> bool:
+    """
+    Return True if the column needs to be filtered, False otherwise
+
+    :param column_filter_pattern: Model defining column filtering logic
+    :param column_name: column name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(column_filter_pattern, column_name)
 
 
 def filter_by_chart(chart_filter_pattern: FilterPattern | None, chart_name: str) -> bool:

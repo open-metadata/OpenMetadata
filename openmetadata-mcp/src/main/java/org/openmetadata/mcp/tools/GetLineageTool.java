@@ -272,7 +272,7 @@ public class GetLineageTool implements McpTool {
   private static String requireExistingColumn(
       String entityType, String fqn, String column, CatalogSecurityContext securityContext) {
     ColumnLineageScope.requireColumnOf(fqn, column);
-    EntityInterface entity =
+    EntityInterface<?> entity =
         CommonUtils.readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     return ColumnLineageScope.requireColumnExists(entity, column);
   }

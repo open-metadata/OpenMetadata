@@ -13,7 +13,6 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,10 +20,12 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ServiceUnavailableException;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -32,119 +33,80 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfRepository.InferenceQueryResult;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
+/** OpenMetadata never pulls the RDF store into its own heap to answer an inference request. */
 class RdfInferenceGuardrailTest {
-  private static final String ALL_DATA_QUERY = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
-  private static final String ONTOLOGY_QUERY =
-      "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <https://open-metadata.org/graph/ontology> { ?s ?p ?o } }";
   private static final String ASK_QUERY =
       "ASK { <http://example.com/a> <http://example.com/p> <http://example.com/b> }";
-  private static final String DATA =
-      "<http://example.com/a> <http://example.com/p> <http://example.com/b> .";
+  private static final String DIRECT_RESULT = "{\"head\":{},\"boolean\":true}";
   private static final String JSON_LD = "application/ld+json";
   private static final String TRIPLE_TERM_CONSTRUCT =
       "CONSTRUCT { <http://example.com/r> <http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies> "
           + "<<( <http://example.com/a> <http://example.com/p> <http://example.com/b> )>> } WHERE {}";
 
-  @Test
-  void fallsBackToDirectQueryWhenStoreExceedsLimit() {
-    RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    RdfConfiguration config =
-        new RdfConfiguration().withEnabled(true).withMaxInMemoryInferenceTriples(2);
-    RdfRepository repository = new RdfRepository(config, storage, null);
-    String directResult = "{\"head\":{},\"boolean\":true}";
-    when(storage.getTripleCount()).thenReturn(3L);
-    when(storage.executeSparqlQuery(ASK_QUERY, "json")).thenReturn(directResult);
+  @ParameterizedTest
+  @ValueSource(strings = {"rdfs", "owl", "RDFS"})
+  void inferenceLevelsWithoutARemoteReasonerAreUnavailable(final String inferenceLevel) {
+    final RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    final RdfRepository repository = repository(storage, materializedInference());
 
-    InferenceQueryResult result =
-        repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "rdfs");
+    final ServiceUnavailableException exception =
+        assertThrows(
+            ServiceUnavailableException.class,
+            () ->
+                repository.executeSparqlQueryWithInferenceResult(
+                    ASK_QUERY, "json", inferenceLevel));
 
-    assertEquals(directResult, result.results());
-    assertNotNull(result.warning());
-    assertTrue(result.warning().contains("3 triples"));
-    assertTrue(result.warning().contains("limit of 2"));
-    verify(storage, never()).executeSparqlQuery(startsWith("CONSTRUCT"), anyString());
+    assertTrue(exception.getMessage().contains(inferenceLevel.toLowerCase(Locale.ROOT)));
+    verifyNoInteractions(storage);
   }
 
   @Test
-  void executesInferenceInMemoryWhenStoreIsWithinLimit() {
-    RdfStorageInterface storage = inferenceStorage();
-    RdfConfiguration config =
-        new RdfConfiguration().withEnabled(true).withMaxInMemoryInferenceTriples(2);
-    RdfRepository repository = new RdfRepository(config, storage, null);
-
-    InferenceQueryResult result =
-        repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "rdfs");
-
-    assertNull(result.warning());
-    assertTrue(result.results().contains("\"boolean\":true"));
-    verify(storage).executeSparqlQuery(ALL_DATA_QUERY, "text/turtle");
-    verify(storage).executeSparqlQuery(ONTOLOGY_QUERY, "text/turtle");
-  }
-
-  @Test
-  void reusesBoundedInferenceModelWhenCachingIsEnabled() {
-    RdfStorageInterface storage = inferenceStorage();
-    RdfConfiguration config =
-        new RdfConfiguration()
-            .withEnabled(true)
-            .withMaxInMemoryInferenceTriples(2)
-            .withCacheInferredTriples(true);
-    RdfRepository repository = new RdfRepository(config, storage, null);
-
-    repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "rdfs");
-    repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "rdfs");
-
-    verify(storage, times(1)).executeSparqlQuery(ALL_DATA_QUERY, "text/turtle");
-    verify(storage, times(1)).executeSparqlQuery(ONTOLOGY_QUERY, "text/turtle");
-    verify(storage, times(2)).getTripleCount();
-  }
-
-  @Test
-  void queriesMaterializedCustomInferenceWithoutLoadingTheDataset() {
-    RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    RdfConfiguration config =
-        new RdfConfiguration().withEnabled(true).withMaterializedInferenceEnabled(true);
-    RdfRepository repository = new RdfRepository(config, storage, null);
-    String directResult = "{\"head\":{},\"boolean\":true}";
-    when(storage.executeSparqlQuery(ASK_QUERY, "json")).thenReturn(directResult);
-
-    InferenceQueryResult result =
-        repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "custom");
-
-    assertEquals(directResult, result.results());
-    assertNull(result.warning());
-    verify(storage, never()).getTripleCount();
-    verify(storage, never()).executeSparqlQuery(ALL_DATA_QUERY, "text/turtle");
-  }
-
-  /**
-   * A result that JSON-LD cannot carry is the caller's format choice, not a server failure, so it
-   * must reach the resource as the 400 it was raised as. The inference wrapper turns every other
-   * failure into a 500, and used to swallow this one with them.
-   */
-  @Test
-  void keepsInMemoryInferenceJsonLdRejectionACallerError() {
-    RdfConfiguration config =
-        new RdfConfiguration().withEnabled(true).withMaxInMemoryInferenceTriples(2);
-    RdfRepository repository = new RdfRepository(config, inferenceStorage(), null);
+  void customInferenceIsUnavailableWithoutMaterializedRules() {
+    final RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    final RdfRepository repository = repository(storage, new RdfConfiguration().withEnabled(true));
 
     assertThrows(
-        UnsupportedRdfSerializationException.class,
-        () ->
-            repository.executeSparqlQueryWithInferenceResult(
-                TRIPLE_TERM_CONSTRUCT, JSON_LD, "rdfs"));
+        ServiceUnavailableException.class,
+        () -> repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "custom"));
+    verifyNoInteractions(storage);
+  }
+
+  @Test
+  void customInferenceReadsTheMaterializedRuleGraphs() {
+    final RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    when(storage.executeSparqlQuery(ASK_QUERY, "json")).thenReturn(DIRECT_RESULT);
+
+    final InferenceQueryResult result =
+        repository(storage, materializedInference())
+            .executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "custom");
+
+    assertEquals(DIRECT_RESULT, result.results());
+    assertNull(result.warning());
+    verify(storage, never()).getTripleCount();
+  }
+
+  @Test
+  void configuredDefaultInferenceNoLongerChangesPlainQueries() {
+    final RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    when(storage.executeSparqlQuery(ASK_QUERY, "json")).thenReturn(DIRECT_RESULT);
+    final RdfConfiguration config =
+        new RdfConfiguration()
+            .withEnabled(true)
+            .withInferenceEnabled(true)
+            .withDefaultInferenceLevel(RdfConfiguration.ReasoningLevel.RDFS);
+
+    assertEquals(DIRECT_RESULT, repository(storage, config).executeSparqlQuery(ASK_QUERY, "json"));
+    verify(storage, never()).executeSparqlQuery(startsWith("CONSTRUCT"), anyString());
+    verify(storage, never()).getTripleCount();
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"none", "rdfs"})
+  @ValueSource(strings = {"none", "custom"})
   void passesTheStorageJsonLdRejectionThroughTheInferenceWrapper(final String inferenceLevel) {
-    RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    RdfConfiguration config =
-        new RdfConfiguration().withEnabled(true).withMaxInMemoryInferenceTriples(2);
-    RdfRepository repository = new RdfRepository(config, storage, null);
-    when(storage.getTripleCount()).thenReturn(3L);
+    final RdfStorageInterface storage = mock(RdfStorageInterface.class);
     when(storage.executeSparqlQuery(TRIPLE_TERM_CONSTRUCT, JSON_LD))
         .thenThrow(new UnsupportedRdfSerializationException(RdfSerializationFormat.JSON_LD));
+    final RdfRepository repository = repository(storage, materializedInference());
 
     assertThrows(
         UnsupportedRdfSerializationException.class,
@@ -155,33 +117,22 @@ class RdfInferenceGuardrailTest {
 
   @Test
   void stillReportsOtherInferenceFailuresAsServerErrors() {
-    RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    RdfConfiguration config = new RdfConfiguration().withEnabled(true);
-    RdfRepository repository = new RdfRepository(config, storage, null);
+    final RdfStorageInterface storage = mock(RdfStorageInterface.class);
     when(storage.executeSparqlQuery(ASK_QUERY, "json"))
         .thenThrow(new RuntimeException("Fuseki unavailable"));
+    final RdfRepository repository = repository(storage, new RdfConfiguration().withEnabled(true));
 
     assertThrows(
         IllegalStateException.class,
         () -> repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "none"));
   }
 
-  @Test
-  void usesDefaultLimitForMissingOrInvalidConfiguration() {
-    assertEquals(
-        RdfRepository.DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES,
-        RdfRepository.resolveMaxInMemoryInferenceTriples(new RdfConfiguration()));
-    assertEquals(
-        RdfRepository.DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES,
-        RdfRepository.resolveMaxInMemoryInferenceTriples(
-            new RdfConfiguration().withMaxInMemoryInferenceTriples(0)));
+  private static RdfConfiguration materializedInference() {
+    return new RdfConfiguration().withEnabled(true).withMaterializedInferenceEnabled(true);
   }
 
-  private RdfStorageInterface inferenceStorage() {
-    RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    when(storage.getTripleCount()).thenReturn(1L);
-    when(storage.executeSparqlQuery(ALL_DATA_QUERY, "text/turtle")).thenReturn(DATA);
-    when(storage.executeSparqlQuery(ONTOLOGY_QUERY, "text/turtle")).thenReturn("");
-    return storage;
+  private static RdfRepository repository(
+      final RdfStorageInterface storage, final RdfConfiguration config) {
+    return new RdfRepository(config, storage, null);
   }
 }

@@ -11,17 +11,19 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import {
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
@@ -32,7 +34,6 @@ import {
   pagingObject,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
@@ -151,35 +152,34 @@ const KPIList = () => {
           return (
             <div className="d-flex items-center">
               <Tooltip
+                arrow
                 placement="left"
                 title={
                   isAdminUser
                     ? t('label.edit')
                     : t('message.no-permission-for-action')
                 }>
-                <Button
-                  className="flex-center"
+                <ButtonUtility
                   data-testid={`edit-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={<EditIcon width="16px" />}
-                  type="text"
+                  icon={Edit01}
+                  isDisabled={!isAdminUser}
+                  size="lg"
                   onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
               <Tooltip
+                arrow
                 placement="left"
                 title={
                   isAdminUser
                     ? t('label.delete')
                     : t('message.no-permission-for-action')
                 }>
-                <Button
+                <ButtonUtility
                   data-testid={`delete-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={
-                    <Icon component={IconDelete} style={{ fontSize: '16px' }} />
-                  }
-                  type="text"
+                  icon={Trash01}
+                  isDisabled={!isAdminUser}
+                  size="lg"
                   onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>
@@ -231,13 +231,14 @@ const KPIList = () => {
       viewKPIPermission ? (
         <EmptyGraphPlaceholder />
       ) : (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.kpi-uppercase'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
+          />
+        </div>
       ),
     [viewKPIPermission]
   );
@@ -264,6 +265,7 @@ const KPIList = () => {
         pagination={false}
         rowKey="name"
         size="small"
+        tableLayout="auto"
       />
 
       {selectedKpi && (

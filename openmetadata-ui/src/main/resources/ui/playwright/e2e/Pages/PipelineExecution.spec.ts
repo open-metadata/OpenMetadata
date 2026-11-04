@@ -86,4 +86,34 @@ test.describe('Pipeline Execution Tab', () => {
       await expect(prestoTaskDuration).toHaveText('10.00 minutes');
     });
   });
+
+  test('Tree view shows every task and its execution markers', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await pipeline.visitEntityPage(page);
+    await page.getByTestId('executions').click();
+    await page
+      .getByTestId('radio-switch')
+      .getByText('Tree', { exact: true })
+      .click();
+
+    const trees = page.getByRole('treegrid', { name: 'Tasks', exact: true });
+    await expect(trees).toHaveCount(2);
+    const [rootTask] = pipeline.children;
+    const labels = trees.filter({
+      has: page.getByText(rootTask.name, { exact: true }),
+    });
+    const executions = trees.filter({
+      has: page.locator('.execution-node-container'),
+    });
+    for (const task of pipeline.children) {
+      await expect(labels.getByText(task.name, { exact: true })).toBeVisible();
+    }
+    const markers = executions.locator('.execution-node-container');
+    await expect(markers).toHaveCount(pipeline.children.length);
+    for (const marker of await markers.all()) {
+      await expect(marker).toBeVisible();
+    }
+  });
 });

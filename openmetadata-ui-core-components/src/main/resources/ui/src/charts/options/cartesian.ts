@@ -21,6 +21,7 @@ import { chartColor } from '../palette';
 import type {
   CartesianBuildInput,
   ChartOption,
+  ChartPointStyle,
   ChartSeries,
   ChartSeriesType,
   ChartTheme,
@@ -146,23 +147,35 @@ const barSeries = <T extends object>(
 
 const POINT_SIZE = 8;
 const POINT_RING_WIDTH = 2;
-const POINT_HALO_BLUR = 8;
+// A selected point's ring: 4px out from the dot, 2px wide, at 30% of the
+// dot's colour.
+const SELECTION_RING_GAP = 4;
+const SELECTION_RING = {
+  silent: true,
+  animation: false,
+  symbol: 'circle',
+  label: { show: false },
+  itemStyle: { color: 'transparent', borderWidth: 2, opacity: 0.3 },
+} as const;
+
+const pointColorOf = <T extends object>(
+  ctx: SeriesContext<T>,
+  style: ChartPointStyle,
+  color: string
+) => (style.status ? ctx.theme.palette.status[style.status] : color);
 
 const pointItem = <T extends object>(
   ctx: SeriesContext<T>,
   series: ChartSeries,
   color: string,
   datum: T,
-  index: number
+  style: ChartPointStyle | undefined
 ) => {
   const value = pointValue(ctx, datum, series);
-  const style = series.pointStyle?.(datum as Datum, index);
   if (!style) {
     return { value, symbol: 'none' };
   }
-  const pointColor = style.status
-    ? ctx.theme.palette.status[style.status]
-    : color;
+  const pointColor = pointColorOf(ctx, style, color);
 
   return {
     value,
@@ -172,11 +185,48 @@ const pointItem = <T extends object>(
       color: style.hollow ? 'transparent' : pointColor,
       borderColor: style.hollow ? pointColor : ctx.theme.segmentBorder,
       borderWidth: style.hollow ? POINT_RING_WIDTH : 1,
-      ...(style.selected
-        ? { shadowBlur: POINT_HALO_BLUR, shadowColor: pointColor }
-        : {}),
     },
   };
+};
+
+const ringCoord = <T extends object>(
+  ctx: SeriesContext<T>,
+  value: unknown,
+  index: number
+) => {
+  if (ctx.isTime) {
+    return value;
+  }
+
+  return ctx.horizontal ? [value, index] : [index, value];
+};
+
+const selectionRings = <T extends object>(
+  ctx: SeriesContext<T>,
+  series: ChartSeries,
+  color: string,
+  styles: Array<ChartPointStyle | undefined>
+): LineSeriesOption['markPoint'] => {
+  const data = ctx.input.data.flatMap((datum, index) => {
+    const style = styles[index];
+    const value = pointValue(ctx, datum, series);
+    const measured = Array.isArray(value) ? value[1] : value;
+    if (!style?.selected || measured === null) {
+      return [];
+    }
+
+    return [
+      {
+        coord: ringCoord(ctx, value, index),
+        symbolSize: POINT_SIZE + 2 * SELECTION_RING_GAP,
+        itemStyle: { borderColor: pointColorOf(ctx, style, color) },
+      },
+    ];
+  });
+
+  return data.length > 0
+    ? ({ ...SELECTION_RING, data } as LineSeriesOption['markPoint'])
+    : undefined;
 };
 
 const lineSeries = <T extends object>(
@@ -184,25 +234,33 @@ const lineSeries = <T extends object>(
   series: ChartSeries,
   color: string,
   filled: boolean
-): LineSeriesOption => ({
-  type: 'line',
-  smooth: series.smooth ?? true,
-  // A lone point has no segment to draw, so it needs its symbol to be visible.
-  showSymbol:
-    series.pointStyle || ctx.input.data.length === 1
-      ? true
-      : series.showDots ?? false,
-  lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
-  itemStyle: { color },
-  // Always set, so a re-render that drops the fill clears the old one.
-  areaStyle: filled ? { color: areaGradient(color) } : undefined,
-  ...(ctx.composed ? { z: Z_LINE } : {}),
-  data: ctx.input.data.map((datum, index) =>
-    series.pointStyle
-      ? pointItem(ctx, series, color, datum, index)
-      : pointValue(ctx, datum, series)
-  ) as LineSeriesOption['data'],
-});
+): LineSeriesOption => {
+  const styles = ctx.input.data.map((datum, index) =>
+    series.pointStyle?.(datum as Datum, index)
+  );
+
+  return {
+    type: 'line',
+    smooth: series.smooth ?? true,
+    // A lone point has no segment to draw, so it needs its symbol to be visible.
+    showSymbol:
+      series.pointStyle || ctx.input.data.length === 1
+        ? true
+        : series.showDots ?? false,
+    lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
+    itemStyle: { color },
+    // Always set, so a re-render that drops the fill or the selection clears
+    // the old one.
+    areaStyle: filled ? { color: areaGradient(color) } : undefined,
+    markPoint: selectionRings(ctx, series, color, styles),
+    ...(ctx.composed ? { z: Z_LINE } : {}),
+    data: ctx.input.data.map((datum, index) =>
+      series.pointStyle
+        ? pointItem(ctx, series, color, datum, styles[index])
+        : pointValue(ctx, datum, series)
+    ) as LineSeriesOption['data'],
+  };
+};
 
 export const BAND_SERIES_SUFFIXES = ['__band-base', '__band'] as const;
 const BAND_OPACITY = 0.12;

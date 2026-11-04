@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Space } from 'antd';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+
 import { useTranslation } from 'react-i18next';
 import { LearningIcon } from '../Learning/LearningIcon/LearningIcon.component';
 import './page-header.less';
@@ -30,7 +30,14 @@ const PageHeader = ({
 
   return (
     <div className="page-header-container" data-testid="page-header-container">
-      <Space align="center" size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={1}
+        // Line-height 0 drops the text strut around the inline-flex learning
+        // icon, which otherwise sits above the title's centre.
+        itemClassName="layout-space-item tw:leading-[0]">
         <Typography
           as="h5"
           className="heading m-b-0"
@@ -43,16 +50,17 @@ const PageHeader = ({
           {isBeta && (
             <Badge
               className="service-beta-page-header m-l-sm"
-              count={t('label.beta')}
+              color="brand"
               data-testid="beta-badge"
-              size="small"
-            />
+              size="sm">
+              {t('label.beta')}
+            </Badge>
           )}
         </Typography>
         {learningPageId && (
-          <LearningIcon pageId={learningPageId} title={title} />
+          <LearningIcon pageId={learningPageId} size="xs" title={title} />
         )}
-      </Space>
+      </Box>
       <Typography
         as="p"
         className="sub-heading"

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
+  Button,
   ButtonUtility,
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button } from 'antd';
 import { startCase } from 'lodash';
 import { FC, useState } from 'react';
 import { CALLOUT_CONTENT } from '../../../../constants/BlockEditor.constants';
@@ -31,13 +31,11 @@ const PopoverContent = ({
       {Object.entries(CALLOUT_CONTENT).map(([key, CalloutIcon]) => {
         return (
           <Button
+            color="tertiary"
             data-testid={`callout-${key}`}
-            icon={
-              <CalloutIcon style={{ verticalAlign: 'middle' }} width={20} />
-            }
+            iconLeading={CalloutIcon}
             key={key}
-            type="text"
-            onClick={() => onSelect(key)}>
+            onPress={() => onSelect(key)}>
             {startCase(key)}
           </Button>
         );
@@ -72,11 +70,10 @@ const CalloutComponent: FC<NodeViewProps> = ({
           isOpen={isPopupVisible}
           onOpenChange={handlePopoverVisibleChange}>
           <ButtonUtility
-            aria-label={startCase(calloutType)}
-            className="callout-type-btn"
-            color="tertiary"
             data-testid={`callout-${calloutType}-btn`}
-            icon={<CallOutIcon width={28} />}
+            icon={CallOutIcon}
+            size="lg"
+            tooltip={startCase(calloutType)}
           />
           <Popover containerClassName="tw:px-1 tw:py-3" placement="bottom end">
             <PopoverContent

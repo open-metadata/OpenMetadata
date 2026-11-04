@@ -169,7 +169,7 @@ describe('useIncidentActions', () => {
         }),
       })
     );
-    expect(mockGetByStateId).toHaveBeenCalledWith('task-1');
+    expect(mockGetByStateId).toHaveBeenCalledWith('task-1', { limit: 1 });
 
     const other = { id: 'keep', stateId: 'task-9' } as TestCaseResolutionStatus;
     const next = lastUpdater()({

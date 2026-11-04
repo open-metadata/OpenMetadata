@@ -6,7 +6,7 @@
   "description": "A `DataContract` entity defines the schema and quality guarantees for a data asset.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DataContract",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "contractStatus": {
       "javaType": "org.openmetadata.schema.type.ContractStatus",

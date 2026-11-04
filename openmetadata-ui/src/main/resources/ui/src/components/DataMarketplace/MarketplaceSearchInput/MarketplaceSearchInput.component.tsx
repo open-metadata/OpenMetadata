@@ -30,6 +30,7 @@ interface MarketplaceSearchInputProps {
   onRefresh?: () => void;
   /** Placeholder text. Defaults to Explore's. */
   placeholder?: string;
+  isDisabled?: boolean;
 }
 
 /**
@@ -42,6 +43,7 @@ const MarketplaceSearchInput = ({
   onSearchChange,
   onRefresh,
   placeholder,
+  isDisabled,
 }: MarketplaceSearchInputProps) => {
   const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState(false);
@@ -102,6 +104,7 @@ const MarketplaceSearchInput = ({
 
   return (
     <ExploreSearchInput
+      isDisabled={isDisabled}
       isNLPActive={isNLPActive}
       isNLPEnabled={isNLPEnabled}
       isSearchBoxOpen={isPopoverOpen}

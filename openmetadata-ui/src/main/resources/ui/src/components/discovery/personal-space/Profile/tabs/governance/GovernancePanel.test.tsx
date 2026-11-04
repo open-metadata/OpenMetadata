@@ -43,6 +43,10 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 
 const mockSetHash = jest.fn();
 let mockSubPath = '';
+const mockIntakeFormPageMountEvents: {
+  type: 'mount' | 'unmount';
+  id: string;
+}[] = [];
 
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({
@@ -74,17 +78,36 @@ jest.mock('./GovernanceIntakeList', () =>
   jest.fn(() => <div data-testid="governance-intake-list" />)
 );
 
-jest.mock('./GovernanceIntakeFormPage', () =>
-  jest.fn(
-    ({ entityType, editId }: { entityType?: string; editId?: string }) => (
+jest.mock('./GovernanceIntakeFormPage', () => {
+  const Component = ({
+    entityType,
+    editId,
+  }: {
+    entityType?: string;
+    editId?: string;
+  }) => {
+    React.useEffect(() => {
+      const id = editId ?? entityType ?? 'add';
+      mockIntakeFormPageMountEvents.push({ type: 'mount', id });
+
+      return () => {
+        mockIntakeFormPageMountEvents.push({ type: 'unmount', id });
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only tracking
+    }, []);
+
+    return (
       <div
         data-edit-id={editId ?? ''}
         data-entity-type={entityType ?? ''}
         data-testid="governance-intake-form-page"
       />
-    )
-  )
-);
+    );
+  };
+  Component.displayName = 'GovernanceIntakeFormPage';
+
+  return { __esModule: true, default: Component };
+});
 
 import GovernancePanel from './GovernancePanel';
 
@@ -101,6 +124,7 @@ describe('GovernancePanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSubPath = '';
+    mockIntakeFormPageMountEvents.length = 0;
   });
 
   it('renders GovernanceLanding for empty subPath', () => {
@@ -212,5 +236,57 @@ describe('GovernancePanel', () => {
     );
 
     unmount();
+  });
+
+  it('remounts GovernanceIntakeFormPage when the entityType changes (key prop prevents stale state)', () => {
+    mockSubPath = 'intake-forms/add/dataProduct';
+    const { rerender } = renderPanel();
+
+    expect(mockIntakeFormPageMountEvents).toContainEqual({
+      type: 'mount',
+      id: 'dataProduct',
+    });
+
+    mockSubPath = 'intake-forms/add/domain';
+    rerender(
+      <MemoryRouter>
+        <GovernancePanel onHeaderChange={mockOnHeaderChange} />
+      </MemoryRouter>
+    );
+
+    expect(mockIntakeFormPageMountEvents).toContainEqual({
+      type: 'unmount',
+      id: 'dataProduct',
+    });
+    expect(mockIntakeFormPageMountEvents).toContainEqual({
+      type: 'mount',
+      id: 'domain',
+    });
+  });
+
+  it('remounts GovernanceIntakeFormPage when switching between add and edit (key prop)', () => {
+    mockSubPath = 'intake-forms/add/dataProduct';
+    const { rerender } = renderPanel();
+
+    expect(mockIntakeFormPageMountEvents).toContainEqual({
+      type: 'mount',
+      id: 'dataProduct',
+    });
+
+    mockSubPath = 'intake-forms/form-xyz';
+    rerender(
+      <MemoryRouter>
+        <GovernancePanel onHeaderChange={mockOnHeaderChange} />
+      </MemoryRouter>
+    );
+
+    expect(mockIntakeFormPageMountEvents).toContainEqual({
+      type: 'unmount',
+      id: 'dataProduct',
+    });
+    expect(mockIntakeFormPageMountEvents).toContainEqual({
+      type: 'mount',
+      id: 'form-xyz',
+    });
   });
 });

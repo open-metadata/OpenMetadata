@@ -14,6 +14,7 @@ package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.reset;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,8 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
@@ -48,7 +52,6 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -59,6 +62,7 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
@@ -262,6 +266,70 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void resolveColumnGlossary_loadsEachTermOnceButBudgetsEveryColumnIndependently() {
+    Map<String, Integer> loads = new HashMap<>();
+    GlossaryTerm amount =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName("Amount")
+            .withFullyQualifiedName("Business.Amount")
+            .withDescription("a".repeat(300));
+    GlossaryTerm currency =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName("Currency")
+            .withFullyQualifiedName("Business.Currency")
+            .withDescription("c".repeat(300));
+    Map<String, GlossaryTerm> visible =
+        Map.of(amount.getFullyQualifiedName(), amount, currency.getFullyQualifiedName(), currency);
+    List<FieldContext> columns =
+        List.of(
+            fieldWithTerms("gross", "Business.Amount"),
+            fieldWithTerms("net", "Business.Amount", "Business.Currency"),
+            fieldWithTerms("tax", "Business.Amount", "Restricted.Secret"));
+
+    AIContextBuilder.resolveColumnGlossary(
+        columns,
+        termFqn -> {
+          loads.merge(termFqn, 1, Integer::sum);
+          return visible.get(termFqn);
+        });
+
+    assertEquals(
+        Map.of("Business.Amount", 1, "Business.Currency", 1, "Restricted.Secret", 1), loads);
+    assertEquals(
+        List.of("Business.Amount"),
+        columns.get(2).getGlossaryTerms().stream()
+            .map(KnowledgeItem::getFullyQualifiedName)
+            .toList());
+    assertNotSame(
+        columns.get(0).getGlossaryTerms().getFirst(), columns.get(1).getGlossaryTerms().getFirst());
+
+    new AIContextBuilder("table", "svc.db.sch.orders")
+        .withKnowledgeBudget(AIContextBuilder.EXCERPT_CHARS)
+        .applyKnowledgeBudget(
+            new AIContext()
+                .withAssetContext(
+                    new AssetContext().withTable(new TableContext().withColumns(columns))));
+
+    assertEquals(300, columns.get(0).getGlossaryTerms().getFirst().getContent().length());
+    assertNull(columns.get(2).getGlossaryTerms().getFirst().getContent());
+  }
+
+  private static FieldContext fieldWithTerms(String name, String... termFqns) {
+    return new FieldContext()
+        .withName(name)
+        .withGlossaryTerms(
+            Arrays.stream(termFqns)
+                .map(
+                    termFqn ->
+                        new KnowledgeItem()
+                            .withType(KnowledgeItem.Type.GLOSSARY_TERM)
+                            .withFullyQualifiedName(termFqn))
+                .toList());
+  }
+
+  @Test
   void applyKnowledgeBudget_omitsContentWhenBudgetExhausted() {
     KnowledgeItem first = knowledgeItem("a1", "z".repeat(4000));
     KnowledgeItem second = knowledgeItem("a2", "z".repeat(4000));
@@ -280,15 +348,19 @@ class AIContextBuilderTest {
   @Test
   void isActivePill_admitsOnlyApprovedMemories() {
     assertTrue(
-        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.APPROVED)));
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.APPROVED)));
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.DRAFT)),
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.DRAFT)),
         "Draft memories are not settled knowledge");
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.ARCHIVED)),
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.ARCHIVED)),
         "Archived memories must not reach agents as current context");
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withEntityStatus(EntityStatus.REJECTED)),
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.REJECTED)),
         "Rejected memories were found to be wrong");
   }
 
@@ -296,10 +368,10 @@ class AIContextBuilderTest {
   void pillsForContext_dropsRetiredAndHiddenPillsBeforeTheCap() {
     List<ContextMemory> attached = new ArrayList<>();
     for (int i = 0; i < 20; i++) {
-      attached.add(pill("retired-" + i, EntityStatus.REJECTED));
+      attached.add(pill("retired-" + i, ContextMemoryStatus.REJECTED));
     }
-    ContextMemory hidden = pill("hidden", EntityStatus.APPROVED);
-    ContextMemory usable = pill("usable", EntityStatus.APPROVED);
+    ContextMemory hidden = pill("hidden", ContextMemoryStatus.APPROVED);
+    ContextMemory usable = pill("usable", ContextMemoryStatus.APPROVED);
     attached.add(hidden);
     attached.add(usable);
 
@@ -314,13 +386,13 @@ class AIContextBuilderTest {
   void pillsForContext_capsTheUsablePills() {
     List<ContextMemory> attached = new ArrayList<>();
     for (int i = 0; i < 25; i++) {
-      attached.add(pill("approved-" + i, EntityStatus.APPROVED));
+      attached.add(pill("approved-" + i, ContextMemoryStatus.APPROVED));
     }
 
     assertEquals(20, AIContextBuilder.pillsForContext(attached, pills -> pills).size());
   }
 
-  private static ContextMemory pill(String name, EntityStatus status) {
+  private static ContextMemory pill(String name, ContextMemoryStatus status) {
     return new ContextMemory().withId(UUID.randomUUID()).withName(name).withEntityStatus(status);
   }
 
@@ -472,12 +544,39 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void collectGlossaryFqns_takesGlossarySourceOnlyFromTableAndColumns() {
-    Set<String> fqns = AIContextBuilder.collectGlossaryFqns(sampleTable());
+  void collectAssetGlossaryFqns_keepsColumnBindingsOutOfTableDefinitions() {
+    Set<String> fqns = AIContextBuilder.collectAssetGlossaryFqns(sampleTable());
     assertTrue(fqns.contains("Business.Order"), "table-level glossary term missing");
-    assertTrue(fqns.contains("Business.CustomerId"), "column-level glossary term missing");
+    assertFalse(fqns.contains("Business.CustomerId"), "column term flattened into table context");
     assertTrue(fqns.stream().noneMatch(f -> f.startsWith("PII.")), "classification tag leaked in");
-    assertEquals(2, fqns.size());
+    assertEquals(1, fqns.size());
+  }
+
+  @Test
+  void collectGlossaryFqns_keepsColumnOnlyAndNestedColumnTermsForTheBatch() {
+    Column nested =
+        new Column()
+            .withName("payload")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withTags(
+                            List.of(
+                                new TagLabel()
+                                    .withSource(TagLabel.TagSource.GLOSSARY)
+                                    .withTagFQN("Business.Amount")))));
+    Table table = sampleTable();
+    List<Column> columns = new ArrayList<>(table.getColumns());
+    columns.add(nested);
+    table.withTags(List.of()).withColumns(columns);
+
+    assertEquals(
+        List.of("Business.CustomerId", "Business.Amount"),
+        List.copyOf(AIContextBuilder.collectGlossaryFqns(table)));
+    assertTrue(AIContextBuilder.collectAssetGlossaryFqns(table).isEmpty());
   }
 
   @Test

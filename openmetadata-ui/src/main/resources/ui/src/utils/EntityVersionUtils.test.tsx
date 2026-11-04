@@ -29,13 +29,18 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { EntityReference } from '../generated/entity/type';
+import type { TagLabel } from '../generated/type/tagLabel';
 import {
   getComputeRowCountDiffDisplay,
   getOwnerVersionLabel,
   getParameterValueDiffRows,
   getSummary,
 } from './EntityVersionUtils';
-import { getStringEntityDiff } from './EntityVersionUtilsPure';
+import {
+  getCommonExtraInfoForVersionDetails,
+  getStringEntityDiff,
+  getSummaryText,
+} from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 // Mock data for testing
 const createMockTableColumn = (
@@ -92,6 +97,34 @@ const createMockEntityDiff = (
   added,
   deleted,
   updated,
+});
+
+describe('a lifecycle status change in the version history', () => {
+  const summary = (newValue: string) =>
+    getSummaryText({
+      isPrefix: false,
+      fieldsChanged: [
+        { name: 'entityStatus', oldValue: 'Draft', newValue },
+        { name: 'description', oldValue: 'a', newValue: 'b' },
+      ],
+      actionType: 'label.updated',
+      actionText: 'label.updated-lowercase',
+    });
+
+  it('names the status the asset moved to, not the field', () => {
+    const text = summary('Approved');
+
+    expect(t).toHaveBeenCalledWith('message.status-changed-to', {
+      status: 'label.approved',
+    });
+    expect(text).toContain('message.status-changed-to');
+    expect(text).toContain('description');
+    expect(text).not.toContain('entityStatus');
+  });
+
+  it('keeps the field name for a status it has no label for', () => {
+    expect(summary('Unknown')).toContain('entityStatus');
+  });
 });
 
 describe('EntityVersionUtils', () => {
@@ -780,5 +813,30 @@ describe('EntityVersionUtils', () => {
 
       expect(container).toHaveTextContent(NO_DATA_PLACEHOLDER);
     });
+  });
+});
+
+describe('getCommonExtraInfoForVersionDetails tier label', () => {
+  it('shows a custom tier by its display name, not its FQN slug', () => {
+    const { tierDisplayName } = getCommonExtraInfoForVersionDetails(
+      {} as ChangeDescription,
+      [],
+      {
+        tagFQN: 'Tier.pw-tier-Deer0cb6dc1c',
+        displayName: 'PW Tier Deer',
+      } as TagLabel
+    );
+
+    expect(tierDisplayName).toBe('PW Tier Deer');
+  });
+
+  it('falls back to the FQN segment when the tier has no display name', () => {
+    const { tierDisplayName } = getCommonExtraInfoForVersionDetails(
+      {} as ChangeDescription,
+      [],
+      { tagFQN: 'Tier.Tier1' } as TagLabel
+    );
+
+    expect(tierDisplayName).toBe('Tier1');
   });
 });

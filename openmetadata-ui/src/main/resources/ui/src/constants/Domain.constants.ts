@@ -11,8 +11,29 @@
  *  limitations under the License.
  */
 
+import {
+  Database01,
+  LayersThree01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
+import type { FC } from 'react';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { Domain, DomainType } from '../generated/entity/domains/domain';
+
+export const DOMAIN_TYPE_DISPLAY: Record<
+  DomainType,
+  { icon: FC<{ className?: string }>; labelKey: string }
+> = {
+  [DomainType.Aggregate]: { icon: LayersThree01, labelKey: 'label.aggregate' },
+  [DomainType.ConsumerAligned]: {
+    icon: User01,
+    labelKey: 'label.consumer-aligned',
+  },
+  [DomainType.SourceAligned]: {
+    icon: Database01,
+    labelKey: 'label.source-aligned',
+  },
+};
 
 export const DOMAIN_TYPE_DATA = [
   {
@@ -78,7 +99,6 @@ export const DOMAIN_DEFAULT_QUICK_FILTERS = [
   EntityFields.CLASSIFICATION_TAGS,
   EntityFields.GLOSSARY_TERMS,
   EntityFields.DOMAIN_TYPE,
-  EntityFields.ENTITY_STATUS,
 ];
 
 export const SUBDOMAIN_DEFAULT_QUICK_FILTERS = [
@@ -104,10 +124,6 @@ export const DOMAIN_FILTERS = [
   {
     label: 'label.domain-type',
     key: EntityFields.DOMAIN_TYPE,
-  },
-  {
-    label: 'label.status',
-    key: EntityFields.ENTITY_STATUS,
   },
 ];
 

@@ -33,7 +33,8 @@ export interface TeradataConnection {
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
-     * mechanism.
+     * mechanism. The entire value is protected as a secret, including non-secret names. Secret
+     * references must resolve to the entire LOGDATA value.
      */
     logdata?: string;
     /**
@@ -57,9 +58,11 @@ export interface TeradataConnection {
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:  FilterPattern;
+    supportsLineageExtraction?:     boolean;
     supportsMetadataExtraction?:    boolean;
     supportsProfiler?:              boolean;
     supportsQueryComment?:          boolean;
+    supportsUsageExtraction?:       boolean;
     supportsViewLineageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import type {
   ChartLegendProps,
   ChartPixel,
@@ -20,7 +20,11 @@ import type {
   ChartXAxisProps,
   ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
-import { ComposedChart } from '@openmetadata/ui-core-components/charts';
+import {
+  ComposedChart,
+  hexToRgba,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
 import { useQueries } from '@tanstack/react-query';
 import { isEmpty, isNumber, isUndefined } from 'lodash';
 import {
@@ -60,6 +64,7 @@ import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import { useTestCaseStore } from '../../../DataQuality/IncidentManager/useTestCase.store';
 import { TestCaseChartDataType } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
@@ -70,8 +75,11 @@ import TestSummaryStatusKey from './TestSummaryStatusKey';
 
 type PlottedPoint = TestCaseChartDataType['data'][number];
 
+// The tooltip and the selection ring are the hover feedback. ECharts' own
+// hover state animated every dot and line and re-ordered the series on each
+// pass of the pointer, and Safari lost lines in that re-ordering.
+const NO_HOVER_STATE = { emphasis: { disabled: true } };
 // The tooltip is the app's own React component, so ECharts draws none.
-const MULTI_SERIES_EMPHASIS = { emphasis: { focus: 'series' as const } };
 const TOOLTIP_OFF = { show: false };
 
 // Aborted is drawn as a ring, matching the status key: a run that produced no
@@ -80,9 +88,10 @@ const POINT_STATUS_HOLLOW = TestCaseStatus.Aborted;
 
 const hasArea = ({ height, width }: TooltipSize) => height > 0 && width > 0;
 
-// Room past the newest and oldest runs, so their dots and the selection halo
+// Room past the newest and oldest runs, so their dots and the selection ring
 // are not cut at the plot edge.
 const X_AXIS_EDGE_GAP: [string, string] = ['2%', '2%'];
+const AXIS_RUN_TIME_FORMAT = 'MMM dd, yyyy\nhh:mm a';
 // Runs at a single instant have no span, and ECharts stretches the time axis
 // to two years around them; a day centred on them keeps the axis readable.
 const SINGLE_INSTANT_X_PADDING = 12 * 60 * 60 * 1000;
@@ -95,6 +104,9 @@ const FLAT_SERIES_MIN_PADDING = 1;
 // The padded extremes are padding, not data: a label there printed values like
 // "10.58K" on top of the "10K" tick.
 const Y_AXIS_LABEL = { showMinLabel: false, showMaxLabel: false };
+// One series reads as data under a 2px line and a faint brand wash.
+const SINGLE_SERIES_LINE_WIDTH = 2;
+const SINGLE_SERIES_WASH = 0.05;
 
 interface AxisExtent {
   min: number;
@@ -185,6 +197,7 @@ function TestSummaryGraph({
   testDefinitionName,
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
+  const palette = useChartPalette();
   const {
     setShowAILearningBanner,
     selectedRunTimestamp,
@@ -318,8 +331,8 @@ function TestSummaryGraph({
     () =>
       getThresholdReference(
         testCaseParameterValue ?? [],
-        // Dimension results carry no learned bound, so the fallback simply
-        // finds nothing for them.
+        // Dimension results report the bounds they were evaluated against
+        // too, so a learned bound falls back the same way for them.
         testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
       ),
     [testCaseParameterValue, testCaseResults]
@@ -396,9 +409,10 @@ function TestSummaryGraph({
     const lines = seriesLabels.map<ChartSeries>((label) => ({
       key: label,
       name: label,
-      // One series reads as data and keeps a grey wash under it; several
-      // need the palette to be told apart. Muted, not neutral: neutral is a
-      // track colour, too pale for a line.
+      // One series is a muted grey line over a brand wash, as the mock draws
+      // it, so the status-coloured dots on it stand out; several need the
+      // palette to be told apart. Muted, not neutral: neutral is a track
+      // colour, too pale for a line.
       type: isSingleSeries ? 'area' : 'line',
       status: isSingleSeries ? 'muted' : undefined,
       smooth: false,
@@ -407,9 +421,14 @@ function TestSummaryGraph({
         // The line bridges the runs placed off it, so it joins measured
         // runs only.
         connectNulls: true,
-        // Focusing the hovered series fades the others, and with them the
-        // band and the expectation label; only worth it when there are others.
-        ...(isSingleSeries ? {} : MULTI_SERIES_EMPHASIS),
+        ...NO_HOVER_STATE,
+        ...(isSingleSeries && {
+          areaStyle: {
+            // The palette's first series colour is its brand blue.
+            color: hexToRgba(palette.series[0], SINGLE_SERIES_WASH),
+          },
+          lineStyle: { width: SINGLE_SERIES_LINE_WIDTH },
+        }),
       },
     }));
     // Aborted and queued runs as dots alone, after the lines so no line's
@@ -424,7 +443,7 @@ function TestSummaryGraph({
           name: label,
           type: 'line',
           pointStyle: pointStyleOf(key),
-          seriesOption: { lineStyle: { opacity: 0 } },
+          seriesOption: { ...NO_HOVER_STATE, lineStyle: { opacity: 0 } },
         });
       }
 
@@ -432,7 +451,14 @@ function TestSummaryGraph({
     }, []);
 
     return [...band, ...lines, ...placed];
-  }, [plottedData, seriesLabels, isSingleSeries, activeRunTimestamp, t]);
+  }, [
+    plottedData,
+    seriesLabels,
+    isSingleSeries,
+    activeRunTimestamp,
+    palette,
+    t,
+  ]);
 
   const referenceLines = useMemo<ChartReferenceLine[]>(
     () => [
@@ -449,30 +475,58 @@ function TestSummaryGraph({
             },
           ]
         : []),
-      // The default (neutral) line: a red guide would read as a failed run.
       ...(isUndefined(activeRunTimestamp)
         ? []
-        : [{ axis: 'x' as const, value: activeRunTimestamp }]),
+        : [
+            {
+              axis: 'x' as const,
+              value: activeRunTimestamp,
+              // Solid, in the selected run's status colour.
+              lineType: 'solid' as const,
+              status: getStatusChartStatus(
+                plottedData.find((point) => point.name === activeRunTimestamp)
+                  ?.status as TestCaseStatus
+              ),
+            },
+          ]),
     ],
-    [thresholdReference, activeRunTimestamp, t]
+    [thresholdReference, activeRunTimestamp, plottedData, t]
   );
 
   const xAxis = useMemo<ChartXAxisProps>(() => {
-    const instants = new Set(plottedData.map((point) => Number(point.name)));
-    const [onlyInstant] = instants;
+    const instants = [
+      ...new Set(plottedData.map((point) => Number(point.name))),
+    ].sort((a, b) => a - b);
+    const formatRunTime = (value: number) =>
+      formatDateTimeLong(value, DATE_TIME_12_HOUR_FORMAT);
+    // Ticks at the runs themselves, one per label: ECharts' own ticks landed
+    // on midnight for daily runs ("12:00 AM"), and repeated a minute's label
+    // for runs a few seconds apart.
+    const tickValues = instants.filter(
+      (instant, index) =>
+        index === 0 ||
+        formatRunTime(instant) !== formatRunTime(instants[index - 1])
+    );
 
     return {
       type: 'time',
+      // Two horizontal lines: a 45° label at the first tick ran past the
+      // chart's left edge, which ECharts' outer-bounds layout does not reserve.
       formatter: (value) =>
-        formatDateTimeLong(Number(value), DATE_TIME_12_HOUR_FORMAT),
-      axisLabel: { rotate: 45 },
+        formatDateTimeLong(Number(value), AXIS_RUN_TIME_FORMAT),
+      axisLabel: {
+        hideOverlap: true,
+        customValues: tickValues,
+      },
+      // ECharts' own axis grey does not follow the theme.
+      axisLine: { lineStyle: { color: palette.status.neutral } },
       boundaryGap: X_AXIS_EDGE_GAP,
-      ...(instants.size === 1 && {
-        min: onlyInstant - SINGLE_INSTANT_X_PADDING,
-        max: onlyInstant + SINGLE_INSTANT_X_PADDING,
+      ...(instants.length === 1 && {
+        min: instants[0] - SINGLE_INSTANT_X_PADDING,
+        max: instants[0] + SINGLE_INSTANT_X_PADDING,
       }),
     };
-  }, [plottedData]);
+  }, [plottedData, palette]);
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({
@@ -519,20 +573,19 @@ function TestSummaryGraph({
   if (isEmpty(testCaseResults)) {
     return (
       <Box className="tw:relative tw:min-h-80 tw:w-full">
-        <EmptyPlaceholder
+        <NoFilteredResultsPlaceholder
           description={t('message.try-extending-time-frame')}
-          icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+          icon={<FilterOffIcon />}
           title={t('message.no-test-result-for-days', {
             days: selectedTimeRange,
           })}
-          variant="blank"
         />
       </Box>
     );
   }
 
   return (
-    <Box className="tw:bg-primary" direction="col">
+    <Box direction="col">
       <div className="tw:relative" id={`${testCaseName}_graph`} ref={plotRef}>
         <ComposedChart
           keyboardNavigation
@@ -579,9 +632,12 @@ function TestSummaryGraph({
         points={plottedData}
         seriesLabels={seriesLabels}
       />
-      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:px-4 tw:pb-2">
+      <Box align="center" className="tw:pb-2" gap={2} wrap="wrap">
         <TestSummaryStatusKey statuses={plottedStatuses} />
-      </div>
+        <Typography className="tw:ml-auto tw:text-quaternary" size="text-xs">
+          {t('message.select-a-point-for-run-details')}
+        </Typography>
+      </Box>
     </Box>
   );
 }

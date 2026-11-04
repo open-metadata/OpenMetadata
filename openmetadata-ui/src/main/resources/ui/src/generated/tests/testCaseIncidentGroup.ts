@@ -55,7 +55,8 @@ export interface TestCaseIncidentGroup {
      */
     incidentCount: number;
     /**
-     * Timestamp of the most recent status change across the group's open incidents.
+     * Timestamp of the most recent status change across the group's open incidents. Not used
+     * for the `trend` bucket span, which runs over the incident open times.
      */
     lastSeen?: number;
     /**
@@ -97,8 +98,9 @@ export interface TestCaseIncidentGroup {
      */
     testDefinitions?: EntityReference[];
     /**
-     * Number of incidents opened in each of 8 equal time buckets spanning `firstSeen` to
-     * `lastSeen`.
+     * Number of incidents opened in each of 8 equal time buckets spanning the group's earliest
+     * incident open time to its latest incident open time (`firstSeen` to `max(createdAt)`).
+     * `lastSeen` is a status-change timestamp, not a bucket boundary.
      */
     trend?: number[];
     /**

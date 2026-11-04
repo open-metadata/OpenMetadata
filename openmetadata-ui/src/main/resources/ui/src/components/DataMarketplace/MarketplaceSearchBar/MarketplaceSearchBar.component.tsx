@@ -119,7 +119,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
               </button>
             </Tooltip>
           ) : (
-            <Search className="tw:size-4 tw:text-text-tertiary" />
+            <Search className="tw:text-text-tertiary" size={20} />
           )}
         </div>
         <Input
@@ -146,7 +146,6 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
         isNonModal
         className="!tw:max-h-[400px]"
         isOpen={isOpen && searchValue?.trim().length > 0}
-        offset={4}
         placement="bottom"
         size="md"
         style={{ width: containerRef?.current?.offsetWidth }}

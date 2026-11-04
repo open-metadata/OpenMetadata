@@ -3,6 +3,8 @@ import uuid
 
 import pytest
 from cassandra.cluster import Cluster, DCAwareRoundRobinPolicy
+from testcontainers.cassandra import CassandraContainer
+from testcontainers.core.waiting_utils import wait_for_logs
 
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -12,15 +14,18 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 
+class ReadyCassandraContainer(CassandraContainer):
+    def _connect(self):
+        wait_for_logs(self, "Startup complete", timeout=120)
+
+
 @pytest.fixture(scope="module")
 def session(tmp_path_factory):
     """
     Start a Cassandra container with the dvdrental database.
     """
-    from testcontainers.cassandra import CassandraContainer
-
     with (
-        CassandraContainer() as container,
+        ReadyCassandraContainer() as container,
         Cluster(
             container.get_contact_points(),
             load_balancing_policy=DCAwareRoundRobinPolicy(container.get_local_datacenter()),

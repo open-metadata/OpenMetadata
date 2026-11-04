@@ -184,7 +184,7 @@ public final class ChildFieldResolver {
   }
 
   @SuppressWarnings("unchecked")
-  public static List<FieldInterface> childrenOf(EntityInterface parent, String entityType) {
+  public static List<FieldInterface> childrenOf(EntityInterface<?> parent, String entityType) {
     ChildContainerSpec spec = specFor(entityType);
     List<FieldInterface> children = new ArrayList<>();
     for (String path : spec.containerPaths()) {
@@ -197,11 +197,11 @@ public final class ChildFieldResolver {
   }
 
   public static Optional<FieldInterface> locate(
-      EntityInterface parent, String entityType, String childFqn) {
+      EntityInterface<?> parent, String entityType, String childFqn) {
     return findByFqn(childrenOf(parent, entityType), childFqn);
   }
 
-  public static void ensureChildFqns(EntityInterface parent, String entityType) {
+  public static void ensureChildFqns(EntityInterface<?> parent, String entityType) {
     assignFqns(parent.getFullyQualifiedName(), childrenOf(parent, entityType));
   }
 
@@ -210,7 +210,7 @@ public final class ChildFieldResolver {
    * Returns null when the entity's type is not registered or the segment does not name one of its
    * declared container paths, which lets callers fall back to their own resolution.
    */
-  public static List<?> containerListFor(EntityInterface entity, String containerName) {
+  public static List<?> containerListFor(EntityInterface<?> entity, String containerName) {
     String entityType = registryTypeOf(entity);
     List<?> result = null;
     if (supports(entityType)) {
@@ -234,13 +234,13 @@ public final class ChildFieldResolver {
    * registration). The registry's own keys already are the canonical entity-type names, so deriving
    * the lookup from them keeps this resolvable everywhere and independent of registration order.
    */
-  private static String registryTypeOf(EntityInterface entity) {
+  private static String registryTypeOf(EntityInterface<?> entity) {
     return TYPE_BY_SIMPLE_CLASS_NAME.get(
         entity.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 
   private static List<?> listForDeclaredPath(
-      EntityInterface entity, ChildContainerSpec spec, String containerName) {
+      EntityInterface<?> entity, ChildContainerSpec spec, String containerName) {
     List<?> result = null;
     for (String path : spec.containerPaths()) {
       boolean matches = path.equals(containerName) || path.startsWith(containerName + ".");
@@ -301,11 +301,12 @@ public final class ChildFieldResolver {
   }
 
   private static String longestPrefixParent(String childFqn, String entityType) {
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     String[] parts = FullyQualifiedName.split(childFqn);
     String result = null;
     for (int end = parts.length - 1; end >= MIN_PARENT_PARTS && result == null; end--) {
-      EntityInterface parent =
+      EntityInterface<?> parent =
           repository.findByNameOrNull(
               FullyQualifiedName.build(Arrays.copyOf(parts, end)), Include.ALL);
       result = parent == null ? null : parent.getFullyQualifiedName();

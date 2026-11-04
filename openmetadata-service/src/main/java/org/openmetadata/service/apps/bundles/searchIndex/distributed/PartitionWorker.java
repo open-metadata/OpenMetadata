@@ -572,8 +572,8 @@ public class PartitionWorker {
     for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
       Object rawEntity = entityError.getEntity();
       String entityId = null;
-      if (rawEntity instanceof EntityInterface) {
-        UUID id = ((EntityInterface) rawEntity).getId();
+      if (rawEntity instanceof EntityInterface<?>) {
+        UUID id = ((EntityInterface<?>) rawEntity).getId();
         if (id != null) {
           entityId = id.toString();
         }
@@ -610,7 +610,7 @@ public class PartitionWorker {
       Object rawEntity = warning.getEntity();
       String entityId = null;
       String entityFqn = null;
-      if (rawEntity instanceof EntityInterface entity) {
+      if (rawEntity instanceof EntityInterface<?> entity) {
         UUID id = entity.getId();
         entityId = id != null ? id.toString() : null;
         entityFqn = entity.getFullyQualifiedName();
@@ -717,7 +717,7 @@ public class PartitionWorker {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
-      List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      List<EntityInterface<?>> entities = (List<EntityInterface<?>>) resultList.getData();
       ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {

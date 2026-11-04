@@ -10,19 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button } from 'antd';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   fieldValueBoostAdditionalColumns,
   fieldValueBoostBaseColumns,
 } from '../../../constants/SearchSettings.constant';
 import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
 import Table from '../../common/Table/TableV2';
-import './field-value-boost-list.less';
 
 interface FieldValueBoostListProps {
   entitySearchSettingsPage?: boolean;
@@ -60,7 +57,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               key: 'gt',
               width: 120,
               render: (_: unknown, record: FieldValueBoost) => (
-                <span>{record.condition?.range?.gt ?? '-'}</span>
+                <Typography>{record.condition?.range?.gt ?? '-'}</Typography>
               ),
             },
             {
@@ -68,7 +65,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               key: 'gte',
               width: 120,
               render: (_: unknown, record: FieldValueBoost) => (
-                <span>{record.condition?.range?.gte ?? '-'}</span>
+                <Typography>{record.condition?.range?.gte ?? '-'}</Typography>
               ),
             },
             {
@@ -76,7 +73,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               key: 'lt',
               width: 120,
               render: (_: unknown, record: FieldValueBoost) => (
-                <span>{record.condition?.range?.lt ?? '-'}</span>
+                <Typography>{record.condition?.range?.lt ?? '-'}</Typography>
               ),
             },
             {
@@ -84,7 +81,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
               key: 'lte',
               width: 120,
               render: (_: unknown, record: FieldValueBoost) => (
-                <span>{record.condition?.range?.lte ?? '-'}</span>
+                <Typography>{record.condition?.range?.lte ?? '-'}</Typography>
               ),
             },
           ]
@@ -95,18 +92,22 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
         width: 100,
         render: (_: unknown, record: FieldValueBoost) => (
           <div className="d-flex items-center gap-2">
-            <Button
-              className="edit-field-value-boost-btn"
+            <ButtonUtility
               data-testid="edit-field-value-boost-btn"
-              icon={<Icon className="text-md" component={EditIcon} />}
-              type="text"
+              icon={Edit01}
+              size="lg"
+              tooltip={t('label.edit-entity', {
+                entity: t('label.field-value-boost'),
+              })}
               onClick={() => handleEditFieldValueBoost(record)}
             />
-            <Button
-              className="delete-field-value-boost-btn"
+            <ButtonUtility
               data-testid="delete-field-value-boost-btn"
-              icon={<Icon className="text-md" component={Delete} />}
-              type="text"
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.delete-entity', {
+                entity: t('label.field-value-boost'),
+              })}
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />
           </div>

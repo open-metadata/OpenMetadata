@@ -12,11 +12,11 @@ import java.sql.SQLException;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.events.TypedEvent;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.EventResponseMapper;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.FailedEventResponseMapper;
-import org.openmetadata.service.resources.events.subscription.TypedEvent;
 
 /**
  * A stored payload can name an EventType this build no longer declares (#29039). These mappers back

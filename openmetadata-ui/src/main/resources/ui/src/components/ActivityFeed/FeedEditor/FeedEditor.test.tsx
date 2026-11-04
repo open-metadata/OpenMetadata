@@ -20,6 +20,8 @@ import {
 } from '@testing-library/react';
 import { KeyboardEventHandler } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getUserByName } from '../../../rest/userAPI';
+import { suggestions } from '../../../utils/FeedUtils';
 import { FeedEditor } from './FeedEditor';
 
 const onSave = jest.fn();
@@ -113,6 +115,16 @@ jest.mock('../../../utils/FeedUtils', () => ({
   ...jest.requireActual('../../../utils/FeedUtils'),
   suggestions: jest.fn().mockResolvedValue([]),
 }));
+
+jest.mock('../../../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
+
+// Typed handles onto the module-level jest mocks above. The repo's Jest type
+// defs predate `jest.mocked`, so cast to `jest.Mock` (the idiomatic, type-clean
+// pattern used across the test suite) instead of calling `jest.mocked(...)`.
+const mockSuggestions = suggestions as jest.Mock;
+const mockGetUserByName = getUserByName as jest.Mock;
 
 // Runs the debounced mention search and returns what it handed quill-mention.
 const searchMentions = async (searchTerm: string) => {
@@ -364,6 +376,155 @@ describe('Test FeedEditor Component', () => {
       fireEvent.keyDown(reactQuill, { key: 'Enter', shiftKey: false });
 
       expect(onSave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when a mention search returns users whose avatar fetch rejects', () => {
+    beforeEach(() => jest.useFakeTimers());
+
+    afterEach(() => {
+      // Restore the file-wide default so the "finds nothing" suite is unaffected.
+      mockSuggestions.mockResolvedValue([]);
+      mockGetUserByName.mockReset();
+      jest.useRealTimers();
+    });
+
+    it('produces a dense array (no holes) when one user fetch rejects among all-user results', async () => {
+      mockSuggestions.mockResolvedValue([
+        {
+          id: '1',
+          value: '@john',
+          link: '/users/john',
+          name: 'john',
+          type: 'user',
+          breadcrumbs: [],
+        },
+        {
+          id: '2',
+          value: '@jane',
+          link: '/users/jane',
+          name: 'jane',
+          type: 'user',
+          breadcrumbs: [],
+        },
+      ]);
+      mockGetUserByName.mockImplementation((name: string) =>
+        name === 'john'
+          ? Promise.reject(new Error('Not Found'))
+          : Promise.resolve({ id: '2', name: 'jane' })
+      );
+
+      render(<FeedEditor {...mockFeedEditorProp} />, { wrapper: MemoryRouter });
+
+      const [matches] = await searchMentions('j');
+
+      // Without the fix, index 0 is an undefined hole (getUserByName rejected
+      // and no .catch fallback existed), so quill-mention's renderList would
+      // throw a TypeError on data[0].disabled.
+      expect(matches).toHaveLength(2);
+      expect(matches).not.toContain(undefined);
+      expect(matches[0]).toEqual(
+        expect.objectContaining({ value: '@john', name: 'john', type: 'user' })
+      );
+      expect(matches[1]).toEqual(
+        expect.objectContaining({ value: '@jane', name: 'jane', type: 'user' })
+      );
+      // The rejected user still gets a fallback avatar element — no hole.
+      expect(matches[0].avatarEle).toBeInstanceOf(HTMLDivElement);
+      expect(matches[1].avatarEle).toBeInstanceOf(HTMLDivElement);
+    });
+
+    it('preserves display-name order across mixed USER/TEAM results when a user fetch rejects at a lower index', async () => {
+      mockSuggestions.mockResolvedValue([
+        {
+          id: '1',
+          value: '@john',
+          link: '/users/john',
+          name: 'john',
+          type: 'user',
+          breadcrumbs: [],
+        },
+        {
+          id: '2',
+          value: '@team-alpha',
+          link: '/teams/team-alpha',
+          name: 'team-alpha',
+          type: 'team',
+          breadcrumbs: [],
+        },
+        {
+          id: '3',
+          value: '@jane',
+          link: '/users/jane',
+          name: 'jane',
+          type: 'user',
+          breadcrumbs: [],
+        },
+      ]);
+      mockGetUserByName.mockImplementation((name: string) =>
+        name === 'john'
+          ? Promise.reject(new Error('Not Found'))
+          : Promise.resolve({ id: '3', name: 'jane' })
+      );
+
+      render(<FeedEditor {...mockFeedEditorProp} />, { wrapper: MemoryRouter });
+
+      const [matches] = await searchMentions('j');
+
+      // A team entry at a higher index than a failing user is the exact
+      // configuration that crashed quill-mention pre-fix (hole within
+      // [0, length)). Every index must be populated and in the original order.
+      expect(matches).toHaveLength(3);
+      expect(matches).not.toContain(undefined);
+      expect(matches[0]).toEqual(
+        expect.objectContaining({ value: '@john', type: 'user' })
+      );
+      expect(matches[1]).toEqual(
+        expect.objectContaining({ value: '@team-alpha', type: 'team' })
+      );
+      expect(matches[2]).toEqual(
+        expect.objectContaining({ value: '@jane', type: 'user' })
+      );
+    });
+
+    it('renders a fallback entry for every user when all avatar fetches reject', async () => {
+      mockSuggestions.mockResolvedValue([
+        {
+          id: '1',
+          value: '@john',
+          link: '/users/john',
+          name: 'john',
+          type: 'user',
+          breadcrumbs: [],
+        },
+        {
+          id: '2',
+          value: '@jane',
+          link: '/users/jane',
+          name: 'jane',
+          type: 'user',
+          breadcrumbs: [],
+        },
+      ]);
+      mockGetUserByName.mockImplementation(() =>
+        Promise.reject(new Error('Server Error'))
+      );
+
+      render(<FeedEditor {...mockFeedEditorProp} />, { wrapper: MemoryRouter });
+
+      const [matches] = await searchMentions('j');
+
+      // All fetches reject; the .catch fallback still populates every index,
+      // so the array is dense (no crash, no holey-array TypeError).
+      expect(matches).toHaveLength(2);
+      expect(matches).not.toContain(undefined);
+      expect(matches[0]).toEqual(
+        expect.objectContaining({ value: '@john', type: 'user' })
+      );
+      expect(matches[1]).toEqual(
+        expect.objectContaining({ value: '@jane', type: 'user' })
+      );
+      expect(matches[0].avatarEle).toBeInstanceOf(HTMLDivElement);
     });
   });
 });

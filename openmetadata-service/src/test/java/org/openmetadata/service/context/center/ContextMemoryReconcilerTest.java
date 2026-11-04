@@ -1,14 +1,17 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -21,12 +24,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.llm.LLMCompletionException;
 
 @ExtendWith(MockitoExtension.class)
 class ContextMemoryReconcilerTest {
@@ -37,7 +41,7 @@ class ContextMemoryReconcilerTest {
       new EntityReference().withId(UUID.randomUUID()).withName("page").withType(Entity.PAGE);
 
   private ContextMemory pill(
-      String question, String answer, ContextMemorySourceType type, EntityStatus status) {
+      String question, String answer, ContextMemorySourceType type, ContextMemoryStatus status) {
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName(question)
@@ -51,7 +55,8 @@ class ContextMemoryReconcilerTest {
   }
 
   private ContextMemory derived(String question, String answer) {
-    return pill(question, answer, ContextMemorySourceType.PAGE_EXTRACTION, EntityStatus.APPROVED);
+    return pill(
+        question, answer, ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED);
   }
 
   private void existing(ContextMemory... pills) {
@@ -64,6 +69,102 @@ class ContextMemoryReconcilerTest {
   }
 
   @Test
+  void failedDuplicateCheckLeavesNoPartiallyCreatedPills() {
+    existing();
+    List<ContextMemory> saved = new ArrayList<>();
+    lenient()
+        .when(memoryRepository.create(isNull(), any()))
+        .thenAnswer(
+            invocation -> {
+              ContextMemory memory = invocation.getArgument(1);
+              saved.add(memory);
+              return memory;
+            });
+    ContextMemory first = derived("What is GDPR?", "A data protection regulation.");
+    ContextMemory second = derived("What is consent?", "Freely given agreement.");
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(
+            memoryRepository,
+            memory -> {
+              if (memory == second) {
+                throw new LLMCompletionException("Failed to parse LLM JSON array response");
+              }
+              return null;
+            });
+
+    assertThrows(
+        LLMCompletionException.class,
+        () -> reconciler.reconcile(source, Entity.PAGE, List.of(first, second)));
+    assertEquals(List.of(), saved);
+  }
+
+  @Test
+  void failedDuplicateCheckPreservesExistingPillsAndSourceLinks() {
+    ContextMemory changed = derived("What is GDPR?", "Original definition.");
+    ContextMemory retired = derived("Who owns the process?", "The compliance team.");
+    ContextMemory shared = derived("What is consent?", "Original consent definition.");
+    existing(changed, retired, shared);
+    when(memoryRepository.hasOtherSources(any(), eq(source)))
+        .thenAnswer(invocation -> shared.getId().equals(invocation.getArgument(0)));
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(
+            memoryRepository,
+            memory -> {
+              throw new LLMCompletionException("Failed to parse LLM JSON array response");
+            });
+
+    assertThrows(
+        LLMCompletionException.class,
+        () ->
+            reconciler.reconcile(
+                source,
+                Entity.PAGE,
+                List.of(
+                    derived("What is GDPR?", "Revised definition."),
+                    derived("What is consent?", "Revised consent definition."),
+                    derived("What is personal data?", "Information identifying a person."))));
+    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
+    verify(memoryRepository, never()).create(any(), any());
+  }
+
+  @Test
+  void doesNotReuseTheOldContentOfAMemoryScheduledForUpdate() {
+    ContextMemory stored = derived("What is GDPR?", "Original definition.");
+    ContextMemory fresh = derived("What is personal data?", "Information identifying a person.");
+    existing(stored);
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(memoryRepository, ignored -> stored);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconciler.reconcile(
+            source, Entity.PAGE, List.of(derived("What is GDPR?", "Revised definition."), fresh));
+
+    assertEquals(1, result.updated());
+    assertEquals(1, result.created());
+    verify(memoryRepository).create(isNull(), eq(fresh));
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
+  }
+
+  @Test
+  void doesNotReuseAMemoryScheduledForRetirement() {
+    ContextMemory retired = derived("Who owns the process?", "The compliance team.");
+    ContextMemory fresh = derived("What is personal data?", "Information identifying a person.");
+    existing(retired);
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(memoryRepository, ignored -> retired);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconciler.reconcile(source, Entity.PAGE, List.of(fresh));
+
+    assertEquals(1, result.deleted());
+    assertEquals(1, result.created());
+    verify(memoryRepository).create(isNull(), eq(fresh));
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
+  }
+
+  @Test
   void rephrasedQuestionKeepsThePillInsteadOfChurningIt() {
     // Real pair from a re-extraction where only an unrelated paragraph changed. Scores 0.680 on
     // the weighted gate: above the identity bar, so the existing pill retains its identity.
@@ -73,7 +174,7 @@ class ContextMemoryReconcilerTest {
             "The Payments Platform team owns the checkout on-call rotation and escalates to the"
                 + " Commerce Director after 30 minutes without acknowledgement.",
             ContextMemorySourceType.PAGE_EXTRACTION,
-            EntityStatus.APPROVED);
+            ContextMemoryStatus.APPROVED);
     stored.setUsageCount(42);
     existing(stored);
 
@@ -105,7 +206,7 @@ class ContextMemoryReconcilerTest {
             "How are incidents announced to the business?",
             "Paging happens through Opsgenie, never through Slack alone.",
             ContextMemorySourceType.PAGE_EXTRACTION,
-            EntityStatus.APPROVED);
+            ContextMemoryStatus.APPROVED);
     existing(stored);
 
     ContextMemoryReconciler.ReconcileResult result =
@@ -133,7 +234,8 @@ class ContextMemoryReconcilerTest {
 
   @Test
   void keepsUnchangedPillWithoutUpdateOrReembed() {
-    existing(pill("Q1", "A1", ContextMemorySourceType.PAGE_EXTRACTION, EntityStatus.APPROVED));
+    existing(
+        pill("Q1", "A1", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED));
 
     ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("Q1", "A1")));
 
@@ -145,9 +247,9 @@ class ContextMemoryReconcilerTest {
 
   @ParameterizedTest
   @EnumSource(
-      value = EntityStatus.class,
+      value = ContextMemoryStatus.class,
       names = {"DRAFT", "ARCHIVED", "DEPRECATED", "REJECTED"})
-  void reExtractionLeavesAPillOutsideApprovedAsIs(EntityStatus retired) {
+  void reExtractionLeavesAPillOutsideApprovedAsIs(ContextMemoryStatus retired) {
     existing(
         pill("Q1", "A1", ContextMemorySourceType.PAGE_EXTRACTION, retired),
         pill("Q2", "A2", ContextMemorySourceType.PAGE_EXTRACTION, retired));
@@ -163,7 +265,7 @@ class ContextMemoryReconcilerTest {
   @Test
   void updatesPillInPlaceWhenAnswerChanges() {
     ContextMemory original =
-        pill("Q1", "old", ContextMemorySourceType.PAGE_EXTRACTION, EntityStatus.APPROVED);
+        pill("Q1", "old", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED);
     existing(original);
 
     ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("Q1", "new")));
@@ -179,7 +281,7 @@ class ContextMemoryReconcilerTest {
   @Test
   void deletesPillNoLongerDerived() {
     ContextMemory gone =
-        pill("gone", "A", ContextMemorySourceType.PAGE_EXTRACTION, EntityStatus.APPROVED);
+        pill("gone", "A", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED);
     existing(gone);
 
     ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("fresh", "A")));
@@ -192,7 +294,7 @@ class ContextMemoryReconcilerTest {
 
   @Test
   void neverTouchesManuallyEditedPillAndDoesNotDuplicateIt() {
-    existing(pill("Q1", "human", ContextMemorySourceType.MANUAL, EntityStatus.APPROVED));
+    existing(pill("Q1", "human", ContextMemorySourceType.MANUAL, ContextMemoryStatus.APPROVED));
 
     ContextMemoryReconciler.ReconcileResult result =
         reconcile(List.of(derived("Q1", "llm answer"), derived("Q2", "A2")));
@@ -213,7 +315,7 @@ class ContextMemoryReconcilerTest {
             "How should billing totals handle refunds?",
             "Filter to amount > 0 to exclude refunds from totals.",
             ContextMemorySourceType.PAGE_EXTRACTION,
-            EntityStatus.APPROVED);
+            ContextMemoryStatus.APPROVED);
     existing(original);
 
     ContextMemoryReconciler.ReconcileResult result =
@@ -264,7 +366,7 @@ class ContextMemoryReconcilerTest {
             "What is the retention window?",
             "Events are retained for 90 days.",
             ContextMemorySourceType.FILE_EXTRACTION,
-            EntityStatus.APPROVED);
+            ContextMemoryStatus.APPROVED);
     ContextMemoryReconciler reconciler =
         new ContextMemoryReconciler(memoryRepository, ignored -> equivalent);
 
@@ -287,7 +389,7 @@ class ContextMemoryReconcilerTest {
             "How long are events retained?",
             "Events are retained for 90 days.",
             ContextMemorySourceType.PAGE_EXTRACTION,
-            EntityStatus.APPROVED);
+            ContextMemoryStatus.APPROVED);
     existing(shared);
     when(memoryRepository.hasOtherSources(shared.getId(), source)).thenReturn(true);
 
@@ -317,7 +419,7 @@ class ContextMemoryReconcilerTest {
             "What is the retention window?",
             "Events are retained for 90 days.",
             ContextMemorySourceType.FILE_EXTRACTION,
-            EntityStatus.APPROVED);
+            ContextMemoryStatus.APPROVED);
     when(memoryRepository.listExtractedMemories(original.getId(), Entity.CONTEXT_FILE))
         .thenReturn(List.of(memory));
 
@@ -332,7 +434,7 @@ class ContextMemoryReconcilerTest {
   @Test
   void rederivationRepairsLegacyPillVisibilityAndScope() {
     ContextMemory legacy =
-        pill("Q", "A", ContextMemorySourceType.PAGE_EXTRACTION, EntityStatus.APPROVED);
+        pill("Q", "A", ContextMemorySourceType.PAGE_EXTRACTION, ContextMemoryStatus.APPROVED);
     legacy.setMemoryScope(null);
     legacy.setPrimaryEntity(null);
     legacy.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.SHARED));

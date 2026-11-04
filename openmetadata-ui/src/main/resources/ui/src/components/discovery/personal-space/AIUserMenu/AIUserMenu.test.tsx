@@ -14,8 +14,15 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import AIUserMenu from './AIUserMenu';
+
+// Dark mode applies only in AI mode; classic is light-only.
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: () => true,
+}));
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
@@ -40,6 +47,17 @@ jest.mock('../../../../hooks/usePersonalSpaceStore', () => ({
     selector({ open: mockOpenPanel }),
 }));
 
+let mockActiveDomain = 'Banking';
+
+jest.mock('../../../../hooks/useDomainStore', () => ({
+  useDomainStore: () => ({
+    activeDomain: mockActiveDomain,
+    activeDomainEntityRef: { id: 'domain-1', name: mockActiveDomain },
+  }),
+}));
+
+const salesPersona = { id: 'persona-1', name: 'sales', type: 'persona' };
+const mockSetSelectedPersona = jest.fn();
 const mockSetAppVersion = jest.fn();
 let mockAppVersion: string | undefined = '1.0.0';
 
@@ -50,10 +68,11 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
       displayName: 'Test User',
       email: 'test@example.com',
       name: 'test-user',
+      personas: [salesPersona],
     },
-    selectedPersona: null,
+    selectedPersona: undefined,
     setAppVersion: mockSetAppVersion,
-    setSelectedPersona: jest.fn(),
+    setSelectedPersona: mockSetSelectedPersona,
   }),
 }));
 
@@ -78,6 +97,7 @@ jest.mock('../../../../utils/i18next/LocalUtil', () => ({
 }));
 
 jest.mock('../../../../utils/EntityNameUtils', () => ({
+  getDomainDisplayName: (ref?: { name?: string }) => ref?.name,
   getEntityName: (
     entity: { displayName?: string; name?: string } | null | undefined
   ) => entity?.displayName ?? entity?.name ?? '',
@@ -103,11 +123,27 @@ jest.mock(
   '../../../../components/common/ProfilePicture/ProfilePicture',
   () => ({
     __esModule: true,
-    default: ({ displayName }: { displayName?: string }) => (
-      <span data-testid="profile-picture">{displayName}</span>
+    default: ({
+      displayName,
+      name,
+    }: {
+      displayName?: string;
+      name: string;
+    }) => (
+      <span data-name={name} data-testid="profile-picture">
+        {displayName}
+      </span>
     ),
   })
 );
+
+// Boundary: the domain picker owns its own store, API and lazy chunk.
+jest.mock('../../../common/DomainScopeControl/DomainScopeControl', () => ({
+  __esModule: true,
+  default: ({ children }: React.PropsWithChildren) => (
+    <div data-testid="ask-domain-scope">{children}</div>
+  ),
+}));
 
 // Stub react-aria-components to avoid react-aria collection complexity
 jest.mock('react-aria-components', () => ({
@@ -119,27 +155,19 @@ jest.mock('react-aria-components', () => ({
       {children}
     </button>
   ),
-  Menu: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-  MenuItem: ({
-    children,
-    onAction,
-    textValue: _textValue,
-    ...rest
-  }: React.PropsWithChildren<
-    Record<string, unknown> & { onAction?: () => void; textValue?: string }
-  >) => (
-    <button
-      type="button"
-      {...(rest as React.ButtonHTMLAttributes<HTMLButtonElement>)}
-      onClick={onAction}>
-      {children}
-    </button>
-  ),
-  Popover: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   SubmenuTrigger: ({ children }: React.PropsWithChildren) => (
     <div>{children}</div>
   ),
 }));
+
+type MockItemProps = {
+  children?:
+    | React.ReactNode
+    | ((state: { isSelected: boolean }) => React.ReactNode);
+  label?: string;
+  onAction?: () => void;
+  'data-testid'?: string;
+};
 
 // Stub @openmetadata/ui-core-components to avoid complex setup
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -149,45 +177,71 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     Root: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
     Popover: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
     Menu: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+    Section: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+    SectionHeader: ({ children }: React.PropsWithChildren) => (
+      <div>{children}</div>
+    ),
     Item: ({
       children,
+      label,
       onAction,
-    }: React.PropsWithChildren<{ onAction?: () => void }>) => (
-      <button type="button" onClick={onAction}>
-        {children}
+      'data-testid': testId,
+    }: MockItemProps) => (
+      <button data-testid={testId} type="button" onClick={onAction}>
+        {label ??
+          (typeof children === 'function'
+            ? children({ isSelected: false })
+            : children)}
       </button>
     ),
     Separator: () => <hr />,
   },
-  Toggle: ({
-    isSelected,
-    label,
-    onChange,
-  }: {
-    isSelected: boolean;
-    label: string;
-    onChange: (isSelected: boolean) => void;
-  }) => (
-    <button
-      aria-checked={isSelected}
-      aria-label={label}
-      role="switch"
-      type="button"
-      onClick={() => onChange(!isSelected)}
-    />
+  FeaturedIcon: () => <span />,
+  Tooltip: ({
+    children,
+    isOpen,
+    onOpenChange,
+    title,
+  }: React.PropsWithChildren<{
+    isOpen?: boolean;
+    onOpenChange?: (isOpen: boolean) => void;
+    title?: React.ReactNode;
+  }>) => (
+    <div>
+      <button
+        aria-label="tooltip-hover"
+        data-testid="tooltip-hover"
+        type="button"
+        onClick={() => onOpenChange?.(true)}
+      />
+      {isOpen && <div data-testid="trigger-tooltip">{title}</div>}
+      {children}
+    </div>
   ),
-  Typography: ({ children }: React.PropsWithChildren) => (
-    <span>{children}</span>
-  ),
+  Typography: jest
+    .requireActual('react')
+    .forwardRef(
+      (
+        {
+          children,
+          'data-testid': testId,
+        }: React.PropsWithChildren<{ 'data-testid'?: string }>,
+        ref: React.Ref<HTMLSpanElement>
+      ) => (
+        <span data-testid={testId} ref={ref}>
+          {children}
+        </span>
+      )
+    ),
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const renderMenu = () =>
+const renderMenu = (collapsed?: boolean) =>
   render(
     <MemoryRouter>
       <ThemeProvider>
-        <AIUserMenu />
+        <AIUserMenu collapsed={collapsed} />
       </ThemeProvider>
     </MemoryRouter>
   );
@@ -200,86 +254,180 @@ describe('AIUserMenu', () => {
     localStorage.clear();
     document.documentElement.classList.remove('dark-mode');
     mockAppVersion = '1.0.0';
+    mockActiveDomain = 'Banking';
     mockGetHelpItems.mockReturnValue([]);
   });
 
-  it('renders the trigger button with the user display name', () => {
+  it('shows the user name and active domain on the expanded trigger', () => {
     renderMenu();
 
-    expect(screen.getByTestId('ask-ai-user-menu-trigger')).toBeInTheDocument();
-    expect(screen.getAllByText('Test User').length).toBeGreaterThanOrEqual(1);
+    const trigger = screen.getByTestId('ask-ai-user-menu-trigger');
+
+    expect(trigger).toHaveTextContent('Test User');
+    expect(trigger).toHaveTextContent('Banking');
   });
 
-  it('shows "Default" as the persona name when no persona is selected', () => {
+  it('looks up every avatar by username, not email', () => {
     renderMenu();
 
-    expect(screen.getAllByText('Default').length).toBeGreaterThanOrEqual(1);
+    const avatars = screen.getAllByTestId('profile-picture');
+
+    expect(avatars.length).toBeGreaterThan(0);
+
+    avatars.forEach((avatar) =>
+      expect(avatar).toHaveAttribute('data-name', 'test-user')
+    );
   });
 
-  it('renders the profile header menu item', () => {
+  it('shows only the avatar in the collapsed rail, with name and domain in a tooltip', () => {
+    renderMenu(true);
+
+    expect(
+      screen.getByTestId('ask-ai-user-menu-trigger')
+    ).not.toHaveTextContent('Banking');
+
+    fireEvent.click(screen.getByTestId('tooltip-hover'));
+
+    const tooltip = screen.getByTestId('trigger-tooltip');
+
+    expect(tooltip).toHaveTextContent('Test User');
+    expect(tooltip).toHaveTextContent('Banking');
+  });
+
+  it('keeps the expanded-card tooltip closed while the name and domain fit', () => {
     renderMenu();
 
-    expect(screen.getByTestId('ai-user-menu-profile')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('tooltip-hover'));
+
+    expect(screen.queryByTestId('trigger-tooltip')).not.toBeInTheDocument();
   });
 
-  it('routes to #profile/<username> when the profile item is clicked', () => {
+  it('opens the expanded-card tooltip when the domain is cut off', () => {
+    renderMenu();
+    const domain = screen.getByTestId('ask-ai-user-menu-domain');
+    Object.defineProperty(domain, 'scrollWidth', { value: 400 });
+    Object.defineProperty(domain, 'clientWidth', { value: 80 });
+
+    fireEvent.click(screen.getByTestId('tooltip-hover'));
+
+    expect(screen.getByTestId('trigger-tooltip')).toHaveTextContent('Banking');
+  });
+
+  it('opens the expanded-card tooltip when the name is cut off', () => {
+    renderMenu();
+    const name = screen.getByTestId('ask-ai-user-menu-name');
+    Object.defineProperty(name, 'scrollWidth', { value: 400 });
+    Object.defineProperty(name, 'clientWidth', { value: 80 });
+
+    fireEvent.click(screen.getByTestId('tooltip-hover'));
+
+    expect(screen.getByTestId('trigger-tooltip')).toHaveTextContent(
+      'Test User'
+    );
+  });
+
+  it('badges the rail avatar only while a domain is scoped', () => {
+    const { unmount } = renderMenu(true);
+
+    expect(
+      screen.getByTestId('ask-ai-user-menu-scope-badge')
+    ).toBeInTheDocument();
+
+    unmount();
+    mockActiveDomain = DEFAULT_DOMAIN_VALUE;
+    renderMenu(true);
+
+    expect(
+      screen.queryByTestId('ask-ai-user-menu-scope-badge')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no scope badge on the expanded trigger', () => {
+    renderMenu();
+
+    expect(
+      screen.queryByTestId('ask-ai-user-menu-scope-badge')
+    ).not.toBeInTheDocument();
+  });
+
+  it('routes to #profile without a username when the profile item is clicked', () => {
     renderMenu();
 
     fireEvent.click(screen.getByTestId('ai-user-menu-profile'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('profile', 'test-user');
-  });
-
-  it('renders all standard menu items: persona, help, language, settings, logout', () => {
-    renderMenu();
-
-    expect(screen.getByText('label.persona')).toBeInTheDocument();
-    expect(screen.getByText('label.help')).toBeInTheDocument();
-    expect(screen.getByText('label.language')).toBeInTheDocument();
-    expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.logout')).toBeInTheDocument();
-  });
-
-  it('updates the theme without removing the user menu', () => {
-    renderMenu();
-
-    const switcher = screen.getByRole('switch', { name: 'label.dark-mode' });
-
-    fireEvent.click(switcher);
-
-    expect(switcher).toBeChecked();
-    expect(screen.getByText('label.logout')).toBeInTheDocument();
-    expect(localStorage.getItem('ui-theme')).toBe('dark');
+    expect(mockSetHash).toHaveBeenCalledWith('profile');
   });
 
   it('opens My Data in the personal-space modal', () => {
     renderMenu();
 
-    fireEvent.click(screen.getByText('label.my-data'));
+    fireEvent.click(screen.getByTestId('ai-user-menu-my-data'));
 
     expect(mockOpenPanel).toHaveBeenCalledWith('my-data');
   });
 
-  it('navigates to /settings when the settings item is clicked', () => {
+  it('renders the domain scope row with the active domain', () => {
     renderMenu();
 
-    fireEvent.click(screen.getByText('label.setting-plural'));
+    const row = screen.getByTestId('ask-domain-scope');
 
-    expect(mockNavigate).toHaveBeenCalledWith('/settings');
+    expect(row).toHaveTextContent('label.domain-scope');
+    expect(row).toHaveTextContent('Banking');
+  });
+
+  it('shows the default persona and switches to a picked persona', () => {
+    renderMenu();
+
+    expect(screen.getByTestId('ai-user-menu-persona')).toHaveTextContent(
+      'label.default'
+    );
+
+    fireEvent.click(screen.getByTestId('ai-user-menu-persona-sales'));
+
+    expect(mockSetSelectedPersona).toHaveBeenCalledWith(salesPersona);
+  });
+
+  it('shows the active language by name', () => {
+    renderMenu();
+
+    expect(screen.getByText('English')).toBeInTheDocument();
+  });
+
+  it('switches the theme from the appearance submenu', () => {
+    renderMenu();
+
+    expect(screen.getByTestId('ai-user-menu-appearance')).toHaveTextContent(
+      'label.light'
+    );
+
+    fireEvent.click(screen.getByTestId('ai-user-menu-theme-dark'));
+
+    expect(localStorage.getItem('ui-theme')).toBe('dark');
+    expect(screen.getByTestId('ai-user-menu-appearance')).toHaveTextContent(
+      'label.dark'
+    );
+  });
+
+  it('opens Preferences in the settings modal, not the legacy settings page', () => {
+    renderMenu();
+
+    fireEvent.click(screen.getByTestId('ask-user-menu-settings'));
+
+    expect(mockSetHash).toHaveBeenCalledWith('preferences');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/settings');
   });
 
   it('calls onLogoutHandler when the logout item is clicked', () => {
     renderMenu();
 
-    fireEvent.click(screen.getByText('label.logout'));
+    fireEvent.click(screen.getByTestId('ai-user-menu-logout'));
 
     expect(mockOnLogoutHandler).toHaveBeenCalledTimes(1);
   });
 
-  it('does not render a mode switcher submenu (interface items moved to AppModeSwitcher)', () => {
+  it('does not offer an interface-mode switch', () => {
     renderMenu();
 
-    expect(screen.queryByTestId('interface-mode-menu')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('interface-mode-option-classic')
     ).not.toBeInTheDocument();
@@ -316,7 +464,7 @@ describe('AIUserMenu', () => {
         {
           key: 'version',
           label: 'label.version',
-          icon: null,
+          icon: () => null,
           isExternal: false,
           link: '',
         },

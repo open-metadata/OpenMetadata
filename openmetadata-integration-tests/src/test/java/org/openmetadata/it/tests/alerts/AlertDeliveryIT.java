@@ -18,8 +18,10 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertMetrics;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Conversation;
@@ -29,8 +31,9 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
 
 /** Isolated for the same reason as the dispatch scenarios: it drives a tick over inserted events. */
 @Isolated
@@ -39,6 +42,12 @@ class AlertDeliveryIT {
 
   private static final String LIVE_USER = "admin";
   private static final int ONE_DAY_SECONDS = 86400;
+  private static final String SWITCH_OFF =
+      "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":false}]";
+  private static final String SWITCH_ON =
+      "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":true}]";
+  private static final String DESCRIBE =
+      "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"edited\"}]";
 
   @Test
   void mentionOfDeletedUserStillNotifiesOthers(TestNamespace ns) throws Exception {
@@ -112,6 +121,55 @@ class AlertDeliveryIT {
     }
   }
 
+  // The second patch is merged into the first one's session, so the save compares the alert with
+  // the version from before it was switched off.
+  @Test
+  void alertSwitchedBackOnSendsOnlyWhatHappensFromThen(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert = webhookTableAlert(ns, "switched_back_on", receiver);
+      QuietAlert.settle(alert);
+      EventSubscriptionService alerts = SdkClients.adminClient().eventSubscriptions();
+      alerts.patch(alert.getId(), JsonUtils.readTree(SWITCH_OFF));
+      FixtureEvents.insert(List.of(sampleEvent("table created")));
+
+      alerts.patch(alert.getId(), JsonUtils.readTree(SWITCH_ON));
+      QuietAlert.awaitScheduledTickIsOver(alert);
+      DirectTick.run(alert);
+      assertEquals(0, receiver.received().size(), "nothing from while it was off");
+
+      FixtureEvents.insert(List.of(sampleEvent("table columns changed")));
+      DirectTick.run(alert);
+      assertEquals(1, receiver.received().size(), "and what happens once it is on");
+    }
+  }
+
+  @Test
+  void editOfAnAlertThatStaysOnKeepsWhatItHasNotSentYet(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert = webhookTableAlert(ns, "edited_while_on", receiver);
+      QuietAlert.settle(alert);
+      FixtureEvents.insert(List.of(sampleEvent("table created")));
+
+      SdkClients.adminClient()
+          .eventSubscriptions()
+          .patch(alert.getId(), JsonUtils.readTree(DESCRIBE));
+      QuietAlert.awaitScheduledTickIsOver(alert);
+      DirectTick.run(alert);
+
+      assertEquals(1, receiver.received().size());
+    }
+  }
+
+  private static EventSubscription webhookTableAlert(
+      TestNamespace ns, String name, RecordingReceiver receiver) {
+    return AlertFixtures.tableAlert(
+        ns, name, null, List.of(AlertFixtures.external(WEBHOOK, receiver.url("/webhook"))));
+  }
+
+  private static String sampleEvent(String label) {
+    return JsonUtils.pojoToJson(SampleEvents.events().get(label));
+  }
+
   private static SubscriptionDestination routedTo(RecordingReceiver receiver, String route) {
     return new SubscriptionDestination()
         .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
@@ -139,7 +197,7 @@ class AlertDeliveryIT {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("worked_example"))
-            .withAlertType(CreateEventSubscription.AlertType.OBSERVABILITY)
+            .withAlertType(AlertType.OBSERVABILITY)
             .withResources(List.of("table", "topic", "pipeline"))
             .withInput(triggers)
             .withEnabled(true)
@@ -165,13 +223,13 @@ class AlertDeliveryIT {
     ArgumentsInput mentionsTheLiveUser =
         new ArgumentsInput()
             .withName("filterByMentionedName")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withEffect(Effect.INCLUDE)
             .withArguments(
                 List.of(new Argument().withName("userList").withInput(List.of(LIVE_USER))));
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("mention_alert"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of(Entity.CONVERSATION))
             .withInput(new AlertFilteringInput().withFilters(List.of(mentionsTheLiveUser)))
             .withEnabled(true)

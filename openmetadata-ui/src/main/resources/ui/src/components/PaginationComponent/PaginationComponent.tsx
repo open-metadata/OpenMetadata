@@ -10,63 +10,76 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Pagination, PaginationProps } from 'antd';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
+
+import { PaginationCardWithControls } from '@openmetadata/ui-core-components';
+import { HTMLAttributes, useState } from 'react';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 
-const PaginationComponent = (props: PaginationProps) => {
-  const { t } = useTranslation();
-  const itemRender: PaginationProps['itemRender'] = (
-    _,
-    type,
-    originalElement
-  ) => {
-    if (type === 'prev') {
-      return (
-        <Button
-          className="pagination-button hover-button h-full"
-          data-testid="previous"
-          icon={
-            <Icon
-              className="pagination-prev-icon"
-              component={ArrowRightOutlined}
-            />
-          }
-          type="text">
-          <span>{t('label.previous')}</span>
-        </Button>
-      );
-    }
-    if (type === 'next') {
-      return (
-        <Button
-          className="pagination-button hover-button h-full"
-          data-testid="next"
-          type="text">
-          <span> {t('label.next')}</span>
-          <Icon
-            className="pagination-next-icon"
-            component={ArrowRightOutlined}
-          />
-        </Button>
-      );
-    }
+interface PaginationComponentProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> {
+  current?: number;
+  total?: number;
+  pageSize?: number;
+  defaultCurrent?: number;
+  defaultPageSize?: number;
+  hideOnSinglePage?: boolean;
+  showSizeChanger?: boolean;
+  onChange?: (page: number, pageSize: number) => void;
+}
 
-    return originalElement;
+const PaginationComponent = ({
+  current,
+  total = 0,
+  pageSize,
+  defaultCurrent = 1,
+  defaultPageSize = PAGE_SIZE_BASE,
+  hideOnSinglePage = true,
+  showSizeChanger,
+  onChange,
+  ...props
+}: PaginationComponentProps) => {
+  const [internalPage, setInternalPage] = useState(defaultCurrent);
+  const [internalPageSize, setInternalPageSize] = useState(defaultPageSize);
+  const currentPage = current ?? internalPage;
+  const currentPageSize = pageSize ?? internalPageSize;
+  // Ant Design takes a record count; core pagination takes a page count.
+  const totalPages = Math.max(1, Math.ceil(total / currentPageSize));
+
+  const changePage = (nextPage: number) => {
+    setInternalPage(nextPage);
+    onChange?.(nextPage, currentPageSize);
   };
 
+  const changePageSize = (nextSize: number) => {
+    // Keep the current page unless a smaller page count makes it unavailable.
+    const nextPage = Math.min(
+      currentPage,
+      Math.max(1, Math.ceil(total / nextSize))
+    );
+    setInternalPageSize(nextSize);
+    setInternalPage(nextPage);
+    onChange?.(nextPage, nextSize);
+  };
+
+  if (hideOnSinglePage && totalPages <= 1) {
+    return null;
+  }
+
   return (
-    <Pagination
-      hideOnSinglePage
-      itemRender={itemRender}
-      pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+    <PaginationCardWithControls
       {...props}
+      page={currentPage}
+      pageSize={currentPageSize}
+      pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+      total={totalPages}
+      onPageChange={changePage}
+      onPageSizeChange={
+        showSizeChanger ?? total > 50 ? changePageSize : undefined
+      }
     />
   );
 };

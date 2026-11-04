@@ -42,7 +42,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 @ExtendWith(MockitoExtension.class)
 class EntityLifecycleEventDispatcherTest {
 
-  @Mock private EntityInterface mockEntity;
+  @Mock private EntityInterface<?> mockEntity;
   @Mock private EntityReference mockEntityRef;
   @Mock private ChangeDescription mockChangeDescription;
   @Mock private SubjectContext mockSubjectContext;
@@ -221,7 +221,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler orderedAsyncHandler =
         new TestHandler("AsyncHandler", 200, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             asyncLatch.countDown();
           }
@@ -270,7 +270,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler asyncHandlerWithLatch =
         new TestHandler("AsyncWithLatch", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             latch.countDown();
           }
@@ -289,7 +289,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler faultyHandler =
         new TestHandler("FaultyHandler", 100, false, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             throw new RuntimeException("Test exception");
           }
@@ -312,7 +312,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler faultyAsyncHandler =
         new TestHandler("FaultyAsyncHandler", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             faultyLatch.countDown();
             throw new RuntimeException("Async test exception");
@@ -322,7 +322,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler goodAsyncHandler =
         new TestHandler("GoodAsyncHandler", 200, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             goodLatch.countDown();
           }
@@ -338,7 +338,7 @@ class EntityLifecycleEventDispatcherTest {
     assertTrue(goodLatch.await(10, TimeUnit.SECONDS));
   }
 
-  private EntityInterface createAsyncSafeEntity() {
+  private EntityInterface<?> createAsyncSafeEntity() {
     Table entity = new Table();
     UUID entityId = UUID.randomUUID();
     entity.setId(entityId);
@@ -395,7 +395,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler allEntitiesHandler = new TestHandler("AllEntitiesHandler", 100, false, Set.of());
     dispatcher.registerHandler(allEntitiesHandler);
 
-    EntityInterface dashboardEntity = mock(EntityInterface.class);
+    EntityInterface<?> dashboardEntity = mock(EntityInterface.class);
     ChangeDescription dashboardChangeDescription = mock(ChangeDescription.class);
     when(dashboardEntity.getChangeDescription()).thenReturn(dashboardChangeDescription);
 
@@ -413,7 +413,7 @@ class EntityLifecycleEventDispatcherTest {
         new TestHandler("ContextHandler", 100, false, Set.of()) {
           @Override
           public void onEntitiesUpdated(
-              List<? extends EntityInterface> entities,
+              List<? extends EntityInterface<?>> entities,
               ChangeDescription changeDescription,
               SubjectContext subjectContext,
               EntityUpdateContext updateContext) {
@@ -430,14 +430,14 @@ class EntityLifecycleEventDispatcherTest {
 
   @Test
   void testAsyncBulkCreateIsSlicedPerEntityForOwnLaneOrdering() throws InterruptedException {
-    List<EntityInterface> entities =
+    List<EntityInterface<?>> entities =
         List.of(asyncSafeEntity("a"), asyncSafeEntity("b"), asyncSafeEntity("c"));
-    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+    List<UUID> ids = entities.stream().map(EntityInterface<?>::getId).toList();
     CountDownLatch allCreated = new CountDownLatch(entities.size());
     TestHandler bulkAsyncHandler =
         new TestHandler("BulkAsyncHandler", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             allCreated.countDown();
           }
@@ -478,7 +478,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler asyncOne =
         new TestHandler("AsyncOne", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             bothRan.countDown();
           }
@@ -486,7 +486,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler asyncTwo =
         new TestHandler("AsyncTwo", 200, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             bothRan.countDown();
           }
@@ -494,7 +494,7 @@ class EntityLifecycleEventDispatcherTest {
     dispatcher.registerHandler(asyncOne);
     dispatcher.registerHandler(asyncTwo);
 
-    EntityInterface original = createAsyncSafeEntity();
+    EntityInterface<?> original = createAsyncSafeEntity();
     dispatcher.onEntityCreated(original, mockSubjectContext);
 
     assertTrue(bothRan.await(10, TimeUnit.SECONDS), "Both async handlers should run");
@@ -561,13 +561,13 @@ class EntityLifecycleEventDispatcherTest {
 
   @Test
   void asyncBulkCreateSharesOneSnapshotPerEntityAcrossHandlers() throws InterruptedException {
-    EntityInterface entityA = asyncSafeEntity("a");
-    EntityInterface entityB = asyncSafeEntity("b");
+    EntityInterface<?> entityA = asyncSafeEntity("a");
+    EntityInterface<?> entityB = asyncSafeEntity("b");
     CountDownLatch allRan = new CountDownLatch(4);
     TestHandler asyncOne =
         new TestHandler("BulkAsyncOne", 100, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             allRan.countDown();
           }
@@ -575,7 +575,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler asyncTwo =
         new TestHandler("BulkAsyncTwo", 200, true, Set.of()) {
           @Override
-          public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+          public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
             super.onEntityCreated(entity, subjectContext);
             allRan.countDown();
           }
@@ -622,14 +622,14 @@ class EntityLifecycleEventDispatcherTest {
         "Async handler is skipped on snapshot failure; the entity is routed to the retry outbox");
   }
 
-  private static EntityInterface snapshotFor(TestHandler handler, UUID id) {
+  private static EntityInterface<?> snapshotFor(TestHandler handler, UUID id) {
     return handler.receivedCreatedEntities.stream()
         .filter(entity -> entity != null && id.equals(entity.getId()))
         .findFirst()
         .orElseThrow();
   }
 
-  private EntityInterface asyncSafeEntity(String suffix) {
+  private EntityInterface<?> asyncSafeEntity(String suffix) {
     Table entity = new Table();
     entity.setId(UUID.randomUUID());
     entity.setName("test_table_" + suffix);
@@ -698,14 +698,14 @@ class EntityLifecycleEventDispatcherTest {
     int updatedCallCount = 0;
     final AtomicInteger createdCallCount = new AtomicInteger(0);
 
-    EntityInterface lastCreatedEntity;
-    EntityInterface lastUpdatedEntity;
-    EntityInterface lastDeletedEntity;
+    EntityInterface<?> lastCreatedEntity;
+    EntityInterface<?> lastUpdatedEntity;
+    EntityInterface<?> lastDeletedEntity;
     ChangeDescription lastChangeDescription;
     boolean lastIsDeleted;
     List<ChangeDescription> receivedChangeDescriptions = new ArrayList<>();
     List<UUID> perEntityCreatedIds = java.util.Collections.synchronizedList(new ArrayList<>());
-    List<EntityInterface> receivedCreatedEntities =
+    List<EntityInterface<?>> receivedCreatedEntities =
         java.util.Collections.synchronizedList(new ArrayList<>());
 
     TestHandler(String name, int priority, boolean async, Set<String> supportedEntityTypes) {
@@ -716,7 +716,7 @@ class EntityLifecycleEventDispatcherTest {
     }
 
     @Override
-    public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+    public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
       createdCalled = true;
       createdCallCount.incrementAndGet();
       lastCreatedEntity = entity;
@@ -727,13 +727,14 @@ class EntityLifecycleEventDispatcherTest {
     }
 
     @Override
-    public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
+    public void onEntitiesCreated(
+        List<EntityInterface<?>> entities, SubjectContext subjectContext) {
       bulkCreatedCalled = true;
     }
 
     @Override
     public void onEntityUpdated(
-        EntityInterface entity,
+        EntityInterface<?> entity,
         ChangeDescription changeDescription,
         SubjectContext subjectContext) {
       updatedCalled = true;
@@ -744,14 +745,14 @@ class EntityLifecycleEventDispatcherTest {
     }
 
     @Override
-    public void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
+    public void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
       deletedCalled = true;
       lastDeletedEntity = entity;
     }
 
     @Override
     public void onEntitySoftDeletedOrRestored(
-        EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
+        EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
       softDeletedOrRestoredCalled = true;
       lastIsDeleted = isDeleted;
     }

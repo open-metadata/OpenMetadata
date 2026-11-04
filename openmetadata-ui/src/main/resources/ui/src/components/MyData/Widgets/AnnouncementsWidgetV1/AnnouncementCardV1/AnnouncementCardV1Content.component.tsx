@@ -18,10 +18,11 @@ import { Link } from 'react-router-dom';
 import { getShortRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getUserPath } from '../../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../../utils/SettingsModalLinkUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import './announcement-card-v1-content.less';
 
-const PRIMARY_COLOR = 'var(--ant-primary-color)';
+const PRIMARY_COLOR = 'var(--theme-primary-color)';
 
 const RichTextEditorPreviewerV1 = withSuspenseFallback(
   lazy(
@@ -130,7 +131,7 @@ const AnnouncementCardV1Content = ({
             className="user-name"
             data-testid="user-link"
             style={userNameStyle}
-            to={getUserPath(userName)}
+            to={getSettingsLink(getUserPath(userName))}
             onClick={handleUserClick}>
             {userName}
           </Link>
@@ -193,7 +194,7 @@ const AnnouncementCardV1Content = ({
 
   return (
     <div className={classNames('announcement-card-v1-content', className)}>
-      <div className="announcement-header-container">
+      <div className="announcement-header-container tw:bg-surface">
         <div
           className={classNames(
             'announcement-title-section',
@@ -225,7 +226,7 @@ const AnnouncementCardV1Content = ({
       {description && (
         <RichTextEditorPreviewerV1
           className={classNames(
-            'announcement-description',
+            'announcement-description tw:text-tertiary',
             variantConfig.description
           )}
           data-testid="announcement-description"

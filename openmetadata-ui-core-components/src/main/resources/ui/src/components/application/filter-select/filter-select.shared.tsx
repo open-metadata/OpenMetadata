@@ -26,13 +26,13 @@ export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
 );
 
 /**
- * Brand label, icons and (bordered) outline a button trigger takes once a value
- * is picked. The outline matches the selected tab underline in dark, whose
- * brand is lighter than `outline-brand` there.
+ * Brand label and (bordered) outline a button trigger takes once a value is
+ * picked; icons such as the chevron stay neutral. The outline matches the
+ * selected tab underline in dark, whose brand is lighter than `outline-brand` there.
  */
 export const selectedTriggerClassName = (bordered?: boolean) =>
   cx(
-    'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary tw:hover:*:data-icon:text-fg-brand-primary',
+    'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
     bordered &&
       'tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
   );
@@ -49,6 +49,7 @@ export const TriggerCountBadge = ({ count }: { count: number }) => (
 
 interface DropdownSearchFieldProps {
   value: string;
+  autoFocus?: boolean;
   placeholder: string;
   inputDataTestId?: string;
   isDisabled?: boolean;
@@ -58,6 +59,7 @@ interface DropdownSearchFieldProps {
 
 export const DropdownSearchField = ({
   value,
+  autoFocus,
   placeholder,
   inputDataTestId,
   isDisabled,
@@ -66,6 +68,7 @@ export const DropdownSearchField = ({
 }: DropdownSearchFieldProps) => (
   <div className="tw:px-3 tw:pt-3 tw:pb-2" ref={wrapperRef}>
     <Input
+      autoFocus={autoFocus}
       icon={SearchInputIcon}
       inputDataTestId={inputDataTestId}
       isDisabled={isDisabled}
@@ -129,12 +132,14 @@ export const DropdownStagedFooter = ({
 
 interface DropdownStatusFooterProps {
   count: number;
+  clearLabel?: string;
   isClearDisabled?: boolean;
   onClear: () => void;
 }
 
 export const DropdownStatusFooter = ({
   count,
+  clearLabel,
   isClearDisabled,
   onClear,
 }: DropdownStatusFooterProps) => {
@@ -159,7 +164,7 @@ export const DropdownStatusFooter = ({
         isDisabled={isClearDisabled ?? count === 0}
         size="sm"
         onPress={onClear}>
-        {t('label.clear-all')}
+        {clearLabel ?? t('label.clear-all')}
       </Button>
     </div>
   );

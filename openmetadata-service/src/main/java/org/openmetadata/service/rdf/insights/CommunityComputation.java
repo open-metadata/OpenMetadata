@@ -100,7 +100,7 @@ public final class CommunityComputation {
         };
     String json;
     try {
-      json = repository.executeSparqlQuery(sparql, "application/sparql-results+json");
+      json = repository.executeAssertedSparqlQuery(sparql, "application/sparql-results+json");
     } catch (Exception e) {
       LOG.error("Failed to extract {} graph for {}", graphType, classLocalName, e);
       return Map.of();

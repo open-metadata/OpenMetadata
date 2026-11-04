@@ -281,14 +281,16 @@ export const testCommonOperations = async (
     const tierLocator = testUserPage.getByTestId('Tier');
     if (await tierLocator.isVisible()) {
       await tierLocator.click();
-      await expect(testUserPage.getByTestId('cards')).not.toBeVisible();
+      await expect(
+        testUserPage.getByTestId('drop-down-menu')
+      ).not.toBeVisible();
     }
 
     const certLocator = testUserPage.getByTestId('certification-value');
     if (await certLocator.isVisible()) {
       await certLocator.click();
       await expect(
-        testUserPage.getByTestId('certification-cards')
+        testUserPage.getByTestId('drop-down-menu')
       ).not.toBeVisible();
     }
   }
@@ -452,9 +454,12 @@ export const testPipelineSpecificOperations = async (
   await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+    await expect(testUserPage.getByTestId('lineage-node-menu')).not.toHaveCount(
+      0
+    );
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.locator('.react-flow__node')).not.toHaveCount(0);
+    await expect(testUserPage.getByTestId('lineage-node-menu')).toHaveCount(0);
   }
 };
 
@@ -526,9 +531,12 @@ export const testDashboardDataModelSpecificOperations = async (
   await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+    await expect(testUserPage.getByTestId('lineage-node-menu')).not.toHaveCount(
+      0
+    );
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.locator('.react-flow__node')).not.toHaveCount(0);
+    await expect(testUserPage.getByTestId('lineage-node-menu')).toHaveCount(0);
   }
 };
 

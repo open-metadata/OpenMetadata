@@ -19,8 +19,7 @@ import, storage, query, and result serialization:
 - **Triple terms**, including `rdf:reifies` statements and nested blank nodes, and **directional
   language-tagged literals** such as `"قطة"@ar--rtl`.
 - **Storage.** Entities reach Fuseki as RDF Thrift and land in TDB2 named graphs; both carry triple
-  terms and preserve the `rdf:dirLangString` datatype. Fuseki's Lucene text index (`text:query`)
-  indexes directional literals like any other string.
+  terms and preserve the `rdf:dirLangString` datatype.
 - **SPARQL 1.2.** `VERSION "1.2"` declarations, `TRIPLE()`/`LANGDIR()` expressions, and `<<( s p o )>>`
   patterns all execute. Both the administrator (`/v1/rdf/sparql`) and agent query paths return them;
   the agent path keeps its existing SELECT-only and graph-access restrictions.
@@ -224,45 +223,46 @@ rdf:
 | `RDF_REMOTE_USERNAME` | Fuseki admin username | `admin` |
 | `RDF_REMOTE_PASSWORD` | Fuseki admin password | `admin` |
 | `RDF_DATASET` | Fuseki dataset name | `openmetadata` |
-| `RDF_INFERENCE_ENABLED` | Enable in-process full-graph inference | `false` |
-| `RDF_DEFAULT_INFERENCE_LEVEL` | Default inference selection | `NONE` |
-| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Legacy in-process safety limit | `100000` |
+| `RDF_INFERENCE_ENABLED` | Deprecated and ignored; OpenMetadata no longer runs reasoners in-process | `false` |
+| `RDF_DEFAULT_INFERENCE_LEVEL` | Deprecated and ignored | `NONE` |
+| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Deprecated and ignored | `100000` |
 | `RDF_MATERIALIZED_INFERENCE_ENABLED` | Enable durable per-rule inference graphs | `false` |
 | `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |
 | `RDF_STRICT_OWL_PROFILE` | Enforce supported OWL profile rules | `true` |
 | `RDF_AI_ENABLED` | Enable Ontology Studio AI | `false` |
-| `LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED` | Allow memory-derived ontology draft jobs when RDF AI and LLM completion are enabled | `false` |
 
-Memory-derived glossary drafts require `RDF_AI_ENABLED=true`, `LLM_ENABLED=true`, and
-`LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED=true`. With all three on, creating or publishing an Entity or
-Public memory queues a derivation job automatically; memories extracted from the same file or page
-share one job, which starts about 30 seconds after the first of them. A proposal can also be
-requested through `POST /api/v1/ontology/ai/memories/jobs`; Private and Shared memories need their
-owner to request it. `RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of
-`RDF_AI_ENABLED`.
+`RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of `RDF_AI_ENABLED`. Deriving
+glossary terms from Context Center memories is not an Ontology AI feature: it runs only when the
+configured `llmConfiguration.aiProviderClass` supplies a glossary-term deriver, which Collate's
+does and the built-in provider does not.
 
 ### Docker Compose Configuration
 
-The Fuseki container (`docker/development/docker-compose-fuseki.yml`):
+The Fuseki container (`docker/development/docker-compose-fuseki.yml`) runs the published image;
+[rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) explains each setting:
 
 ```yaml
 services:
   fuseki:
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:6.2.0
+    image: openmetadata/fuseki:6.2.0-318ff87
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"
     environment:
-      - FUSEKI_ADMIN_PASSWORD=admin
-      - FUSEKI_OPENMETADATA_PASSWORD=openmetadata-secret
-      - JVM_ARGS=-Xmx1500m -Xms256m
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
     volumes:
-      - fuseki-tdb2-data:/fuseki-data
+      - fuseki-store:/fuseki
 ```
+
+The Fuseki web UI and every dataset endpoint ask for the admin credentials; only `/$/ping` is
+anonymous.
 
 ## API Endpoints
 
@@ -437,8 +437,8 @@ To clear all RDF data and start fresh:
 # Stop Fuseki
 docker compose -f docker/development/docker-compose-fuseki.yml down
 
-# Remove volume
-docker volume rm openmetadata_fuseki-data
+# Remove volume (Compose prefixes it with the project name)
+docker volume rm development_fuseki-store
 
 # Restart Fuseki
 docker compose -f docker/development/docker-compose-fuseki.yml up -d

@@ -36,10 +36,10 @@ export interface TestCaseFormDrawerProps {
   table?: Table;
   testSuite?: TestSuite;
   testLevel?: TestLevel;
-  variant?: 'drawer' | 'modal';
   title?: ReactNode;
   headerActions?: ReactNode;
   width?: number | string;
+  /** Show the Show Hint toggle and Form Hint column. Defaults to true. */
   showDocPanel?: boolean;
   testCase?: TestCase;
   showOnlyParameter?: boolean;

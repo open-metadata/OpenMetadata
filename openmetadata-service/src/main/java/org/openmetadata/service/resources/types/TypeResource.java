@@ -14,11 +14,13 @@
 package org.openmetadata.service.resources.types;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -58,7 +60,6 @@ import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -67,6 +68,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.EntityLifecycle;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -168,6 +170,31 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @GET
+  @Path("/workflows/approvalEnforcedEntityTypes")
+  @Operation(
+      operationId = "getApprovalEnforcedEntityTypes",
+      summary = "Get entity types whose edits are held for approval",
+      description =
+          "Get the entity types targeted by a governance workflow whose eventBasedEntity "
+              + "trigger runs in Enforce approval mode. Edits to the fields such a workflow watches "
+              + "are held as change requests until a reviewer approves them. A suspended workflow "
+              + "counts, since the requests it holds stay open until it resumes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of entity types",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string"))))
+      })
+  public List<String> getApprovalEnforcedEntityTypes() {
+    // Not authorized beyond authentication: anyone whose edit can be held needs to know it can,
+    // and a held edit's 202 response reveals the same entity type anyway.
+    return GovernanceApprovalRegistry.enforcedEntityTypes();
+  }
+
+  @GET
   @Path("/lifecycleStages")
   @Operation(
       operationId = "getEntityLifecycleStages",
@@ -186,22 +213,32 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = EntityLifecycleStages.class)))
       })
-  public EntityLifecycleStages getEntityLifecycleStages() {
+  public EntityLifecycleStages getEntityLifecycleStages(@QueryParam("index") String index) {
+    List<String> scopedTypes =
+        nullOrEmpty(index) ? null : Entity.getSearchRepository().getEntityTypesForIndex(index);
     List<EntityTypeLifecycle> entityTypes =
-        Entity.getEntityTypesWithLifecycleStage().stream().map(TypeResource::lifecycleOf).toList();
+        Entity.getEntityTypesWithLifecycleStage().stream()
+            .filter(type -> scopedTypes == null || scopedTypes.contains(type))
+            .map(TypeResource::lifecycleOf)
+            .toList();
     return new EntityLifecycleStages()
-        .withStages(List.of(EntityStatus.values()))
+        .withStages(
+            entityTypes.stream()
+                .flatMap(type -> type.getStages().stream())
+                .distinct()
+                .sorted()
+                .toList())
         .withEntityTypes(entityTypes);
   }
 
   private static EntityTypeLifecycle lifecycleOf(String entityType) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    EntityLifecycle lifecycle = repository.getEntityLifecycle();
+    EntityLifecycle<?> lifecycle = repository.getEntityLifecycle();
     return new EntityTypeLifecycle()
         .withEntityType(entityType)
-        .withStages(List.copyOf(lifecycle.stages()))
+        .withStages(lifecycle.stageCodes())
         .withTransitions(
-            lifecycle.transitions().entrySet().stream()
+            lifecycle.transitionCodes().entrySet().stream()
                 .map(
                     move ->
                         new StageTransition()

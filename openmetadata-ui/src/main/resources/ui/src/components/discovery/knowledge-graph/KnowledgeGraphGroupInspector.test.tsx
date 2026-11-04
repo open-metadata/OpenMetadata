@@ -94,7 +94,7 @@ it('shows the exact predicate and opens its original statement in one click desp
   );
 
   await userEvent.click(
-    screen.getByRole('button', { name: 'column_0 → Has column' })
+    screen.getByRole('button', { name: 'Customers Has column column_0' })
   );
   const original = identifyGraphEdges(edges).find(
     (edge) =>
@@ -135,7 +135,7 @@ it('preserves incoming direction in the summary and each member row', async () =
   );
 
   await userEvent.click(
-    screen.getByRole('button', { name: 'column_0 ← Custom connection' })
+    screen.getByRole('button', { name: 'column_0 Custom connection Customers' })
   );
 
   expect(onSelectRelationship).toHaveBeenCalledWith(
@@ -186,9 +186,9 @@ it('summarises a bundle that mixes an owning user and an owning team by family',
     'owns'
   );
   expect(
-    screen.getByRole('button', { name: 'Finance ← Owns' })
+    screen.getByRole('button', { name: 'Finance Owns Customers' })
   ).toBeInTheDocument();
   expect(
-    screen.getByRole('button', { name: 'Pere Miquel Brull ← Owns' })
+    screen.getByRole('button', { name: 'Pere Miquel Brull Owns Customers' })
   ).toBeInTheDocument();
 });

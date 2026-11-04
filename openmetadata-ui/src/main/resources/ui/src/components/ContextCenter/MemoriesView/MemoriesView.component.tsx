@@ -10,24 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Badge,
   Box,
   ButtonUtility,
   Dot,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Copy01,
+  Edit01,
+  ThumbsDown,
+  ThumbsUp,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
 import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
@@ -36,12 +38,16 @@ import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
 import {
   ContextMemory,
+  ContextMemoryStatus,
   EntityReference,
-  EntityStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
@@ -55,10 +61,9 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   return (
     <Dropdown.Root>
       <ButtonUtility
-        color="tertiary"
         data-testid="manage-button"
-        icon={<DotsVerticalIcon height={20} width={20} />}
-        size="sm"
+        icon={DotsVerticalIcon}
+        size="lg"
         tooltip={t('label.manage-entity', { entity: t('label.memory') })}
       />
       <Dropdown.Popover className="tw:w-36">
@@ -70,11 +75,10 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
             <Box align="center" gap={2}>
-              <TrashIcon
+              <Trash01
                 aria-hidden="true"
                 className="tw:shrink-0 tw:text-error-primary"
-                height={20}
-                width={20}
+                size={20}
               />
               <Typography
                 ellipsis
@@ -191,33 +195,64 @@ const MemoryLinkedEntities: FC<MemoryLinkedEntitiesProps> = ({
 };
 
 interface MemoryUsageInfoProps {
-  usageCount?: number;
-  lastUsedAt?: number;
+  memory: ContextMemory;
 }
 
-const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({
-  usageCount,
-  lastUsedAt,
-}) => {
+const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
   const { t } = useTranslation();
+  const { count, lastAt } = getMemoryCitations(memory);
+  const {
+    positiveCount = 0,
+    negativeCount = 0,
+    correctedCount = 0,
+  } = memory.outcomes ?? {};
 
-  if (usageCount === undefined && lastUsedAt === undefined) {
+  if (count === undefined && lastAt === undefined) {
     return null;
   }
 
   return (
-    <Box align="center" className="tw:mt-1" gap={1}>
-      <ClockIcon className="tw:text-quaternary" height={16} width={16} />
-      <Typography
-        className="tw:text-quaternary tw:whitespace-nowrap"
-        size="text-xs">
-        {usageCount === undefined
-          ? ''
-          : t('label.cited-n-times', { count: usageCount })}
-        {lastUsedAt
-          ? ` · ${t('label.last')} ${getShortRelativeTime(lastUsedAt)}`
-          : ''}
+    <Box
+      align="center"
+      className="tw:mt-1 tw:text-quaternary"
+      data-testid="memory-usage-info"
+      gap={1}>
+      <ClockIcon height={16} width={16} />
+      <Typography className="tw:whitespace-nowrap" size="text-xs">
+        {count === undefined ? '' : t('label.cited-n-times', { count })}
+        {lastAt ? ` · ${t('label.last')} ${getShortRelativeTime(lastAt)}` : ''}
       </Typography>
+      {/* A Box has no role, so an aria-label on it is never read: the counts are named in text. */}
+      {positiveCount > 0 && (
+        <Box align="center" data-testid="memory-helpful-count" gap={1}>
+          <ThumbsUp aria-hidden size={14} />
+          <Typography size="text-xs">
+            <span aria-hidden>{positiveCount}</span>
+            <span className="tw:sr-only">
+              {t('label.helpful-vote-count', { count: positiveCount })}
+            </span>
+          </Typography>
+        </Box>
+      )}
+      {negativeCount > 0 && (
+        <Box align="center" data-testid="memory-unhelpful-count" gap={1}>
+          <ThumbsDown aria-hidden size={14} />
+          <Typography size="text-xs">
+            <span aria-hidden>{negativeCount}</span>
+            <span className="tw:sr-only">
+              {t('label.unhelpful-vote-count', { count: negativeCount })}
+            </span>
+          </Typography>
+        </Box>
+      )}
+      {correctedCount > 0 && (
+        <Typography
+          className="tw:whitespace-nowrap"
+          data-testid="memory-corrected-count"
+          size="text-xs">
+          {t('label.corrected-n-times', { count: correctedCount })}
+        </Typography>
+      )}
     </Box>
   );
 };
@@ -246,20 +281,16 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
       <CopyLinkButton url={memoryUrl}>
-        <CopyIcon aria-hidden="true" height={20} width={20} />
+        <Copy01 data-icon aria-hidden="true" />
       </CopyLinkButton>
       {canActOnMemory && canEdit && onEditMemory && (
-        <Tooltip title={t('label.edit')}>
-          <TooltipTrigger>
-            <ButtonUtility
-              color="tertiary"
-              data-testid="edit-memory-btn"
-              icon={<EditIcon height={20} width={20} />}
-              size="sm"
-              onClick={() => onEditMemory(memory)}
-            />
-          </TooltipTrigger>
-        </Tooltip>
+        <ButtonUtility
+          data-testid="edit-memory-btn"
+          icon={Edit01}
+          size="lg"
+          tooltip={t('label.edit')}
+          onClick={() => onEditMemory(memory)}
+        />
       )}
       {canActOnMemory && canDelete && (
         <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
@@ -285,14 +316,20 @@ const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
   const { t } = useTranslation();
   const status = memory.entityStatus;
 
-  if (!status || status === EntityStatus.Approved) {
+  if (!status || status === ContextMemoryStatus.Approved) {
     return null;
   }
 
   let color: 'error' | 'warning' | 'gray' = 'gray';
-  if (status === EntityStatus.Rejected) {
+  if (
+    status === ContextMemoryStatus.Rejected ||
+    status === ContextMemoryStatus.Invalidated
+  ) {
     color = 'error';
-  } else if (status === EntityStatus.Deprecated) {
+  } else if (
+    status === ContextMemoryStatus.Deprecated ||
+    status === ContextMemoryStatus.Superseded
+  ) {
     color = 'warning';
   }
 
@@ -302,7 +339,9 @@ const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
       data-testid={`memory-status-${memory.id}`}
       size="sm"
       type="color">
-      {t(MEMORY_STATUS_LABEL_KEYS[status])}
+      {MEMORY_STATUS_LABEL_KEYS[status]
+        ? t(MEMORY_STATUS_LABEL_KEYS[status])
+        : status}
     </Badge>
   );
 };
@@ -310,7 +349,10 @@ const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
 const EntityStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
   const { t } = useTranslation();
 
-  if (!memory.statusReason || memory.entityStatus === EntityStatus.Approved) {
+  if (
+    !memory.statusReason ||
+    memory.entityStatus === ContextMemoryStatus.Approved
+  ) {
     return null;
   }
 
@@ -334,6 +376,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
   onEditMemory,
   onViewMemory,
 }) => {
+  const authorDisplayName = useApplicationStore(
+    (state) => state.userProfilePics[memory.updatedBy ?? '']?.displayName
+  );
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
@@ -375,7 +420,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
   return (
     <Box
       align="start"
-      className="tw:group tw:relative tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:transition-colors tw:overflow-hidden"
+      className={[
+        'tw:group tw:relative tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0',
+        'tw:cursor-pointer tw:transition-colors tw:overflow-hidden tw:hover:bg-primary_hover tw:focus-within:bg-primary_hover',
+      ].join(' ')}
       data-testid={`memory-row-${memory.id}`}
       gap={3}
       onClick={() => onViewMemory?.(memory)}>
@@ -395,7 +443,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           gap={1}>
           <MemoryRowHeader
             updatedAt={memory.updatedAt}
-            updatedBy={memory.updatedBy}
+            updatedBy={authorDisplayName || memory.updatedBy}
           />
 
           <Box align="center" gap={2} wrap="wrap">
@@ -418,10 +466,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
             linkedEntities={linkedEntities}
           />
 
-          <MemoryUsageInfo
-            lastUsedAt={memory.lastUsedAt}
-            usageCount={memory.usageCount}
-          />
+          <MemoryUsageInfo memory={memory} />
         </Box>
 
         {/* Actions — always visible */}
@@ -467,9 +512,24 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   }
 
   if (data.length === 0 && (isSearching || isFiltered)) {
+    const emptyState = isSearching
+      ? {
+          Component: NoSearchResultsPlaceholder,
+          description: t('message.check-spelling-or-try-different-term'),
+          icon: <NoSearchResultIcon />,
+          title: t('label.no-matching-results'),
+        }
+      : {
+          Component: NoFilteredResultsPlaceholder,
+          description: t('message.no-results-for-filters-description'),
+          icon: <NoFilterResultsIcon />,
+          title: t('label.no-results-for-filters'),
+        };
+    const EmptyStatePlaceholder = emptyState.Component;
+
     return (
       <div className="tw:relative tw:min-h-[320px] tw:py-12">
-        <EmptyPlaceholder
+        <EmptyStatePlaceholder
           actions={
             !isSearching && onClearFilters
               ? [
@@ -482,24 +542,9 @@ const MemoriesView: FC<MemoriesViewProps> = ({
                 ]
               : undefined
           }
-          description={
-            isSearching
-              ? t('message.check-spelling-or-try-different-term')
-              : t('message.no-results-for-filters-description')
-          }
-          icon={
-            isSearching ? (
-              <NoSearchResultIcon className="tw:text-quaternary" />
-            ) : (
-              <NoFilterResultsIcon className="tw:text-quaternary" />
-            )
-          }
-          title={
-            isSearching
-              ? t('label.no-matching-results')
-              : t('label.no-results-for-filters')
-          }
-          variant="blank"
+          description={emptyState.description}
+          icon={emptyState.icon}
+          title={emptyState.title}
         />
       </div>
     );

@@ -5,20 +5,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.common.utils.CommonUtil;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.TestCaseParameterDataType;
-import org.openmetadata.schema.utils.JsonUtils;
 
 class TestCaseThresholdValidatorTest {
 
@@ -292,6 +291,49 @@ class TestCaseThresholdValidatorTest {
   }
 
   /**
+   * Rule-library definitions are user-authored through an API that does not accept
+   * `supportsRowLevelPassedFailed`, yet ingestion always reads their percentage as a share of the
+   * table's rows. The validator class is what classifies them.
+   */
+  @ParameterizedTest
+  @MethodSource("ruleLibraryDefinitions")
+  void capsAPercentageOnARuleLibraryDefinition(TestDefinition ruleLibrary) {
+    String message =
+        rejects(
+            ruleLibrary,
+            values("minValue", "0", "threshold", "150", "thresholdUnit", "PERCENTAGE"));
+    assertTrue(message.contains("cannot exceed 100"), message);
+  }
+
+  @ParameterizedTest
+  @MethodSource("ruleLibraryDefinitions")
+  void acceptsAPercentageUpTo100OnARuleLibraryDefinition(TestDefinition ruleLibrary) {
+    assertEquals(
+        List.of(),
+        TestCaseThresholdValidator.validate(
+            ruleLibrary,
+            values("minValue", "0", "threshold", "100", "thresholdUnit", "PERCENTAGE")));
+  }
+
+  private static Stream<TestDefinition> ruleLibraryDefinitions() {
+    return Stream.of(
+            "ColumnRuleLibrarySqlExpressionValidator", "TableRuleLibrarySqlExpressionValidator")
+        .flatMap(
+            validatorClass ->
+                Stream.of(
+                    ruleLibraryDefinition(validatorClass),
+                    ruleLibraryDefinition(validatorClass).withSupportsRowLevelPassedFailed(false)));
+  }
+
+  private static TestDefinition ruleLibraryDefinition(String validatorClass) {
+    return new TestDefinition()
+        .withName("valuesAboveMinimum")
+        .withValidatorClass(validatorClass)
+        .withSqlExpression("SELECT * FROM {{ table_name }} WHERE amount < {{ minValue }}")
+        .withParameterDefinition(List.of(numeric("minValue"), threshold(), thresholdUnit()));
+  }
+
+  /**
    * `radius` configures the metric — it is not the value the percentage is measured against — so a
    * radius of 0 must not produce a "the tolerance evaluates to 0" warning.
    */
@@ -430,20 +472,6 @@ class TestCaseThresholdValidatorTest {
   /** Definitions that declare `thresholdUnit` without their `threshold` being a tolerance. */
   private static final Set<String> NOT_A_TOLERANCE = Set.of("tableCustomSQLQuery");
 
-  /** The definitions as they are seeded, read straight off the classpath. */
-  private static List<TestDefinition> seededDefinitions() throws IOException {
-    List<TestDefinition> definitions = new ArrayList<>();
-    for (String resource :
-        CommonUtil.getResources(Pattern.compile(".*json/data/tests/.*\\.json$"))) {
-      definitions.add(
-          JsonUtils.readValue(
-              CommonUtil.getResourceAsStream(
-                  TestCaseThresholdValidatorTest.class.getClassLoader(), resource),
-              TestDefinition.class));
-    }
-    return definitions;
-  }
-
   /**
    * The classification is a named list, so a newly seeded definition that opts in to failure
    * thresholds has to be placed in one of the three buckets rather than silently inheriting
@@ -452,7 +480,7 @@ class TestCaseThresholdValidatorTest {
   @Test
   void everySeededThresholdDefinitionIsClassified() throws IOException {
     Set<String> optedIn =
-        seededDefinitions().stream()
+        SeededTestDefinitions.all().stream()
             .filter(
                 definition ->
                     definition.getParameterDefinition().stream()
@@ -473,7 +501,7 @@ class TestCaseThresholdValidatorTest {
   /** The seeded definitions, as shipped, land on the side of the cap this test declares. */
   @Test
   void theSeededDefinitionsAreCappedAccordingToTheirClass() throws IOException {
-    for (TestDefinition definition : seededDefinitions()) {
+    for (TestDefinition definition : SeededTestDefinitions.all()) {
       String name = definition.getName();
       // `matchEnum` has its own rule; satisfy it so this test only exercises the cap.
       Map<String, Object> aboveTheCap =

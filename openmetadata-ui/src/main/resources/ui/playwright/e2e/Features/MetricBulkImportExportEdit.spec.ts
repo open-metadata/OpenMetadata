@@ -33,6 +33,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyPageAccess } from '../../utils/testCases';
+import { clickUntilVisible } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 interface EntityReference {
@@ -591,7 +592,7 @@ const getFirstVisibleFixtureMetricRow = async (
 };
 
 const getMetricActionsMenu = (page: Page) =>
-  page.getByRole('menu', { name: 'Open menu' });
+  page.getByRole('menu', { name: 'Actions' });
 
 const openMetricActions = async (page: Page) => {
   await page.getByTestId('metric-actions').click();
@@ -815,7 +816,7 @@ const uploadMetricCsvAndWaitForPreview = async (
   const nextPreviewButton = page.getByRole('button', {
     name: /Next:\s*Preview/i,
   });
-  const fileInput = page.locator('.file-dragger-wrapper input[type="file"]');
+  const fileInput = page.getByTestId('upload-file-input');
 
   await expect(fileInput).toBeAttached();
   await fileInput.setInputFiles(csvPath);
@@ -1095,11 +1096,9 @@ test.describe(
           timeout: ACTION_TIMEOUT,
         });
 
-        if (await trayLauncher.isVisible()) {
-          await trayLauncher.click();
-        }
-
-        await expect(trayPopover).toBeVisible();
+        // The job can finish between a visibility check and the click, unmounting
+        // the launcher mid-click; retry until the popover is open either way.
+        await clickUntilVisible(trayLauncher, trayPopover);
         // Verify the export job appears in the tray. Each test uses a dedicated
         // user session so only this test's own job is visible — checking the
         // label is sufficient.
@@ -1852,7 +1851,8 @@ test.describe(
         .first();
       await expect(row).toBeVisible();
 
-      await row.getByRole('status').click();
+      // Status and Health are both role="status" pills; click the Status one.
+      await row.getByTestId('metric-status-pill').click();
 
       await expect(page).toHaveURL(/\/metric\//);
     });

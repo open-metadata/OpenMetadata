@@ -35,8 +35,8 @@ import org.openmetadata.service.Entity;
 
 /**
  * A new glossary term needs review when the parent term or glossary it is created under has
- * reviewers, so it starts in Draft there, whatever its create request asked for, and Approved
- * anywhere else.
+ * reviewers, or when a lifecycle playbook owns its stage, so it starts in Draft there, whatever its
+ * create request asked for, and Approved anywhere else.
  */
 class GlossaryTermRepositoryInitialStageTest {
   private static final List<EntityReference> REVIEWERS =
@@ -89,6 +89,16 @@ class GlossaryTermRepositoryInitialStageTest {
     assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
   }
 
+  @Test
+  void termWithNoReviewersStartsInDraftWhenALifecyclePlaybookOwnsItsStage() {
+    repository.stageOwnership = new PlaybookStageOwnership();
+    GlossaryTerm term = newTerm(storedGlossary(List.of()), null);
+
+    repository.assignInitialEntityStatus(term);
+
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+  }
+
   private static GlossaryTerm newTerm(EntityReference glossary, EntityReference parent) {
     return new GlossaryTerm()
         .withId(UUID.randomUUID())
@@ -110,7 +120,7 @@ class GlossaryTermRepositoryInitialStageTest {
   }
 
   @SuppressWarnings("unchecked")
-  private static <E extends EntityInterface> EntityReference stored(
+  private static <E extends EntityInterface<?>> EntityReference stored(
       String entityType, Class<E> entityClass, E entity) {
     EntityRepository<E> store = mock(EntityRepository.class);
     when(store.get(any(), eq(entity.getId()), any(), any(Include.class), anyBoolean()))

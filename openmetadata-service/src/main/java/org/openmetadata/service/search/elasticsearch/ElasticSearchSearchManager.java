@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -64,14 +65,13 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
-import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -89,8 +89,10 @@ import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
+import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -160,7 +162,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   @Override
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
     }
@@ -171,7 +174,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(restrictToOrgWideMemories(sourceUrlQuery)));
+                    .query(
+                        restrictToOrgWideMemories(
+                            ElasticRbacQueries.withAccessPolicies(
+                                sourceUrlQuery, subjectContext, rbacConditionEvaluator))));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -188,7 +194,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
   @Override
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -207,7 +219,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                     .index(Entity.getSearchRepository().getIndexOrAliasName(index))
                     .from(from)
                     .size(size)
-                    .query(restrictToOrgWideMemories(query)));
+                    .query(
+                        restrictToOrgWideMemories(
+                            ElasticRbacQueries.withAccessPolicies(
+                                query, subjectContext, rbacConditionEvaluator))));
     return executeSearchRequest(request);
   }
 
@@ -405,7 +420,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String q,
       String queryString,
       SubjectContext subjectContext,
-      List<EntityStatus> statuses)
+      List<ContextMemoryStatus> statuses)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -436,7 +451,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       applySearchFilter(filter, requestBuilder);
     }
 
-    applyRbacCondition(subjectContext, requestBuilder, statuses);
+    applyRbacCondition(
+        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -472,6 +488,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             sortMode);
       } else {
         requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
+      }
+      if (searchSortFilter.getThenSortField() != null) {
+        requestBuilder.sort(searchSortFilter.getThenSortField(), sortOrder, "long");
       }
     }
 
@@ -509,7 +528,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits);
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
@@ -620,7 +639,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     requestBuilder.size(request.getSize());
 
     // applyRbacCondition already applies the ContextMemory visibility filter.
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
     applyQueryFilter(requestBuilder, request);
     // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
     // this against the dataAsset/all aliases.
@@ -630,15 +649,21 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   private void applyRbacCondition(
-      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      Collection<String> pinnedAnchorIds) {
     applyRbacCondition(
-        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+        subjectContext,
+        requestBuilder,
+        ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+        pinnedAnchorIds);
   }
 
   private void applyRbacCondition(
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
-      List<EntityStatus> statuses) {
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -660,7 +685,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
-    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses, pinnedAnchorIds);
   }
 
   /**
@@ -684,17 +709,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    * memories. Non-memory documents are left untouched.
    */
   private void applyContextMemoryVisibility(
-      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
-  }
-
-  private void applyContextMemoryVisibility(
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
-      List<EntityStatus> statuses) {
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
-        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses);
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -777,6 +797,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       } else {
         requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
       }
+      if (searchSortFilter.getThenSortField() != null) {
+        requestBuilder.sort(searchSortFilter.getThenSortField(), sortOrder, "long");
+      }
     }
 
     try {
@@ -838,7 +861,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           results, totalHits, lastHitSortValues, lastDocumentsInBatch);
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
@@ -956,7 +979,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(
+          subjectContext,
+          requestBuilder,
+          ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+          ContextMemoryAnchorPins.of(request));
 
       // Add aggregations if needed
       ElasticSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -1026,6 +1053,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     Set<Map<String, Object>> nodes = new HashSet<>();
     searchDataQualityLineageInternal(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
     LineageDomainFilter.pruneDataQualityLineage(nodes, edges, subjectContext);
+    SearchLineagePermissionFilter.filterDataQualityLineageFor(subjectContext, nodes, edges);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
@@ -1296,14 +1324,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         String responseJson = serializeSearchResponse(searchResponse);
         return Response.status(OK).entity(responseJson).build();
       } else {
-        List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
+        List<?> response =
+            buildSearchHierarchy(request, searchResponse, clusterAlias, subjectContext);
         return Response.status(OK).entity(response).build();
       }
 
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
+        throw SearchEngineErrors.indexNotFound(request.getIndex());
       } else {
         throw buildSearchException(e);
       }
@@ -1495,8 +1523,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits, lastHitSortValues);
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
+        throw SearchEngineErrors.indexNotFound(request.getIndex());
       } else {
         throw buildSearchException(e);
       }
@@ -1569,6 +1596,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             request.getSize(),
             request.getExplain(),
             request.getIncludeAggregations() != null ? request.getIncludeAggregations() : true);
+    if (Boolean.FALSE.equals(request.getIncludeHighlights())) {
+      requestBuilder.highlighter(null);
+    }
 
     requestBuilder.preference(SearchUtils.searchPreferenceFor(subjectContext));
 
@@ -1579,7 +1609,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         requestBuilder.query());
 
     // Apply RBAC query
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
 
     applyQueryFilter(requestBuilder, request);
 
@@ -1632,7 +1662,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     // Build hierarchy query if needed
     if (Boolean.TRUE.equals(request.getIsHierarchy())) {
-      requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias);
+      requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias, subjectContext);
     }
 
     // Handle fetch source
@@ -1678,7 +1708,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private ElasticSearchRequestBuilder buildHierarchyQuery(
       org.openmetadata.schema.search.SearchRequest request,
       ElasticSearchRequestBuilder requestBuilder,
-      String clusterAlias)
+      String clusterAlias,
+      SubjectContext subjectContext)
       throws IOException {
 
     String indexName = request.getIndex();
@@ -1741,7 +1772,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     // The subject's visibility filter was ANDed into the query this rewrite has just demoted to a
     // should clause, where minimumShouldMatch(1) lets a name/displayName phrase match satisfy the
     // query without it. Re-AND the memory guard so hierarchy search cannot become a bypass.
-    Query originalQuery = restrictToOrgWideMemories(baseQueryBuilder.build());
+    Query originalQuery =
+        restrictToOrgWideMemories(
+            hierarchyConstrained(baseQueryBuilder.build(), request, subjectContext));
     requestBuilder.query(originalQuery);
 
     // Add fqnParts aggregation to fetch parent terms
@@ -1784,7 +1817,17 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                           // Add the original query as a should clause to preserve high scores
                           b.should(originalQuery);
                           // Add parent term queries as should clauses to fetch hierarchy
-                          parentTermQueries.forEach(b::should);
+                          Query parentTerms =
+                              indexName.equalsIgnoreCase(glossaryTermIndex)
+                                      || indexName.equalsIgnoreCase(glossaryTermAlias)
+                                  ? withZeroScore(parentTermQueries)
+                                  : Query.of(
+                                      pq ->
+                                          pq.bool(
+                                              pb ->
+                                                  pb.should(parentTermQueries)
+                                                      .minimumShouldMatch("1")));
+                          b.should(hierarchyConstrained(parentTerms, request, subjectContext));
                           if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
                             b.must(m -> m.match(ma -> ma.field("entityStatus").query("Approved")));
                           }
@@ -1806,7 +1849,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private List<?> buildSearchHierarchy(
       org.openmetadata.schema.search.SearchRequest request,
       SearchResponse<JsonData> searchResponse,
-      String clusterAlias) {
+      String clusterAlias,
+      SubjectContext subjectContext) {
     List<?> response = new ArrayList<>();
 
     String indexName = request.getIndex();
@@ -1821,7 +1865,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)
         || indexName.equalsIgnoreCase(glossaryTermAlias)) {
-      response = buildGlossaryTermSearchHierarchy(searchResponse);
+      response = buildGlossaryTermSearchHierarchy(request, searchResponse, subjectContext);
     } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
@@ -1829,7 +1873,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   private List<EntityHierarchy> buildGlossaryTermSearchHierarchy(
-      SearchResponse<JsonData> searchResponse) {
+      org.openmetadata.schema.search.SearchRequest request,
+      SearchResponse<JsonData> searchResponse,
+      SubjectContext subjectContext) {
     Map<String, EntityHierarchy> termMap = new LinkedHashMap<>();
     Map<String, EntityHierarchy> rootTerms = new LinkedHashMap<>();
 
@@ -1853,6 +1899,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       termMap.putIfAbsent(term.getFullyQualifiedName(), term);
     }
 
+    addMissingParents(request, termMap, subjectContext);
     termMap.putAll(rootTerms);
 
     termMap
@@ -1878,6 +1925,97 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             });
 
     return new ArrayList<>(rootTerms.values());
+  }
+
+  // Parents only draw the tree, so they must not take page slots from real matches (the ones that
+  // miss the page are fetched by addMissingParents)
+  private static Query withZeroScore(List<Query> parentTermQueries) {
+    return Query.of(
+        q ->
+            q.constantScore(
+                c ->
+                    c.filter(f -> f.bool(b -> b.should(parentTermQueries).minimumShouldMatch("1")))
+                        .boost(0f)));
+  }
+
+  /**
+   * The hierarchy rewrite folds the caller's query, which carried their access policies and deleted
+   * flag, into one should clause among name matches, so those are applied again around each query it
+   * builds. The caller's query_filter is not: it is their own filter, never an access control, and
+   * the navbar sends its selected domain through it, which would leave the domain picker unable to
+   * find any other domain. A policy that yields no filter matches nothing.
+   */
+  private Query hierarchyConstrained(
+      Query query,
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext) {
+    List<Query> filters = new ArrayList<>();
+    if (!nullOrEmpty(request.getDeleted())) {
+      filters.add(
+          Query.of(
+              q -> q.term(t -> t.field("deleted").value(FieldValue.of(request.getDeleted())))));
+    }
+    Query filtered =
+        filters.isEmpty() ? query : Query.of(q -> q.bool(b -> b.must(query).filter(filters)));
+    return ElasticRbacQueries.withAccessPolicies(filtered, subjectContext, rbacConditionEvaluator);
+  }
+
+  // A hit whose parent ranked below the page cut would otherwise be dropped from the tree
+  private void addMissingParents(
+      org.openmetadata.schema.search.SearchRequest request,
+      Map<String, EntityHierarchy> termMap,
+      SubjectContext subjectContext) {
+    List<FieldValue> missing =
+        termMap.keySet().stream()
+            .flatMap(fqn -> parentTermFqns(fqn).stream())
+            .filter(fqn -> !termMap.containsKey(fqn))
+            .distinct()
+            .map(FieldValue::of)
+            .toList();
+    if (!missing.isEmpty()) {
+      for (EntityHierarchy parent : fetchApprovedTermsByFqn(request, missing, subjectContext)) {
+        parent.setChildren(new ArrayList<>());
+        termMap.putIfAbsent(parent.getFullyQualifiedName(), parent);
+      }
+    }
+  }
+
+  private List<EntityHierarchy> fetchApprovedTermsByFqn(
+      org.openmetadata.schema.search.SearchRequest request,
+      List<FieldValue> fqns,
+      SubjectContext subjectContext) {
+    Query byFqn =
+        Query.of(q -> q.terms(t -> t.field("fullyQualifiedName").terms(tv -> tv.value(fqns))));
+    Query approved = Query.of(q -> q.match(m -> m.field("entityStatus").query("Approved")));
+    Query parents =
+        hierarchyConstrained(
+            Query.of(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
+            request,
+            subjectContext);
+    try {
+      return client
+          .search(s -> s.index(request.getIndex()).size(fqns.size()).query(parents), JsonData.class)
+          .hits()
+          .hits()
+          .stream()
+          .filter(hit -> hit.source() != null)
+          .map(hit -> JsonUtils.readValue(hit.source().toJson().toString(), EntityHierarchy.class))
+          .toList();
+    } catch (IOException | ElasticsearchException e) {
+      LOG.warn("Could not fetch parent glossary terms for the search hierarchy", e);
+      return List.of();
+    }
+  }
+
+  // Term-level parents only: the glossary (single-part FQN) is the root and comes from each hit
+  private static List<String> parentTermFqns(String fqn) {
+    List<String> parents = new ArrayList<>();
+    for (String parent = getParentFQN(fqn);
+        parent != null && getParentFQN(parent) != null;
+        parent = getParentFQN(parent)) {
+      parents.add(parent);
+    }
+    return parents;
   }
 
   private List<EntityHierarchy> buildDomainSearchHierarchy(

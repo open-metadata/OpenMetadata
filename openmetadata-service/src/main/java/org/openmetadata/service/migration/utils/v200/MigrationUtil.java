@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -82,6 +81,7 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.migration.utils.v200.LegacyThreadTask.Details;
 import org.openmetadata.service.migration.utils.v200.LegacyThreadTask.TaskStatus;
@@ -1038,7 +1038,7 @@ public class MigrationUtil {
       EntityRepository<?> repo = Entity.getEntityRepository(entityType);
       Object entity =
           repo.getByName(null, entityFQN, repo.getFields(""), Include.NON_DELETED, true);
-      if (entity instanceof EntityInterface ei && ei.getId() != null) {
+      if (entity instanceof EntityInterface<?> ei && ei.getId() != null) {
         resolvedId = ei.getId().toString();
       }
     } catch (Exception e) {
@@ -1779,7 +1779,7 @@ public class MigrationUtil {
       }
       Object entity =
           repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
-      if (!(entity instanceof EntityInterface ei)) {
+      if (!(entity instanceof EntityInterface<?> ei)) {
         DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
       }
@@ -2126,28 +2126,38 @@ public class MigrationUtil {
       try {
         for (WorkflowDefinition workflowDefinition :
             workflowDefinitionRepository.getEntitiesFromSeedData()) {
-          String workflowName = workflowDefinition.getName();
-          if (!TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRefs()
-              .contains(workflowName)) {
-            continue;
+          if (TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRefs()
+                  .contains(workflowDefinition.getName())
+              && seedDefaultTaskWorkflow(workflowDefinition)) {
+            seeded++;
           }
-
-          WorkflowDefinition existingWorkflow =
-              workflowDefinitionRepository.findByNameOrNull(workflowName, Include.NON_DELETED);
-          if (existingWorkflow != null) {
-            workflowDefinition.setId(existingWorkflow.getId());
-            workflowDefinition.setVersion(existingWorkflow.getVersion());
-          } else if (workflowDefinition.getId() == null) {
-            workflowDefinition.setId(UUID.randomUUID());
-          }
-
-          workflowDefinition.setUpdatedBy(ADMIN_USER_NAME);
-          workflowDefinition.setUpdatedAt(System.currentTimeMillis());
-          workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
-          seeded++;
         }
       } catch (Exception e) {
         LOG.error("Failed to seed default task workflows during migration", e);
+      }
+      return seeded;
+    }
+
+    // One failed seed must not skip the workflows after it in the seed list.
+    private boolean seedDefaultTaskWorkflow(WorkflowDefinition workflowDefinition) {
+      String workflowName = workflowDefinition.getName();
+      boolean seeded = false;
+      try {
+        WorkflowDefinition existingWorkflow =
+            workflowDefinitionRepository.findByNameOrNull(workflowName, Include.NON_DELETED);
+        if (existingWorkflow != null) {
+          workflowDefinition.setId(existingWorkflow.getId());
+          workflowDefinition.setVersion(existingWorkflow.getVersion());
+        } else if (workflowDefinition.getId() == null) {
+          workflowDefinition.setId(UUID.randomUUID());
+        }
+
+        workflowDefinition.setUpdatedBy(ADMIN_USER_NAME);
+        workflowDefinition.setUpdatedAt(System.currentTimeMillis());
+        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        seeded = true;
+      } catch (Exception e) {
+        LOG.error("Failed to seed default task workflow '{}' during migration", workflowName, e);
       }
       return seeded;
     }
@@ -2722,31 +2732,49 @@ public class MigrationUtil {
     }
 
     private boolean replayMigratedIncidentState(Task task) {
-      boolean succeeded = true;
+      boolean succeeded = false;
       try {
-        String recordFQN = task.getAbout() == null ? null : task.getAbout().getFullyQualifiedName();
-        UUID stateId = incidentStateIdFromPayload(task);
-        if (recordFQN != null && stateId != null) {
-          TestCaseResolutionStatusRepository incidentRepository =
-              (TestCaseResolutionStatusRepository)
-                  Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-          // Key off the incident's own stateId, not the test case's global latest: the migration
-          // starts a fresh workflow that writes a newer "New" record for the same test case, which
-          // would otherwise mask the pre-upgrade Ack/Assigned state we need to replay.
-          TestCaseResolutionStatus latest = incidentRepository.getLatestRecordForStateId(stateId);
-          if (latest != null
-              && incidentRepository.applyLegacyStatusToIncidentTask(latest, recordFQN)) {
-            LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
-          }
+        if (isWorkflowManaged(task.getId())) {
+          applyMigratedIncidentState(task);
+          succeeded = true;
+        } else {
+          // Without a workflow the Ack/Assigned transition resolves the task directly, which
+          // would close an incident that is still open.
+          LOG.warn(
+              "Not replaying pre-migration incident state onto task {}: it has no running workflow",
+              task.getId());
         }
       } catch (Exception e) {
         LOG.warn(
             "Failed to replay pre-migration incident state for task {}: {}",
             task.getId(),
             e.getMessage());
-        succeeded = false;
       }
       return succeeded;
+    }
+
+    private void applyMigratedIncidentState(Task task) {
+      String recordFQN = task.getAbout() == null ? null : task.getAbout().getFullyQualifiedName();
+      UUID stateId = incidentStateIdFromPayload(task);
+      if (recordFQN != null && stateId != null) {
+        TestCaseResolutionStatusRepository incidentRepository =
+            (TestCaseResolutionStatusRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+        // Key off the incident's own stateId, not the test case's global latest: the migration
+        // starts a fresh workflow that writes a newer "New" record for the same test case, which
+        // would otherwise mask the pre-upgrade Ack/Assigned state we need to replay.
+        TestCaseResolutionStatus latest = incidentRepository.getLatestRecordForStateId(stateId);
+        if (latest != null
+            && incidentRepository.applyLegacyStatusToIncidentTask(latest, recordFQN)) {
+          LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
+        }
+      }
+    }
+
+    // The same test TaskWorkflowHandler uses to route a resolution through the workflow.
+    private boolean isWorkflowManaged(UUID taskId) {
+      Task stored = taskRepository.find(taskId, Include.NON_DELETED);
+      return stored.getWorkflowInstanceId() != null || workflowHandler.hasActiveRuntimeTask(taskId);
     }
 
     private UUID incidentStateIdFromPayload(Task task) {
@@ -3082,20 +3110,7 @@ public class MigrationUtil {
     }
 
     private boolean tableExists(String tableName) {
-      try (ResultSet tables =
-          handle
-              .getConnection()
-              .getMetaData()
-              .getTables(null, null, tableName, new String[] {"TABLE"})) {
-        while (tables.next()) {
-          if (tableName.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
-            return true;
-          }
-        }
-        return false;
-      } catch (Exception e) {
-        return false;
-      }
+      return MigrationTableUtil.tableExists(handle, tableName);
     }
 
     private String getLegacyThreadSourceTable() {

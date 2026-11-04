@@ -33,6 +33,7 @@ import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
 import { claimFirstBoot } from './storageStateRecovery';
 import { getToken as getTokenFromStorage } from './tokenStorage';
+import { clickUntilVisible } from './waitHelpers';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
@@ -606,29 +607,6 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
-/**
- * Blocks until every open Ant Design overlay has finished its enter animation.
- *
- * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
- * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
- * before the `-active` class that begins the transition. Playwright's actionability
- * check ("bounding box unchanged across two consecutive animation frames") can be
- * satisfied on those pre-transition frames, so the click point gets computed against
- * the 0.8-scaled menu. Once the menu finishes growing, that point has slid onto the
- * item above the intended one — the click silently selects the wrong option.
- *
- * rc-motion strips the `-appear`/`-enter` classes on `animationend`, so their absence
- * is the signal that the popup geometry is final.
- */
-export const waitForAntdPopupToSettle = async (page: Page) => {
-  await expect(
-    page.locator(
-      '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
-        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
-    )
-  ).toHaveCount(0);
-};
-
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,
@@ -656,7 +634,7 @@ export const visitOwnProfilePage = async (page: Page) => {
   const userResponse = page.waitForResponse(
     '/api/v1/users/name/*?fields=*&include=all'
   );
-  await page.getByRole('link', { name: 'View Profile' }).click();
+  await page.getByTestId('user-name').click();
   await userResponse;
   await clickOutside(page);
 };
@@ -714,45 +692,37 @@ export const assignDataProduct = async (
     .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
     .click();
 
+  const picker = page.getByTestId('drop-down-menu');
+  await expect(picker).toBeVisible();
+
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
+    const row = picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 
     await expect(async () => {
-      // Match any Data Product search response. The dropdown filters by the
+      // Match any Data Product search response. The picker filters by the
       // asset's domain only when the "Data Product Domain Validation" rule is
       // enabled; when it is disabled the query carries no domain, so we cannot
-      // key the wait on the domain name. The tag visibility check below is the
+      // key the wait on the domain name. The row visibility check below is the
       // real synchronization guard.
       const searchDataProduct = page.waitForResponse((response) =>
         response.url().includes('/api/v1/search/query')
       );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
+      await picker.getByTestId('search-input').clear();
+      await picker.getByTestId('search-input').fill(dataProduct.displayName);
       await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+      await expect(row).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 
-    await tagLocator.click();
+    await row.click();
   }
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  await expect(picker.getByTestId('update-btn')).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await picker.getByTestId('update-btn').click();
   await patchReq;
 
   if (pollForInheritance) {
@@ -804,40 +774,34 @@ export const removeDataProduct = async (
     .getByTestId('edit-button')
     .click();
 
-  await waitForAllLoadersToDisappear(page);
+  const picker = page.getByTestId('drop-down-menu');
+  await expect(picker).toBeVisible();
 
-  await page
-    .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
-    .getByTestId('remove-tags')
-    .locator('svg')
-    .click();
+  // Search it up, since the selection may sit past the first page, then
+  // uncheck it.
+  const searchDataProduct = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query')
+  );
+  await picker.getByTestId('search-input').fill(dataProduct.displayName);
+  await searchDataProduct;
+  const row = picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
+  // A single-select picker's radio row can't be unpicked; Clear all drops it.
+  if ((await row.getAttribute('role')) === 'menuitemradio') {
+    await picker.getByTestId('clear-filter-btn').click();
+  } else {
+    await row.click();
+  }
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  await expect(picker.getByTestId('update-btn')).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await picker.getByTestId('update-btn').click();
   await patchReq;
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .locator('[data-icon="loading"]')
-    .waitFor({ state: 'detached' });
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).not.toBeVisible();
+  await expect(picker).not.toBeVisible();
 
   await expect(
     page
@@ -855,7 +819,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId('glossary-left-panel')
-    .getByRole('link', { name: glossaryName, exact: true })
+    .getByRole('link')
+    .filter({ has: page.getByText(glossaryName, { exact: true }) })
     .click({ timeout: ACTION_TIMEOUT });
   await waitForAllLoadersToDisappear(page);
 };
@@ -1561,13 +1526,18 @@ export const testCompletePaginationWithSearch = async (
   await waitForAllLoadersToDisappear(page);
 
   const nextButton = page.locator('[data-testid="next"]');
+  const page2Indicator = page
+    .getByTestId('page-indicator')
+    .filter({ hasText: /\b2 of \d+/ });
   await expect(page.getByTestId('previous')).toBeDisabled();
 
   const page2ResponsePromise = page.waitForResponse((response) =>
     response.url().includes(normalApiPattern)
   );
 
-  await nextButton.click();
+  // Late-mounting content above the table can shift Next between pointerdown
+  // and pointerup, and react-aria then drops the press without firing onPress.
+  await clickUntilVisible(nextButton, page2Indicator);
   const page2Response = await page2ResponsePromise;
   expect(page2Response.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
@@ -1605,7 +1575,7 @@ export const testCompletePaginationWithSearch = async (
     response.url().includes(searchApiPattern)
   );
 
-  await nextButtonAfterSearch.click();
+  await clickUntilVisible(nextButtonAfterSearch, page2Indicator);
   const searchPage2Response = await searchPage2Promise;
   expect(searchPage2Response.status()).toBe(200);
 
@@ -1774,7 +1744,16 @@ export const selectOptionWithRetry = async (
   }).toPass({ timeout: 15000 });
 };
 
-export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+/**
+ * `selected`, when given, is visible only once the pick took: the retry then
+ * also covers an option click that resolves but picks nothing, which happens
+ * when the options are replaced under the pointer.
+ */
+export const chooseSelectOption = async (
+  trigger: Locator,
+  option: Locator,
+  selected?: Locator
+) => {
   await expect(trigger).toBeVisible();
   const nestedControl = trigger.locator(
     'input[role="combobox"], button[aria-haspopup="listbox"]'
@@ -1794,6 +1773,9 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
   // dismissed by anything else, with a short option timeout so a detached
   // option reopens quickly instead of waiting out a long click.
   await expect(async () => {
+    if (selected && (await selected.isVisible())) {
+      return;
+    }
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
       await scrollIntoViewAndSettle(control);
       if ((await control.getAttribute('role')) === 'combobox') {
@@ -1804,14 +1786,37 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
     }
     await expect(option).toBeVisible({ timeout: 5_000 });
     await option.click({ timeout: 2_000 });
+    if (selected) {
+      await expect(selected).toBeVisible({ timeout: 2_000 });
+    }
   }).toPass({ timeout: 30_000 });
+};
+
+/**
+ * Picks a React Aria Select option with the keyboard: focuses it and presses Enter, retrying until
+ * `selected` (visible only once the pick took) shows. Use it when the option list can jump into
+ * place after opening: a mouse pick selects on release over whichever row is then under the
+ * pointer, so it can pick the next row or nothing. A repeat after the pick took is a no-op.
+ */
+export const pickSelectOption = async (
+  trigger: Locator,
+  option: Locator,
+  selected: Locator
+) => {
+  await expect(async () => {
+    if (await selected.isVisible()) {
+      return;
+    }
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.press('Enter', { timeout: 2_000 });
+    }
+    await option.press('Enter', { timeout: 2_000 });
+    await expect(selected).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
 };
 
 export const dismissHoverPopovers = async (page: Page) => {
   await page.mouse.move(0, 0);
-  await expect(
-    page.locator('.ant-popover:not(.ant-popover-hidden)')
-  ).toHaveCount(0);
 };
 
 export const dismissToasts = async (page: Page) => {
@@ -1844,7 +1849,8 @@ export const searchDataProductOptions = async (
   } finally {
     await afterAction();
   }
-  const input = page.locator('[data-testid="data-product-selector"] input');
+  const picker = page.getByTestId('drop-down-menu');
+  const input = picker.getByTestId('search-input');
   if ((await input.inputValue()) === dataProduct.displayName) {
     await input.clear();
   }
@@ -1861,13 +1867,5 @@ export const searchDataProductOptions = async (
   await input.fill(dataProduct.displayName);
   expect((await responsePromise).status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
-  return page
-    .locator('.ant-select-dropdown:visible')
-    .getByTestId('tag-' + dataProduct.fullyQualifiedName);
-};
-
-export const waitForAntdModalToSettle = async (page: Page) => {
-  await expect(
-    page.locator('.ant-modal[class*="-appear"], .ant-modal[class*="-enter"]')
-  ).toHaveCount(0);
+  return picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 };

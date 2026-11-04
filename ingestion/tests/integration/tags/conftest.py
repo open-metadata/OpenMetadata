@@ -15,6 +15,7 @@ from uuid import uuid4
 
 import boto3
 import pytest
+import requests
 from sqlalchemy import create_engine, text
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
@@ -27,6 +28,7 @@ from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import OpenMetadataJWTClientConfig
 
 from ..conftest import _safe_delete  # noqa: TID252
+from ..prefect.conftest import prefect_server  # noqa: F401, TID252
 
 
 @pytest.fixture(scope="module")
@@ -81,6 +83,37 @@ def tagged_s3():
             yield client, {"type": "S3", "awsConfig": credentials, "bucketNames": buckets}
         finally:
             client.close()
+
+
+@pytest.fixture(scope="module")
+def tagged_prefect(prefect_server):  # noqa: F811
+    suffix = uuid4().hex[:8]
+
+    def create(path, payload):
+        response = requests.post(f"{prefect_server}/{path}", json=payload, timeout=30)
+        response.raise_for_status()
+        return response.json()
+
+    names = []
+    for index, pipeline_tag, task_tag in ((0, "Shared", "New"), (1, "New", "Shared")):
+        name = f"tag_flow_{suffix}_{index}"
+        names.append(name)
+        flow = create("flows/", {"name": name})
+        create("deployments/", {"flow_id": flow["id"], "name": "my_deployment", "tags": [pipeline_tag]})
+        run = create("flow_runs/", {"flow_id": flow["id"], "state": {"type": "COMPLETED", "name": "Completed"}})
+        for dynamic_key in ("0", "1"):
+            create(
+                "task_runs/",
+                {
+                    "flow_run_id": run["id"],
+                    "task_key": "extract",
+                    "name": "extract",
+                    "dynamic_key": dynamic_key,
+                    "tags": [task_tag],
+                    "state": {"type": "COMPLETED", "name": "Completed"},
+                },
+            )
+    return {"type": "Prefect", "hostPort": prefect_server, "authType": {"authString": ""}}, names
 
 
 @pytest.fixture

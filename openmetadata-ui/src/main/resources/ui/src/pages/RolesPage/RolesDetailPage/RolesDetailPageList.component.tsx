@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tooltip } from 'antd';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -74,7 +74,7 @@ const RolesDetailPageList = ({
           );
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
@@ -82,24 +82,18 @@ const RolesDetailPageList = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              title={
+            <ButtonUtility
+              data-testid={`remove-action-${getEntityName(record)}`}
+              icon={IconRemove}
+              isDisabled={!hasAccess}
+              size="lg"
+              tooltip={
                 hasAccess
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
-              }>
-              <Button
-                data-testid={`remove-action-${getEntityName(record)}`}
-                disabled={!hasAccess}
-                type="text"
-                onClick={() => onDelete(record)}>
-                <Icon
-                  className="align-middle"
-                  component={IconRemove}
-                  style={{ fontSize: '16px' }}
-                />
-              </Button>
-            </Tooltip>
+              }
+              onClick={() => onDelete(record)}
+            />
           );
         },
       },

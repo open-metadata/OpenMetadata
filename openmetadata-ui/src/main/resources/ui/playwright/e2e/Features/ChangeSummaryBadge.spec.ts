@@ -120,14 +120,15 @@ test.describe(
       });
 
       await test.step('Verify badge tooltip shows metadata', async () => {
-        const badge = page
+        // React Aria opens a tooltip on hover only after a pointer press on the
+        // page; keyboard focus on the trigger opens it regardless.
+        await page
           .getByTestId('asset-description-container')
-          .getByTestId('ai-suggested-badge')
-          .first();
+          .getByRole('button')
+          .filter({ has: page.getByTestId('ai-suggested-badge') })
+          .focus();
 
-        await badge.hover();
-
-        const tooltip = page.locator('.ant-tooltip:visible');
+        const tooltip = page.getByRole('tooltip');
 
         await expect(tooltip).toBeVisible();
       });
@@ -141,6 +142,8 @@ test.describe(
           page,
           entityName: table.entity.name,
           fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
+          // The admin's saved Explore tab survives a fresh browser session.
+          exploreTab: 'Table',
         });
 
         await changeSummaryResponse;

@@ -14,15 +14,19 @@
 package org.openmetadata.service.search.security;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -57,9 +61,18 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * in-memory for the REST read paths. Normal search additionally requires Approved status; direct
  * REST reads can still inspect a retired memory and its history.
  *
+ * <p>A caller may also ask, through its {@code entityStatus} filter, for the subject's own memories
+ * that still await review ({@link #OWNER_PENDING_STATUSES}). Those are admitted for their owners
+ * only, admins included, so an author keeps using what they saved before anyone reviewed it
+ * (ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request). REST needs no third
+ * edit for it: an owner already reads their own memories in every stage there.
+ *
  * <p>Search cannot evaluate an anchor's policy per document. An anchored {@code Entity} memory is
- * therefore searchable only by its owners and admins. An explicit unanchored marker is required:
- * old documents without the marker stay hidden from non-owners until reindexed.
+ * therefore searchable only by its owners and admins, unless the query pins its anchor: a caller
+ * that names the anchors it asks about ({@link ContextMemoryAnchorPins}) has each of them evaluated
+ * once by the REST rule, and the {@code Entity} memories of the readable ones are admitted too
+ * (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). An explicit unanchored marker is
+ * required: old documents without the marker stay hidden from non-owners until reindexed.
  */
 public class ContextMemorySearchVisibility {
 
@@ -70,12 +83,30 @@ public class ContextMemorySearchVisibility {
   public static final String FIELD_SHARED_WITH_IDS = "sharedWithIds";
 
   /** Memory stages ordinary search admits; the Context Center listing may ask for others. */
-  public static final List<EntityStatus> SEARCHABLE_STATUSES = List.of(EntityStatus.APPROVED);
+  public static final List<ContextMemoryStatus> SEARCHABLE_STATUSES =
+      List.of(ContextMemoryStatus.APPROVED);
+
+  /** Stages search admits for the subject's own memories, and only when the caller asks for them. */
+  public static final List<ContextMemoryStatus> OWNER_PENDING_STATUSES =
+      List.of(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT);
+
+  /** Which of the anchors a query pins a user may read the memories of. */
+  @FunctionalInterface
+  interface AnchorReadability {
+    Set<String> readableAnchorIds(String userName, Collection<String> pinnedAnchorIds);
+  }
 
   private final QueryBuilderFactory queryBuilderFactory;
+  private final AnchorReadability anchorReadability;
 
   public ContextMemorySearchVisibility(QueryBuilderFactory queryBuilderFactory) {
+    this(queryBuilderFactory, ContextMemoryVisibility::readableAnchorIds);
+  }
+
+  ContextMemorySearchVisibility(
+      QueryBuilderFactory queryBuilderFactory, AnchorReadability anchorReadability) {
     this.queryBuilderFactory = queryBuilderFactory;
+    this.anchorReadability = anchorReadability;
   }
 
   /**
@@ -89,18 +120,72 @@ public class ContextMemorySearchVisibility {
 
   /** As above, admitting memories in any of {@code statuses} instead of Approved only. */
   public OMQueryBuilder buildVisibilityFilter(
-      SubjectContext subjectContext, List<EntityStatus> statuses) {
+      SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
+    return buildVisibilityFilter(subjectContext, statuses, List.of());
+  }
+
+  /**
+   * As above, also admitting the {@code Entity} and {@code Public} memories anchored to those of
+   * {@code pinnedAnchorIds} the subject may read. The ids are only a hint of which anchors to
+   * evaluate: a memory is admitted through them only when its own anchor passed the REST rule, so a
+   * hint the query does not actually filter on widens nothing that REST would hide.
+   */
+  public OMQueryBuilder buildVisibilityFilter(
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds) {
+    return buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds, List.of());
+  }
+
+  /**
+   * As above, also admitting the subject's own memories in any of {@code ownerStatuses} (see
+   * {@link #ownerStatuses}), whoever else may see them. An admin is widened to their own memories
+   * too, never to everyone's; an empty list builds exactly the filter above.
+   */
+  public OMQueryBuilder buildVisibilityFilter(
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds,
+      List<ContextMemoryStatus> ownerStatuses) {
     OMQueryBuilder filter = null;
     if (isVisibilityEnforced(subjectContext)) {
       User user = subjectContext.user();
+      Set<String> readableAnchorIds = readableAnchorIds(subjectContext, pinnedAnchorIds);
+      OMQueryBuilder visible =
+          statusMemoryClause(buildVisibleMemoryClause(user, readableAnchorIds), statuses);
       filter =
           scopeGovernedTypes(
-              statusMemoryClause(buildVisibleToUserClause(user, true), statuses),
-              buildVisibleFileClause(user));
+              withOwnMemoriesIn(visible, user, ownerStatuses), buildVisibleFileClause(user));
     } else if (isSubjectResolvable(subjectContext)) {
-      filter = scopeMemoriesTo(null, statuses);
+      OMQueryBuilder anyVisibility = statusMemoryClause(null, statuses);
+      filter =
+          scopeMemoriesTo(withOwnMemoriesIn(anyVisibility, subjectContext.user(), ownerStatuses));
     }
     return filter;
+  }
+
+  /**
+   * The stages of {@link #OWNER_PENDING_STATUSES} a vector or hybrid caller asks for through its
+   * {@code entityStatus} filter. Any other requested stage widens nothing: the caller's own filter
+   * can only narrow what the status constraint admits.
+   */
+  public static List<ContextMemoryStatus> ownerStatuses(Map<String, List<String>> filters) {
+    List<String> requested =
+        filters == null ? List.of() : listOrEmpty(filters.get(ContextMemoryIndex.FIELD_STATUS));
+    return OWNER_PENDING_STATUSES.stream()
+        .filter(status -> requested.contains(status.value()))
+        .toList();
+  }
+
+  /**
+   * The pinned anchors whose {@code Entity} memories this subject may read. Empty when visibility is
+   * not enforced for the subject: an admin needs no widening, and an unidentified caller gets none.
+   */
+  public Set<String> readableAnchorIds(
+      SubjectContext subjectContext, Collection<String> pinnedAnchorIds) {
+    return isVisibilityEnforced(subjectContext) && !nullOrEmpty(pinnedAnchorIds)
+        ? anchorReadability.readableAnchorIds(subjectContext.user().getName(), pinnedAnchorIds)
+        : Set.of();
   }
 
   /**
@@ -129,7 +214,7 @@ public class ContextMemorySearchVisibility {
         readable =
             (MemoryVisibility.ENTITY.value().equals(visibility)
                     || MemoryVisibility.PUBLIC.value().equals(visibility))
-                && EntityStatus.APPROVED
+                && ContextMemoryStatus.APPROVED
                     .value()
                     .equals(document.get(ContextMemoryIndex.FIELD_STATUS))
                 && ContextMemoryIndex.UNANCHORED.equals(
@@ -187,20 +272,28 @@ public class ContextMemorySearchVisibility {
                 scopedTo(Entity.CONTEXT_FILE, fileClause)));
   }
 
-  /** Applies the selected status constraint and optional visibility clause only to memories. */
-  private OMQueryBuilder scopeMemoriesTo(OMQueryBuilder memoryClause, List<EntityStatus> statuses) {
+  /** Applies {@code memoryClause} only to memories, letting every other type pass. */
+  private OMQueryBuilder scopeMemoriesTo(OMQueryBuilder memoryClause) {
     OMQueryBuilder nonMemory =
         queryBuilderFactory
             .boolQuery()
             .mustNot(
                 List.of(queryBuilderFactory.termQuery(FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY)));
-    OMQueryBuilder memoryVisible =
-        scopedTo(Entity.CONTEXT_MEMORY, statusMemoryClause(memoryClause, statuses));
+    OMQueryBuilder memoryVisible = scopedTo(Entity.CONTEXT_MEMORY, memoryClause);
     return queryBuilderFactory.boolQuery().should(List.of(nonMemory, memoryVisible));
   }
 
+  private OMQueryBuilder withOwnMemoriesIn(
+      OMQueryBuilder memoryClause, User user, List<ContextMemoryStatus> ownerStatuses) {
+    return nullOrEmpty(ownerStatuses)
+        ? memoryClause
+        : queryBuilderFactory
+            .boolQuery()
+            .should(List.of(memoryClause, statusMemoryClause(ownedBy(user), ownerStatuses)));
+  }
+
   private OMQueryBuilder statusMemoryClause(
-      OMQueryBuilder memoryClause, List<EntityStatus> statuses) {
+      OMQueryBuilder memoryClause, List<ContextMemoryStatus> statuses) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
     if (memoryClause != null) {
       clauses.add(memoryClause);
@@ -211,7 +304,7 @@ public class ContextMemorySearchVisibility {
                 ContextMemoryIndex.FIELD_STATUS, statuses.getFirst().value())
             : queryBuilderFactory.termsQuery(
                 ContextMemoryIndex.FIELD_STATUS,
-                statuses.stream().map(EntityStatus::value).toList()));
+                statuses.stream().map(ContextMemoryStatus::value).toList()));
     return queryBuilderFactory.boolQuery().must(clauses);
   }
 
@@ -227,9 +320,16 @@ public class ContextMemorySearchVisibility {
    * them would empty the Context Center's document search rather than protect anything.
    */
   private OMQueryBuilder buildVisibleFileClause(User user) {
-    return queryBuilderFactory
-        .boolQuery()
-        .should(List.of(unstamped(), buildVisibleToUserClause(user, false)));
+    OMQueryBuilder visibleToUser =
+        queryBuilderFactory
+            .boolQuery()
+            .should(
+                List.of(
+                    queryBuilderFactory.termQuery(
+                        FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
+                    ownedBy(user),
+                    sharedWithSubjectClause(user)));
+    return queryBuilderFactory.boolQuery().should(List.of(unstamped(), visibleToUser));
   }
 
   private OMQueryBuilder unstamped() {
@@ -238,18 +338,23 @@ public class ContextMemorySearchVisibility {
         .mustNot(List.of(queryBuilderFactory.existsQuery(FIELD_VISIBILITY)));
   }
 
-  private OMQueryBuilder buildVisibleToUserClause(User user, boolean allowPublic) {
-    List<OMQueryBuilder> clauses = new ArrayList<>();
-    if (allowPublic) {
-      clauses.add(unanchoredOrgWideClause());
-    } else {
-      clauses.add(queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+  /**
+   * A memory is visible when it is org-wide, owned by or shared with the subject, or anchored to a
+   * pinned anchor the subject may read. The last branch comes last so the others keep their place.
+   */
+  private OMQueryBuilder buildVisibleMemoryClause(User user, Set<String> readableAnchorIds) {
+    List<OMQueryBuilder> clauses =
+        new ArrayList<>(
+            List.of(unanchoredOrgWideClause(), ownedBy(user), sharedWithSubjectClause(user)));
+    if (!readableAnchorIds.isEmpty()) {
+      clauses.add(anchoredToClause(readableAnchorIds));
     }
-    clauses.add(
-        queryBuilderFactory.nestedQuery(
-            FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString())));
-    clauses.add(sharedWithSubjectClause(user));
     return queryBuilderFactory.boolQuery().should(clauses);
+  }
+
+  private OMQueryBuilder ownedBy(User user) {
+    return queryBuilderFactory.nestedQuery(
+        FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString()));
   }
 
   private OMQueryBuilder unanchoredOrgWideClause() {
@@ -257,16 +362,30 @@ public class ContextMemorySearchVisibility {
         .boolQuery()
         .must(
             List.of(
-                queryBuilderFactory
-                    .boolQuery()
-                    .should(
-                        List.of(
-                            queryBuilderFactory.termQuery(
-                                FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
-                            queryBuilderFactory.termQuery(
-                                FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))),
+                entityOrPublicClause(),
                 queryBuilderFactory.termQuery(
                     ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED)));
+  }
+
+  /** The REST anchor rule for anchors already evaluated: Entity or Public, anchored to one. */
+  private OMQueryBuilder anchoredToClause(Set<String> readableAnchorIds) {
+    return queryBuilderFactory
+        .boolQuery()
+        .must(
+            List.of(
+                entityOrPublicClause(),
+                queryBuilderFactory.termsQuery(
+                    ContextMemoryIndex.FIELD_ANCHOR_ID,
+                    readableAnchorIds.stream().sorted().toList())));
+  }
+
+  private OMQueryBuilder entityOrPublicClause() {
+    return queryBuilderFactory
+        .boolQuery()
+        .should(
+            List.of(
+                queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
+                queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value())));
   }
 
   /**

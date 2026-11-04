@@ -30,6 +30,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onItemCleared,
       onOpenChange,
       onPopoverScroll,
+      onSearchChange,
+      popoverHeader,
+      popoverFooter,
+      emptyState,
     }: {
       items: MockItem[];
       selectedItems: MockItem[];
@@ -39,6 +43,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onItemCleared: (key: string) => void;
       onOpenChange: (isOpen: boolean) => void;
       onPopoverScroll: (e: UIEvent<HTMLElement>) => void;
+      onSearchChange: (value: string) => void;
+      popoverHeader?: ReactNode;
+      popoverFooter?: ReactNode;
+      emptyState?: ReactNode;
     }) => (
       <div data-testid="asset-select-list">
         <span data-testid="placeholder">{placeholder}</span>
@@ -55,13 +63,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
             {item.label}
           </button>
         ))}
+        <input
+          aria-label="search"
+          data-testid="search"
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
+        {popoverHeader}
         <div data-testid="listbox" onScroll={onPopoverScroll}>
+          {items.length === 0 && emptyState}
           {items.map((item) => (
             <button key={item.id} onClick={() => onItemInserted(item.id)}>
               {children(item)}
             </button>
           ))}
         </div>
+        {popoverFooter}
       </div>
     ),
     {
@@ -78,6 +94,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
+jest.mock('../DataAssetSelectList/DataAssetPickerRow', () =>
+  jest.fn(({ option }: { option: { id: string; displayName?: string } }) => (
+    <div data-testid={`option-${option.id}`}>{option.displayName}</div>
+  ))
+);
+jest.mock('../DataAssetSelectList/DataAssetPickerCountBar', () =>
+  jest.fn(({ count, total }: { count: number; total: number }) => (
+    <div data-testid="count-bar">{`${count} of ${total}`}</div>
+  ))
+);
+jest.mock('../DataAssetSelectList/DataAssetPickerLoading', () =>
+  jest.fn(() => <div data-testid="picker-loading" />)
+);
+jest.mock('../DataAssetSelectList/DataAssetPickerFooter', () =>
+  jest.fn(() => <div data-testid="picker-footer" />)
+);
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIconWithBg: jest.fn().mockReturnValue(null),
@@ -153,6 +185,72 @@ describe('DataAssetAsyncSelectList', () => {
       screen.queryByTestId('option-svc.db.orders')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('option-svc.db.users')).toBeInTheDocument();
+  });
+
+  it('frames the list with the picker count bar and keyboard hints', async () => {
+    mockSearchQuery.mockResolvedValue(searchResponse(TABLES, 20));
+    render(<DataAssetAsyncSelectList />);
+    await open();
+
+    expect(screen.getByTestId('count-bar')).toHaveTextContent('2 of 20');
+    expect(screen.getByTestId('picker-footer')).toBeInTheDocument();
+  });
+
+  it('shows a loading state instead of an empty list while the first search runs', async () => {
+    const resolvers: Array<(value: unknown) => void> = [];
+    mockSearchQuery.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+    render(<DataAssetAsyncSelectList />);
+    await open();
+
+    expect(screen.getByTestId('picker-loading')).toBeInTheDocument();
+
+    await act(async () => {
+      resolvers[0](searchResponse(TABLES));
+    });
+
+    expect(screen.queryByTestId('picker-loading')).not.toBeInTheDocument();
+    expect(screen.getByTestId('option-svc.db.orders')).toBeInTheDocument();
+  });
+
+  it('replaces the previous results with the loading state while a new search runs', async () => {
+    jest.useFakeTimers();
+    render(<DataAssetAsyncSelectList debounceTimeout={100} />);
+    await open();
+
+    expect(screen.getByTestId('option-svc.db.orders')).toBeInTheDocument();
+
+    const resolvers: Array<(value: unknown) => void> = [];
+    mockSearchQuery.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+    fireEvent.change(screen.getByTestId('search'), {
+      target: { value: 'users' },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(screen.getByTestId('picker-loading')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('option-svc.db.orders')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvers[0](searchResponse([TABLES[1]]));
+    });
+
+    expect(screen.queryByTestId('picker-loading')).not.toBeInTheDocument();
+    expect(screen.getByTestId('option-svc.db.users')).toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 
   it('renders a profile picture for user options', async () => {

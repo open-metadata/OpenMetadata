@@ -44,6 +44,8 @@ export interface TaskTimelineEvent {
   textKey: string;
   /** Further values the text interpolates, e.g. an assignee or a reason. */
   textParams?: Record<string, EntityReference | string | undefined>;
+  /** Pluralises the text, e.g. how many more people the task is assigned to. */
+  count?: number;
   icon: TaskTimelineIcon;
   /** Shown beside the event. Absent when the task never recorded a time. */
   timestamp?: number;
@@ -145,11 +147,13 @@ const getCreatedEvent = (
 
 // The task records who holds it but never when they were given it. The event
 // therefore carries no time: it sorts right after creation, where assignment
-// almost always happens, and states the current holder without claiming a
+// almost always happens, and states the current holders without claiming a
 // moment. A later reassignment still reads correctly as "assigned to X"; only
-// its exact position among comments is unknown.
+// its exact position among comments is unknown. Several holders read as the
+// first and how many more, as the detail's Assignee stack counts them.
 const getAssignedEvent = (task: Task): TaskTimelineEvent[] => {
-  const assignee = task.assignees?.[0];
+  const [assignee, ...others] = task.assignees ?? [];
+  const hasOthers = others.length > 0;
 
   return assignee
     ? [
@@ -157,7 +161,10 @@ const getAssignedEvent = (task: Task): TaskTimelineEvent[] => {
           kind: 'event',
           id: `assigned-${assignee.id}`,
           actor: assignee,
-          textKey: 'message.task-event-assigned',
+          textKey: hasOthers
+            ? 'message.task-event-assigned-others'
+            : 'message.task-event-assigned',
+          count: hasOthers ? others.length : undefined,
           icon: 'assigned',
           sortAt: task.createdAt,
           tone: 'default',
@@ -261,6 +268,18 @@ const resolveAssignee = (task: Task, assignee?: EntityReference) =>
     ? task.assignees?.find((ref) => ref.id === assignee.id) ?? assignee
     : assignee;
 
+// An Assigned record is the only status that interpolates the assignee into
+// its text. One nobody can name — or one absent entirely, as when a sole
+// assignee has since been deleted — would leave "assigned the incident to"
+// with nothing after it, so the event reads "reassigned" instead. Other record
+// types carry no assignee and keep their own wording.
+const hasNoRenderableAssignee = (
+  status: TestCaseResolutionStatus,
+  assignee?: EntityReference
+): boolean =>
+  status.testCaseResolutionStatusType ===
+    TestCaseResolutionStatusTypes.Assigned && !assignee?.name;
+
 /**
  * An incident's real history: one event per status record — opened,
  * acknowledged, assigned (to whom), resolved — each with who made the change
@@ -278,9 +297,6 @@ const getIncidentStatusEvents = (
     const opened = isOpening ? getIncidentOpenedText(task) : undefined;
     const event = INCIDENT_STATUS_EVENT[status.testCaseResolutionStatusType];
     const assignee = resolveAssignee(task, details?.assignee);
-    // An assignee nobody can name would leave "assigned the incident to" with
-    // nothing after it; say it was reassigned instead.
-    const isUnnamedAssignee = Boolean(assignee) && !assignee?.name;
 
     return {
       kind: 'event',
@@ -293,7 +309,7 @@ const getIncidentStatusEvents = (
       tone: event.tone,
       textKey:
         opened?.textKey ??
-        (isUnnamedAssignee
+        (hasNoRenderableAssignee(status, assignee)
           ? 'message.task-event-incident-reassigned'
           : event.textKey),
       textParams: { ...opened?.textParams, assignee },

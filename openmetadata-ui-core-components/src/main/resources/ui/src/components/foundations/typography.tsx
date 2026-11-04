@@ -68,8 +68,10 @@ type TypographyWeight = 'regular' | 'medium' | 'semibold' | 'bold';
  * Semantic text color, mirroring antd Typography's `type` prop
  * ("secondary" | "success" | "warning" | "danger") so migrated call sites
  * have a first-class equivalent instead of a per-site `className` override.
+ * `brand` is link-coloured text; inside a link it keeps a truncated name, and
+ * its "…", in the link colour the `prose` wrapper would otherwise reset.
  */
-type TypographyColor = 'secondary' | 'success' | 'warning' | 'danger';
+type TypographyColor = 'secondary' | 'success' | 'warning' | 'danger' | 'brand';
 
 type EllipsisRows = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
@@ -190,6 +192,7 @@ const colorClasses: Record<TypographyColor, string> = {
   success: 'tw:text-success-primary',
   warning: 'tw:text-warning-primary',
   danger: 'tw:text-error-primary',
+  brand: 'tw:text-brand-secondary',
 };
 
 export const Typography = forwardRef<HTMLElement, Omit<TypographyProps, 'ref'>>(
@@ -236,10 +239,16 @@ export const Typography = forwardRef<HTMLElement, Omit<TypographyProps, 'ref'>>(
     // explicit consumer `className` text-color utility still wins over the
     // `color` prop, matching how `className` already overrides `sizeClass`/
     // `weightClass` above.
+    const isInlineEllipsis = isEllipsis && INLINE_ELEMENTS.has(Component);
+
+    // `text-overflow` draws the "…" in the color of the box that clips. An
+    // inline element can't clip, so without `block` the wrapper does, and the
+    // "…" ignores a text color passed in `className`.
     const innerClassName = cx(
       sizeClass,
       weightClass,
       colorClass,
+      isInlineEllipsis && ellipsisRows <= 1 && 'tw:block',
       className,
       ellipsisClassName
     );
@@ -270,7 +279,6 @@ export const Typography = forwardRef<HTMLElement, Omit<TypographyProps, 'ref'>>(
       </Component>
     );
 
-    const isInlineEllipsis = isEllipsis && INLINE_ELEMENTS.has(Component);
     const Wrapper = isInlineEllipsis ? 'span' : 'div';
 
     const content = canUnwrap ? (

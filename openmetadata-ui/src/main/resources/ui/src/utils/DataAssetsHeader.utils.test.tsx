@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { render } from '@testing-library/react';
-import { Tooltip } from 'antd';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -209,6 +208,25 @@ describe('Tests for DataAssetsHeaderUtils', () => {
 
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
     expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
+  });
+
+  it('Function getDataAssetsHeaderInfo should hide a year-0001 placeholder table creation time', () => {
+    const assetData = getDataAssetsHeaderInfo(
+      EntityType.TABLE,
+      {
+        ...MOCK_TABLE,
+        lifeCycle: { created: { timestamp: -62135596800000 } },
+      },
+      'Redshift',
+      []
+    );
+
+    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
+      'label.created-time'
+    );
+    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
+      'formatted--62135596800000'
+    );
   });
 
   // Test for Topic entity

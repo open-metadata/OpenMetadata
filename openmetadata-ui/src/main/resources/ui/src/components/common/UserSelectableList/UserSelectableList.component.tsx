@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
   TEXT_GREY_MUTED,
 } from '../../../constants/constants';
@@ -170,9 +170,19 @@ export const UserSelectableList = ({
 
   const botTagRenderer = useCallback(
     (item: EntityReference) => (
-      <div className="d-flex items-center gap-2">
+      <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+        <UserTag
+          truncateName
+          avatarType="outlined"
+          id={item.name ?? ''}
+          name={getEntityName(item)}
+        />
         {botUserIds.current.has(item.id) && (
-          <Tooltip title={t('label.bot')}>
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('label.bot')}
+            triggerClassName="tw:inline-flex tw:shrink-0">
             <BotIcon
               aria-label={t('label.bot')}
               color={TEXT_GREY_MUTED}
@@ -182,11 +192,6 @@ export const UserSelectableList = ({
             />
           </Tooltip>
         )}
-        <UserTag
-          avatarType="outlined"
-          id={item.name ?? ''}
-          name={getEntityName(item)}
-        />
       </div>
     ),
     [t]
@@ -223,15 +228,15 @@ export const UserSelectableList = ({
       onOpenChange={handleOpenChange}>
       {children ?? (
         <Tooltip
-          placement="topRight"
-          title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
-          <Button
-            className="p-0 flex-center"
+          arrow
+          isDisabled={hasPermission}
+          placement="top right"
+          title={t(NO_PERMISSION_FOR_ACTION)}>
+          <ButtonUtility
             data-testid="add-user"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
+            icon={Edit01}
+            isDisabled={!hasPermission}
+            size="sm"
           />
         </Tooltip>
       )}

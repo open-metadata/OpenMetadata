@@ -18,12 +18,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.InstallOntologyPack;
 import org.openmetadata.schema.api.data.OntologyImportResult;
 import org.openmetadata.schema.api.data.OntologyPackInstallResult;
 import org.openmetadata.schema.api.data.OntologyPackManifest;
-import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.GlossaryRdfImporter;
@@ -32,26 +30,20 @@ public final class OntologyPackInstaller {
   private final OntologyPackCatalog catalog;
   private final OntologyPackContentLoader contentLoader;
   private final ImporterFactory importerFactory;
-  private final InstallationRecorder installationRecorder;
 
   public OntologyPackInstaller(
       final OntologyPackCatalog catalog,
       final OntologyPackContentLoader contentLoader,
-      final ImporterFactory importerFactory,
-      final InstallationRecorder installationRecorder) {
+      final ImporterFactory importerFactory) {
     this.catalog = Objects.requireNonNull(catalog);
     this.contentLoader = Objects.requireNonNull(contentLoader);
     this.importerFactory = Objects.requireNonNull(importerFactory);
-    this.installationRecorder = Objects.requireNonNull(installationRecorder);
   }
 
   public static OntologyPackInstaller createDefault(final ClassLoader classLoader) {
     final OntologyPackCatalog catalog = new OntologyPackCatalog(classLoader);
     final OntologyPackContentLoader loader = new OntologyPackContentLoader(classLoader);
-    final OntologyPackInstallationService installationService =
-        OntologyPackInstallationService.createDefault();
-    return new OntologyPackInstaller(
-        catalog, loader, OntologyPackInstaller::createImporter, installationService::record);
+    return new OntologyPackInstaller(catalog, loader, OntologyPackInstaller::createImporter);
   }
 
   public OntologyPackCatalog catalog() {
@@ -73,38 +65,17 @@ public final class OntologyPackInstaller {
 
   private OntologyPackInstallResult installPack(
       final String packId, final InstallOntologyPack request, final InstallationContext context) {
-    final OntologyPackManifest manifest = requireInstallable(packId);
     final String targetGlossary = validatedTargetGlossary(request);
-    final List<OntologyPackModule> modules = catalog.select(manifest, request.getModuleIds());
-    final String format = requireSingleFormat(modules);
-    final String rdf = joinContent(modules);
+    final var selected = contentLoader.loadSelected(catalog, packId, request.getModuleIds());
     final OntologyImportResult importResult =
         importerFactory
             .create(context)
-            .importRdf(rdf, format, targetGlossary, Boolean.TRUE.equals(request.getDryRun()));
-    final OntologyPackInstallation installation =
-        recordInstallation(manifest, modules, request, targetGlossary, context);
-    return result(manifest, modules, request, importResult, installation);
-  }
-
-  private OntologyPackInstallation recordInstallation(
-      final OntologyPackManifest manifest,
-      final List<OntologyPackModule> modules,
-      final InstallOntologyPack request,
-      final String targetGlossary,
-      final InstallationContext context) {
-    return Boolean.TRUE.equals(request.getDryRun())
-        ? null
-        : installationRecorder.record(manifest, modules, targetGlossary, context);
-  }
-
-  private OntologyPackManifest requireInstallable(final String packId) {
-    final OntologyPackManifest manifest = catalog.require(packId);
-    if (!Boolean.TRUE.equals(manifest.getBundled())) {
-      throw new IllegalArgumentException(
-          "Ontology pack '%s' requires an independently licensed payload".formatted(packId));
-    }
-    return manifest;
+            .importRdf(
+                selected.body(),
+                selected.format(),
+                targetGlossary,
+                Boolean.TRUE.equals(request.getDryRun()));
+    return result(selected.manifest(), selected.modules(), request, importResult);
   }
 
   public static String validatedTargetGlossary(final InstallOntologyPack request) {
@@ -116,29 +87,11 @@ public final class OntologyPackInstaller {
     return target;
   }
 
-  private static String requireSingleFormat(final List<OntologyPackModule> modules) {
-    final List<String> formats =
-        modules.stream().map(module -> module.getFormat().value()).distinct().toList();
-    if (formats.size() != 1) {
-      throw new IllegalArgumentException("Selected ontology pack modules must use one RDF format");
-    }
-    return formats.getFirst();
-  }
-
-  private String joinContent(final List<OntologyPackModule> modules) {
-    return modules.stream()
-        .map(OntologyPackModule::getResourcePath)
-        .map(contentLoader::load)
-        .map(OntologyPackContentLoader.PackContent::body)
-        .collect(Collectors.joining(System.lineSeparator()));
-  }
-
   private static OntologyPackInstallResult result(
       final OntologyPackManifest manifest,
       final List<OntologyPackModule> modules,
       final InstallOntologyPack request,
-      final OntologyImportResult importResult,
-      final OntologyPackInstallation installation) {
+      final OntologyImportResult importResult) {
     return new OntologyPackInstallResult()
         .withPackId(manifest.getId())
         .withVersion(manifest.getVersion())
@@ -147,8 +100,7 @@ public final class OntologyPackInstaller {
         .withDryRun(Boolean.TRUE.equals(request.getDryRun()))
         .withConceptCount(sumConcepts(modules))
         .withRelationshipCount(sumRelationships(modules))
-        .withImportResults(List.of(importResult))
-        .withInstallation(installation);
+        .withImportResults(List.of(importResult));
   }
 
   private static int sumConcepts(final List<OntologyPackModule> modules) {
@@ -178,14 +130,5 @@ public final class OntologyPackInstaller {
   public interface OntologyPackImporter {
     OntologyImportResult importRdf(
         String rdf, String format, String targetGlossary, boolean dryRun);
-  }
-
-  @FunctionalInterface
-  public interface InstallationRecorder {
-    OntologyPackInstallation record(
-        OntologyPackManifest manifest,
-        List<OntologyPackModule> modules,
-        String targetGlossary,
-        InstallationContext context);
   }
 }

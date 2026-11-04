@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,34 +21,48 @@ import { ResourceEntity } from '../../../../../../context/PermissionProvider/Per
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
+import type {
+  MembersSectionContribution,
+  TabContribution,
+} from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { MembersPanelProps, MembersView } from './Members.types';
 import {
   buildMembersHeaderMaps,
-  hashSubPathToView,
+  getMembersAccess,
+  isMembersViewAllowed,
   isTeamsOrDetailView,
   makeBreadcrumbAction,
-  viewToSubPath,
 } from './Members.utils';
 import MembersAddTeamForm from './MembersAddTeamForm';
 import MembersCreateUserForm from './MembersCreateUserForm';
 import MembersImportForm from './MembersImportForm';
 import MembersLanding from './MembersLanding';
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
+import { hashSubPathToView, viewToSubPath } from './membersRoute.utils';
 import MembersTeamDetail from './MembersTeamDetail';
+import MembersUserDetail from './MembersUserDetail';
 import MembersUsersPanel from './MembersUsersPanel';
 
 const TEAM_DETAIL = 'team-detail' as const;
 const TEAMS_ADD = 'teams-add' as const;
 const TEAMS_IMPORT = 'teams-import' as const;
 const USER_CREATE = 'user-create' as const;
+const SECTION = 'section' as const;
+const USER_DETAIL = 'user-detail' as const;
+const TEAM_TAB_SUBPAGE = 'team-tab-subpage' as const;
 
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { state: hashState, setHash } = useSettingsHash();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
+  const { getContributions } = useApplicationsProvider();
 
   // Create permissions gate the form views directly, since those views are
   // reachable by deep-linking the hash even when the create button is hidden.
@@ -83,6 +97,19 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     [setHash]
   );
 
+  // The contribution backing the active `section` view, if any. A hash naming an
+  // unknown key (stale deep link, app uninstalled) resolves to undefined and
+  // falls through to the landing view rather than rendering a blank panel.
+  const activeSection = useMemo(() => {
+    if (view.type !== SECTION) {
+      return undefined;
+    }
+
+    return getContributions<MembersSectionContribution>(
+      EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS
+    ).find((contribution) => contribution.key === view.key);
+  }, [view, getContributions]);
+
   // A form view reached without the matching create permission (e.g. via a deep
   // link) renders the lock placeholder instead of the form.
   const isDeniedFormView = useMemo(() => {
@@ -112,7 +139,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   // The team-detail view's sub-path only carries the FQN; MembersTeamDetail
   // reports the fetched team's display name back here so the header/breadcrumb
   // show it (and update live on rename) instead of the raw FQN.
-  const [resolvedTeamName, setResolvedTeamName] = useState('');
+  const [resolvedName, setResolvedName] = useState('');
+  // Header slots owned by the user-detail view (avatar, name, tabs, kebab…),
+  // merged over the members header while that view is active.
+  const [userDetailHeader, setUserDetailHeader] =
+    useState<Partial<ProfileHeaderOverride>>();
 
   // One header setter for the children: a partial patch merged into the three
   // slots (only the keys present are touched, so a panel that owns just `actions`
@@ -136,7 +167,9 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     []
   );
 
-  const viewFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
+  // Identifies the detail team so switching between two teams also resets the
+  // header slots.
+  const teamFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
 
   useEffect(() => {
     // Header actions are owned by each child panel (set + unmount-cleanup), so
@@ -145,8 +178,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     // same commit (the add-user button vanishing when isAdmin is already loaded).
     setDetailHeaderTitleInput(undefined);
     setDetailHeaderTitleSuffix(undefined);
-    setResolvedTeamName('');
-  }, [view.type, viewFqn]);
+    setResolvedName('');
+  }, [view.type, teamFqn]);
 
   useEffect(() => {
     if (!onHeaderChange) {
@@ -154,7 +187,18 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     }
 
     const { crumbsByType, titleByType, iconByType, descByType } =
-      buildMembersHeaderMaps(view, t, resolvedTeamName);
+      buildMembersHeaderMaps(
+        view,
+        t,
+        resolvedName,
+        activeSection && {
+          title: t(activeSection.titleKey),
+          description: activeSection.descriptionKey
+            ? t(activeSection.descriptionKey)
+            : undefined,
+          icon: activeSection.icon,
+        }
+      );
     const pick = (node: React.ReactNode) =>
       isTeamsOrDetailView(view) ? node : undefined;
 
@@ -163,10 +207,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       title: titleByType[view.type],
       description: descByType[view.type],
       icon: iconByType[view.type],
-      onBreadcrumbAction: makeBreadcrumbAction(onNavigate),
+      onBreadcrumbAction: makeBreadcrumbAction(onNavigate, view),
       actions: panelHeaderActions,
       titleInput: pick(detailHeaderTitleInput),
       titleSuffix: pick(detailHeaderTitleSuffix),
+      ...(view.type === USER_DETAIL ? userDetailHeader : undefined),
     });
   }, [
     view,
@@ -176,20 +221,173 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     panelHeaderActions,
     detailHeaderTitleInput,
     detailHeaderTitleSuffix,
-    resolvedTeamName,
+    resolvedName,
+    activeSection,
+    userDetailHeader,
   ]);
 
   const permissionPlaceholder = (
     <Box
       className="tw:relative tw:h-full"
       data-testid="permission-error-placeholder">
-      <EmptyPlaceholder
+      <PermissionPlaceholder
         description={t('message.no-permission-for-action')}
         icon={<Lock01 />}
         title={t('label.no-access')}
       />
     </Box>
   );
+
+  // The two team forms share a "go back to where you came from" ternary; split
+  // out of renderView so those branches don't count against its budget.
+  const renderTeamForm = () => {
+    if (view.type === TEAMS_ADD) {
+      const parentFqn = view.parentFqn;
+      const back = () =>
+        parentFqn
+          ? onNavigate({ type: TEAM_DETAIL, fqn: parentFqn, name: parentFqn })
+          : onNavigate({ type: 'teams' });
+
+      return (
+        <MembersAddTeamForm
+          parentTeamFqn={parentFqn}
+          onCancel={back}
+          onSave={back}
+        />
+      );
+    }
+
+    if (view.type !== TEAMS_IMPORT) {
+      return null;
+    }
+
+    const { fqn, importType } = view;
+    const back = () =>
+      fqn === 'Organization'
+        ? onNavigate({ type: 'teams' })
+        : onNavigate({ type: TEAM_DETAIL, fqn, name: fqn });
+
+    return (
+      <MembersImportForm fqn={fqn} importType={importType} onClose={back} />
+    );
+  };
+
+  // A contributed team tab's own sub-page, rendered where the team detail would
+  // be so it replaces the team chrome rather than nesting inside that tab — the
+  // same shape the team forms above use. The tab resolves its own route from
+  // `subPath`, and `onNavigate(undefined)` returns to the team.
+  const renderTeamTabSubPage = () => {
+    if (view.type !== TEAM_TAB_SUBPAGE) {
+      return null;
+    }
+
+    const { fqn, teamId, key, subPath } = view;
+    // Match MembersTeamDetail's own filter: a tab whose `condition` is false,
+    // or that is hidden, is not offered there, so a deep link must not open its
+    // sub-page either.
+    const tab = getContributions<TabContribution>(
+      EXTENSION_POINTS.TEAM_DETAILS_TABS
+    ).find((contribution) => {
+      const isVisible = contribution.condition
+        ? contribution.condition({ teamId })
+        : !contribution.isHidden;
+
+      return contribution.key === key && isVisible;
+    });
+
+    // A key that is unknown, hidden, or whose condition is now false (a stale
+    // link, or a plugin that is no longer registered) has no component to
+    // render, so fall back to the team it belongs to.
+    if (!tab) {
+      return (
+        <MembersTeamDetail
+          fqn={fqn}
+          key={fqn}
+          onNavigate={onNavigate}
+          onRename={setResolvedName}
+          onSetHeader={setPanelHeader}
+        />
+      );
+    }
+
+    const TabComponent = tab.component;
+
+    return (
+      // `flex-1`/`min-h-0`, not the section wrapper's auto height: the tab owns
+      // a full page here, so a sticky footer inside it needs a bounded height
+      // to pin against. Padding matches the profile panel's content body, so a
+      // page written for one host lays out the same in the other.
+      <Box className="tw:min-h-0 tw:flex-1 tw:px-8 tw:pb-8" direction="col">
+        <TabComponent
+          subPath={subPath}
+          teamId={teamId}
+          onNavigate={(next?: string) =>
+            onNavigate(
+              next
+                ? { type: TEAM_TAB_SUBPAGE, fqn, teamId, key, subPath: next }
+                : { type: TEAM_DETAIL, fqn, name: fqn }
+            )
+          }
+        />
+      </Box>
+    );
+  };
+
+  // Split out of renderView so its branches don't count against that function's
+  // complexity budget.
+  const renderSection = () => {
+    if (view.type !== SECTION || !activeSection) {
+      return <MembersLanding onNavigate={onNavigate} />;
+    }
+
+    const { component: SectionComponent, key } = activeSection;
+
+    // Gutters match the other Members views (MembersLanding, team detail), so a
+    // contributed section doesn't have to re-derive the panel's padding.
+    return (
+      <div className="tw:px-8 tw:pb-8">
+        <SectionComponent
+          subPath={view.subPath}
+          onClose={() => onNavigate({ type: 'landing' })}
+          onNavigate={(subPath) => onNavigate({ type: SECTION, key, subPath })}
+          onSetHeaderActions={(actions) => setPanelHeaderActions(actions)}
+        />
+      </div>
+    );
+  };
+
+  // The tail of the view chain, split out so neither half exceeds the
+  // complexity budget. A dispatch map would collapse the branching, but it
+  // defines its renderers during render, which react/no-unstable-nested-
+  // components rejects.
+  const renderSecondaryView = () => {
+    if (view.type === USER_DETAIL) {
+      return (
+        <MembersUserDetail
+          key={view.name}
+          view={view}
+          onNavigate={onNavigate}
+          onSetHeader={setUserDetailHeader}
+        />
+      );
+    }
+
+    if (view.type === USER_CREATE) {
+      return (
+        <MembersCreateUserForm isAdmin={view.isAdmin} onNavigate={onNavigate} />
+      );
+    }
+
+    if (view.type === 'online-users') {
+      return <MembersOnlineUsersPanel onNavigate={onNavigate} />;
+    }
+
+    if (view.type === SECTION) {
+      return renderSection();
+    }
+
+    return null;
+  };
 
   const renderView = () => {
     if (view.type === 'landing') {
@@ -214,82 +412,52 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
           fqn={view.fqn}
           key={view.fqn}
           onNavigate={onNavigate}
-          onRename={setResolvedTeamName}
+          onRename={setResolvedName}
           onSetHeader={setPanelHeader}
         />
       );
     }
 
-    if (view.type === TEAMS_ADD) {
-      const parentFqn = view.parentFqn;
-      const back = () =>
-        parentFqn
-          ? onNavigate({ type: TEAM_DETAIL, fqn: parentFqn, name: parentFqn })
-          : onNavigate({ type: 'teams' });
-
-      return (
-        <MembersAddTeamForm
-          parentTeamFqn={parentFqn}
-          onCancel={back}
-          onSave={back}
-        />
-      );
+    if (view.type === TEAMS_ADD || view.type === TEAMS_IMPORT) {
+      return renderTeamForm();
     }
 
-    if (view.type === TEAMS_IMPORT) {
-      const { fqn, importType } = view;
-      const back = () =>
-        fqn === 'Organization'
-          ? onNavigate({ type: 'teams' })
-          : onNavigate({ type: TEAM_DETAIL, fqn, name: fqn });
-
-      return (
-        <MembersImportForm fqn={fqn} importType={importType} onClose={back} />
-      );
+    if (view.type === TEAM_TAB_SUBPAGE) {
+      return renderTeamTabSubPage();
     }
 
-    if (view.type === 'users') {
+    if (view.type === 'users' || view.type === 'admins') {
+      // Keyed so switching Users <-> Admins remounts the panel: both render the
+      // same component type, and its fetch effects don't depend on isAdmin, so
+      // without a key React would keep the instance and show the stale list.
       return (
-        // Keyed so switching Users <-> Admins remounts the panel: both render the
-        // same component type, and its fetch effects don't depend on isAdmin, so
-        // without a key React would keep the instance and show the stale list.
         <MembersUsersPanel
-          key="users"
+          isAdmin={view.type === 'admins'}
+          key={view.type}
           onNavigate={onNavigate}
           onSetHeader={setPanelHeader}
         />
       );
     }
 
-    if (view.type === 'admins') {
-      return (
-        <MembersUsersPanel
-          isAdmin
-          key="admins"
-          onNavigate={onNavigate}
-          onSetHeader={setPanelHeader}
-        />
-      );
-    }
-
-    if (view.type === USER_CREATE) {
-      return (
-        <MembersCreateUserForm isAdmin={view.isAdmin} onNavigate={onNavigate} />
-      );
-    }
-
-    if (view.type === 'online-users') {
-      return <MembersOnlineUsersPanel onNavigate={onNavigate} />;
-    }
-
-    return null;
+    return renderSecondaryView();
   };
 
-  const content = isDeniedFormView ? permissionPlaceholder : renderView();
+  // A deep link to a view the landing would not offer this viewer.
+  const isDeniedView = !isMembersViewAllowed(
+    view,
+    getMembersAccess(permissions, Boolean(isAdminUser))
+  );
+  const content =
+    isDeniedFormView || isDeniedView ? permissionPlaceholder : renderView();
 
   return (
     <EntityExportModalProvider>
-      <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">{content}</div>
+      {/* `flex flex-col` so a child sizing itself with `flex-1` (the team views)
+          gets a bounded height to scroll within. */}
+      <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
+        {content}
+      </div>
     </EntityExportModalProvider>
   );
 };

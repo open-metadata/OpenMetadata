@@ -38,7 +38,6 @@ import {
   toastNotification,
   uuid,
   visitOwnProfilePage,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -67,6 +66,7 @@ import {
   verifyTeamListingAssetCount,
   waitForTeamAssetsSearchResponse,
 } from '../../utils/team';
+import { selectTeamInPicker } from '../../utils/userDetails';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
@@ -253,7 +253,6 @@ test.describe('Teams Page', () => {
       // row mid-animation puts mousedown on it and mouseup past it, so the
       // deselect never registers, the update below sends an unchanged member
       // list, and the row this step is trying to remove is still there.
-      await waitForAntdPopupToSettle(page);
 
       // Select the user to remove
       await page
@@ -381,9 +380,10 @@ test.describe('Teams Page', () => {
       await scopedUserPage.locator('[data-testid="leave-team-button"]').click();
       // Click on confirm button
       await scopedUserPage
-        .locator('.ant-modal-footer')
-        .getByText('Confirm')
+        .getByTestId('remove-team-user-modal')
+        .getByRole('button', { name: 'Confirm' })
         .click();
+
       await leaveTeamResponse;
 
       // Verify that the "Join Teams" button is now visible
@@ -501,10 +501,7 @@ test.describe('Teams Page', () => {
         page.getByTestId('profile-teams-edit-popover')
       ).toBeVisible();
 
-      await page
-        .getByTestId('profile-teams-edit-popover')
-        .getByText(teamDisplayName)
-        .click();
+      await selectTeamInPicker(page, teamDisplayName);
 
       const patchUserPromise = page.waitForResponse(
         (response) =>

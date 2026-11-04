@@ -180,6 +180,35 @@ describe('buildTaskTimeline', () => {
       expect(event?.timestamp).toBeUndefined();
     });
 
+    it('names the one holder alone', () => {
+      const event = buildTaskTimeline(assigned).find(
+        (entry) => entry.id === 'assigned-a1'
+      );
+
+      expect(event).toMatchObject({ actor: { id: 'a1' } });
+      expect(event).not.toHaveProperty('count', expect.anything());
+    });
+
+    // The detail's Assignee stack shows them all; naming only the first read
+    // as if the task were assigned to that person alone.
+    it('names the first of several holders and counts the rest', () => {
+      const event = buildTaskTimeline(
+        buildTask({
+          assignees: [
+            { id: 'a1', name: 'admin' },
+            { id: 'a2', name: 'ana' },
+            { id: 'a3', name: 'jo' },
+          ],
+        } as unknown as Partial<Task>)
+      ).find((entry) => entry.id === 'assigned-a1');
+
+      expect(event).toMatchObject({
+        actor: { id: 'a1' },
+        textKey: 'message.task-event-assigned-others',
+        count: 2,
+      });
+    });
+
     it('is omitted when nobody holds the task', () => {
       expect(
         buildTaskTimeline(buildTask()).some((entry) =>
@@ -278,6 +307,27 @@ describe('buildTaskTimeline', () => {
               TestCaseResolutionStatusTypes.Assigned,
             testCaseResolutionStatusDetails: { assignee: { id: 'stranger' } },
             timestamp: 600,
+          },
+        ] as unknown as TestCaseResolutionStatus[],
+      });
+
+      expect(assigned).toMatchObject({
+        textKey: 'message.task-event-incident-reassigned',
+      });
+    });
+
+    // An Assigned record with no details at all — as when the sole assignee
+    // has since been deleted — must not keep the "{{assignee}}"-interpolating
+    // text and leave the sentence dangling on "to ".
+    it('says reassigned when the record has no assignee at all', () => {
+      const [assigned] = buildTaskTimeline(incident, {
+        incidentStatuses: [
+          {
+            id: 's7',
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+            updatedBy: teddy,
+            timestamp: 700,
           },
         ] as unknown as TestCaseResolutionStatus[],
       });

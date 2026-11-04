@@ -416,21 +416,29 @@ public interface ActivityAuditDAOs {
     // An activity's replies live in a conversation whose id is the activity id, so the
     // conversation_mention rows written for those replies key straight onto activity_stream.id.
     // The window is when the mention was made, so a fresh mention on an older event still shows.
+    String MENTIONED_ACTIVITY_MYSQL =
+        "SELECT json FROM activity_stream WHERE id IN ("
+            + "SELECT conversationId FROM conversation_mention WHERE createdAt >= :after "
+            + "AND ((mentionedEntityType = 'user' AND mentionedEntityId = :userId) "
+            + "OR (mentionedEntityType = 'team' AND mentionedEntityId IN (<teamIds>)))) ";
+    String MENTIONED_ACTIVITY_POSTGRES =
+        "SELECT json FROM activity_stream WHERE id IN ("
+            + "SELECT conversationid FROM conversation_mention WHERE createdat >= :after "
+            + "AND ((mentionedentitytype = 'user' AND mentionedentityid = :userId) "
+            + "OR (mentionedentitytype = 'team' AND mentionedentityid IN (<teamIds>)))) ";
+    String IN_DOMAINS_MYSQL = "AND JSON_OVERLAPS(domains, :domainJson) ";
+    String IN_DOMAINS_POSTGRES =
+        "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
+            + "WHERE domain_id IN (<domainIds>)) ";
+    String NEWEST_FIRST = "ORDER BY timestamp DESC, id DESC LIMIT :limit";
+    String ABOUT_ENTITY_MYSQL = "AND aboutFqnHash = :aboutFqnHash ";
+    String ABOUT_ENTITY_POSTGRES = "AND aboutfqnhash = :aboutFqnHash ";
+
     @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM activity_stream WHERE id IN ("
-                + "SELECT conversationId FROM conversation_mention WHERE createdAt >= :after "
-                + "AND ((mentionedEntityType = 'user' AND mentionedEntityId = :userId) "
-                + "OR (mentionedEntityType = 'team' AND mentionedEntityId IN (<teamIds>)))) "
-                + "ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        value = MENTIONED_ACTIVITY_MYSQL + NEWEST_FIRST,
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM activity_stream WHERE id IN ("
-                + "SELECT conversationid FROM conversation_mention WHERE createdat >= :after "
-                + "AND ((mentionedentitytype = 'user' AND mentionedentityid = :userId) "
-                + "OR (mentionedentitytype = 'team' AND mentionedentityid IN (<teamIds>)))) "
-                + "ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        value = MENTIONED_ACTIVITY_POSTGRES + NEWEST_FIRST,
         connectionType = POSTGRES)
     List<String> listByMentions(
         @Bind("userId") String userId,
@@ -439,28 +447,47 @@ public interface ActivityAuditDAOs {
         @Bind("limit") int limit);
 
     @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM activity_stream WHERE id IN ("
-                + "SELECT conversationId FROM conversation_mention WHERE createdAt >= :after "
-                + "AND ((mentionedEntityType = 'user' AND mentionedEntityId = :userId) "
-                + "OR (mentionedEntityType = 'team' AND mentionedEntityId IN (<teamIds>)))) "
-                + "AND JSON_OVERLAPS(domains, :domainJson) "
-                + "ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        value = MENTIONED_ACTIVITY_MYSQL + IN_DOMAINS_MYSQL + NEWEST_FIRST,
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM activity_stream WHERE id IN ("
-                + "SELECT conversationid FROM conversation_mention WHERE createdat >= :after "
-                + "AND ((mentionedentitytype = 'user' AND mentionedentityid = :userId) "
-                + "OR (mentionedentitytype = 'team' AND mentionedentityid IN (<teamIds>)))) "
-                + "AND EXISTS ("
-                + "SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
-                + "WHERE domain_id IN (<domainIds>)) "
-                + "ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        value = MENTIONED_ACTIVITY_POSTGRES + IN_DOMAINS_POSTGRES + NEWEST_FIRST,
         connectionType = POSTGRES)
     List<String> listByMentionsAndDomains(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
+        @Bind("domainJson") String domainJson,
+        @BindList("domainIds") List<String> domainIds,
+        @Bind("after") long after,
+        @Bind("limit") int limit);
+
+    // The same mentions, about one entity: aboutFqnHash is how /activity/about matches it.
+    @ConnectionAwareSqlQuery(
+        value = MENTIONED_ACTIVITY_MYSQL + ABOUT_ENTITY_MYSQL + NEWEST_FIRST,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = MENTIONED_ACTIVITY_POSTGRES + ABOUT_ENTITY_POSTGRES + NEWEST_FIRST,
+        connectionType = POSTGRES)
+    List<String> listByMentionsAbout(
+        @Bind("userId") String userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("after") long after,
+        @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value = MENTIONED_ACTIVITY_MYSQL + ABOUT_ENTITY_MYSQL + IN_DOMAINS_MYSQL + NEWEST_FIRST,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            MENTIONED_ACTIVITY_POSTGRES
+                + ABOUT_ENTITY_POSTGRES
+                + IN_DOMAINS_POSTGRES
+                + NEWEST_FIRST,
+        connectionType = POSTGRES)
+    List<String> listByMentionsAboutAndDomains(
+        @Bind("userId") String userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Bind("aboutFqnHash") String aboutFqnHash,
         @Bind("domainJson") String domainJson,
         @BindList("domainIds") List<String> domainIds,
         @Bind("after") long after,

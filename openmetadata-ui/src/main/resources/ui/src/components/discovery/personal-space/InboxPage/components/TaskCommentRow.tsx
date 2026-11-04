@@ -14,18 +14,17 @@
 import {
   Badge,
   Box,
-  Button,
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit01 as EditIcon,
+  Edit01,
   Trash01 as DeleteIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -35,13 +34,11 @@ import {
   TaskComment,
 } from '../../../../../rest/tasksAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import {
-  getFrontEndFormat,
-  MarkdownToHTMLConverter,
-} from '../../../../../utils/FeedUtilsPure';
+import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { formatInboxDateTime } from '../inbox.utils';
+import { CommentEditForm } from '../../../../common/CommentComposer/CommentComposer';
+import { formatInboxDateTime, INBOX_MESSAGE_CLASS } from '../inbox.utils';
 
 export interface TaskCommentRowProps {
   comment: TaskComment;
@@ -81,20 +78,18 @@ const TaskCommentActions = ({
       role="group">
       {canEdit && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-task-comment"
-          icon={EditIcon}
-          size="xs"
+          icon={Edit01}
+          size="lg"
           tooltip={t('label.edit')}
           onClick={onEditRequest}
         />
       )}
       {canDelete && (
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-task-comment"
           icon={DeleteIcon}
-          size="xs"
+          size="lg"
           tooltip={t('label.delete')}
           onClick={onDeleteRequest}
         />
@@ -117,34 +112,23 @@ const TaskCommentBody = ({
   onCancelEdit,
   onSave,
 }: TaskCommentBodyProps) => {
-  const { t } = useTranslation();
-
   if (isEditing) {
     return (
-      <Box data-testid="edit-task-comment-editor" direction="col" gap={2}>
-        <ActivityFeedEditorNew
-          focused
-          defaultValue={MarkdownToHTMLConverter.makeHtml(
-            getFrontEndFormat(comment.message)
-          )}
-          onSave={onSave}
-        />
-        <Box align="center" className="tw:justify-end">
-          <Button
-            color="link-gray"
-            data-testid="cancel-edit-task-comment"
-            size="sm"
-            onPress={onCancelEdit}>
-            {t('label.cancel')}
-          </Button>
-        </Box>
-      </Box>
+      <CommentEditForm
+        message={comment.message}
+        testId="edit-task-comment"
+        onCancel={onCancelEdit}
+        onSave={onSave}
+      />
     );
   }
 
   return (
     <RichTextEditorPreviewerV1
-      className="inbox-feed-message tw:text-sm tw:leading-6 tw:text-primary"
+      className={classNames(
+        INBOX_MESSAGE_CLASS,
+        'tw:text-sm tw:leading-6 tw:text-primary'
+      )}
       markdown={getFrontEndFormat(comment.message)}
     />
   );

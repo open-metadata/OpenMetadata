@@ -317,4 +317,117 @@ describe('OntologyRelationDetailsPanel', () => {
       within(screen.getByTestId('relation-status-select')).getByRole('button')
     ).toHaveTextContent('label.approved');
   });
+
+  it('shows the edge relation type as a fallback when the type is absent from relationshipTypes', () => {
+    render(
+      <OntologyRelationDetailsPanel
+        isEditable
+        edge={{ ...AUTHORED_EDGE, relationType: 'customRel' }}
+        isSaving={false}
+        nodes={NODES}
+        relationshipTypes={[createRelationshipTypeMock({ name: 'partOf' })]}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('relation-type-select')).getByRole('button')
+    ).toHaveTextContent('customRel');
+  });
+
+  it('shows the edge relation type as a fallback when the matching relationship type is soft-deleted', () => {
+    render(
+      <OntologyRelationDetailsPanel
+        isEditable
+        edge={{ ...AUTHORED_EDGE, relationType: 'customRel' }}
+        isSaving={false}
+        nodes={NODES}
+        relationshipTypes={[
+          createRelationshipTypeMock({ name: 'customRel', deleted: true }),
+          createRelationshipTypeMock({ name: 'partOf' }),
+        ]}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('relation-type-select')).getByRole('button')
+    ).toHaveTextContent('customRel');
+  });
+
+  it('uses the loaded display name and does not append a fallback when the type is present', () => {
+    render(
+      <OntologyRelationDetailsPanel
+        isEditable
+        edge={{ ...AUTHORED_EDGE, relationType: 'partOf' }}
+        isSaving={false}
+        nodes={NODES}
+        relationshipTypes={[
+          createRelationshipTypeMock({
+            name: 'partOf',
+            displayName: 'Part Of',
+          }),
+        ]}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('relation-type-select')).getByRole('button')
+    ).toHaveTextContent('Part Of');
+  });
+
+  it('re-seeds the fallback relation type when the edge prop changes to a missing type', () => {
+    const relationshipTypes = [createRelationshipTypeMock({ name: 'partOf' })];
+    const edgeA: MergedEdge = {
+      ...AUTHORED_EDGE,
+      id: 'edge-a',
+      relationType: 'partOf',
+    };
+    const edgeB: MergedEdge = {
+      ...AUTHORED_EDGE,
+      id: 'edge-b',
+      relationType: 'ghostRel',
+    };
+
+    const { rerender } = render(
+      <OntologyRelationDetailsPanel
+        isEditable
+        edge={edgeA}
+        isSaving={false}
+        nodes={NODES}
+        relationshipTypes={relationshipTypes}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('relation-type-select')).getByRole('button')
+    ).toHaveTextContent('partOf');
+
+    rerender(
+      <OntologyRelationDetailsPanel
+        isEditable
+        edge={edgeB}
+        isSaving={false}
+        nodes={NODES}
+        relationshipTypes={relationshipTypes}
+        onClose={jest.fn()}
+        onDelete={jest.fn()}
+        onUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('relation-type-select')).getByRole('button')
+    ).toHaveTextContent('ghostRel');
+  });
 });

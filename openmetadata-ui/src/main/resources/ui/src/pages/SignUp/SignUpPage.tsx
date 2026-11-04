@@ -27,8 +27,7 @@ import { CookieStorage } from 'cookie-storage';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { UserProfile } from '../../components/Auth/AuthProviders/AuthProvider.interface';
+import { Navigate, useNavigate } from 'react-router-dom';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import TeamsSelectable from '../../components/Settings/Team/TeamsSelectable/TeamsSelectable';
 import { ROUTES } from '../../constants/constants';
@@ -80,9 +79,9 @@ const SignUp = () => {
       displayName: newUser?.name ?? '',
       name: newUser?.name ?? '',
       email: newUser?.email ?? '',
-      ...(clientType === ClientType.Public
+      ...(clientType === ClientType.Public && newUser
         ? getNameFromUserData(
-            newUser as UserProfile,
+            newUser,
             jwtPrincipalClaims,
             authorizerConfig?.principalDomain,
             jwtPrincipalClaimsMapping
@@ -161,6 +160,12 @@ const SignUp = () => {
     },
     props: { 'data-testid': 'email-input', isDisabled: true, size: 'md' },
   };
+
+  // newUser is only set by the self-signup flow (AuthProvider, on a 404 for the
+  // signed-in IdP user); a direct visit has no one to sign up.
+  if (!newUser) {
+    return <Navigate replace to={ROUTES.SIGNIN} />;
+  }
 
   return (
     <div

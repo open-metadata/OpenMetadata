@@ -49,6 +49,16 @@ class RdfInferenceRuleRowMapperTest {
     assertNull(row.lastMaterializedAt());
   }
 
+  @Test
+  void readsTheDirtyVersionARunComparesAgainst() throws SQLException {
+    final ResultSet resultSet = ruleRow();
+    when(resultSet.getLong("dirtyVersion")).thenReturn(7L);
+
+    final RdfInferenceRuleRow row = new RdfInferenceRuleRowMapper().map(resultSet, null);
+
+    assertEquals(7L, row.dirtyVersion());
+  }
+
   private static ResultSet ruleRow() throws SQLException {
     final ResultSet resultSet = mock(ResultSet.class);
     when(resultSet.getString("name")).thenReturn("transitive-lineage-closure");

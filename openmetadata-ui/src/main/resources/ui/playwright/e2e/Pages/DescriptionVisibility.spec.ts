@@ -34,7 +34,6 @@ import {
   toastNotification,
   uuid,
   visitGlossaryPage,
-  waitForAntdModalToSettle,
 } from '../../utils/common';
 import { openPlaceholderWidgetPicker } from '../../utils/customizeDetails';
 import {
@@ -356,7 +355,7 @@ test.describe(
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
       await adminPage.getByText('Data Assets').click();
-      await adminPage.getByText('Table', { exact: true }).click();
+      await adminPage.getByTestId('Table').click();
       await waitForAllLoadersToDisappear(adminPage);
 
       // Add custom tab
@@ -367,8 +366,6 @@ test.describe(
       const addButton = adminPage
         .getByRole('dialog')
         .getByRole('button', { name: 'Add' });
-      await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
-      await waitForAntdModalToSettle(adminPage);
       await expect(addButton).toBeEnabled();
       await addButton.click();
 

@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { twMerge } from 'tailwind-merge';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { t } from '../../../utils/i18next/LocalUtil';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SectionWithEditProps } from './SectionWithEdit.interface';
 
 const SectionWithEdit: React.FC<SectionWithEditProps> = ({
@@ -63,13 +61,10 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
           titleNode
         )}
         {showEditButton && onEdit && (
-          <EditIconButton
-            newLook
+          <ButtonUtility
             data-testid="edit-button"
-            disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
               entity: title,
             })}
             onClick={onEdit}
@@ -78,7 +73,7 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
       </div>
       <div
         className={classNames(
-          'tw:leading-normal tw:text-(color:--om-legacy-color-595959)',
+          'tw:leading-normal tw:text-tertiary',
           contentClassName
         )}
         data-testid="section-content">

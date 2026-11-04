@@ -34,6 +34,12 @@ jest.mock('rest/axiosClient', () => ({
   default: { put: (...a: unknown[]) => mockPut(...a) },
 }));
 
+const mockGetResourceLimit = jest.fn();
+
+jest.mock('context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: () => ({ getResourceLimit: mockGetResourceLimit }),
+}));
+
 jest.mock('utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -53,6 +59,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
       color?: string;
     }) => <span data-color={color}>{children}</span>,
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Card: Object.assign(
+      ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+      {
+        Content: ({
+          children,
+          className,
+        }: {
+          children?: ReactNode;
+          className?: string;
+        }) => <div className={className}>{children}</div>,
+      }
+    ),
     Button: ({
       children,
       onClick,
@@ -67,6 +85,42 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <button data-color={color} disabled={isDisabled} onClick={onClick}>
         {children}
       </button>
+    ),
+    ButtonUtility: ({
+      onClick,
+      isDisabled,
+      tooltip,
+      'data-testid': testId,
+    }: {
+      onClick?: (...args: unknown[]) => void;
+      isDisabled?: boolean;
+      tooltip?: string;
+      'data-testid'?: string;
+    }) => (
+      <button
+        aria-label={tooltip}
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
+    ),
+    ConfirmPopover: ({
+      children,
+      onConfirm,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      onConfirm: () => void;
+      'data-testid'?: string;
+    }) => (
+      <div data-testid={testId}>
+        {children}
+        <button
+          aria-label="confirm"
+          data-testid={`${testId}-confirm`}
+          onClick={onConfirm}
+        />
+      </div>
     ),
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
@@ -84,7 +138,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Key01: () => <span />,
   Plus: () => <span />,
   RefreshCcw02: () => <span />,
-  Trash02: () => <span />,
+  Trash01: () => <span />,
 }));
 
 jest.mock('utils/BotsUtils', () => ({
@@ -101,7 +155,43 @@ jest.mock('react-i18next', () => ({
 import AccessTokenRow from './AccessTokenRow';
 
 describe('AccessTokenRow', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourceLimit.mockResolvedValue({ configuredLimit: {} });
+  });
+
+  it('disables generation when the user limit turns off access tokens', async () => {
+    mockGetUserAccessToken.mockResolvedValue([]);
+    mockGetResourceLimit.mockResolvedValue({
+      configuredLimit: { disabledFields: ['personalAccessToken'] },
+    });
+
+    await act(async () => {
+      render(<AccessTokenRow />);
+    });
+
+    expect(mockGetResourceLimit).toHaveBeenCalledWith('user', false);
+    expect(screen.getByText('label.generate-token')).toBeDisabled();
+    expect(
+      screen.getByText('message.access-token-limit-reached')
+    ).toBeInTheDocument();
+  });
+
+  it('disables regenerating an existing token when limited', async () => {
+    mockGetUserAccessToken.mockResolvedValue([
+      { tokenName: 'ai-profile-token', token: 'tid', jwtToken: 'jwt' },
+    ]);
+    mockGetResourceLimit.mockResolvedValue({
+      configuredLimit: { disabledFields: ['personalAccessToken'] },
+    });
+
+    await act(async () => {
+      render(<AccessTokenRow />);
+    });
+
+    expect(screen.getByText('label.regenerate')).toBeDisabled();
+    expect(screen.getByText('label.revoke')).toBeEnabled();
+  });
 
   it('shows the empty state with expiry select and generates a token', async () => {
     mockGetUserAccessToken.mockResolvedValue([]);
@@ -130,7 +220,7 @@ describe('AccessTokenRow', () => {
     });
   });
 
-  it('revokes the managed token by id (no removeAll)', async () => {
+  it('revokes the managed token by id (no removeAll) only after confirmation', async () => {
     mockGetUserAccessToken.mockResolvedValue([
       { tokenName: 'ai-profile-token', token: 'tid', jwtToken: 'jwt' },
     ]);
@@ -144,8 +234,12 @@ describe('AccessTokenRow', () => {
       expect(screen.getByText('label.revoke')).toBeInTheDocument()
     );
 
+    fireEvent.click(screen.getByText('label.revoke'));
+
+    expect(mockPut).not.toHaveBeenCalled();
+
     await act(async () => {
-      fireEvent.click(screen.getByText('label.revoke'));
+      fireEvent.click(screen.getByTestId('revoke-token-popover-confirm'));
     });
 
     expect(mockPut).toHaveBeenCalledWith('/users/security/token/revoke', {

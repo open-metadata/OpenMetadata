@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { TOKEN_EXPIRY_NUMERIC_VALUES_IN_DAYS } from '../constants/User.constants';
 import { JWTTokenExpiry } from '../generated/entity/teams/user';
@@ -20,8 +19,6 @@ import {
   formatDateTimeLong,
 } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
-
-const { Option } = Select;
 
 const getJWTTokenExpiryLabel = (expiry: JWTTokenExpiry) => {
   switch (expiry) {
@@ -64,9 +61,10 @@ export const getJWTTokenExpiryOptions = (filterUnlimited = false) => {
     (a, b) => a.numericValue - b.numericValue
   );
 
-  return sortedOptions.map((option) => (
-    <Option key={option.value}>{option.label}</Option>
-  ));
+  return sortedOptions.map((option) => ({
+    id: option.value,
+    label: option.label,
+  }));
 };
 
 /**

@@ -21,14 +21,17 @@ import {
 import { forwardRef, ReactNode } from 'react';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import {
+  HTTPMethod,
   Status,
   SubscriptionCategory,
   SubscriptionType,
+  type Destination,
 } from '../../../../generated/events/eventSubscription';
 import {
   AlertSelection,
   AlertSelectionProvider,
 } from '../../../../hooks/useAlertSelection';
+import type { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
@@ -144,6 +147,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+    ButtonUtility: ({
+      'data-testid': dataTestId,
+      isDisabled,
+      onClick,
+      tooltip,
+    }: {
+      'data-testid'?: string;
+      isDisabled?: boolean;
+      onClick?: () => void;
+      tooltip?: string;
+    }) => (
+      <button
+        aria-label={tooltip}
+        data-testid={dataTestId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
+    ),
     Grid,
     Input: forwardRef<
       HTMLInputElement,
@@ -211,7 +232,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  X: () => <span>X</span>,
+  XClose: () => <span>XClose</span>,
 }));
 
 jest.mock('../../../../utils/ObservabilityUtils', () => ({
@@ -335,10 +356,45 @@ function renderWithDestinationValue(
   return render(<Wrapper />);
 }
 
+function renderDestinationRows(
+  destinationsWithStatus: Array<Destination | undefined>,
+  defaultDestinations: ModifiedDestination[]
+) {
+  function Wrapper() {
+    const methods = useForm({
+      defaultValues: { destinations: defaultDestinations },
+    });
+
+    return (
+      <FormProvider {...methods}>
+        {defaultDestinations.map((_, index) => (
+          <DestinationSelectItem
+            destinationsWithStatus={destinationsWithStatus}
+            id={index}
+            isDestinationStatusLoading={false}
+            // eslint-disable-next-line react/no-array-index-key -- form array rows keyed by position in tests
+            key={index}
+            remove={jest.fn()}
+            selectorKey={index}
+          />
+        ))}
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
+}
+
 const offering = (recipientCategories: string[]): AlertSelection => ({
   sources: ['table'],
   support: { recipientCategories },
-  capabilities: { loading: false },
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
   loading: false,
   search: {
     indexes: [],
@@ -663,7 +719,7 @@ describe('DestinationSelectItem', () => {
         category: SubscriptionCategory.External,
         config: {
           endpoint: 'https://chat.googleapis.com',
-          httpMethod: 'POST',
+          httpMethod: HTTPMethod.Post,
         },
         statusDetails: {
           status: Status.Failed,
@@ -686,7 +742,7 @@ describe('DestinationSelectItem', () => {
             config: {
               endpoint: 'https://chat.googleapis.com',
               headers: [],
-              httpMethod: 'POST',
+              httpMethod: HTTPMethod.Post,
               queryParams: [],
             },
           },
@@ -695,6 +751,78 @@ describe('DestinationSelectItem', () => {
     );
 
     expect(await screen.findByTestId('alert-error')).toBeInTheDocument();
+  });
+
+  it('shows each duplicate destination its own test status instead of the first match', async () => {
+    const duplicateRow: ModifiedDestination = {
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.slack.com' },
+    };
+    const destinationsWithStatus: Array<Destination | undefined> = [
+      {
+        type: SubscriptionType.Slack,
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        statusDetails: {
+          status: Status.Success,
+          statusCode: 200,
+          reason: 'OK',
+        },
+      },
+      {
+        type: SubscriptionType.Slack,
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        statusDetails: {
+          status: Status.Failed,
+          statusCode: 500,
+          reason: 'rate limited',
+        },
+      },
+    ];
+
+    renderDestinationRows(destinationsWithStatus, [duplicateRow, duplicateRow]);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-success')).toHaveLength(1);
+      expect(screen.getAllByTestId('alert-error')).toHaveLength(1);
+    });
+  });
+
+  it('does not leak an external row test status onto a neighboring internal row', async () => {
+    const internalRow: ModifiedDestination = {
+      destinationType: SubscriptionCategory.Owners,
+      category: SubscriptionCategory.Owners,
+      type: SubscriptionType.Email,
+    };
+    const externalRow: ModifiedDestination = {
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.slack.com' },
+    };
+    const destinationsWithStatus: Array<Destination | undefined> = [
+      undefined,
+      {
+        type: SubscriptionType.Slack,
+        category: SubscriptionCategory.External,
+        config: { endpoint: 'https://hooks.slack.com' },
+        statusDetails: {
+          status: Status.Success,
+          statusCode: 200,
+          reason: 'OK',
+        },
+      },
+    ];
+
+    renderDestinationRows(destinationsWithStatus, [internalRow, externalRow]);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-success')).toHaveLength(1);
+      expect(screen.queryAllByTestId('alert-error')).toHaveLength(0);
+    });
   });
 
   it('clears destination-specific values when destination type changes', async () => {

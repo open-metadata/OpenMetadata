@@ -14,6 +14,7 @@ import org.flowable.bpmn.model.SubProcess;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.BatchExecutionPlan.NodeMode;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.SetGlossaryTermStatusImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -29,6 +30,13 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
 
   public SetGlossaryTermStatusTask(
       SetGlossaryTermStatusTaskDefinition nodeDefinition, WorkflowConfiguration config) {
+    this(nodeDefinition, config, NodeMode.PER_ENTITY);
+  }
+
+  public SetGlossaryTermStatusTask(
+      SetGlossaryTermStatusTaskDefinition nodeDefinition,
+      WorkflowConfiguration config,
+      NodeMode batchMode) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -41,6 +49,7 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
             subProcessId,
             nodeDefinition.getConfig().getGlossaryTermStatus().toString(),
             JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
+    batchMode.addTo(setGlossaryTermStatus);
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();

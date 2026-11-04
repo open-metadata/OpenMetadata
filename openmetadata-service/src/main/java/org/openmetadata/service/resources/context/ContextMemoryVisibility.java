@@ -13,18 +13,21 @@
 
 package org.openmetadata.service.resources.context;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.HashSet;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
@@ -34,6 +37,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
@@ -56,6 +60,12 @@ public final class ContextMemoryVisibility {
   private static final Logger LOG = LoggerFactory.getLogger(ContextMemoryVisibility.class);
   private static final int MAX_ANCHOR_DECISIONS_PER_PAGE = 1000;
 
+  /**
+   * The anchors one query may have evaluated, each a policy evaluation on the request path
+   * (ADR:2026-10-09-search-admits-memories-of-pinned-anchors).
+   */
+  public static final int MAX_PINNED_ANCHORS = 20;
+
   /** The field selection that already asks for every allowed field, owners included. */
   private static final String ALL_FIELDS = "*";
 
@@ -67,6 +77,12 @@ public final class ContextMemoryVisibility {
   @FunctionalInterface
   interface AnchorAccess {
     boolean canView(String userName, EntityReference anchor);
+  }
+
+  /** The entities among some ids that anchor a memory, with their type. */
+  @FunctionalInterface
+  interface AnchorFinder {
+    List<EntityReference> findAnchors(List<UUID> candidateIds);
   }
 
   private ContextMemoryVisibility() {}
@@ -102,6 +118,84 @@ public final class ContextMemoryVisibility {
     return anchor == null || anchorAccess.canView(userName, anchor);
   }
 
+  /**
+   * The anchors among {@code pinnedAnchorIds} whose Entity memories {@code userName} may read under
+   * the anchor rule above. Search cannot evaluate an anchor's policy for every hit, but it can for
+   * the few anchors a query names: the agent's entity memory fetch and capture's duplicate probe
+   * name one. Ids that do not parse, ids past {@link #MAX_PINNED_ANCHORS} and entities that anchor
+   * no memory are dropped, so a query cannot make this evaluate an unbounded number of policies.
+   */
+  public static Set<String> readableAnchorIds(String userName, Collection<String> pinnedAnchorIds) {
+    return readableAnchorIds(
+        userName,
+        pinnedAnchorIds,
+        ContextMemoryVisibility::findAnchors,
+        ContextMemoryAnchorAccess::canView);
+  }
+
+  static Set<String> readableAnchorIds(
+      String userName,
+      Collection<String> pinnedAnchorIds,
+      AnchorFinder anchorFinder,
+      AnchorAccess anchorAccess) {
+    List<UUID> candidates = pinnedAnchors(pinnedAnchorIds);
+    Set<String> readable = Set.of();
+    if (userName != null && !candidates.isEmpty()) {
+      readable =
+          anchorFinder.findAnchors(candidates).stream()
+              .filter(anchor -> anchorAccess.canView(userName, anchor))
+              .map(anchor -> anchor.getId().toString())
+              .collect(Collectors.toUnmodifiableSet());
+    }
+    return readable;
+  }
+
+  static List<UUID> pinnedAnchors(Collection<String> pinnedAnchorIds) {
+    List<UUID> pinned =
+        pinnedAnchorIds == null
+            ? List.of()
+            : pinnedAnchorIds.stream()
+                .filter(Objects::nonNull)
+                .map(ContextMemoryVisibility::parseAnchorId)
+                .flatMap(Optional::stream)
+                .distinct()
+                .toList();
+    if (pinned.size() > MAX_PINNED_ANCHORS) {
+      LOG.debug(
+          "A query pins {} memory anchors; only the first {} are evaluated",
+          pinned.size(),
+          MAX_PINNED_ANCHORS);
+    }
+    return pinned.size() > MAX_PINNED_ANCHORS
+        ? List.copyOf(pinned.subList(0, MAX_PINNED_ANCHORS))
+        : pinned;
+  }
+
+  private static Optional<UUID> parseAnchorId(String anchorId) {
+    Optional<UUID> parsed = Optional.empty();
+    try {
+      parsed = Optional.of(UUID.fromString(anchorId.trim()));
+    } catch (IllegalArgumentException e) {
+      LOG.debug("Ignoring pinned anchor '{}': not an entity id", anchorId);
+    }
+    return parsed;
+  }
+
+  /** A lookup that cannot run leaves the query owner-only, as if it pinned nothing. */
+  private static List<EntityReference> findAnchors(List<UUID> candidates) {
+    List<EntityReference> anchors = List.of();
+    if (Entity.hasEntityRepository(Entity.CONTEXT_MEMORY)) {
+      try {
+        anchors =
+            ((ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+                .findAnchors(candidates);
+      } catch (JdbiException e) {
+        LOG.warn("Cannot resolve pinned memory anchors {}; search stays owner-only", candidates, e);
+      }
+    }
+    return anchors;
+  }
+
   public static void enforceVisibility(ContextMemory memory, String userName, boolean isAdmin) {
     if (!isVisibleToUser(memory, userName, isAdmin)) {
       throw new ForbiddenException(getVisibilityDeniedMessage(memory));
@@ -119,7 +213,7 @@ public final class ContextMemoryVisibility {
    * rule when {@code entity} is a memory and does nothing for every other entity type, so a caller
    * needs no per-type knowledge to be safe.
    */
-  public static void enforceVisibility(EntityInterface entity, SecurityContext securityContext) {
+  public static void enforceVisibility(EntityInterface<?> entity, SecurityContext securityContext) {
     if (entity instanceof ContextMemory memory) {
       enforceVisibility(memory, securityContext);
     }
@@ -203,11 +297,16 @@ public final class ContextMemoryVisibility {
     return admin;
   }
 
+  /**
+   * Whether {@code userName} is among the owners. Only an owner of type user can be the caller: a
+   * team owner named like the caller is a different principal.
+   */
   public static boolean isOwnedBy(ContextMemory memory, String userName) {
-    if (memory.getOwners() == null || memory.getOwners().isEmpty() || userName == null) {
+    if (nullOrEmpty(memory.getOwners()) || userName == null) {
       return false;
     }
     return memory.getOwners().stream()
+        .filter(o -> Entity.USER.equals(o.getType()))
         .anyMatch(o -> userName.equals(o.getName()) || userName.equals(o.getFullyQualifiedName()));
   }
 
@@ -220,6 +319,10 @@ public final class ContextMemoryVisibility {
    * Whether {@code userName} is named by a sharing list, directly or through a team or domain they
    * belong to. Public because Context Center shares files by the same vocabulary, and one matcher
    * is what keeps the two from drifting apart.
+   *
+   * <p>Principals are matched by id, as search matches them. Users, teams and domains are named
+   * independently of each other, so a name does not say which of them was shared with: a user who
+   * signs up under a team's name is not a member of that team.
    */
   public static boolean isSharedWith(List<MemorySharedPrincipal> sharedWith, String userName) {
     if (nullOrEmpty(sharedWith)) {
@@ -230,33 +333,26 @@ public final class ContextMemoryVisibility {
         .anyMatch(
             sp ->
                 sp.getPrincipal() != null
-                    && (principalIds.contains(sp.getPrincipal().getName())
-                        || principalIds.contains(sp.getPrincipal().getFullyQualifiedName())));
+                    && sp.getPrincipal().getId() != null
+                    && principalIds.contains(sp.getPrincipal().getId().toString()));
   }
 
+  /**
+   * The ids a sharing list may name to reach {@code userName}: their own, their teams' and their
+   * domains'. A user that cannot be resolved is shared nothing.
+   */
   static Set<String> resolvePrincipalIdentifiers(String userName) {
-    Set<String> ids = new HashSet<>();
-    ids.add(userName);
-    try {
-      User user =
-          Entity.getEntityByName(Entity.USER, userName, "teams,domains", Include.NON_DELETED);
-      addRefNames(ids, user.getTeams());
-      addRefNames(ids, user.getDomains());
-    } catch (Exception e) {
-      LOG.debug("Could not resolve teams/domains for user '{}'", userName, e);
+    Set<String> ids = Set.of();
+    if (!nullOrEmpty(userName)) {
+      try {
+        User user =
+            Entity.getEntityByName(Entity.USER, userName, "teams,domains", Include.NON_DELETED);
+        ids = Set.copyOf(ContextMemorySearchVisibility.sharedPrincipalIds(user));
+      } catch (RuntimeException e) {
+        LOG.debug("Could not resolve shared principal ids for user '{}'", userName, e);
+      }
     }
     return ids;
-  }
-
-  private static void addRefNames(Set<String> ids, List<EntityReference> refs) {
-    for (EntityReference ref : listOrEmpty(refs)) {
-      if (ref.getName() != null) {
-        ids.add(ref.getName());
-      }
-      if (ref.getFullyQualifiedName() != null) {
-        ids.add(ref.getFullyQualifiedName());
-      }
-    }
   }
 
   private static String getVisibilityDeniedMessage(ContextMemory memory) {

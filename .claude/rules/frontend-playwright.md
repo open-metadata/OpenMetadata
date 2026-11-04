@@ -61,7 +61,9 @@ Highest-value constraints, all machine-enforced:
   under-reports by design — any call it cannot see inside (a helper, a page object) exempts the
   test — so it is a backstop, not a guarantee that every test asserts.
 - `test.slow()` only inside the one test that needs it, never at file or describe scope.
-- No `waitForTimeout`, `networkidle`, `force: true`, `waitForSelector`, or element handles.
+- No `waitForTimeout`, `networkidle`, `force: true`, `waitForSelector`, or element handles. A click a
+  toast can cover goes through `clickIgnoringToasts()` (`playwright/utils/common.ts`) — `force` only
+  silences the hit-target check, and waiting for the toast stack to empty races every other worker.
 - Disabling a rule requires a justification: `-- <why>` appended to the directive. A directive with
   **no rule list** is never allowed, justified or not — it silences all 18 rules and CI rejects it.
 

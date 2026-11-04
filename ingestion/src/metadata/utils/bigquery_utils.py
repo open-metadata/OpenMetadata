@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 def get_bigquery_client(
     project_id: str | None = None,
     location: str | None = None,
+    api_endpoint: str | None = None,
     impersonate_service_account: str | None = None,
     quota_project_id: str | None = None,
     scopes: list[str] | None = None,
@@ -49,6 +50,7 @@ def get_bigquery_client(
     Args:
         location: The job location
         project_id: The client project ID
+        api_endpoint: Custom BigQuery API endpoint for non-default GCP universes
         impersonate_service_account: The service account email
         quota_project_id: The project ID for quota
         scopes: scopes
@@ -68,7 +70,15 @@ def get_bigquery_client(
         )
     from google.cloud import bigquery  # pylint: disable=import-outside-toplevel
 
-    return bigquery.Client(credentials=credentials, project=project_id, location=location)
+    client_kwargs = {
+        "credentials": credentials,
+        "project": project_id,
+        "location": location,
+    }
+    if api_endpoint:
+        client_kwargs["client_options"] = {"api_endpoint": api_endpoint}
+
+    return bigquery.Client(**client_kwargs)
 
 
 def copy_service_config(config: OpenMetadataWorkflowConfig, database_name: str) -> BigQueryConnection:

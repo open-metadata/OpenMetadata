@@ -31,6 +31,7 @@ import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { axisTickFormatter } from '../../../../utils/ChartUtils';
 import { placedSeriesKey } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import TestSummaryGraph from './TestSummaryGraph';
 import { TOOLTIP_CLOSE_DELAY } from './TestSummaryGraph.constants';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
@@ -235,7 +236,7 @@ describe('TestSummaryGraph', () => {
     jest.useRealTimers();
   });
 
-  it('should show the placeholder for the selected time range when there are no results', () => {
+  it('keeps the selected time range in the headline and extension guidance in the description', () => {
     render(
       <TestSummaryGraph
         {...mockProps}
@@ -247,7 +248,10 @@ describe('TestSummaryGraph', () => {
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
       screen.getByText('message.no-test-result-for-days Last 7 days')
-    ).toBeInTheDocument();
+    ).toHaveClass('tw:text-sm', 'tw:font-semibold');
+    expect(screen.getByText('message.try-extending-time-frame')).toHaveClass(
+      'tw:text-xs'
+    );
     expect(mockComposedChart).not.toHaveBeenCalled();
   });
 
@@ -304,6 +308,45 @@ describe('TestSummaryGraph', () => {
 
     expect(xAxis?.type).toBe('time');
     expect(xAxis?.formatter?.(NEWEST_RUN_TIMESTAMP)).toBe(FORMATTED_DATE);
+  });
+
+  it("should tick the runs' own times, one tick per label", () => {
+    const DAY = 86_400_000;
+    // Labels to the minute, as the axis formats them.
+    (formatDateTimeLong as jest.Mock).mockImplementation(
+      (timestamp: number) => `minute ${Math.floor(timestamp / 60_000)}`
+    );
+    const run = (timestamp: number) => ({
+      ...mockProps.testCaseResults[0],
+      timestamp,
+    });
+
+    // Two runs a few seconds apart, and one a day later: not midnight ticks,
+    // and not the same minute twice.
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseResults={[run(DAY + 60_000), run(65_000), run(60_000)]}
+      />
+    );
+
+    expect(getChartProps().xAxis?.axisLabel).toEqual(
+      expect.objectContaining({ customValues: [60_000, DAY + 60_000] })
+    );
+
+    (formatDateTimeLong as jest.Mock).mockReturnValue(FORMATTED_DATE);
+  });
+
+  it('should sit on its card with no surface of its own, over a themed baseline', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    // tw:bg-primary is the page colour in dark mode: a darker slab on the card.
+    expect(
+      screen.getByTestId('core-composed-chart').closest('.tw\\:bg-primary')
+    ).toBeNull();
+    expect(getChartProps().xAxis?.axisLine).toEqual({
+      lineStyle: { color: '#a0a0a0' },
+    });
   });
 
   it('should format the y axis as a duration for freshness tests', () => {
@@ -401,7 +444,23 @@ describe('TestSummaryGraph', () => {
 
     expect(getChartProps().yAxis).toEqual(
       expect.objectContaining({
-        axisLabel: { showMinLabel: false, showMaxLabel: false },
+        axisLabel: expect.objectContaining({
+          showMinLabel: false,
+          showMaxLabel: false,
+        }),
+      })
+    );
+  });
+
+  it("should wash a single series in 5% of the palette's brand series colour, under a 2px line", () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
+    );
+
+    expect(getSeries('value').seriesOption).toEqual(
+      expect.objectContaining({
+        areaStyle: { color: '#100000@0.05' },
+        lineStyle: { width: 2 },
       })
     );
   });
@@ -433,12 +492,14 @@ describe('TestSummaryGraph', () => {
       />
     );
 
-    expect(getReferenceLine('y')).toEqual({
-      axis: 'y',
-      value: 10000,
-      label: `label.expected-value ${(10000).toLocaleString()}`,
-      labelPosition: 'start',
-    });
+    expect(getReferenceLine('y')).toEqual(
+      expect.objectContaining({
+        axis: 'y',
+        value: 10000,
+        label: `label.expected-value ${(10000).toLocaleString()}`,
+        labelPosition: 'start',
+      })
+    );
   });
 
   it('should fall back to the learned bound when no parameter asserts a number', () => {
@@ -474,11 +535,31 @@ describe('TestSummaryGraph', () => {
   it('should guide to the newest run until one is selected', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
-    // No status: the palette's red would read the guide as a failed run.
+    // Solid, in the selected run's status colour.
     expect(getReferenceLine('x')).toEqual({
       axis: 'x',
       value: NEWEST_RUN_TIMESTAMP,
+      status: 'success',
+      lineType: 'solid',
     });
+  });
+
+  it('should colour the guide by the status of the run it marks', () => {
+    mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
+
+    render(
+      <TestSummaryGraph
+        {...mockProps}
+        testCaseResults={[
+          twoRunResults[0],
+          { ...twoRunResults[1], testCaseStatus: TestCaseStatus.Failed },
+        ]}
+      />
+    );
+
+    expect(getReferenceLine('x')).toEqual(
+      expect.objectContaining({ value: OLDER_RUN_TIMESTAMP, status: 'failed' })
+    );
   });
 
   it('should guide to the selected run once the store holds one', () => {
@@ -532,11 +613,13 @@ describe('TestSummaryGraph', () => {
       expect.objectContaining({ connectNulls: true })
     );
     expect(markers.name).toBe('value');
-    expect(markers.pointStyle?.(aborted, 1)).toEqual({
-      status: 'warning',
-      hollow: true,
-      selected: false,
-    });
+    expect(markers.pointStyle?.(aborted, 1)).toEqual(
+      expect.objectContaining({
+        status: 'warning',
+        hollow: true,
+        selected: false,
+      })
+    );
   });
 
   it('should still list an aborted run kept off the line for screen readers', () => {
@@ -562,6 +645,22 @@ describe('TestSummaryGraph', () => {
     ).toEqual({ status: 'success', hollow: false, selected: false });
   });
 
+  it('should start the status key at the chart edge, not inset from it', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(
+      screen.getByTestId('test-summary-status-key').parentElement?.className
+    ).not.toContain('tw:px-');
+  });
+
+  it('should tell the reader a point opens its run', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(
+      screen.getByText('message.select-a-point-for-run-details')
+    ).toBeInTheDocument();
+  });
+
   it('should mark only the active run as selected', () => {
     render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
 
@@ -581,7 +680,7 @@ describe('TestSummaryGraph', () => {
     ).toBe(false);
   });
 
-  it('should move the selected halo to the run the store holds', () => {
+  it('should move the selected ring to the run the store holds', () => {
     mockSelectedRunTimestamp = OLDER_RUN_TIMESTAMP;
     render(<TestSummaryGraph {...mockProps} testCaseResults={twoRunResults} />);
 
@@ -625,24 +724,33 @@ describe('TestSummaryGraph', () => {
     });
   });
 
-  // Focusing a hovered series fades every other one, the allowed-range band
-  // and the expectation label included; with one series that only hides them.
-  it('should not fade the band and expectation line when a single series is hovered', () => {
-    render(
+  it('should give every series no hover state, however many there are', () => {
+    const { unmount } = render(
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
     );
 
-    expect(getSeries('value').seriesOption).not.toHaveProperty('emphasis');
-  });
+    expect(getSeries('value').seriesOption).toEqual(
+      expect.objectContaining({ emphasis: { disabled: true } })
+    );
 
-  it('should bring the hovered series forward when there are several', () => {
+    unmount();
     render(<TestSummaryGraph {...mockProps} />);
 
     ['min', 'max'].forEach((key) => {
       expect(getSeries(key).seriesOption).toEqual(
-        expect.objectContaining({ emphasis: { focus: 'series' } })
+        expect.objectContaining({ emphasis: { disabled: true } })
       );
     });
+  });
+
+  it('should give the dots of aborted and queued runs no hover state', () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseResults={runsAroundAnAbort} />
+    );
+
+    expect(getSeries(placedSeriesKey('value')).seriesOption).toEqual(
+      expect.objectContaining({ emphasis: { disabled: true } })
+    );
   });
 
   it('should draw several series as palette lines', () => {

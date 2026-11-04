@@ -7,16 +7,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
 public class SearchListFilter extends Filter<SearchListFilter> {
-  private List<EntityStatus> memoryStatuses = ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
+  private List<ContextMemoryStatus> memoryStatuses =
+      ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
 
   public SearchListFilter() {
     this(Include.NON_DELETED);
@@ -30,12 +32,12 @@ public class SearchListFilter extends Filter<SearchListFilter> {
    * Context memory stages the listing admits. Applied with memory visibility rather than as a
    * condition, since ordinary search already admits Approved memories only.
    */
-  public SearchListFilter withMemoryStatuses(List<EntityStatus> statuses) {
+  public SearchListFilter withMemoryStatuses(List<ContextMemoryStatus> statuses) {
     memoryStatuses = List.copyOf(statuses);
     return this;
   }
 
-  public List<EntityStatus> getMemoryStatuses() {
+  public List<ContextMemoryStatus> getMemoryStatuses() {
     return memoryStatuses;
   }
 
@@ -46,6 +48,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_OWNERS_ID = "owners.id";
   private static final String FIELD_CREATED_BY = "createdBy";
   private static final String FIELD_DOMAINS_FQN = "domains.fullyQualifiedName";
+  public static final String NAV_DOMAIN_PARAM = "navDomain";
+  public static final String NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM = "navDomainKeepsUnassigned";
   private static final String FIELD_DATA_PRODUCTS_FQN = "dataProducts.fullyQualifiedName";
   private static final String FIELD_SERVICE_NAME = "service.name";
   private static final String FIELD_TEST_CASE_STATUS = "testCaseResult.testCaseStatus";
@@ -54,7 +58,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_TEST_STATUS = "testCaseStatus";
   private static final String FIELD_BASIC = "basic";
   private static final String FIELD_PINNED = "pinned";
-  private static final String FIELD_PRIMARY_ENTITY_ID = "primaryEntity.id";
+  private static final String FIELD_PRIMARY_ENTITY_ID =
+      ContextMemoryAnchorPins.FIELD_PRIMARY_ENTITY_ID;
   private static final String FIELD_RELATED_ENTITIES_ID = "relatedEntities.id";
 
   @Override
@@ -154,7 +159,24 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       return String.format(
           "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeJsonString(domain));
     }
-    return "";
+    return getNavbarDomainCondition();
+  }
+
+  // The navbar pick matches the domain and its sub-domains, and optionally items with no domain.
+  private String getNavbarDomainCondition() {
+    String navDomain = getQueryParam(NAV_DOMAIN_PARAM);
+    if (nullOrEmpty(navDomain)) {
+      return "";
+    }
+    String fqn = escapeJsonString(navDomain);
+    String unassigned =
+        Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM))
+            ? String.format(
+                ",{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"%s\"}}}}", FIELD_DOMAINS_FQN)
+            : "";
+    return String.format(
+        "{\"bool\":{\"should\":[{\"term\":{\"%s\":\"%s\"}},{\"prefix\":{\"%s\":\"%s.\"}}%s],\"minimum_should_match\":1}}",
+        FIELD_DOMAINS_FQN, fqn, FIELD_DOMAINS_FQN, fqn, unassigned);
   }
 
   private String getIncludeCondition(String entityType) {

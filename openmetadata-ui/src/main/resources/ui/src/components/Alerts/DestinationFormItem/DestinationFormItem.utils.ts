@@ -25,10 +25,33 @@ export const hasExternalDestination = (
       EXTERNAL_DESTINATION_TYPES.includes(type ?? '')
   );
 
+export const isTestableExternalDestination = (destination: Destination) =>
+  destination.category === SubscriptionCategory.External &&
+  !isEmpty(destination.config);
+
 export const getTestableExternalDestinations = (
   destinations: Destination[] = []
-) =>
-  destinations.filter(
-    ({ category, config }) =>
-      category === SubscriptionCategory.External && !isEmpty(config)
+) => destinations.filter(isTestableExternalDestination);
+
+/**
+ * Re-aligns the per-tested-destination status list back to the form's full
+ * destination row order. `getTestableExternalDestinations` filters the form
+ * destinations down to only testable external rows before testing, so the
+ * paired status list is shorter than the form. This rebuilds one entry per
+ * form row — placing each tested row's result at its original form index and
+ * `undefined` for non-tested (internal / empty-config) rows — so each row can
+ * look its own status up by form index instead of by value-equality, which
+ * collapses duplicate destinations onto the first matching entry.
+ */
+export const alignDestinationsWithTestStatus = (
+  formDestinations: Destination[] = [],
+  testedDestinationsWithStatus: Destination[]
+): (Destination | undefined)[] => {
+  let testedIndex = 0;
+
+  return formDestinations.map((destination) =>
+    isTestableExternalDestination(destination)
+      ? testedDestinationsWithStatus[testedIndex++]
+      : undefined
   );
+};

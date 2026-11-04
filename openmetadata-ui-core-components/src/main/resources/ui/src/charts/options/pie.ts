@@ -91,6 +91,11 @@ export const buildPieOption = (
       itemStyle: {
         color: datum.color ?? chartColor(theme.palette, index, datum.status),
       },
+      // Default hover brightening turns light neutral slices white.
+      emphasis:
+        datum.status === 'neutral'
+          ? { itemStyle: { color: 'inherit' } }
+          : undefined,
     })),
   };
 

@@ -25,8 +25,10 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -39,8 +41,11 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
-    LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
-    logDeprecationWarnings(config.getAuthorizerConfiguration());
+    AuthorizerConfiguration current = SecurityConfigurationManager.getCurrentAuthzConfig();
+    AuthorizerConfiguration inEffect =
+        current == null ? config.getAuthorizerConfiguration() : current;
+    LOG.info("Initializing DefaultAuthorizer with config {}", inEffect);
+    logDeprecationWarnings(inEffect);
   }
 
   private void logDeprecationWarnings(AuthorizerConfiguration config) {
@@ -141,6 +146,24 @@ public class DefaultAuthorizer implements Authorizer {
         subjectContextForUserName(userName), operationContext, resourceContext);
   }
 
+  @Override
+  public void authorizeActor(
+      final ChangeActor actor,
+      final OperationContext operationContext,
+      final ResourceContextInterface resourceContext) {
+    authorizeSubject(actorSubjectContext(actor), operationContext, resourceContext);
+  }
+
+  // The impersonation was validated when the request came in; the write only records it. An author
+  // that no longer resolves to a user is refused, never let through.
+  private static SubjectContext actorSubjectContext(final ChangeActor actor) {
+    try {
+      return SubjectContext.getSubjectContext(actor.userName(), actor.impersonatedBy());
+    } catch (EntityNotFoundException e) {
+      throw new AuthorizationException(notAdmin(actor.userName()));
+    }
+  }
+
   private void authorizeSubject(
       SubjectContext subjectContext,
       OperationContext operationContext,
@@ -158,15 +181,23 @@ public class DefaultAuthorizer implements Authorizer {
     }
 
     if (logic == AuthorizationLogic.ANY) {
+      // Every request is evaluated, not stopped at the first allow: an explicit Deny on any one of
+      // them refuses the whole thing, and that must hold whatever order the requests arrive in -
+      // otherwise [allowed, denied] would pass while [denied, allowed] is refused.
       boolean anySuccess = false;
+      PolicyDeniedException denied = null;
       for (AuthRequest req : requests) {
         try {
           PolicyEvaluator.hasPermission(
               subjectContext, req.resourceContext(), req.operationContext());
           anySuccess = true;
-          break;
+        } catch (PolicyDeniedException e) {
+          denied = e;
         } catch (AuthorizationException ignored) {
         }
+      }
+      if (denied != null) {
+        throw denied;
       }
       if (!anySuccess) {
         throw new AuthorizationException("User does not have ANY of the required permissions.");

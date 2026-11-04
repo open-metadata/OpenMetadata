@@ -17,7 +17,6 @@ import {
   ButtonUtility,
   Card,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tree,
@@ -103,6 +102,7 @@ import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageU
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
@@ -755,11 +755,10 @@ const KnowledgePagesHierarchy = forwardRef<
 
         const deleteButton = canDelete ? (
           <ButtonUtility
-            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
-            color="tertiary"
+            className="tw:opacity-0 group-hover-opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
-            size="xs"
+            size="lg"
             tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
@@ -873,9 +872,8 @@ const KnowledgePagesHierarchy = forwardRef<
     const renderExpandCollapseButton = () =>
       isUserExpandedAll ? (
         <ButtonUtility
-          color="tertiary"
-          icon={<CollapseAllIcon className="tw:size-6" />}
-          size="sm"
+          icon={CollapseAllIcon}
+          size="lg"
           tooltip={t('label.collapse-all')}
           onClick={() => {
             setExpandedKeys([]);
@@ -884,10 +882,9 @@ const KnowledgePagesHierarchy = forwardRef<
         />
       ) : (
         <ButtonUtility
-          color="tertiary"
-          icon={<ExpandAllIcon className="tw:size-6" />}
+          icon={ExpandAllIcon}
           isDisabled={isExpandingAll}
-          size="sm"
+          size="lg"
           tooltip={t('label.expand-all')}
           onClick={handleExpandAll}
         />
@@ -909,9 +906,9 @@ const KnowledgePagesHierarchy = forwardRef<
 
         {isHierarchyEmpty && (
           <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               description={t('message.no-articles-listed')}
-              icon={<Articles className="tw:text-secondary" />}
+              icon={<Articles />}
               title={t('label.no-entity', {
                 entity: t('label.article-plural'),
               })}
@@ -1059,7 +1056,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 if (deletePage.pageType === PageType.QUICK_LINK) {
                   await deleteKnowledgePage(deletePage.id, false, true);
                 } else {
-                  await deleteKnowledgePage(deletePage.id);
+                  await deleteKnowledgePage(deletePage.id, true, true);
                 }
                 queryClient.invalidateQueries({
                   queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,

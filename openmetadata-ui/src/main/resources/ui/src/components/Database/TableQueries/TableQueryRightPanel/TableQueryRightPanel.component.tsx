@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Col, Drawer, Row, Space } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Grid,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -22,12 +27,13 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getUserPath } from '../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -76,24 +82,23 @@ const TableQueryRightPanel = ({
   };
 
   return (
-    <Drawer
-      destroyOnClose
-      open
-      className="query-right-panel"
-      closable={false}
-      getContainer={false}
-      mask={false}
-      title={null}
-      width="100%">
+    <Box className="query-right-panel tw:h-full tw:w-full" direction="col">
       {isLoading ? (
         <Loader />
       ) : (
-        <Row className="m-y-md p-x-md w-full" gutter={[16, 20]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid m-y-md p-x-md w-full"
+          style={{ ...getLayoutGutter(16, 20) }}>
+          <Grid.Item className="layout-column" span={24}>
             <ExpandableCard
               cardProps={{
                 title: (
-                  <Space align="center" className="w-full" size={0}>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal w-full"
+                    gap={0}
+                    itemClassName="layout-space-item">
                     <Typography className="right-panel-label">
                       {t('label.owner-plural')}
                     </Typography>
@@ -109,16 +114,16 @@ const TableQueryRightPanel = ({
                         onUpdate={(updatedUsers) =>
                           handleUpdateOwner(updatedUsers)
                         }>
-                        <EditIconButton
+                        <ButtonUtility
                           data-testid="edit-owner"
-                          size="small"
-                          title={t('label.edit-entity', {
+                          icon={Edit01}
+                          tooltip={t('label.edit-entity', {
                             entity: t('label.owner-lowercase-plural'),
                           })}
                         />
                       </UserTeamSelectableList>
                     )}
-                  </Space>
+                  </Box>
                 ),
               }}>
               <Owner
@@ -128,8 +133,8 @@ const TableQueryRightPanel = ({
                 showLabel={false}
               />
             </ExpandableCard>
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <Description
               wrapInCard
               className="w-full"
@@ -140,8 +145,8 @@ const TableQueryRightPanel = ({
               showCommentsIcon={false}
               onDescriptionUpdate={onDescriptionUpdate}
             />
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <TagsContainerV2
               newLook
               permission={canEditTags}
@@ -150,8 +155,8 @@ const TableQueryRightPanel = ({
               tagType={TagSource.Classification}
               onSelectionChange={handleTagSelection}
             />
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <ExpandableCard
               cardProps={{
                 title: (
@@ -161,20 +166,32 @@ const TableQueryRightPanel = ({
                 ),
               }}>
               {query.users && query.users.length ? (
-                <Space wrap size={6}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  itemClassName="layout-space-item"
+                  style={{ gap: 'var(--om-space-6)' }}
+                  wrap="wrap">
                   {query.users.map((user) => (
-                    <Space className="m-r-xss" key={user.id} size={4}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal m-r-xss"
+                      gap={1}
+                      itemClassName="layout-space-item"
+                      key={user.id}>
                       <ProfilePicture
                         displayName={getEntityName(user)}
                         name={user.name || ''}
                         width="20"
                       />
-                      <Link to={getUserPath(user.name ?? '')}>
+                      <Link to={getSettingsLink(getUserPath(user.name ?? ''))}>
                         {getEntityName(user)}
                       </Link>
-                    </Space>
+                    </Box>
                   ))}
-                </Space>
+                </Box>
               ) : (
                 <Typography as="p" className="m-b-0" color="secondary">
                   {t('label.no-entity', {
@@ -183,8 +200,8 @@ const TableQueryRightPanel = ({
                 </Typography>
               )}
             </ExpandableCard>
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <ExpandableCard
               cardProps={{
                 title: (
@@ -196,14 +213,26 @@ const TableQueryRightPanel = ({
                 ),
               }}>
               {query.usedBy && query.usedBy.length ? (
-                <Space wrap size={6}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  itemClassName="layout-space-item"
+                  style={{ gap: 'var(--om-space-6)' }}
+                  wrap="wrap">
                   {query.usedBy.map((user) => (
-                    <Space className="m-r-xss" key={user} size={4}>
-                      <Icon component={IconUser} />
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal m-r-xss"
+                      gap={1}
+                      itemClassName="layout-space-item"
+                      key={user}>
+                      <IconUser className="tw:size-3.5 tw:shrink-0" />
                       {user}
-                    </Space>
+                    </Box>
                   ))}
-                </Space>
+                </Box>
               ) : (
                 <Typography as="p" className="m-b-0" color="secondary">
                   {t('label.no-entity', {
@@ -212,10 +241,10 @@ const TableQueryRightPanel = ({
                 </Typography>
               )}
             </ExpandableCard>
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       )}
-    </Drawer>
+    </Box>
   );
 };
 

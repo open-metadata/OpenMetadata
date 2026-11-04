@@ -73,35 +73,26 @@ class ColumnValuesSumToBeBetweenValidator(BaseColumnValuesSumToBeBetweenValidato
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others"
         """
-        dimension_results = []
+        row_count_expr = Metrics.rowCount().fn()
+        sum_expr = Metrics.sum(column).fn()
 
-        try:
-            row_count_expr = Metrics.rowCount().fn()
-            sum_expr = Metrics.sum(column).fn()
+        metric_expressions = {
+            DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
+            Metrics.sum.name: sum_expr,
+        }
 
-            metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
-                Metrics.sum.name: sum_expr,
-            }
+        failed_count_builder = lambda cte, row_count_expr: self._get_validation_checker(  # noqa: E731
+            test_params
+        ).build_agg_level_violation_sqa([getattr(cte.c, Metrics.sum.name)], row_count_expr)
 
-            failed_count_builder = lambda cte, row_count_expr: self._get_validation_checker(  # noqa: E731
-                test_params
-            ).build_agg_level_violation_sqa([getattr(cte.c, Metrics.sum.name)], row_count_expr)
+        normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
-            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
+        result_rows = self._run_dimensional_validation_query(
+            source=self.runner.dataset,
+            dimension_expr=normalized_dimension,
+            metric_expressions=metric_expressions,
+            failed_count_builder=failed_count_builder,
+            top_n=top_n,
+        )
 
-            result_rows = self._run_dimensional_validation_query(
-                source=self.runner.dataset,
-                dimension_expr=normalized_dimension,
-                metric_expressions=metric_expressions,
-                failed_count_builder=failed_count_builder,
-                top_n=top_n,
-            )
-
-            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
-
-        return dimension_results
+        return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../constants/constants';
@@ -154,7 +153,9 @@ describe('NavbarUtils test', () => {
       helpDropdownItems.forEach((item) => {
         const labelContent = item.label.props.children;
 
-        expect(labelContent.props.className).toBe('cursor-pointer');
+        expect(labelContent.props.className.split(/\s+/)).toContain(
+          'cursor-pointer'
+        );
 
         // Should have two columns
         const columns = labelContent.props.children;
@@ -166,7 +167,9 @@ describe('NavbarUtils test', () => {
 
         // Second column should have text and optional external link icon
         expect(columns[1].props.span).toBe(20);
-        expect(columns[1].props.className).toBe('flex items-center');
+        expect(columns[1].props.className.split(/\s+/)).toEqual(
+          expect.arrayContaining(['flex', 'items-center'])
+        );
       });
     });
 
@@ -190,9 +193,11 @@ describe('NavbarUtils test', () => {
         // Second child should be the external link icon
         const externalIcon = secondColumn.props.children[1];
 
-        expect(externalIcon.type).toBe(Icon);
-        expect(externalIcon.props.className).toBe('m-l-xss text-base-color');
-        expect(externalIcon.props.style).toEqual({ fontSize: '16px' });
+        // The SVG asset is now rendered directly, sized by a class rather
+        // than antd's injected font-size.
+        expect(externalIcon.props.className).toBe(
+          'tw:ml-1 tw:text-secondary tw:size-4 tw:shrink-0'
+        );
       });
     });
 

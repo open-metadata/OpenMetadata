@@ -26,6 +26,10 @@ export interface ListActivityParams {
   actorId?: string;
   domains?: string;
   days?: number;
+  // Absolute lower bound (epoch millis) for the activity window; overrides
+  // `days` when supplied so a calendar-aligned window (e.g. the Inbox "Last
+  // 30 days" preset) fetches its full range instead of `now - days`.
+  startTs?: number;
   limit?: number;
 }
 
@@ -84,11 +88,17 @@ export const getUserActivity = async (
 
 interface ScopedActivityFeedParams {
   days?: number;
+  // Absolute lower bound (epoch millis) for the activity window; overrides
+  // `days` when supplied (see ListActivityParams.startTs).
+  startTs?: number;
   limit?: number;
   domain?: string;
+  // Compute the feed for this user instead of the viewer (needs ViewBasic on
+  // that user).
+  userId?: string;
 }
 
-// The viewer's own feeds share one shape and differ only in their path.
+// The personal feeds share one shape and differ only in their path.
 const getScopedActivityFeed = async (
   scope: string,
   params?: ScopedActivityFeedParams
@@ -107,7 +117,7 @@ export const getMyActivityFeed = (params?: ScopedActivityFeedParams) =>
 export const getFollowingActivityFeed = (params?: ScopedActivityFeedParams) =>
   getScopedActivityFeed('following', params);
 
-// Activity whose replies mention the viewer or one of their teams.
+// Activity whose replies mention the viewer (or `userId`) or one of their teams.
 export const getMentionsActivityFeed = (params?: ScopedActivityFeedParams) =>
   getScopedActivityFeed('mentions', params);
 

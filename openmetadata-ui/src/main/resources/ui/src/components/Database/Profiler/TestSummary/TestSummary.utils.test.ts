@@ -12,6 +12,7 @@
  */
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
+  getMeasuredResult,
   getResultHistoryCaption,
   hasTestCaseNeverRun,
 } from './TestSummary.utils';
@@ -90,7 +91,11 @@ describe('getResultHistoryCaption', () => {
         )
       )
     ).toEqual({
-      metric: { key: 'label.result-metric-values' },
+      // Named for its column, as its static form is (V-42).
+      metric: {
+        key: 'label.result-metric-column-values',
+        values: { column: 'customer_id' },
+      },
       comparison: { key: 'label.caption-learned-range' },
     });
   });
@@ -140,10 +145,61 @@ describe('getResultHistoryCaption', () => {
     ).toEqual({ key: 'label.caption-allowed-min', values: { value: '500' } });
   });
 
+  it('should name the column of a between-values test, not one of its two series', () => {
+    // It checks every value, and ingestion reports the column's min and max.
+    expect(
+      getResultHistoryCaption(
+        testCase(
+          'columnValuesToBeBetween',
+          { minValue: '1', maxValue: '3489' },
+          { entityLink: columnLink('customer_id') }
+        )
+      ).metric
+    ).toEqual({
+      key: 'label.result-metric-column-values',
+      values: { column: 'customer_id' },
+    });
+  });
+
   it('should fall back to values for a definition it does not know', () => {
     expect(getResultHistoryCaption(testCase('myCustomTest', {}))).toEqual({
       metric: { key: 'label.result-metric-values' },
     });
+  });
+});
+
+describe('getMeasuredResult', () => {
+  const run = (testResultValue: { name: string; value: string }[]) => ({
+    timestamp: 1,
+    testCaseStatus: TestCaseStatus.Failed,
+    testResultValue,
+  });
+
+  it.each(['valueCount', 'valuesCount'])(
+    'shows a uniqueness test its duplicates, not the two counts it reports as %s and uniqueCount',
+    (countName) => {
+      expect(
+        getMeasuredResult(
+          testCase('columnValuesToBeUnique', {}),
+          run([
+            { name: countName, value: '100' },
+            { name: 'uniqueCount', value: '63' },
+          ])
+        ).testResultValue
+      ).toEqual([{ name: 'duplicateCount', value: '37' }]);
+    }
+  );
+
+  it('keeps the values of every other test, and of a uniqueness run missing a count', () => {
+    const rowCount = run([{ name: 'rowCount', value: '110' }]);
+    const partial = run([{ name: 'uniqueCount', value: '63' }]);
+
+    expect(
+      getMeasuredResult(testCase('tableRowCountToEqual', {}), rowCount)
+    ).toBe(rowCount);
+    expect(
+      getMeasuredResult(testCase('columnValuesToBeUnique', {}), partial)
+    ).toBe(partial);
   });
 });
 

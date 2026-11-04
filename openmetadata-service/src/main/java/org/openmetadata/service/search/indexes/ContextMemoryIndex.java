@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
@@ -33,6 +34,10 @@ public class ContextMemoryIndex implements TaggableIndex {
 
   public static final String FIELD_STATUS = "entityStatus";
   public static final String FIELD_ANCHOR_ID = "anchorId";
+  public static final String FIELD_MEMORY_SCOPE = "memoryScope";
+  public static final String FIELD_MEMORY_TYPE = "memoryType";
+  public static final String FIELD_PINNED = "pinned";
+  public static final String FIELD_OUTCOMES = "outcomes";
   public static final String UNANCHORED = "unanchored";
 
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
@@ -70,10 +75,9 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("summary", memory.getSummary());
     doc.put("question", memory.getQuestion());
     doc.put("answer", memory.getAnswer());
-    doc.put("memoryType", memory.getMemoryType() != null ? memory.getMemoryType().value() : null);
-    doc.put(
-        "memoryScope", memory.getMemoryScope() != null ? memory.getMemoryScope().value() : null);
-    doc.put("pinned", Boolean.TRUE.equals(memory.getPinned()));
+    doc.put(FIELD_MEMORY_TYPE, memoryTypeValue(memory));
+    doc.put(FIELD_MEMORY_SCOPE, memoryScopeValue(memory));
+    doc.put(FIELD_PINNED, Boolean.TRUE.equals(memory.getPinned()));
     doc.put("sourceType", memory.getSourceType() != null ? memory.getSourceType().value() : null);
     doc.put(
         "sourceConversation",
@@ -88,10 +92,29 @@ public class ContextMemoryIndex implements TaggableIndex {
             : null);
     doc.put("usageCount", memory.getUsageCount() != null ? memory.getUsageCount() : 0);
     doc.put("lastUsedAt", memory.getLastUsedAt());
+    applyOutcomes(doc);
 
     applyShareConfig(doc);
     applyEntityReferences(doc);
     return doc;
+  }
+
+  /**
+   * Only a counted memory indexes outcomes: a list read from search then shows an uncounted one's
+   * usage, not zero citations, and a sort on a count puts it last.
+   */
+  private void applyOutcomes(Map<String, Object> doc) {
+    if (memory.getOutcomes() != null) {
+      doc.put(FIELD_OUTCOMES, JsonUtils.getMap(memory.getOutcomes()));
+    }
+  }
+
+  public static String memoryTypeValue(ContextMemory memory) {
+    return memory.getMemoryType() == null ? null : memory.getMemoryType().value();
+  }
+
+  public static String memoryScopeValue(ContextMemory memory) {
+    return memory.getMemoryScope() == null ? null : memory.getMemoryScope().value();
   }
 
   public static String statusValue(ContextMemory memory) {
