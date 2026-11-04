@@ -185,7 +185,7 @@ export interface FieldChange {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -240,7 +240,7 @@ export interface PipelineConnection {
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Choose between database connection or REST API connection to fetch metadata from
      * Airflow.
@@ -307,7 +307,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     awsConfig?:         AWSCredentials;
     /**
      * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
@@ -901,6 +901,8 @@ export enum CloudProvider {
 /**
  * Azure Cloud Credentials
  *
+ * Azure Credentials
+ *
  * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
@@ -963,7 +965,7 @@ export interface ConnectionClass {
     /**
      * Service Type
      */
-    type?: Type;
+    type?: ConnectionType;
     /**
      * Whether to verify SSL certificates when connecting to the Airflow API.
      */
@@ -1481,7 +1483,7 @@ export enum SSLMode {
  *
  * Service type.
  */
-export enum Type {
+export enum ConnectionType {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -1652,9 +1654,11 @@ export interface NifiCredentialsConfiguration {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -1674,15 +1678,26 @@ export interface S3Connection {
     /**
      * Service Type
      */
-    type?: S3Type;
+    type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
-export enum S3Type {
+export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 

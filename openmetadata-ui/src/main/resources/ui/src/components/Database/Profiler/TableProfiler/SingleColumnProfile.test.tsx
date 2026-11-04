@@ -15,7 +15,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ColumnProfile } from '../../../../generated/entity/data/container';
-import { Table } from '../../../../generated/entity/data/table';
+import { Table, TableType } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { DataType } from '../../../../generated/tests/testDefinition';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
@@ -376,6 +376,58 @@ describe('SingleColumnProfile', () => {
     activeColumnFqn: 'db.schema.test_table.test_column',
     tableDetails: mockTableDetails,
   };
+
+  it('shows the stored column source after the representative rolls forward', async () => {
+    mockGetColumnProfilerList.mockResolvedValue({
+      data: [
+        {
+          name: 'test_column',
+          timestamp: MOCK_START_TS,
+          executionSource: {
+            databaseName: 'demo_db',
+            schemaName: 'demo_schema',
+            tableName: 'events_20260101',
+          },
+        },
+      ],
+      paging: { total: 1 },
+    });
+    render(
+      <SingleColumnProfile
+        {...defaultProps}
+        tableDetails={{ ...mockTableDetails, tableType: TableType.Sharded }}
+      />
+    );
+
+    expect(
+      await screen.findByText('demo_db.demo_schema.events_20260101')
+    ).toBeInTheDocument();
+  });
+
+  it.each([TableType.Regular, TableType.Sharded])(
+    'handles missing recorded column source for %s',
+    async (tableType) => {
+      render(
+        <SingleColumnProfile
+          {...defaultProps}
+          tableDetails={{ ...mockTableDetails, tableType }}
+        />
+      );
+      await screen.findByTestId('profiler-tab-container');
+      await waitFor(() =>
+        expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+      );
+      if (tableType === TableType.Sharded) {
+        expect(
+          screen.getByText('message.execution-source-unavailable')
+        ).toBeInTheDocument();
+      } else {
+        expect(
+          screen.queryByText('message.execution-source-unavailable')
+        ).not.toBeInTheDocument();
+      }
+    }
+  );
 
   describe('Rendering', () => {
     it('should render all profiler detail cards', async () => {

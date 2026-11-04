@@ -15,17 +15,28 @@ each project, falling back to Hex queries in the warehouse query history.
 
 import re
 import traceback
+from datetime import datetime, timezone
 from typing import Dict, Iterable, Optional  # noqa: UP035
 
 from sqlglot import exp
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import (
+    TableLookup,
+    UnsupportedTableReferenceError,
+    load_table_binding_resolution,
+)
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createCustomProperty import (
+    CreateCustomPropertyRequest,
+)
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
@@ -42,20 +53,32 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
     SourceUrl,
     SqlQuery,
+    Timestamp,
 )
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.custom_properties import (
+    CustomPropertyDataTypes,
+    OMetaCustomProperties,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.dashboard_service import (
+    DashboardServiceSource,
+    DashboardUsage,
+)
 from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     DATAFRAME_SQL_DIALECT,
     UNRESOLVED,
@@ -76,9 +99,7 @@ from metadata.ingestion.source.dashboard.hex.query_fetcher import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
-from metadata.utils.elasticsearch import ES_INDEX_MAP
-from metadata.utils.filters import filter_by_datamodel
-from metadata.utils.fqn import build_es_fqn_search_string
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -88,6 +109,24 @@ logger = ingestion_logger()
 HEX_TAG_CATEGORY = "HexCategories"
 # Distinct table references looked up per project; past it a reference is searched again
 MAX_RESOLVED_TABLES = 1_000
+COMPONENT_TYPE = "COMPONENT"
+COMPLETED_RUN = "COMPLETED"
+# Hex counts an app's views over this many days, as OpenMetadata's weekly usage does
+APP_VIEWS_DAYS = 7
+# Dashboard custom properties set from the project's app views and runs: name -> (type, description)
+CUSTOM_PROPERTIES = {
+    "appViewsLast7Days": (CustomPropertyDataTypes.INTEGER, "Views of the dashboard's app over the last 7 days"),
+    "appViewsAllTime": (CustomPropertyDataTypes.INTEGER, "Views of the dashboard's app since it was published"),
+    "lastRunStatus": (CustomPropertyDataTypes.STRING, "Status of the dashboard's most recent run"),
+    "lastRunElapsedSeconds": (
+        CustomPropertyDataTypes.INTEGER,
+        "Seconds the dashboard's most recent run took",
+    ),
+    "lastRefreshed": (
+        CustomPropertyDataTypes.TIMESTAMP,
+        "When the dashboard's most recent successful run finished",
+    ),
+}
 
 
 class TableSearchError(Exception):
@@ -102,6 +141,9 @@ class HexSource(DashboardServiceSource):
     Hex Source Class with direct warehouse query support for lineage
     """
 
+    # The project whose imported but unlisted components keep their existing charts, with those charts' FQNs
+    _kept_charts: tuple[str, list[str]] | None = None
+
     def __init__(
         self,
         config: WorkflowSource,
@@ -109,6 +151,11 @@ class HexSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.projects = []  # We will populate this in `prepare`
+        # The workspace's components by id, listed with the projects
+        self.components: dict[str, Project] = {}
+        self.today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        # Names of CUSTOM_PROPERTIES defined on dashboards, registered on first use
+        self._custom_property_names: set[str] | None = None
 
         # Initialize lineage components
         self.hex_project_lineage: Dict[str, HexProjectLineage] = {}  # noqa: UP006
@@ -181,7 +228,9 @@ class HexSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        self.projects = self.client.get_projects()
+        items = self.client.get_projects()
+        self.components = {item.id: item for item in items if item.type == COMPONENT_TYPE}
+        self.projects = [item for item in items if item.type != COMPONENT_TYPE]
         return self.projects
 
     def get_dashboard_name(self, dashboard: Project) -> str:
@@ -196,6 +245,8 @@ class HexSource(DashboardServiceSource):
         """
         Get owner from email
         """
+        if not self.source_config.includeOwners:
+            return None
         try:
             # Try owner first, then creator
             email = None
@@ -274,7 +325,8 @@ class HexSource(DashboardServiceSource):
                         )
                     )
                     for chart in self.context.get().charts or []
-                ],
+                ]
+                + [FullyQualifiedEntityName(kept) for kept in self._kept_chart_fqns(dashboard_details)],
                 dataModels=[
                     FullyQualifiedEntityName(
                         fqn.build(  # pyright: ignore[reportArgumentType]  # always a str for DashboardDataModel
@@ -293,6 +345,7 @@ class HexSource(DashboardServiceSource):
                 sourceUrl=SourceUrl(source_url) if source_url else None,
                 tags=self._get_dashboard_tags(dashboard_details),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
+                lifeCycle=_life_cycle(dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -380,10 +433,228 @@ class HexSource(DashboardServiceSource):
 
     def yield_dashboard_chart(self, dashboard_details: Project) -> Iterable[Either[CreateChartRequest]]:
         """
-        Hex projects don't have separate charts - they are integrated within the project.
-        Return empty iterator as we only ingest dashboards.
+        The components the project imports, as charts. A component imported by several
+        projects is the same chart under each of their dashboards.
         """
-        return
+        existing = None
+        component_ids = self.client.get_component_ids(dashboard_details.id)
+        if component_ids is None:
+            # Unread is not gone: the charts the dashboard has keep their links and aren't deleted
+            existing = component_ids = self._existing_chart_names(dashboard_details)
+        self._keep_unlisted_charts(dashboard_details, component_ids, existing)
+        for component_id in component_ids:
+            component = self.components.get(component_id)
+            if not component:
+                continue
+            if filter_by_chart(self.source_config.chartFilterPattern, component.title):
+                self.status.filter(component.title, "Chart filtered out.")
+                continue
+            try:
+                source_url = self.client.get_project_url(component)
+                chart_request = CreateChartRequest(
+                    name=EntityName(component.id),
+                    displayName=component.title,
+                    description=Markdown(component.description) if component.description else None,
+                    chartType=ChartType.Other,
+                    sourceUrl=SourceUrl(source_url) if source_url else None,
+                    service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
+                    owners=self.get_owner_ref(component),
+                    lifeCycle=_life_cycle(component),
+                )
+                yield Either(right=chart_request)  # pyright: ignore[reportCallIssue]
+                self.register_record_chart(chart_request=chart_request)
+            except Exception as exc:
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    left=StackTraceError(
+                        name=component.id,
+                        error=f"Error yielding chart for Hex component {component.title}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
+    def _keep_unlisted_charts(self, project: Project, component_ids: list[str], existing: list[str] | None) -> None:
+        """
+        A component the project imports but the listing left out, as a failed listing page
+        does, keeps the chart the dashboard already has for it, linked and not deleted
+        """
+        kept: list[str] = []
+        unlisted = [component_id for component_id in component_ids if component_id not in self.components]
+        if unlisted:
+            logger.debug("Hex components %s imported by project %s are not listed", unlisted, project.id)
+            existing = existing if existing is not None else self._existing_chart_names(project)
+            # fqn.build is only None for entity types that need a search; a chart never does
+            kept = [  # pyright: ignore[reportAssignmentType]
+                fqn.build(
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    chart_name=component_id,
+                )
+                for component_id in unlisted
+                if component_id in existing
+            ]
+            self.chart_source_state.update(kept)
+        self._kept_charts = (project.id, kept)
+
+    def _kept_chart_fqns(self, project: Project) -> list[str]:
+        return self._kept_charts[1] if self._kept_charts and self._kept_charts[0] == project.id else []
+
+    def _existing_chart_names(self, project: Project) -> list[str]:
+        try:
+            dashboard = self.metadata.get_by_name(
+                entity=Dashboard, fqn=self._build_fqn(Dashboard, project), fields=["charts"]
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not look up the charts of Hex project %s: %s", project.id, exc)
+            return []
+        return [chart.name for chart in (dashboard.charts.root if dashboard and dashboard.charts else []) if chart.name]
+
+    def yield_dashboard_usage(self, dashboard_details: Project) -> Iterable[Either[DashboardUsage]]:  # pyright: ignore[reportIncompatibleMethodOverride]
+        """
+        Hex counts an app's views over the last seven days; OpenMetadata keeps a count per
+        day and sums the last seven. Today gets what Hex counts beyond the six days before
+        it, so the two weekly counts agree and a skipped run catches up. A usage PUT adds
+        to the day's count, so only what today doesn't hold yet is sent: a second run on
+        the same day sends nothing (ADR:2026-11-02-hex-daily-usage-follows-its-seven-day-app-views).
+        """
+        if not self.source_config.includeUsage:
+            return
+        analytics = dashboard_details.analytics
+        week_views = analytics.appViews.lastSevenDays if analytics and analytics.appViews else None
+        if week_views is None:
+            return
+        try:
+            dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=self._build_fqn(Dashboard, dashboard_details))
+            if not dashboard:
+                logger.debug("Dashboard of Hex project %s not found, skipping usage", dashboard_details.id)
+                return
+            daily = {
+                model_str(day.date): day.dailyStats.count
+                for day in self.metadata.get_dashboard_usage(dashboard, date=self.today, days=APP_VIEWS_DAYS)
+            }
+            today_views = daily.pop(self.today, None)
+            views = max(0, week_views - sum(daily.values())) - (today_views or 0)
+            # A zero still writes today's row: the dashboard's weekly count is read from its
+            # latest row, so without one views that aged out would keep showing
+            if views > 0 or today_views is None:
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    right=DashboardUsage(dashboard=dashboard, usage=UsageRequest(date=self.today, count=views))
+                )
+        except Exception as exc:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=f"{dashboard_details.title} Usage",
+                    error=f"Error computing usage of Hex project {dashboard_details.id}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def yield_dashboard_extension(self, dashboard_details: Project) -> Iterable[Either[PatchRequest]]:
+        """The app views of the project, and its runs when published: only published projects run"""
+        if not self.source_config.includeCustomProperties:
+            return
+        try:
+            names = self._get_custom_property_names()
+            values = _view_properties(dashboard_details)
+            if dashboard_details.lastPublishedAt:
+                values.update(self._run_properties(dashboard_details.id))
+            properties = {name: value for name, value in values.items() if name in names}
+            if not properties:
+                return
+            dashboard = self.metadata.get_by_name(
+                entity=Dashboard, fqn=self._build_fqn(Dashboard, dashboard_details), fields=["extension"]
+            )
+            if not dashboard:
+                return
+            stored = dashboard.extension.root if dashboard.extension else None
+            # The properties a user set on the dashboard are sent back as they are, so the
+            # patch only touches these; it never removes one
+            yield Either(  # pyright: ignore[reportCallIssue]
+                right=PatchRequest(
+                    original_entity=dashboard,
+                    new_entity=dashboard.model_copy(
+                        update={"extension": EntityExtension({**(stored or {}), **properties})}
+                    ),
+                    override_metadata=True,
+                )
+            )
+        except Exception as exc:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=f"{dashboard_details.title} Custom Properties",
+                    error=f"Error setting the custom properties of Hex project {dashboard_details.id}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _run_properties(self, project_id: str) -> dict:
+        """
+        The most recent run's status and duration, and when the most recent successful
+        one finished. Left out when unknown, so the patch keeps what the dashboard holds:
+        a project failing every run keeps its last refresh.
+        """
+        latest = self.client.get_last_run(project_id)
+        if not latest:
+            return {}
+        completed = (
+            latest if latest.status == COMPLETED_RUN else self.client.get_last_run(project_id, status=COMPLETED_RUN)
+        )
+        refreshed = (completed.endTime or completed.startTime) if completed else None
+        properties = {
+            "lastRunStatus": latest.status,
+            "lastRunElapsedSeconds": round(latest.elapsedTime / 1000) if latest.elapsedTime is not None else None,
+            "lastRefreshed": _epoch_millis(refreshed) if refreshed else None,
+        }
+        return {name: value for name, value in properties.items() if value is not None}
+
+    def _get_custom_property_names(self) -> set[str]:
+        """
+        The CUSTOM_PROPERTIES defined on dashboards, registering the missing ones once per run.
+        A name another property already has with a different type is left alone: changing
+        its type would invalidate the value every dashboard holds.
+        """
+        if self._custom_property_names is not None:
+            return self._custom_property_names
+        defined = {
+            prop.get("name"): (prop.get("propertyType") or {}).get("name")
+            for prop in self.metadata.get_entity_custom_properties(entity_type=Dashboard) or []
+        }
+        names = set()
+        for name, (data_type, description) in CUSTOM_PROPERTIES.items():
+            if name in defined:
+                if defined[name] == data_type.value:
+                    names.add(name)
+                else:
+                    logger.warning(
+                        "Dashboard custom property %s exists as %s, not %s; Hex won't set it",
+                        name,
+                        defined[name],
+                        data_type.value,
+                    )
+                continue
+            try:
+                self.metadata.create_or_update_custom_property(
+                    OMetaCustomProperties(
+                        entity_type=Dashboard,
+                        createCustomPropertyRequest=CreateCustomPropertyRequest(
+                            name=EntityName(name),
+                            description=Markdown(description),
+                            propertyType=self.metadata.get_property_type_ref(data_type),
+                        ),
+                    )
+                )
+                names.add(name)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Could not register dashboard custom property %s: %s", name, exc)
+        self._custom_property_names = names
+        return names
+
+    def close(self):
+        if self.source_config.includeUsage:
+            self.metadata.compute_percentile(Dashboard, self.today)
+        super().close()
 
     def yield_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
         self, dashboard_details: Project
@@ -661,8 +932,19 @@ class HexSource(DashboardServiceSource):
             key = repr((cell.dataConnectionId, *table_key(reference)))
             searched_database = reference.catalog or (connection.default_database if connection else None)
             searched_schema = reference.db or (connection.default_schema if connection else None)
+            if "*" in reference.name:
+                self._add_wildcard_tables(
+                    lineage, searched_database, searched_schema, reference.name, connection.type if connection else None
+                )
+                reference.meta[UNRESOLVED] = True
+                continue
             if key not in resolved_tables:
-                resolved_tables.put(key, self._resolve_table(searched_database, searched_schema, reference.name))
+                resolved_tables.put(
+                    key,
+                    self._resolve_table(
+                        searched_database, searched_schema, reference.name, connection.type if connection else None
+                    ),
+                )
             resolved = resolved_tables.get(key)
             if not resolved:
                 # A later cell inlining this one lacks this connection's defaults and
@@ -714,7 +996,58 @@ class HexSource(DashboardServiceSource):
             )
         return lineage
 
-    def _resolve_table(self, database: str | None, schema: str | None, table: str) -> tuple[Table, str | None] | None:
+    def _resolve_reference(
+        self,
+        database: str | None,
+        schema: str | None,
+        table: str,
+        service: str | None,
+        connection_type: str | None,
+    ) -> tuple[Table, ...]:
+        try:
+            resolution = (
+                get_table_binding_resolution(self.metadata, service)
+                if service
+                else load_table_binding_resolution(connection_type, self.metadata)
+            )
+            return resolution.resolve(
+                TableReference(database, schema, table), service_name=service, lookup=TableLookup.SEARCH
+            )
+        except UnsupportedTableReferenceError as exc:
+            logger.debug("Skipping unsupported Hex table reference %s: %s", table, exc)
+            return ()
+        except Exception as exc:
+            raise TableSearchError(f"searching table reference {table}: {exc}") from exc
+
+    def _add_wildcard_tables(
+        self,
+        lineage: HexCellLineage,
+        searched_database: str | None,
+        searched_schema: str | None,
+        table_name: str,
+        connection_type: str | None = None,
+    ) -> None:
+        for prefix in self.get_db_service_prefixes() or [None]:
+            service, database, schema, table = self.parse_db_service_prefix(prefix)
+            if not (searched_schema or schema):
+                continue
+            if any(
+                expected and actual and expected.lower() != actual.lower()
+                for expected, actual in ((database, searched_database), (schema, searched_schema), (table, table_name))
+            ):
+                continue
+            matches = self._resolve_reference(
+                searched_database or database, searched_schema or schema, table_name, service, connection_type
+            )
+            scopes = {tuple(fqn.split(model_str(match.fullyQualifiedName))[:-1]) for match in matches}
+            if not service and len(scopes) > 1:
+                continue
+            for match in matches:
+                lineage.tables[model_str(match.id)] = (match, prefix)
+
+    def _resolve_table(
+        self, database: str | None, schema: str | None, table: str, connection_type: str | None = None
+    ) -> tuple[Table, str | None] | None:
         """
         The one table the reference names across the db service prefixes (any service
         when none is set), with the prefix it was found under. Lineage must not guess,
@@ -731,44 +1064,14 @@ class HexSource(DashboardServiceSource):
                 continue
             if not (schema or prefix_schema):
                 continue
-            search = build_es_fqn_search_string(
-                database_name=database or prefix_database,  # pyright: ignore[reportArgumentType]  # None searches "*"
-                schema_name=schema or prefix_schema,
-                service_name=service or "*",
-                table_name=table,
+            found_tables = self._resolve_reference(
+                database or prefix_database, schema or prefix_schema, table, service, connection_type
             )
-            for found in self._search_tables(search):
+            for found in found_tables:
                 matches.setdefault(model_str(found.id), (found, prefix))
         if len(matches) > 1:
             logger.debug("Skipping Hex table reference %s: it matches %d tables", table, len(matches))
         return next(iter(matches.values())) if len(matches) == 1 else None
-
-    def _search_tables(self, fqn_search_string: str) -> list[Table]:
-        """
-        es_search_from_fqn turns a failed search into None, the same as no match, so
-        the search runs here: a search that didn't answer is not a table that isn't there
-        """
-        query_string = self.metadata.fqdn_search.format(
-            field_name="fullyQualifiedName",
-            field_value=fqn.prefix_entity_for_wildcard_search(entity_type=Table, fqn=fqn_search_string),
-            from_=0,
-            size=10,
-            index=ES_INDEX_MAP[Table.__name__],
-        )
-        try:
-            response = self.metadata.client.get(query_string)
-        except Exception as exc:
-            raise TableSearchError(f"searching {fqn_search_string}: {exc}") from exc
-        if not isinstance(response, dict) or "hits" not in response:
-            raise TableSearchError(f"searching {fqn_search_string}: no search response")
-        try:
-            tables = [
-                self.metadata.get_by_name(entity=Table, fqn=hit["_source"]["fullyQualifiedName"])
-                for hit in response["hits"]["hits"]
-            ]
-        except Exception as exc:
-            raise TableSearchError(f"reading the tables found for {fqn_search_string}: {exc}") from exc
-        return [table for table in tables if table is not None]
 
     @staticmethod
     def _unique_column_name(name: str, taken: set[str]) -> str:
@@ -808,6 +1111,37 @@ class HexSource(DashboardServiceSource):
             service_name=self.config.serviceName,
             dashboard_name=project.id,
         )
+
+
+def _epoch_millis(moment: datetime) -> int:
+    return int(moment.timestamp() * 1000)
+
+
+def _view_properties(project: Project) -> dict:
+    app_views = project.analytics.appViews if project.analytics else None
+    if not app_views:
+        return {}
+    properties = {"appViewsLast7Days": app_views.lastSevenDays, "appViewsAllTime": app_views.allTime}
+    return {name: value for name, value in properties.items() if value is not None}
+
+
+def _life_cycle(item: Project) -> LifeCycle | None:
+    """Created, last refreshed (its published results updated) and last viewed"""
+    analytics = item.analytics
+    moments = {
+        "created": item.createdAt,
+        "updated": analytics.publishedResultsUpdatedAt if analytics else None,
+        "accessed": analytics.lastViewedAt if analytics else None,
+    }
+    if not any(moments.values()):
+        return None
+    return LifeCycle(
+        **{
+            aspect: AccessDetails(timestamp=Timestamp(_epoch_millis(moment)))
+            for aspect, moment in moments.items()
+            if moment
+        }
+    )
 
 
 def _output_column(column: HexCellColumn) -> Column:

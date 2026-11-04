@@ -132,6 +132,30 @@
             <version>1.20.3</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- In-memory Kubernetes API (CRUD mode evaluates label selectors), so pod lookup
+             and cleanup are tested against real label matching instead of mocked clients -->
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-server-mock</artifactId>
+            <version>6.12.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- kubernetes-server-mock brings mockwebserver 3.x, which breaks against the okhttp 4.12.0
+             pinned in the root pom; this aligns it -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>4.12.0</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>junit</groupId>
+                    <artifactId>junit</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
     
     <build>

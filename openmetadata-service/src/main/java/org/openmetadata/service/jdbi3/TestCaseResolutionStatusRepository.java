@@ -501,21 +501,6 @@ public class TestCaseResolutionStatusRepository
     incident.setSeverity(severity);
   }
 
-  public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
-    // if originEntityFQN is present, we need to join with test_case table
-    if ((filter.getQueryParam("originEntityFQN") != null)
-        || (filter.getQueryParam("include") != null)) {
-      condition =
-          """
-              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
-              ON entityFQNHash = testCaseHash
-              """
-              + condition;
-    }
-
-    return condition;
-  }
-
   protected static UUID getOrCreateIncident(TestCase testCase, String updatedBy) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 

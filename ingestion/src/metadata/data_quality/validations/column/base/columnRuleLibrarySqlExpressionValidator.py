@@ -42,6 +42,8 @@ DATABASES_WITHOUT_DATABASE_CONCEPT = {
 class ColumnRuleLibrarySqlExpressionValidator(BaseTestValidator):
     """Validator for column-level SQL Expression based rules in the Rule Library."""
 
+    BYPASSES_SAMPLER = True
+
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
     def _get_user_params(self) -> Dict[str, str]:  # noqa: UP006
