@@ -342,7 +342,8 @@
         "*HardDelete*IT",
         "*Benchmark*IT",
         "*OptimisticLock*IT",
-        "org/openmetadata/it/tests/repositories/**"
+        "org/openmetadata/it/tests/repositories/**",
+        "LifeCycle*IT"
       ]
     },
     {
@@ -481,6 +482,7 @@
       "tests": [
         "org/openmetadata/it/tests/search/**",
         "*Search*IT",
+        "InheritedField*IT",
         "*Index*IT",
         "*Reindex*IT",
         "*Alias*IT",

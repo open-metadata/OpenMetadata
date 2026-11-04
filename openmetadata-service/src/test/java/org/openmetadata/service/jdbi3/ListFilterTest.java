@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -15,6 +17,43 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
+  @ParameterizedTest
+  @CsvSource({"true,include", "true,exclude", "false,include", "false,exclude"})
+  void fqnRegexUsesCaseInsensitiveSearch(boolean mysql, String mode) {
+    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig config = mock(DatasourceConfig.class);
+      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
+      when(config.isMySQL()).thenReturn(mysql);
+      for (String axis : List.of("database", "databaseSchema", "table")) {
+        for (boolean useFqn : List.of(false, true)) {
+          ListFilter filter = new ListFilter();
+          filter.addQueryParam(axis + "Regex", "Summary");
+          filter.addQueryParam(axis + "RegexField", axis.equals("table") ? "name" : axis + ".name");
+          filter.addQueryParam("regexMode", mode);
+          filter.addQueryParam("regexFilterByFqn", Boolean.toString(useFqn));
+          String condition =
+              switch (axis) {
+                case "database" -> filter.getDatabaseCondition("table_entity");
+                case "databaseSchema" -> filter.getDatabaseSchemaCondition("table_entity");
+                default -> filter.getTableNameRegexCondition("table_entity");
+              };
+          String field =
+              (axis.equals("table") ? "" : axis + ".") + (useFqn ? "fullyQualifiedName" : "name");
+          String expected =
+              mysql
+                  ? String.format(
+                      "%sREGEXP_LIKE(JSON_UNQUOTE(JSON_EXTRACT(table_entity.json, '$.%s')), :%sRegex, 'i')",
+                      mode.equals("exclude") ? "NOT " : "", field, axis)
+                  : String.format(
+                      "table_entity.json #>> '{%s}' %s :%sRegex",
+                      field.replace(".", ","), mode.equals("exclude") ? "!~*" : "~*", axis);
+          assertTrue(condition.contains(expected), condition);
+          assertEquals("Summary", filter.getQueryParam(axis + "Regex"));
+        }
+      }
+    }
+  }
+
   @Test
   void test_escapeApostrophe() {
     assertEquals("abcd", ListFilter.escape("abcd"));

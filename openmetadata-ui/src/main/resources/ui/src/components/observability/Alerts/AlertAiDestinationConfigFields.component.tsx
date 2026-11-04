@@ -18,6 +18,7 @@ import {
   AccordionPanel,
   BadgeWithButton,
   Button,
+  ButtonUtility,
   Checkbox,
   Input,
   Label,
@@ -535,13 +536,11 @@ const KeyValueList = ({
             : t('label.query-parameter-plural')}
         </Typography>
         {!isViewOnly && (
-          <Button
-            aria-label={t('label.add')}
-            color="secondary"
+          <ButtonUtility
             data-testid={`add-${testIdPrefix}-button-${name}`}
-            iconLeading={Plus}
-            size="xs"
-            onPress={() => onChange([...entries, { key: '', value: '' }])}
+            icon={Plus}
+            tooltip={t('label.add')}
+            onClick={() => onChange([...entries, { key: '', value: '' }])}
           />
         )}
       </div>
@@ -566,13 +565,12 @@ const KeyValueList = ({
             ))}
           </div>
           {!isViewOnly && (
-            <Button
-              aria-label={t('label.remove')}
-              color="secondary"
+            <ButtonUtility
               data-testid={`remove-${testIdPrefix}-button-${name}-${index}`}
-              iconLeading={Trash01}
-              size="xs"
-              onPress={() => onChange(entries.filter((_, i) => i !== index))}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove')}
+              onClick={() => onChange(entries.filter((_, i) => i !== index))}
             />
           )}
         </div>

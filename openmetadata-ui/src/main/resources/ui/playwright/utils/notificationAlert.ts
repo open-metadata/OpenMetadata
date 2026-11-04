@@ -457,7 +457,6 @@ export const createConversationAlert = async ({
 export const checkAlertConfigDetails = async ({
   page,
   sourceName,
-  destinationEndpoint,
 }: {
   page: Page;
   sourceName: string;

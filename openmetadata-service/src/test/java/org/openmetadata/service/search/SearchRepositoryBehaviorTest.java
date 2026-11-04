@@ -988,7 +988,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_database")), fieldCaptor.capture(), updateCaptor.capture());
     assertEquals("service.id", fieldCaptor.getValue().getLeft());
     assertEquals("service-id", fieldCaptor.getValue().getRight());
@@ -1110,7 +1110,8 @@ class SearchRepositoryBehaviorTest {
         table);
 
     verify(searchClient)
-        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+        .updateChildrenInBackground(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
     ArgumentCaptor<Pair<String, String>> parentMatchCaptor = ArgumentCaptor.forClass(Pair.class);
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
@@ -1203,7 +1204,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> tagUpdateCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_tableColumn")),
             eq(new ImmutablePair<>("table.id", tableId.toString())),
             tagUpdateCaptor.capture());
@@ -1357,6 +1358,8 @@ class SearchRepositoryBehaviorTest {
     repository.propagateEntityAfterRetry(table, staleDelta);
 
     verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+    verify(searchClient, never())
+        .updateChildrenInBackground(any(List.class), any(Pair.class), any(Pair.class));
   }
 
   @Test
@@ -1396,7 +1399,7 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(
+        .updateChildrenInBackground(
             eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
     Map<String, Object> params = updatesCaptor.getValue().getValue();
     assertEquals(
@@ -1440,7 +1443,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
 
     assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
     String entityChildScript = updatesCaptor.getValue().getLeft();
@@ -1486,7 +1490,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient, times(2))
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, Map<String, Object>> paramsByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
       paramsByTargets.put(
@@ -1538,7 +1543,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
         ArgumentCaptor.forClass(Pair.class);
     verify(searchClient, times(2))
-        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+        .updateChildrenInBackground(
+            targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
     Map<List<String>, List<TagLabel>> addedByTargets = new HashMap<>();
     for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
       addedByTargets.put(
@@ -1583,7 +1589,8 @@ class SearchRepositoryBehaviorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
-    verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
+    verify(searchClient)
+        .updateChildrenInBackground(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
 
     assertEquals(
         List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
@@ -4153,7 +4160,8 @@ class SearchRepositoryBehaviorTest {
       propagationOrder.verify(bulkSink).close();
       propagationOrder
           .verify(searchClient)
-          .updateChildren(eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
+          .updateChildrenInBackground(
+              eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
       verify(searchClient, never())
           .updateEntity(any(String.class), eq(serviceId), any(), any(String.class));
       retryQueue.verifyNoInteractions();
@@ -4297,7 +4305,8 @@ class SearchRepositoryBehaviorTest {
       repository.updateEntitiesIndex(List.of(failedService, successfulService));
 
       ArgumentCaptor<Pair<String, String>> parentMatch = ArgumentCaptor.forClass(Pair.class);
-      verify(searchClient).updateChildren(any(List.class), parentMatch.capture(), any(Pair.class));
+      verify(searchClient)
+          .updateChildrenInBackground(any(List.class), parentMatch.capture(), any(Pair.class));
       assertEquals(successfulService.getId().toString(), parentMatch.getValue().getValue());
       verify(bulkSinks.constructed().getFirst()).close();
       retryQueue.verify(

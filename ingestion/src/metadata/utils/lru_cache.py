@@ -15,7 +15,7 @@ LRU cache
 
 import threading
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from typing import Generic, TypeVar
 
 LRU_CACHE_SIZE = 4096
@@ -51,7 +51,7 @@ class LRUCache(Generic[T]):
             self._cache.move_to_end(key)
             return self._cache[key]
 
-    def put(self, key: str, value: T) -> None:
+    def put(self, key: Hashable, value: T) -> None:
         """
         Assigns `value` to `key`, overwriting `key` if it already exists
         in the cache and updating the cache usage.

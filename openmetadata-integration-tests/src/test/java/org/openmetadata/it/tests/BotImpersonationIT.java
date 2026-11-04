@@ -233,6 +233,43 @@ public class BotImpersonationIT {
   }
 
   @Test
+  void test_impersonatedAdmin_cannotAddTeamRolesOrImportTeams(TestNamespace ns) {
+    User botUser = createBotUser(ns, "teamgrant");
+    createBot(ns.prefix("imp_teamgrant_bot"), botUser, true);
+    OpenMetadataClient asAdmin = impersonationClient(generateBotToken(botUser), "admin");
+    Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("impTeamGrant"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    Role dataSteward = SdkClients.adminClient().roles().getByName("DataSteward");
+    String addRole =
+        "[{\"op\":\"add\",\"path\":\"/defaultRoles\",\"value\":[{\"id\":\"%s\",\"type\":\"role\"}]}]"
+            .formatted(dataSteward.getId());
+    String teamPath = "/v1/teams/" + team.getId();
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            asAdmin
+                .getHttpClient()
+                .executeForString(HttpMethod.PATCH, teamPath, JsonUtils.readTree(addRole)));
+    assertThrows(
+        ForbiddenException.class,
+        () -> asAdmin.teams().importCsv(team.getName(), "name*,teamType*\n", true));
+
+    // Other team edits are unaffected
+    String rename = "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"renamed\"}]";
+    assertDoesNotThrow(
+        () ->
+            asAdmin
+                .getHttpClient()
+                .executeForString(HttpMethod.PATCH, teamPath, JsonUtils.readTree(rename)));
+  }
+
+  @Test
   void test_nonAdminRole_deniesAdminTarget(TestNamespace ns) {
     User target = createRegularUser(ns, "natarget");
     User botUser = createBotUser(ns, "nonadmin");

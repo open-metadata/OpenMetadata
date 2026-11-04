@@ -29,6 +29,7 @@ import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigr
 import static org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration.alignFlowableTableCharsets;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
+import static org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addDenyBotUsersRuleToBotNonAdminImpersonationPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
@@ -50,9 +51,11 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
+import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
@@ -123,6 +126,15 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, MYSQL));
+    // Lineage edges written before pipelines were type-restricted can name any entity — a database
+    // service among them — which the edge copied into the downstream search document
+    // (ANT-2026-RL0ZDKB8). Clear those references from the stored edges; each one is logged for
+    // credential rotation. DB-agnostic, so it also runs on Postgres.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        LineageEdgePipelineCleanupMigration.STEP_NAME,
+        () -> clearNonPipelineEdgePipelines(collectionDAO));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -141,6 +153,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ConsumerIdMigration.STEP_NAME,
         () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
+    // A destination's id names one destination: shared and missing ids become its own.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DestinationIdMigration.STEP_NAME,
+        () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
     // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
     // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
     // harmless.

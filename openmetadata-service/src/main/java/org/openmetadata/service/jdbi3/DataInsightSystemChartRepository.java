@@ -485,7 +485,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     // No relationships to store beyond what is stored in the super class
   }
 
-  static String combineFilters(String existingFilter, String userFilter) {
+  public static String combineFilters(String existingFilter, String userFilter) {
     if (existingFilter == null || existingFilter.isEmpty() || existingFilter.equals("{}")) {
       return userFilter;
     }
@@ -522,17 +522,23 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     }
   }
 
+  /**
+   * A chart preview for {@code caller}. {@code filter} is the caller's own; {@code scope}, the
+   * navbar domain pick, is added to it.
+   */
   public DataInsightCustomChartResultList getPreviewData(
       DataInsightCustomChart chart,
       long startTimestamp,
       long endTimestamp,
       String filter,
+      String scope,
       SubjectContext caller)
       throws IOException {
     // A preview reads the Data Insights snapshots, which search access policies do not cover.
     if (scopesSnapshotsUnderAccessControl(filter, caller)) {
       return new DataInsightCustomChartResultList();
     }
+    filter = combineFilters(filter, scope);
     if (chart.getChartDetails() != null && filter != null) {
       HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
       if (chartDetails.get("metrics") != null) {
@@ -593,14 +599,20 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       boolean live,
       String serviceName)
       throws IOException {
-    return listChartData(chartNames, startTimestamp, endTimestamp, filter, live, serviceName, null);
+    return listChartData(
+        chartNames, startTimestamp, endTimestamp, filter, null, live, serviceName, null);
   }
 
+  /**
+   * Chart data for {@code caller}. {@code filter} is the caller's own; {@code scope}, the navbar
+   * domain pick, is added to it.
+   */
   public Map<String, DataInsightCustomChartResultList> listChartData(
       String chartNames,
       long startTimestamp,
       long endTimestamp,
       String filter,
+      String scope,
       boolean live,
       String serviceName,
       SubjectContext caller)
@@ -609,6 +621,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     // Live charts aggregate search documents under the caller's access policies; the snapshots
     // behind the other charts are not covered by them.
     boolean emptyScopedSnapshots = !live && scopesSnapshotsUnderAccessControl(filter, caller);
+    filter = combineFilters(filter, scope);
     if (chartNames == null) {
       return result;
     }
@@ -978,6 +991,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               startTime,
               endTime,
               session.getFilter(),
+              null,
               true,
               session.getServiceName(),
               ownerSubject(session));

@@ -820,6 +820,91 @@ public class DomainIsolationIT {
     }
   }
 
+  @Test
+  void test_domainOnlyUser_cannotChangeAdministrationResources(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_gd", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table ownTable = createTable(admin, p + "_gt", schema, domain, cleanup);
+      Table domainlessTable = createTable(admin, p + "_gnt", schema, null, cleanup);
+      Team team =
+          admin
+              .teams()
+              .create(
+                  new CreateTeam().withName(p + "_gteam").withTeamType(CreateTeam.TeamType.GROUP));
+      cleanup.push(() -> admin.teams().delete(team.getId().toString()));
+      createResourceDenyRole(admin, p, "chart", cleanup);
+      Policy policy = admin.policies().getByName(p + "_chartDenyPolicy");
+      // A policy in the user's own domain still governs users outside it
+      Policy policyInDomain =
+          admin
+              .policies()
+              .create(
+                  new CreatePolicy()
+                      .withName(p + "_domainPolicy")
+                      .withDomains(List.of(domain.getFullyQualifiedName()))
+                      .withRules(policy.getRules()));
+      cleanup.push(() -> admin.policies().delete(policyInDomain.getId()));
+      createBotClient(admin, p + "_tok", null, List.of(), cleanup);
+      User bot = admin.users().getByName(p + "_tok_bot");
+      OpenMetadataClient client = createRestrictedUserClient(admin, p, domain, cleanup);
+      // Every user may edit descriptions (DataConsumer), so change fields only EditAll covers
+      JsonNode allowRule =
+          MAPPER.readTree(
+              "[{\"op\":\"replace\",\"path\":\"/rules/0/effect\",\"value\":\"allow\"}]");
+      JsonNode rename =
+          MAPPER.readTree("[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"changed\"}]");
+
+      // Apps stay runnable as configured (e.g. AutoPilot for a service), but not reconfigurable
+      String app = "/v1/apps/name/SearchIndexingApplication";
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.getHttpClient().executeForString(HttpMethod.PATCH, app, rename));
+      JsonNode appPermissions =
+          MAPPER.readTree(
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET, "/v1/permissions/app/name/SearchIndexingApplication", null));
+      assertEquals("allow", access(appPermissions, "Trigger"));
+      assertEquals("deny", access(appPermissions, "EditAll"));
+
+      // Policies and bots in any domain, and teams in no domain: readable, not changeable
+      assertEquals(policy.getId(), client.policies().get(policy.getId().toString()).getId());
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.policies().patch(policy.getId().toString(), allowRule));
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.policies().patch(policyInDomain.getId().toString(), allowRule));
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.users().generateToken(bot.getId(), JWTTokenExpiry.OneHour));
+      assertThrows(
+          ForbiddenException.class, () -> client.teams().patch(team.getId().toString(), rename));
+
+      // Assets in the user's own domain, and assets in no domain, stay fully editable
+      Table patched = client.tables().patch(ownTable.getId().toString(), rename);
+      assertEquals("changed", patched.getDisplayName());
+      Table patchedDomainless = client.tables().patch(domainlessTable.getId().toString(), rename);
+      assertEquals("changed", patchedDomainless.getDisplayName());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private static String access(JsonNode resourcePermission, String operation) {
+    for (JsonNode permission : resourcePermission.path("permissions")) {
+      if (operation.equals(permission.path("operation").asText())) {
+        return permission.path("access").asText();
+      }
+    }
+    return null;
+  }
+
   // Task /v1/tasks domain isolation is covered comprehensively by
   // TaskResourceIT.testDomainOnlyUserCanOnlyListTasksFromAllowedDomains (a domain-only user there
   // also carries a baseline role, which the bare DomainOnlyAccessRole strips). The UI task list is

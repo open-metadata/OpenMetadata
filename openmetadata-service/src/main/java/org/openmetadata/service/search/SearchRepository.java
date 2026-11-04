@@ -201,6 +201,10 @@ public class SearchRepository {
   private static final Duration MAPPED_FIELD_CACHE_TTL = Duration.ofMinutes(1);
 
   private volatile SearchClient searchClient;
+
+  // Reads each background inherited-field propagation's status through whichever client is current.
+  private final InheritedFieldPropagationCheck propagationCheck =
+      new InheritedFieldPropagationCheck(taskId -> searchClient.childUpdateStatus(taskId));
   private final Cache<String, Boolean> mappedFieldCache =
       Caffeine.newBuilder()
           .maximumSize(MAPPED_FIELD_CACHE_MAX_SIZE)
@@ -3120,7 +3124,10 @@ public class SearchRepository {
               entityType,
               descriptor -> !view.skippedFields().contains(descriptor.fieldName()));
       if (!nullOrEmpty(updates.getKey())) {
-        searchClient.updateChildren(withClusterAlias(group.getValue()), parentMatch, updates);
+        String taskId =
+            searchClient.updateChildrenInBackground(
+                withClusterAlias(group.getValue()), parentMatch, updates);
+        propagationCheck.watch(taskId, entity, changeDescription);
       }
     }
     Pair<String, Map<String, Object>> updates =

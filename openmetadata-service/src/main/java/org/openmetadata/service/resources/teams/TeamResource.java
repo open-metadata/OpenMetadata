@@ -15,6 +15,9 @@ package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
+import static org.openmetadata.service.Entity.TEAM;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -65,6 +68,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -81,6 +85,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.IdentityEndpoint;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -105,7 +110,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
   private static final String IMPERSONATED_GRANT_CHANGE =
       "Impersonated requests cannot change a team's default roles or policies";
-  private static final String GRANT_FIELDS = "defaultRoles,policies";
   private static final List<String> GRANT_POINTERS = List.of("/defaultRoles", "/policies");
   private final TeamMapper mapper = new TeamMapper();
   static final String FIELDS =
@@ -133,6 +137,106 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         "profile,owns,defaultRoles,defaultPersona,parents,children,policies,userCount,childrenCount",
         MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
+  }
+
+  private static final String GRANT_FIELDS = "defaultRoles,policies,parents";
+  private static final Set<String> GRANT_FIELD_NAMES = Set.of(GRANT_FIELDS.split(","));
+
+  @Override
+  protected void prepareCreateOrUpdateAuthorization(List<Team> stored) {
+    repository.setFieldsInBulk(repository.getFields(GRANT_FIELDS), stored);
+  }
+
+  /** Covers create, PUT and every item of a bulk PUT. */
+  @Override
+  protected void authorizeCreateOrUpdate(SecurityContext securityContext, Team team, Team stored) {
+    authorizeGrants(securityContext, stored == null ? new Team() : stored, team);
+  }
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    if (patchMayChangeGrants(patch)) {
+      authorizePatchedGrants(
+          securityContext,
+          repository.get(null, id, repository.getPatchFields(), Include.NON_DELETED, false),
+          patch);
+    }
+    return super.patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader);
+  }
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    if (patchMayChangeGrants(patch)) {
+      authorizePatchedGrants(
+          securityContext,
+          repository.getByName(null, fqn, repository.getPatchFields(), Include.NON_DELETED, false),
+          patch);
+    }
+    return super.patchInternal(uriInfo, securityContext, fqn, patch, changeSource, ifMatchHeader);
+  }
+
+  private static boolean patchMayChangeGrants(JsonPatch patch) {
+    return JsonPatchUtils.replacesWholeDocument(patch)
+        || JsonUtils.extractPatchedFields(patch).stream().anyMatch(GRANT_FIELD_NAMES::contains);
+  }
+
+  private void authorizePatchedGrants(
+      SecurityContext securityContext, Team stored, JsonPatch patch) {
+    authorizeGrants(securityContext, stored, JsonUtils.applyPatch(stored, patch, Team.class));
+  }
+
+  /**
+   * Members inherit a team's roles and policies, and those of every team above it, so adding either
+   * grants access the way assigning a role to a user does: only an admin may add them. Placing a
+   * team under another one changes that team as well, so it needs the same permission as editing
+   * it directly. The organization is skipped as every user already belongs to it.
+   * ADR:2026-10-30-only-admins-add-roles-or-policies-to-a-team
+   */
+  private void authorizeGrants(SecurityContext securityContext, Team stored, Team updated) {
+    boolean addsRoleOrPolicy =
+        !addedIds(stored.getDefaultRoles(), updated.getDefaultRoles()).isEmpty()
+            || !addedIds(stored.getPolicies(), updated.getPolicies()).isEmpty();
+    if (addsRoleOrPolicy) {
+      rejectImpersonated("add roles or policies to a team");
+      authorizer.authorizeAdmin(securityContext);
+    }
+    for (UUID parentId : addedIds(stored.getParents(), updated.getParents())) {
+      if (!ORGANIZATION_NAME.equals(Entity.getEntityReferenceById(TEAM, parentId, ALL).getName())) {
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(TEAM, MetadataOperation.EDIT_ALL),
+            getResourceContextById(parentId));
+      }
+    }
+  }
+
+  /**
+   * Team grants and team CSV import are not available to impersonated callers, as with user
+   * privileges in UserResource.
+   */
+  private static void rejectImpersonated(String action) {
+    if (ImpersonationContext.getImpersonatedBy() != null) {
+      throw new AuthorizationException("Impersonated requests cannot " + action);
+    }
+  }
+
+  private static Set<UUID> addedIds(List<EntityReference> stored, List<EntityReference> updated) {
+    Set<UUID> added =
+        listOrEmpty(updated).stream().map(EntityReference::getId).collect(Collectors.toSet());
+    listOrEmpty(stored).forEach(ref -> added.remove(ref.getId()));
+    return added;
   }
 
   @Override
@@ -897,6 +1001,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
+    rejectImpersonated("import teams");
     return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
@@ -991,6 +1096,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
+    rejectImpersonated("import teams");
     return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 

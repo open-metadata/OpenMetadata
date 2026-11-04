@@ -12,6 +12,7 @@
  */
 
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { TableShardingWidget } from '../pages/TableDetailsPageV1/Sharding/TableSharding';
 
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
@@ -523,6 +524,9 @@ export const getTableDetailPageBaseTabs = ({
 export const getTableWidgetFromKey = (
   widgetConfig: WidgetConfig
 ): JSX.Element | null => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SHARDING)) {
+    return <TableShardingWidget />;
+  }
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
     return <SchemaTable />;
   } else if (
