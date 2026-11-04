@@ -193,6 +193,7 @@ const buildItem = (id: string) => ({
 });
 
 const defaultProps: AssetSelectionContentBodyProps = {
+  assetsFilter: undefined,
   search: '',
   setSearch: mockSetSearch,
   items: [],
@@ -275,6 +276,23 @@ describe('AssetSelectionContentBody', () => {
     });
 
     expect(mockSetSearch).toHaveBeenCalledWith('new search');
+  });
+
+  it('gives the quick filters the same filter as the list', () => {
+    const ExploreQuickFilters = jest.requireMock(
+      '../../Explore/ExploreQuickFilters'
+    ) as jest.Mock;
+    const portsOnly = {
+      query: { bool: { must_not: [{ term: { entityType: 'tableColumn' } }] } },
+    };
+
+    render(
+      <AssetSelectionContentBody {...defaultProps} assetsFilter={portsOnly} />
+    );
+
+    expect(ExploreQuickFilters.mock.calls.at(-1)[0]).toEqual(
+      expect.objectContaining({ defaultQueryFilter: portsOnly })
+    );
   });
 
   it('should not render clear-filters when quickFilterQuery is undefined', () => {

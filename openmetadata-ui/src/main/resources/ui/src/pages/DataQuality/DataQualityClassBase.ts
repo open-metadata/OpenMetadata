@@ -16,6 +16,7 @@ import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suit
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
+import type { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import i18n from '../../utils/i18next/LocalUtil';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
@@ -87,8 +88,10 @@ class DataQualityClassBase {
     return DataQualityPageTabs.DASHBOARD;
   }
 
+  // Hook-free; the page passes showModal in. ADR:2026-10-21-class-base-menu-helpers-take-showmodal
   public getExportDataQualityDashboardButton(
-    _activeTab: DataQualityPageTabs
+    _activeTab: DataQualityPageTabs,
+    _showModal: (data: ExportData) => void
   ): React.ReactNode {
     return null;
   }

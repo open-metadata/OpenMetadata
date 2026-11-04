@@ -156,9 +156,15 @@ describe('NoDataPlaceholder', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('should allow overriding the description', () => {
-    render(<NoDataPlaceholder description="custom description" />);
+  it('should allow overriding the title and description', () => {
+    render(
+      <NoDataPlaceholder
+        description="custom description"
+        title="custom title"
+      />
+    );
 
+    expect(screen.getByText('custom title')).toBeInTheDocument();
     expect(screen.getByText('custom description')).toBeInTheDocument();
     expect(
       screen.queryByText('message.no-data-available')
@@ -271,10 +277,40 @@ describe('Caller copy replaces wrapper defaults', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows a caller description as the no-data title', () => {
-    render(<NoDataPlaceholder description="Nothing here yet" />);
+  it('keeps a caller description as body copy without inventing a title', () => {
+    render(
+      <NoDataPlaceholder description="Enable the profiler to see data." />
+    );
 
-    expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
+    const description = screen.getByText('Enable the profiler to see data.');
+
+    expect(description).toHaveClass('tw:text-secondary');
+    expect(description).not.toHaveClass('tw:font-semibold');
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders a caller title with its own text colour', () => {
+    render(<NoDataPlaceholder title="No test cases yet" />);
+
+    expect(screen.getByText('No test cases yet')).toHaveClass(
+      'tw:font-semibold',
+      'tw:text-primary'
+    );
+  });
+
+  it('adds no title above a description that has a footer', () => {
+    render(
+      <NoDataPlaceholder
+        description="Adding a new insight is easy."
+        footer={<span>doc link</span>}
+      />
+    );
+
+    expect(
+      screen.getByText('Adding a new insight is easy.')
+    ).toBeInTheDocument();
     expect(
       screen.queryByText('message.no-data-available')
     ).not.toBeInTheDocument();
@@ -339,5 +375,43 @@ describe('FeaturesPlaceholder', () => {
     expect(screen.getByText('Set it up in three steps')).toBeInTheDocument();
     expect(screen.getByText('Define it')).toBeInTheDocument();
     expect(screen.getByText('Own it')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('turns the title of a feature with an action into a button that runs it', () => {
+    const onPress = jest.fn();
+    render(
+      <FeaturesPlaceholder
+        features={[
+          {
+            key: 'enabled',
+            icon: <span />,
+            title: 'Install it',
+            description: 'From the library',
+            action: { color: 'primary', onPress },
+          },
+          {
+            key: 'disabled',
+            icon: <span />,
+            title: 'Build it',
+            action: { color: 'secondary', isDisabled: true, onPress },
+          },
+          { key: 'plain', icon: <span />, title: 'Read about it' },
+        ]}
+        title="Get started"
+      />
+    );
+
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent)
+    ).toEqual(['Install it', 'Build it']);
+    expect(screen.getByText('From the library')).toBeInTheDocument();
+    expect(screen.getByText('Read about it')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Build it' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Install it' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Build it' }));
+
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

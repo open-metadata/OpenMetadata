@@ -619,6 +619,83 @@ SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
         AND refresh_start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP);
 """
 
+# One scan of QUERY_HISTORY for a whole batch of tables. DATABASE_NAME/SCHEMA_NAME are the
+# session context, not the modified table, so the target can only be narrowed by matching
+# QUERY_TEXT; the caller parses the text to find the real target. No ORDER BY: rows are
+# streamed into a per-table index and their order is irrelevant.
+SNOWFLAKE_BATCHED_QUERY_LOG_QUERY = """
+    SELECT
+        QUERY_ID,
+        QUERY_TEXT,
+        QUERY_TYPE,
+        START_TIME,
+        DATABASE_NAME,
+        SCHEMA_NAME,
+        ROWS_INSERTED,
+        ROWS_UPDATED,
+        ROWS_DELETED
+    FROM {account_usage_schema}."QUERY_HISTORY"
+    WHERE
+    start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
+    AND QUERY_TYPE IN ('INSERT', 'UPDATE', 'DELETE', 'MERGE')
+    AND EXECUTION_STATUS = 'SUCCESS'
+    AND ({query_text_filters})
+"""
+
+# Unlike QUERY_HISTORY, DATABASE_NAME/SCHEMA_NAME/NAME identify the dynamic table itself,
+# so the batch is matched exactly instead of by pattern.
+SNOWFLAKE_BATCHED_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY = """
+    SELECT
+        database_name AS DATABASE_NAME,
+        schema_name AS SCHEMA_NAME,
+        name AS TABLE_NAME,
+        refresh_start_time AS START_TIME,
+        statistics:numInsertedRows::INT AS ROWS_INSERTED,
+        statistics:numDeletedRows::INT AS ROWS_DELETED
+    FROM
+        {account_usage_schema}.DYNAMIC_TABLE_REFRESH_HISTORY
+    WHERE
+        state = 'SUCCEEDED'
+        AND UPPER(name) IN ({table_names})
+        AND refresh_start_time >= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
+"""
+
+
+ILIKE_ESCAPE = "\\"
+
+
+def _ilike_contains_pattern(value: str) -> str:
+    """Match `value` anywhere in the text: `_` and `%` are ILIKE wildcards, so they are
+    escaped to keep `order_items` from also matching `orderXitems`."""
+    escaped = (
+        value.replace(ILIKE_ESCAPE, ILIKE_ESCAPE * 2).replace("%", f"{ILIKE_ESCAPE}%").replace("_", f"{ILIKE_ESCAPE}_")
+    )
+    pattern = _snowflake_string_literal(f"%{escaped}%")
+    return f"QUERY_TEXT ILIKE {pattern} ESCAPE {_snowflake_string_literal(ILIKE_ESCAPE)}"
+
+
+def build_batched_query_log_query(account_usage_schema: str, table_names: list[str]) -> str:
+    """QUERY_HISTORY scan matching the DML of any of `table_names`."""
+    unique_names = sorted({name.lower() for name in table_names})
+    if not unique_names:
+        raise ValueError("At least one table name is required to scan the query history.")
+    return SNOWFLAKE_BATCHED_QUERY_LOG_QUERY.format(
+        account_usage_schema=account_usage_schema,
+        query_text_filters="\n        OR ".join(_ilike_contains_pattern(name) for name in unique_names),
+    )
+
+
+def build_batched_dynamic_table_refresh_history_query(account_usage_schema: str, table_names: list[str]) -> str:
+    """DYNAMIC_TABLE_REFRESH_HISTORY scan for the refreshes of any of `table_names`."""
+    unique_names = sorted({name.upper() for name in table_names})
+    if not unique_names:
+        raise ValueError("At least one table name is required to scan the dynamic table refresh history.")
+    return SNOWFLAKE_BATCHED_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY.format(
+        account_usage_schema=account_usage_schema,
+        table_names=", ".join(_snowflake_string_literal(name) for name in unique_names),
+    )
+
+
 SNOWFLAKE_ACCESS_HISTORY_PROBE = """
 SELECT 1 FROM {account_usage}.ACCESS_HISTORY LIMIT 1
 """

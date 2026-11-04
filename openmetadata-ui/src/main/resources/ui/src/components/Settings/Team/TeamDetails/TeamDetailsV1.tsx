@@ -22,7 +22,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Plus,
+  Restore,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -37,10 +42,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
-import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
-import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
@@ -606,7 +607,7 @@ const TeamDetailsV1 = ({
             description={t('message.export-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ExportIcon}
+            icon={Download01}
             id="export"
             name={t('label.export')}
           />
@@ -624,7 +625,7 @@ const TeamDetailsV1 = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ImportIcon}
+            icon={Upload01}
             id="import-button"
             name={t('label.import')}
           />
@@ -646,7 +647,7 @@ const TeamDetailsV1 = ({
               label: (
                 <ManageButtonItemLabel
                   description={t('message.restore-deleted-team')}
-                  icon={IconRestore}
+                  icon={Restore}
                   id="restore-team-dropdown"
                   name={t('label.restore-entity', {
                     entity: t('label.team'),
@@ -770,7 +771,6 @@ const TeamDetailsV1 = ({
               </Tooltip>
             </>
           }
-          icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         />
       </div>
     ) : (

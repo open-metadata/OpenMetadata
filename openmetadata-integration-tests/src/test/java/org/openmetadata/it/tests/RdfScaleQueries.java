@@ -180,12 +180,7 @@ final class RdfScaleQueries {
                 + OM
                 + "upstream>/<"
                 + OM
-                + "upstream> ?source } } LIMIT 100",
-        "textSearch",
-            "PREFIX text: <http://jena.apache.org/text#> SELECT DISTINCT ?entity WHERE { "
-                + "?entity text:query (<http://purl.org/dc/terms/description> 'rdfscalevalidation' 20) . ?entity a <"
-                + OM
-                + "Table> } LIMIT 20");
+                + "upstream> ?source } } LIMIT 100");
   }
 
   private static Latency summarize(final List<Timing> timings) {

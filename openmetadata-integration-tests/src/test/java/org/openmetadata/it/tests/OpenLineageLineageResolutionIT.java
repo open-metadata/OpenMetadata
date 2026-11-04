@@ -64,6 +64,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -1147,16 +1148,17 @@ public class OpenLineageLineageResolutionIT {
 
   private static OpenMetadataClient clientWithRole(TestNamespace ns, Role role) {
     String name = "ol_caller_" + uniqueSuffix();
-    ns.trackRoot(
-        Entity.USER,
-        SdkClients.adminClient()
-            .users()
-            .create(
-                new CreateUser()
-                    .withName(name)
-                    .withEmail(name + "@test.openmetadata.org")
-                    .withRoles(List.of(role.getId()))));
-    return SdkClients.createClient(name, name, new String[] {});
+    User user =
+        ns.trackRoot(
+            Entity.USER,
+            SdkClients.adminClient()
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(name)
+                        .withEmail(name + "@test.openmetadata.org")
+                        .withRoles(List.of(role.getId()))));
+    return SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
   }
 
   private static Rule allowRule(String name, MetadataOperation operation, String resource) {

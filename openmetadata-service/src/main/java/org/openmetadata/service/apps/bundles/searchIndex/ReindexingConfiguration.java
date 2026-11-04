@@ -111,6 +111,11 @@ public record ReindexingConfiguration(
    * @param jobData The EventPublisherJob containing the configuration
    * @return A new ReindexingConfiguration with values from jobData
    */
+  /** Retry settings for the job's bulk sinks, from Max Retries / Initial / Max Backoff. */
+  public BulkRetryPolicy bulkRetryPolicy() {
+    return new BulkRetryPolicy(maxRetries, initialBackoff, maxBackoff);
+  }
+
   public static ReindexingConfiguration from(EventPublisherJob jobData) {
     return new ReindexingConfiguration(
         jobData.getEntities(),

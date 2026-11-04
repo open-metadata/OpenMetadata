@@ -12,7 +12,7 @@
  */
 
 import { viewToSubPath as acViewToSubPath } from '../access-control/AccessControl.utils';
-import { viewToSubPath as membersViewToSubPath } from './Members.utils';
+import { viewToSubPath as membersViewToSubPath } from './membersRoute.utils';
 
 /**
  * A destination inside the personal-space Profile modal, expressed as the
@@ -25,16 +25,25 @@ export interface ProfileHashTarget {
 }
 
 /**
- * Builders for the in-modal destinations. A user opens the Members edit view
- * (the Profile tab is only ever the logged-in user). User/role/policy/team reuse the existing
+ * Builders for the in-modal destinations. Role/policy/team reuse the existing
  * `viewToSubPath` encoders so the sub-paths round-trip through the same parsers
  * (`access-control` and `members`), avoiding divergent encoding.
  */
 export const profileHash = {
-  user: (name: string): ProfileHashTarget => ({
-    tab: 'members',
-    subPath: membersViewToSubPath({ type: 'user-edit', name }),
-  }),
+  // A user (yourself included) opens in the Members user detail when the viewer
+  // may browse users there; anyone else gets the same read-only detail under
+  // `#profile/<name>`, which any signed-in user can open.
+  user: (name: string, canBrowseUsers = true): ProfileHashTarget =>
+    canBrowseUsers
+      ? {
+          tab: 'members',
+          subPath: membersViewToSubPath({
+            type: 'user-detail',
+            name,
+            tab: 'overview',
+          }),
+        }
+      : { tab: 'profile', subPath: encodeURIComponent(name) },
   role: (fqn: string): ProfileHashTarget => ({
     tab: 'access-control',
     subPath: acViewToSubPath({ type: 'roles-detail', fqn, name: fqn }),

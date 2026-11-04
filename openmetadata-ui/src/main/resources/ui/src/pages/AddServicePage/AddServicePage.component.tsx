@@ -51,6 +51,7 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
@@ -322,6 +323,7 @@ const AddServiceStepContent = ({
 const AddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { activeDomainEntityRef } = useDomainStore();
   const { serviceCategory: serviceCategoryParam } = useRequiredParams<{
     serviceCategory: ServiceCategoryParam;
   }>();
@@ -551,8 +553,12 @@ const AddServicePage = () => {
 
   const handleFiltersInputBackClick = () => setActiveServiceStep(2);
   const handleFiltersInputNextClick = async (config: ConfigData) => {
+    // A service created under a domain pick belongs to it, or it would vanish from the list.
     const configData = {
       ...serviceConfig,
+      ...(activeDomainEntityRef?.fullyQualifiedName && {
+        domains: [activeDomainEntityRef.fullyQualifiedName],
+      }),
       connection: {
         config: {
           ...serviceConfig.connection.config,

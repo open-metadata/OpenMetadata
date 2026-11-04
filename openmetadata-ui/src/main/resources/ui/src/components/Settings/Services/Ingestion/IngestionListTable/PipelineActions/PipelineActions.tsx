@@ -99,7 +99,6 @@ function PipelineActions({
     }
 
     const label = pipeline.enabled ? t('label.pause') : t('label.resume');
-    const StatusIcon = pipeline.enabled ? PauseIcon : ResumeIcon;
 
     return (
       <Tooltip
@@ -108,7 +107,7 @@ function PipelineActions({
           showTextWhileLoading
           color="secondary"
           data-testid={pipeline.enabled ? 'pause-button' : 'resume-button'}
-          iconLeading={<StatusIcon height={12} width={12} />}
+          iconLeading={pipeline.enabled ? PauseIcon : ResumeIcon}
           isDisabled={isDisabled || !pipeline.deployed}
           isLoading={isToggling}
           onPress={() => onPauseUnpauseClick(pipelineId)}>
@@ -131,7 +130,7 @@ function PipelineActions({
         <Button
           color="secondary"
           data-testid="logs-button"
-          iconLeading={<LogsIcon height={12} width={12} />}
+          iconLeading={LogsIcon}
           isDisabled={isDisabled}
           onPress={handleLogsClick}>
           {t('label.log-plural')}

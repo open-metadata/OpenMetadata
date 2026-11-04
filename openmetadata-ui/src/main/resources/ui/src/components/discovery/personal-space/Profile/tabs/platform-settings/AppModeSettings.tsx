@@ -74,7 +74,6 @@ const AppModeSettings = (props: PlatformSettingsPageProps) => {
         testId="default-app-mode-page"
         title={t('label.default-app-mode')}>
         <ReadOnlyRow
-          isValueCompact
           description={t('message.default-app-mode-description')}
           title={t('label.default-app-mode')}>
           <SettingValue

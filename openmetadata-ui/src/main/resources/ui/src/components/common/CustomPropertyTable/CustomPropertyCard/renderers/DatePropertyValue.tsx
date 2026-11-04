@@ -13,8 +13,9 @@
 import { CalendarDate } from '@internationalized/date';
 import { Box, DatePicker, TimePicker } from '@openmetadata/ui-core-components';
 import { DateTime } from 'luxon';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { formatCustomPropertyDateTime } from '../../../../../utils/CustomProperty.utils';
 import {
   CustomPropertyRenderer,
@@ -52,6 +53,7 @@ const DatePropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const typeName = property.propertyType.name ?? DATE_CP;
@@ -59,20 +61,38 @@ const DatePropertyEdit = ({
   const [state, setState] = useState(() =>
     toDateTimeEditState(value, typeName, config)
   );
+  const [isTimeIncomplete, setIsTimeIncomplete] = useState(false);
+  const [timeError, setTimeError] = useState<string>();
+
+  useReportDirty(state, onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // A half-typed time commits nothing, which would otherwise save as midnight.
+    if (isTimeIncomplete) {
+      setTimeError(t('message.enter-a-complete-time'));
+
+      return;
+    }
     onSave(fromDateTimeEditState(state, typeName, config));
   };
 
+  const handleIncompleteChange = useCallback((isIncomplete: boolean) => {
+    setIsTimeIncomplete(isIncomplete);
+    if (!isIncomplete) {
+      setTimeError(undefined);
+    }
+  }, []);
+
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
-      <Box align="center" gap={3} wrap="wrap">
+      <Box align="start" gap={3}>
         {typeName !== TIME_CP && (
-          <div data-testid="date-time-picker">
+          <div className="tw:min-w-0 tw:flex-1" data-testid="date-time-picker">
             <DatePicker
               aria-label={t('label.date')}
               isDisabled={isSaving}
+              triggerVariant="input"
               value={state.date ? toPickerDate(state.date) : null}
               onChange={(date) =>
                 setState((prev) => ({
@@ -86,15 +106,18 @@ const DatePropertyEdit = ({
           </div>
         )}
         {typeName !== DATE_CP && (
-          <div className="tw:w-40" data-testid="time-picker">
+          <div className="tw:min-w-0 tw:flex-1" data-testid="time-picker">
             {/* Every supported time format stores seconds. */}
             <TimePicker
               aria-label={t('label.time')}
               granularity="second"
+              hint={timeError}
               hourCycle={24}
               isDisabled={isSaving}
+              isInvalid={Boolean(timeError)}
               value={state.time}
               onChange={(time) => setState((prev) => ({ ...prev, time }))}
+              onIncompleteChange={handleIncompleteChange}
             />
           </div>
         )}

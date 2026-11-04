@@ -23,6 +23,7 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { PopoverTitleProps } from './UserPopOverCard.interface';
 
 export const PopoverTitle = React.memo(
@@ -57,8 +58,8 @@ export const PopoverTitle = React.memo(
               }
               navigate(
                 type === OwnerType.TEAM
-                  ? getTeamAndUserDetailsPath(name)
-                  : getUserPath(name)
+                  ? getSettingsLink(getTeamAndUserDetailsPath(name))
+                  : getSettingsLink(getUserPath(name))
               );
             }}>
             <span className="font-medium m-r-xs" data-testid="user-name">

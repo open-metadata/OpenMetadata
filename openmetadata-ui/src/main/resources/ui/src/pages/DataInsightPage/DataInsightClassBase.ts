@@ -16,6 +16,7 @@ import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
 import { ManageMenuItem as ItemType } from '../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import AppAnalyticsTab from '../../components/DataInsight/AppAnalyticsTab/AppAnalyticsTab.component';
 import DataAssetsTab from '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component';
+import type { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';
 import i18n from '../../utils/i18next/LocalUtil';
@@ -82,7 +83,10 @@ class DataInsightClassBase {
     return currentTab?.component;
   }
 
-  public getManageExtraOptions(): ItemType[] {
+  // Hook-free; the page passes showModal in. ADR:2026-10-21-class-base-menu-helpers-take-showmodal
+  public getManageExtraOptions(
+    _showModal: (data: ExportData) => void
+  ): ItemType[] {
     return [];
   }
 }

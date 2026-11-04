@@ -254,9 +254,6 @@ class MssqlUnitTest(TestCase):
     def test_yield_database(self):
         assert [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)] == EXPECTED_DATABASE
 
-        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-
     @mssql_dialet.db_plus_owner
     def mock_function(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
         # Mock function for testing
@@ -272,13 +269,14 @@ class MssqlUnitTest(TestCase):
         self.assertEqual(result, "[your.schema]")
 
     def test_yield_schema(self):
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
         assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.mssql.yield_database_schema(model_str(MOCK_DATABASE_SCHEMA.name))
         ]
 
-        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-
     def test_yield_table(self):
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
         assert [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))] == EXPECTED_TABLE
 
     def test_get_stored_procedures(self):

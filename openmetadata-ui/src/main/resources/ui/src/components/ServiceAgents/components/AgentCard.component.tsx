@@ -372,7 +372,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
           className="tw:font-semibold"
           color="primary"
           data-testid="diagnose-button"
-          iconLeading={<AlertTriangle size={15} />}
+          iconLeading={AlertTriangle}
           size="sm"
           onClick={() => onRunDetails(agent)}>
           {t('label.diagnose')}
@@ -396,7 +396,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
               className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="logs-button"
-              iconLeading={<AlignLeft size={15} />}
+              iconLeading={AlignLeft}
               isDisabled={isUnavailable}
               size="sm"
               onClick={() => onLogs(agent)}>
@@ -408,7 +408,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
               className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="run-agent-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
+              iconLeading={PlayIcon}
               isDisabled={isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>

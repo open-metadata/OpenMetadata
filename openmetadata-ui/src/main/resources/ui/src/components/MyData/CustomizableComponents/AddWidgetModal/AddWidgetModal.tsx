@@ -143,8 +143,8 @@ function AddWidgetModal({
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={t('message.no-widgets-to-add')}
             icon={<Database01 />}
+            title={t('message.no-widgets-to-add')}
           />
         </div>
       );

@@ -54,19 +54,30 @@ function formatConnectionFields<T>(formData: T, field: string): T {
   return formData;
 }
 
-// Drops map rows the user added but never filled in, recognised by RJSF's default key and value.
+// Drops map rows the user added but never filled in, recognised by RJSF's default key and
+// value. For string-valued maps RJSF seeds a new row with 'New Value'; for maps whose value
+// schema is a type-less anyOf (e.g. the ownerConfig maps in the Metadata pipeline form) RJSF
+// coerces the new row's type to object, so it defaults to {} (or [] for array-valued maps).
+// The empty-structure check must run before recursing, otherwise an empty object/array has no
+// keys to visit and the row would survive the cleanup as schema-invalid data.
 export function formatAdditionalProperties<T>(formData: T): T {
   for (const key in formData) {
-    if (typeof formData[key as keyof T] === 'object') {
-      formatAdditionalProperties(formData[key as keyof T]);
-    } else {
-      const data = formData[key as keyof T];
-      if (
-        key.startsWith('newKey') &&
-        data === ('New Value' as unknown as T[keyof T])
-      ) {
+    const data = formData[key as keyof T];
+    if (typeof data === 'object' && data !== null) {
+      const isEmptyStructure = Array.isArray(data)
+        ? data.length === 0
+        : Object.keys(data).length === 0;
+      if (key.startsWith('newKey') && isEmptyStructure) {
         delete formData[key];
+
+        continue;
       }
+      formatAdditionalProperties(data);
+    } else if (
+      key.startsWith('newKey') &&
+      data === ('New Value' as unknown as T[keyof T])
+    ) {
+      delete formData[key];
     }
   }
 

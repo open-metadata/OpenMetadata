@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -28,10 +34,6 @@ import DomainSelect from '../DomainSelect/DomainSelect';
 import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import DomainTags from '../DomainTags/DomainTags';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
@@ -61,7 +63,7 @@ export const DomainLabel = ({
     return showDashPlaceholder
       ? NO_DATA_PLACEHOLDER
       : t('label.no-entity', { entity: t('label.domain-plural') });
-  }, [showDashPlaceholder]);
+  }, [showDashPlaceholder, t]);
 
   const widgetTitle = useMemo(
     () => (multiple ? t('label.domain-plural') : t('label.domain')),
@@ -168,14 +170,16 @@ export const DomainLabel = ({
     const renderTrigger = ({ toggle }: { toggle: () => void }) => (
       <DomainSelectTrigger toggle={toggle}>
         {isEmpty(activeDomain) ? (
-          <WidgetPlusButton
+          <ButtonUtility
             data-testid="add-domain"
-            title={t('label.add-entity', { entity: widgetTitle })}
+            icon={Plus}
+            tooltip={t('label.add-entity', { entity: widgetTitle })}
           />
         ) : (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-domain"
-            title={t('label.edit-entity', { entity: widgetTitle })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', { entity: widgetTitle })}
           />
         )}
       </DomainSelectTrigger>
@@ -234,8 +238,8 @@ export const DomainLabel = ({
 
     if (variant === 'card') {
       return (
-        <div className="d-flex flex-col mb-4 w-full p-[20px] user-profile-card">
-          <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
+        <div className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5">
+          <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
             <div style={{ width: '16px' }}>
               <DomainIcon height={16} style={{ marginLeft: '2px' }} />
             </div>
@@ -247,9 +251,9 @@ export const DomainLabel = ({
               {selectableList}
             </div>
           </div>
-          <div className="user-profile-card-body d-flex justify-start gap-2">
-            <div className="user-page-icon d-flex-center">
-              <Divider className="tw:h-full" orientation="vertical" />
+          <div className="tw:mb-2.5 tw:flex tw:justify-start tw:gap-2">
+            <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
+              <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
             </div>
             <div
               className="d-flex flex-col items-start gap-1 flex-wrap justify-center"
@@ -321,7 +325,6 @@ export const DomainLabel = ({
     );
   }, [
     activeDomain,
-    hasPermission,
     selectableList,
     labelClassName,
     variant,
@@ -329,6 +332,8 @@ export const DomainLabel = ({
     widgetEditor,
     widgetTitle,
     showDomainHeading,
+    defaultDomainText,
+    headerLayout,
     t,
   ]);
 

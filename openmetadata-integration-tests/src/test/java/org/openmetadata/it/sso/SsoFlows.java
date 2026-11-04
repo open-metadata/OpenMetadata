@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.browser.SsoNavigation;
+import org.openmetadata.it.sso.browser.SsoNavigation.Hop;
 import org.openmetadata.it.sso.config.SsoServer;
 import org.openmetadata.it.sso.state.StoredSessions;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -17,6 +18,7 @@ import org.openmetadata.service.security.session.UserSession;
 public final class SsoFlows {
   public static final String SESSION_COOKIE = "OM_SESSION";
   public static final String ID_TOKEN = "id_token";
+  private static final int SERVER_ERROR = 500;
 
   private SsoFlows() {}
 
@@ -51,6 +53,30 @@ public final class SsoFlows {
       throw new AssertionError("Session " + sessionId + " is " + session.getStatus());
     }
     return session;
+  }
+
+  /**
+   * The callback refused the login for {@code reason}, and {@link #assertLoginRefused} holds. The
+   * callback answers such a refusal with a 500 whose body names the reason, so a server error with
+   * another cause does not pass for a refusal.
+   */
+  public static void assertCallbackRefused(
+      SsoBrowser browser, SsoNavigation navigation, String reason) {
+    Hop last = navigation.last();
+    boolean isRefusal =
+        SsoServer.CALLBACK_PATH.equals(last.url().getPath())
+            && last.status() == SERVER_ERROR
+            && last.body().contains(reason);
+    if (!isRefusal) {
+      throw new AssertionError(
+          "Expected the callback to refuse the login with \""
+              + reason
+              + "\":\n"
+              + navigation.describe()
+              + "\n"
+              + last.body());
+    }
+    assertLoginRefused(browser, navigation);
   }
 
   /** The browser ended without a token, and the session its cookie names (if any) is not live. */

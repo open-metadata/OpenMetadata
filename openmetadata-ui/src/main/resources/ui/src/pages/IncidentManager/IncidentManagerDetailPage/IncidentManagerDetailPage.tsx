@@ -25,13 +25,13 @@ import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDat
 import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { PageLoader } from '../../../components/common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
 import TestCaseFormDrawer from '../../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import TestCaseLastRunBanner from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component';
 import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
+import EntityDetailsPageSkeleton from '../../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { EntityType } from '../../../enums/entity.enum';
@@ -275,7 +275,7 @@ const IncidentManagerDetailPage = ({
   }, [onCopyToClipBoard]);
 
   if (isLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (!hasViewPermission) {
@@ -353,6 +353,7 @@ const IncidentManagerDetailPage = ({
                 <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
               </Box>
               <TestCaseHeaderTitle
+                deleted={testCase.deleted}
                 displayName={displayName}
                 hasCopied={hasCopied}
                 testCaseName={testCase.name}

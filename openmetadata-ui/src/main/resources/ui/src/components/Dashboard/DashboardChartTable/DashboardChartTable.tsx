@@ -465,7 +465,7 @@ export const DashboardChartTable = ({
               className="tw:relative tw:min-h-70"
               data-testid="no-data-placeholder">
               <NoDataPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.chart-plural'),
                 })}

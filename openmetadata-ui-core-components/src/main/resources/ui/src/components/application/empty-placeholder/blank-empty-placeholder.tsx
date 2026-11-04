@@ -52,7 +52,12 @@ export const BlankEmptyPlaceholder = ({
         className="tw:max-w-lg tw:gap-1.5 tw:text-center"
         direction="col">
         {title && (
-          <Typography size="text-sm" weight="semibold">
+          // Explicit colour: hosts that tint their text (table empty rows) must
+          // not turn the heading into description-grey.
+          <Typography
+            className="tw:text-primary"
+            size="text-sm"
+            weight="semibold">
             {title}
           </Typography>
         )}

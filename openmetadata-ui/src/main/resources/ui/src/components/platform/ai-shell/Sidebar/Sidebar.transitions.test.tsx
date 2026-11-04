@@ -19,6 +19,10 @@ import { AppModule } from '../AppModule.types';
 import { useActiveModuleStore } from '../state/useActiveModule';
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from './appModeSidebar.constants';
 import Sidebar from './Sidebar';
+import {
+  readCompactSidebarPreference,
+  setCompactSidebarPreference,
+} from './sidebarPreference.utils';
 
 // A second sub-context: the same real SubNavConfig under a different module id,
 // so switching modules exercises the real SubPanel/SubRail again without pulling
@@ -185,18 +189,81 @@ describe('Sidebar dual-nav transitions', () => {
     expect(present('ask-sub-rail')).toBe(false);
   });
 
-  it('persists a top-level collapse and restores it across a sub-context round-trip', () => {
+  describe('compact sidebar preference', () => {
+    it('rails both the main nav and the submenu when compact', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
+      setModule(OBS_ID);
+      renderSidebar();
+
+      expect(present('ask-rail')).toBe(true);
+      expect(present('ask-sub-rail')).toBe(true);
+      expect(present('ask-sub-panel')).toBe(false);
+    });
+
+    it('applies a change from Preferences to the submenu straight away', () => {
+      setModule(OBS_ID);
+      renderSidebar();
+
+      expect(present('ask-sub-panel')).toBe(true);
+
+      act(() => setCompactSidebarPreference(true));
+
+      expect(present('ask-rail')).toBe(true);
+      expect(present('ask-sub-rail')).toBe(true);
+      expect(present('ask-sub-panel')).toBe(false);
+
+      act(() => setCompactSidebarPreference(false));
+
+      expect(present('ask-rail')).toBe(true);
+      expect(present('ask-sub-panel')).toBe(true);
+    });
+
+    it('re-rails a transiently expanded main nav so only one full panel is open', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
+      setModule(OBS_ID);
+      renderSidebar();
+
+      fireEvent.click(screen.getByTestId('rail-expand'));
+
+      expect(hasClass('ask-sidebar--collapsed')).toBe(false);
+
+      act(() => setCompactSidebarPreference(false));
+
+      expect(hasClass('ask-sidebar--collapsed')).toBe(true);
+      expect(present('ask-rail')).toBe(true);
+      expect(present('ask-sub-panel')).toBe(true);
+    });
+
+    it('drops a transient submenu expand when the sub-context changes', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
+      setModule(OBS_ID);
+      renderSidebar();
+
+      fireEvent.click(screen.getByTestId('ask-sub-rail-expand-btn'));
+
+      expect(present('ask-sub-panel')).toBe(true);
+
+      setModule(SECOND_ID);
+
+      expect(present('ask-sub-rail')).toBe(true);
+      expect(present('ask-sub-panel')).toBe(false);
+      // A transient expand is never written back to the preference.
+      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
+    });
+  });
+
+  it('keeps compact on when the main nav is expanded at the top level, and re-rails after a sub-context round-trip', () => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
     setModule(null);
     renderSidebar();
 
     expect(hasClass('ask-sidebar--sub')).toBe(false);
-    expect(hasClass('ask-sidebar--collapsed')).toBe(false);
-    expect(present('ask-rail')).toBe(false);
-
-    fireEvent.click(screen.getByTestId('main-collapse'));
-
     expect(hasClass('ask-sidebar--collapsed')).toBe(true);
-    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
+
+    fireEvent.click(screen.getByTestId('rail-expand'));
+
+    expect(hasClass('ask-sidebar--collapsed')).toBe(false);
+    expect(readCompactSidebarPreference()).toBe(true);
 
     setModule(OBS_ID);
 

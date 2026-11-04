@@ -42,6 +42,7 @@ import {
   dataProductQueryKey,
   DATA_PRODUCT_DEFAULT_FIELDS,
 } from '../../../rest/queries/dataProductQuery';
+import { invalidateDomainStyles } from '../../../rest/queries/domainStyleQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainPath, getVersionPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
@@ -121,6 +122,7 @@ const DataProductsPage = () => {
         const response = await patchDataProduct(dataProduct.id, jsonPatch);
 
         setDataProduct(response);
+        void invalidateDomainStyles(queryClient);
 
         if (dataProduct?.name !== updatedData.name) {
           navigate(
@@ -330,16 +332,16 @@ const DataProductsPage = () => {
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={t('message.no-entity-found-for-name', {
-            entity: t('label.data-product'),
-            name: dataProductFqn,
-          })}
           footer={
             <Button color="primary" onPress={() => navigate(getDomainPath())}>
               {t('label.go-back')}
             </Button>
           }
           icon={<Database01 />}
+          title={t('message.no-entity-found-for-name', {
+            entity: t('label.data-product'),
+            name: dataProductFqn,
+          })}
         />
       </div>
     );

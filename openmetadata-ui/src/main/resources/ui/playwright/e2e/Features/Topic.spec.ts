@@ -120,55 +120,41 @@ test.describe('Topic entity specific tests ', () => {
 
     await expect(page.getByTestId('topic-schema-fields-table')).toBeVisible();
 
-    // Scope to rows: the toolbar's Expand All icon reuses the expand-icon test id.
-    const expandButtons = page
-      .getByTestId('topic-schema-fields-table')
-      .getByRole('row')
-      .getByTestId('expand-icon');
-    const expandButtonCount = await expandButtons.count();
+    const schemaTable = page.getByTestId('topic-schema-fields-table');
+    const parentField =
+      topic.entityResponseData?.messageSchema?.schemaFields?.[0];
+    const nestedField = parentField?.children?.find(
+      (field) => field.name === 'age'
+    );
+    const nestedFqn = nestedField?.fullyQualifiedName ?? '';
+    const nestedRow = schemaTable.locator(`[data-row-key="${nestedFqn}"]`);
 
-    if (expandButtonCount > 0) {
-      // Expand the first nested field
-      await expandButtons.first().click();
+    // Small schemas auto-expand every row once loaded (TopicSchema), so clicking
+    // the expand icon races that effect and can collapse the rows instead. Wait
+    // for the auto-expanded nested row and copy from inside it.
+    await expect(nestedRow).toBeVisible();
 
-      // Find copy button in the nested row
-      const nestedCopyButtons = page.getByTestId('copy-field-link-button');
-      const nestedButtonCount = await nestedCopyButtons.count();
+    const nestedCopyButton = nestedRow.getByTestId('copy-field-link-button');
+    await expect(nestedCopyButton).toBeVisible();
 
-      // If we have more than one copy button, the second one is likely nested
-      if (nestedButtonCount > 1) {
-        const nestedCopyButton = nestedCopyButtons.nth(1);
-        await expect(nestedCopyButton).toBeVisible();
+    const clipboardText = await copyAndGetClipboardText(page, nestedCopyButton);
 
-        const clipboardText = await copyAndGetClipboardText(
-          page,
-          nestedCopyButton
-        );
+    expect(clipboardText).toContain('/topic/');
+    expect(clipboardText).toContain(nestedFqn);
 
-        // Verify the URL contains the topic FQN
-        expect(clipboardText).toContain('/topic/');
-        expect(clipboardText).toContain(
-          topic.entityResponseData?.['fullyQualifiedName'] ?? ''
-        );
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
-        // Visit the copied link to verify it opens the side panel
-        await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
+    // Verify side panel is open - wait for it to appear with a longer timeout
+    const sidePanel = page.locator('.column-detail-panel');
+    await expect(sidePanel).toBeVisible({ timeout: 10000 });
 
-        // Verify side panel is open - wait for it to appear with a longer timeout
-        const sidePanel = page.locator('.column-detail-panel');
-        await expect(sidePanel).toBeVisible({ timeout: 10000 });
+    // Close side panel
+    await page.getByTestId('close-button').click();
+    await expect(sidePanel).not.toBeVisible();
 
-        // Close side panel
-        await page.getByTestId('close-button').click();
-        await expect(sidePanel).not.toBeVisible();
-
-        // Verify URL does not contain the column part
-        await expect(page).toHaveURL(
-          new RegExp(
-            `/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`
-          )
-        );
-      }
-    }
+    // Verify URL does not contain the column part
+    await expect(page).toHaveURL(
+      new RegExp(`/topic/${topic.entityResponseData?.['fullyQualifiedName']}$`)
+    );
   });
 });

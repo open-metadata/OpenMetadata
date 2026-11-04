@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -76,6 +77,7 @@ export function useAlertFormData({
   const { getResourceLimit } = useLimitStore();
 
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
+  const [alertError, setAlertError] = useState<AxiosError>();
   const [initialData, setInitialData] = useState<EventSubscription>();
   const [loadingState, setLoadingState] = useState<
     UseAlertFormDataReturn['loadingState']
@@ -104,6 +106,7 @@ export function useAlertFormData({
   const fetchAlert = useCallback(async () => {
     try {
       setLoadingState((state) => ({ ...state, alerts: true }));
+      setAlertError(undefined);
 
       const observabilityAlert = isNotification
         ? await getAlertsFromName(fqn)
@@ -113,8 +116,8 @@ export function useAlertFormData({
 
       setInitialData(observabilityAlert);
       setAlert(modifiedAlertData);
-    } catch {
-      // Error handling
+    } catch (error) {
+      setAlertError(error as AxiosError);
     } finally {
       setLoadingState((state) => ({ ...state, alerts: false }));
     }
@@ -237,9 +240,11 @@ export function useAlertFormData({
 
   return {
     alert,
+    alertError,
     breadcrumb,
     extraFormButtons,
     extraFormWidgets,
+    fetchAlert,
     handleCancel,
     handleSave,
     inlineAlertDetails,

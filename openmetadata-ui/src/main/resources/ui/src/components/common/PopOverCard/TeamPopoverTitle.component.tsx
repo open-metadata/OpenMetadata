@@ -19,6 +19,7 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTeamAndUserDetailsPath } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { TeamPopoverTitleProps } from './UserPopOverCard.interface';
 
 export const TeamPopoverTitle = React.memo(
@@ -38,7 +39,7 @@ export const TeamPopoverTitle = React.memo(
             size="sm"
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
-              navigate(getTeamAndUserDetailsPath(name));
+              navigate(getSettingsLink(getTeamAndUserDetailsPath(name)));
             }}>
             <span className="font-medium m-r-xs" data-testid="team-name">
               {displayName || teamName}

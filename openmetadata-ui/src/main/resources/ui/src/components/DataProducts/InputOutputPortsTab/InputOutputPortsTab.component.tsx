@@ -32,12 +32,15 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactFlowProvider } from 'reactflow';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import {
+  getDataProductInputPorts,
+  getDataProductOutputPorts,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -212,8 +215,7 @@ const InputPortsAccordionSection = ({
               {inputPortsCount === 0 ? (
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <NoDataPlaceholder
-                    data-testid="no-data-placeholder"
-                    description={t('message.no-input-ports-added')}
+                    data-testid="no-input-ports-placeholder"
                     footer={
                       <>
                         {canEditAll && (
@@ -232,12 +234,7 @@ const InputPortsAccordionSection = ({
                         )}
                       </>
                     }
-                    icon={
-                      <AddPlaceHolderIcon
-                        className="tw:w-16 tw:h-16"
-                        data-testid="no-input-ports-placeholder"
-                      />
-                    }
+                    title={t('message.no-input-ports-added')}
                   />
                 </div>
               ) : (
@@ -286,10 +283,11 @@ const OutputPortsAccordionSection = ({
   const { t } = useTranslation();
   const showHeaderAddButton =
     canEditAll && isOutputPortsExpanded && outputPortsCount > 0;
-  const emptyStateMessage =
+  // The no-assets copy is guidance (description); the other is a headline.
+  const emptyStateCopy =
     assetCount === 0
-      ? t('message.no-assets-for-output-ports')
-      : t('message.no-output-ports-added');
+      ? { description: t('message.no-assets-for-output-ports') }
+      : { title: t('message.no-output-ports-added') };
   const showEmptyStateAddButton = canEditAll && assetCount > 0;
 
   return (
@@ -338,8 +336,8 @@ const OutputPortsAccordionSection = ({
               {outputPortsCount === 0 ? (
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <NoDataPlaceholder
-                    data-testid="no-data-placeholder"
-                    description={emptyStateMessage}
+                    data-testid="no-output-ports-placeholder"
+                    {...emptyStateCopy}
                     footer={
                       <>
                         {showEmptyStateAddButton && (
@@ -357,12 +355,6 @@ const OutputPortsAccordionSection = ({
                           </Button>
                         )}
                       </>
-                    }
-                    icon={
-                      <AddPlaceHolderIcon
-                        className="tw:w-16 tw:h-16"
-                        data-testid="no-output-ports-placeholder"
-                      />
                     }
                   />
                 </div>
@@ -401,6 +393,12 @@ export const InputOutputPortsTab = forwardRef<
     const { t } = useTranslation();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
+    const [excludedFromInputPicker, setExcludedFromInputPicker] = useState<
+      string[]
+    >([]);
+    const [excludedFromOutputPicker, setExcludedFromOutputPicker] = useState<
+      string[]
+    >([]);
     const [isLineageFullScreen, setIsLineageFullScreen] = useState(false);
     const [isLineageExpanded, setIsLineageExpanded] = useState(false);
     const [isInputPortsExpanded, setIsInputPortsExpanded] = useState(true);
@@ -422,11 +420,30 @@ export const InputOutputPortsTab = forwardRef<
     const [inputPortsCount, setInputPortsCount] = useState(0);
     const [outputPortsCount, setOutputPortsCount] = useState(0);
 
-    // Compute query filter for port selection drawer
-    // Only show assets that belong to the DataProduct
-    const portQueryFilter = useMemo(() => {
-      return getQueryFilterForDataProductPorts(dataProductFqn);
-    }, [dataProductFqn]);
+    // Output ports must be assets of the data product, and an asset cannot be
+    // both an input and an output port, so each picker hides the other kind.
+    const outputPortQueryFilter = useMemo(
+      () =>
+        getQueryFilterForDataProductPorts(
+          dataProductFqn,
+          excludedFromOutputPicker
+        ),
+      [dataProductFqn, excludedFromOutputPicker]
+    );
+
+    const inputPortQueryFilter = useMemo(
+      () =>
+        excludedFromInputPicker.length > 0
+          ? {
+              query: {
+                bool: {
+                  must_not: [{ ids: { values: excludedFromInputPicker } }],
+                },
+              },
+            }
+          : undefined,
+      [excludedFromInputPicker]
+    );
 
     // Consumer via prop (Task 8 rule 2): `permissions` is the raw OperationPermission
     // fed straight through from DataProductUtils.tsx's `dataProductPermission`
@@ -508,13 +525,34 @@ export const InputOutputPortsTab = forwardRef<
       refreshPorts,
     }));
 
-    const handleAddInputPort = useCallback(() => {
-      setIsAddingInputPort(true);
-    }, []);
+    // ponytail: first 1000 ports (the API max); a product past that can still
+    // list an opposite port, which the save then rejects inline.
+    // Each picker keeps its own list, so a late response for one picker can
+    // never replace the other's exclusions.
+    const fetchPortIds = useCallback(
+      async (getPorts: typeof getDataProductInputPorts) => {
+        try {
+          const { data } = await getPorts(dataProductFqn, { limit: 1000 });
 
-    const handleAddOutputPort = useCallback(() => {
+          return data.map(({ id }) => id as string);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return [];
+        }
+      },
+      [dataProductFqn]
+    );
+
+    const handleAddInputPort = useCallback(async () => {
+      setExcludedFromInputPicker(await fetchPortIds(getDataProductOutputPorts));
+      setIsAddingInputPort(true);
+    }, [fetchPortIds]);
+
+    const handleAddOutputPort = useCallback(async () => {
+      setExcludedFromOutputPicker(await fetchPortIds(getDataProductInputPorts));
       setIsAddingOutputPort(true);
-    }, []);
+    }, [fetchPortIds]);
 
     const handleInputPortSave = useCallback(async () => {
       setIsAddingInputPort(false);
@@ -619,6 +657,7 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
+          queryFilter={inputPortQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', { entity: t('label.input') }),
           })}
@@ -631,7 +670,7 @@ export const InputOutputPortsTab = forwardRef<
           entityFqn={dataProductFqn}
           infoBannerText={t('message.output-ports-from-data-product-assets')}
           open={isAddingOutputPort}
-          queryFilter={portQueryFilter}
+          queryFilter={outputPortQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', {
               entity: t('label.output'),

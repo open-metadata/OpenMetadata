@@ -452,3 +452,28 @@ export const EllipsisMultiLineWithTooltip: StoryObj = {
     </div>
   ),
 };
+
+export const Colors: StoryObj = {
+  name: 'Colors (color prop)',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Typography>Default</Typography>
+      <Typography color="secondary">secondary</Typography>
+      <Typography color="success">success</Typography>
+      <Typography color="warning">warning</Typography>
+      <Typography color="danger">danger</Typography>
+      <Typography color="brand">brand</Typography>
+    </div>
+  ),
+};
+
+export const BrandEllipsisInLink: StoryObj = {
+  name: 'Ellipsis — brand color inside a link',
+  render: () => (
+    <a href="#entity" style={{ display: 'block', maxWidth: 240 }}>
+      <Typography ellipsis color="brand">
+        {LONG_TEXT}
+      </Typography>
+    </a>
+  ),
+};

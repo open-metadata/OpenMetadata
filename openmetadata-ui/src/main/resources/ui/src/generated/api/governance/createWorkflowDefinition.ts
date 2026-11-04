@@ -420,6 +420,13 @@ export interface NodeConfiguration {
      */
     fields?: RequiredField[];
     /**
+     * Set on the steps a rejected approval adds instead of collecting fields: `request` asks
+     * the stage's assignees to revise the asset, with the reviewer's comment; `resubmit` closes
+     * that request when the stage's approval opens again
+     * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+     */
+    revision?: Revision;
+    /**
      * The task applies while the asset is in this stage.
      */
     stage?: EntityStatus;
@@ -515,12 +522,14 @@ export interface ExpiryTimer {
     closeAsResolution?: ResolutionType;
     /**
      * Name of the process variable holding the absolute ISO 8601 date/time when the timer
-     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z').
+     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z'). Must be a bare
+     * variable name: letters, digits and '_', starting with a letter or underscore.
      */
     dateVariable?: string;
     /**
      * Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' →
-     * 'P14D').
+     * 'P14D'). Must be a bare variable name: letters, digits and '_', starting with a letter or
+     * underscore.
      */
     durationVariable?: string;
     /**
@@ -589,6 +598,17 @@ export interface QualityBand {
      * Name for this quality band (e.g., 'gold', 'excellent', 'tier1')
      */
     name: string;
+}
+
+/**
+ * Set on the steps a rejected approval adds instead of collecting fields: `request` asks
+ * the stage's assignees to revise the asset, with the reviewer's comment; `resubmit` closes
+ * that request when the stage's approval opens again
+ * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+ */
+export enum Revision {
+    Request = "request",
+    Resubmit = "resubmit",
 }
 
 /**
@@ -711,24 +731,26 @@ export enum Event {
 /**
  * Entity-specific filters with optional default
  */
-export interface FilterConditionObject {
+export type FilterConditionObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 /**
  * Entity-specific filters with optional default
  */
-export interface FiltersObject {
+export type FiltersObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 export interface AppScheduleClass {
     /**

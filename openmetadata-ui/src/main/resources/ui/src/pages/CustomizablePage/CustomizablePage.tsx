@@ -13,6 +13,7 @@
 import { Grid } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -528,9 +529,11 @@ const CustomizablePageContent = () => {
                   renderElement={
                     <Link
                       style={{ color: theme.primaryColor }}
-                      to={getSettingPath(
-                        GlobalSettingsMenuCategory.MEMBERS,
-                        GlobalSettingOptions.PERSONA
+                      to={getSettingsLink(
+                        getSettingPath(
+                          GlobalSettingsMenuCategory.MEMBERS,
+                          GlobalSettingOptions.PERSONA
+                        )
                       )}
                     />
                   }
