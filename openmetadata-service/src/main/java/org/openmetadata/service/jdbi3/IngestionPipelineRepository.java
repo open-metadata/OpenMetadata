@@ -93,6 +93,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -738,6 +739,54 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           .encryptIngestionPipeline(snapshot);
     }
     return snapshot;
+  }
+
+  @Override
+  protected void store(IngestionPipeline pipeline, boolean update, Double expectedVersion) {
+    IngestionPipeline original = update ? lockStoredPipeline(pipeline) : null;
+    super.store(pipeline, update, expectedVersion);
+    if (original != null) {
+      scheduleMapSecretCleanup(original);
+    }
+  }
+
+  @Override
+  protected void updateMany(List<IngestionPipeline> pipelines) {
+    executeInTransaction(
+        () -> {
+          List<IngestionPipeline> originals =
+              pipelines.stream().map(this::lockStoredPipeline).toList();
+          super.updateMany(pipelines);
+          for (int i = 0; i < pipelines.size(); i++) {
+            if (originals.get(i) != null) {
+              scheduleMapSecretCleanup(originals.get(i));
+            }
+          }
+          return null;
+        });
+  }
+
+  private void scheduleMapSecretCleanup(IngestionPipeline original) {
+    PostCommitActionQueue.runOrDefer(
+        () ->
+            executeInTransaction(
+                () -> {
+                  IngestionPipeline current = lockStoredPipeline(original);
+                  if (current != null) {
+                    SecretsManagerFactory.getSecretsManager()
+                        .deleteRemovedMapSecrets(original, current);
+                  }
+                  return null;
+                }));
+  }
+
+  private IngestionPipeline lockStoredPipeline(IngestionPipeline pipeline) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      return null;
+    }
+    String stored = dao.findJsonByIdForUpdate(pipeline.getId(), Include.ALL);
+    return stored == null ? null : JsonUtils.readValue(stored, IngestionPipeline.class);
   }
 
   @Override

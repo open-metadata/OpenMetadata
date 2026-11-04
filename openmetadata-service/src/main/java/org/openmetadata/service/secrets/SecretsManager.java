@@ -34,6 +34,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -853,16 +855,22 @@ public abstract class SecretsManager {
   }
 
   private void deleteSecrets(Object toDeleteSecretsFrom, String secretId) {
-    deleteSecrets(toDeleteSecretsFrom, List.of(secretId));
+    visitStoredSecrets(
+        toDeleteSecretsFrom, List.of(secretId), (name, value) -> deleteStoredSecret(name), false);
   }
 
   /**
    * @param secretIds the secret id of {@code toDeleteSecretsFrom} last, preceded by the ids of the
    *     objects that enclose it
    */
-  private void deleteSecrets(Object toDeleteSecretsFrom, List<String> secretIds) {
+  private void visitStoredSecrets(
+      Object toDeleteSecretsFrom,
+      List<String> secretIds,
+      BiConsumer<String, String> visitor,
+      boolean mapsOnly) {
     String secretId = secretIds.getLast();
-    if (!DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
+    if (toDeleteSecretsFrom != null
+        && !DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
       Arrays.stream(toDeleteSecretsFrom.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
           .forEach(
@@ -873,24 +881,32 @@ public abstract class SecretsManager {
                 // We are replicating the logic that we use for storing the fields we need to
                 // encrypt at encryptPasswordFields
                 if (CommonUtil.isOpenMetadataObject(obj)) {
-                  deleteSecrets(
+                  visitStoredSecrets(
                       obj,
                       withNestedSecretId(
                           secretIds,
-                          buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))));
+                          buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))),
+                      visitor,
+                      mapsOnly);
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                   if (obj instanceof Map<?, ?> secretMap) {
-                    deleteSecretMapEntries(secretMap, secretIds, secretId, fieldName);
-                  } else {
-                    deleteStoredSecret(
+                    visitSecretMapEntries(
+                        secretMap,
+                        withNestedSecretId(
+                            secretIds,
+                            buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))),
+                        visitor);
+                  } else if (!mapsOnly) {
+                    visitor.accept(
                         storedSecretName(
-                            (String) obj, secretIds, fieldName.toLowerCase(Locale.ROOT)));
+                            (String) obj, secretIds, fieldName.toLowerCase(Locale.ROOT)),
+                        (String) obj);
                   }
                 } else {
                   forEachTraversableElement(
                       obj,
                       (element, elementKey) ->
-                          deleteSecrets(
+                          visitStoredSecrets(
                               element,
                               withNestedSecretId(
                                   secretIds,
@@ -898,32 +914,75 @@ public abstract class SecretsManager {
                                       false,
                                       secretId,
                                       fieldName.toLowerCase(Locale.ROOT),
-                                      elementKey))));
+                                      elementKey)),
+                              visitor,
+                              mapsOnly));
                 }
               });
     }
   }
 
-  /**
-   * Deletes the per-entry secrets of a password-annotated map, replicating the id derivation of
-   * {@link #encryptSecretMapEntries} so a hard delete does not strand entry secrets in the store.
-   */
-  private void deleteSecretMapEntries(
-      Map<?, ?> secretMap, List<String> secretIds, String secretId, String fieldName) {
-    List<String> mapSecretIds =
-        withNestedSecretId(
-            secretIds, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
-    new ArrayList<>(secretMap.entrySet())
-        .forEach(
-            entry -> {
-              if (entry.getValue() instanceof String stringValue) {
-                deleteStoredSecret(
-                    storedSecretName(
-                        stringValue,
-                        mapSecretIds,
-                        String.valueOf(entry.getKey()).toLowerCase(Locale.ROOT)));
-              }
-            });
+  private void visitSecretMapEntries(
+      Map<?, ?> secretMap, List<String> mapSecretIds, BiConsumer<String, String> visitor) {
+    secretMap.forEach(
+        (key, value) -> {
+          if (value instanceof String stringValue) {
+            visitor.accept(
+                storedSecretName(
+                    stringValue, mapSecretIds, String.valueOf(key).toLowerCase(Locale.ROOT)),
+                stringValue);
+          }
+        });
+  }
+
+  /** Removes dropped map credentials only after the service update has been stored. */
+  public void deleteRemovedMapSecrets(
+      ServiceEntityInterface original, ServiceEntityInterface updated, ServiceType serviceType) {
+    if (secretsManagerProvider != SecretsManagerProvider.DB) {
+      deleteRemovedMapSecrets(
+          connectionForSecretCleanup(original, serviceType),
+          connectionForSecretCleanup(updated, serviceType),
+          buildSecretId(true, serviceType.value(), original.getName()));
+    }
+  }
+
+  private Object connectionForSecretCleanup(
+      ServiceEntityInterface service, ServiceType serviceType) {
+    return service.getConnection() == null || service.getConnection().getConfig() == null
+        ? null
+        : SecretsUtil.convert(
+            service.getConnection().getConfig(),
+            service.getServiceType().value(),
+            service.getName(),
+            serviceType);
+  }
+
+  /** Reconciles map credentials in an ingestion pipeline's source config. */
+  public void deleteRemovedMapSecrets(IngestionPipeline original, IngestionPipeline updated) {
+    if (secretsManagerProvider != SecretsManagerProvider.DB) {
+      IngestionPipeline previous = JsonUtils.deepCopy(original, IngestionPipeline.class);
+      IngestionPipeline current = JsonUtils.deepCopy(updated, IngestionPipeline.class);
+      IngestionPipelineBuilder.addDefinedConfigForRead(previous);
+      IngestionPipelineBuilder.addDefinedConfigForRead(current);
+      deleteRemovedMapSecrets(
+          previous, current, buildSecretId(true, "pipeline", original.getName()));
+    }
+  }
+
+  @VisibleForTesting
+  void deleteRemovedMapSecrets(Object original, Object updated, String secretId) {
+    Map<String, String> previous = storedSecrets(original, secretId, true);
+    Map<String, String> current = storedSecrets(updated, secretId, false);
+    previous.keySet().removeAll(current.keySet());
+    // A retained entry may reference a removed key's secret; do not break that reference.
+    current.values().forEach(value -> referencedSecretName(value).ifPresent(previous::remove));
+    previous.keySet().forEach(this::deleteStoredSecret);
+  }
+
+  private Map<String, String> storedSecrets(Object config, String secretId, boolean mapsOnly) {
+    Map<String, String> secrets = new HashMap<>();
+    visitStoredSecrets(config, List.of(secretId), secrets::put, mapsOnly);
+    return secrets;
   }
 
   private static List<String> withNestedSecretId(List<String> secretIds, String nestedSecretId) {
@@ -947,8 +1006,9 @@ public abstract class SecretsManager {
   }
 
   private Optional<String> referencedSecretName(String fieldValue) {
-    return Boolean.TRUE.equals(isSecret(fieldValue))
-        ? Optional.of(fieldValue.substring(SECRET_FIELD_PREFIX.length()))
+    String value = Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue;
+    return Boolean.TRUE.equals(isSecret(value))
+        ? Optional.of(value.substring(SECRET_FIELD_PREFIX.length()))
         : Optional.empty();
   }
 

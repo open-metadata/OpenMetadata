@@ -35,6 +35,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -52,6 +53,7 @@ import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Slf4j
 public abstract class ServiceEntityRepository<
@@ -208,8 +210,12 @@ public abstract class ServiceEntityRepository<
   // ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage
   @Override
   protected void store(T service, boolean update, Double expectedVersion) {
+    T original = update ? lockStoredService(service) : null;
     encryptConnection(service);
     super.store(service, update, expectedVersion);
+    if (original != null) {
+      scheduleMapSecretCleanup(original);
+    }
   }
 
   @Override
@@ -220,8 +226,41 @@ public abstract class ServiceEntityRepository<
 
   @Override
   protected void updateMany(List<T> services) {
-    services.forEach(this::encryptConnection);
-    super.updateMany(services);
+    executeInTransaction(
+        () -> {
+          List<T> originals = services.stream().map(this::lockStoredService).toList();
+          services.forEach(this::encryptConnection);
+          super.updateMany(services);
+          for (int i = 0; i < services.size(); i++) {
+            if (originals.get(i) != null) {
+              scheduleMapSecretCleanup(originals.get(i));
+            }
+          }
+          return null;
+        });
+  }
+
+  private void scheduleMapSecretCleanup(T original) {
+    PostCommitActionQueue.runOrDefer(
+        () ->
+            executeInTransaction(
+                () -> {
+                  T current = lockStoredService(original);
+                  if (current != null) {
+                    SecretsManagerFactory.getSecretsManager()
+                        .deleteRemovedMapSecrets(original, current, serviceType);
+                  }
+                  return null;
+                }));
+  }
+
+  private T lockStoredService(T service) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      return null;
+    }
+    String stored = dao.findJsonByIdForUpdate(service.getId(), Include.ALL);
+    return stored == null ? null : JsonUtils.readValue(stored, entityClass);
   }
 
   private void encryptConnection(T service) {

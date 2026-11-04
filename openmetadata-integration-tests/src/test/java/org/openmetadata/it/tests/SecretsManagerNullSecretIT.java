@@ -6,26 +6,49 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.CreateMessagingService;
+import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpHeaders;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.messaging.ConsumerConfig;
+import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
+import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -53,6 +76,7 @@ public class SecretsManagerNullSecretIT {
 
   private static final String CLUSTER_NAME = "openmetadata";
   private static final String DATABASE_SERVICES_PATH = "/v1/services/databaseServices";
+  private static final String MESSAGING_SERVICES_PATH = "/v1/services/messagingServices";
   private static final String PASSWORD = "s3cr3t";
   private static final String PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----";
 
@@ -72,6 +96,81 @@ public class SecretsManagerNullSecretIT {
   static void restoreSecretsManager() {
     SecretsManagerFactory.setSecretsManager(originalSecretsManager);
     vault.getSecretsMap().clear();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "entry,false",
+    "map,false",
+    "number,false",
+    "null,false",
+    "entry,true",
+    "map,true",
+    "number,true",
+    "null,true"
+  })
+  void removingAMapCredentialDoesNotLeaveASecretAfterHardDelete(
+      String removal, boolean patch, TestNamespace ns) {
+    String serviceName = ns.prefix("kafka_map_" + removal + "_" + patch);
+    String userSecretId = "/user/" + serviceName;
+    vault.upsertSecret(userSecretId, "user-owned");
+    KafkaConnection connection =
+        new KafkaConnection()
+            .withBootstrapServers("broker:9092")
+            .withSaslPassword(PASSWORD)
+            .withConsumerConfig(
+                new ConsumerConfig()
+                    .withAdditionalProperty("user.reference", "secret:" + userSecretId));
+    CreateMessagingService request =
+        new CreateMessagingService()
+            .withName(serviceName)
+            .withServiceType(MessagingServiceType.Kafka)
+            .withConnection(new MessagingConnection().withConfig(connection));
+    MessagingService service = SdkClients.adminClient().messagingServices().create(request);
+    ns.trackRoot(Entity.MESSAGING_SERVICE, service);
+    String root = entitySecretRoot("messaging", serviceName);
+    String entryId = root + "/consumerconfig/additionalproperties/client_secret";
+    connection.getConsumerConfig().setAdditionalProperty("client.secret", PASSWORD);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, MESSAGING_SERVICES_PATH, request, MessagingService.class);
+    assertEquals(PASSWORD, vault.getSecretsMap().get(entryId));
+
+    switch (removal) {
+      case "entry" -> connection.getConsumerConfig().getAdditionalProperties().clear();
+      case "map" -> connection.setConsumerConfig(null);
+      case "number" -> connection.getConsumerConfig().setAdditionalProperty("client.secret", 42);
+      case "null" -> connection.getConsumerConfig().setAdditionalProperty("client.secret", null);
+      default -> throw new IllegalArgumentException(removal);
+    }
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.dataConsumerClient()
+                .getHttpClient()
+                .execute(HttpMethod.PUT, MESSAGING_SERVICES_PATH, request, MessagingService.class));
+    assertEquals(PASSWORD, vault.getSecretsMap().get(entryId));
+    if (patch) {
+      ArrayNode changes = JsonUtils.getObjectMapper().createArrayNode();
+      changes
+          .addObject()
+          .put("op", "replace")
+          .put("path", "/connection/config")
+          .set("value", JsonUtils.valueToTree(connection));
+      SdkClients.adminClient().messagingServices().patch(service.getId(), changes);
+    } else {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .execute(HttpMethod.PUT, MESSAGING_SERVICES_PATH, request, MessagingService.class);
+    }
+    assertFalse(vault.getSecretsMap().containsKey(entryId));
+    assertEquals(PASSWORD, vault.getSecretsMap().get(root + "/saslpassword"));
+
+    SdkClients.adminClient()
+        .messagingServices()
+        .delete(service.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertFalse(vault.getSecretsMap().keySet().stream().anyMatch(id -> id.startsWith(root + "/")));
+    assertEquals("user-owned", vault.getSecretsMap().get(userSecretId));
   }
 
   @Test
@@ -115,6 +214,173 @@ public class SecretsManagerNullSecretIT {
     assertNull(
         connectionOf(cleared).getPassword(),
         "The connection must not keep a reference to the removed secret");
+  }
+
+  @Test
+  void removingDbtHeadersDeletesTheirExternalSecrets(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    String pipelineName = ns.prefix("dbt_header_removal");
+    DbtHttpConfig config =
+        new DbtHttpConfig()
+            .withDbtManifestHttpPath("https://example.com/manifest.json")
+            .withDbtHttpHeaders(
+                new DbtHttpHeaders().withAdditionalProperty("Authorization", PASSWORD));
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(pipelineName)
+            .withPipelineType(PipelineType.DBT)
+            .withService(service.getEntityReference())
+            .withSourceConfig(
+                new SourceConfig().withConfig(new DbtPipeline().withDbtConfigSource(config)))
+            .withAirflowConfig(
+                new AirflowConfig()
+                    .withStartDate(Date.from(Instant.parse("2024-01-01T00:00:00Z"))));
+    IngestionPipeline pipeline = SdkClients.adminClient().ingestionPipelines().create(request);
+    ns.trackRoot(Entity.INGESTION_PIPELINE, pipeline);
+    String entryId =
+        entitySecretRoot("pipeline", pipelineName)
+            + "/sourceconfig/config/dbtconfigsource/dbthttpheaders/additionalproperties/authorization";
+    assertEquals(PASSWORD, vault.getSecretsMap().get(entryId));
+
+    config.setDbtHttpHeaders(null);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/services/ingestionPipelines", request, IngestionPipeline.class);
+
+    assertFalse(vault.getSecretsMap().containsKey(entryId));
+  }
+
+  @Test
+  void readdingACredentialWaitsForThePreviousRemoval(TestNamespace ns) throws Exception {
+    BlockingVault blockingVault = new BlockingVault();
+    SecretsManagerFactory.setSecretsManager(blockingVault);
+    String serviceName = ns.prefix("concurrent_map_removal");
+    String entryId =
+        entitySecretRoot("messaging", serviceName)
+            + "/consumerconfig/additionalproperties/credential";
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      MessagingService service =
+          SdkClients.adminClient()
+              .messagingServices()
+              .create(kafkaRequest(serviceName, Map.of("credential", PASSWORD)));
+      ns.trackRoot(Entity.MESSAGING_SERVICE, service);
+      blockingVault.blockedSecret = entryId;
+      try {
+        var removal =
+            executor.submit(
+                () ->
+                    SdkClients.adminClient()
+                        .getHttpClient()
+                        .execute(
+                            HttpMethod.PUT,
+                            MESSAGING_SERVICES_PATH,
+                            kafkaRequest(serviceName, Map.of()),
+                            MessagingService.class));
+        assertTrue(blockingVault.deleting.await(20, TimeUnit.SECONDS));
+        CountDownLatch readdStarted = new CountDownLatch(1);
+        var readd =
+            executor.submit(
+                () -> {
+                  readdStarted.countDown();
+                  return SdkClients.adminClient()
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.PUT,
+                          MESSAGING_SERVICES_PATH,
+                          kafkaRequest(serviceName, Map.of("credential", "replacement")),
+                          MessagingService.class);
+                });
+        assertTrue(readdStarted.await(20, TimeUnit.SECONDS));
+        assertThrows(TimeoutException.class, () -> readd.get(1, TimeUnit.SECONDS));
+        blockingVault.release.countDown();
+        removal.get(20, TimeUnit.SECONDS);
+        readd.get(20, TimeUnit.SECONDS);
+        assertEquals("replacement", blockingVault.getSecretsMap().get(entryId));
+      } finally {
+        blockingVault.release.countDown();
+      }
+    } finally {
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  private static CreateMessagingService kafkaRequest(String name, Map<String, String> entries) {
+    return new CreateMessagingService()
+        .withName(name)
+        .withServiceType(MessagingServiceType.Kafka)
+        .withConnection(
+            new MessagingConnection()
+                .withConfig(Map.of("bootstrapServers", "broker:9092", "consumerConfig", entries)));
+  }
+
+  @Test
+  void aCleanupFailureDoesNotRollBackToDeletedCredentials(TestNamespace ns) {
+    InMemorySecretsManager failingVault =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig(CLUSTER_NAME, null, List.of(), null)) {
+          private int deletions;
+
+          @Override
+          protected void deleteSecretInternal(String secretName) {
+            if (++deletions == 2) {
+              throw new IllegalStateException("Injected second-delete failure");
+            }
+            super.deleteSecretInternal(secretName);
+          }
+        };
+    SecretsManagerFactory.setSecretsManager(failingVault);
+    try {
+      String serviceName = ns.prefix("failed_map_cleanup");
+      MessagingService service =
+          SdkClients.adminClient()
+              .messagingServices()
+              .create(kafkaRequest(serviceName, Map.of("first", PASSWORD, "second", PASSWORD)));
+      ns.trackRoot(Entity.MESSAGING_SERVICE, service);
+
+      SdkClients.adminClient()
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              MESSAGING_SERVICES_PATH,
+              kafkaRequest(serviceName, Map.of()),
+              MessagingService.class);
+
+      MessagingService persisted =
+          SdkClients.ingestionBotClient().messagingServices().get(service.getId());
+      KafkaConnection connection =
+          JsonUtils.convertValue(persisted.getConnection().getConfig(), KafkaConnection.class);
+      assertTrue(connection.getConsumerConfig().getAdditionalProperties().isEmpty());
+      assertEquals(1, failingVault.getSecretsMap().size());
+    } finally {
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  private static class BlockingVault extends InMemorySecretsManager {
+    private final CountDownLatch deleting = new CountDownLatch(1);
+    private final CountDownLatch release = new CountDownLatch(1);
+    private volatile String blockedSecret;
+
+    private BlockingVault() {
+      super(new SecretsManager.SecretsConfig(CLUSTER_NAME, null, List.of(), null));
+    }
+
+    @Override
+    protected void deleteSecretInternal(String secretName) {
+      if (secretName.equals(blockedSecret)) {
+        deleting.countDown();
+        try {
+          if (!release.await(20, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Timed out waiting to finish credential removal");
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new IllegalStateException(e);
+        }
+      }
+      super.deleteSecretInternal(secretName);
+    }
   }
 
   @Test
@@ -265,6 +531,10 @@ public class SecretsManagerNullSecretIT {
     return SdkClients.adminClient()
         .getHttpClient()
         .execute(HttpMethod.PUT, DATABASE_SERVICES_PATH, request, DatabaseService.class);
+  }
+
+  private static String entitySecretRoot(String entityType, String name) {
+    return String.format("/%s/%s/%s", CLUSTER_NAME, entityType, name).toLowerCase(Locale.ROOT);
   }
 
   private static String secretId(String serviceName, String fieldName) {

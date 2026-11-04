@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jdbi.v3.sqlobject.transaction.TransactionalCallback;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentMatchers;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -65,6 +67,13 @@ class ServiceEntitySecretsTest {
             new SecretsManager.SecretsConfig(CLUSTER, null, List.of(), null));
     SecretsManagerFactory.setSecretsManager(vault);
     CollectionDAO collection = mock(CollectionDAO.class);
+    when(collection.inTransaction(
+            ArgumentMatchers.<TransactionalCallback<Object, CollectionDAO, RuntimeException>>any()))
+        .thenAnswer(
+            invocation ->
+                invocation
+                    .<TransactionalCallback<Object, CollectionDAO, RuntimeException>>getArgument(0)
+                    .inTransaction(collection));
     CollectionDAO.DatabaseServiceDAO dao = mock(CollectionDAO.DatabaseServiceDAO.class);
     when(dao.getEntityClass()).thenReturn(DatabaseService.class);
     when(dao.getTableName()).thenReturn("dbservice_entity");

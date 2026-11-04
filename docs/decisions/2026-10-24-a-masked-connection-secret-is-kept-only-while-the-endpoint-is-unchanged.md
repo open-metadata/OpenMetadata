@@ -70,7 +70,9 @@ endpoint URL changed next to its masked client secret. The guard now also treats
 (plaintext) value at a masked password-map entry as a change, unless it still equals the stored
 entry. The same holds for any value other than the mask: an entry is kept only when it arrives as
 the stored value itself or decrypts locally to the stored cleartext, so a different `secret:`
-reference, which the server never fetches, or another Fernet token counts as a change. The check is scoped to password-map entries:
+reference, which the server never fetches, or another Fernet token counts as a change.
+Reference strings are compared after local Fernet unwrapping on both sides, so a plain reference
+and a stored token wrapping that same reference are unchanged. The check is scoped to password-map entries:
 a typed value at a scalar password field is a re-entered secret, which this record has always
 accepted. The check covers both connections and the ingestion pipeline sources of v3, where a dbt
 HTTP source's `dbtHttpHeaders` is such a map.

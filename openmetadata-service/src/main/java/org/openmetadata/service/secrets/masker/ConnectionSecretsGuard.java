@@ -258,11 +258,11 @@ public final class ConnectionSecretsGuard {
   /**
    * The cleartext a map entry holds when it can be recovered locally: the value itself for a
    * plaintext entry (rows saved before maps were encrypted), a Fernet decrypt for a token. An
-   * external {@code secret:} reference, which the server never fetches, or a token that does not
-   * decrypt yields null: such a value cannot be shown to equal anything.
+   * external {@code secret:} reference is compared as a reference, without fetching its contents.
+   * A token that does not decrypt yields null: it cannot be shown to equal anything.
    */
   private static String localCleartext(String value) {
-    if (value == null || value.startsWith(SecretsManager.SECRET_FIELD_PREFIX)) {
+    if (value == null) {
       return null;
     }
     if (!Fernet.isTokenized(value)) {

@@ -340,6 +340,26 @@ class ConnectionSecretsGuardTest {
         () -> guardKafka(kafka("secret:/om/kafka/token_endpoint", PASSWORD_MASK), stored));
   }
 
+  @Test
+  void aLocallyWrappedReferenceCanKeepTheMaskedSecretsOnlyWhenUnchanged() {
+    String reference = "secret:/om/kafka/token_endpoint";
+    Map<String, Object> stored = storedKafka(reference);
+
+    assertDoesNotThrow(() -> guardKafka(kafka(reference, PASSWORD_MASK), stored));
+    assertDoesNotThrow(
+        () -> guardKafka(kafka(Fernet.getInstance().encrypt(reference), PASSWORD_MASK), stored));
+    assertThrows(
+        BadRequestException.class,
+        () -> guardKafka(kafka("secret:/attacker/token_endpoint", PASSWORD_MASK), stored));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            guardKafka(
+                kafka(
+                    Fernet.getInstance().encrypt("secret:/attacker/token_endpoint"), PASSWORD_MASK),
+                stored));
+  }
+
   /** A fresh Fernet token of the stored cleartext is the same entry; another token is an edit. */
   @Test
   void aMapEntryTokenCountsAsUnchangedOnlyWhenItDecryptsToTheStoredValue() {

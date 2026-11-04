@@ -1,7 +1,7 @@
 # A schema property whose additionalProperties declare format: password is a map of secrets
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-04 (removed-entry cleanup)
 - **Deciders:** backend security
 - **Guard:** `PasswordEntityMaskerTest`, `SecretsManagerLifecycleTest`, `KafkaConnectionMapSecretsTest`
 - **Related:** ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged, #33477 (secrets inside arrays)
@@ -53,3 +53,16 @@ never reached an external secrets manager, and were returned in clear to any aut
   is saved again; credentials already stored this way should be rotated.
 - Revisit if a per-key secret declaration (typed fields for known keys, refused in the map) is
   wanted for the Kafka maps, where masking harmless settings is the visible cost.
+
+## Amendment (v2, 2026-11-04)
+
+After a service or ingestion pipeline update is stored, reconcile its password-map secret IDs
+against the config that was actually stored before the request, not the pre-session version used
+for change consolidation. Dropping an entry or a whole map, or replacing a string with a non-string,
+removes its entity-owned external secret. User-owned reference targets and secrets still referenced
+elsewhere in the saved config are retained. The storage hooks lock the database row before secret writes. After commit, cleanup takes that
+row lock again and compares the old map with the latest stored config while holding it. A later
+update either finishes first and its credentials are retained, or waits until cleanup completes.
+Approval-staged and rolled-back updates do not remove credentials. Cleanup failures are logged
+through the existing post-commit queue; they cannot roll the database back to references whose
+secrets were deleted. Secrets orphaned before this reconciliation was introduced are not recovered.
