@@ -284,7 +284,12 @@ class RuleEngineTest {
         .thenReturn(List.of());
     when(relationshipRepository.getEntityReferences(
             org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.any()))
-        .thenReturn(List.of(domain.withInherited(null)));
+        .thenReturn(
+            List.of(
+                new EntityReference()
+                    .withId(domain.getId())
+                    .withType(Entity.DOMAIN)
+                    .withName(domain.getName())));
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getEntityRelationshipRepository).thenReturn(relationshipRepository);

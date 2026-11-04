@@ -22,6 +22,7 @@ import { DashboardDataModelClass } from '../../support/entity/DashboardDataModel
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
@@ -349,7 +350,10 @@ test.describe(
     // productDomain is rejected by the rule.
     const rejectedDomainTable = new TableClass();
     // Domain comes only from its schema; carries a Data Product of that domain.
-    const inheritedDomainTable = new TableClass();
+    // Owns its service so patching the schema's domain leaves shared fixtures alone.
+    const inheritedDomainTable = new TableClass({
+      service: new DatabaseServiceClass(),
+    });
 
     test.beforeAll('Setup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -495,7 +499,13 @@ test.describe(
       await inheritedDomainTable.visitEntityPage(page);
 
       const description = `edited with inherited domain ${Date.now()}`;
-      await updateDescription(page, description, false, undefined, 'tables');
+      await updateDescription(
+        page,
+        description,
+        false,
+        undefined,
+        EntityTypeEndpoint.Table
+      );
 
       await expect(
         page.getByTestId('asset-description-container').getByText(description)

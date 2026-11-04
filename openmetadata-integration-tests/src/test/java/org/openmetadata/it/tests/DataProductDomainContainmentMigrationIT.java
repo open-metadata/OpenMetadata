@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -41,6 +43,9 @@ import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmen
  * CONTAINS link the "Data Product Domain Validation" rule reads, so on 2.0 every edit to its assets
  * was rejected. The 2.0.9 migration rewrites CONTAINS to the domain the product shows.
  */
+// Sequential: the repairAll test sweeps every data product, so it would repair the stale link the
+// other test plants before that test checks the rejection.
+@Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 class DataProductDomainContainmentMigrationIT {
   private static final ObjectMapper MAPPER = new ObjectMapper();

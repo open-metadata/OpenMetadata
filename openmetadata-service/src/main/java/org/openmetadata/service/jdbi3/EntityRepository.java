@@ -5305,14 +5305,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * The patched entity as the rules see it. Inheritance ran when original was loaded, not on the
-   * patched copy, so a patch that removes the own owners or domains must still show the inherited
-   * ones. It runs on a copy because some types' setInheritedFields also reload stored state, such
-   * as an alert's template or a user's team domains, which would undo the patch.
+   * The patched entity as the rules see it: its own owners and domains plus the ones it inherits
+   * now. The patched copy still carries the inherited refs of the original, which may be stale, so
+   * they are dropped and inheritance is resolved again on a scratch copy. Only owners and domains
+   * are taken from it, because some types' setInheritedFields also reload other stored state, such
+   * as an alert's template, which would hide the patch from the rules.
    */
   private T withInheritedOwnersAndDomains(final T updated) {
+    final T inheriting = JsonUtils.deepCopy(updated, entityClass);
+    inheriting.setOwners(EntityUpdater.getEntityReferences(updated.getOwners()));
+    inheriting.setDomains(EntityUpdater.getEntityReferences(updated.getDomains()));
+    setInheritedFields(inheriting, new Fields(allowedFields, "owners,domains", true));
     final T ruleFacts = JsonUtils.deepCopy(updated, entityClass);
-    setInheritedFields(ruleFacts, new Fields(allowedFields, "owners,domains", true));
+    ruleFacts.setOwners(inheriting.getOwners());
+    ruleFacts.setDomains(inheriting.getDomains());
     return ruleFacts;
   }
 
