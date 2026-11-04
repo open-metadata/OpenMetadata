@@ -82,6 +82,10 @@ class PrivateFieldReferencesTest {
             "{\"query_string\":{\"query\":\"email:j*\",\"fields\":[\"name\"]}}",
             "{\"simple_query_string\":{\"query\":\"jane\",\"fields\":[]}}",
             "{\"script\":{\"script\":\"doc['email.keyword'].value.startsWith('j')\"}}",
+            "{\"script\":{\"script\":\"doc['e' + 'mail.keyword'].value.startsWith('j')\"}}",
+            "{\"function_score\":{\"functions\":[{\"script_score\":{\"script\":{"
+                + "\"source\":\"doc[params.a + params.b].value.length()\","
+                + "\"params\":{\"a\":\"em\",\"b\":\"ail\"}}}}]}}",
             "{\"wrapper\":{\"query\":\"" + base64("{\"term\":{\"email\":\"x\"}}") + "\"}}",
             "{\"wrapper\":{\"query\":\"not base64!\"}}",
             "{\"bool\":{\"must\":{\"prefix\":{\"email.keyword\":\"j\"}},"

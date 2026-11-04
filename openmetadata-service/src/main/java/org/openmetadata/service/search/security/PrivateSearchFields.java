@@ -43,7 +43,8 @@ public final class PrivateSearchFields {
   private static final String ALL_INDICES = "_all";
   private static final String REFUSED =
       "Only admins and bots can search, sort or aggregate on user emails: this search names an"
-          + " email field, searches every field, or has a filter that is not plain JSON";
+          + " email field, searches every field, runs a script, or has a filter that is not plain"
+          + " JSON";
 
   private PrivateSearchFields() {}
 

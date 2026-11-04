@@ -51,8 +51,6 @@ final class PrivateFieldReferences {
   private static final String QUERY = "query";
   private static final String SCRIPT = "script";
   private static final String WRAPPER = "wrapper";
-  private static final Pattern EMAIL_WORD =
-      Pattern.compile("\\b" + EMAIL + "\\b", Pattern.CASE_INSENSITIVE);
   // A repeated key or trailing content would be read one way here and another by the engine.
   private static final ObjectReader STRICT_JSON =
       new ObjectMapper()
@@ -103,8 +101,9 @@ final class PrivateFieldReferences {
 
   /**
    * Whether query DSL names a private field: as a field key, in a field parameter, in a {@code
-   * query_string}'s query, in a script or in a wrapped query, or by searching every field. DSL that
-   * cannot be read strictly counts as naming one.
+   * query_string}'s query or in a wrapped query, or by searching every field. A script counts as
+   * naming one, since it can build a field name at run time, and so does DSL that cannot be read
+   * strictly.
    */
   static boolean inQueryDsl(String json) {
     if (nullOrEmpty(json) || json.isBlank()) {
@@ -135,7 +134,7 @@ final class PrivateFieldReferences {
     return isPrivateField(key)
         || (FIELD_PARAMETERS.contains(key) && namesPrivateField(value))
         || (FULL_TEXT_QUERIES.contains(key) && searchesPrivateField(key, value))
-        || (SCRIPT.equals(key) && EMAIL_WORD.matcher(value.toString()).find())
+        || SCRIPT.equals(key)
         || (WRAPPER.equals(key) && inWrappedQuery(value))
         || inNode(value);
   }
