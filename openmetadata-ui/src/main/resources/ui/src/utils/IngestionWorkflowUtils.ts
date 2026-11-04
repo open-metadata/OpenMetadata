@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CustomValidator, RJSFSchema } from '@rjsf/utils';
+import { FormValidation, RJSFSchema } from '@rjsf/utils';
 import {
   cloneDeep,
   isEmpty,
@@ -202,7 +202,11 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
   return cleanedWorkFlowData;
 };
 
-const OWNER_CONFIG_MAP_FIELDS = ['database', 'databaseSchema', 'table'];
+const OWNER_CONFIG_MAP_FIELDS = [
+  'database',
+  'databaseSchema',
+  'table',
+] as const;
 
 /**
  * Flags ownerConfig map rows that were given a name but no owner. RJSF seeds such a row's value
@@ -213,26 +217,30 @@ const OWNER_CONFIG_MAP_FIELDS = ['database', 'databaseSchema', 'table'];
  * matches the object branch of its anyOf, so RJSF reopens it on the string branch and the row's
  * own field is not rendered.
  */
-export const validateOwnerConfigMaps: CustomValidator = (formData, errors) => {
+export const validateOwnerConfigMaps = (
+  formData: Pipeline | undefined,
+  errors: FormValidation<Pipeline>
+): FormValidation<Pipeline> => {
   const message = t('message.field-text-is-required', {
     fieldText: t('label.owner'),
   });
 
   OWNER_CONFIG_MAP_FIELDS.forEach((field) => {
     const ownerMap = formData?.ownerConfig?.[field];
-    if (!isPlainObject(ownerMap)) {
+    if (!ownerMap || typeof ownerMap === 'string' || !isPlainObject(ownerMap)) {
       return;
     }
     const emptyRows = Object.entries(ownerMap).filter(
       ([name, owner]) =>
         !name.startsWith('newKey') && isObject(owner) && isEmpty(owner)
     );
-    if (emptyRows.length > 0) {
-      errors.ownerConfig?.[field]?.addError(message);
+    const mapErrors = errors.ownerConfig?.[field];
+    if (mapErrors && typeof mapErrors === 'object') {
+      if (emptyRows.length > 0) {
+        mapErrors.addError(message);
+      }
+      emptyRows.forEach(([name]) => mapErrors[name]?.addError(message));
     }
-    emptyRows.forEach(([name]) =>
-      errors.ownerConfig?.[field]?.[name]?.addError(message)
-    );
   });
 
   return errors;

@@ -50,6 +50,7 @@ import ReactFlow, {
   Edge,
   MiniMap,
   Node,
+  NodeChange,
   NodeTypes,
   Panel,
   ReactFlowInstance,
@@ -78,6 +79,7 @@ import {
 } from '../../../generated/api/lineage/lineageScene';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { LineageLayer } from '../../../generated/settings/settings';
+import { useUncontrolledNodeDrag } from '../../../hooks/lineage/useUncontrolledNodeDrag';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -839,7 +841,6 @@ const LineageMapControls = ({
           <ButtonUtility
             aria-label={label}
             className="lineage-map-rail-button tw:z-1 tw:size-6 tw:p-0!"
-            color="tertiary"
             data-testid={`lineage-map-band-${stop}`}
             icon={
               <span
@@ -1866,6 +1867,14 @@ const LineageMapCanvas = ({
       }),
     [nodes, pathHighlight]
   );
+  const flow = useUncontrolledNodeDrag(
+    renderedNodes,
+    useCallback(
+      (changes: NodeChange[]) =>
+        setNodes((currentNodes) => applyNodeChanges(changes, currentNodes)),
+      []
+    )
+  );
 
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node<SceneFlowNodeData>) => {
@@ -2037,7 +2046,7 @@ const LineageMapCanvas = ({
         maxZoom={MAX_ZOOM_VALUE}
         minZoom={MIN_ZOOM_VALUE}
         nodeTypes={nodeTypes}
-        nodes={renderedNodes}
+        nodes={flow.nodes}
         nodesConnectable={false}
         onlyRenderVisibleElements={!renderAllNodes}
         ref={wrapperRef}
@@ -2048,9 +2057,7 @@ const LineageMapCanvas = ({
         onNodeClick={handleNodeClick}
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
-        onNodesChange={(changes) =>
-          setNodes((currentNodes) => applyNodeChanges(changes, currentNodes))
-        }
+        onNodesChange={flow.onNodesChange}
         onPaneClick={handlePaneClick}>
         {loading && (
           <div
