@@ -336,7 +336,7 @@ public class JwtFilter implements ContainerRequestFilter {
       String tokenKeyId = decodedJwt.getKeyId();
       Map<String, Claim> claims = extractClaims(decodedJwt);
       boolean isBotUser = isBot(claims);
-      ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
+      ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser, tokenKeyId);
       String userName = resolvedIdentity.userName();
       String email = resolvedIdentity.email();
 
@@ -429,7 +429,7 @@ public class JwtFilter implements ContainerRequestFilter {
     } catch (JWTDecodeException e) {
       LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
     }
-    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBot(claims));
+    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBot(claims), tokenKeyId);
     checkValidationsForToken(
         claims,
         tokenFromHeader,
@@ -492,7 +492,8 @@ public class JwtFilter implements ContainerRequestFilter {
     validateSessionBoundToken(claims, userName);
   }
 
-  private ResolvedIdentity resolveIdentity(Map<String, Claim> claims, boolean isBotUser) {
+  private ResolvedIdentity resolveIdentity(
+      Map<String, Claim> claims, boolean isBotUser, String tokenKeyId) {
     JwtIdentityResolver.ResolvedIdentity resolvedIdentity =
         new JwtIdentityResolver(
                 emailClaim,
@@ -500,9 +501,14 @@ public class JwtFilter implements ContainerRequestFilter {
                 jwtPrincipalClaims,
                 principalDomain,
                 this::resolveUserNameForEmail)
-            .resolve(claims, isBotUser);
+            .resolve(claims, isBotUser, isOpenMetadataKeyId(tokenKeyId));
     return new ResolvedIdentity(
         resolvedIdentity.userName(), resolvedIdentity.email(), resolvedIdentity.emailFirstFlow());
+  }
+
+  /** Resolves claims from the same token already accepted by {@link #validateJwtAndGetClaims}. */
+  public String resolveUserName(Map<String, Claim> claims, String verifiedToken) {
+    return resolveIdentity(claims, isBot(claims), JWT.decode(verifiedToken).getKeyId()).userName();
   }
 
   /** Caching wrapper around {@link UserUtil#resolveUserName}; this runs on every request. */
@@ -775,13 +781,13 @@ public class JwtFilter implements ContainerRequestFilter {
   public CatalogSecurityContext getCatalogSecurityContext(String token, String activePersona) {
     Map<String, Claim> claims = validateJwtAndGetClaims(token);
     boolean isBotUser = isBot(claims);
-    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser);
     String tokenKeyId = null;
     try {
       tokenKeyId = JWT.decode(token).getKeyId();
     } catch (JWTDecodeException e) {
       LOG.debug("Unable to read key id from token during OpenMetadata issuer check", e);
     }
+    ResolvedIdentity resolvedIdentity = resolveIdentity(claims, isBotUser, tokenKeyId);
     if (resolvedIdentity.usedEmailFirstFlow() && !isInternallyIssuedToken(claims, tokenKeyId)) {
       validateConfiguredEmailDomain(
           resolvedIdentity.email(),

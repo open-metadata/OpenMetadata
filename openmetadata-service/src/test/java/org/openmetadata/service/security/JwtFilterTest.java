@@ -605,8 +605,44 @@ class JwtFilterTest {
       enforcingFilter.filter(context);
     }
 
-    verify(context, times(1))
-        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+    ArgumentCaptor<SecurityContext> securityContext =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContext.capture());
+    CatalogPrincipal principal = (CatalogPrincipal) securityContext.getValue().getUserPrincipal();
+    assertEquals("asmith", principal.getName());
+    assertEquals("asmith@intermedia.com", principal.getEmail());
+  }
+
+  @Test
+  void locallySignedTokenFromPreviousIssuerRetainsStoredEmail() throws Exception {
+    JwtFilter filter =
+        new JwtFilter(
+            jwkProviderForKeyId(OM_KEY_ID), List.of("sub", "email"), "openmetadata.org", false);
+    String userName = "admin_ab12";
+    String email = "admin@attacker.example";
+    String token =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer("previous-issuer")
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", userName)
+            .withClaim("email", email)
+            .withClaim(TOKEN_TYPE, ServiceTokenType.PERSONAL_ACCESS.value())
+            .sign(algorithm);
+
+    CatalogPrincipal principal;
+    try (MockedStatic<JWTTokenGenerator> generator =
+        mockStatic(JWTTokenGenerator.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      JWTTokenGenerator instance = mock(JWTTokenGenerator.class);
+      when(instance.getIssuer()).thenReturn(OM_ISSUER);
+      when(instance.getKid()).thenReturn(OM_KEY_ID);
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(instance);
+
+      principal = (CatalogPrincipal) filter.getCatalogSecurityContext(token).getUserPrincipal();
+    }
+
+    assertEquals(userName, principal.getName());
+    assertEquals(email, principal.getEmail());
   }
 
   @Test
