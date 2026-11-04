@@ -7658,20 +7658,20 @@ public class WorkflowDefinitionResourceIT {
     awaitWorkflowTask(workflow, changed);
     UUID openApproval = workflowTasks(workflow, changed).getFirst().getId();
 
-    // Events reach workflows in order: once the sentinel's later edit has its approval, the follow
-    // before it has been handled, and the open approval on the changed table must be the same one.
+    // Events reach workflows in order: once the sentinel's later edit has its approval, both
+    // follows before it have been handled. A follow starts no run, so the followed table has none
+    // and the changed table keeps the approval it had.
     follow(admin, changed);
     admin.tables().patch(sentinel.getId(), MAPPER.readTree(tagAddPatch(TARGET_TAG)));
     awaitWorkflowTask(workflow, sentinel);
     assertEquals(
         List.of(openApproval), workflowTasks(workflow, changed).stream().map(Task::getId).toList());
+    assertEquals(List.of(), runStatuses(workflow, followed));
 
-    // A run that opens an approval waits on it; one the filter stops finishes. Each event starts
+    // A run that opens an approval waits on it; one the filter stops finishes. Each edit starts
     // one.
     awaitRunsFinished(workflow, undone, 2);
-    awaitRunsFinished(workflow, followed, 1);
     assertTrue(workflowTasks(workflow, undone).isEmpty());
-    assertTrue(workflowTasks(workflow, followed).isEmpty());
   }
 
   // The workflow sets the status to In Review before the approval task exists. The task still shows
@@ -7786,23 +7786,24 @@ public class WorkflowDefinitionResourceIT {
   }
 
   private void awaitRunsFinished(DeployedWorkflow workflow, Table table, int runs) {
-    String relatedEntity = "<#E::table::%s>".formatted(table.getFullyQualifiedName());
     await("%d finished runs of %s on %s".formatted(runs, workflow.name(), table.getName()))
         .atMost(Duration.ofMinutes(3))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
         .untilAsserted(
-            () -> {
-              List<String> statuses = new ArrayList<>();
-              for (JsonNode instance :
-                  workflowInstances(SdkClients.adminClient(), workflow.name())) {
-                if (relatedEntity.equals(
-                    instance.path("variables").path("global_relatedEntity").asText())) {
-                  statuses.add(instance.path("status").asText());
-                }
-              }
-              assertEquals(Collections.nCopies(runs, "FINISHED"), statuses);
-            });
+            () ->
+                assertEquals(Collections.nCopies(runs, "FINISHED"), runStatuses(workflow, table)));
+  }
+
+  private List<String> runStatuses(DeployedWorkflow workflow, Table table) throws IOException {
+    String relatedEntity = "<#E::table::%s>".formatted(table.getFullyQualifiedName());
+    List<String> statuses = new ArrayList<>();
+    for (JsonNode instance : workflowInstances(SdkClients.adminClient(), workflow.name())) {
+      if (relatedEntity.equals(instance.path("variables").path("global_relatedEntity").asText())) {
+        statuses.add(instance.path("status").asText());
+      }
+    }
+    return statuses;
   }
 
   private static Set<String> previewedFields(Task task) {
