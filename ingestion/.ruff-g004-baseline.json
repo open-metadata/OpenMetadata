@@ -297,22 +297,17 @@
     },
     "ingestion/src/metadata/ingestion/lineage/sql_lineage.py": {
       "08a09d80f4f23dc6f6d5261b127ec9cb83da6d80bea8a29f913ce71abf09f9f7": 1,
-      "292a4a7ac9d88a37d40a40ca7856fd517a4a842a81687bf415eeb543e4c04efd": 1,
       "29aaa8bd4cce380a733f65bc4990d455f9ca27b613354009f642a0980ab3e291": 1,
       "3157c1898bbc973d966b07a02e322d69c09b2564903251c63ef79e25e2009f64": 1,
       "501ad3c2390b2de8a2f0a61eaf06e88abff6ab6c81e924499773ddb45992eeaa": 1,
       "5462b39a6828aa4465271e90ba87453e8a2fbe66b27721bc05c64705fdd8a3fd": 1,
-      "725fe99be4e626c2babfaaa99ca34fe99e2318f02cc92d19df992db817f235ec": 1,
       "8ab435a7c6cea48c4d74770da333ff40fa5106b384e3d77cfd69409480f744fd": 1,
       "8fbd47ccd1fe0e3414b4a11d98230159c9762e429ddf068403625fd43a0f8184": 1,
       "a34f3e94bf882c2139e8e2514a247342c56083e9aec6f67cc20e3cc703ded3ae": 1,
-      "a64aeca00caddab14c2ea9d7c2951ca18bc1c1df33899a6f8d84a7b7e64da98c": 1,
       "a6cd8f31b9ec9a7c9b869a21fac2787f099f5395ffcbbee47ce66e5e3818811c": 1,
       "b9690b3b4d9243f6c5083522dcf182caee4ea1861ea658367c392943b9900c32": 1,
       "bf164df069c521e49803a2c505a1cb4275efb67617d459a7ef11c255685b3231": 1,
-      "d9cece0dc9b0d0cca7f52286fff73a04ca3a9b922f9651f9b3e57f97acc973c7": 1,
-      "dd209418ef13915fc3bafcc43b079aa5dcd32678c7bbbba486e57337e99335db": 1,
-      "fcd7318c43f65967448de4ee6eb29046ea8fe9197ea3d3135695c9069a5df757": 1
+      "d9cece0dc9b0d0cca7f52286fff73a04ca3a9b922f9651f9b3e57f97acc973c7": 1
     },
     "ingestion/src/metadata/ingestion/lineage/topic_lineage.py": {
       "29a5b714eef6205c95bcc1f43724f9e3f3fc2b0a31b095beecbaae92792c7c7a": 1,
@@ -2579,9 +2574,6 @@
       "bb5f1026972617a7cd4a938d9cfddf5f32cd652bb0161beca630ebb4f8c67bf7": 1,
       "c4b5a7e75dfb155d7619f7fc94ac8c9c13fb2f3159b679af6d9a7bc1436b0dbc": 1,
       "fb42018eae2477022bb14a8bd8e1f29ec16a8002013de7e747771b24f708832e": 1
-    },
-    "ingestion/src/metadata/profiler/interface/sqlalchemy/bigquery/profiler_interface.py": {
-      "b878cd11de1cbea18e9a2b093b47d0154ff52d46406cd7e939486a8c108f7d3a": 1
     },
     "ingestion/src/metadata/profiler/interface/sqlalchemy/databricks/profiler_interface.py": {
       "87af39e97aea93b78256c57a3f2aea02bd83a51ee0d9d6d452e54ab36acf74cd": 1,

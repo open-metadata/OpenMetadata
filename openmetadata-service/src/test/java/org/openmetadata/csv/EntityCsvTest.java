@@ -2719,6 +2719,12 @@ public class EntityCsvTest {
       super(Entity.TABLE, CSV_HEADERS, "admin");
     }
 
+    // These tests exercise parsing and batching; row authorization is covered by the import ITs.
+    @Override
+    protected boolean checksRowWrites() {
+      return false;
+    }
+
     private void addEntity(String entityType, String fqn, EntityInterface<?> entity) {
       entitiesByTypeAndName.put(entityType + ":" + fqn, entity);
     }
