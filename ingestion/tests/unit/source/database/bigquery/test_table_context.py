@@ -474,7 +474,7 @@ def test_target_binding_preserves_effective_client_connection_properties(
         elif execution_setting == "properties":
             explicit.connection_properties = [ConnectionProperty(key="time_zone", value="UTC")]
         engine = engine.execution_options(job_config=explicit)
-    client_before = client.default_query_job_config.to_api_repr()
+    client_before = deepcopy(client.default_query_job_config.to_api_repr())
     explicit_before = explicit.to_api_repr() if explicit is not None else None
     if warm_pool:
         with engine.connect():
@@ -497,6 +497,17 @@ def test_target_binding_preserves_effective_client_connection_properties(
             first_config = first.get_execution_options()["job_config"]
             second_config = second.get_execution_options()["job_config"]
             assert first_config is not second_config
+            first_properties = {prop.key: prop.to_api_repr() for prop in first_config.connection_properties}
+            second_properties = {prop.key: prop.to_api_repr() for prop in second_config.connection_properties}
+            client_properties = {
+                prop.key: prop.to_api_repr() for prop in client.default_query_job_config.connection_properties
+            }
+            for key in expected_properties:
+                assert first_properties[key] is not second_properties[key]
+                if key in client_properties:
+                    assert first_properties[key] is not client_properties[key]
+                first_properties[key]["value"] = "mutated-first-connection"
+            assert {prop.key: prop.value for prop in second_config.connection_properties} == expected_properties
         assert len(requests) == 2
         for request in requests:
             assert {prop.key: prop.value for prop in request.connection_properties} == expected_properties

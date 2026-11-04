@@ -46,7 +46,7 @@ def bind_connection_to_table(connection: Engine, table: Table | None, metadata: 
             # DBAPI exposes its effective client only here; use the actual pooled connection.
             defaults: QueryJobConfig | None = getattr(dbapi_connection._client, "default_query_job_config", None)
             if defaults is not None:
-                config.connection_properties = defaults.connection_properties
+                config.connection_properties = deepcopy(defaults.connection_properties)
         _set_target_project(job_config=config, project=project)
         conn.execution_options(job_config=config)
 
