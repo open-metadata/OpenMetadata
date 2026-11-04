@@ -52,6 +52,13 @@ another system, and its `TestPlatform` enum had no value for Glue.
    `includeViews` are not applied: a result does not say whether its table is a view.
 5. **Ordering:** the step starts with a sink flush (`Barrier`), so the tables this run created
    exist before any result resolves them.
+6. **Incremental runs:** `lookbackDays` defaults to 7. A run lists the results started within
+   `[now - lookbackDays, now]` and posts a run only when its test case holds no stored result
+   with the same millisecond timestamp (the result timestamp of point 3) in that window, so
+   overlapping ingestions post no duplicates.
+7. **Test connection:** `GetDataQualityResults` is an optional (`mandatory: false`) step, named
+   the same in the service seed `glue.json` and in the ingestion `DatabaseStep`. It calls
+   `glue:ListDataQualityResults` with `MaxResults=1`, and only when `includeDataQuality` is true.
 
 ## Consequences
 
