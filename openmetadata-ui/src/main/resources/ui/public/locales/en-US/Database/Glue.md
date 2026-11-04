@@ -8,7 +8,7 @@ The Glue connector ingests metadata through AWS <a href="https://boto3.amazonaws
 
 The user must have `glue:GetDatabases` and `glue:GetTables` permissions for the ingestion to run successfully.
 
-To ingest AWS Glue Data Quality results, the user also needs `glue:ListDataQualityResults` and `glue:BatchGetDataQualityResult`.
+To ingest AWS Glue Data Quality results, the user also needs `glue:ListDataQualityResults`, `glue:BatchGetDataQualityResult` and `glue:ListDataQualityRulesets`.
 
 You can find further information on the Glue connector in the <a href="https://docs.open-metadata.org/connectors/database/glue" target="_blank">docs</a>.
 
@@ -119,8 +119,7 @@ Imports <a href="https://docs.aws.amazon.com/glue/latest/dg/glue-data-quality.ht
 
 - Every DQDL rule becomes a test case under the `AWSGlue` platform. A single-column rule (e.g. `IsComplete "id"`) is attached to its column; every other rule is attached to the table.
 - Every evaluation run becomes a test case result, with its status, the evaluation message and the evaluated metrics.
-- Each ruleset also gets a `<ruleset>_score` test case holding the Glue score.
-- Like every test case on a table, they are grouped in that table's own test suite.
+- Each ruleset also gets a `<ruleset>_score` test case holding the Glue score, and a logical test suite that groups its test cases.
 - Only results on tables the ingestion's database, schema and table filter patterns keep are imported; the others are reported as filtered.
 
 The results appear in the table's Data Observability tab and on the Data Quality page.

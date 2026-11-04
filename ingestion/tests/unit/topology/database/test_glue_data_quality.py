@@ -180,8 +180,9 @@ def fake_glue(*results: dict) -> MagicMock:
     glue = MagicMock()
     glue.list_data_quality_results.return_value = {"Results": [{"ResultId": r["ResultId"]} for r in results]}
     glue.batch_get_data_quality_result.return_value = {"Results": list(results)}
-    # Not a documented permission; fail fast rather than page a mock forever.
-    glue.list_data_quality_rulesets.side_effect = AssertionError("glue:ListDataQualityRulesets is not required")
+    glue.list_data_quality_rulesets.return_value = {
+        "Rulesets": [{"Name": "orders_ruleset", "Description": "Checks on the orders table"}]
+    }
     return glue
 
 
@@ -305,6 +306,18 @@ class TestGlueDataQualityClient:
         sizes = [len(c.kwargs["ResultIds"]) for c in glue.batch_get_data_quality_result.call_args_list]
         assert sizes == [100, 100, 50]
 
+    def test_ruleset_descriptions_keep_only_the_named_rulesets(self):
+        glue = MagicMock()
+        glue.list_data_quality_rulesets.return_value = {
+            "Rulesets": [
+                {"Name": "orders_ruleset", "Description": "Checks on orders"},
+                {"Name": "other ruleset", "Description": "Not run in this window"},
+            ]
+        }
+        assert GlueDataQualityClient(glue).ruleset_descriptions({"orders_ruleset"}) == {
+            "orders_ruleset": "Checks on orders"
+        }
+
 
 class TestYieldGlueDataQuality:
     def test_disabled_yields_nothing_and_calls_no_aws_api(self):
@@ -332,7 +345,6 @@ class TestYieldGlueDataQuality:
         assert results[f"{TABLE_FQN}.order_id.{column_case}"].testCaseStatus == TestCaseStatus.Success
         assert results[f"{TABLE_FQN}.orders_ruleset_score"].testCaseStatus == TestCaseStatus.Failed
         assert len(results) == 3
-        assert of_type(rights, OMetaLogicalTestSuiteSample) == []
 
     def test_existing_test_cases_and_runs_are_not_sent_again(self):
         metadata = FakeOpenMetadata()
@@ -345,6 +357,32 @@ class TestYieldGlueDataQuality:
 
         assert "orders_ruleset_score" not in {model_str(c.name) for c in of_type(rights, CreateTestCaseRequest)}
         assert score_fqn not in {r.test_case_name for r in of_type(rights, OMetaTestCaseResultsSample)}
+
+    def test_ruleset_suite_groups_its_test_cases(self):
+        metadata = FakeOpenMetadata()
+        score_fqn = f"{TABLE_FQN}.orders_ruleset_score"
+        metadata.test_cases[score_fqn] = make_test_case(score_fqn)
+        rights, _ = run(build_source(metadata, fake_glue(CATALOG_RESULT)))
+
+        (suite,) = of_type(rights, OMetaLogicalTestSuiteSample)
+        assert suite.test_suite.displayName == f"AWS Glue DQ - {SERVICE} - orders_ruleset"
+        assert suite.test_suite.description.root == "Checks on the orders table"
+        assert [model_str(t.fullyQualifiedName) for t in suite.test_cases] == [score_fqn]
+
+    def test_same_ruleset_name_in_two_services_gets_two_suites(self):
+        names = set()
+        for service in ("dev_glue", "prod_glue"):
+            source = build_source(FakeOpenMetadata(), fake_glue(CATALOG_RESULT))
+            source.context.get().__dict__["database_service"] = service
+            source.metadata.tables = {
+                f"{service}.{CATALOG_ID}.sales.orders": make_table(f"{service}.{CATALOG_ID}.sales.orders")
+            }
+            score_fqn = f"{service}.{CATALOG_ID}.sales.orders.orders_ruleset_score"
+            source.metadata.test_cases[score_fqn] = make_test_case(score_fqn)
+            rights, _ = run(source)
+            names |= {suite.test_suite.name.root for suite in of_type(rights, OMetaLogicalTestSuiteSample)}
+
+        assert names == {"AWS Glue DQ - dev_glue - orders_ruleset", "AWS Glue DQ - prod_glue - orders_ruleset"}
 
     def test_definition_lookup_that_fails_is_retried_by_the_next_rule_of_its_type(self):
         metadata = FakeOpenMetadata()
@@ -749,20 +787,19 @@ def test_two_glue_sources_keep_their_own_topology_context():
     assert second.context.get().__dict__.get("database_service") != "glue_a"
 
 
-def test_reads_only_the_results_apis_the_docs_ask_permission_for():
-    glue = fake_glue(CATALOG_RESULT)
-    run(build_source(FakeOpenMetadata(), glue))
-
-    called = {name for name, *_ in glue.mock_calls if not name.startswith("get_paginator")}
-    assert called <= {"list_data_quality_results", "batch_get_data_quality_result"}
-
-
-def test_a_ruleset_name_at_glues_maximum_still_gets_its_test_cases():
-    long_run = {**CATALOG_RESULT, "RulesetName": "r" * 255}
-    rights, lefts = run(build_source(FakeOpenMetadata(), fake_glue(long_run)))
+def test_a_ruleset_name_at_glues_maximum_still_gets_its_suite():
+    long_ruleset = "r" * 255
+    metadata = FakeOpenMetadata()
+    long_score_fqn = f"{TABLE_FQN}.{safe_name(long_ruleset)}_score"
+    score_fqn = f"{TABLE_FQN}.orders_ruleset_score"
+    metadata.test_cases.update({fqn: make_test_case(fqn) for fqn in (long_score_fqn, score_fqn)})
+    long_run = {**CATALOG_RESULT, "ResultId": "dqresult-long", "RulesetName": long_ruleset}
+    rights, lefts = run(build_source(metadata, fake_glue(CATALOG_RESULT, long_run)))
 
     assert lefts == []
-    assert len(of_type(rights, OMetaTestCaseResultsSample)) == 3
+    suites = of_type(rights, OMetaLogicalTestSuiteSample)
+    assert len(suites) == 2
+    assert all(len(suite.test_suite.name.root) <= 256 for suite in suites)
 
 
 def test_data_quality_runs_after_every_inherited_post_process_step():

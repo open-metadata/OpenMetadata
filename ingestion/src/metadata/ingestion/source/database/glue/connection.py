@@ -67,7 +67,9 @@ MAX_DATABASES_TO_SCAN = 1000
 # Ingestion keeps the first 128 characters of a Glue table name and filters on that.
 TABLE_NAME_MAX_LENGTH = 128
 
-DATA_QUALITY_PERMISSIONS = "glue:ListDataQualityResults and glue:BatchGetDataQualityResult"
+DATA_QUALITY_PERMISSIONS = (
+    "glue:ListDataQualityResults, glue:BatchGetDataQualityResult and glue:ListDataQualityRulesets"
+)
 
 
 # Only what is specific to Glue: its IAM actions and its not-found code.
