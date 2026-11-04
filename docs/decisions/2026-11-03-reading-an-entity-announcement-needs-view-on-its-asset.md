@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial)
 - **Deciders:** @sonika-shah
-- **Guard:** `FeedAccessAuthzIT#readAnnouncement_callerDeniedViewOnTarget_forbidden`, `FeedAccessAuthzIT#listAnnouncements_hidesUnviewableAssets`, `FeedAccessAuthzIT#readAnnouncement_afterAssetRename_checksAsset`, `McpContextMemoryVisibilityIT#plainRead_deniesAnAnnouncementOnATableTheCallerCannotView`
+- **Guard:** `FeedAccessAuthzIT#readAnnouncement_callerDeniedViewOnTarget_forbidden`, `FeedAccessAuthzIT#listAnnouncements_hidesUnviewableAssets`, `FeedAccessAuthzIT#readAnnouncement_afterAssetRename_checksAsset`, `FeedAccessAuthzIT#listAnnouncements_totalCountsOnlyViewable`, `WebsocketNotificationHandlerTest`, `McpContextMemoryVisibilityIT#plainRead_deniesAnAnnouncementOnATableTheCallerCannotView`
 - **Related:** ADR:2026-10-12-system-announcements-are-managed-in-settings-notifications, open-metadata/OpenMetadata#33633
 
 ## Context
@@ -28,8 +28,9 @@ it, so it needs the same access first.
 
 `AnnouncementVisibility` holds the rule, and the REST and MCP reads call it: the REST resource and
 the MCP entity read and patch (`CommonUtils.readEntityForCaller`, `CommonUtils.enforceEntityVisibility`).
-The live websocket broadcast of a new announcement does not go through it yet; that is handled
-separately, together with the other feed broadcasts.
+The live websocket broadcast of a new announcement reaches every session, so for an announcement on
+an asset it carries only the id and the client reads the rest through the guarded GET; a system
+announcement is still broadcast whole.
 
 ## Consequences
 
