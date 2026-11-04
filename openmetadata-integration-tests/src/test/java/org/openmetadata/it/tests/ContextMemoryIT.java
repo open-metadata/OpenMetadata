@@ -621,6 +621,11 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         } else {
           params.addQueryParam("primaryEntityId", anchor.getId().toString());
         }
+        if (searchBacked && limit > 0) {
+          Awaitility.await("all stages must be indexed before checking pending-list visibility")
+              .atMost(Duration.ofSeconds(30))
+              .untilAsserted(() -> assertListedMemories(SdkClients.adminClient(), params, allIds));
+        }
         assertListedMemories(SdkClients.adminClient(), params, allIds);
         assertListedMemories(SdkClients.user1Client(), params, allIds);
         assertListedMemories(SdkClients.user2Client(), params, approvedId);
