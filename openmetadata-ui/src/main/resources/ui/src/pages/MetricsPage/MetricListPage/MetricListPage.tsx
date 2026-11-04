@@ -17,6 +17,7 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
+  ButtonUtility,
   Card,
   Checkbox,
   Dialog,
@@ -37,7 +38,7 @@ import {
   ChevronRight,
   CursorClick01,
   Download01,
-  Edit03,
+  Edit01,
   FileCheck03,
   Grid01,
   Package,
@@ -762,23 +763,22 @@ const MetricListPage = () => {
     if (!hasMetricChildren(metric)) {
       // Keep names aligned with the header unless some row has a toggle.
       return hasExpandableRows ? (
-        <Box aria-hidden="true" className="tw:size-6 tw:shrink-0" />
+        <Box aria-hidden="true" className="tw:size-5 tw:shrink-0" />
       ) : null;
     }
 
     return (
-      <Button
+      <ButtonUtility
         aria-expanded={isExpanded}
         aria-label={
           isExpanded ? t('label.collapse-all') : t('label.expand-all')
         }
         className="tw:shrink-0"
-        color="tertiary"
         data-testid={`expand-${metric.id}`}
-        iconLeading={isExpanded ? ChevronDown : ChevronRight}
+        icon={isExpanded ? ChevronDown : ChevronRight}
         isLoading={loadingParentIds.includes(metric.id)}
         size="xs"
-        onPress={() => toggleExpand(!isExpanded, metric)}
+        onClick={() => toggleExpand(!isExpanded, metric)}
       />
     );
   };
@@ -875,16 +875,12 @@ const MetricListPage = () => {
         ].join(' ')}
         color="tertiary"
         data-testid={`metric-group-${row.group.name}`}
+        iconLeading={isCollapsed ? ChevronRight : ChevronDown}
         isLoading={loadingGroupIds.includes(row.group.id)}
         size="sm"
         onPress={() => toggleGroup(row.id)}>
-        {isCollapsed ? (
-          <ChevronRight aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        ) : (
-          <ChevronDown aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-        )}
         <span className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-700">
-          <Package aria-hidden="true" className="tw:size-4" />
+          <Package aria-hidden="true" size={20} />
         </span>
         <Box align="baseline" className="tw:min-w-0 tw:flex-1" gap={2}>
           <Typography
@@ -1341,7 +1337,6 @@ const MetricListPage = () => {
           onOpenChange={setIsMetricActionsOpen}>
           <Dropdown.DotsButton
             aria-label={t('label.action-plural')}
-            className="tw:flex tw:size-9 tw:items-center tw:justify-center"
             data-testid="metric-actions"
           />
           <Dropdown.Popover>
@@ -1402,10 +1397,10 @@ const MetricListPage = () => {
         </Button>
         {permissionFlags.canEditAll && (
           <Button
-            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
+            className="tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-utility-brand-600!"
             color="link-color"
             data-testid="bulk-edit-metric"
-            iconLeading={Edit03}
+            iconLeading={Edit01}
             onPress={handleBulkEdit}>
             {t('label.bulk-edit-count', {
               count: selectedMetricIds.length,
@@ -1468,7 +1463,7 @@ const MetricListPage = () => {
             className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
             color="link-color"
             data-testid="bulk-edit-metric"
-            iconLeading={Edit03}
+            iconLeading={Edit01}
             onPress={handleBulkEdit}>
             {t('label.bulk-edit-all')}
           </Button>

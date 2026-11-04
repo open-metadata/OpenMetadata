@@ -44,15 +44,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateMetric;
+import org.openmetadata.schema.api.data.CreatePage;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -63,22 +70,35 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.PolicyType;
+import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -904,6 +924,208 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         children.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
         "directChildrenOf must not list a term whose own domain is outside the selection");
+  }
+
+  @Test
+  void test_pickKeepsArticlesAndAiPoliciesWithNoDomain(TestNamespace ns) {
+    // Mostly global content (built-in AI governance, Context Center articles) stays listed under a
+    // pick when it has no domain; another domain's items are still filtered out.
+    Domain picked = createAggregateDomain(ns.prefix("navShared"));
+    Domain other = createAggregateDomain(ns.prefix("navSharedOther"));
+    AIGovernancePolicy globalPolicy = createAiPolicy(ns.prefix("globalPolicy"), null);
+    AIGovernancePolicy otherPolicy = createAiPolicy(ns.prefix("otherPolicy"), other);
+    Page pickedPage = createArticle(ns.prefix("pickedArticle"), picked);
+    Page globalPage = createArticle(ns.prefix("globalArticle"), null);
+    Page otherPage = createArticle(ns.prefix("otherArticle"), other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    String policies = getAs(user, "/v1/aiGovernancePolicies?limit=1000000");
+    assertTrue(policies.contains(globalPolicy.getId().toString()));
+    assertFalse(policies.contains(otherPolicy.getId().toString()));
+
+    // The Articles page sorts by update time, which lists from search.
+    String articles = getAs(user, "/v1/contextCenter/pages?sortBy=updatedAt&limit=10000");
+    assertTrue(articles.contains(pickedPage.getId().toString()));
+    assertTrue(articles.contains(globalPage.getId().toString()));
+    assertFalse(articles.contains(otherPage.getId().toString()));
+
+    // Without a sort the list reads from the database.
+    String dbArticles = getAs(user, "/v1/contextCenter/pages?limit=1000000");
+    assertTrue(dbArticles.contains(pickedPage.getId().toString()));
+    assertTrue(dbArticles.contains(globalPage.getId().toString()));
+    assertFalse(dbArticles.contains(otherPage.getId().toString()));
+  }
+
+  @Test
+  void test_pickNarrowsMetricHierarchy(TestNamespace ns) {
+    // The Metrics page lists from the hierarchy endpoint, which pages its own rows.
+    Domain picked = createAggregateDomain(ns.prefix("navMetric"));
+    Domain other = createAggregateDomain(ns.prefix("navMetricOther"));
+    Metric pickedMetric = createMetric(ns.prefix("pickedMetric"), picked);
+    Metric otherMetric = createMetric(ns.prefix("otherMetric"), other);
+    Metric metricWithNoDomain = createMetric(ns.prefix("noDomainMetric"), null);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    String hierarchy = getAs(user, "/v1/metrics/hierarchy?limit=1000&q=" + ns.prefix(""));
+    assertTrue(hierarchy.contains(pickedMetric.getId().toString()));
+    assertFalse(hierarchy.contains(otherMetric.getId().toString()));
+    assertFalse(hierarchy.contains(metricWithNoDomain.getId().toString()));
+  }
+
+  @Test
+  void test_pickDoesNotHideAssignedTasks(TestNamespace ns) {
+    // A reviewer must see work assigned to them whatever domain it is about.
+    Domain picked = createAggregateDomain(ns.prefix("navTask"));
+    Domain other = createAggregateDomain(ns.prefix("navTaskOther"));
+    User user = createEntity(selfLoginUserRequest());
+    Table otherTable = createTableInDomain(ns, "navTaskTable", "id", other);
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("navTaskOther"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(String.format("<#E::table::%s>", otherTable.getFullyQualifiedName()))
+                    .withAssignees(List.of(user.getFullyQualifiedName())));
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    assertTrue(getAs(user, "/v1/tasks/assigned?limit=100").contains(task.getId().toString()));
+  }
+
+  @Test
+  void test_pickNarrowsColumnGrid(TestNamespace ns) {
+    // Column Bulk Operations edits the occurrences its grid lists, so the grid must follow the
+    // pick.
+    Domain picked = createAggregateDomain(ns.prefix("navColumn"));
+    Domain other = createAggregateDomain(ns.prefix("navColumnOther"));
+    String column = "navcol_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    Table pickedTable = createTableInDomain(ns, "navColPicked", column, picked);
+    Table otherTable = createTableInDomain(ns, "navColOther", column, other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+    String grid = "/v1/columns/grid?entityTypes=table&columnNamePattern=" + column;
+    Awaitility.await("both tables indexed")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> getAsAdmin(grid).contains(otherTable.getFullyQualifiedName()));
+
+    String scoped = getAs(user, grid);
+    assertTrue(scoped.contains(pickedTable.getFullyQualifiedName()));
+    assertFalse(scoped.contains(otherTable.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_pickNarrowsDataInsightCharts(TestNamespace ns) {
+    // Data Insights and the Home data estate count assets from search, so they follow the pick.
+    Domain picked = createAggregateDomain(ns.prefix("navChart"));
+    Domain other = createAggregateDomain(ns.prefix("navChartOther"));
+    Table pickedTable = createTableInDomain(ns, "navChartPicked", "id", picked);
+    Table otherTable = createTableInDomain(ns, "navChartOther", "id", other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+    String onlyTheseTables =
+        String.format(
+            "{\"query\":{\"ids\":{\"values\":[\"%s\",\"%s\"]}}}",
+            pickedTable.getId(), otherTable.getId());
+    long end = System.currentTimeMillis();
+    String chart =
+        "/v1/analytics/dataInsights/system/charts/listChartData?chartNames=total_data_assets_live"
+            + "&live=true&start="
+            + (end - Duration.ofDays(1).toMillis())
+            + "&end="
+            + end
+            + "&filter="
+            + URLEncoder.encode(onlyTheseTables, StandardCharsets.UTF_8);
+
+    assertEquals(2, chartCount(getAsAdmin(chart)));
+    assertEquals(1, chartCount(getAs(user, chart)));
+  }
+
+  private static long chartCount(String response) {
+    long count = 0;
+    for (JsonNode result :
+        JsonUtils.readTree(response).path("total_data_assets_live").path("results")) {
+      count += result.path("count").asLong();
+    }
+    return count;
+  }
+
+  private static Metric createMetric(String name, Domain domain) {
+    return SdkClients.adminClient()
+        .metrics()
+        .create(
+            new CreateMetric()
+                .withName(name)
+                .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static Table createTableInDomain(
+      TestNamespace ns, String name, String column, Domain domain) {
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix(name))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName(column).withDataType(ColumnDataType.INT)))
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static String getAsAdmin(String path) {
+    return SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
+  }
+
+  private static Domain createAggregateDomain(String name) {
+    return SdkClients.adminClient()
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(name)
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("navbar pick"));
+  }
+
+  private static AIGovernancePolicy createAiPolicy(String name, Domain domain) {
+    CreateAIGovernancePolicy request =
+        new CreateAIGovernancePolicy()
+            .withName(name)
+            .withPolicyType(PolicyType.DataAccess)
+            .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName()));
+    String created =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.POST, "/v1/aiGovernancePolicies", request);
+    return JsonUtils.readValue(created, AIGovernancePolicy.class);
+  }
+
+  private static Page createArticle(String name, Domain domain) {
+    CreatePage request =
+        new CreatePage()
+            .withName(name)
+            .withPageType(PageType.ARTICLE)
+            .withPage(new Article())
+            .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName()));
+    String created =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.POST, "/v1/contextCenter/pages", request);
+    return JsonUtils.readValue(created, Page.class);
+  }
+
+  private static String getAs(User user, String path) {
+    return clientFor(user).getHttpClient().executeForString(HttpMethod.GET, path, null);
   }
 
   @Test
@@ -2240,6 +2462,24 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void patch_keepsLoginAndActivityTimes(TestNamespace ns) {
+    String userName = ns.prefix("loginTimesUser");
+    User user = createEntity(new CreateUser().withName(userName).withEmail(toValidEmail(userName)));
+    long loginTime = System.currentTimeMillis();
+    user.setLastLoginTime(loginTime);
+    user.setLastActivityTime(loginTime);
+    patchEntity(user.getId().toString(), user);
+
+    User fetched = Users.get(user.getId().toString());
+    fetched.setDescription("edited after login");
+    patchEntity(fetched.getId().toString(), fetched);
+
+    User reloaded = Users.get(user.getId().toString(), "lastLoginTime,lastActivityTime");
+    assertEquals(loginTime, reloaded.getLastLoginTime());
+    assertEquals(loginTime, reloaded.getLastActivityTime());
+  }
+
+  @Test
   void test_personaDeletion_cleansUpAllRelationships(TestNamespace ns) {
 
     String personaName = ns.prefix("personaCleanup");
@@ -3257,6 +3497,53 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(403, exception.getStatusCode(), exception.getMessage());
 
     assertFalse(Boolean.TRUE.equals(Users.get(target.getId().toString()).getDeleted()));
+  }
+
+  @Test
+  void test_patchUser_joinClosedTeamWithReplace_forbiddenForNonAdmin(TestNamespace ns) {
+    User user = createRegularUser(ns, "closedjoiner");
+    Team closed = createJoinableGroup(ns.prefix("closedReplace"), false);
+
+    assertPatchForbidden(clientFor(user), user, replaceTeamsOp(closed));
+
+    User reread = Users.get(user.getId().toString(), "teams");
+    assertTrue(
+        reread.getTeams().stream().noneMatch(team -> team.getId().equals(closed.getId())),
+        "a replace op must not put the user in a closed team");
+  }
+
+  @Test
+  void test_patchUser_joinOpenTeamWithReplace_allowedForNonAdmin(TestNamespace ns) {
+    User user = createRegularUser(ns, "openjoiner");
+    Team open = createJoinableGroup(ns.prefix("openReplace"), true);
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), replaceTeamsOp(open));
+
+    User reread = Users.get(user.getId().toString(), "teams");
+    assertTrue(reread.getTeams().stream().anyMatch(team -> team.getId().equals(open.getId())));
+  }
+
+  private static Team createJoinableGroup(String name, boolean joinable) {
+    return SdkClients.adminClient()
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(name)
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withIsJoinable(joinable));
+  }
+
+  private ArrayNode replaceTeamsOp(Team team) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject()
+        .put("op", "replace")
+        .put("path", "/teams/0")
+        .putObject("value")
+        .put("id", team.getId().toString())
+        .put("type", "team");
+    return ops;
   }
 
   private User createDataSteward(TestNamespace ns) {

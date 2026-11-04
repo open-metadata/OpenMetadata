@@ -10,31 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, HookForm, Typography } from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-  FORM_DRAWER_WIDTH_WITHOUT_HINT,
-  FORM_DRAWER_WIDTH_WITH_HINT,
-} from '../../../constants/common/formHint.constants';
-import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
 import { monospaceParameterNames } from '../../../utils/DataQuality/FormHintDocUtils';
-import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import {
   isExternalTestDefinition,
   isSystemTestDefinition,
 } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
-import { ShowHintToggle } from '../../common/atoms/drawer/ShowHintToggle';
+import { FormHintDoc } from '../../common/atoms/drawer/formHint/FormHintDoc';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
-import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   TestDefinitionFormProps,
   TestDefinitionFormValues,
@@ -76,7 +68,6 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   });
 
   const [errorMessage, setErrorMessage] = useState('');
-  const [showHint, setShowHint] = useState(true);
 
   const resolvedTitle =
     title ??
@@ -159,17 +150,9 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     onCancel();
   }, [form, onCancel]);
 
-  const scrollToError = useMemo(
-    () =>
-      createScrollToErrorHandler({
-        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
-      }),
-    []
-  );
-
-  // Raw RHF success handler. Passed to `useFormDrawerWithHook.onSubmit`, which
-  // runs it through a single `hookForm.handleSubmit`; the form's own submit
-  // (Enter in a field) needs the pre-wrapped `submitAndClose` below.
+  // Raw RHF success handler. `useFormDrawerWithHook` runs it through a single
+  // `hookForm.handleSubmit` for both the footer button and the form's own
+  // submit (Enter in a field).
   const onValidSubmit = useCallback(
     async (data: TestDefinitionFormValues) => {
       try {
@@ -182,11 +165,6 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     [handleSubmit, handleDismiss]
   );
 
-  const submitAndClose = useMemo(
-    () => form.handleSubmit(onValidSubmit, () => scrollToError()),
-    [form, onValidSubmit, scrollToError]
-  );
-
   const formBody = (
     <TestDefinitionFormBody
       errorMessage={errorMessage}
@@ -197,81 +175,28 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     />
   );
 
-  const drawerForm = (
-    <HookForm
-      emptyFieldDoc={
-        // width="100%" is required: EmptyPlaceholder's 300px default is
-        // wider than the hint column's 260px minimum and would overflow
-        // once the column shrinks on a narrow viewport.
-        <NoDataPlaceholder
-          description={t('message.form-hint-empty-state')}
-          icon={Lightbulb05}
-          title={t('label.no-entity-selected', {
-            entity: t('label.field'),
-          })}
-          width="100%"
-        />
-      }
-      fieldDocDisplay="panel"
-      fieldDocHeader={
-        <Box align="center" className="tw:gap-2" direction="row">
-          <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
-          <Typography
-            className="tw:whitespace-nowrap tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.form-hint')}
-          </Typography>
-        </Box>
-      }
-      form={form}
-      // This column, not the drawer body, scrolls, so it is the scroll-to-error target.
-      formClassName="drawer-form-content tw:px-4 tw:py-6 tw:md:px-6"
-      renderFieldDoc={(markdown) => (
-        <div className="form-hint-doc">
-          <RichTextEditorPreviewerV1
-            enableSeeMoreVariant={false}
-            markdown={monospaceParameterNames(markdown)}
-          />
-        </div>
-      )}
-      showFieldDocs={showHint}
-      onSubmit={submitAndClose}>
-      {formBody}
-    </HookForm>
-  );
-
-  // pr-10 clears the header's absolutely positioned close button.
-  const hintToggle = (
-    <Box className="tw:pr-10">
-      <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
-    </Box>
-  );
-
   const drawerTitle = (
     <Typography data-testid="form-heading" size="text-md" weight="medium">
       {resolvedTitle}
     </Typography>
   );
 
-  const { formDrawer, openDrawer, closeDrawer, isOpen } =
-    useFormDrawerWithHook<TestDefinitionFormValues>({
-      className: 'test-definition-form-drawer',
-      title: drawerTitle,
-      hookForm: form,
-      form: drawerForm,
-      headerActions: hintToggle,
-      // Columns scroll on their own: drop Content's padding, gap and stacking.
-      body: { className: 'tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0' },
-      // Without the hint, narrow the drawer instead of stretching the form.
-      width: showHint
-        ? FORM_DRAWER_WIDTH_WITH_HINT
-        : FORM_DRAWER_WIDTH_WITHOUT_HINT,
-      submitLabel: t('label.save'),
-      submitTestId: 'save-test-definition',
-      onClose: handleDismiss,
-      onSubmit: onValidSubmit,
-    });
+  const { formDrawer } = useFormDrawerWithHook<TestDefinitionFormValues>({
+    className: 'test-definition-form-drawer',
+    title: drawerTitle,
+    hookForm: form,
+    form: formBody,
+    formHint: {
+      renderDoc: (markdown) => (
+        <FormHintDoc markdown={monospaceParameterNames(markdown)} />
+      ),
+    },
+    open,
+    submitLabel: t('label.save'),
+    submitTestId: 'save-test-definition',
+    onClose: handleDismiss,
+    onSubmit: onValidSubmit,
+  });
 
   // react-hook-form applies defaultValues only on the first render; re-seed the
   // form on every open and whenever the target entity reference changes (edit a
@@ -285,18 +210,6 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       form.reset(buildFormDefaults(initialValues));
     }
   }, [open, initialValues, form]);
-
-  useEffect(() => {
-    if (open) {
-      openDrawer();
-    }
-  }, [open, openDrawer]);
-
-  useEffect(() => {
-    if (!open && isOpen) {
-      closeDrawer();
-    }
-  }, [open, isOpen, closeDrawer]);
 
   return formDrawer;
 };

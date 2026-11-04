@@ -727,7 +727,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
       // in case of test connection type, we get the original connection values from the service
       // name
-      originalWorkflow = buildFromOriginalServiceConnection(workflow);
+      originalWorkflow = buildFromOriginalServiceConnection(securityContext, workflow);
       if (!ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
         requireSecretsReenteredOnRetarget(workflow, originalWorkflow);
       }
@@ -784,7 +784,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return workflowDecrypted;
   }
 
-  private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
+  private Workflow buildFromOriginalServiceConnection(
+      SecurityContext securityContext, Workflow workflow) {
     Workflow originalWorkflow =
         repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     if (originalWorkflow == null) {
@@ -800,6 +801,12 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               serviceRepository.findByNameOrNull(
                   testServiceConnection.getServiceName(), Include.NON_DELETED);
       if (originalService != null && originalService.getConnection() != null) {
+        // ADR:2026-11-03-test-connection-workflows-check-service-edit-permission
+        final String serviceEntityType = serviceRepository.getEntityType();
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL),
+            new ResourceContext<>(serviceEntityType, originalService.getId(), null));
         testServiceConnection.setConnection(originalService.getConnection());
         originalWorkflow.setRequest(testServiceConnection);
       }

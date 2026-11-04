@@ -1263,15 +1263,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
             // ignore exception if value is not an object
           }
           if (value != null) {
-            String teamId = value.getString("id");
-            repository.validateTeamAddition(id, UUID.fromString(teamId));
-            if (!repository.isTeamJoinable(teamId)) {
-              // Only admin can join closed teams
-              authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
-            }
+            repository.validateTeamAddition(id, UUID.fromString(value.getString("id")));
           }
         }
       }
+    }
+    if (JsonUtils.extractPatchedFields(patch).contains(TEAMS_FIELD)
+        && patchJoinsClosedTeam(id, patch)) {
+      authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
     }
     if (changesDefaultPersona(patch)) {
       authorizeDefaultPersonaPatch(securityContext, containerRequestContext, id, patch);
@@ -1279,6 +1278,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return withRedactedEntity(
         patchInternal(uriInfo, securityContext, id, patch),
         withoutCredentials(securityContext, isSelf));
+  }
+
+  // Judged on the teams the patch leaves the user in, as the repository will apply it, so every
+  // way of writing the same membership (e.g. add, replace, move or copy) is treated alike.
+  private boolean patchJoinsClosedTeam(UUID id, JsonPatch patch) {
+    User stored = repository.get(null, id, repository.getPatchFields(), Include.NON_DELETED, false);
+    User patched = JsonUtils.applyPatch(stored, patch, User.class);
+    return joinsClosedTeam(
+        stored, listOrEmpty(patched.getTeams()).stream().map(EntityReference::getId).toList());
   }
 
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
