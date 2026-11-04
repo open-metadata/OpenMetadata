@@ -4218,10 +4218,10 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   @Test
   void testFilingAnApprovalTaskAboutAnEntityNeedsEditAllOnIt(TestNamespace ns) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
-    String user1 = SharedEntities.get().USER1.getFullyQualifiedName();
+    SharedEntities shared = SharedEntities.get();
+    // The owner holds EditAll on the table through the organization's owner rule.
+    Table table = createTableWithDomainAndOwners(ns, null, List.of(shared.USER3_REF));
+    String user1 = shared.USER1.getFullyQualifiedName();
 
     for (TaskEntityType type :
         List.of(TaskEntityType.GlossaryApproval, TaskEntityType.RequestApproval)) {
@@ -4237,7 +4237,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
           ForbiddenException.class,
           () -> SdkClients.user2Client().tasks().create(request),
           type.value());
-      assertNotNull(SdkClients.adminClient().tasks().create(request).getId(), type.value());
+      assertNotNull(SdkClients.user3Client().tasks().create(request).getId(), type.value());
     }
   }
 

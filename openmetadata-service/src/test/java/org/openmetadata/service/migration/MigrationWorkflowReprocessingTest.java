@@ -312,6 +312,27 @@ class MigrationWorkflowReprocessingTest {
     assertEquals(1, reprocessed.getPostDDLScripts().size());
   }
 
+  @Test
+  void testNewPatchVersionBelowTheRecordedMaxIsAppliedAsNew() throws IOException {
+    // A database already on a 2.1.0 build has never recorded 2.0.9, so 2.0.9 is applied as a new
+    // version, data migration included, rather than replayed for SQL only like 2.0.8.
+    MigrationFile v208 = createMigrationDir("2.0.8", "");
+    MigrationFile v209 = createMigrationDir("2.0.9", "");
+    MigrationFile v210 = createMigrationDir("2.1.0", "");
+
+    List<MigrationFile> available = List.of(v208, v209, v210);
+    List<String> executed = List.of("2.0.8", "2.1.0");
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+    List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
+
+    MigrationFile patch =
+        toApply.stream().filter(m -> "2.0.9".equals(m.version)).findFirst().orElseThrow();
+    assertFalse(patch.isReprocessing());
+    assertEquals(List.of("2.0.8", "2.0.9", "2.1.0"), toApply.stream().map(m -> m.version).toList());
+  }
+
   // --- Java data migration rollout (issue #31478) ---
 
   @Test
