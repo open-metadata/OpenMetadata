@@ -18,6 +18,7 @@ import type {
 import {
   Box,
   Button,
+  ButtonUtility,
   Checkbox,
   Popover,
   PopoverTrigger,
@@ -392,7 +393,7 @@ const KnowledgeGraphToolbar = ({
         <Select.ComboBox
           allowClear
           aria-label={t('label.kg-find-in-graph')}
-          className="kg-find"
+          className="tw:max-w-full tw:min-w-[min(--spacing(32.5),100%)] tw:flex-[1_1_--spacing(50)]"
           emptyState={t('label.kg-no-results')}
           fontSize="sm"
           inputValue={findText}
@@ -519,19 +520,20 @@ const KnowledgeGraphToolbar = ({
             </Popover>
           </PopoverTrigger>
 
-          <Button
+          {/* Named, not tooltipped: fullscreen focuses this button, and an open
+              tooltip would take the Escape that leaves fullscreen. */}
+          <ButtonUtility
             aria-label={t(
               viewport.isFullscreen
                 ? 'label.exit-full-screen'
                 : 'label.full-screen-view'
             )}
-            color="tertiary"
             data-testid={
               viewport.isFullscreen ? 'exit-full-screen' : 'full-screen'
             }
-            iconLeading={viewport.isFullscreen ? Minimize01 : Expand01}
-            size="sm"
-            onPress={viewport.onFullscreen}
+            icon={viewport.isFullscreen ? Minimize01 : Expand01}
+            size="lg"
+            onClick={viewport.onFullscreen}
           />
         </Box>
       </Box>

@@ -14,25 +14,28 @@
 import {
   Box,
   ButtonUtility,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   Toggle,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FileShield02 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  FileShield02,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
@@ -59,6 +62,9 @@ const TestDefinitionTable = ({
   onClearFilters,
 }: TestDefinitionTableProps) => {
   const { t } = useTranslation();
+  const EmptyStatePlaceholder = hasActiveFilters
+    ? NoFilteredResultsPlaceholder
+    : NoDataPlaceholder;
 
   // react-aria reports the new descriptor; the listing state upstream is keyed
   // by column id and asc/desc, so translate here rather than teaching every
@@ -197,34 +203,26 @@ const TestDefinitionTable = ({
       deleteTooltip = t('message.no-permission-for-action');
     }
 
-    // The Tooltip, not ButtonUtility's own, so the reason still shows while the button is disabled.
     return (
       <Box align="center">
-        <Tooltip title={editTooltip}>
-          <ButtonUtility
-            aria-label={t('label.edit')}
-            color="tertiary"
-            data-testid={`edit-test-definition-${record.name}`}
-            icon={<IconEdit height={16} width={16} />}
-            isDisabled={!hasEditPermission || isRefetching}
-            size="xs"
-            onClick={() => onEdit(record)}
-          />
-        </Tooltip>
-
-        <Tooltip title={deleteTooltip}>
-          <ButtonUtility
-            aria-label={t('label.delete')}
-            color="tertiary"
-            data-testid={`delete-test-definition-${record.name}`}
-            icon={<IconDelete height={16} width={16} />}
-            isDisabled={
-              isSystemProvider || !hasDeletePermission || isRefetching
-            }
-            size="xs"
-            onClick={() => onDelete(record)}
-          />
-        </Tooltip>
+        <ButtonUtility
+          aria-label={t('label.edit')}
+          data-testid={`edit-test-definition-${record.name}`}
+          icon={Edit01}
+          isDisabled={!hasEditPermission || isRefetching}
+          size="lg"
+          tooltip={editTooltip}
+          onClick={() => onEdit(record)}
+        />
+        <ButtonUtility
+          aria-label={t('label.delete')}
+          data-testid={`delete-test-definition-${record.name}`}
+          icon={Trash01}
+          isDisabled={isSystemProvider || !hasDeletePermission || isRefetching}
+          size="lg"
+          tooltip={deleteTooltip}
+          onClick={() => onDelete(record)}
+        />
       </Box>
     );
   };
@@ -297,7 +295,7 @@ const TestDefinitionTable = ({
                 loadingSkeletons
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <EmptyPlaceholder
+                  <EmptyStatePlaceholder
                     actions={
                       hasActiveFilters && onClearFilters
                         ? [
@@ -317,7 +315,7 @@ const TestDefinitionTable = ({
                     )}
                     icon={
                       hasActiveFilters ? (
-                        <FilterOffIcon className="tw:text-fg-quaternary" />
+                        <FilterOffIcon />
                       ) : (
                         <FileShield02 className="tw:text-fg-brand-primary" />
                       )
@@ -327,7 +325,6 @@ const TestDefinitionTable = ({
                         ? 'message.no-results-for-filters'
                         : 'message.no-test-definitions-yet'
                     )}
-                    variant="blank"
                   />
                 </Box>
               )

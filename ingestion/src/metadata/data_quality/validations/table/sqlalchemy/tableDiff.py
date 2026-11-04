@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 # pylint: disable=missing-module-docstring
+import json
 import operator
 import random
 import string
@@ -356,6 +357,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                     stats["exclusive_A"],
                     stats["exclusive_B"],
                     column_diff,
+                    stats["stats"].get("diff_counts"),
                 )
                 count = self._compute_row_count(self.runner, None)  # type: ignore
                 test_case_result.passedRows = stats["unchanged"]
@@ -647,6 +649,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         removed: int | None = None,
         added: int | None = None,
         column_diff: ColumnDiffResult | None = None,
+        column_diff_counts: dict[str, int] | None = None,
     ) -> TestCaseResult:
         """Build a test case result for a row diff test. If the number of differences is less than the threshold,
         the test will pass, otherwise it will fail. The result will contain the number of added, removed, and changed
@@ -658,6 +661,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             changed: The number of rows that have been changed
             removed: The number of rows that have been removed
             added: The number of rows that have been added
+            column_diff_counts: How many changed rows differ in each column, as data-diff counts them
 
         Returns:
             TestCaseResult: The result of the row diff test
@@ -692,6 +696,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
         else:
             result_message = f"Found {total_diffs} different rows which is more than the threshold of {threshold}"
+
+        if column_diff_counts:
+            # Which columns differ points at the cause, e.g. one column formatted differently on every row
+            counts = dict(sorted(column_diff_counts.items(), key=lambda item: item[1], reverse=True))
+            test_case_results.append(TestResultValue(name="columnDiffCounts", value=json.dumps(counts)))
+            top = ", ".join(f"{column} ({count})" for column, count in list(counts.items())[:3])
+            result_message = f"{result_message.rstrip('.')}. Columns differing most: {top}."
 
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore

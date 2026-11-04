@@ -201,12 +201,10 @@ class ApplicationsClassBase {
       throw new Error(`Application schema not found: ${fqn}`);
     }
     const module = await loader();
-    const schema =
-      (module as { default?: unknown }).default ??
-      (module as Record<string, unknown>);
+    const schema = module.default;
 
     return fqn === SEARCH_INDEXING_APPLICATION
-      ? withSearchEntityTypes(schema as RJSFSchema)
+      ? withSearchEntityTypes(schema)
       : schema;
   }
   public getJSONUISchema() {

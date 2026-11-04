@@ -64,10 +64,10 @@ test.describe(
 
     // Rendering-only smoke: seed a DescriptionUpdated event via test-insert and assert the feed
     // renders it (header + actor + entity link), like the Reactions/Comments/Homepage blocks below.
-    // The seed marker has no event-type words, so the /description/i assertion exercises the
-    // eventType-driven header, not the injected text. DescriptionUpdated is the representative case
-    // (its card body shows the seeded text); per-type delivery is covered by the backend
-    // ActivityResourceIT, which has no AUT load contention.
+    // Every activity card's header reads "conversation", whatever its event type; the seed marker
+    // lacks the word, so the assertion checks the header, not the injected text. DescriptionUpdated
+    // is the representative case (its card body shows the seeded text); per-type delivery is
+    // covered by the backend ActivityResourceIT, which has no AUT load contention.
 
     test('renders a description-updated activity item in the feed', async ({
       page,
@@ -96,7 +96,7 @@ test.describe(
         const entityLink = feedItem.locator('a[href*="/table/"]').first();
         const href = await entityLink.getAttribute('href');
 
-        await expect(feedItem).toContainText(/description/i);
+        await expect(feedItem).toContainText(/conversation/i);
         await expect(feedItem).toContainText(adminDisplayName);
         await expect(entityLink).toBeVisible();
         expect(href).toContain('table');
@@ -313,8 +313,8 @@ test.describe(
         const firstReplyCard = page
           .getByTestId('feed-reply-card')
           .filter({ hasText: firstReply });
-        await firstReplyCard.hover();
-        await firstReplyCard.getByTestId('edit-message').click();
+        await firstReplyCard.getByTestId('conversation-actions').click();
+        await page.getByRole('menuitem', { name: 'Edit' }).click();
 
         const editingReplyCard = page
           .getByTestId('feed-reply-card')
@@ -357,8 +357,8 @@ test.describe(
             .last()
         ).toContainText(adminDisplayName);
 
-        await editedReplyCard.hover();
-        await editedReplyCard.getByTestId('delete-message').click();
+        await editedReplyCard.getByTestId('conversation-actions').click();
+        await page.getByRole('menuitem', { name: 'Delete' }).click();
         const deleteResponse = page.waitForResponse(
           (response) =>
             response

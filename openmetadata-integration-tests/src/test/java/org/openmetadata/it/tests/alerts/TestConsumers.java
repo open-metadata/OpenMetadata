@@ -61,6 +61,23 @@ public final class TestConsumers {
     }
   }
 
+  public static final class ErrorThrowing implements ConsumerProvider {
+    @Override
+    public String id() {
+      return ErrorThrowingConsumer.ID;
+    }
+
+    @Override
+    public ConsumerKind type() {
+      return ConsumerKind.EVENT;
+    }
+
+    @Override
+    public AbstractEventConsumer create(DIContainer dependencies) {
+      return new ErrorThrowingConsumer(dependencies);
+    }
+  }
+
   public static final class FailingCommit implements ConsumerProvider {
     @Override
     public String id() {

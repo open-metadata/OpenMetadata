@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   Card,
+  CloseButton,
   FilterSelect,
   Select,
   SelectItemType,
@@ -22,12 +23,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { entityData } from '../../../constants/Lineage.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import {
@@ -48,14 +48,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { AddLineagePopoverProps } from './AddLineagePopover.interface';
-
-// Only entity types whose search hits carry columns via getEntityChildrenAndLabel's
-// getTableEntityChildren resolver (reads `entityType` + `columns` directly, no
-// extra nesting) can be flattened into a column picker from a raw search hit.
-const COLUMN_CAPABLE_SEARCH_INDEXES = new Set<SearchIndex>([
-  SearchIndex.TABLE,
-  SearchIndex.DASHBOARD_DATA_MODEL,
-]);
+import { getCanvasColumnAssets } from './AddLineagePopover.utils';
 
 type EntityHit = {
   id: string;
@@ -78,23 +71,23 @@ const LineagePreviewCard = ({
   isCurrent?: boolean;
 }) => (
   <Card
-    className={classNames(
-      'tw:min-w-0 tw:flex-1 tw:rounded-lg tw:px-3 tw:py-2',
-      !isCurrent && 'tw:border-dashed'
-    )}
-    color={isCurrent ? 'brand' : 'secondary'}>
-    <Box direction="col">
-      <Typography className="tw:text-tertiary" size="text-xs">
-        {label}
-      </Typography>
-      <Typography
-        className={name ? 'tw:text-primary' : 'tw:text-quaternary'}
-        ellipsis={Boolean(name)}
-        size="text-sm"
-        weight="medium">
-        {name ?? placeholder}
-      </Typography>
-    </Box>
+    className="tw:min-w-0 tw:flex-1"
+    color={isCurrent ? 'brand' : 'default'}
+    size="sm">
+    <Card.Content>
+      <Box direction="col">
+        <Typography color="secondary" size="text-xs">
+          {label}
+        </Typography>
+        <Typography
+          color={name ? undefined : 'secondary'}
+          ellipsis={Boolean(name)}
+          size="text-sm"
+          weight="medium">
+          {name ?? placeholder}
+        </Typography>
+      </Box>
+    </Card.Content>
   </Card>
 );
 
@@ -143,10 +136,66 @@ const LineageEdgePreview = ({
   );
 };
 
+// A column edit picks a node already on the canvas, then one of its columns.
+const ColumnTargetFields = ({
+  assetItems,
+  columnItems,
+  entityId,
+  columnFqn,
+  isDisabled,
+  onAssetChange,
+  onColumnChange,
+}: {
+  assetItems: SelectItemType[];
+  columnItems: SelectItemType[];
+  entityId?: string;
+  columnFqn?: string;
+  isDisabled: boolean;
+  onAssetChange: (key: string | number | null) => void;
+  onColumnChange: (columnFqn?: string) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <Select
+        data-testid="add-lineage-canvas-asset-select"
+        isDisabled={isDisabled}
+        items={assetItems}
+        label={t('label.select-entity', { entity: t('label.asset') })}
+        placeholder={t('label.select-entity', { entity: t('label.asset') })}
+        size="md"
+        value={entityId ?? null}
+        onChange={onAssetChange}>
+        {(item) => (
+          <Select.Item id={item.id} supportingText={item.supportingText}>
+            {item.label}
+          </Select.Item>
+        )}
+      </Select>
+      {entityId && (
+        <Select
+          data-testid="add-lineage-column-select"
+          isDisabled={isDisabled}
+          items={columnItems}
+          label={t('label.select-column')}
+          size="md"
+          value={columnFqn ?? null}
+          onChange={(key) =>
+            onColumnChange(key === null ? undefined : String(key))
+          }>
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
+      )}
+    </>
+  );
+};
+
 const AddLineagePopover = ({
   request,
   nodeName,
   excludeEntityId,
+  canvasNodes,
   onClose,
   onSubmit,
 }: AddLineagePopoverProps) => {
@@ -166,7 +215,8 @@ const AddLineagePopover = ({
 
   // Asset counts per type, as the Explore "Data Assets" filter shows them.
   useEffect(() => {
-    if (!request) {
+    // A column edit picks from the canvas, so it shows no type counts.
+    if (!request || request.columnFqn) {
       return;
     }
     // One bucket per listed type; the default page of 10 drops the rest.
@@ -198,25 +248,22 @@ const AddLineagePopover = ({
   // The search hit for the picked asset carries the columns to map to.
   // Columns come from the picked asset itself, fetched by FQN, so names shared
   // across services or special characters cannot miss it.
-  const loadColumns = useCallback(
-    async (picked: EntityHit, index: SearchIndex) => {
-      const fqn = picked.fullyQualifiedName ?? '';
-      try {
-        const { columns } =
-          index === SearchIndex.DASHBOARD_DATA_MODEL
-            ? await getDataModelByFqn(fqn, { fields: TabSpecificField.COLUMNS })
-            : await getTableDetailsByFQN(fqn, {
-                fields: TabSpecificField.COLUMNS,
-              });
-        setEntity((current) =>
-          current?.id === picked.id ? { ...current, columns } : current
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    []
-  );
+  const loadColumns = useCallback(async (picked: EntityHit) => {
+    const fqn = picked.fullyQualifiedName ?? '';
+    try {
+      const { columns } =
+        picked.entityType === EntityType.DASHBOARD_DATA_MODEL
+          ? await getDataModelByFqn(fqn, { fields: TabSpecificField.COLUMNS })
+          : await getTableDetailsByFQN(fqn, {
+              fields: TabSpecificField.COLUMNS,
+            });
+      setEntity((current) =>
+        current?.id === picked.id ? { ...current, columns } : current
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
 
   const handleAssetChange = useCallback(
     (option?: DataAssetOption | DataAssetOption[]) => {
@@ -235,11 +282,8 @@ const AddLineagePopover = ({
         entityType: picked.reference.type,
       };
       setEntity(hit);
-      if (isColumnTarget && type) {
-        void loadColumns(hit, type);
-      }
     },
-    [isColumnTarget, loadColumns, type]
+    []
   );
 
   const excludeQueryFilter = useMemo(
@@ -272,14 +316,48 @@ const AddLineagePopover = ({
     [isSubmitting, onClose, onSubmit]
   );
 
+  // A column edit connects to another node already on the canvas, as dragging
+  // between column handles did; only tables and data models carry columns.
+  const canvasAssets = useMemo(
+    () => getCanvasColumnAssets(canvasNodes, excludeEntityId),
+    [canvasNodes, excludeEntityId]
+  );
+
+  const canvasAssetItems: SelectItemType[] = useMemo(
+    () =>
+      canvasAssets.map((asset) => ({
+        id: asset.id,
+        label: getEntityName(asset),
+        supportingText: asset.fullyQualifiedName,
+      })),
+    [canvasAssets]
+  );
+
+  const handleCanvasAssetChange = useCallback(
+    (key: string | number | null) => {
+      const asset = canvasAssets.find(({ id }) => id === key);
+      setColumnFqn(undefined);
+      if (!asset) {
+        setEntity(undefined);
+
+        return;
+      }
+      const hit: EntityHit = {
+        id: asset.id,
+        name: asset.name,
+        displayName: asset.displayName,
+        fullyQualifiedName: asset.fullyQualifiedName,
+        entityType: asset.entityType,
+      };
+      setEntity(hit);
+      void loadColumns(hit);
+    },
+    [canvasAssets, loadColumns]
+  );
+
   const typeOptions = useMemo(
     () =>
-      (isColumnTarget
-        ? entityData.filter(({ type: index }) =>
-            COLUMN_CAPABLE_SEARCH_INDEXES.has(index)
-          )
-        : entityData
-      ).map(({ type: index, label }) => {
+      entityData.map(({ type: index, label }) => {
         const entityType = getEntityTypeFromSearchIndex(index) ?? index;
 
         return {
@@ -294,7 +372,7 @@ const AddLineagePopover = ({
             ) ?? undefined,
         };
       }),
-    [isColumnTarget, t, typeCounts]
+    [t, typeCounts]
   );
   const columnItems: SelectItemType[] = useMemo(() => {
     if (!entity) {
@@ -340,11 +418,17 @@ const AddLineagePopover = ({
           data-testid="add-lineage-popover">
           <SlideoutMenu.Header
             className="tw:border-b tw:border-secondary tw:pb-4"
-            onClose={close}>
-            <Typography as="h2" size="text-lg" weight="semibold">
-              {t(isUpstream ? 'label.add-upstream' : 'label.add-downstream')}
-            </Typography>
-            <Typography className="tw:mt-1 tw:text-tertiary" size="text-sm">
+            showCloseButton={false}>
+            <Box align="center" direction="row" justify="between">
+              <Typography as="div" size="text-lg" weight="semibold">
+                {t(isUpstream ? 'label.add-upstream' : 'label.add-downstream')}
+              </Typography>
+              <CloseButton size="sm" onClick={close} />
+            </Box>
+            <Typography
+              className="tw:mt-1 tw:block"
+              color="secondary"
+              size="text-sm">
               {t(
                 isUpstream
                   ? 'message.add-upstream-lineage-description'
@@ -359,74 +443,74 @@ const AddLineagePopover = ({
               isUpstream={isUpstream}
               pickedName={pickedName}
             />
-            <Box className="tw:gap-1.5" direction="col">
-              <Typography
-                as="span"
-                className="tw:text-secondary"
-                size="text-sm"
-                weight="medium">
-                {t('label.select-type')}
-              </Typography>
-              <FilterSelect
-                searchable
-                commitMode="immediate"
-                data-testid="add-lineage-type-select"
-                hideCounts={false}
-                label={t('label.select-type')}
-                options={typeOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.type'),
-                })}
-                popoverClassName="tw:w-(--trigger-width)!"
-                selectedValues={type ? [type] : []}
-                selectionMode="single"
-                size="md"
-                triggerVariant="input"
-                onChange={([value]) => {
-                  setType(value as SearchIndex | undefined);
-                  setEntity(undefined);
-                  setColumnFqn(undefined);
-                }}
-              />
-            </Box>
-            {type && (
-              <Box
-                className="tw:gap-1.5"
-                data-testid="add-lineage-entity-input"
-                direction="col">
-                <Typography
-                  as="span"
-                  className="tw:text-secondary"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.search-entity', { entity: t('label.asset') })}
-                </Typography>
-                <DataAssetAsyncSelectList
-                  // A new type starts a fresh search.
-                  key={type}
-                  placeholder={t('label.search-entity', {
-                    entity: t('label.asset'),
-                  })}
-                  queryFilter={excludeQueryFilter}
-                  searchIndex={type}
-                  value={entity?.fullyQualifiedName}
-                  onChange={handleAssetChange}
-                />
-              </Box>
-            )}
-            {isColumnTarget && entity && (
-              <Select
-                data-testid="add-lineage-column-select"
+            {isColumnTarget ? (
+              <ColumnTargetFields
+                assetItems={canvasAssetItems}
+                columnFqn={columnFqn}
+                columnItems={columnItems}
+                entityId={entity?.id}
                 isDisabled={isSubmitting}
-                items={columnItems}
-                label={t('label.select-column')}
-                size="sm"
-                value={columnFqn ?? null}
-                onChange={(key) =>
-                  setColumnFqn(key === null ? undefined : String(key))
-                }>
-                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-              </Select>
+                onAssetChange={handleCanvasAssetChange}
+                onColumnChange={setColumnFqn}
+              />
+            ) : (
+              <>
+                <Box className="tw:gap-1.5" direction="col">
+                  <Typography
+                    as="span"
+                    className="tw:text-secondary"
+                    size="text-sm"
+                    weight="medium">
+                    {t('label.select-type')}
+                  </Typography>
+                  <FilterSelect
+                    searchable
+                    commitMode="immediate"
+                    data-testid="add-lineage-type-select"
+                    hideCounts={false}
+                    label={t('label.select-type')}
+                    options={typeOptions}
+                    placeholder={t('label.select-entity', {
+                      entity: t('label.type'),
+                    })}
+                    popoverClassName="tw:w-(--trigger-width)!"
+                    selectedValues={type ? [type] : []}
+                    selectionMode="single"
+                    size="md"
+                    triggerVariant="input"
+                    onChange={([value]) => {
+                      setType(value as SearchIndex | undefined);
+                      setEntity(undefined);
+                      setColumnFqn(undefined);
+                    }}
+                  />
+                </Box>
+                {type && (
+                  <Box
+                    className="tw:gap-1.5"
+                    data-testid="add-lineage-entity-input"
+                    direction="col">
+                    <Typography
+                      as="span"
+                      className="tw:text-secondary"
+                      size="text-sm"
+                      weight="medium">
+                      {t('label.search-entity', { entity: t('label.asset') })}
+                    </Typography>
+                    <DataAssetAsyncSelectList
+                      // A new type starts a fresh search.
+                      key={type}
+                      placeholder={t('label.search-entity', {
+                        entity: t('label.asset'),
+                      })}
+                      queryFilter={excludeQueryFilter}
+                      searchIndex={type}
+                      value={entity?.fullyQualifiedName}
+                      onChange={handleAssetChange}
+                    />
+                  </Box>
+                )}
+              </>
             )}
           </SlideoutMenu.Content>
           <SlideoutMenu.Footer>

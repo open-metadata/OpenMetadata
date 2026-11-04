@@ -12,13 +12,15 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import TestSuiteDetail from './TestSuiteDetail';
 
 const mockUseTestSuiteDetailsPage = jest.fn();
 const mockNavigate = jest.fn();
 const mockSetActiveTab = jest.fn();
+const mockHandleTestCaseSearch = jest.fn();
+const mockDataQualityTab = jest.fn();
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -50,15 +52,6 @@ jest.mock('components/common/DocumentTitle/DocumentTitle', () => ({
 jest.mock('components/common/Loader/Loader', () => ({
   __esModule: true,
   default: () => <div data-testid="loader">Loader</div>,
-}));
-
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: ({ type }: { type?: string }) => (
-    <div data-testid="error-placeholder" data-type={type ?? 'default'}>
-      error-placeholder
-    </div>
-  ),
 }));
 
 jest.mock(
@@ -96,7 +89,7 @@ jest.mock('components/common/DomainLabel/DomainLabel.component', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const React = require('react');
+  const React = jest.requireActual<typeof import('react')>('react');
   const TabsCtx = React.createContext<((key: string) => void) | undefined>(
     undefined
   );
@@ -107,11 +100,39 @@ jest.mock('@openmetadata/ui-core-components', () => {
       {children}
     </button>
   );
+  const ButtonUtility = ({
+    icon: _icon,
+    size: _size,
+    tooltip,
+    ...props
+  }: any) => <button aria-label={tooltip} {...props} />;
   const Dialog = Object.assign(
     ({ children }: any) => <div role="dialog">{children}</div>,
     { Content: ({ children }: any) => <div>{children}</div> }
   );
   const DialogTrigger = ({ children }: any) => <div>{children}</div>;
+  const CloseButton = ({ label, onPress }: any) => (
+    <button aria-label={label} onClick={onPress} />
+  );
+  const Input = ({
+    'aria-label': ariaLabel,
+    inputDataTestId,
+    onChange,
+    placeholder,
+    trailingSlot,
+    value,
+  }: any) => (
+    <>
+      <input
+        aria-label={ariaLabel}
+        data-testid={inputDataTestId}
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => onChange?.(event.target.value)}
+      />
+      {trailingSlot}
+    </>
+  );
   const Modal = ({ children }: any) => <div>{children}</div>;
   const ModalOverlay = ({ children }: any) => <div>{children}</div>;
   const Owner = () => <div data-testid="owner-label">owner-label</div>;
@@ -146,10 +167,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+      .EmptyPlaceholder,
     Box,
     Button,
+    ButtonUtility,
+    CloseButton,
     Dialog,
     DialogTrigger,
+    Input,
     Modal,
     ModalOverlay,
     Owner,
@@ -166,14 +192,33 @@ jest.mock('components/common/EntityDescription/Description', () => ({
 
 jest.mock('components/Database/Profiler/DataQualityTab/DataQualityTab', () => ({
   __esModule: true,
-  default: () => <div data-testid="data-quality-tab">data-quality-tab</div>,
+  default: (props: any) => {
+    mockDataQualityTab(props);
+
+    return (
+      <div data-testid="data-quality-tab">
+        data-quality-tab
+        {props.tableHeader}
+      </div>
+    );
+  },
 }));
 
 jest.mock(
   'components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="pipeline-tab-body">pipeline-tab</div>,
+    default: ({
+      onPipelinesChange,
+    }: {
+      onPipelinesChange?: (total: number) => void;
+    }) => (
+      <button
+        data-testid="pipeline-tab-body"
+        onClick={() => onPipelinesChange?.(3)}>
+        pipeline-tab
+      </button>
+    ),
   })
 );
 
@@ -207,6 +252,7 @@ const baseHookReturn = {
   isLoading: false,
   isTestCaseLoading: false,
   testCaseResult: [],
+  testCaseSearchQuery: '',
   testSuitePermissions: {
     ViewAll: true,
     ViewBasic: true,
@@ -232,12 +278,14 @@ const baseHookReturn = {
   pagingData: { paging: { total: 4 } },
   showPagination: false,
   ingestionPipelineCount: 2,
+  handlePipelinesChange: jest.fn(),
   canAddMultipleDomains: true,
   canAddMultipleUserOwners: true,
   canAddMultipleTeamOwner: false,
   fetchTestCases: jest.fn(),
   handleTestCasesRemoved: jest.fn(),
   handleSortTestCase: jest.fn(),
+  handleTestCaseSearch: mockHandleTestCaseSearch,
   handleAddTestCaseSubmit: jest.fn(),
   onUpdateOwner: jest.fn(),
   handleDomainUpdate: jest.fn(),
@@ -300,6 +348,21 @@ describe('TestSuiteDetail', () => {
     expect(screen.queryByTestId('description-v1')).not.toBeInTheDocument();
   });
 
+  it('should keep the Pipelines badge on the total the pipeline tab reports', () => {
+    const handlePipelinesChange = jest.fn();
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      activeTab: 'pipeline',
+      handlePipelinesChange,
+    });
+
+    render(<TestSuiteDetail />);
+
+    fireEvent.click(screen.getByTestId('pipeline-tab-body'));
+
+    expect(handlePipelinesChange).toHaveBeenCalledWith(3);
+  });
+
   it('should call setActiveTab when another tab is clicked', () => {
     render(<TestSuiteDetail />);
 
@@ -330,10 +393,9 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 
   it('should render the permission placeholder before the undefined guard when permission is denied and testSuite is undefined', () => {
@@ -350,10 +412,9 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(DocumentTitleMock).not.toHaveBeenCalled();
   });
 
@@ -371,11 +432,12 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'default'
-    );
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
     expect(
       screen.queryByTestId('test-suite-detail-page')
     ).not.toBeInTheDocument();
@@ -408,5 +470,56 @@ describe('TestSuiteDetail', () => {
     render(<TestSuiteDetail />);
 
     expect(screen.getByTestId('entity-header-copy-button')).toBeInTheDocument();
+  });
+
+  it('should search the suite test cases from the table header', async () => {
+    render(<TestSuiteDetail />);
+
+    fireEvent.change(screen.getByTestId('test-suite-test-case-search'), {
+      target: { value: 'ReVeNuE' },
+    });
+
+    await waitFor(() => {
+      expect(mockHandleTestCaseSearch).toHaveBeenCalledWith('ReVeNuE');
+    });
+  });
+
+  it('should show the applied query and flag active filters for the empty state', () => {
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      testCaseSearchQuery: 'revenue',
+    });
+
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('test-suite-test-case-search')).toHaveValue(
+      'revenue'
+    );
+    expect(mockDataQualityTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ hasActiveFilters: true })
+    );
+  });
+
+  it('should clear the search immediately from the clear button', () => {
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      testCaseSearchQuery: 'revenue',
+    });
+
+    render(<TestSuiteDetail />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.clear-entity:label.search' })
+    );
+
+    expect(mockHandleTestCaseSearch).toHaveBeenCalledWith('');
+  });
+
+  it('should not flag active filters without a query', () => {
+    render(<TestSuiteDetail />);
+
+    expect(mockDataQualityTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ hasActiveFilters: false })
+    );
   });
 });

@@ -13,6 +13,7 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -27,10 +28,8 @@ import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -45,7 +44,8 @@ import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 const FOLLOW_BUTTON_CLASS_NAME = classNames(
   'entity-follow-button tw:h-auto tw:gap-1 tw:rounded-2xl tw:px-3 tw:py-1',
   'tw:bg-utility-brand-50 tw:text-sm tw:font-medium tw:text-utility-brand-700',
-  'tw:hover:bg-utility-brand-50 tw:hover:text-utility-brand-700 tw:*:data-text:px-0'
+  'tw:hover:bg-utility-brand-50 tw:hover:text-utility-brand-700 tw:*:data-text:px-0',
+  'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600'
 );
 
 const getFollowLabelKey = (isFollowing?: boolean) =>
@@ -76,7 +76,6 @@ const EntityHeaderTitle = ({
   entityUrl,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
-  const location = useCustomLocation();
   const [copyTooltip, setCopyTooltip] = useState<string>();
   const { onCopyToClipBoard } = useClipboard(
     entityUrl ?? globalThis.location.href
@@ -89,11 +88,6 @@ const EntityHeaderTitle = ({
     setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
   };
-
-  const isTourRoute = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
-  );
 
   const formattedEntityType = useMemo(
     () => entityUtilClassBase.getFormattedEntityType(entityType as EntityType),
@@ -198,9 +192,7 @@ const EntityHeaderTitle = ({
           className={FOLLOW_BUTTON_CLASS_NAME}
           color="tertiary"
           data-testid="entity-follow-button"
-          iconLeading={
-            <Star01 className="tw:text-utility-brand-600" size={14} />
-          }
+          iconLeading={Star01}
           isDisabled={deleted}
           isLoading={isFollowingLoading}
           size="sm"
@@ -214,7 +206,8 @@ const EntityHeaderTitle = ({
   const renderContent = () => (
     <div
       className={classNames(
-        'entity-header-title tw:flex tw:flex-nowrap tw:items-center tw:gap-3',
+        // min-w-0 lets a long name shrink so its ellipsis applies instead of overlapping the header actions.
+        'entity-header-title tw:flex tw:min-w-0 tw:flex-nowrap tw:items-center tw:gap-3',
         className
       )}
       data-testid={`${serviceName}-${name}`}>
@@ -255,24 +248,17 @@ const EntityHeaderTitle = ({
             <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
           )}
 
-          <Tooltip
-            placement="top right"
-            title={
-              copyTooltip ??
+          <ButtonUtility
+            data-testid="entity-header-copy-button"
+            icon={Copy01}
+            size="lg"
+            tooltip={
+              copyTooltip ||
               t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              aria-label={t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })}
-              color="tertiary"
-              data-testid="entity-header-copy-button"
-              iconLeading={Copy01}
-              size="xs"
-              type="button"
-              onClick={handleShareButtonClick}
-            />
-          </Tooltip>
+            }
+            tooltipPlacement="top right"
+            onClick={handleShareButtonClick}
+          />
           {(isEmpty(displayName) || !showName) && suffix}
           {renderFollowButton()}
         </div>
@@ -282,9 +268,9 @@ const EntityHeaderTitle = ({
     </div>
   );
 
-  return link && !isTourRoute ? (
+  return link ? (
     <Link
-      className="no-underline d-inline-block w-max-full entity-header-title-link"
+      className="no-underline d-inline-block w-max-full tw:min-w-0 entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}

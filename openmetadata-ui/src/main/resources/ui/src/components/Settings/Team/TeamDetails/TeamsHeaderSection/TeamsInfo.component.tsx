@@ -12,7 +12,7 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   Divider,
   FormField,
   HookForm,
@@ -23,6 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Check,
+  Edit01,
   InfoCircle,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -47,7 +48,6 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
-import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
@@ -89,6 +89,10 @@ const TeamsInfo = ({
     [entityPermissions, isTeamDeleted]
   );
   const hasEditPermission = canEditAll;
+  // Members inherit the default persona, so only admins set it, even when the
+  // owner may edit the rest of the team (ADR:2026-11-03-only-admins-assign-personas).
+  const hasEditPersonaPermission =
+    hasEditPermission && Boolean(currentUser?.isAdmin);
   // Reassigning a team's domain is EditDomains on the server (EditAll still
   // subsumes it), so gate the domain control on that, not bare EditAll.
   const hasEditDomainPermission = canEditDomains;
@@ -197,14 +201,13 @@ const TeamsInfo = ({
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-email"
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.email'),
               })}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
                 emailForm.reset({ email: email ?? '' });
@@ -249,22 +252,22 @@ const TeamsInfo = ({
                   )}
                 </FormField>
                 <Box align="center" gap={1}>
-                  <Button
+                  <ButtonUtility
                     color="primary"
                     data-testid="cancel-edit-email"
+                    icon={XClose}
                     isDisabled={isLoading}
-                    size="xs"
-                    onClick={() => setIsEmailEdit(false)}>
-                    <XClose size={14} />
-                  </Button>
-                  <Button
+                    tooltip={t('label.cancel')}
+                    onClick={() => setIsEmailEdit(false)}
+                  />
+                  <ButtonUtility
                     color="primary"
                     data-testid="save-edit-email"
+                    icon={Check}
                     isLoading={isLoading}
-                    size="xs"
-                    type="submit">
-                    <Check size={14} />
-                  </Button>
+                    tooltip={t('label.save')}
+                    type="submit"
+                  />
                 </Box>
               </Box>
             </HookForm>
@@ -315,11 +318,10 @@ const TeamsInfo = ({
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
-              <EditIconButton
-                newLook
+              <ButtonUtility
                 data-testid="edit-team-type-icon"
-                size="small"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.team-type'),
                 })}
                 onClick={(e: MouseEvent) => {
@@ -382,7 +384,7 @@ const TeamsInfo = ({
             </Typography>
             <PersonaSelectableList
               isDefaultPersona
-              hasPermission={hasEditPermission}
+              hasPermission={hasEditPersonaPermission}
               multiSelect={false}
               selectedPersonas={
                 currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []
@@ -412,7 +414,7 @@ const TeamsInfo = ({
   }, [
     isGroupType,
     currentTeam.defaultPersona,
-    hasEditPermission,
+    hasEditPersonaPermission,
     handleDefaultPersonaUpdate,
     t,
   ]);

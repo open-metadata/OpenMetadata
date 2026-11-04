@@ -352,6 +352,15 @@ public class SessionService implements Managed {
     }
 
     UserSession current = maybeSession.get();
+    if (isFromAnotherProvider(current)) {
+      // Renewing it would mint a token the next request rejects as issued by a provider that is
+      // no longer configured, and the browser would refresh again in a loop. Ending it sends the
+      // user to sign in with the current provider.
+      // ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+      revokeSession(current.getId());
+      SessionCookieUtil.clearSessionCookie(request, response, authConfig);
+      return Optional.empty();
+    }
 
     int maxAttempts = 5;
     for (int attempt = 0; attempt < maxAttempts && current != null; attempt++) {
@@ -408,6 +417,14 @@ public class SessionService implements Managed {
 
     SessionCookieUtil.clearSessionCookie(request, response, authConfig);
     return Optional.empty();
+  }
+
+  private boolean isFromAnotherProvider(UserSession session) {
+    return authConfig != null
+        && authConfig.getProvider() != null
+        && !nullOrEmpty(session.getProvider())
+        && !SessionProviders.isSameProvider(
+            session.getProvider(), authConfig.getProvider().value());
   }
 
   /**

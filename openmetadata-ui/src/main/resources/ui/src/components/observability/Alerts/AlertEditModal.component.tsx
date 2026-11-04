@@ -11,18 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  FeaturedIcon,
-  SlideoutMenu,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Button, SlideoutMenu } from '@openmetadata/ui-core-components';
 import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShowHintToggle } from '../../../components/common/atoms/drawer/ShowHintToggle';
+import { useDrawerHeader } from '../../../components/common/atoms/drawer/useDrawerHeader';
 import Loader from '../../../components/common/Loader/Loader';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import {
@@ -109,7 +104,6 @@ function AlertEditModal({
   const {
     alert,
     extraFormButtons,
-    filterResources,
     handleSave,
     inlineAlertDetails,
     isLoading,
@@ -125,9 +119,9 @@ function AlertEditModal({
     alertType,
     fqn,
     onCancel: onClose,
-    // `input` is left out, as before: this drawer does not yet ask the server to warn about
-    // sources the chosen filters and triggers never match.
     sources: formData.resources,
+    // So the server can warn about a chosen source the filters and triggers never match.
+    input: formData.input,
   });
 
   useEffect(() => {
@@ -153,6 +147,22 @@ function AlertEditModal({
       onClose();
     }
   };
+
+  const { drawerHeader } = useDrawerHeader({
+    title,
+    subtitle: t('message.alerts-description'),
+    icon: AlertTriangle,
+    // The close button centres on the whole header box, so the padding above
+    // and below the title row must match; the margin keeps the 24px top gap.
+    className: 'tw:border-b tw:border-secondary tw:mt-2 tw:pt-4 tw:pb-4',
+    // pr-10 keeps the Show Hint toggle clear of the header's close button.
+    actions: (
+      <Box className="tw:pr-10">
+        <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
+      </Box>
+    ),
+    onClose: handleClose,
+  });
 
   const extraFooterButtons = Object.entries(extraFormButtons).map(
     ([name, ButtonComponent]) => (
@@ -185,32 +195,7 @@ function AlertEditModal({
         showHint ? FORM_DRAWER_WIDTH_WITH_HINT : FORM_DRAWER_WIDTH_WITHOUT_HINT
       }
       onOpenChange={(open) => !open && handleClose()}>
-      <SlideoutMenu.Header
-        className="tw:border-b tw:border-secondary tw:pb-4"
-        onClose={handleClose}>
-        {/* pr-10 keeps the Show Hint toggle clear of the header's close button. */}
-        <Box align="center" className="tw:pr-10" gap={3} justify="between">
-          <Box align="center" className="tw:min-w-0" gap={3}>
-            <FeaturedIcon
-              color="gray"
-              icon={AlertTriangle}
-              radius="md"
-              shape="square"
-              size="md"
-              theme="light"
-            />
-            <Box direction="col">
-              <Typography size="text-md" weight="medium">
-                {title}
-              </Typography>
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('message.alerts-description')}
-              </Typography>
-            </Box>
-          </Box>
-          <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
-        </Box>
-      </SlideoutMenu.Header>
+      {drawerHeader}
       {/* The form and the Form Hint column each scroll on their own and run to
           the drawer's edges, so the content row carries no padding. */}
       <SlideoutMenu.Content className="tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0">
@@ -221,19 +206,13 @@ function AlertEditModal({
         ) : (
           <AlertAiForm
             alert={alert}
-            containerEntities={selection.support.containerEntities}
-            filterResources={filterResources}
             formId={ALERT_AI_FORM_MODAL_ID}
             inlineAlert={inlineAlertDetails}
             mode={mode}
-            recipientCategories={selection.support.recipientCategories}
-            shouldShowActionsSection={
-              kind.hasTriggers && shouldShowActionsSection
-            }
+            selection={selection}
+            shouldShowActionsSection={shouldShowActionsSection}
             shouldShowFiltersSection={shouldShowFiltersSection}
             showHint={showHint}
-            supportedFilters={selection.support.supportedFilters}
-            supportedTriggers={selection.support.supportedTriggers}
             templateResourcePermission={templateResourcePermission}
             templates={templates}
             templatesLoading={loadingState.templates}

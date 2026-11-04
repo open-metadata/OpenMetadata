@@ -20,16 +20,25 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.CreatePersonalToken;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.UserProfileClaims;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 
 /**
@@ -40,6 +49,52 @@ import org.openmetadata.service.util.UserUtil;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 class EmailFirstIdentityIT {
+
+  @Test
+  void testMintedTokenRetainsStoredIdentityForCurrentUser(TestNamespace ns) {
+    String localPart = ("minted" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    provision(localPart + "@first.test.om.org", "First User");
+    User user = provision(localPart + "@second.test.om.org", "Second User");
+    String principalDomain = "principal.test.om.org";
+    provision(user.getName() + "@" + principalDomain, "Synthesized Email Owner");
+    JWTAuthMechanism authMechanism =
+        JWTTokenGenerator.getInstance()
+            .generateJWTToken(
+                user.getName(),
+                Set.of(),
+                false,
+                user.getEmail(),
+                3600,
+                false,
+                ServiceTokenType.PERSONAL_ACCESS);
+    Entity.getTokenRepository()
+        .insertPersonalAccessToken(
+            user.getName(),
+            TokenUtil.getPersonalAccessToken(
+                new CreatePersonalToken()
+                    .withTokenName(ns.prefix("minted"))
+                    .withJWTTokenExpiry(JWTTokenExpiry.OneHour),
+                user,
+                authMechanism));
+    JwtFilter filter =
+        new JwtFilter(
+            new AuthenticationConfiguration()
+                .withJwtPrincipalClaims(List.of("sub", "email"))
+                .withPublicKeyUrls(List.of()),
+            new AuthorizerConfiguration().withPrincipalDomain(principalDomain));
+    CatalogPrincipal principal =
+        (CatalogPrincipal)
+            filter.getCatalogSecurityContext(authMechanism.getJWTToken()).getUserPrincipal();
+
+    User currentUser =
+        Entity.getUserRepository()
+            .getLoggedInUserByNameAndEmail(
+                null, principal.getName(), principal.getEmail(), EMPTY_FIELDS);
+
+    assertEquals(user.getId(), currentUser.getId());
+    assertEquals(user.getName(), principal.getName());
+    assertEquals(user.getEmail(), principal.getEmail());
+  }
 
   @Test
   void testEmailFirstUsersWithSameLocalPartStayUnique(TestNamespace ns) {
@@ -148,6 +203,22 @@ class EmailFirstIdentityIT {
         () -> Entity.getUserRepository().changeEmail(firstEmail, secondEmail, false));
     assertEquals(
         firstEmail, provision(firstEmail, "First").getEmail(), "Failed change must not mutate");
+  }
+
+  /** A dotless ı is not an i, so an address that only case-folds to the caller's is still taken. */
+  @Test
+  void testChangeEmailRejectsAnAddressThatOnlyFoldsToTheCurrentOne(TestNamespace ns) {
+    String suffix = ns.uniqueShortId().toLowerCase(Locale.ROOT);
+    String takenEmail = "admin" + suffix + "@x.test.om.org";
+    String lookalikeEmail = "adm\u0131n" + suffix + "@x.test.om.org";
+
+    User holder = provision(takenEmail, "Holder");
+    provision(lookalikeEmail, "Lookalike");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> Entity.getUserRepository().changeEmail(lookalikeEmail, takenEmail, false));
+    assertEquals(holder.getId(), provision(takenEmail, "Holder").getId());
   }
 
   @Test

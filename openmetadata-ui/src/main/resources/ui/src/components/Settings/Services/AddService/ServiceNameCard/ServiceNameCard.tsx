@@ -93,7 +93,7 @@ const ServiceNameCard = ({
           className="tw:mt-3"
           color="link-color"
           data-testid="add-description-button"
-          iconLeading={<Plus size={15} />}
+          iconLeading={Plus}
           size="sm"
           type="button"
           onPress={() => {

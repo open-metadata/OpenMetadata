@@ -12,11 +12,11 @@
  */
 
 import { Form, Select, SimpleModal } from '@openmetadata/ui-core-components';
-import { startCase } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { SeverityModalProps } from './Severity.interface';
+import { getSeverityLabel } from './Severity.utils';
 
 const NO_SEVERITY = 'none';
 
@@ -39,7 +39,7 @@ const SeverityModal = ({
     },
     ...Object.values(Severities).map((value) => ({
       id: value,
-      label: startCase(value),
+      label: getSeverityLabel(value, t),
     })),
   ];
 

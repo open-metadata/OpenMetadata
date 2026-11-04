@@ -98,12 +98,21 @@ describe('KnowledgePageListComponent permissions', () => {
     });
   });
 
-  it('renders the empty-state add button when view and create access are both granted', async () => {
+  it('keeps the empty-state title, documentation description and permitted add button', async () => {
     renderComponent({ ViewAll: true, Create: true });
 
     await waitFor(() => {
       expect(screen.getByTestId('add-knowledge-page-btn')).toBeInTheDocument();
     });
+
+    expect(
+      screen
+        .getByText(/message.adding-new-entity-is-easy-just-give-it-a-spin/)
+        .closest('.prose-typography')
+    ).toHaveClass('tw:text-sm', 'tw:font-semibold');
+    expect(
+      screen.getByText(/message.refer-to-our-doc/).closest('.prose-typography')
+    ).toHaveClass('tw:text-xs');
   });
 
   it('hides the empty-state add button when create access is denied', async () => {

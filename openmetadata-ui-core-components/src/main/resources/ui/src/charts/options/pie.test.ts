@@ -147,7 +147,7 @@ describe('buildPieOption', () => {
         .borderColor;
 
     expect(border(LIGHT_CHART_THEME)).toBe('#ffffff');
-    expect(border(DARK_CHART_THEME)).toBe('#0c0e12');
+    expect(border(DARK_CHART_THEME)).toBe('#22262f');
   });
 
   it('describes the chart with its slice names', () => {

@@ -17,9 +17,8 @@ import {
   TableCard,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { Reorder } from '@openmetadata/ui-core-components/icons';
+import { Policy, Reorder, Role } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -39,6 +38,7 @@ import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   ROUTES,
 } from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
@@ -55,6 +55,7 @@ import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
+import { Paging } from '../../../../../../generated/type/paging';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -79,6 +80,10 @@ import type { TabContribution } from '../../../../../../utils/ExtensionPointType
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../../../../utils/StringUtils';
 import { getTableExpandableConfig } from '../../../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../../../utils/TeamUtils';
 import {
@@ -86,12 +91,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import type {
-  CustomPropertyProps,
-  ExtentionEntitiesKeys,
-} from '../../../../../common/CustomPropertyTable/CustomPropertyTable.interface';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import type { ExpandableConfig } from '../../../../../common/Table/Table.interface';
@@ -103,11 +103,7 @@ import type { MembersTeamDetailProps } from './Members.types';
 import MembersAssetsTab from './MembersAssetsTab';
 import MembersInlineEntityTab from './MembersInlineEntityTab';
 import MembersTeamDescription from './MembersTeamDescription';
-import type {
-  MovedTeam,
-  RemoveEntity,
-  TeamTab,
-} from './MembersTeamDetail.types';
+import type { MovedTeam, TeamTab } from './MembersTeamDetail.types';
 import {
   getAvailableTabs,
   getChildTeamColumns,
@@ -129,19 +125,11 @@ import { useMembersTeamHeader } from './useMembersTeamHeader';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 
-// Lazy-loaded for the same reason TeamDetailsV1 does it: the custom-property
-// table pulls in the RJSF form stack, which no other team tab needs.
-const CustomPropertyTable = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../../../../../common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
-  )
-  // withSuspenseFallback erases the component's generic; restore it the same
-  // way TeamDetailsV1 does so `entityDetails` narrows to Team.
-) as <T extends ExtentionEntitiesKeys>(
-  props: CustomPropertyProps<T>
-) => JSX.Element;
+// Lazy-loaded: the per-type value editors pull in the SQL and rich-text
+// editors, which no other team tab needs.
+const CustomPropertiesList = withSuspenseFallback(
+  lazy(() => import('../../customProperties/CustomPropertiesList'))
+);
 
 // The global `.drag-icon { width: 6px }` LESS rule is tuned for the legacy 8×15
 // drag.svg; the square 20×20 Reorder icon collapses to ~6px there. An inline
@@ -177,7 +165,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { showModal } = useEntityExportModalProvider();
   const { currentUser } = useApplicationStore();
   const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
-  const { goTo } = useSettingsHash();
+  const { goTo, state: hashState, updateParams } = useSettingsHash();
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
@@ -194,8 +182,20 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     useState<EntityDetailsObjectInterface>();
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
+  // The team menu lives in the page header; the delete popover anchors to it.
+  const teamMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  // Sub-team paging is local, not `usePaging`: that hook keeps its page in URL
+  // params the Users tab already uses, and most team types show both tabs.
+  const [teamsPage, setTeamsPage] = useState(INITIAL_PAGING_VALUE);
+  const [teamsPageSize, setTeamsPageSize] = useState(PAGE_SIZE);
+  const [teamsPaging, setTeamsPaging] = useState<Paging>({ total: 0 });
+  // Kept apart from `teamsPaging`, whose total labels the tab with every sub-team.
+  const [teamsSearchTotal, setTeamsSearchTotal] = useState(0);
+  // Bumped on each sub-team fetch or search, so a slow response for an earlier
+  // page or term can't overwrite the rows of the request that followed it.
+  const latestChildTeamsFetchIdRef = useRef(0);
   const [usersSearchTerm, setUsersSearchTerm] = useState('');
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [movedTeam, setMovedTeam] = useState<MovedTeam>();
@@ -223,9 +223,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const [isDescEditing, setIsDescEditing] = useState(false);
   const [isDescSaving, setIsDescSaving] = useState(false);
   const descEditorRef = useRef<EditorContentRef>(null);
-
-  // Remove confirmation (user / role / policy)
-  const [removeEntity, setRemoveEntity] = useState<RemoveEntity>();
 
   // Team users tab (full user objects with roles)
   const [teamUsers, setTeamUsers] = useState<User[]>([]);
@@ -339,30 +336,107 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, []);
 
-  const fetchChildTeams = useCallback(async () => {
-    if (!team?.fullyQualifiedName) {
-      return;
-    }
-    setIsChildTeamsLoading(true);
-    void fetchTeamAssetCounts();
-    try {
-      const { data } = await getTeams({
-        parentTeam: team.fullyQualifiedName,
-        include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
-        fields: [
-          TabSpecificField.USER_COUNT,
-          TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.PARENTS,
-        ],
-      });
-      setChildTeams(withTeamChildrenPlaceholder(data));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setChildTeams([]);
-    } finally {
-      setIsChildTeamsLoading(false);
-    }
-  }, [team?.fullyQualifiedName, showDeletedTeam, fetchTeamAssetCounts]);
+  // The page number is set with its rows, never ahead of them: a second Next
+  // before the first page lands then repeats the same request instead of
+  // stepping from cursors that belong to the page before.
+  const fetchChildTeams = useCallback(
+    async (
+      cursor?: { after?: string; before?: string },
+      page: number = INITIAL_PAGING_VALUE
+    ) => {
+      if (!team?.fullyQualifiedName) {
+        return;
+      }
+      const fetchId = ++latestChildTeamsFetchIdRef.current;
+      setIsChildTeamsLoading(true);
+      void fetchTeamAssetCounts();
+      try {
+        const { data, paging } = await getTeams({
+          parentTeam: team.fullyQualifiedName,
+          include: showDeletedTeam ? Include.Deleted : Include.NonDeleted,
+          fields: [
+            TabSpecificField.USER_COUNT,
+            TabSpecificField.CHILDREN_COUNT,
+            TabSpecificField.PARENTS,
+          ],
+          limit: teamsPageSize,
+          ...cursor,
+        });
+        if (fetchId !== latestChildTeamsFetchIdRef.current) {
+          return;
+        }
+        setChildTeams(withTeamChildrenPlaceholder(data));
+        setTeamsPaging(paging);
+        setTeamsPage(page);
+      } catch (error) {
+        if (fetchId === latestChildTeamsFetchIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setChildTeams([]);
+        }
+      } finally {
+        if (fetchId === latestChildTeamsFetchIdRef.current) {
+          setIsChildTeamsLoading(false);
+        }
+      }
+    },
+    [
+      team?.fullyQualifiedName,
+      showDeletedTeam,
+      fetchTeamAssetCounts,
+      teamsPageSize,
+    ]
+  );
+
+  // Whole-list sub-team search on the team index, as the classic team page does:
+  // `/teams` has no name filter, so filtering one cursor page would miss
+  // sub-teams on other pages. `parents.id` keeps it to this team's direct
+  // children; number paging lets pageNumber drive the result page.
+  const searchChildTeams = useCallback(
+    async (query: string, page: number = INITIAL_PAGING_VALUE) => {
+      if (!team?.id) {
+        return;
+      }
+      const fetchId = ++latestChildTeamsFetchIdRef.current;
+      setIsChildTeamsLoading(true);
+      try {
+        const response = await searchQuery({
+          // Escaped and encoded: searchQuery puts the term into the URL as is,
+          // so a raw `&` or `#` would cut it short.
+          query: `${WILD_CARD_CHAR}${getEncodedFqn(
+            escapeESReservedCharacters(query)
+          )}${WILD_CARD_CHAR}`,
+          pageNumber: page,
+          pageSize: teamsPageSize,
+          searchIndex: SearchIndex.TEAM,
+          includeDeleted: showDeletedTeam,
+          queryFilter: {
+            query: { bool: { must: [{ term: { 'parents.id': team.id } }] } },
+          },
+        });
+        if (fetchId !== latestChildTeamsFetchIdRef.current) {
+          return;
+        }
+        setChildTeams(
+          withTeamChildrenPlaceholder(
+            response.hits.hits.map((hit) => hit._source as Team)
+          )
+        );
+        setTeamsSearchTotal(response.hits.total.value);
+        setTeamsPage(page);
+      } catch (error) {
+        if (fetchId === latestChildTeamsFetchIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setChildTeams([]);
+          setTeamsSearchTotal(0);
+        }
+      } finally {
+        if (fetchId === latestChildTeamsFetchIdRef.current) {
+          setIsChildTeamsLoading(false);
+        }
+      }
+    },
+    [team?.id, showDeletedTeam, teamsPageSize]
+  );
 
   // Lazy-load a row's sub-teams on first expand and graft them into the tree,
   // so the hierarchy is revealed without fetching every level upfront.
@@ -542,13 +616,17 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     []
   );
 
-  // Keyed on the stable team fqn + deleted toggle; the team object and the fetch
-  // callbacks change identity on every refresh, so they're read through refs here
-  // to avoid over-firing.
+  // Keyed on the stable team fqn + deleted toggle + page size; the team object and
+  // the fetch callbacks change identity on every refresh, so they're read through
+  // refs here to avoid over-firing. Restarts from the first page.
   const refetchChildTeams = useRef<() => void>(() => undefined);
   refetchChildTeams.current = () => {
     if (team) {
-      void fetchChildTeams();
+      if (searchTerm) {
+        void searchChildTeams(searchTerm);
+      } else {
+        void fetchChildTeams();
+      }
     }
   };
 
@@ -565,7 +643,46 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   useEffect(() => {
     refetchChildTeams.current();
-  }, [team?.fullyQualifiedName, showDeletedTeam]);
+  }, [team?.fullyQualifiedName, showDeletedTeam, teamsPageSize]);
+
+  // The search box debounces, so each settled term is one backend search; a
+  // cleared term goes back to the first cursor page.
+  const handleTeamsSearch = useCallback(
+    (term: string) => {
+      setSearchTerm(term);
+      if (term) {
+        void searchChildTeams(term);
+      } else {
+        void fetchChildTeams();
+      }
+    },
+    [searchChildTeams, fetchChildTeams]
+  );
+
+  const handleTeamsPageChange = (newPage: number) => {
+    if (newPage === teamsPage) {
+      return;
+    }
+
+    // A search pages by number, so any page can be jumped to.
+    if (searchTerm) {
+      void searchChildTeams(searchTerm, newPage);
+
+      return;
+    }
+
+    // Cursor paging only steps ±1, as on the Users tab; the pager is minimal
+    // while browsing, so no jump is offered.
+    const cursorType =
+      newPage > teamsPage ? CursorType.AFTER : CursorType.BEFORE;
+    const cursor = teamsPaging[cursorType];
+
+    if (Math.abs(newPage - teamsPage) !== 1 || !cursor) {
+      return;
+    }
+
+    void fetchChildTeams({ [cursorType]: cursor }, newPage);
+  };
 
   useEffect(() => {
     refetchTeamUsers.current();
@@ -599,13 +716,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [team, t]
   );
 
-  // CustomPropertyTable hands back the whole team with `extension` replaced;
-  // handlePatchTeam diffs it, so no separate extension-only path is needed.
+  // handlePatchTeam diffs the whole team, so an extension-only save is just a
+  // team with `extension` replaced.
   const handleTeamExtensionUpdate = useCallback(
-    async (updatedTeam: Team): Promise<void> => {
-      await handlePatchTeam(updatedTeam);
-    },
-    [handlePatchTeam]
+    async (extension: Record<string, unknown> | undefined) =>
+      team ? handlePatchTeam({ ...team, extension }) : false,
+    [team, handlePatchTeam]
   );
 
   const handleDescriptionSave = useCallback(async () => {
@@ -724,9 +840,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   }, [team, showModal]);
 
   const handleRemoveUser = useCallback(
-    async (userId: string) => {
+    async (userId: string): Promise<boolean> => {
       if (!team) {
-        return;
+        return false;
       }
       try {
         await deleteUserFromTeam(team.id, userId);
@@ -738,8 +854,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         // during a search doesn't drop the search term: the refetch runs the
         // backend search when a term is active, the page fetch otherwise.
         refetchTeamUsers.current();
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       }
     },
     [team, t, fetchTeam]
@@ -842,13 +962,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- patch needs the fetched id + diff
       await patchTeamDetail(data.id, patch);
       showSuccessToast(t('message.team-moved-success'));
-      void fetchChildTeams();
+      refetchChildTeams.current();
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.team-moved-error'));
     } finally {
       setMovedTeam(undefined);
     }
-  }, [movedTeam, team, t, fetchChildTeams]);
+  }, [movedTeam, team, t]);
 
   // DnD hooks for the team hierarchy table — index nested teams too so dragging
   // a lazily-loaded sub-team resolves its record.
@@ -930,47 +1050,32 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [handleTeamExpand]
   );
 
+  const teamName = team ? getEntityName(team) : '';
+
   const userColumns = useMemo(
     () =>
-      getUserColumns(t, canEditAll, goTo, (record) =>
-        setRemoveEntity({
-          ref: record as unknown as EntityReference,
-          kind: 'user',
-        })
+      getUserColumns(t, canEditAll, goTo, teamName, (record) =>
+        handleRemoveUser(record.id)
       ),
-    [t, canEditAll, goTo]
+    [t, canEditAll, goTo, teamName, handleRemoveUser]
   );
 
   const handleRemoveEntity = useCallback(
-    async (field: InlineAddField, ref: EntityReference) => {
+    async (field: InlineAddField, ref: EntityReference): Promise<boolean> => {
       if (!team) {
-        return;
+        return false;
       }
       setIsSavingInline(true);
-      await handlePatchTeam({
+      const ok = await handlePatchTeam({
         ...team,
         [field]: (team[field] ?? []).filter((e) => e.id !== ref.id),
       });
       setIsSavingInline(false);
+
+      return ok;
     },
     [team, handlePatchTeam]
   );
-
-  const handleConfirmRemove = useCallback(async () => {
-    if (!removeEntity) {
-      return;
-    }
-    const { ref, kind } = removeEntity;
-    if (kind === 'user') {
-      await handleRemoveUser(ref.id);
-    } else {
-      await handleRemoveEntity(
-        kind === 'role' ? 'defaultRoles' : 'policies',
-        ref
-      );
-    }
-    setRemoveEntity(undefined);
-  }, [removeEntity, handleRemoveUser, handleRemoveEntity]);
 
   const roleColumns = useMemo(
     () =>
@@ -979,10 +1084,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         canEditAll,
         isSavingInline,
         goTo,
-        (ref) => setRemoveEntity({ ref, kind: 'role' }),
+        teamName,
+        (ref) => handleRemoveEntity('defaultRoles', ref),
         (ref) => profileHash.role(ref.fullyQualifiedName ?? ref.name ?? '')
       ),
-    [t, canEditAll, isSavingInline, goTo]
+    [t, canEditAll, isSavingInline, goTo, teamName, handleRemoveEntity]
   );
 
   const policyColumns = useMemo(
@@ -992,10 +1098,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         canEditAll,
         isSavingInline,
         goTo,
-        (ref) => setRemoveEntity({ ref, kind: 'policy' }),
+        teamName,
+        (ref) => handleRemoveEntity('policies', ref),
         (ref) => profileHash.policy(ref.fullyQualifiedName ?? ref.name ?? '')
       ),
-    [t, canEditAll, isSavingInline, goTo]
+    [t, canEditAll, isSavingInline, goTo, teamName, handleRemoveEntity]
   );
 
   const availableTabs = useMemo(
@@ -1049,18 +1156,22 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   pluginTabKeysRef.current = pluginTabs.map((tab) => tab.key);
 
-  const filteredChildTeams = useMemo(() => {
-    if (!searchTerm) {
-      return childTeams;
+  // `#members/teams/<fqn>?activeTab=<key>` (`getSettingsLink(getTeamsWithFqnPath(fqn, {
+  // activeTab }))`) opens on that tab once it exists: built-in tabs follow the
+  // team type, contributed ones register after mount. Applied once per request
+  // so later tab clicks are not pulled back to it.
+  const requestedTab = hashState.params.activeTab;
+  const appliedTabRef = useRef<string>();
+  useEffect(() => {
+    if (
+      requestedTab &&
+      requestedTab !== appliedTabRef.current &&
+      allTabKeys.includes(requestedTab)
+    ) {
+      appliedTabRef.current = requestedTab;
+      setActiveTab(requestedTab);
     }
-    const lower = searchTerm.toLowerCase();
-
-    return childTeams.filter(
-      (ct) =>
-        ct.name.toLowerCase().includes(lower) ||
-        getEntityName(ct).toLowerCase().includes(lower)
-    );
-  }, [childTeams, searchTerm]);
+  }, [requestedTab, allTabKeys]);
 
   // The users rows are now sourced entirely from the backend: getUsers for the
   // paginated list and searchQuery (whole-team) when a search term is active,
@@ -1163,7 +1274,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     onRestoreTeam: handleRestoreTeam,
     onJoinTeam: handleJoinTeam,
     onLeaveTeam: handleLeaveTeam,
-    onDelete: () => setIsDeleting(true),
+    onDelete: () => setIsDeletePopoverOpen(true),
+    menuTriggerRef: teamMenuTriggerRef,
     onSetHeader,
   });
 
@@ -1184,17 +1296,35 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     if (activePluginTab) {
       const PluginTabComponent = activePluginTab.component;
 
-      return <PluginTabComponent teamId={team.id} />;
+      // Lets the tab promote one of its own routes to a panel-level sub-page,
+      // which replaces this team detail rather than nesting inside the tab.
+      return (
+        <PluginTabComponent
+          teamId={team.id}
+          onNavigate={(subPath?: string) =>
+            subPath
+              ? onNavigate({
+                  type: 'team-tab-subpage',
+                  fqn: team.fullyQualifiedName ?? fqn,
+                  teamId: team.id,
+                  key: activePluginTab.key,
+                  subPath,
+                })
+              : undefined
+          }
+        />
+      );
     }
 
     if (activeTab === CUSTOM_PROPERTIES) {
       return (
-        <CustomPropertyTable<EntityType.TEAM>
-          entityDetails={team}
+        <CustomPropertiesList
+          canEdit={Boolean(canEditCustomFields) && !team.deleted}
+          canView={Boolean(canViewCustomFields)}
+          cardVariant="default"
           entityType={EntityType.TEAM}
-          hasEditAccess={Boolean(canEditCustomFields) && !team.deleted}
-          hasPermission={Boolean(canViewCustomFields)}
-          onEntityUpdate={handleTeamExtensionUpdate}
+          extension={team.extension as Record<string, unknown> | undefined}
+          onUpdate={handleTeamExtensionUpdate}
         />
       );
     }
@@ -1217,18 +1347,23 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             childTeamExpandable={childTeamExpandable}
             dragAndDropHooks={dragAndDropHooks}
             draggedTeamRef={draggedTeamRef}
-            filteredChildTeams={filteredChildTeams}
+            filteredChildTeams={childTeams}
             isChildTeamsLoading={isChildTeamsLoading}
             isTableHovered={isTableHovered}
             movedTeam={movedTeam}
             searchTerm={searchTerm}
             showDeletedTeam={showDeletedTeam}
             team={team}
+            teamsPage={teamsPage}
+            teamsPageSize={teamsPageSize}
+            teamsTotal={searchTerm ? teamsSearchTotal : teamsPaging.total}
             onMoveConfirm={handleMoveConfirm}
             onNavigate={onNavigate}
-            onSearchTermChange={setSearchTerm}
+            onSearchTermChange={handleTeamsSearch}
             onSetMovedTeam={setMovedTeam}
             onShowDeletedTeamChange={setShowDeletedTeam}
+            onTeamsPageChange={handleTeamsPageChange}
+            onTeamsPageSizeChange={setTeamsPageSize}
           />
         );
       case 'users':
@@ -1275,6 +1410,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={roleColumns}
             dataSource={team.defaultRoles ?? []}
+            emptyIcon={<Role />}
             entityDescription={t('message.page-sub-header-for-roles')}
             entityLabel={t('label.role')}
             entityPluralLabel={t('label.role-plural')}
@@ -1300,6 +1436,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={policyColumns}
             dataSource={team.policies ?? []}
+            emptyIcon={<Policy />}
             entityDescription={t('message.page-sub-header-for-policies')}
             entityLabel={t('label.policy')}
             entityPluralLabel={t('label.policy-plural')}
@@ -1320,20 +1457,13 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   };
 
   return (
+    // The whole detail scrolls as one page, so a page of sub-teams shows in full
+    // instead of being squeezed into the space under the header.
     <Box
-      className="tw:flex-1 tw:h-full tw:min-h-0 tw:overflow-hidden"
+      className="tw:flex-1 tw:h-full tw:min-h-0 tw:overflow-y-auto"
       data-testid="team-detail"
       direction="col">
-      {/* Pinned header: info widgets + description. Capped at half the height and
-          scrollable so a long description can't push the tab table to zero
-          height; its cards never shrink (they would clip instead of scroll), and
-          the cap lifts while the editor is open so Save/Cancel stay in view. */}
-      <Box
-        className={classNames(
-          'tw:shrink-0 tw:overflow-y-auto tw:[&>*]:shrink-0',
-          !isDescEditing && 'tw:max-h-[50%]'
-        )}
-        direction="col">
+      <Box className="tw:shrink-0" direction="col" gap={4}>
         {/* Info widget section */}
         <MembersTeamInfoWidgets
           canEdit={canEditAll && !team.deleted}
@@ -1355,91 +1485,73 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       </Box>
 
       {/* Tabs */}
-      <Box className="tw:px-8 tw:flex-1 tw:min-h-0" direction="col">
-        {/* A plain block, NOT a `Box`: `Box` is display:flex, and inside a flex
-            container the tab content becomes a flex item that shrinks to the
-            container's height instead of overflowing it, so `overflow-auto`
-            never has anything to scroll (measured: scrollHeight stays equal to
-            clientHeight). A block container lets the content keep its natural
-            height and scroll. `min-h-0` keeps the flex parent from growing. */}
-        <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
-          <TableCard.Root
-            className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
-            size="compact">
-            <Tabs
-              selectedKey={activeTab}
-              onSelectionChange={(key: Key) => setActiveTab(String(key))}>
-              {/* -mb-px lays the tab underline over the row border so the divider
+      <Box className="tw:px-8 tw:py-4" direction="col">
+        <TableCard.Root
+          className="tw:rounded-xl tw:shadow-none"
+          size="compact"
+          variant="muted">
+          <Tabs
+            selectedKey={activeTab}
+            onSelectionChange={(key: Key) => {
+              setActiveTab(String(key));
+              // Record the tab in the hash, so a later link to another tab of
+              // this team changes the hash and is applied, as is Back/Forward.
+              updateParams({ activeTab: String(key) });
+            }}>
+            {/* -mb-px lays the tab underline over the row border so the divider
                   also runs under the actions. */}
-              <Box
-                align="center"
-                className="tw:border-b tw:border-secondary tw:pr-4"
-                direction="row"
-                gap={4}
-                justify="between">
-                <Tabs.List
-                  className="tw:-mb-px tw:px-4 tw:pt-3"
-                  size="sm"
-                  type="underline">
-                  {allTabKeys.map((tab) => {
-                    const plugin = pluginTabs.find((item) => item.key === tab);
+            <Box
+              align="center"
+              className="tw:border-b tw:border-secondary tw:pr-4"
+              direction="row"
+              gap={4}
+              justify="between">
+              <Tabs.List
+                className="tw:-mb-px tw:px-4 tw:pt-3"
+                size="sm"
+                type="underline">
+                {allTabKeys.map((tab) => {
+                  const plugin = pluginTabs.find((item) => item.key === tab);
 
-                    return (
-                      <Tabs.Item id={tab} key={tab}>
-                        {plugin
-                          ? plugin.label
-                          : getTabLabel(
-                              tab as TeamTab,
-                              t,
-                              team,
-                              childTeams.length,
-                              assetCount
-                            )}
-                      </Tabs.Item>
-                    );
-                  })}
-                </Tabs.List>
-              </Box>
-            </Tabs>
-            {TABLE_TABS.has(activeTab) ? (
-              renderActiveTab()
-            ) : (
-              <Box className="tw:p-4" direction="col">
-                {renderActiveTab()}
-              </Box>
-            )}
-          </TableCard.Root>
-        </div>
+                  return (
+                    <Tabs.Item id={tab} key={tab}>
+                      {plugin
+                        ? plugin.label
+                        : getTabLabel(
+                            tab as TeamTab,
+                            t,
+                            team,
+                            teamsPaging.total,
+                            assetCount
+                          )}
+                    </Tabs.Item>
+                  );
+                })}
+              </Tabs.List>
+            </Box>
+          </Tabs>
+          {TABLE_TABS.has(activeTab) ? (
+            renderActiveTab()
+          ) : (
+            <Box className="tw:p-4" direction="col">
+              {renderActiveTab()}
+            </Box>
+          )}
+        </TableCard.Root>
       </Box>
 
-      {isDeleting && (
-        <DeleteEntityModal
-          isRecursiveDelete
-          afterDeleteAction={() => onNavigate({ type: 'teams' })}
-          allowSoftDelete={!team.deleted}
-          entityId={team.id}
-          entityName={getEntityName(team)}
-          entityType={EntityType.TEAM}
-          visible={isDeleting}
-          onCancel={() => setIsDeleting(false)}
-        />
-      )}
-
-      {removeEntity && (
-        <DeleteModal
-          open
-          entityTitle={getEntityName(removeEntity.ref)}
-          message={t(
-            'message.are-you-sure-you-want-to-remove-child-from-parent',
-            {
-              child: getEntityName(removeEntity.ref),
-              parent: getEntityName(team),
-            }
-          )}
-          onCancel={() => setRemoveEntity(undefined)}
-          onDelete={handleConfirmRemove}
-        />
-      )}
+      <DeleteEntityPopover
+        isRecursiveDelete
+        afterDeleteAction={() => onNavigate({ type: 'teams' })}
+        allowSoftDelete={!team.deleted}
+        data-testid="delete-team-popover"
+        entityId={team.id}
+        entityName={teamName}
+        entityType={EntityType.TEAM}
+        isOpen={isDeletePopoverOpen}
+        triggerRef={teamMenuTriggerRef}
+        onOpenChange={setIsDeletePopoverOpen}
+      />
     </Box>
   );
 };

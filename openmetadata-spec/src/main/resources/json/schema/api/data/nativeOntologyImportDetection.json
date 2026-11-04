@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyImportDetection.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NativeOntologyImportDetection",
+  "description": "Format the server would parse a native ontology import with.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportDetection",
+  "properties": {
+    "detectedFormat": {
+      "description": "Absent when neither the content nor the file name matches a supported format.",
+      "$ref": "previewNativeOntologyImport.json#/definitions/format"
+    }
+  },
+  "additionalProperties": false
+}

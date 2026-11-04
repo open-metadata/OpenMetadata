@@ -6,7 +6,9 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -17,6 +19,40 @@ public class UriUtils {
 
   /** RFC 9207 authorization response issuer identifier parameter. */
   public static final String ISSUER_PARAM = "iss";
+
+  // URI.getHost() keeps the brackets of an IPv6 literal.
+  private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "[::1]");
+  private static final Set<String> WEB_SCHEMES = Set.of("http", "https");
+
+  public static boolean isLoopback(URI uri) {
+    return uri.getHost() != null && LOOPBACK_HOSTS.contains(uri.getHost());
+  }
+
+  /**
+   * True for an http(s) URI on another machine. Any client can register one, so an OAuth error is
+   * never redirected to it automatically: the user gets a page with a link instead.
+   * ADR:2026-11-02-mcp-authorization-errors-reach-a-remote-callback-through-a-link
+   */
+  public static boolean isRemoteWebUri(URI uri) {
+    String scheme = uri.getScheme();
+    return scheme != null
+        && WEB_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))
+        && !isLoopback(uri);
+  }
+
+  /**
+   * What a page shows as the place the browser will be sent to. The client name is chosen by
+   * whoever registered the client, so this is the one thing on the page the user can check.
+   * Userinfo, path and query are left out because they can be made to look like a host. The raw
+   * authority is used rather than {@link URI#getHost()}, which is null for hosts such as {@code
+   * a_b.example} that a browser still navigates to.
+   */
+  public static String describeRedirectTarget(URI redirectUri) {
+    final String authority = redirectUri.getRawAuthority();
+    final String hostAndPort =
+        authority == null ? "" : "//" + authority.substring(authority.lastIndexOf('@') + 1);
+    return redirectUri.getScheme() + ":" + hostAndPort;
+  }
 
   /**
    * Constructs a redirect URI with query parameters.
@@ -161,7 +197,7 @@ public class UriUtils {
    * The MCP base URL as configured may end in a slash, the way BASE_PATH is written. Every MCP
    * OAuth URL is built as baseUrl + "/mcp/...", so the slash has to go or it doubles.
    */
-  public static String withoutTrailingSlash(String url) {
+  public static String withoutTrailingSlash(final String url) {
     return url != null && url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
   }
 }

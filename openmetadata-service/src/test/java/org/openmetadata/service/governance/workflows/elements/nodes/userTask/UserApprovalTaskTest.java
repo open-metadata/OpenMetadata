@@ -15,6 +15,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -31,6 +32,7 @@ import org.flowable.bpmn.model.UserTask;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.type.TaskCategory;
@@ -160,6 +162,45 @@ class UserApprovalTaskTest {
     assertEquals(List.of("Review.decisionGateway"), targetsOf(subProcess, "Review.expireOnTimer"));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"accessDuration;x", "has space", "a'z", "${x}", "T(a.B)"})
+  void rejectsDurationVariableThatIsNotABareVariableReference(String badVariable) {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> buildTaskFromTimer(USER_TASK_WITH_DURATION_TIMER, "accessDuration", badVariable));
+    assertTrue(exception.getMessage().contains("durationVariable"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"accessExpirationDate;x", "a\\b", "a.1"})
+  void rejectsDateVariableThatIsNotABareVariableReference(String badVariable) {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> buildTaskFromTimer(USER_TASK_WITH_DATE_TIMER, "accessExpirationDate", badVariable));
+  }
+
+  @Test
+  void rejectsNodeNameThatIsNotABareVariableReference() {
+    UserApprovalTaskDefinition definition =
+        JsonUtils.readValue(
+            USER_TASK_WITH_DATE_TIMER.replace("\"Review\"", "\"a'z\""),
+            UserApprovalTaskDefinition.class);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new UserApprovalTask(definition, new WorkflowConfiguration()));
+    assertTrue(exception.getMessage().contains("a'z"));
+  }
+
+  private static void buildTaskFromTimer(
+      String fixture, String benignVariable, String badVariable) {
+    UserApprovalTaskDefinition definition =
+        JsonUtils.readValue(
+            fixture.replace(benignVariable, badVariable), UserApprovalTaskDefinition.class);
+    new UserApprovalTask(definition, new WorkflowConfiguration());
+  }
+
   private static SubProcess build(boolean holdsChanges) {
     UserApprovalTaskDefinition definition =
         JsonUtils.readValue(USER_TASK, UserApprovalTaskDefinition.class);
@@ -241,4 +282,10 @@ class UserApprovalTaskTest {
         "inputNamespaceMap": {"relatedEntity": "global"}
       }
       """;
+
+  // The date-timer fixture with its variable keyed as a relative duration instead.
+  private static final String USER_TASK_WITH_DURATION_TIMER =
+      USER_TASK_WITH_DATE_TIMER
+          .replace("\"accessExpirationDate\"", "\"accessDuration\"")
+          .replace("\"dateVariable\"", "\"durationVariable\"");
 }

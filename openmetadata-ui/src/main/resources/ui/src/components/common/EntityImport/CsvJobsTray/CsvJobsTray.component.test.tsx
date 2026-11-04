@@ -50,6 +50,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+  ButtonUtility: ({
+    'data-testid': testId,
+    tooltip,
+    onClick,
+  }: {
+    'data-testid'?: string;
+    tooltip?: string;
+    onClick?: () => void;
+  }) => (
+    <button
+      aria-label={tooltip}
+      data-testid={testId}
+      type="button"
+      onClick={onClick}
+    />
+  ),
   // ToastUtils pulls `toast` from this package, so an incomplete mock makes any
   // error path throw instead of reporting.
   toast: {
@@ -435,6 +451,9 @@ describe('CsvJobsTray', () => {
     );
 
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect((createObjectURL.mock.calls[0][0] as Blob).type).toBe(
+      'text/csv;charset=utf-8'
+    );
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-job');
   });
 
@@ -488,9 +507,7 @@ describe('CsvJobsTray', () => {
       await screen.findByRole('button', { name: 'label.download' })
     ).toBeInTheDocument();
 
-    fireEvent.click(
-      document.querySelector('.csv-jobs-tray-close') as HTMLElement
-    );
+    fireEvent.click(screen.getByTestId('csv-jobs-tray-close'));
 
     await waitFor(() =>
       expect(

@@ -27,7 +27,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -355,9 +355,12 @@ const AppInstall = () => {
 
   if (!appData) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('application', fqn)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError('application', fqn)}
+        />
+      </div>
     );
   }
 

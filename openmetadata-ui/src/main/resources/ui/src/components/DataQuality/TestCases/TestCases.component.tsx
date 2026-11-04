@@ -22,13 +22,12 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
 import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 import { ClassicTestCaseFilter } from './ClassicTestCaseFilter';
@@ -102,10 +101,13 @@ export const TestCases = () => {
       showDeleted,
     });
 
+  // Shrinkable to the label plus a min-w-24 control, so the default filters share one row on laptop widths.
+  const flexibleFilterWidth = 'tw:min-w-min tw:max-w-80 tw:flex-1';
   const filterLayout = [
+    { key: TEST_CASE_FILTERS.lastRun, testId: 'last-run-filter' },
     {
       key: TEST_CASE_FILTERS.table,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'table-select-filter',
     },
     {
@@ -120,13 +122,12 @@ export const TestCases = () => {
     },
     {
       key: TEST_CASE_FILTERS.status,
-      width: 'tw:w-64',
+      width: 'tw:min-w-min tw:max-w-64 tw:flex-1',
       testId: 'status-select-filter',
     },
-    { key: TEST_CASE_FILTERS.lastRun, testId: 'last-run-filter' },
     {
       key: TEST_CASE_FILTERS.tags,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'tags-select-filter',
     },
     {
@@ -136,30 +137,31 @@ export const TestCases = () => {
     },
     {
       key: TEST_CASE_FILTERS.service,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'service-select-filter',
     },
     {
       key: TEST_CASE_FILTERS.dimension,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'dimension-select-filter',
     },
     {
       key: TEST_CASE_FILTERS.dataProduct,
-      width: 'tw:w-80',
+      width: flexibleFilterWidth,
       testId: 'data-product-select-filter',
     },
   ];
 
   if (!testCaseFlags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-case'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-case'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -174,14 +176,13 @@ export const TestCases = () => {
           align="center"
           className="layout-space layout-space-horizontal w-full"
           gap={4}
-          itemClassName="layout-space-item"
           wrap="wrap">
           <Dropdown.Root>
             <Button
               className="tw:text-brand-secondary tw:after:outline-brand"
               color="secondary"
               data-testid="advanced-filter"
-              iconTrailing={<ChevronRight size={14} />}
+              iconTrailing={ChevronRight}
               size="sm">
               {t('label.advanced')}
             </Button>
