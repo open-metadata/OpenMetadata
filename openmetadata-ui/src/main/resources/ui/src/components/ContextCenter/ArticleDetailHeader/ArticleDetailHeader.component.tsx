@@ -55,7 +55,6 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { isKnowledgePageFullWidthTab } from '../../../constants/KnowledgeCenter.constant';
 import { EntityType } from '../../../enums/entity.enum';
@@ -400,23 +399,15 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             </TooltipTrigger>
           </Tooltip>
 
-          {owners.length > 0 ? (
-            <div className="article-detail-owner-label">
-              <Owner
-                hasPermission={false}
-                isCompactView={false}
-                owners={owners}
-                showLabel={false}
-              />
-            </div>
-          ) : (
-            <Typography
-              className="tw:text-quaternary"
-              size="text-sm"
-              weight="regular">
-              {NO_DATA_PLACEHOLDER}
-            </Typography>
-          )}
+          <div className="article-detail-owner-label">
+            <Owner
+              hasPermission={false}
+              isCompactView={false}
+              owners={owners}
+              placeholderVariant="cell"
+              showLabel={false}
+            />
+          </div>
           {canEditOwners && (
             <UserTeamSelectableList
               hasPermission={canEditOwners}
