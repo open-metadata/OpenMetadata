@@ -524,12 +524,14 @@ describe('useHashPagingParams', () => {
     });
   });
 
-  it('accepts any size when the caller declares no options', () => {
-    globalThis.location.hash = '#notification/events?page=2&pageSize=10';
+  it('puts a caller that declares no options on the list scale', () => {
+    globalThis.location.hash =
+      '#notification/events?page=2&pageSize=24&cursorType=after&cursor=abc';
 
     const { result } = renderPaging();
 
-    expect(result.current.paging.page).toBe(2);
-    expect(result.current.paging.pageSize).toBe(10);
+    expect(result.current.paging.page).toBe(1);
+    expect(result.current.paging.cursor).toBeUndefined();
+    expect(result.current.paging.resolvedPageSize).toBe(15);
   });
 });

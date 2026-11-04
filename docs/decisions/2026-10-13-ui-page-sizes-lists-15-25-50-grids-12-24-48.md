@@ -20,7 +20,7 @@ matching entry.
 - A paged **card grid** defaults to 12 and offers 12/24/48 (`GRID_PAGE_SIZE_OPTIONS`,
   `GRID_PAGE_SIZE_BASE`), so rows of 2, 3 or 4 cards fill evenly.
 - A page with a table/card toggle takes its scale from the view it is in
-  (`getViewPageSizeOptions` / `getViewPageSize` in `utils/PaginationUtils.ts`)
+  (`getViewPageSizeOptions` in `utils/PaginationUtils.ts`)
   and returns to page 1 when the view changes.
 - A grid page passes `GRID_PAGE_SIZE_OPTIONS` to `usePaging` so a list-scale size from the shared
   URL is reconciled to its own scale.

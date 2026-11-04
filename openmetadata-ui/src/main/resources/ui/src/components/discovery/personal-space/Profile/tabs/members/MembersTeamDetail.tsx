@@ -55,8 +55,8 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
 import { Paging } from '../../../../../../generated/type/paging';
-import { usePageSizeState } from '../../../../../../hooks/paging/usePageSizeState';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
@@ -189,7 +189,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   // Sub-team paging is local, not `usePaging`: that hook keeps its page in URL
   // params the Users tab already uses, and most team types show both tabs.
   const [teamsPage, setTeamsPage] = useState(INITIAL_PAGING_VALUE);
-  const [teamsPageSize, setTeamsPageSize] = usePageSizeState();
+  const { savedPageSize } = useSavedPageSize();
+  const [teamsPageSize, setTeamsPageSize] = useState(savedPageSize);
   const [teamsPaging, setTeamsPaging] = useState<Paging>({ total: 0 });
   // Kept apart from `teamsPaging`, whose total labels the tab with every sub-team.
   const [teamsSearchTotal, setTeamsSearchTotal] = useState(0);

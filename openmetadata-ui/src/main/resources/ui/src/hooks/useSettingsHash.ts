@@ -24,6 +24,7 @@ import {
   useNavigate,
   useNavigationType,
 } from 'react-router-dom';
+import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
 import { useSavedPageSize } from './paging/useSavedPageSize';
 
@@ -359,13 +360,11 @@ interface HashPaging {
 
 function readHashPaging(
   params: Record<string, string | undefined>,
-  pageSizeOptions?: number[]
+  pageSizeOptions: number[]
 ): HashPaging {
   const requestedPageSize = Number(params.pageSize) || undefined;
   const isPageSizeRejected = Boolean(
-    requestedPageSize &&
-      pageSizeOptions &&
-      !pageSizeOptions.includes(requestedPageSize)
+    requestedPageSize && !pageSizeOptions.includes(requestedPageSize)
   );
 
   if (isPageSizeRejected) {
@@ -385,7 +384,9 @@ function readHashPaging(
  * Hook to read/write pagination params from the hash.
  * Drop-in replacement for usePaging when inside the settings modal.
  */
-export const useHashPagingParams = (pageSizeOptions?: number[]) => {
+export const useHashPagingParams = (
+  pageSizeOptions: number[] = LIST_PAGE_SIZE_OPTIONS
+) => {
   const { state, updateParams } = useSettingsHash();
   const { page, cursorType, cursor, pageSize, isPageSizeRejected } =
     readHashPaging(state.params, pageSizeOptions);

@@ -296,6 +296,35 @@ describe('usePaging (integration)', () => {
       expect(fetches[fetches.length - 1]).toBe(50);
     });
 
+    it('changes pagingCursor once per saved-size change and once per scale change', () => {
+      saveListSize(15);
+      const fetches: number[] = [];
+      const { rerender } = renderHook(
+        ({ options }: { options: number[] }) => {
+          const paging = usePaging(undefined, options);
+          useEffect(() => {
+            fetches.push(Number(paging.pagingCursor.pageSize));
+          }, [paging.pagingCursor]);
+
+          return paging;
+        },
+        {
+          initialProps: { options: [15, 25, 50] },
+          wrapper: wrapperAt('/service'),
+        }
+      );
+      fetches.length = 0;
+
+      saveListSize(50);
+
+      expect(fetches).toEqual([50]);
+
+      fetches.length = 0;
+      rerender({ options: GRID_SIZES });
+
+      expect(fetches).toEqual([12]);
+    });
+
     it('keeps the page when the URL carries its own size', () => {
       saveListSize(15);
       const { result } = renderTracked('/schema?currentPage=3&pageSize=25');

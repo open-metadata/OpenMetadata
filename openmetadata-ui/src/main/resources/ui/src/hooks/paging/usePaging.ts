@@ -186,20 +186,16 @@ export const usePaging = (
     setStoredPageSize(resolvedPageSize);
   }
 
+  const cursorType = isUrlPagingStale ? undefined : urlParams.cursorType;
+  const cursorValue = isUrlPagingStale ? undefined : urlParams.cursorValue;
   const pagingCursorUrlParams: PagingUrlParams = useMemo(
     () => ({
-      cursorType: isUrlPagingStale ? undefined : urlParams.cursorType,
-      cursorValue: isUrlPagingStale ? undefined : urlParams.cursorValue,
+      cursorType,
+      cursorValue,
       currentPage: String(urlCurrentPage),
       pageSize: resolvedPageSize,
     }),
-    [
-      isUrlPagingStale,
-      urlParams.cursorType,
-      urlParams.cursorValue,
-      urlCurrentPage,
-      resolvedPageSize,
-    ]
+    [cursorType, cursorValue, urlCurrentPage, resolvedPageSize]
   );
 
   const handlePageSize = useCallback(

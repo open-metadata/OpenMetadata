@@ -1061,7 +1061,7 @@ describe('MetricListPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('expands group banners once per page scope without expanding metric variants', async () => {
+  it('expands group banners once per page scope without expanding metric variants or overriding collapse', async () => {
     const groupRow = {
       id: 'group:group-1',
       isGroupRow: true,
@@ -1083,7 +1083,7 @@ describe('MetricListPage', () => {
         { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
       ],
     });
-    renderPage();
+    const { rerender } = renderPage();
 
     await waitFor(() =>
       expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1)
@@ -1109,6 +1109,14 @@ describe('MetricListPage', () => {
         { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
       ],
     });
+    rerender();
+
+    expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('metric-group-profitability')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+
     // Card view pages at a different size, and useMetricHierarchy clears expansion when the size
     // changes, so the default expansion is applied again for the new scope.
     fireEvent.click(cardViewButton);

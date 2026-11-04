@@ -22,6 +22,7 @@ import React, { ReactElement, ReactNode, useCallback, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
+import { usePersistentStorage } from '../../../../../../hooks/currentUserStore/useCurrentUserStore';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
@@ -139,9 +140,14 @@ jest.mock('../../../../../../rest/searchAPI', () => ({
     .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
 }));
 
-jest.mock('../../../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'me', teams: [] } }),
-}));
+jest.mock('../../../../../../hooks/useApplicationStore', () => {
+  const state = { currentUser: { id: 'me', name: 'me', teams: [] } };
+
+  return {
+    useApplicationStore: (selector?: (store: typeof state) => unknown) =>
+      selector ? selector(state) : state,
+  };
+});
 
 jest.mock(
   '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -800,6 +806,9 @@ describe('MembersTeamDetail', () => {
       expect(
         (getTeams as jest.Mock).mock.calls.at(-1)[0].after
       ).toBeUndefined();
+      expect(
+        usePersistentStorage.getState().getUserPreference('me').globalPageSize
+      ).toBe(15);
     });
 
     it('escapes and encodes the search term for the URL', async () => {
