@@ -40,6 +40,7 @@ interface FakeGraph {
 }
 
 const mockGraphs: FakeGraph[] = [];
+let mockViewportShift = 0;
 
 jest.mock('@antv/g6', () => {
   const graphEvents = {
@@ -100,6 +101,10 @@ jest.mock('@antv/g6', () => {
                 return [style?.x, style?.y];
               },
               getViewportByCanvas: (point: number[]) => point,
+              getClientByCanvas: (point: number[]) => [
+                point[0] + mockViewportShift,
+                point[1],
+              ],
               getZoom: () => 1,
               getCanvasCenter: () => [0, 0],
               on: (name: string, listener: (event: unknown) => void) => {
@@ -259,6 +264,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   mockGraphs.length = 0;
+  mockViewportShift = 0;
   resizeCallbacks.length = 0;
   containerSize.width = 1200;
   containerSize.height = 800;
@@ -416,5 +422,25 @@ describe('studio graph viewport across a hidden canvas', () => {
     });
 
     expect(mockGraphs[0].fitView).not.toHaveBeenCalled();
+  });
+});
+
+describe('studio graph click targets after the canvas narrows', () => {
+  it('republishes the node centers when the concept panel resizes the canvas', async () => {
+    await renderSettledCanvas();
+
+    mockViewportShift = -125;
+    containerSize.width = 900;
+    resizeCallbacks[0]();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      JSON.parse(containerRef.current.dataset.nodePositions ?? '{}')
+    ).toEqual({
+      a: { x: 175, y: 100 },
+      b: { x: 575, y: 300 },
+    });
   });
 });
