@@ -1307,6 +1307,7 @@ class TestBigqueryDeltaLakeDetection:
 
     def setup_method(self):
         self._patchers = [
+            patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.list_all_entities", return_value=[]),
             patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"),
             patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"),
             patch(

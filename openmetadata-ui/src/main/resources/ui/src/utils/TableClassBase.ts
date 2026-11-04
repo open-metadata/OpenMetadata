@@ -71,6 +71,7 @@ type TableWidgetKeys =
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
   | DetailPageWidgetKeys.TABLE_CONSTRAINTS
   | DetailPageWidgetKeys.PARTITIONED_KEYS
+  | DetailPageWidgetKeys.TABLE_SHARDING
   | DetailPageWidgetKeys.TABLE_ALIASES
   | DetailPageWidgetKeys.ASSET_HEALTH;
 
@@ -86,6 +87,7 @@ const SIZEABLE_WIDGET_KEYS: TableWidgetKeys[] = [
   DetailPageWidgetKeys.CUSTOM_PROPERTIES,
   DetailPageWidgetKeys.TABLE_CONSTRAINTS,
   DetailPageWidgetKeys.PARTITIONED_KEYS,
+  DetailPageWidgetKeys.TABLE_SHARDING,
   DetailPageWidgetKeys.TABLE_ALIASES,
   DetailPageWidgetKeys.ASSET_HEALTH,
 ];
@@ -105,6 +107,7 @@ class TableClassBase {
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
       [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
       [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
+      [DetailPageWidgetKeys.TABLE_SHARDING]: 2,
       [DetailPageWidgetKeys.TABLE_ALIASES]: 2,
       [DetailPageWidgetKeys.ASSET_HEALTH]: 3,
     };
@@ -234,6 +237,14 @@ class TableClassBase {
         static: false,
       },
       {
+        h: 2,
+        i: DetailPageWidgetKeys.TABLE_SHARDING,
+        w: 2,
+        x: 6,
+        y: 10,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.PARTITIONED_KEYS],
         i: DetailPageWidgetKeys.PARTITIONED_KEYS,
         w: 2,
@@ -324,6 +335,11 @@ class TableClassBase {
         data: {
           gridSizes: ['small'] as GridSizes[],
         },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SHARDING,
+        name: i18n.t('label.sharding'),
+        data: { gridSizes: ['small'] as GridSizes[] },
       },
       {
         fullyQualifiedName: DetailPageWidgetKeys.PARTITIONED_KEYS,
