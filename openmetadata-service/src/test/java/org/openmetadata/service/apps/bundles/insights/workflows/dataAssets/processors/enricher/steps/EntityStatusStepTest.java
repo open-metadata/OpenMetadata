@@ -58,8 +58,6 @@ class EntityStatusStepTest {
             entity,
             entityMap,
             Map.of(),
-            0L,
-            0L,
             new EnrichmentContext("table", List.of(), 0L, 0L),
             VersionShape.LATEST_HYDRATED);
     step.apply(target);

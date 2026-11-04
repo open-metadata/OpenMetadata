@@ -14,6 +14,8 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.charset.StandardCharsets;
@@ -42,6 +44,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -2481,6 +2484,165 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     return new ScopedOrderTasks(assigned, created);
   }
 
+  @Test
+  void testDescriptionTaskAboutAnotherUserNeedsEditAllOnThatUser(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    String userName = "profileowner_" + UUID.randomUUID().toString().substring(0, 8);
+    User profileOwner =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.om.org")
+                    .withDescription("Original profile text"));
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("user-profile-description"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(entityLink("user", profileOwner.getFullyQualifiedName()))
+                    .withAssignees(List.of(shared.USER2.getFullyQualifiedName()))
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withCurrentDescription(profileOwner.getDescription())
+                            .withNewDescription("Profile text from a task")));
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.user2Client()
+                .tasks()
+                .resolve(
+                    task.getId().toString(),
+                    new ResolveTask()
+                        .withResolutionType(TaskResolutionType.Approved)
+                        .withNewValue("Profile text from a task")));
+
+    assertEquals(
+        TaskEntityStatus.Open,
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+    assertEquals(
+        "Original profile text",
+        SdkClients.adminClient().users().get(profileOwner.getId().toString()).getDescription());
+  }
+
+  @Test
+  void testResolvePayloadNamingDifferentAssigneesNeedsReassignTask(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String newDescription = "Description from a two-assignee task - " + ns.shortPrefix();
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "payload-assignees", table)
+                    .withAssignees(
+                        List.of(
+                            shared.USER2.getFullyQualifiedName(),
+                            shared.USER3.getFullyQualifiedName()))
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withCurrentDescription(table.getDescription())
+                            .withNewDescription(newDescription)));
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            SdkClients.user2Client()
+                .tasks()
+                .resolve(
+                    task.getId().toString(),
+                    approvalWithAssignees(newDescription, List.of(shared.USER2))));
+
+    Task unchanged = SdkClients.adminClient().tasks().get(task.getId().toString(), "assignees");
+    assertEquals(TaskEntityStatus.Open, unchanged.getStatus());
+    assertEquals(2, unchanged.getAssignees().size());
+
+    Task resolved =
+        SdkClients.user2Client()
+            .tasks()
+            .resolve(
+                task.getId().toString(),
+                approvalWithAssignees(newDescription, List.of(shared.USER3, shared.USER2)));
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+  }
+
+  @Test
+  void testTaskTypeIsRefusedAndWorkflowBindingIsKeptOnPatch(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Task task =
+        SdkClients.user1Client()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "binding-fields", table)
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withNewDescription("First proposal")));
+
+    for (String patch :
+        List.of(
+            "[{\"op\":\"replace\",\"path\":\"/type\",\"value\":\"TagUpdate\"}]",
+            "[{\"op\":\"replace\",\"path\":\"/category\",\"value\":\"Approval\"}]")) {
+      InvalidRequestException refused =
+          assertThrows(InvalidRequestException.class, () -> patchTaskAsUser1(task, patch), patch);
+      assertTrue(
+          refused.getMessage().contains("cannot be changed via PATCH"), refused.getMessage());
+    }
+
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    UUID workflowInstanceId =
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getWorkflowInstanceId();
+    patchTaskAsUser1(
+        task,
+        ("[{\"op\":\"add\",\"path\":\"/payload/changeRequestId\",\"value\":\"%s\"},"
+                + "{\"op\":\"remove\",\"path\":\"/workflowInstanceId\"},"
+                + "{\"op\":\"replace\",\"path\":\"/payload/newDescription\",\"value\":\"Second proposal\"}]")
+            .formatted(UUID.randomUUID()));
+
+    Task stored = SdkClients.adminClient().tasks().get(task.getId().toString(), "payload");
+    JsonNode storedPayload = JsonUtils.valueToTree(stored.getPayload());
+    assertEquals(TaskEntityType.DescriptionUpdate, stored.getType());
+    assertEquals(workflowInstanceId, stored.getWorkflowInstanceId());
+    assertTrue(storedPayload.path("changeRequestId").isMissingNode(), storedPayload.toString());
+    assertEquals("Second proposal", storedPayload.path("newDescription").asText());
+  }
+
+  private static ResolveTask approvalWithAssignees(String newValue, List<User> assignees) {
+    List<Map<String, String>> references =
+        assignees.stream()
+            .map(
+                user ->
+                    Map.of("id", user.getId().toString(), "type", "user", "name", user.getName()))
+            .toList();
+    return new ResolveTask()
+        .withResolutionType(TaskResolutionType.Approved)
+        .withNewValue(newValue)
+        .withPayload(JsonUtils.convertValue(Map.of("assignees", references), Payload.class));
+  }
+
+  private static void patchTaskAsUser1(Task task, String patch) {
+    SdkClients.user1Client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/tasks/" + task.getId(),
+            patch,
+            org.openmetadata.sdk.network.RequestOptions.builder()
+                .header("Content-Type", "application/json-patch+json")
+                .build());
+  }
+
   private Task createTaskAssignedToUser1(TestNamespace ns, String name, Table table) {
     final String user1 = SharedEntities.get().USER1.getFullyQualifiedName();
     return SdkClients.adminClient()
@@ -2935,36 +3097,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         SdkClients.adminClient().tables().getVersionList(updatedTable.getId()).getVersions().size(),
         "Version history must contain both 0.1 (baseline) and the post-TagUpdate bump");
 
-    JsonNode events;
-    try {
-      String eventsJson =
-          SdkClients.adminClient()
-              .getHttpClient()
-              .executeForString(
-                  HttpMethod.GET,
-                  "/v1/events",
-                  null,
-                  RequestOptions.builder()
-                      .queryParam("entityUpdated", "table")
-                      .queryParam("timestamp", Long.toString(resolveStartTs))
-                      .queryParam("limit", "1000")
-                      .build());
-      events = JsonUtils.readTree(eventsJson);
-    } catch (Exception e) {
-      throw new AssertionError("Failed to fetch /v1/events", e);
-    }
-    boolean entityUpdatedEmitted = false;
-    for (JsonNode event : events.path("data")) {
-      if (table.getFullyQualifiedName().equals(event.path("entityFullyQualifiedName").asText())
-          && "entityUpdated".equals(event.path("eventType").asText())) {
-        entityUpdatedEmitted = true;
-        break;
-      }
-    }
-    assertTrue(
-        entityUpdatedEmitted,
-        "Column-level TagUpdate must emit an entityUpdated change event for the parent table; got: "
-            + events.path("data"));
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolveStartTs);
 
     // Search by id (single UUID term) instead of fullyQualifiedName phrase — long dotted FQNs
     // can inflate the boolean-clause count under parallel test load and trip the shard-level
@@ -3036,6 +3169,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withNewValue(newDescription)
             .withComment("Approved - apply description");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -3047,6 +3181,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         newDescription,
         updatedTable.getDescription(),
         "Table description should be updated after task resolution");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
+    awaitOneAuditedUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -3082,6 +3218,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withNewValue(newDescription)
             .withComment("Approved - apply column description");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -3101,6 +3238,40 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         newDescription,
         updatedColumnDesc,
         "Column description should be updated after task resolution");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
+  }
+
+  @Test
+  void testResolveDescriptionUpdateTaskOnATopicRecordsTheTopicsChange(TestNamespace ns) {
+    Topic topic = TopicTestFactory.createSimple(ns);
+    String newDescription = "Topic description from task resolution - " + ns.shortPrefix();
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("topic-desc-update"))
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("topic", topic.getFullyQualifiedName()))
+            .withPayload(
+                new org.openmetadata.schema.type.DescriptionUpdatePayload()
+                    .withFieldPath("description")
+                    .withCurrentDescription(topic.getDescription())
+                    .withNewDescription(newDescription));
+    Task task = SdkClients.adminClient().tasks().create(request);
+
+    long resolvedAt = System.currentTimeMillis();
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withNewValue(newDescription));
+
+    assertEquals(
+        newDescription,
+        SdkClients.adminClient().topics().get(topic.getId().toString()).getDescription());
+    assertOneUpdateBy("admin", "topic", topic.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -3343,6 +3514,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withResolutionType(TaskResolutionType.Approved)
             .withComment("Approved - transfer ownership");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -3355,6 +3527,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertTrue(
         updatedTable.getOwners().stream().anyMatch(o -> o.getName().equals(shared.USER2.getName())),
         "Table should have USER2 as owner after ownership update");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -3534,6 +3707,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withResolutionType(TaskResolutionType.Approved)
             .withComment("Approved - assign to domain");
 
+    long resolvedAt = System.currentTimeMillis();
     Task resolvedTask =
         SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
 
@@ -3548,6 +3722,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         updatedTable.getDomains().stream()
             .anyMatch(d -> d.getFullyQualifiedName().equals(shared.DOMAIN.getFullyQualifiedName())),
         "Table domains should include the assigned domain");
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), resolvedAt);
   }
 
   @Test
@@ -3904,10 +4079,10 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
-  void testResolveAmbiguousBareLeafTagUpdateTask_doesNotGuess(TestNamespace ns) {
+  void testAmbiguousBareLeafTagUpdateTask_isRefused(TestNamespace ns) {
     // The tag path resolves through FieldPathUtils.findField; with two siblings each having a
-    // child "street", a bare-leaf "columns::street::tags" fieldPath is ambiguous and must not
-    // tag the first sibling's child POJO. Neither "street" column receives the tag.
+    // child "street", a bare-leaf "columns::street::tags" fieldPath names no single field of the
+    // table, so the task is refused when filed and neither "street" column is tagged.
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -3964,33 +4139,18 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withPayload(payloadMap);
 
-    Task task = SdkClients.adminClient().tasks().create(request);
-    awaitTaskReadyForWorkflowResolution(task.getId());
-
-    ResolveTask resolveRequest =
-        new ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved)
-            .withNewValue(JsonUtils.pojoToJson(tagsToAdd))
-            .withComment("Approved ambiguous bare leaf tag update");
-
-    Task resolvedTask =
-        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
-
-    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+    InvalidRequestException refused =
+        assertThrows(
+            InvalidRequestException.class, () -> SdkClients.adminClient().tasks().create(request));
+    assertTrue(refused.getMessage().contains("is not a tagged field"), refused.getMessage());
 
     Table updatedTable =
         SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "columns,tags");
-
-    // Neither sibling's "street" child was tagged — the ambiguous name was refused, not guessed.
     for (Column col : updatedTable.getColumns()) {
-      if (col.getChildren() != null) {
-        for (Column child : col.getChildren()) {
-          if ("street".equals(child.getName())) {
-            assertTrue(
-                child.getTags() == null || child.getTags().isEmpty(),
-                "street under " + col.getName() + " must not be tagged for an ambiguous bare leaf");
-          }
-        }
+      for (Column child : listOrEmpty(col.getChildren())) {
+        assertTrue(
+            nullOrEmpty(child.getTags()),
+            "%s under %s must not be tagged".formatted(child.getName(), col.getName()));
       }
     }
   }
@@ -3998,7 +4158,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   @Test
   void testApplyAmbiguousBareLeafSuggestion_doesNotGuess(TestNamespace ns) {
     // The Suggestion path reads the field via getFieldDescription and writes via
-    // updateFieldDescription; both must refuse a bare-leaf name shared by two sibling subtrees.
+    // setFieldDescription; both must refuse a bare-leaf name shared by two sibling subtrees.
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -4406,7 +4566,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   @Test
   void testApplyDashboardChartDescriptionSuggestion_doesNotChangeChart(TestNamespace ns) {
-    // Sibling path: applySuggestion calls the same FieldPathUtils.updateFieldDescription. A
+    // Sibling path: applySuggestion calls the same FieldPathUtils.setFieldDescription. A
     // Suggestion task on a Dashboard chart description (about = Dashboard, fieldPath =
     // "charts::<chartName>::description") must not silently no-op while reporting Approved;
     // the Chart description must remain the pre-suggestion value.
@@ -5125,6 +5285,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     "payload", rawSuggestionPayload),
                 Task.class);
 
+    long appliedAt = System.currentTimeMillis();
     Task appliedTask =
         SdkClients.adminClient()
             .getHttpClient()
@@ -5139,6 +5300,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     Table updatedTable =
         SdkClients.adminClient().tables().getByName(table.getFullyQualifiedName(), "description");
     assertEquals(suggestedDescription, updatedTable.getDescription());
+    assertOneUpdateBy("admin", "table", table.getFullyQualifiedName(), appliedAt);
   }
 
   @Test
@@ -5556,8 +5718,8 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     CreateTask request =
         new CreateTask()
             .withName(ns.prefix("per-entity-allowed-task"))
-            .withCategory(TaskCategory.Approval)
-            .withType(TaskEntityType.GlossaryApproval)
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
             .withAbout(entityLink("table", table.getFullyQualifiedName()))
             .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
 
@@ -5631,6 +5793,61 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     admin.users().create(createUser);
 
     return SdkClients.createClient(userEmail, userEmail, new String[] {});
+  }
+
+  // An approved task's change is the changed entity's own change event, recorded once and by the
+  // user who approved it, as a direct edit by that user would be.
+  private static void assertOneUpdateBy(
+      String user, String entityType, String entityFqn, long since) {
+    String eventsJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/events",
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityUpdated", entityType)
+                    .queryParam("timestamp", Long.toString(since))
+                    .queryParam("limit", "1000")
+                    .build());
+    List<JsonNode> updates = new ArrayList<>();
+    for (JsonNode event : JsonUtils.readTree(eventsJson).path("data")) {
+      if (user.equals(event.path("userName").asText())
+          && entityFqn.equals(event.path("entityFullyQualifiedName").asText())
+          && "entityUpdated".equals(event.path("eventType").asText())) {
+        updates.add(event);
+      }
+    }
+    assertEquals(1, updates.size(), "entityUpdated events of " + entityFqn + ": " + updates);
+  }
+
+  // The audit log is written from the change events in the background, so wait for the approver's
+  // entry, then check it is the only one.
+  private static void awaitOneAuditedUpdateBy(
+      String user, String entityType, String entityFqn, long since) {
+    RequestOptions query =
+        RequestOptions.builder()
+            .queryParam("userName", user)
+            .queryParam("entityType", entityType)
+            .queryParam("entityFQN", entityFqn)
+            .queryParam("eventType", "entityUpdated")
+            .queryParam("startTs", Long.toString(since))
+            .queryParam("limit", "10")
+            .build();
+    JsonNode entries =
+        Awaitility.await("audit log entry for the update of " + entityFqn)
+            .atMost(Duration.ofSeconds(60))
+            .pollInterval(Duration.ofSeconds(1))
+            .until(
+                () ->
+                    JsonUtils.readTree(
+                            SdkClients.adminClient()
+                                .getHttpClient()
+                                .executeForString(HttpMethod.GET, "/v1/audit/logs", null, query))
+                        .path("data"),
+                data -> data.size() > 0);
+    assertEquals(1, entries.size(), "audit log entries of " + entityFqn + ": " + entries);
   }
 
   private void awaitTaskReadyForWorkflowResolution(UUID taskId) {

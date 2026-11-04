@@ -57,6 +57,8 @@ export enum Reason {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * For a metric found by find_context, the parent metric it is a variant of.
+ *
  * Resolved first-class relationship type.
  *
  * Reference to the related glossary term.
@@ -224,6 +226,10 @@ export interface AIContext {
  */
 export interface KnowledgeItem {
     /**
+     * For a metric found by find_context, how many non-deleted variants (child metrics) it has.
+     */
+    childrenCount?: number;
+    /**
      * The definition, business rule, metric expression, or article body for this item. May be a
      * bounded lead excerpt when contentTruncated is true, or null when omitted to stay within
      * the context budget.
@@ -241,6 +247,10 @@ export interface KnowledgeItem {
      */
     id?:   string;
     name?: string;
+    /**
+     * For a metric found by find_context, the parent metric it is a variant of.
+     */
+    parent?: EntityReference;
     /**
      * True when read-time trust signals indicate this item may no longer reflect the asset it
      * is attached to (e.g. the asset changed after the knowledge was last updated, or the
@@ -685,11 +695,22 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**

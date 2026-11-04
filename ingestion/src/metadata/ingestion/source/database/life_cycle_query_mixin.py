@@ -16,7 +16,8 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
-from functools import lru_cache
+from functools import cached_property, lru_cache
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
@@ -34,11 +35,13 @@ from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
+
+if TYPE_CHECKING:
+    from metadata.ingestion.models.topology import TopologyContextManager
 
 logger = ingestion_logger()
 
@@ -60,7 +63,12 @@ class LifeCycleQueryMixin:
     Module stores the methods to query the sources and get life cycle information
     """
 
-    context: TopologyContextManager
+    if TYPE_CHECKING:
+        # The source's per-instance context from TopologyRunnerMixin. Declared for type checking only:
+        # a runtime attribute here would shadow it, since this mixin comes first in the MRO.
+        @cached_property
+        def context(self) -> TopologyContextManager: ...
+
     status: Status
     source_config: DatabaseServiceMetadataPipeline
     engine: Engine
@@ -116,7 +124,7 @@ class LifeCycleQueryMixin:
             if life_cycle_data:
                 created = self._build_access_details(life_cycle_data.created_at)  # pyright: ignore[reportAttributeAccessIssue]
                 updated = self._build_access_details(life_cycle_data.updated_at)  # pyright: ignore[reportAttributeAccessIssue]
-                # The server keeps each stored aspect when the incoming one is empty or older, so a
+                # The server preserves missing aspects and merges minimum creation / maximum activity, so a
                 # record with neither would be a no-op patch. Placeholder `created` values written by
                 # earlier runs are removed by the 2.1.0 data migration, not by ingestion.
                 if created is not None or updated is not None:

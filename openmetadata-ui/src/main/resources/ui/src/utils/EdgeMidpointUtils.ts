@@ -84,6 +84,13 @@ const computeEdgeDataTestId = (edge: Edge): string | undefined => {
   return edge.data?.dataTestId;
 };
 
+// React Flow flags a node `dragging` for the length of a drag; its edges are
+// hidden until the drop rather than redrawn every frame.
+export const isEdgeOnDraggedNode = (
+  edge: Edge,
+  getNode: (id: string) => Node | undefined
+) => Boolean(getNode(edge.source)?.dragging || getNode(edge.target)?.dragging);
+
 export const calculateEdgeMidpoints = (
   edges: Edge[],
   getNode: (id: string) => Node | undefined,
@@ -95,7 +102,7 @@ export const calculateEdgeMidpoints = (
     .map((edge) => {
       const center = computeEdgeCenter(edge, getNode, columnsInCurrentPages);
 
-      if (!center) {
+      if (!center || isEdgeOnDraggedNode(edge, getNode)) {
         return null;
       }
 

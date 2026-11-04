@@ -27,11 +27,7 @@ import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
-import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataADLSConfig;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
-import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataHttpConfig;
-import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataLocalConfig;
-import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
 import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
@@ -338,23 +334,6 @@ public final class ClassConverterFactory {
                   SsrsConnection.class,
                   Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
-              StorageMetadataGCSConfig.class,
-              new NestedConfigClassConverter(
-                  StorageMetadataGCSConfig.class,
-                  Map.of("securityConfig", List.of(GCPCredentials.class)))),
-          Map.entry(
-              StorageServiceMetadataPipeline.class,
-              new NestedConfigClassConverter(
-                  StorageServiceMetadataPipeline.class,
-                  Map.of(
-                      "storageMetadataConfigSource",
-                      List.of(
-                          StorageMetadataS3Config.class,
-                          StorageMetadataADLSConfig.class,
-                          StorageMetadataGCSConfig.class,
-                          StorageMetadataHttpConfig.class,
-                          StorageMetadataLocalConfig.class)))),
-          Map.entry(
               SupersetApiConnection.class,
               new NestedConfigClassConverter(
                   SupersetApiConnection.class,
@@ -381,6 +360,11 @@ public final class ClassConverterFactory {
                 Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
                 Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
                 Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
+                Map.entry(
+                    StorageServiceMetadataPipeline.class,
+                    new StorageServiceMetadataPipelineClassConverter()),
+                Map.entry(
+                    StorageMetadataGCSConfig.class, new StorageMetadataGCSConfigClassConverter()),
                 Map.entry(
                     ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
                 Map.entry(OpenSearchConnection.class, new OpenSearchConnectionClassConverter()),

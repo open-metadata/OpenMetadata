@@ -85,12 +85,16 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
 
   @Override
   protected void stampStats(UUID fileId, ExtractionStats stats) {
-    ContextFile current = getFile(fileId);
-    if (current != null) {
-      ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
-      updated.setExtractionStats(stats);
-      fileRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
-    }
+    updateSource(
+        fileId,
+        () -> {
+          ContextFile current = getFile(fileId);
+          if (current != null) {
+            ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
+            updated.setExtractionStats(stats);
+            fileRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+          }
+        });
   }
 
   @Override
