@@ -28,6 +28,7 @@ import {
 } from '../../utils/common';
 import {
   clickGraphNode,
+  findOntologyInScopeMenu,
   readGraphEdges,
   readNodePositions,
 } from '../../utils/ontologyStudio';
@@ -86,9 +87,10 @@ test.describe(
           await page.getByTestId('ontology-scope-menu-trigger').click();
           for (const ontology of ontologies) {
             await expect(
-              page.getByTestId(`ontology-scope-${ontology.id}`)
+              await findOntologyInScopeMenu(page, ontology)
             ).toBeVisible();
           }
+          await page.getByTestId('ontology-scope-search').fill('');
           await expect(
             page.getByTestId('ontology-scope-all-glossaries')
           ).toHaveCount(0);
@@ -121,7 +123,7 @@ test.describe(
           ).toHaveCount(0);
           const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
           await scopeMenu.click();
-          await page.getByTestId('ontology-scope-' + ontologies[0].id).click();
+          await (await findOntologyInScopeMenu(page, ontologies[0])).click();
           await page.getByTestId('ontology-publication-trigger').click();
           await expect(
             page.getByTestId('ontology-publication-modal')
@@ -988,6 +990,7 @@ test.describe(
 
             expect((await deleted).status()).toBe(200);
             await page.getByTestId('ontology-scope-menu-trigger').click();
+            await page.getByTestId('ontology-scope-search').fill(fixture.name);
             await expect(
               page.getByTestId(`ontology-scope-${fixture.id}`)
             ).toHaveCount(0);
