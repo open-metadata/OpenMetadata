@@ -3,15 +3,18 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -22,16 +25,21 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -48,6 +56,7 @@ public class PIIMasker {
   public static final String MASKED_VALUE = "********";
   public static final String MASKED_NAME = "[MASKED]";
   public static final String MASKED_MAIL = "********@masked.com";
+  private static final String EMAIL_FIELD = "email";
 
   private PIIMasker() {
     /* Private constructor for Utility class */
@@ -324,30 +333,6 @@ public class PIIMasker {
         .collect(Collectors.joining(Entity.SEPARATOR));
   }
 
-  /**
-   * Masks a column test case when the column it references is PII-tagged and the caller lacks PII
-   * authorization. The reference is resolved through nested children, and tags on any column along
-   * the path count: a PII-tagged parent struct covers the nested fields beneath it.
-   */
-  private static TestCase maskNestedTestCase(
-      Table table,
-      MessageParser.EntityLink testCaseLink,
-      TestCase testCase,
-      Authorizer authorizer,
-      SecurityContext securityContext) {
-    List<Column> columnPath =
-        ColumnUtil.resolveColumnChainByPath(table.getColumns(), testCaseLink.getArrayFieldName());
-    if (columnPath.isEmpty()) {
-      return testCase;
-    }
-    // We need the table owner to know if we can authorize the access
-    boolean authorizePII = authorizer.authorizePII(securityContext, table.getOwners());
-    if (!authorizePII && hasPiiSensitiveTagInPath(columnPath)) {
-      return maskTestCase(testCase);
-    }
-    return testCase;
-  }
-
   private static boolean hasPiiSensitiveTagInPath(List<Column> columnPath) {
     // The leaf's tag set covers itself and its descendants (getAllTags); ancestors only their own.
     if (hasPiiSensitiveTag(columnPath.getLast())) {
@@ -363,10 +348,23 @@ public class PIIMasker {
         .anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
+  public static TestCase getTestCase(
+      TestCase testCase, Authorizer authorizer, SecurityContext securityContext) {
+    return new TestCaseMasker(authorizer, securityContext).mask(testCase);
+  }
+
+  public static boolean shouldMaskTestCase(
+      TestCase testCase, Authorizer authorizer, SecurityContext securityContext) {
+    return new TestCaseMasker(authorizer, securityContext).shouldMask(testCase);
+  }
+
   private static TestCase maskTestCase(TestCase testCase) {
+    testCase.setIncidentStatus(null);
     testCase.setTestCaseResult(null);
     testCase.setParameterValues(null);
     testCase.setDescription(null);
+    testCase.setChangeDescription(null);
+    testCase.setIncrementalChangeDescription(null);
     testCase.setName(flagMaskedName(testCase.getName()));
 
     return testCase;
@@ -391,39 +389,99 @@ public class PIIMasker {
 
   public static ResultList<TestCase> getTestCases(
       ResultList<TestCase> testCases, Authorizer authorizer, SecurityContext securityContext) {
-    Map<String, Table> entityFQNToTable = new HashMap<>();
-    List<TestCase> maskedTests =
-        testCases.getData().stream()
-            .map(
-                testCase -> {
-                  MessageParser.EntityLink testCaseLink =
-                      MessageParser.EntityLink.parse(testCase.getEntityLink());
-                  Table table;
-                  if (entityFQNToTable.containsKey(testCaseLink.getEntityFQN())) {
-                    table = entityFQNToTable.get(testCaseLink.getEntityFQN());
-                  } else {
-                    table = findTableOrNull(testCaseLink.getEntityFQN());
-                    entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
-                  }
-
-                  if (table == null) {
-                    // The column tags that decide masking died with the table, so fall back to the
-                    // caller's PII authorization rather than exposing the orphan's results.
-                    return authorizer.authorizePII(securityContext, null)
-                        ? testCase
-                        : maskTestCase(testCase);
-                  }
-
-                  // Ignore table tests
-                  if (testCaseLink.getFieldName() == null) return testCase;
-
-                  return maskNestedTestCase(
-                      table, testCaseLink, testCase, authorizer, securityContext);
-                })
-            .collect(Collectors.toList());
-
-    testCases.setData(maskedTests);
+    final TestCaseMasker masker = new TestCaseMasker(authorizer, securityContext);
+    testCases.setData(testCases.getData().stream().map(masker::mask).toList());
     return testCases;
+  }
+
+  public static ResultList<TestCaseResult> getTestCaseResults(
+      ResultList<TestCaseResult> results, Authorizer authorizer, SecurityContext securityContext) {
+    final TestCaseMasker masker = new TestCaseMasker(authorizer, securityContext);
+    results.setData(results.getData().stream().map(masker::maskResult).toList());
+    return results;
+  }
+
+  public static TestCaseResult getTestCaseResult(
+      TestCaseResult result, Authorizer authorizer, SecurityContext securityContext) {
+    return result == null
+        ? null
+        : new TestCaseMasker(authorizer, securityContext).maskResult(result);
+  }
+
+  static final class TestCaseMasker {
+    private static final int MAX_LINKED_ENTITIES = 1000;
+    private final Authorizer authorizer;
+    private final SecurityContext securityContext;
+    private final boolean unrestricted;
+    private final Cache<String, Optional<Table>> tables =
+        Caffeine.newBuilder().maximumSize(MAX_LINKED_ENTITIES).build();
+    private final Cache<String, Optional<TestCase>> testCases =
+        Caffeine.newBuilder().maximumSize(MAX_LINKED_ENTITIES).build();
+
+    TestCaseMasker(Authorizer authorizer, SecurityContext securityContext) {
+      this.authorizer = authorizer;
+      this.securityContext = securityContext;
+      this.unrestricted = authorizer.authorizePII(securityContext, null);
+    }
+
+    boolean isUnrestricted() {
+      return unrestricted;
+    }
+
+    TestCase mask(TestCase testCase) {
+      return shouldMask(testCase) ? maskTestCase(testCase) : testCase;
+    }
+
+    boolean shouldMask(TestCase testCase) {
+      if (unrestricted) {
+        return false;
+      }
+      if (testCase == null) {
+        return true;
+      }
+      final MessageParser.EntityLink link =
+          MessageParser.EntityLink.parse(testCase.getEntityLink());
+      final Table table =
+          tables
+              .get(link.getEntityFQN(), fqn -> Optional.ofNullable(findTableOrNull(fqn)))
+              .orElse(null);
+      final boolean authorized =
+          authorizer.authorizePII(securityContext, table == null ? null : table.getOwners());
+      return !authorized
+          && (table == null
+              || (link.getFieldName() != null
+                  && isSensitiveColumn(table, link.getArrayFieldName())));
+    }
+
+    private boolean isSensitiveColumn(Table table, String columnName) {
+      final List<Column> path = ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnName);
+      return !path.isEmpty() && hasPiiSensitiveTagInPath(path);
+    }
+
+    TestCaseResult maskResult(TestCaseResult result) {
+      if (unrestricted) {
+        return result;
+      }
+      return shouldMask(findTestCase(result.getTestCaseFQN()))
+          ? new TestCaseResult()
+              .withId(result.getId())
+              .withTestCaseFQN(result.getTestCaseFQN())
+              .withTimestamp(result.getTimestamp())
+          : result;
+    }
+
+    TestCase findTestCase(String fqn) {
+      return fqn == null ? null : testCases.get(fqn, this::loadTestCase).orElse(null);
+    }
+
+    private Optional<TestCase> loadTestCase(String fqn) {
+      try {
+        return Optional.of(Entity.getEntityByName(Entity.TEST_CASE, fqn, "", Include.ALL));
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Test result references test case [{}] that no longer exists", fqn);
+        return Optional.empty();
+      }
+    }
   }
 
   /*
@@ -514,7 +572,7 @@ public class PIIMasker {
    * passes the repository's flattened column list, where a node is both a child of its parent and
    * its own entry.
    */
-  private static String flagMaskedName(String name) {
+  static String flagMaskedName(String name) {
     if (name.endsWith(MASKED_NAME)) {
       return name;
     }
@@ -525,5 +583,48 @@ public class PIIMasker {
     if (authorizer.authorizePII(securityContext, null)) return user;
     user.setEmail(MASKED_MAIL);
     return user;
+  }
+
+  /**
+   * A change event about a user carries the user's email, in its entity snapshot and in the change
+   * of the email field, so it is masked as a read of the user masks it.
+   */
+  public static ChangeEvent maskUserChangeEvent(ChangeEvent event) {
+    if (event == null || !Entity.USER.equals(event.getEntityType())) {
+      return event;
+    }
+    event.setEntity(maskEmail(event.getEntity()));
+    ChangeDescription change = event.getChangeDescription();
+    if (change != null) {
+      for (List<FieldChange> changes :
+          List.of(
+              listOrEmpty(change.getFieldsAdded()),
+              listOrEmpty(change.getFieldsUpdated()),
+              listOrEmpty(change.getFieldsDeleted()))) {
+        for (FieldChange fieldChange : changes) {
+          if (EMAIL_FIELD.equals(fieldChange.getName())) {
+            fieldChange.setOldValue(fieldChange.getOldValue() == null ? null : MASKED_MAIL);
+            fieldChange.setNewValue(fieldChange.getNewValue() == null ? null : MASKED_MAIL);
+          }
+        }
+      }
+    }
+    return event;
+  }
+
+  // The snapshot is stored either as a JSON string or as an already-parsed object.
+  private static Object maskEmail(Object entity) {
+    if (entity == null) {
+      return null;
+    }
+    JsonNode tree =
+        entity instanceof String json ? JsonUtils.readTree(json) : JsonUtils.valueToTree(entity);
+    if (!(tree instanceof ObjectNode object) || !object.has(EMAIL_FIELD)) {
+      return entity;
+    }
+    object.put(EMAIL_FIELD, MASKED_MAIL);
+    return entity instanceof String
+        ? JsonUtils.pojoToJson(object)
+        : JsonUtils.treeToValue(object, Object.class);
   }
 }

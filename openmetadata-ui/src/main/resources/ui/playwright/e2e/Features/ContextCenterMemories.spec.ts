@@ -270,16 +270,18 @@ test.describe(
         await expect(dialog.getByTestId('memory-title-input')).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Delete' })
+          dialog.getByRole('button', { name: 'Delete' })
         ).not.toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Edit' })
+          dialog
+            .getByRole('button', { name: 'Edit' })
+            .filter({ hasText: 'Edit' })
         ).not.toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Cancel' })
+          dialog.getByRole('button', { name: 'Cancel' })
         ).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Create Memory' })
+          dialog.getByRole('button', { name: 'Create Memory' })
         ).toBeVisible();
       });
 
@@ -642,11 +644,15 @@ test.describe(
         await expect(dialog).toBeVisible();
         await expect(dialog.getByText(SHARED_MEMORY_TITLE)).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Delete' })
+          dialog.getByRole('button', { name: 'Delete' })
         ).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Cancel' })
+          dialog
+            .getByRole('button', { name: 'Edit' })
+            .filter({ hasText: 'Edit' })
+        ).toBeVisible();
+        await expect(
+          dialog.getByRole('button', { name: 'Cancel' })
         ).toBeVisible();
         await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
 
@@ -1145,16 +1151,18 @@ test.describe(
         await expect(dialog).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Delete' })
+          dialog.getByRole('button', { name: 'Delete' })
         ).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Edit' })
+          dialog
+            .getByRole('button', { name: 'Edit' })
+            .filter({ hasText: 'Edit' })
         ).not.toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Cancel' })
+          dialog.getByRole('button', { name: 'Cancel' })
         ).toBeVisible();
         await expect(
-          page.getByRole('button', { name: 'Save Changes' })
+          dialog.getByRole('button', { name: 'Save Changes' })
         ).toBeVisible();
       });
 

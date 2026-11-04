@@ -27,6 +27,7 @@ import static org.openmetadata.schema.api.services.CreateDatabaseService.Databas
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -231,5 +232,23 @@ public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
     assertTrue(
         thrown.getMessage().contains("Failed to store or update secret"),
         "Upsert failure must reflect the create-or-update operation");
+  }
+
+  @Test
+  void aSecretReadByItsArnBelongsToTheSameOwner() {
+    UUID pipelineId = UUID.randomUUID();
+    SecretOwner owner = SecretOwner.builder("pipeline").id(pipelineId).build();
+    String name =
+        "/prefix/openmetadata/pipeline/" + SecretKeyEncoding.encodeId(pipelineId) + "/key";
+
+    assertTrue(
+        secretsManager
+            .ownedSecrets()
+            .isOwnedBy(
+                SecretsManager.SECRET_FIELD_PREFIX
+                    + "arn:aws:secretsmanager:us-east-1:123456789012:secret:"
+                    + name
+                    + "-AbCdEf",
+                owner));
   }
 }

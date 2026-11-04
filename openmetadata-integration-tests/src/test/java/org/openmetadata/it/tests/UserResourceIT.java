@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,15 +44,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateMetric;
+import org.openmetadata.schema.api.data.CreatePage;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.tasks.CreateTask;
+import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -61,21 +70,35 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.PolicyType;
+import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -616,6 +639,151 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals("Updated Display Name", updated.getDisplayName());
   }
 
+  @Test
+  void test_selfDelete_forbiddenForNonAdmin(TestNamespace ns) throws Exception {
+    User user = createEntity(selfLoginUserRequest());
+    OpenMetadataClient self = clientFor(user);
+
+    for (String path :
+        List.of(
+            "/v1/users/" + user.getId(),
+            "/v1/users/async/" + user.getId(),
+            "/v1/users/name/" + user.getName())) {
+      OpenMetadataException refused =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> self.getHttpClient().executeForString(HttpMethod.DELETE, path, null));
+      assertEquals(403, refused.getStatusCode(), path + " -> " + refused.getMessage());
+    }
+    assertFalse(Boolean.TRUE.equals(getEntity(user.getId().toString()).getDeleted()));
+  }
+
+  /** The delete resolves a quoted name to the account it names, so the self check does too. */
+  @Test
+  void test_selfDeleteByName_forbiddenForNonAdmin(TestNamespace ns) {
+    String plainName = selfLoginUserRequest().getName();
+    for (String name : List.of(plainName + ".doe", plainName)) {
+      User user =
+          ns.trackRoot(
+              Entity.USER,
+              createEntity(
+                  new CreateUser().withName(name).withEmail(name + "@test.openmetadata.org")));
+      String quotedName = URLEncoder.encode("\"" + user.getName() + "\"", StandardCharsets.UTF_8);
+
+      OpenMetadataException refused =
+          assertThrows(
+              OpenMetadataException.class,
+              () ->
+                  clientFor(user)
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.DELETE,
+                          "/v1/users/name/" + quotedName + "?hardDelete=true",
+                          null));
+      assertEquals(403, refused.getStatusCode(), name + " -> " + refused.getMessage());
+      assertFalse(Boolean.TRUE.equals(getEntity(user.getId().toString()).getDeleted()));
+    }
+  }
+
+  /** Joining a closed team needs an admin whatever shape the PATCH operation takes. */
+  @Test
+  void test_patchUser_cannotJoinClosedTeamThroughAnyOperation(TestNamespace ns) {
+    User user = ns.trackRoot(Entity.USER, createEntity(selfLoginUserRequest()));
+    Team closed = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("closedjoin"), false));
+    Team open = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("openjoin"), true));
+    OpenMetadataClient self = clientFor(user);
+
+    assertPatchForbidden(self, user, teamsPatch("/teams/0", teamReference(closed)));
+    assertPatchForbidden(
+        self,
+        user,
+        teamsPatch("/teams", PATCH_MAPPER.createArrayNode().add(teamReference(closed))));
+    assertPatchForbidden(
+        self, user, teamsPatch("/teams/0/id", PATCH_MAPPER.valueToTree(closed.getId().toString())));
+    assertFalse(storedTeamIds(user).contains(closed.getId()));
+
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + user.getId(),
+            teamsPatch("/teams", PATCH_MAPPER.createArrayNode().add(teamReference(open))));
+    assertTrue(storedTeamIds(user).contains(open.getId()), "joining an open team stays allowed");
+  }
+
+  /** Leaving a closed team sheds its roles and policies, so it needs an admin too. */
+  @Test
+  void test_nonAdmin_cannotLeaveClosedTeam(TestNamespace ns) {
+    Team closed = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("closedleave"), false));
+    User user =
+        ns.trackRoot(
+            Entity.USER, createEntity(selfLoginUserRequest().withTeams(List.of(closed.getId()))));
+    OpenMetadataClient self = clientFor(user);
+
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(user.getName())
+                .withEmail(user.getEmail())
+                .withDescription("put without teams"));
+    assertTrue(
+        storedTeamIds(user).contains(closed.getId()), "a self PUT that omits teams keeps them");
+
+    ArrayNode remove = PATCH_MAPPER.createArrayNode();
+    remove.addObject().put("op", "remove").put("path", "/teams/0");
+    assertPatchForbidden(self, user, remove);
+    assertTrue(storedTeamIds(user).contains(closed.getId()));
+  }
+
+  private static ArrayNode teamsPatch(String path, JsonNode value) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject().put("op", "replace").put("path", path).set("value", value);
+    return ops;
+  }
+
+  private static ObjectNode teamReference(Team team) {
+    return PATCH_MAPPER.createObjectNode().put("id", team.getId().toString()).put("type", "team");
+  }
+
+  private static List<UUID> storedTeamIds(User user) {
+    List<EntityReference> teams = Users.get(user.getId().toString(), "teams").getTeams();
+    return teams == null ? List.of() : teams.stream().map(EntityReference::getId).toList();
+  }
+
+  @Test
+  void test_selfPut_keepsStoredRolesAndCannotChangeThem(TestNamespace ns) throws Exception {
+    CreateUser request = selfLoginUserRequest().withRoles(List.of(dataStewardRole().getId()));
+    User user = createEntity(request);
+    OpenMetadataClient self = clientFor(user);
+
+    // A self PUT that omits roles keeps the stored one rather than stripping it.
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser().withName(user.getName()).withEmail(user.getEmail()));
+    assertTrue(
+        Users.get(user.getId().toString(), "roles").getRoles().stream()
+            .anyMatch(r -> r.getId().equals(dataStewardRole().getId())),
+        "the stored role must survive a self PUT that omits roles");
+
+    // A self PUT that changes the role set is an admin action.
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                self.getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users",
+                        new CreateUser()
+                            .withName(user.getName())
+                            .withEmail(user.getEmail())
+                            .withRoles(List.of(dataConsumerRole().getId()))));
+    assertEquals(403, refused.getStatusCode(), refused.getMessage());
+  }
+
   // The navbar selection is personal: only the user can change it, so tests set it as that user.
   private static User patchDefaultDomainAsSelf(User user) {
     return clientFor(user).users().update(user.getId().toString(), user);
@@ -901,6 +1069,208 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         children.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
         "directChildrenOf must not list a term whose own domain is outside the selection");
+  }
+
+  @Test
+  void test_pickKeepsArticlesAndAiPoliciesWithNoDomain(TestNamespace ns) {
+    // Mostly global content (built-in AI governance, Context Center articles) stays listed under a
+    // pick when it has no domain; another domain's items are still filtered out.
+    Domain picked = createAggregateDomain(ns.prefix("navShared"));
+    Domain other = createAggregateDomain(ns.prefix("navSharedOther"));
+    AIGovernancePolicy globalPolicy = createAiPolicy(ns.prefix("globalPolicy"), null);
+    AIGovernancePolicy otherPolicy = createAiPolicy(ns.prefix("otherPolicy"), other);
+    Page pickedPage = createArticle(ns.prefix("pickedArticle"), picked);
+    Page globalPage = createArticle(ns.prefix("globalArticle"), null);
+    Page otherPage = createArticle(ns.prefix("otherArticle"), other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    String policies = getAs(user, "/v1/aiGovernancePolicies?limit=1000000");
+    assertTrue(policies.contains(globalPolicy.getId().toString()));
+    assertFalse(policies.contains(otherPolicy.getId().toString()));
+
+    // The Articles page sorts by update time, which lists from search.
+    String articles = getAs(user, "/v1/contextCenter/pages?sortBy=updatedAt&limit=10000");
+    assertTrue(articles.contains(pickedPage.getId().toString()));
+    assertTrue(articles.contains(globalPage.getId().toString()));
+    assertFalse(articles.contains(otherPage.getId().toString()));
+
+    // Without a sort the list reads from the database.
+    String dbArticles = getAs(user, "/v1/contextCenter/pages?limit=1000000");
+    assertTrue(dbArticles.contains(pickedPage.getId().toString()));
+    assertTrue(dbArticles.contains(globalPage.getId().toString()));
+    assertFalse(dbArticles.contains(otherPage.getId().toString()));
+  }
+
+  @Test
+  void test_pickNarrowsMetricHierarchy(TestNamespace ns) {
+    // The Metrics page lists from the hierarchy endpoint, which pages its own rows.
+    Domain picked = createAggregateDomain(ns.prefix("navMetric"));
+    Domain other = createAggregateDomain(ns.prefix("navMetricOther"));
+    Metric pickedMetric = createMetric(ns.prefix("pickedMetric"), picked);
+    Metric otherMetric = createMetric(ns.prefix("otherMetric"), other);
+    Metric metricWithNoDomain = createMetric(ns.prefix("noDomainMetric"), null);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    String hierarchy = getAs(user, "/v1/metrics/hierarchy?limit=1000&q=" + ns.prefix(""));
+    assertTrue(hierarchy.contains(pickedMetric.getId().toString()));
+    assertFalse(hierarchy.contains(otherMetric.getId().toString()));
+    assertFalse(hierarchy.contains(metricWithNoDomain.getId().toString()));
+  }
+
+  @Test
+  void test_pickDoesNotHideAssignedTasks(TestNamespace ns) {
+    // A reviewer must see work assigned to them whatever domain it is about.
+    Domain picked = createAggregateDomain(ns.prefix("navTask"));
+    Domain other = createAggregateDomain(ns.prefix("navTaskOther"));
+    User user = createEntity(selfLoginUserRequest());
+    Table otherTable = createTableInDomain(ns, "navTaskTable", "id", other);
+    Task task =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("navTaskOther"))
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(String.format("<#E::table::%s>", otherTable.getFullyQualifiedName()))
+                    .withAssignees(List.of(user.getFullyQualifiedName())));
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    assertTrue(getAs(user, "/v1/tasks/assigned?limit=100").contains(task.getId().toString()));
+  }
+
+  @Test
+  void test_pickNarrowsColumnGrid(TestNamespace ns) {
+    // Column Bulk Operations edits the occurrences its grid lists, so the grid must follow the
+    // pick.
+    Domain picked = createAggregateDomain(ns.prefix("navColumn"));
+    Domain other = createAggregateDomain(ns.prefix("navColumnOther"));
+    String column = "navcol_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    Table pickedTable = createTableInDomain(ns, "navColPicked", column, picked);
+    Table otherTable = createTableInDomain(ns, "navColOther", column, other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+    String grid = "/v1/columns/grid?entityTypes=table&columnNamePattern=" + column;
+    Awaitility.await("both tables indexed")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> getAsAdmin(grid).contains(otherTable.getFullyQualifiedName()));
+
+    String scoped = getAs(user, grid);
+    assertTrue(scoped.contains(pickedTable.getFullyQualifiedName()));
+    assertFalse(scoped.contains(otherTable.getFullyQualifiedName()));
+  }
+
+  @Test
+  void test_pickNarrowsDataInsightCharts(TestNamespace ns) {
+    // Data Insights and the Home data estate count assets from search, so they follow the pick.
+    Domain picked = createAggregateDomain(ns.prefix("navChart"));
+    Domain other = createAggregateDomain(ns.prefix("navChartOther"));
+    Table pickedTable = createTableInDomain(ns, "navChartPicked", "id", picked);
+    Table otherTable = createTableInDomain(ns, "navChartOther", "id", other);
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(picked.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+    String onlyTheseTables =
+        String.format(
+            "{\"query\":{\"ids\":{\"values\":[\"%s\",\"%s\"]}}}",
+            pickedTable.getId(), otherTable.getId());
+    long end = System.currentTimeMillis();
+    String chart =
+        "/v1/analytics/dataInsights/system/charts/listChartData?chartNames=total_data_assets_live"
+            + "&live=true&start="
+            + (end - Duration.ofDays(1).toMillis())
+            + "&end="
+            + end
+            + "&filter="
+            + URLEncoder.encode(onlyTheseTables, StandardCharsets.UTF_8);
+
+    assertEquals(2, chartCount(getAsAdmin(chart)));
+    assertEquals(1, chartCount(getAs(user, chart)));
+  }
+
+  private static long chartCount(String response) {
+    long count = 0;
+    for (JsonNode result :
+        JsonUtils.readTree(response).path("total_data_assets_live").path("results")) {
+      count += result.path("count").asLong();
+    }
+    return count;
+  }
+
+  private static Metric createMetric(String name, Domain domain) {
+    return SdkClients.adminClient()
+        .metrics()
+        .create(
+            new CreateMetric()
+                .withName(name)
+                .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static Table createTableInDomain(
+      TestNamespace ns, String name, String column, Domain domain) {
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix(name))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName(column).withDataType(ColumnDataType.INT)))
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static String getAsAdmin(String path) {
+    return SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
+  }
+
+  private static Domain createAggregateDomain(String name) {
+    return SdkClients.adminClient()
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(name)
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("navbar pick"));
+  }
+
+  private static AIGovernancePolicy createAiPolicy(String name, Domain domain) {
+    CreateAIGovernancePolicy request =
+        new CreateAIGovernancePolicy()
+            .withName(name)
+            .withPolicyType(PolicyType.DataAccess)
+            .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName()));
+    String created =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.POST, "/v1/aiGovernancePolicies", request);
+    return JsonUtils.readValue(created, AIGovernancePolicy.class);
+  }
+
+  private static Page createArticle(String name, Domain domain) {
+    CreatePage request =
+        new CreatePage()
+            .withName(name)
+            .withPageType(PageType.ARTICLE)
+            .withPage(new Article())
+            .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName()));
+    String created =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.POST, "/v1/contextCenter/pages", request);
+    return JsonUtils.readValue(created, Page.class);
+  }
+
+  private static String getAs(User user, String path) {
+    return clientFor(user).getHttpClient().executeForString(HttpMethod.GET, path, null);
   }
 
   @Test
@@ -2004,6 +2374,52 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertNotNull(fetched.getDomains());
   }
 
+  /** A patch removing a user's own domain that a team also gives must not store it back. */
+  @Test
+  void test_removingOwnDomainAlsoGivenByTeamDropsIt(TestNamespace ns) throws Exception {
+    Domain shared = createUserDomain(ns, "sharedDomain");
+    Domain kept = createUserDomain(ns, "keptDomain");
+    Team team =
+        org.openmetadata.sdk.fluent.Teams.create(
+            new CreateTeam()
+                .withName(ns.prefix("sharedDomainTeam"))
+                .withDomains(List.of(shared.getFullyQualifiedName()))
+                .withDescription("Team giving the shared domain"));
+    String userName = ns.prefix("ownAndTeamDomainUser");
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(toValidEmail(userName))
+                .withTeams(List.of(team.getId()))
+                .withDomains(List.of(shared.getFullyQualifiedName(), kept.getFullyQualifiedName()))
+                .withDescription("User with an own domain its team also gives"));
+    List<EntityReference> before = Users.get(user.getId().toString(), "domains").getDomains();
+    int sharedIndex = before.stream().map(EntityReference::getId).toList().indexOf(shared.getId());
+
+    SdkClients.adminClient()
+        .users()
+        .patch(
+            user.getId().toString(),
+            new ObjectMapper()
+                .readTree("[{\"op\":\"remove\",\"path\":\"/domains/%d\"}]".formatted(sharedIndex)));
+
+    List<UUID> ownDomains =
+        Users.get(user.getId().toString(), "domains").getDomains().stream()
+            .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+            .map(EntityReference::getId)
+            .toList();
+    assertEquals(List.of(kept.getId()), ownDomains);
+  }
+
+  private static Domain createUserDomain(TestNamespace ns, String suffix) {
+    return org.openmetadata.sdk.fluent.Domains.create(
+        new CreateDomain()
+            .withName(ns.prefix(suffix))
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("User domain test"));
+  }
+
   @Test
   void test_versionConsolidationWithDeletedDomains(TestNamespace ns) {
 
@@ -2237,6 +2653,24 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void patch_keepsLoginAndActivityTimes(TestNamespace ns) {
+    String userName = ns.prefix("loginTimesUser");
+    User user = createEntity(new CreateUser().withName(userName).withEmail(toValidEmail(userName)));
+    long loginTime = System.currentTimeMillis();
+    user.setLastLoginTime(loginTime);
+    user.setLastActivityTime(loginTime);
+    patchEntity(user.getId().toString(), user);
+
+    User fetched = Users.get(user.getId().toString());
+    fetched.setDescription("edited after login");
+    patchEntity(fetched.getId().toString(), fetched);
+
+    User reloaded = Users.get(user.getId().toString(), "lastLoginTime,lastActivityTime");
+    assertEquals(loginTime, reloaded.getLastLoginTime());
+    assertEquals(loginTime, reloaded.getLastActivityTime());
+  }
+
+  @Test
   void test_personaDeletion_cleansUpAllRelationships(TestNamespace ns) {
 
     String personaName = ns.prefix("personaCleanup");
@@ -2439,6 +2873,22 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     updated.setIsAdmin(false);
     User updated2 = patchEntity(updated.getId().toString(), updated);
     assertFalse(updated2.getIsAdmin());
+  }
+
+  @Test
+  void test_aUserIsAuthorizedAsItsWholeName_notAsTheAdmin(TestNamespace ns) {
+    String userName = "admin/" + ns.uniqueShortId();
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@example.com")
+                .withDescription("User whose name starts with the admin's name"));
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch.addObject().put("op", "replace").put("path", "/isAdmin").put("value", true);
+
+    assertPatchForbidden(clientFor(user), user, patch);
+    assertFalse(getEntity(user.getId().toString()).getIsAdmin());
   }
 
   @Test
@@ -2736,6 +3186,20 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
   }
 
+  /** A user created by an admin with a password, so its stored record carries the hash. */
+  private User createPasswordUser(TestNamespace ns, String base) {
+    String userName = ns.shortPrefix(base);
+    String password = "Keep!Passw0rd" + ns.uniqueShortId();
+    return createEntity(
+        new CreateUser()
+            .withName(userName)
+            .withEmail(userName + "@example.com")
+            .withPassword(password)
+            .withConfirmPassword(password)
+            .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+            .withIsBot(false));
+  }
+
   @Test
   void test_writeResponsesNeverCarryAPersonsPasswordHash(TestNamespace ns) {
     User created = createPasswordUser(ns.shortPrefix("nohash"));
@@ -2851,6 +3315,222 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withIsBot(false));
   }
 
+  /**
+   * Version and history snapshots answer like the live read: another user's email stays masked
+   * and no credential appears, through every snapshot route.
+   */
+  @Test
+  void test_versionsAndHistoryMaskAnotherUsersEmail(TestNamespace ns) throws Exception {
+    User target = createPasswordUser(ns, "histmask");
+    OpenMetadataClient viewer = clientFor(createEntity(selfLoginUserRequest()));
+    String live =
+        viewer
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/" + target.getId(), null);
+    assertFalse(live.contains(target.getEmail()), "the live read masks the email for this viewer");
+
+    String history =
+        viewer
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/users/history?startTs="
+                    + target.getUpdatedAt()
+                    + "&endTs="
+                    + target.getUpdatedAt()
+                    + "&limit=500",
+                null);
+    assertTrue(history.contains(target.getId().toString()), "history must list the user");
+    List<String> snapshots =
+        List.of(
+            viewer
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET, "/v1/users/" + target.getId() + "/versions", null),
+            viewer
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/users/" + target.getId() + "/versions/" + target.getVersion(),
+                    null),
+            history);
+    for (String snapshot : snapshots) {
+      assertFalse(snapshot.contains(target.getEmail()), snapshot);
+      assertFalse(snapshot.contains("authenticationMechanism"), snapshot);
+    }
+  }
+
+  /** A write answers with the user as a read would, never with the stored password hash. */
+  @Test
+  void test_writeResponsesCarryNoPasswordHash(TestNamespace ns) throws Exception {
+    User user = createPasswordUser(ns, "writemask");
+    OpenMetadataClient self = clientFor(user);
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "add")
+        .put("path", "/description")
+        .put("value", "edited by its owner");
+
+    String patched =
+        self.getHttpClient().executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
+    String put =
+        self.getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users",
+                new CreateUser()
+                    .withName(user.getName())
+                    .withEmail(user.getEmail())
+                    .withDescription("put by its owner"));
+
+    assertTrue(patched.contains("edited by its owner"), patched);
+    assertTrue(put.contains("put by its owner"), put);
+    for (String response : List.of(patched, put)) {
+      assertFalse(response.contains("authenticationMechanism"), response);
+    }
+  }
+
+  /** EditAll on users lets a non-admin edit an admin's record, never take its admin flag away. */
+  @Test
+  void test_nonAdminPutCannotRevokeAdmin(TestNamespace ns) {
+    String name = "keptadmin" + ns.shortPrefix();
+    User target =
+        createEntity(
+            new CreateUser().withName(name).withEmail(name + "@test.com").withIsAdmin(true));
+    OpenMetadataClient editor = createUserEditorClient(ns);
+
+    editor
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(target.getName())
+                .withEmail(target.getEmail())
+                .withDescription("edited by a user editor"),
+            User.class);
+
+    User reread = Users.get(target.getId().toString());
+    assertEquals("edited by a user editor", reread.getDescription());
+    assertTrue(Boolean.TRUE.equals(reread.getIsAdmin()), "a non-admin PUT revoked admin");
+  }
+
+  /**
+   * A users CSV names the team it covers, not a user. Matching that name against a user who happens
+   * to share it would let that user, who owns only their own account, import into the team.
+   */
+  @Test
+  void test_usersImportIsNotAuthorizedByAUserOfTheTeamsName(TestNamespace ns) {
+    String name = "csvteam" + ns.shortPrefix();
+    createGroupTeam(name);
+    User namesake = createEntity(new CreateUser().withName(name).withEmail(name + "@test.com"));
+
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> usersImport(clientFor(namesake), name, "name\n", true));
+    assertEquals(403, denied.getStatusCode(), denied.getMessage());
+  }
+
+  /** EditAll on users lets a non-admin import users, never take an admin's admin flag away. */
+  @Test
+  void test_usersImportCannotRevokeAdmin(TestNamespace ns) throws Exception {
+    String teamName = "csvadmins" + ns.shortPrefix();
+    Team team = createGroupTeam(teamName);
+    String adminName = "teamadmin" + ns.shortPrefix();
+    User teamAdmin =
+        createEntity(
+            new CreateUser()
+                .withName(adminName)
+                .withEmail(adminName + "@test.com")
+                .withIsAdmin(true)
+                .withTeams(List.of(team.getId())));
+    String header =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/export?team=" + teamName, null)
+            .lines()
+            .findFirst()
+            .orElseThrow();
+    String row =
+        String.join(",", adminName, "", "", teamAdmin.getEmail(), "", "false", teamName, "");
+
+    String result =
+        usersImport(createUserEditorClient(ns), teamName, header + "\n" + row + "\n", false);
+
+    assertEquals(1, PATCH_MAPPER.readTree(result).path("numberOfRowsFailed").asInt(), result);
+    assertTrue(Boolean.TRUE.equals(Users.get(teamAdmin.getId().toString()).getIsAdmin()));
+  }
+
+  /**
+   * A users CSV carries every member's email in the clear, which a user read masks for anyone but
+   * an admin or a bot. ViewAll on users, which the default policies give every user, is not enough
+   * to export one, on either route.
+   */
+  @Test
+  void test_usersExportNeedsAccessToEmails(TestNamespace ns) {
+    String teamName = "csvexport" + ns.shortPrefix();
+    Team team = createGroupTeam(teamName);
+    String memberName = "csvmember" + ns.shortPrefix();
+    User member =
+        createEntity(
+            new CreateUser()
+                .withName(memberName)
+                .withEmail(memberName + "@test.com")
+                .withTeams(List.of(team.getId())));
+    String readerName = "csvreader" + ns.shortPrefix();
+    User reader =
+        createEntity(new CreateUser().withName(readerName).withEmail(readerName + "@test.com"));
+    OpenMetadataClient asReader = clientFor(reader);
+
+    for (String path :
+        List.of("/v1/users/export?team=" + teamName, "/v1/users/exportAsync?team=" + teamName)) {
+      OpenMetadataException denied =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> asReader.getHttpClient().executeForString(HttpMethod.GET, path, null));
+      assertEquals(403, denied.getStatusCode(), path + ": " + denied.getMessage());
+    }
+    assertTrue(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/users/export?team=" + teamName, null)
+            .contains(member.getEmail()));
+  }
+
+  private static Team createGroupTeam(String name) {
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(name);
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    return SdkClients.adminClient().teams().create(createTeam);
+  }
+
+  private static Team createGroupTeam(String name, boolean isJoinable) {
+    return SdkClients.adminClient()
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(name)
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withIsJoinable(isJoinable));
+  }
+
+  private static String usersImport(
+      OpenMetadataClient client, String team, String csv, boolean dryRun) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/import",
+            csv,
+            RequestOptions.builder()
+                .header("Content-Type", "text/plain; charset=UTF-8")
+                .queryParam("team", team)
+                .queryParam("dryRun", String.valueOf(dryRun))
+                .build());
+  }
+
   private static String awaitAuditLogOf(String userFqn, int minimumEntries) {
     return Awaitility.await()
         .atMost(Duration.ofSeconds(90))
@@ -2913,18 +3593,23 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_patchUser_rootReplacement_allowedForAdmin(TestNamespace ns) {
+  void test_patchUser_rootReplacement_refusedForAdmin(TestNamespace ns) {
+    // A root operation replaces the whole document, so it is refused for every caller: an admin
+    // edits the fields instead.
     String userName = ns.prefix("rootPatchTarget");
     User user = createEntity(new CreateUser().withName(userName).withEmail(toValidEmail(userName)));
     String displayName = ns.prefix("rootPatchedDisplayName");
     ArrayNode rootPatch = rootReplacementOps(userJsonWithField(user, "displayName", displayName));
 
-    String response =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), rootPatch);
-
-    assertTrue(response.contains(displayName), "Admin root replacement patch should be applied");
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), rootPatch));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+    assertNotEquals(displayName, Users.get(user.getId().toString()).getDisplayName());
   }
 
   @Test
@@ -2963,6 +3648,47 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_updateUser_keepsLoginAndActivityTimes(TestNamespace ns) {
+    CreateUser createRequest = createMinimalRequest(ns);
+    String userId = createEntity(createRequest).getId().toString();
+    long loginTime = 1_700_000_000_000L;
+    long activityTime = loginTime + 500;
+    ArrayNode setTimes = PATCH_MAPPER.createArrayNode();
+    setTimes.addObject().put("op", "add").put("path", "/lastLoginTime").put("value", loginTime);
+    setTimes
+        .addObject()
+        .put("op", "add")
+        .put("path", "/lastActivityTime")
+        .put("value", activityTime);
+    patchUserAsAdmin(userId, setTimes);
+
+    patchUserAsAdmin(userId, replaceOp("/description", "edited"));
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, "/v1/users", createRequest.withDescription("put again"));
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+
+    // A soft-deleted user is not readable by default, so check after the restore.
+    deleteEntity(userId);
+    restoreEntity(userId);
+    assertLoginAndActivityTimes(userId, loginTime, activityTime);
+  }
+
+  private void patchUserAsAdmin(String userId, ArrayNode patch) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + userId, patch);
+  }
+
+  private void assertLoginAndActivityTimes(String userId, long loginTime, long activityTime) {
+    User stored = Users.get(userId, "lastLoginTime,lastActivityTime");
+    assertEquals(loginTime, stored.getLastLoginTime());
+    assertEquals(activityTime, stored.getLastActivityTime());
+  }
+
+  @Test
   void test_patchUser_otherUser_allowedWithUserEditAll(TestNamespace ns) {
     // A role granting EDIT_ALL on users is how a non admin is allowed to edit other users.
     OpenMetadataClient editorClient = createUserEditorClient(ns);
@@ -2995,6 +3721,53 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertFalse(Boolean.TRUE.equals(Users.get(target.getId().toString()).getDeleted()));
   }
 
+  @Test
+  void test_patchUser_joinClosedTeamWithReplace_forbiddenForNonAdmin(TestNamespace ns) {
+    User user = createRegularUser(ns, "closedjoiner");
+    Team closed = createJoinableGroup(ns.prefix("closedReplace"), false);
+
+    assertPatchForbidden(clientFor(user), user, replaceTeamsOp(closed));
+
+    User reread = Users.get(user.getId().toString(), "teams");
+    assertTrue(
+        reread.getTeams().stream().noneMatch(team -> team.getId().equals(closed.getId())),
+        "a replace op must not put the user in a closed team");
+  }
+
+  @Test
+  void test_patchUser_joinOpenTeamWithReplace_allowedForNonAdmin(TestNamespace ns) {
+    User user = createRegularUser(ns, "openjoiner");
+    Team open = createJoinableGroup(ns.prefix("openReplace"), true);
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), replaceTeamsOp(open));
+
+    User reread = Users.get(user.getId().toString(), "teams");
+    assertTrue(reread.getTeams().stream().anyMatch(team -> team.getId().equals(open.getId())));
+  }
+
+  private static Team createJoinableGroup(String name, boolean joinable) {
+    return SdkClients.adminClient()
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(name)
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withIsJoinable(joinable));
+  }
+
+  private ArrayNode replaceTeamsOp(Team team) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject()
+        .put("op", "replace")
+        .put("path", "/teams/0")
+        .putObject("value")
+        .put("id", team.getId().toString())
+        .put("type", "team");
+    return ops;
+  }
+
   private User createDataSteward(TestNamespace ns) {
     String localPart = "steward" + ns.shortPrefix();
     return createEntity(
@@ -3002,6 +3775,41 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withName(localPart)
             .withEmail(localPart + "@open-metadata.org")
             .withRoles(List.of(dataStewardRole().getId())));
+  }
+
+  @Test
+  void test_logout_endsTheTokenThatSignedTheRequestNotTheBodyToken(TestNamespace ns) {
+    String userName = ns.shortPrefix("logout");
+    User user =
+        createEntity(new CreateUser().withName(userName).withEmail(userName + "@example.com"));
+    String signingToken = userToken(user);
+    String otherToken = userToken(user);
+
+    clientWithToken(signingToken)
+        .getHttpClient()
+        .executeForString(HttpMethod.POST, "/v1/users/logout", Map.of("token", otherToken));
+
+    assertEquals(401, loggedInUserStatus(signingToken));
+    assertEquals(200, loggedInUserStatus(otherToken));
+  }
+
+  /** A sessionless access token as a password sign-in issues it. */
+  private static String userToken(User user) {
+    return JWTTokenGenerator.getInstance()
+        .generateJWTToken(
+            user.getName(), Set.of(), false, user.getEmail(), 3600, false, ServiceTokenType.OM_USER)
+        .getJWTToken();
+  }
+
+  private static int loggedInUserStatus(String token) {
+    try {
+      clientWithToken(token)
+          .getHttpClient()
+          .execute(HttpMethod.GET, "/v1/users/loggedInUser", null, User.class);
+      return 200;
+    } catch (OpenMetadataException e) {
+      return e.getStatusCode();
+    }
   }
 
   private void assertPatchForbidden(OpenMetadataClient client, User target, ArrayNode patch) {
@@ -3563,9 +4371,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_updateUser_selfPartialRoleShedding_allowed(TestNamespace ns) throws Exception {
-    // Dropping one of several roles asks for no new role, so it must not require admin even though
-    // the resulting role set still differs from the current one.
+  void test_updateUser_selfRoleShedding_forbidden(TestNamespace ns) throws Exception {
+    // Dropping a role can lift a Deny rule it carries, so a user cannot drop one of their own roles
+    // either; changing the role set is an admin action.
     // The name must equal the email local part: JwtFilter resolves the caller's username from the
     // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
     String userName = "roleshedder" + ns.shortPrefix();
@@ -3590,11 +4398,15 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             + "\",\"roles\":[\""
             + dataConsumerRoleId
             + "\"]}";
-    userClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", shedBody);
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                userClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", shedBody));
+    assertEquals(403, refused.getStatusCode(), refused.getMessage());
 
     List<EntityReference> roles = Users.get(user.getId().toString(), "roles").getRoles();
-    assertEquals(1, roles.size(), "Only the retained role should remain");
-    assertEquals(dataConsumerRoleId, roles.get(0).getId().toString());
+    assertEquals(2, roles.size(), "Both stored roles must remain");
   }
 
   @Test
@@ -4084,6 +4896,129 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     operation.put("path", "");
     operation.set("value", value);
     return ops;
+  }
+
+  // ===================================================================
+  // USER PERSONAS
+  // Holding a persona opens its AI context, so assigning one is admin only, like roles
+  // (ADR:2026-11-03-only-admins-assign-personas)
+  // ===================================================================
+
+  @Test
+  void test_patchUser_ownPersonas_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "ownpersonapatch");
+    final Persona persona = createPersona(ns, "ownPersonaPatch");
+
+    assertPatchForbidden(clientFor(user), user, addPersonasOp(persona));
+
+    assertHoldsNoPersona(user);
+  }
+
+  @Test
+  void test_patchUser_ownDefaultPersonaNotHeld_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndefaultpersona");
+    final Persona persona = createPersona(ns, "ownDefaultPersona");
+
+    assertPatchForbidden(clientFor(user), user, setDefaultPersonaOp(persona));
+
+    assertHoldsNoPersona(user);
+  }
+
+  @Test
+  void test_patchUser_ownDefaultPersonaAmongHeld_allowed(TestNamespace ns) {
+    final Persona first = createPersona(ns, "heldPersonaFirst");
+    final Persona second = createPersona(ns, "heldPersonaSecond");
+    final String localPart = "heldpersona" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withPersonas(List.of(first.getEntityReference(), second.getEntityReference()))
+                .withDefaultPersona(first.getEntityReference()));
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/users/" + user.getId(), setDefaultPersonaOp(second));
+
+    assertEquals(
+        second.getId(),
+        Users.get(user.getId().toString(), "defaultPersona").getDefaultPersona().getId());
+  }
+
+  @Test
+  void test_putUser_ownPersonas_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "ownpersonaput");
+    final Persona persona = createPersona(ns, "ownPersonaPut");
+    final String body =
+        "{\"name\":\""
+            + user.getName()
+            + "\",\"email\":\""
+            + user.getEmail()
+            + "\",\"personas\":[{\"id\":\""
+            + persona.getId()
+            + "\",\"type\":\"persona\"}]}";
+
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                clientFor(user)
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", body));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Adding a persona to your own user is admin only: " + exception.getMessage());
+
+    assertHoldsNoPersona(user);
+  }
+
+  @Test
+  void test_admin_canAssignPersonas(TestNamespace ns) {
+    final User user = createRegularUser(ns, "adminpersona");
+    final Persona persona = createPersona(ns, "adminPersona");
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), addPersonasOp(persona));
+
+    assertEquals(
+        List.of(persona.getId()),
+        Users.get(user.getId().toString(), "personas").getPersonas().stream()
+            .map(EntityReference::getId)
+            .toList());
+  }
+
+  private static Persona createPersona(TestNamespace ns, String base) {
+    return Personas.create(new CreatePersona().withName(ns.prefix(base)));
+  }
+
+  private ArrayNode addPersonasOp(final Persona persona) {
+    final ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    final ObjectNode operation = ops.addObject().put("op", "add").put("path", "/personas");
+    operation
+        .putArray("value")
+        .addObject()
+        .put("id", persona.getId().toString())
+        .put("type", "persona");
+    return ops;
+  }
+
+  private ArrayNode setDefaultPersonaOp(final Persona persona) {
+    final ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    final ObjectNode operation = ops.addObject().put("op", "add").put("path", "/defaultPersona");
+    operation.putObject("value").put("id", persona.getId().toString()).put("type", "persona");
+    return ops;
+  }
+
+  private void assertHoldsNoPersona(final User user) {
+    final User stored = Users.get(user.getId().toString(), "personas");
+    assertEquals(
+        List.of(),
+        listOrEmpty(stored.getPersonas()),
+        "The rejected request must not have assigned a persona");
   }
 
   // ===================================================================

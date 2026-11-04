@@ -254,7 +254,6 @@ const OntologyConceptLiveData = ({
         </Badge>
         <ButtonUtility
           className="tw:ml-auto"
-          color="tertiary"
           data-testid="ontology-live-data-copy"
           icon={hasCopied ? Check : Copy01}
           isDisabled={!sql}
@@ -285,7 +284,6 @@ const OntologyConceptLiveData = ({
             </Badge>
           ))}
           <ButtonUtility
-            color="tertiary"
             data-testid="ontology-live-data-remove-hop"
             icon={XClose}
             size="xs"
