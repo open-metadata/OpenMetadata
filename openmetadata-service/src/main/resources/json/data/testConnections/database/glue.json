@@ -16,6 +16,12 @@
         "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
         "errorMessage": "Failed to fetch tables, please validate if the user has enough access to fetch tables.",
         "mandatory": true
+      },
+      {
+        "name": "GetDataQualityResults",
+        "description": "List AWS Glue Data Quality evaluation results. Only required when Data Quality ingestion is enabled.",
+        "errorMessage": "Failed to list Glue Data Quality results, please validate the glue:ListDataQualityResults permission.",
+        "mandatory": false
       }
     ]
   }

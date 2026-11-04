@@ -52,6 +52,10 @@
       "description": "Regex to only include/exclude databases that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
     },
+    "dataQualityConfig": {
+      "title": "Data Quality Configuration",
+      "$ref": "./glue/glueDataQualityConfig.json"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
