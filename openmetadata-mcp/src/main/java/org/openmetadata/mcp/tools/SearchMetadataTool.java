@@ -30,6 +30,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
@@ -291,6 +292,9 @@ public class SearchMetadataTool implements McpTool {
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
     Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);
+    response =
+        TestCaseSearchMasker.maskSearch(
+            response, authorizer, securityContext, Entity.getSearchRepository(), searchRequest);
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {

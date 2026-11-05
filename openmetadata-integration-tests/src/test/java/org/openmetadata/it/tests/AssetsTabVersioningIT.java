@@ -38,6 +38,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.factories.APIServiceTestFactory;
@@ -129,6 +131,9 @@ import org.openmetadata.service.Entity;
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
+// Moving an asset replaces its domain only while "Multiple Domains are not allowed" is on; tests
+// that switch the rule off hold this lock exclusively.
+@ResourceLock(value = "MULTI_DOMAIN_RULE", mode = ResourceAccessMode.READ)
 public class AssetsTabVersioningIT {
 
   private static final String ACTING_USER = "shared_user1";
