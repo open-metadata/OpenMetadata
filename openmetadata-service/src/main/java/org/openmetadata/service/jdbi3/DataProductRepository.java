@@ -735,6 +735,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
                 .withPaging(outputPorts.getPaging()));
   }
 
+  /**
+   * Locking the rows before the relationship sweep makes the delete, direct or through a domain
+   * cascade, wait for a writer that has share-locked a data product to link an asset (see {@code
+   * EntityRepository#lockDataProducts}), so the sweep removes the writer's edge instead of running
+   * before it commits and leaving it behind.
+   */
+  @Override
+  protected void lockRowsForDelete(List<DataProduct> dataProducts) {
+    List<String> ids =
+        dataProducts.stream().map(dataProduct -> dataProduct.getId().toString()).toList();
+    EntityDAO.queryInChunks(ids, chunk -> dao.lockIdsForUpdate(dao.getTableName(), chunk));
+  }
+
   @Transaction
   @Override
   protected BulkOperationResult bulkAssetsOperation(
@@ -796,7 +809,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         }
 
         if (isAdd) {
-          addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+          // The edge and the share lock on this data product commit together, so a concurrent
+          // hard delete either waits for the edge and sweeps it, or commits first and the add
+          // fails here instead of leaving an edge to a deleted data product.
+          flushInOneTransaction(
+              () -> {
+                lockDataProducts(List.of(dataProductRef));
+                addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+              });
         } else {
           deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
         }
