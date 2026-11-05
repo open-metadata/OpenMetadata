@@ -1,0 +1,25 @@
+[
+  {
+    "id": "5f912706-74fc-592f-9be3-62b7d6682b43",
+    "workflowDefinitionId": "4cf1f92c-2d00-5c68-9a8c-5b2f10e64670",
+    "startedAt": 1768467600000,
+    "timestamp": 1768471200000,
+    "status": "FINISHED",
+    "variables": {
+      "relatedEntity": "<#E::glossaryTerm::VisualBusinessGlossary.Customer>",
+      "updatedBy": "admin"
+    },
+    "endedAt": 1768467660000
+  },
+  {
+    "id": "bb9a5eb9-a160-5938-bc32-843b8d66c928",
+    "workflowDefinitionId": "4cf1f92c-2d00-5c68-9a8c-5b2f10e64670",
+    "startedAt": 1768467720000,
+    "timestamp": 1768471200000,
+    "status": "RUNNING",
+    "variables": {
+      "relatedEntity": "<#E::glossaryTerm::VisualBusinessGlossary.Customer>",
+      "updatedBy": "admin"
+    }
+  }
+]
