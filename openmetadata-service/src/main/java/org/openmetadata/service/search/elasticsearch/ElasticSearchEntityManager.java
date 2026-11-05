@@ -31,6 +31,7 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
+import es.co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.elasticsearch.core.GetResponse;
@@ -103,6 +104,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
   // stalled search backend can't hold the thread indefinitely; the async result is still handled.
   private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
+  private static final int MAX_SCRIPT_DELETE_ATTEMPTS = 3;
 
   public ElasticSearchEntityManager(ElasticsearchClient client) {
     this.client = client;
@@ -321,36 +323,56 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexName)
-                    .query(
-                        q ->
-                            q.script(
-                                s ->
-                                    s.script(
-                                        script ->
-                                            script
-                                                .source(ss -> ss.scriptString(scriptTxt))
-                                                .lang(ScriptLanguage.Painless)
-                                                .params(convertToJsonDataMap(params)))))
-                    .conflicts(Conflicts.Proceed)
-                    .refresh(true));
-
-    LOG.info(
-        "DeleteByQuery by script response from ES - Deleted: {}, Version conflicts: {}, Failures: {}",
-        response.deleted(),
-        response.versionConflicts(),
-        response.failures().size());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkIndexByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
+    DeleteByQueryRequest request = buildDeleteByScriptRequest(indexName, scriptTxt, params);
+    for (int attempt = 1; attempt <= MAX_SCRIPT_DELETE_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        client.indices().refresh(r -> r.index(request.index()));
+      }
+      DeleteByQueryResponse response = client.deleteByQuery(request);
+      LOG.info(
+          "DeleteByQuery by script response from ES - Attempt: {}, Deleted: {}, Version conflicts: {}, Failures: {}",
+          attempt,
+          response.deleted(),
+          response.versionConflicts(),
+          response.failures().size());
+      if (!response.failures().isEmpty() || Boolean.TRUE.equals(response.timedOut())) {
+        LOG.error(
+            "DeleteByQuery script on {} failed: {}, timed out: {}",
+            indexName,
+            response.failures(),
+            response.timedOut());
+        break;
+      }
+      if (zeroIfNull(response.versionConflicts()) == 0) {
+        break;
+      }
+      if (attempt == MAX_SCRIPT_DELETE_ATTEMPTS) {
+        LOG.warn(
+            "DeleteByQuery script on {} left {} version conflict(s) after {} attempts",
+            indexName,
+            response.versionConflicts(),
+            attempt);
+      }
     }
+  }
+
+  DeleteByQueryRequest buildDeleteByScriptRequest(
+      String indexName, String scriptTxt, Map<String, Object> params) {
+    return DeleteByQueryRequest.of(
+        d ->
+            d.index(indexName)
+                .query(
+                    q ->
+                        q.script(
+                            s ->
+                                s.script(
+                                    script ->
+                                        script
+                                            .source(ss -> ss.scriptString(scriptTxt))
+                                            .lang(ScriptLanguage.Painless)
+                                            .params(convertToJsonDataMap(params)))))
+                .conflicts(Conflicts.Proceed)
+                .refresh(true));
   }
 
   @Override

@@ -79,6 +79,7 @@ import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch._types.query_dsl.RangeQuery;
 import os.org.opensearch.client.opensearch.core.BulkRequest;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
+import os.org.opensearch.client.opensearch.core.DeleteByQueryRequest;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
@@ -105,6 +106,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
   // stalled search backend can't hold the thread indefinitely; the async result is still handled.
   private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
+  private static final int MAX_SCRIPT_DELETE_ATTEMPTS = 3;
 
   public OpenSearchEntityManager(OpenSearchClient client) {
     this.client = client;
@@ -331,31 +333,42 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    DeleteByQueryResponse response =
-        client.deleteByQuery(buildDeleteByScriptRequest(indexName, scriptTxt, params));
-
-    LOG.info(
-        "DeleteByQuery by script response from OS - Deleted: {}, Version conflicts: {}, Failures: {}",
-        response.deleted(),
-        response.versionConflicts(),
-        response.failures().size());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
+    DeleteByQueryRequest request = buildDeleteByScriptRequest(indexName, scriptTxt, params);
+    for (int attempt = 1; attempt <= MAX_SCRIPT_DELETE_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        client.indices().refresh(r -> r.index(request.index()));
+      }
+      DeleteByQueryResponse response = client.deleteByQuery(request);
+      LOG.info(
+          "DeleteByQuery by script response from OS - Attempt: {}, Deleted: {}, Version conflicts: {}, Failures: {}",
+          attempt,
+          response.deleted(),
+          response.versionConflicts(),
+          response.failures().size());
+      if (!response.failures().isEmpty() || Boolean.TRUE.equals(response.timedOut())) {
+        LOG.error(
+            "DeleteByQuery script on {} failed: {}, timed out: {}",
+            indexName,
+            response.failures(),
+            response.timedOut());
+        break;
+      }
+      if (zeroIfNull(response.versionConflicts()) == 0) {
+        break;
+      }
+      if (attempt == MAX_SCRIPT_DELETE_ATTEMPTS) {
+        LOG.warn(
+            "DeleteByQuery script on {} left {} version conflict(s) after {} attempts",
+            indexName,
+            response.versionConflicts(),
+            attempt);
+      }
     }
   }
 
-  /**
-   * Conflicts proceed: a matched doc removed concurrently (e.g. by a reindex writing the same
-   * index) is already gone, so it must not abort deletion of the remaining matches with a 409.
-   */
-  os.org.opensearch.client.opensearch.core.DeleteByQueryRequest buildDeleteByScriptRequest(
+  DeleteByQueryRequest buildDeleteByScriptRequest(
       String indexName, String scriptTxt, Map<String, Object> params) {
-    return os.org.opensearch.client.opensearch.core.DeleteByQueryRequest.of(
+    return DeleteByQueryRequest.of(
         d ->
             d.index(indexName)
                 .query(
@@ -370,9 +383,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                     .lang(
                                                         l ->
                                                             l.builtin(
-                                                                os.org.opensearch.client.opensearch
-                                                                    ._types.BuiltinScriptLanguage
-                                                                    .Painless))
+                                                                BuiltinScriptLanguage.Painless))
                                                     .source(scriptTxt)
                                                     .params(convertToJsonDataMap(params))))))
                 .conflicts(Conflicts.Proceed)
