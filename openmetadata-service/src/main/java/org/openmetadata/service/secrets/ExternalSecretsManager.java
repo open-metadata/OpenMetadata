@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -41,7 +42,7 @@ public abstract class ExternalSecretsManager extends SecretsManager {
    */
   static final String RATE_LIMIT_PERMITS_PER_SECOND = "rateLimitPermitsPerSecond";
 
-  private static final int MAX_CAUSE_CHAIN_DEPTH = 25;
+  static final int MAX_CAUSE_CHAIN_DEPTH = 25;
 
   private final SecretsManagerRateLimiter rateLimiter;
 
@@ -124,6 +125,38 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       result = value;
     }
     return result;
+  }
+
+  @Override
+  protected String storeOwnedValue(String fieldName, String secretId, String value) {
+    rejectReservedPlaceholder(fieldName, value);
+    try {
+      upsertSecret(secretId, value);
+    } catch (SecretsManagerException e) {
+      throw isNameReserved(e) ? new SecretNameReservedException(secretId, e) : e;
+    }
+    return SECRET_FIELD_PREFIX + secretId;
+  }
+
+  /**
+   * Whether a write failed because the provider keeps the name for a secret deleted earlier. Only
+   * providers that delete softly, keeping the name for a retention period, override this.
+   */
+  protected boolean isNameReserved(Throwable failure) {
+    return false;
+  }
+
+  @Override
+  protected Optional<String> findSecretValue(String reference) {
+    Optional<String> secretValue = Optional.empty();
+    try {
+      secretValue = Optional.ofNullable(getSecretValue(reference));
+    } catch (RuntimeException e) {
+      if (!isNotFoundInCauseChain(e)) {
+        throw readFailure(reference.substring(SECRET_FIELD_PREFIX.length()), e);
+      }
+    }
+    return secretValue;
   }
 
   /**

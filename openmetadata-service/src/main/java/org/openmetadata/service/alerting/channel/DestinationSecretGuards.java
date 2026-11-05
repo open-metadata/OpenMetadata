@@ -39,19 +39,19 @@ import org.openmetadata.service.util.JsonPatchUtils;
 /** What a request may say about a destination's secrets, and what only the server may. */
 public final class DestinationSecretGuards {
   private static final String MASKED_MESSAGE =
-      "Destination %s still has a masked value at '%s'; provide the actual value";
+      "Enter the %2$s of the %1$s destination again; a hidden value cannot be used here";
   private static final String ENCRYPTED_MESSAGE =
-      "Destination %s has an encrypted value at '%s'; encrypted values cannot be supplied, provide the actual value";
+      "Enter the %2$s of the %1$s destination again; an encrypted value cannot be supplied";
   private static final String CHANGED_FOR_TEST_MESSAGE =
-      "Destination %s is tested with its stored credentials; to test changed credentials, enter every one of them";
+      "You changed the %2$s of the %1$s destination; to test it, enter all of its hidden values again";
   private static final String MOVED_TARGET_MESSAGE =
-      "Destination %s no longer sends to its stored endpoint or token URL; to change where a destination sends, enter every one of its credentials again";
-  private static final String SERVED_CHANNEL_MESSAGE =
-      "Destination %s changes its served channel from '%s' to '%s'; a destination keeps its channel, so delete it and add a destination for the new channel instead";
+      "You changed where the %1$s destination sends; enter its %2$s again";
+  private static final String UNKEPT_SECRET_MESSAGE =
+      "The %1$s destination cannot move to %3$s while it keeps its %2$s; remove it first, or add a new destination instead";
   private static final String COPIED_MESSAGE =
       "A destination secret cannot be copied or moved out of its field; it was found at '%s'";
   private static final String CARRIED_MESSAGE =
-      "Destination %s still carries the stored value at '%s', which channel '%s' does not treat as a secret; to change a destination's channel, delete it and add a destination for the new channel instead";
+      "The %1$s destination cannot keep its %2$s on %3$s, which would not keep it secret; enter it again, or add a new destination instead";
   private static final String UNREPLAYED_MESSAGE =
       "A patch may not depend on the value of a destination secret, such as by testing it";
   private static final JsonPointer TOKEN_URL = JsonPointer.compile("/authType/tokenUrl");
@@ -103,12 +103,13 @@ public final class DestinationSecretGuards {
   }
 
   /**
-   * A destination an update keeps by its id serves through the channel it is stored under: its
-   * configuration belongs to that channel, and so do the secrets encrypted and masked by its rules.
-   * A save naming another channel would leave them unprotected, so it is refused here, before any
-   * secret is read. A replacement destination carries a new id and needs no guard.
+   * A destination an update keeps by its id may move to another channel, but every value its stored
+   * channel keeps secret must stay secret under the new one, or it would be stored and served as
+   * written. Webhook, Slack, Microsoft Teams and Google Chat keep the same fields secret; email and
+   * the activity feed keep none, so only a stored secret left behind on such a channel is refused.
+   * A replacement destination carries a new id and needs no guard.
    */
-  public static void requireServedChannelUnchanged(
+  public static void requireStoredSecretsStaySecret(
       EventSubscription original, EventSubscription updated) {
     List<SubscriptionDestination> stored = listOrEmpty(original.getDestinations());
     for (SubscriptionDestination sent : listOrEmpty(updated.getDestinations())) {
@@ -118,18 +119,26 @@ public final class DestinationSecretGuards {
       stored.stream()
           .filter(it -> sent.getId().equals(it.getId()) && it.getType() != null)
           .findFirst()
-          .ifPresent(storedOne -> requireTheSameChannel(storedOne, sent));
+          .ifPresent(storedOne -> requireSecretsKeptSecret(storedOne, sent));
     }
   }
 
-  private static void requireTheSameChannel(
+  private static boolean holdsAValue(JsonNode node) {
+    return node.isValueNode() && !node.isNull();
+  }
+
+  private static void requireSecretsKeptSecret(
       SubscriptionDestination stored, SubscriptionDestination sent) {
-    String storedChannel = ChannelResolution.of(stored).channelId();
-    String sentChannel = ChannelResolution.of(sent).channelId();
-    if (!storedChannel.equals(sentChannel)) {
-      throw new BadRequestException(
-          SERVED_CHANNEL_MESSAGE.formatted(sent.getId(), storedChannel, sentChannel));
-    }
+    JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
+    JsonNode sentConfig = JsonUtils.valueToTree(sent.getConfig());
+    List<JsonPointer> keptSecret = DestinationSecrets.secretFieldsOf(sent, sentConfig);
+    DestinationSecrets.secretFieldsOf(stored, storedConfig).stream()
+        .filter(field -> holdsAValue(sentConfig.at(field)) && !keptSecret.contains(field))
+        .findFirst()
+        .ifPresent(
+            field ->
+                refuse(
+                    UNKEPT_SECRET_MESSAGE, stored, field, ChannelResolution.of(sent).channelId()));
   }
 
   /**
@@ -192,7 +201,11 @@ public final class DestinationSecretGuards {
         .forEach(
             (at, carried) -> {
               if (!secretFields.contains(at)) {
-                refuse(CARRIED_MESSAGE, sent, at, ChannelResolution.of(sent).channelId());
+                refuse(
+                    CARRIED_MESSAGE,
+                    stored.get(carried.destination()),
+                    at,
+                    ChannelResolution.of(sent).channelId());
               }
               if (!carried.isStoredAt(own, at)) {
                 throw new BadRequestException(
@@ -306,12 +319,17 @@ public final class DestinationSecretGuards {
   }
 
   private static void refuse(String message, SubscriptionDestination destination, JsonPointer at) {
-    throw new BadRequestException(message.formatted(destination.getId(), at));
+    throw new BadRequestException(
+        message.formatted(DestinationLabels.of(destination), DestinationLabels.field(at)));
   }
 
   private static void refuse(
       String message, SubscriptionDestination destination, JsonPointer at, String channel) {
-    throw new BadRequestException(message.formatted(destination.getId(), at, channel));
+    throw new BadRequestException(
+        message.formatted(
+            DestinationLabels.of(destination),
+            DestinationLabels.field(at),
+            DestinationLabels.channel(channel)));
   }
 
   private static Set<String> storedSecrets(EventSubscription original) {

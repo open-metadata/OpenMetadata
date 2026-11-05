@@ -1,34 +1,21 @@
 package org.openmetadata.service.alerting.content.template;
 
-import com.github.jknack.handlebars.EscapingStrategy;
-import com.github.jknack.handlebars.Handlebars;
 import java.util.List;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.helpers.*;
+import org.openmetadata.service.alerting.content.template.sandbox.TemplateSandbox;
 
-/**
- * Provider for Handlebars instances configured with all custom helpers for notification templates.
- */
+/** Provider of the template sandbox, configured with all helpers for notification templates. */
 public class HandlebarsProvider {
 
-  private static final Handlebars INSTANCE = createInstance();
+  private static final TemplateSandbox INSTANCE = new TemplateSandbox(getAllHelpers());
 
   private HandlebarsProvider() {
     /* Private constructor for singleton */
   }
 
-  public static Handlebars getInstance() {
+  public static TemplateSandbox getInstance() {
     return INSTANCE;
-  }
-
-  private static Handlebars createInstance() {
-    Handlebars handlebars = new Handlebars().with(EscapingStrategy.HTML_ENTITY);
-
-    for (HandlebarsHelper helper : getAllHelpers()) {
-      helper.register(handlebars);
-    }
-
-    return handlebars;
   }
 
   private static List<HandlebarsHelper> getAllHelpers() {

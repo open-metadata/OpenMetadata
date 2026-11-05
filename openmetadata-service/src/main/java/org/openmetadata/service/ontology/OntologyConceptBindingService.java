@@ -288,9 +288,7 @@ public final class OntologyConceptBindingService {
     }
     final List<T> entities =
         repository.get(access.uriInfo(), ids, fields(repository), Include.NON_DELETED);
-    final var tags =
-        new BulkFieldHydrator(
-            Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
+    final var tags = BulkFieldHydrator.forTags(repository, entities);
     for (final T entity : entities) {
       try {
         authorizer.authorize(
