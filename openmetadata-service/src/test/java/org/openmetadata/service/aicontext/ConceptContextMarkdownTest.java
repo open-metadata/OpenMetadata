@@ -40,6 +40,22 @@ class ConceptContextMarkdownTest {
   }
 
   @Test
+  void rendersWhatDefinesAMetricsNumber() {
+    ConceptContext concept =
+        concept()
+            .withFilters(List.of("fee_category = 'ATM Fee'"))
+            .withGranularity("MONTH")
+            .withUnit("DOLLARS");
+
+    String markdown = AIContextMarkdown.render(context(concept));
+
+    assertTrue(markdown.contains("**Filters (apply with the definition):**"), markdown);
+    assertTrue(markdown.contains("fee_category = 'ATM Fee'"), markdown);
+    assertTrue(markdown.contains("**Granularity:** MONTH"), markdown);
+    assertTrue(markdown.contains("**Unit:** DOLLARS"), markdown);
+  }
+
+  @Test
   void distinguishesQueryExcerptsAndRecordedStatusFromUnknownExecutionStatus() {
     ConceptContext concept =
         concept()
