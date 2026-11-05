@@ -149,6 +149,7 @@ const SelectServiceType = ({
 
       <div className="tw:mt-3.5">
         <Input
+          autoComplete="off"
           icon={Search}
           placeholder={t('label.search-for-a-connector')}
           size="md"
