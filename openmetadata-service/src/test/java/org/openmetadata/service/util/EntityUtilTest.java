@@ -437,6 +437,64 @@ class EntityUtilTest {
   }
 
   @Test
+  void tableConstraintMatch_ignoresOrderOfColumnPairs() {
+    TableConstraint foreignKey =
+        foreignKey(List.of("alt_type", "country"), List.of("parent.type", "parent.country"));
+    TableConstraint samePairsReordered =
+        foreignKey(List.of("country", "alt_type"), List.of("parent.country", "parent.type"));
+
+    assertTrue(EntityUtil.tableConstraintMatch.test(foreignKey, samePairsReordered));
+  }
+
+  @Test
+  void tableConstraintMatch_detectsColumnsPairedDifferently() {
+    TableConstraint foreignKey =
+        foreignKey(List.of("alt_type", "country"), List.of("parent.type", "parent.country"));
+    TableConstraint crossedPairs =
+        foreignKey(List.of("alt_type", "country"), List.of("parent.country", "parent.type"));
+
+    assertFalse(EntityUtil.tableConstraintMatch.test(foreignKey, crossedPairs));
+  }
+
+  @Test
+  void tableConstraintMatch_ignoresColumnOrderWithoutReferredColumns() {
+    TableConstraint primaryKey =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of("country", "type"));
+    TableConstraint reordered =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of("type", "country"));
+
+    assertTrue(EntityUtil.tableConstraintMatch.test(primaryKey, reordered));
+    assertFalse(
+        EntityUtil.tableConstraintMatch.test(
+            primaryKey, foreignKey(List.of("country", "type"), List.of("p.country", "p.type"))));
+  }
+
+  @Test
+  void tableConstraintMatch_doesNotReorderStoredColumns() {
+    List<String> columns = new ArrayList<>(List.of("country", "alt_type"));
+    List<String> referredColumns = new ArrayList<>(List.of("parent.country", "parent.type"));
+    TableConstraint foreignKey = foreignKey(columns, referredColumns);
+
+    EntityUtil.tableConstraintMatch.test(
+        foreignKey,
+        foreignKey(List.of("alt_type", "country"), List.of("parent.type", "parent.country")));
+
+    assertEquals(List.of("country", "alt_type"), foreignKey.getColumns());
+    assertEquals(List.of("parent.country", "parent.type"), foreignKey.getReferredColumns());
+  }
+
+  private static TableConstraint foreignKey(List<String> columns, List<String> referredColumns) {
+    return new TableConstraint()
+        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+        .withColumns(columns)
+        .withReferredColumns(referredColumns);
+  }
+
+  @Test
   void testMatcherHelpers() {
     UUID refId = UUID.randomUUID();
     EntityReference ref1 = new EntityReference().withId(refId).withType("table");
