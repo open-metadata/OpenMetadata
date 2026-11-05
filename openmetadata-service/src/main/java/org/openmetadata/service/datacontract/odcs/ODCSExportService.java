@@ -30,6 +30,9 @@ public final class ODCSExportService {
   public static final String DEFAULT_VERSION = "v3.1.0";
   private static final Map<String, ODCSVersionAdapter> ADAPTERS =
       Map.of(DEFAULT_VERSION, new ODCSV31Mapper());
+  // Generated POJOs cannot enforce every conditional ODCS constraint, and preserved metadata is
+  // merged as raw JSON after serialization. Validate the complete export against the pinned schema
+  // for its target version; these bundled validators are loaded once and reused.
   private static final Map<String, Schema> SCHEMAS =
       Map.of(
           DEFAULT_VERSION,
