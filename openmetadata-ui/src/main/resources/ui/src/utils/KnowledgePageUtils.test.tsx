@@ -225,6 +225,39 @@ describe('KnowledgePageUtils', () => {
       expect(link.textContent).toContain('Test Quick Link');
     });
 
+    it('should neutralise a javascript: quick link url (XSS guard)', () => {
+      const quickLinkPage: KnowledgePage = {
+        id: '124',
+        fullyQualifiedName: 'quicklink.evil',
+        displayName: 'Evil Quick Link',
+        pageType: PageType.QUICK_LINK,
+        name: 'Evil Quick Link',
+        version: 1,
+        updatedAt: 123456789,
+        updatedBy: 'test-user',
+        owners: [],
+        description: '',
+        tags: [],
+        page: {
+          url: 'javascript:alert(document.domain)',
+        } as QuickLink,
+        href: '/api/v1/knowledgePages/124',
+        deleted: false,
+      };
+      const testIdPrefix = 'quick-link';
+
+      render(<TestWrapper>{getLink(quickLinkPage, testIdPrefix)}</TestWrapper>);
+
+      const link = screen.getByTestId(
+        `${testIdPrefix}-${quickLinkPage.displayName}`
+      );
+
+      // getSafeHttpUrl drops the javascript: scheme, so the '#' fallback is
+      // used — React Router renders that as href="/", never the script url.
+      expect(link.getAttribute('href')).not.toContain('javascript:');
+      expect(link).toHaveAttribute('href', '/');
+    });
+
     it('should render link for knowledge page type', () => {
       const knowledgePage: KnowledgePage = {
         id: '456',

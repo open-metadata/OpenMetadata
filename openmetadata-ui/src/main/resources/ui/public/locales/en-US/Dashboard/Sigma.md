@@ -6,6 +6,8 @@ In this section, we provide guides and references to use the Sigma connector.
 
 OpenMetadata relies on Sigma's REST API. To know more you can read the <a href="https://help.sigmacomputing.com/reference/get-started-sigma-api#about-the-api" target="_blank">Sigma API Get Started docs</a>. To <a href="https://help.sigmacomputing.com/reference/generate-client-credentials#user-requirements" target="_blank">generate API client credentials</a>, you must be assigned the Admin account type.
 
+You can find further information on the Sigma connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/sigma" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

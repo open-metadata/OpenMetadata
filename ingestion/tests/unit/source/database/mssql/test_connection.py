@@ -46,11 +46,15 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.mssql.connection import (
+    DEFAULT_QUERY_TIMEOUT_SECONDS,
     MSSQL_ERRORS,
     MssqlChecks,
     MssqlConnection,
     _mssql_number,
+    bound_pyodbc_query_timeout,
+    configured_query_timeout,
     get_connection_url,
+    with_default_query_timeout,
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_CURRENT_DATABASE,
@@ -219,6 +223,28 @@ _NO_VIEW_SERVER_STATE = (
     (300, "VIEW SERVER STATE permission was denied on object 'server', database 'master'."),
     (297, "The user does not have permission to perform this action."),
 )
+_THROTTLED_LOGIN_LIMIT = (
+    (
+        10928,
+        "Resource ID: 1. The request limit for the database is 60 and has been reached. See "
+        "'https://docs.microsoft.com/azure/azure-sql/database/resource-limits-logical-server' for assistance.",
+    ),
+)
+_THROTTLED_ELASTIC_POOL_LIMIT = (
+    (
+        10936,
+        "Resource ID: 1. The request limit for the elastic pool is 200 and has been reached. See "
+        "'https://docs.microsoft.com/azure/azure-sql/database/resource-limits-logical-server' for assistance.",
+    ),
+)
+_THROTTLED_WORKER_LIMIT = (
+    (
+        10929,
+        "Resource ID: 1. The worker minimum guarantee is 10, maximum limit is 60, and the current usage "
+        "for the database is 61. However, the server is currently too busy to support requests greater "
+        "than 60 for this database. Otherwise, please try again later.",
+    ),
+)
 
 
 @pytest.mark.parametrize(
@@ -363,6 +389,59 @@ def test_statement_permission_denied_is_not_diagnosed():
     assert MSSQL_ERRORS.classify(error) is None
 
 
+def test_pytds_throttling_limit_reached_classifies():
+    error = _wrapped(_pytds_error(*_THROTTLED_LOGIN_LIMIT))
+    diagnosis = MSSQL_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pytds_throttling_worker_limit_classifies():
+    error = _wrapped(_pytds_error(*_THROTTLED_WORKER_LIMIT))
+    diagnosis = MSSQL_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pymssql_throttling_tuple_shape_classifies():
+    diagnosis = MSSQL_ERRORS.classify(_wrapped(_pymssql_error(10928, "The request limit for the database is 60.")))
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pytds_throttling_elastic_pool_limit_classifies():
+    error = _wrapped(_pytds_error(*_THROTTLED_ELASTIC_POOL_LIMIT))
+    diagnosis = MSSQL_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pyodbc_throttling_limit_reached_classifies():
+    """pyodbc never exposes a SQL Server error number (see _mssql_number), so this rule
+    must fall through to the text match for pyodbc connections to get diagnosed at all."""
+    diagnosis = MSSQL_ERRORS.classify(
+        _pyodbc_error(
+            "HY000",
+            "Resource ID: 1. The request limit for the database is 60 and has been reached.",
+        )
+    )
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
+def test_pyodbc_throttling_worker_limit_classifies():
+    diagnosis = MSSQL_ERRORS.classify(
+        _pyodbc_error(
+            "HY000",
+            "Resource ID: 1. The worker minimum guarantee is 10, maximum limit is 60, and the current "
+            "usage for the database is 61. However, the server is currently too busy to support "
+            "requests greater than 60 for this database.",
+        )
+    )
+    assert diagnosis is not None
+    assert diagnosis.title == "Azure SQL resource limit reached (throttled)"
+
+
 def test_network_pack_is_folded_in():
     diagnosis = MSSQL_ERRORS.classify(socket.gaierror("Name or service not known"))
     assert diagnosis is not None
@@ -485,6 +564,148 @@ def test_get_databases_counts_the_databases_it_found():
 
 def test_get_databases_reports_a_floor_when_the_sample_is_capped():
     assert _databases_summary(DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+
+
+# Query timeouts. A hung read must not stall a workflow forever, and the shared
+# engine builder sets no timeout, so the connector applies one per driver.
+
+
+@pytest.mark.parametrize("scheme", [MssqlScheme.mssql_pytds, MssqlScheme.mssql_pymssql])
+def test_the_drivers_that_take_a_query_timeout_get_one(scheme):
+    """pytds and pymssql both read `timeout` as the socket timeout on every read."""
+    connection = with_default_query_timeout(_config(scheme=scheme))
+
+    assert connection.connectionArguments.root["timeout"] == DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
+def test_pyodbc_is_left_alone_because_its_timeout_argument_is_the_login_one():
+    """Setting `timeout` for pyodbc would shorten the login, not bound the query."""
+    connection = with_default_query_timeout(_config(scheme=MssqlScheme.mssql_pyodbc))
+
+    assert "timeout" not in (connection.connectionArguments.root if connection.connectionArguments else {})
+
+
+def test_a_user_supplied_timeout_wins():
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pytds,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": 5},
+    )
+
+    connection = with_default_query_timeout(config)
+
+    assert connection.connectionArguments.root["timeout"] == 5
+
+
+def test_the_configured_connection_is_left_untouched():
+    """The bound belongs to the engine: a workflow that stores its service
+    connection would otherwise persist a timeout nobody configured."""
+    config = _config(scheme=MssqlScheme.mssql_pytds)
+
+    with_default_query_timeout(config)
+
+    assert config.connectionArguments is None
+
+
+def _real_engine_for(config: MssqlConnectionConfig) -> Engine:
+    """The engine a workflow would actually be handed.
+
+    SQLAlchemy resolves the dialect and builds the pool without opening a socket,
+    so the connector can be driven for real here and the assertions can read the
+    engine itself rather than a record of how it was constructed.
+    """
+    return MssqlConnection(config).client
+
+
+def _timeout_a_new_connection_would_get(engine: Engine) -> int | None:
+    """Fire the engine's own connect listener the way its pool does, and report
+    the bound a fresh DBAPI connection comes away with - None when the engine
+    carries no such listener at all."""
+    listeners = [fn for fn in engine.pool.dispatch.connect if fn.__name__ == "set_query_timeout"]
+    if not listeners:
+        return None
+    dbapi_connection = MagicMock()
+    listeners[0](dbapi_connection, MagicMock())
+    return dbapi_connection.timeout
+
+
+def test_the_engine_is_built_with_pre_ping():
+    """A pooled connection the server has dropped must not fail the borrower."""
+    engine = _real_engine_for(_config())
+    try:
+        # The pool is where SQLAlchemy keeps it; it exposes no public reader.
+        assert engine.pool._pre_ping is True
+    finally:
+        engine.dispose()
+
+
+def test_a_configured_timeout_is_the_bound_pyodbc_queries_get():
+    """pyodbc spends `timeout` on the login, so a service that asked for a tighter
+    bound would otherwise keep running its queries against the default."""
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pyodbc,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": 30},
+    )
+
+    engine = _real_engine_for(config)
+    try:
+        assert _timeout_a_new_connection_would_get(engine) == 30
+    finally:
+        engine.dispose()
+
+
+def test_the_default_bound_applies_when_nothing_is_configured():
+    assert configured_query_timeout(_config(scheme=MssqlScheme.mssql_pyodbc)) == DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
+def test_a_non_numeric_timeout_falls_back_to_the_default():
+    """Whatever the driver makes of it, it is not a bound this can apply."""
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pyodbc,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": "thirty"},
+    )
+
+    assert configured_query_timeout(config) == DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
+@pytest.mark.parametrize(
+    ("scheme", "bounded"),
+    [(MssqlScheme.mssql_pyodbc, True), (MssqlScheme.mssql_pytds, False)],
+)
+def test_only_pyodbc_bounds_the_query_timeout_on_the_engine(scheme, bounded):
+    """The other drivers take the bound as a connect argument, so an engine-level
+    listener would be a second, conflicting bound rather than a missing one."""
+    engine = _real_engine_for(_config(scheme=scheme))
+    try:
+        timeout = _timeout_a_new_connection_would_get(engine)
+    finally:
+        engine.dispose()
+
+    assert (timeout == DEFAULT_QUERY_TIMEOUT_SECONDS) is bounded
+
+
+def test_the_query_timeout_is_applied_to_every_new_connection():
+    """pyodbc exposes the query timeout as a connection attribute, so it can only
+    be set once the DBAPI connection exists - hence a listener on connect."""
+    engine = create_engine("sqlite://", poolclass=StaticPool)
+    bound_pyodbc_query_timeout(engine, timeout_seconds=42)
+    dbapi_connection = MagicMock()
+
+    (listener,) = [fn for fn in engine.pool.dispatch.connect if fn.__name__ == "set_query_timeout"]
+    listener(dbapi_connection, MagicMock())
+
+    assert dbapi_connection.timeout == 42
 
 
 # ── GetTables / GetViews: TOP-1 existence probe, not a sorted reflection ─────

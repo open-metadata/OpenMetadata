@@ -28,7 +28,7 @@ import {
   Clock,
   Database01,
   Terminal,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -176,22 +176,24 @@ const RecentRunsSection: FC<RecentRunsSectionProps> = ({
       </span>
       <Box className="tw:gap-1">
         {agent.recentRuns.map((run, index) => (
-          <button
-            aria-label={t('message.run-status-click-details', {
-              status: t(RUN_META[run.status].labelKey),
-            })}
-            className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
-              RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
-            }${index === latestRunIndex ? '' : ' tw:opacity-[0.55]'}`}
-            data-run-status={run.status}
-            data-testid="agent-run-dot"
+          <Tooltip
             key={run.id}
             title={t('message.run-status-click-details', {
               status: t(RUN_META[run.status].labelKey),
-            })}
-            type="button"
-            onClick={() => onRunDetails(agent, run.id)}
-          />
+            })}>
+            <button
+              aria-label={t('message.run-status-click-details', {
+                status: t(RUN_META[run.status].labelKey),
+              })}
+              className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
+                RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
+              }${index === latestRunIndex ? '' : ' tw:opacity-[0.55]'}`}
+              data-run-status={run.status}
+              data-testid="agent-run-dot"
+              type="button"
+              onClick={() => onRunDetails(agent, run.id)}
+            />
+          </Tooltip>
         ))}
       </Box>
       <Button
@@ -370,7 +372,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
           className="tw:font-semibold"
           color="primary"
           data-testid="diagnose-button"
-          iconLeading={<AlertTriangle size={15} />}
+          iconLeading={AlertTriangle}
           size="sm"
           onClick={() => onRunDetails(agent)}>
           {t('label.diagnose')}
@@ -394,7 +396,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
               className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="logs-button"
-              iconLeading={<AlignLeft size={15} />}
+              iconLeading={AlignLeft}
               isDisabled={isUnavailable}
               size="sm"
               onClick={() => onLogs(agent)}>
@@ -406,7 +408,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
               className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="run-agent-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
+              iconLeading={PlayIcon}
               isDisabled={isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>

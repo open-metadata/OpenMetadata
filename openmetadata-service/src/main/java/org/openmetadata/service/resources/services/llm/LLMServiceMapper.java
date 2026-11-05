@@ -9,6 +9,7 @@ public class LLMServiceMapper implements EntityMapper<LLMService, CreateLLMServi
   public LLMService createToEntity(CreateLLMService create, String user) {
     return copy(new LLMService(), create, user)
         .withServiceType(create.getServiceType())
+        .withServiceAttributes(create.getServiceAttributes())
         .withConnection(create.getConnection())
         .withIngestionRunner(create.getIngestionRunner());
   }

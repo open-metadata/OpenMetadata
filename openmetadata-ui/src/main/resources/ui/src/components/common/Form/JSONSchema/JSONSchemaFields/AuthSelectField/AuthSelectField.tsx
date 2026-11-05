@@ -12,12 +12,12 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
   FieldProps,
   getDiscriminatorFieldFromSchema,
   RJSFSchema,
 } from '@rjsf/utils';
-import { InfoCircle } from '@untitledui/icons';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

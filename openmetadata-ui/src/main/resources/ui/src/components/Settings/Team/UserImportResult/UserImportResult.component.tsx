@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
@@ -19,8 +21,8 @@ import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/succe
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import {
   UserCSVRecord,
   UserImportResultProps,
@@ -42,11 +44,15 @@ export const UserImportResult = ({
         key: 'status',
         fixed: true,
         render: (status: string, record) => {
+          // Limit successful status cells so they do not stretch the import table.
           return (
-            <Space
+            <Box
+              inline
               align="start"
+              className="layout-space layout-space-horizontal"
               data-testid="status-container"
-              // Added max width because in case of full success we don't want to occupied full width
+              gap={2}
+              itemClassName="layout-space-item"
               style={{ maxWidth: 200 }}>
               {status === Status.Success && (
                 <SuccessBadgeIcon
@@ -67,7 +73,7 @@ export const UserImportResult = ({
                   {record.details}
                 </>
               )}
-            </Space>
+            </Box>
           );
         },
       },
@@ -78,9 +84,12 @@ export const UserImportResult = ({
         fixed: true,
         render: (name: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {name}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -90,9 +99,12 @@ export const UserImportResult = ({
         key: 'displayName',
         render: (displayName: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {displayName || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -118,9 +130,12 @@ export const UserImportResult = ({
         key: 'email',
         render: (value: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {value || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -130,9 +145,12 @@ export const UserImportResult = ({
         key: 'timezone',
         render: (value: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {value || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -142,9 +160,12 @@ export const UserImportResult = ({
         key: 'isAdmin',
         render: (value: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {value || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -154,9 +175,12 @@ export const UserImportResult = ({
         key: 'teams*',
         render: (value: string) => {
           return (
-            <Typography.Paragraph style={{ width: 200 }}>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ width: 200 }}>
               {value || '--'}
-            </Typography.Paragraph>
+            </Typography>
           );
         },
       },
@@ -165,7 +189,11 @@ export const UserImportResult = ({
         dataIndex: 'Roles',
         key: 'Roles',
         render: (value: string) => {
-          return <Typography.Paragraph>{value || '--'}</Typography.Paragraph>;
+          return (
+            <Typography as="p" className="tw:text-primary">
+              {value || '--'}
+            </Typography>
+          );
         },
       },
     ];

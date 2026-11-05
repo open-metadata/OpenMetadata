@@ -12,7 +12,7 @@
  */
 
 import { Badge, ButtonUtility } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deleteEntity } from '../../../../rest/miscAPI';
@@ -168,11 +168,10 @@ export const useDelete = <
     () => (
       <div className="tw:relative tw:inline-flex">
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-selected"
           icon={Trash01}
           isDisabled={selectedEntities.length === 0}
-          size="sm"
+          size="lg"
           tooltip={t('label.delete')}
           onClick={openModal}
         />

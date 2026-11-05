@@ -18,7 +18,6 @@ import type {
   CustomEdgeData,
   EdgeData,
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import type { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import type {
@@ -30,6 +29,7 @@ import type {
   LineageDetails,
 } from '../generated/type/entityLineage';
 import type { EntityReference } from '../generated/type/entityReference';
+import type { EdgeDetails } from '../interface/lineage.interface';
 import { getEntityReferenceFromEntity } from './EntityReferenceUtils';
 import Fqn from './Fqn';
 import { getPartialNameFromTableFQN } from './FqnUtils';
@@ -85,12 +85,13 @@ export const getNewLineageConnectionDetails = (
   selectedEdgeValue: Edge | undefined,
   selectedPipeline: EntityReference | undefined
 ) => {
-  const { fromEntity, toEntity, sqlQuery, columns } =
+  const { fromEntity, toEntity, sqlQuery, columns, tempLineageTables } =
     selectedEdgeValue?.data.edge ?? {};
   const updatedLineageDetails: LineageDetails = {
     sqlQuery: sqlQuery ?? '',
     columnsLineage: columns ?? [],
     pipeline: selectedPipeline,
+    tempLineageTables,
   };
 
   const newEdge: AddLineage = {
@@ -271,8 +272,10 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
     pipeline,
     source,
     pipelineEntityType,
+    tempLineageTables,
   } = edge.data?.edge || {};
 
+  // Saving replaces the edge's details, so anything left out is deleted.
   return {
     sqlQuery,
     columnsLineage: columns,
@@ -284,6 +287,7 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
         )
       : undefined,
     source,
+    tempLineageTables,
   };
 };
 

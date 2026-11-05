@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,56 +11,64 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, WarningOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button as CoreButton,
-  Input,
-  TableCard,
-  Typography,
-} from '@openmetadata/ui-core-components';
 import {
   Button,
+  ButtonUtility,
   Checkbox,
-  Col,
-  Dropdown,
-  MenuProps,
+  CheckboxBase,
+  Dialog,
+  FeaturedIcon,
+  Input,
   Modal,
+  ModalOverlay,
+  Owner,
   Popover,
-  Row,
-  Space,
-  Tooltip,
-} from 'antd';
+  PopoverTrigger,
+  TableCard,
+  TextArea,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  Edit01,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { TFunction } from 'i18next';
 import { debounce, isEmpty, isUndefined, uniqBy } from 'lodash';
-import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  MouseEvent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useHover, useInteractOutside } from 'react-aria';
 import {
   Button as AriaButton,
+  Checkbox as AriaCheckbox,
   DropOperation,
+  Heading,
   useDragAndDrop,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
-import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
-  API_RES_MAX_SIZE,
-  DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
-  TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import {
   DEFAULT_VISIBLE_COLUMNS,
@@ -68,16 +76,19 @@ import {
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
   STATIC_VISIBLE_COLUMNS,
 } from '../../../constants/Glossary.contant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
-import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import type { ResolveTask } from '../../../generated/api/tasks/resolveTask';
 import {
   EntityReference,
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { User } from '../../../generated/entity/teams/user';
+import {
+  GLOSSARY_PROPOSALS_QUERY_KEY,
+  useTermDerivations,
+} from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -104,15 +115,25 @@ import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
+  getGlossaryEntityLink,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
+  updateGlossaryTermStatus,
 } from '../../../utils/GlossaryPureUtils';
+import {
+  collectAiDraftIds,
+  getProposalSource,
+  getRequestAuthor,
+} from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -123,8 +144,10 @@ import {
   ExpandableConfig,
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
-import TagButton from '../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import ProposalSourceMark from '../../governance/glossary/GlossaryReview/ProposalSourceMark';
+import ProposalStatusBadge from '../../governance/glossary/GlossaryReview/ProposalStatusBadge';
+import { SynonymBadge } from '../GlossaryTermBadges/GlossaryTermBadges';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
 import {
@@ -150,6 +173,17 @@ const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
 
+// Grace period that lets the pointer travel from the status badge into its
+// workflow-history popover without the popover closing underneath it.
+const STATUS_POPOVER_CLOSE_DELAY_MS = 120;
+
+type GlossaryResolveTask = ResolveTask & { newValue: string };
+
+interface PendingGlossaryTermRejection {
+  glossaryTermFqn: string;
+  taskId: string | number;
+}
+
 const getTransferTargetName = (
   movedGlossaryTerm: GlossaryTermMoveConfirmationModalProps['movedGlossaryTerm'],
   activeGlossary: GlossaryTermMoveConfirmationModalProps['activeGlossary']
@@ -170,65 +204,101 @@ const GlossaryTermMoveConfirmationModal = ({
   t,
 }: GlossaryTermMoveConfirmationModalProps) => {
   return (
-    <Modal
-      centered
-      destroyOnClose
-      closable={false}
-      confirmLoading={isTableLoading}
-      data-testid="confirmation-modal"
-      maskClosable={false}
-      okButtonProps={{ disabled: hasReviewers && !confirmCheckboxChecked }}
-      okText={t('label.move')}
-      open={isModalOpen}
-      title={
-        <>
-          <WarningOutlined className="m-r-xs warning-icon" />
-          {t('label.move-the-entity', {
-            entity: t('label.glossary-term'),
-          })}
-        </>
-      }
-      onCancel={onDragConfirmationModalClose}
-      onOk={onChangeGlossaryTerm}>
-      <Transi18next
-        i18nKey="message.entity-transfer-message"
-        renderElement={<strong />}
-        values={{
-          from: movedGlossaryTerm?.from.name,
-          to: getTransferTargetName(movedGlossaryTerm, activeGlossary),
-          entity: isUndefined(movedGlossaryTerm?.to)
-            ? ''
-            : t('label.term-lowercase'),
-        }}
-      />
-      {hasReviewers && (
-        <div className="m-t-md">
-          <Checkbox
-            checked={confirmCheckboxChecked}
-            className="text-grey-700"
-            data-testid="confirm-status-checkbox"
-            onChange={(e) => onConfirmCheckboxChange(e.target.checked)}>
-            <span>
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={isModalOpen}
+      onOpenChange={(isOpen) => !isOpen && onDragConfirmationModalClose()}>
+      <Modal>
+        <Dialog
+          data-testid="confirmation-modal"
+          width={520}
+          onClose={onDragConfirmationModalClose}>
+          <Dialog.Header>
+            <div className="tw:flex tw:items-center tw:gap-3">
+              <FeaturedIcon
+                color="warning"
+                icon={AlertTriangle}
+                size="md"
+                theme="light"
+              />
+              <Heading
+                className="tw:text-md tw:font-semibold tw:text-primary"
+                slot="title">
+                {t('label.move-the-entity', {
+                  entity: t('label.glossary-term'),
+                })}
+              </Heading>
+            </div>
+          </Dialog.Header>
+          <Dialog.Content>
+            <Typography as="p" size="text-sm">
               <Transi18next
-                i18nKey="message.entity-transfer-confirmation-message"
+                i18nKey="message.entity-transfer-message"
                 renderElement={<strong />}
                 values={{
                   from: movedGlossaryTerm?.from.name,
+                  to: getTransferTargetName(movedGlossaryTerm, activeGlossary),
+                  entity: isUndefined(movedGlossaryTerm?.to)
+                    ? ''
+                    : t('label.term-lowercase'),
                 }}
               />
-              <span className="d-inline-block m-l-xss">
-                <StatusBadge
-                  className="p-x-xs p-y-xss"
-                  dataTestId=""
-                  label={EntityStatus.InReview}
-                  status={EntityStatusClass[EntityStatus.InReview]}
-                />
-              </span>
-            </span>
-          </Checkbox>
-        </div>
-      )}
-    </Modal>
+            </Typography>
+            {hasReviewers && (
+              // StatusBadge renders a <div>, which the core Checkbox label's <p> cannot
+              // hold, so the row is composed from the aria Checkbox and CheckboxBase.
+              <AriaCheckbox
+                className="tw:flex tw:cursor-pointer tw:items-start tw:gap-2"
+                data-testid="confirm-status-checkbox"
+                isSelected={confirmCheckboxChecked}
+                onChange={onConfirmCheckboxChange}>
+                {({ isSelected, isFocusVisible }) => (
+                  <>
+                    <CheckboxBase
+                      className="tw:mt-0.5"
+                      isFocusVisible={isFocusVisible}
+                      isSelected={isSelected}
+                    />
+                    <div className="tw:select-none tw:text-sm tw:text-secondary">
+                      <Transi18next
+                        i18nKey="message.entity-transfer-confirmation-message"
+                        renderElement={<strong />}
+                        values={{
+                          from: movedGlossaryTerm?.from.name,
+                        }}
+                      />
+                      <span className="tw:ml-1 tw:inline-block">
+                        <StatusBadge
+                          className="p-x-xs p-y-xss"
+                          dataTestId=""
+                          label={EntityStatus.InReview}
+                          status={EntityStatusClass[EntityStatus.InReview]}
+                        />
+                      </span>
+                    </div>
+                  </>
+                )}
+              </AriaCheckbox>
+            )}
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              isDisabled={isTableLoading}
+              onPress={onDragConfirmationModalClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={hasReviewers && !confirmCheckboxChecked}
+              isLoading={isTableLoading}
+              onPress={onChangeGlossaryTerm}>
+              {t('label.move')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 
@@ -284,12 +354,14 @@ const renderGlossaryExpandIcon = (
           <Loader size="x-small" />
         </span>
       ) : (
-        <Icon
-          className="m-r-xs vertical-baseline"
-          component={expanded ? IconDown : IconRight}
+        <ButtonUtility
+          aria-expanded={expanded}
+          aria-label={t(expanded ? 'label.collapse' : 'label.expand')}
+          className="tw:mr-1"
           data-testid="expand-icon"
-          style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
-          onClick={(e) => onExpand(record, e)}
+          icon={expanded ? ChevronDown : ChevronRight}
+          size="xs"
+          onClick={(e: MouseEvent<HTMLButtonElement>) => onExpand(record, e)}
         />
       )}
     </>
@@ -325,12 +397,12 @@ const LoadMoreNameCell = ({
 
   return (
     <Button
-      className="text-primary"
+      showTextWhileLoading
+      color="link-color"
       data-testid="load-more-children-button"
-      loading={isLoading}
-      size="small"
-      type="link"
-      onClick={() => parentRecord && onLoadMore(parentRecord)}>
+      isLoading={isLoading}
+      size="sm"
+      onPress={() => parentRecord && onLoadMore(parentRecord)}>
       {t('label.view-more-count', {
         countValue: remainingCount,
       })}
@@ -361,6 +433,7 @@ const GlossaryTermNameCell = ({
   );
   const termCountKey =
     totalNested === 1 ? 'label.count-term' : 'label.count-term-plural';
+  const proposalSource = getProposalSource(record);
 
   return (
     <div className="tw:flex tw:min-w-0 tw:items-center">
@@ -371,6 +444,11 @@ const GlossaryTermNameCell = ({
         imageClassName="tw:block"
         size={18}
       />
+      {proposalSource && (
+        <span className="tw:mr-1.5 tw:inline-flex">
+          <ProposalSourceMark source={proposalSource} />
+        </span>
+      )}
       <Link
         className="cursor-pointer tw:inline-block tw:max-w-50 tw:truncate"
         data-testid={name}
@@ -395,6 +473,95 @@ const GlossaryTermNameCell = ({
   );
 };
 
+interface GlossaryTermStatusCellProps {
+  record: ModifiedGlossaryTerm;
+  status: EntityStatus;
+  children?: ReactNode;
+}
+
+const GlossaryTermStatusCell = ({
+  record,
+  status,
+  children,
+}: GlossaryTermStatusCellProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverContentRef = useRef<HTMLDivElement>(null);
+
+  const clearCloseTimeout = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = undefined;
+    }
+  }, []);
+
+  const openPopover = useCallback(() => {
+    clearCloseTimeout();
+    setIsOpen(true);
+  }, [clearCloseTimeout]);
+
+  const closePopover = useCallback(() => {
+    clearCloseTimeout();
+    closeTimeoutRef.current = setTimeout(
+      () => setIsOpen(false),
+      STATUS_POPOVER_CLOSE_DELAY_MS
+    );
+  }, [clearCloseTimeout]);
+
+  useEffect(() => clearCloseTimeout, [clearCloseTimeout]);
+
+  // Hovering the popover itself keeps it open, as antd's hover Popover did.
+  const { hoverProps: popoverHoverProps } = useHover({
+    onHoverStart: openPopover,
+    onHoverEnd: closePopover,
+  });
+
+  // `isNonModal` turns off react-aria's own outside-press and Escape dismissal,
+  // so a popover opened by tap or keyboard needs them wired here. The trigger is
+  // excluded because its own press already toggles the popover.
+  useInteractOutside({
+    ref: popoverContentRef,
+    isDisabled: !isOpen,
+    onInteractOutside: (event) => {
+      if (!triggerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    },
+  });
+
+  return (
+    <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+      <AriaButton
+        className="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
+        data-testid={`${record.fullyQualifiedName ?? ''}-status`}
+        ref={triggerRef}
+        onHoverEnd={closePopover}
+        onHoverStart={openPopover}
+        onKeyDown={(event) => event.key === 'Escape' && setIsOpen(false)}>
+        {children ?? (
+          <StatusBadge label={status} status={EntityStatusClass[status]} />
+        )}
+      </AriaButton>
+      {/* The flex chain hands react-aria's max-height down to the timeline, so
+          only the steps scroll and the header stays in view. */}
+      <Popover
+        isNonModal
+        className="tw:flex tw:flex-col"
+        containerClassName="tw:flex tw:min-h-0 tw:flex-col"
+        placement="top start">
+        <div
+          className="tw:flex tw:min-h-0 tw:min-w-65 tw:flex-col tw:p-3"
+          data-testid="workflow-history-popover"
+          ref={popoverContentRef}
+          {...popoverHoverProps}>
+          <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
+        </div>
+      </Popover>
+    </PopoverTrigger>
+  );
+};
+
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
@@ -412,9 +579,26 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
+  const selectedProposalId = useGlossaryStore(
+    (state) => state.selectedProposalId
+  );
+  const queryClient = useQueryClient();
+  // Consumer via useGenericContext(). No `deleted` argument: the old expression here
+  // (bare permissions.EditAll, bulk-edit button gate) never referenced a deleted
+  // concept, so getDerivedPermissionFlags defaults to its `deleted = false` — nothing
+  // to gate. permissions.Create sites left untouched — Create isn't a flagged
+  // operation for the no-raw-permission-access lint rule.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Task[]>
   >({});
+  const [pendingRejection, setPendingRejection] =
+    useState<PendingGlossaryTermRejection>();
+  const [rejectionComment, setRejectionComment] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
 
   const glossaryTerms = useMemo(() => {
     // Deduplicate by FQN: the table keys rows on fullyQualifiedName, and
@@ -428,6 +612,20 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       'fullyQualifiedName'
     );
   }, [glossaryChildTerms]);
+
+  // The evidence behind the AI drafts among the loaded rows, for their status badges.
+  const aiDraftIds = useMemo(
+    () => collectAiDraftIds(glossaryTerms),
+    [glossaryTerms]
+  );
+  const derivations = useTermDerivations(aiDraftIds);
+  const derivationByTermId = useMemo(
+    () =>
+      new Map(
+        derivations.map((derivation) => [derivation.entity.id, derivation])
+      ),
+    [derivations]
+  );
 
   // Precompute each term's loaded-descendant count once per data change (the
   // API's childrenCount is the whole subtree size, so this must be recursive).
@@ -467,7 +665,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
-  const { paging, handlePagingChange, pageSize } = usePaging(PAGE_SIZE_LARGE);
+  const { paging, handlePagingChange, pageSize, handlePageSizeChange } =
+    usePaging();
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
@@ -624,6 +823,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // filter — e.g. a listing request in flight when the user typed a query —
       // is discarded so it cannot repopulate or clear the table against the
       // user's current intent.
+      // Only the latest request may write; a stale page re-collapses rows.
+      if (requestSeq !== fetchRequestSeqRef.current) {
+        return;
+      }
+
       if (
         isStaleFetchResponse(
           data,
@@ -669,6 +873,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const fetchExpadedTree = async (loadMore = false) => {
+    // Shares fetchAllTerms' sequence so a first-level page still in flight
+    // (e.g. the tab's mount fetch) cannot land after this and re-collapse
+    // the tree while the button already reads "Collapse All".
+    const requestSeq = ++fetchRequestSeqRef.current;
     if (loadMore) {
       setIsLoadingMoreTree(true);
     } else {
@@ -690,6 +898,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           TabSpecificField.CHILDREN_COUNT,
         ],
       });
+
+      if (requestSeq !== fetchRequestSeqRef.current) {
+        return;
+      }
 
       // Accumulate the flat term list across pages and rebuild the tree from
       // it; nesting fills in progressively as parents/children load.
@@ -731,35 +943,43 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsTableLoading(false);
+      if (requestSeq === fetchRequestSeqRef.current) {
+        setIsTableLoading(false);
+      }
       setIsExpandingAll(false);
       setIsLoadingMoreTree(false);
     }
   };
+  const lastFetchedTaskFqnRef = useRef<string | undefined>(undefined);
+
   const fetchAllTasks = useCallback(async () => {
-    if (!activeGlossary?.fullyQualifiedName) {
+    const fqn = activeGlossary?.fullyQualifiedName;
+    if (!fqn || fqn === lastFetchedTaskFqnRef.current) {
       return;
     }
 
     try {
+      // aboutEntity uses server-side prefix matching (FQN LIKE 'glossary.%'), so
+      // only tasks for terms under this glossary are returned — no client-side
+      // prefix filter needed and the limit is now glossary-scoped, not platform-wide.
       const { data } = await listTasks({
         status: TaskEntityStatus.Open,
         category: TaskCategory.Approval,
         type: TaskEntityType.RequestApproval,
-        limit: API_RES_MAX_SIZE,
-        fields: 'about,assignees',
+        aboutEntity: fqn,
+        limit: PAGE_SIZE_LARGE,
+        fields: 'about,assignees,createdBy',
       });
+      lastFetchedTaskFqnRef.current = fqn;
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
       const tasksByTerm = data.reduce(
         (acc: Record<string, Task[]>, task: Task) => {
           const termFQN = task.about?.fullyQualifiedName;
-          const isGlossaryTermTask =
-            task.about?.type === EntityType.GLOSSARY_TERM &&
-            termFQN?.startsWith(`${activeGlossary.fullyQualifiedName}.`);
-
-          if (isGlossaryTermTask && termFQN) {
+          // Keep only term tasks — the prefix filter also returns the root glossary
+          // entity exact-match, so guard against tasks on the glossary itself.
+          if (task.about?.type === EntityType.GLOSSARY_TERM && termFQN) {
             const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${termFQN}>`;
             if (!acc[entityLink]) {
               acc[entityLink] = [];
@@ -827,34 +1047,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [isGlossary, activeGlossary]);
 
   const tableColumnsWidth = useMemo(() => glossaryTermTableColumnsWidth(), []);
-
-  const updateGlossaryTermStatus = (
-    terms: ModifiedGlossary[],
-    targetFqn: string,
-    newStatus: EntityStatus
-  ): ModifiedGlossary[] => {
-    return terms.map((term) => {
-      if (term.fullyQualifiedName === targetFqn) {
-        return {
-          ...term,
-          entityStatus: newStatus,
-        };
-      }
-
-      if (term.children && term.children.length > 0) {
-        return {
-          ...term,
-          children: updateGlossaryTermStatus(
-            term.children as ModifiedGlossary[],
-            targetFqn,
-            newStatus
-          ),
-        };
-      }
-
-      return term;
-    }) as ModifiedGlossary[];
-  };
 
   const updateGlossaryTermTask = (
     tasks: Record<string, Task[]>,
@@ -929,21 +1121,25 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const updateTaskData = useCallback(
     async (
-      data: ResolveTask,
+      data: GlossaryResolveTask,
       taskId: string | number,
       glossaryTermFqn: string
     ) => {
       try {
         if (!taskId) {
-          return;
+          return false;
         }
 
         const updatedTask = await resolveTaskAPI(taskId + '', {
+          comment: data.comment,
           resolutionType: getTaskResolutionType(data.newValue),
           newValue: data.newValue,
         });
         const isPendingFurtherApproval =
           isTaskPendingFurtherApproval(updatedTask);
+        void queryClient.invalidateQueries({
+          queryKey: GLOSSARY_PROPOSALS_QUERY_KEY,
+        });
 
         showSuccessToast(
           isPendingFurtherApproval
@@ -955,7 +1151,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         setExpandedRowKeys(currentExpandedKeys);
 
         if (!glossaryChildTerms || !glossaryTermFqn) {
-          return;
+          return true;
         }
 
         const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFqn}>`;
@@ -963,7 +1159,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         if (isPendingFurtherApproval) {
           notifyPendingApprovalTasks(entityLink, updatedTask);
 
-          return;
+          return true;
         }
 
         applyGlossaryTermApprovalOutcome(
@@ -972,8 +1168,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           entityLink,
           taskId
         );
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       }
     },
     [expandedRowKeys, glossaryChildTerms, selectedStatus, termTaskThreads]
@@ -981,7 +1181,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleApproveGlossaryTerm = useCallback(
     (taskId: string | number, glossaryTermFqn: string) => {
-      const data = { newValue: 'approved' } as ResolveTask;
+      const data: GlossaryResolveTask = { newValue: 'approved' };
       updateTaskData(data, taskId, glossaryTermFqn);
     },
     [updateTaskData]
@@ -989,11 +1189,37 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleRejectGlossaryTerm = useCallback(
     (taskId: string | number, glossaryTermFqn: string) => {
-      const data = { newValue: 'rejected' } as ResolveTask;
-      updateTaskData(data, taskId, glossaryTermFqn);
+      setPendingRejection({ glossaryTermFqn, taskId });
+      setRejectionComment('');
     },
-    [updateTaskData]
+    []
   );
+
+  const handleRejectDialogClose = useCallback(() => {
+    if (!isRejecting) {
+      setPendingRejection(undefined);
+      setRejectionComment('');
+    }
+  }, [isRejecting]);
+
+  const handleRejectConfirm = useCallback(async () => {
+    const comment = rejectionComment.trim();
+    if (!pendingRejection || !comment) {
+      return;
+    }
+
+    setIsRejecting(true);
+    const didReject = await updateTaskData(
+      { comment, newValue: 'rejected' },
+      pendingRejection.taskId,
+      pendingRejection.glossaryTermFqn
+    );
+    setIsRejecting(false);
+    if (didReject) {
+      setPendingRejection(undefined);
+      setRejectionComment('');
+    }
+  }, [pendingRejection, rejectionComment, updateTaskData]);
 
   const handleLoadMoreChildren = useCallback(
     (record: ModifiedGlossaryTerm) => {
@@ -1096,23 +1322,30 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               />
             );
           }
+          const proposalSource = getProposalSource(record);
+          if (!proposalSource) {
+            return <GlossaryTermStatusCell record={record} status={status} />;
+          }
+          const approvalTask =
+            termTaskThreads[
+              getGlossaryEntityLink(record.fullyQualifiedName ?? '')
+            ]?.[0];
 
-          return (
-            <Popover
-              content={
-                <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
-              }
-              overlayStyle={{ minWidth: '260px' }}
-              placement="topLeft"
-              trigger="hover">
-              <div>
-                <StatusBadge
-                  dataTestId={termFQN + '-status'}
-                  label={status}
-                  status={EntityStatusClass[status]}
-                />
-              </div>
-            </Popover>
+          const proposalBadge = (
+            <ProposalStatusBadge
+              author={getRequestAuthor(approvalTask, record.updatedBy)}
+              derivation={derivationByTermId.get(record.id)}
+              source={proposalSource}
+              updatedAt={record.updatedAt}
+            />
+          );
+
+          return proposalSource === 'person' ? (
+            <GlossaryTermStatusCell record={record} status={status}>
+              {proposalBadge}
+            </GlossaryTermStatusCell>
+          ) : (
+            proposalBadge
           );
         },
         onFilter: (value, record) => record.entityStatus === value,
@@ -1130,9 +1363,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }
 
           return (
-            <OwnerLabel
+            <Owner
               isCompactView={false}
-              owners={reviewers}
+              labelVariant="cell"
+              owners={reviewers ?? []}
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}
@@ -1156,13 +1390,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
           ) : (
-            <div className="d-flex flex-wrap">
+            <div className="tw:flex tw:flex-wrap tw:gap-1">
               {synonyms.map((synonym: string) => (
-                <TagButton
-                  className="glossary-synonym-tag"
-                  key={synonym}
-                  label={synonym}
-                />
+                <SynonymBadge key={synonym} synonym={synonym} />
               ))}
             </div>
           );
@@ -1198,40 +1428,28 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           const allowAddTerm = status === EntityStatus.Approved;
 
           return (
-            <div className="d-flex items-center">
+            <div className="tw:flex tw:items-center tw:gap-1">
               {allowAddTerm && (
-                <Tooltip
-                  title={t('label.add-entity', {
+                <ButtonUtility
+                  data-testid="add-classification"
+                  icon={Plus}
+                  size="lg"
+                  tooltip={t('label.add-entity', {
                     entity: t('label.glossary-term'),
-                  })}>
-                  <Button
-                    className="add-new-term-btn text-grey-muted flex-center"
-                    data-testid="add-classification"
-                    icon={
-                      <PlusOutlinedIcon color={DE_ACTIVE_COLOR} width="14px" />
-                    }
-                    size="small"
-                    type="text"
-                    onClick={() => {
-                      onAddGlossaryTerm(record as GlossaryTerm);
-                    }}
-                  />
-                </Tooltip>
+                  })}
+                  onClick={() => onAddGlossaryTerm(record as GlossaryTerm)}
+                />
               )}
 
-              <Tooltip
-                title={t('label.edit-entity', {
+              <ButtonUtility
+                data-testid="edit-button"
+                icon={Edit01}
+                size="lg"
+                tooltip={t('label.edit-entity', {
                   entity: t('label.glossary-term'),
-                })}>
-                <Button
-                  className="cursor-pointer flex-center"
-                  data-testid="edit-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                  onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
-                />
-              </Tooltip>
+                })}
+                onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
+              />
             </div>
           );
         },
@@ -1249,6 +1467,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     loadingChildren,
     expandedRowKeys,
     loadedNestedCountByFqn,
+    derivationByTermId,
   ]);
 
   const handleCheckboxChange = useCallback(
@@ -1322,70 +1541,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
   }, [toggleExpandBtn, fetchAllTerms, fetchExpadedTree, handlePagingChange]);
 
-  const statusDropdownMenu: MenuProps = useMemo(
-    () => ({
-      items: [
-        {
-          key: 'statusSelection',
-          label: (
-            <div className="status-selection-dropdown">
-              <Checkbox.Group
-                className="glossary-col-sel-checkbox-group"
-                value={statusDropdownSelection}>
-                {GLOSSARY_TERM_STATUS_OPTIONS.map((option) => (
-                  <div key={option.value}>
-                    <Checkbox
-                      className="custom-glossary-col-sel-checkbox"
-                      data-testid={`glossary-status-option-${option.value}`}
-                      value={option.value}
-                      onChange={(e) =>
-                        handleCheckboxChange(option.value, e.target.checked)
-                      }>
-                      <p className="glossary-dropdown-label">{option.text}</p>
-                    </Checkbox>
-                  </div>
-                ))}
-              </Checkbox.Group>
-            </div>
-          ),
-        },
-        {
-          key: 'divider',
-          type: 'divider',
-          className: 'm-b-xs',
-        },
-        {
-          key: 'actions',
-          label: (
-            <div className="flex-center">
-              <Space>
-                <Button
-                  className="custom-glossary-dropdown-action-btn"
-                  data-testid="glossary-status-save-btn"
-                  type="primary"
-                  onClick={handleStatusSelectionDropdownSave}>
-                  {t('label.save')}
-                </Button>
-                <Button
-                  className="custom-glossary-dropdown-action-btn"
-                  data-testid="glossary-status-cancel-btn"
-                  type="default"
-                  onClick={handleStatusSelectionDropdownCancel}>
-                  {t('label.cancel')}
-                </Button>
-              </Space>
-            </div>
-          ),
-        },
-      ],
-    }),
-    [
-      statusDropdownSelection,
-      handleStatusSelectionDropdownSave,
-      handleStatusSelectionDropdownCancel,
-    ]
-  );
-
   const handleEditGlossary = () => {
     navigate({
       pathname: getEntityBulkEditPath(
@@ -1417,7 +1572,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return (
       <>
         <Input
-          className="tw:mr-auto tw:w-80"
+          // min-w-0: w-80 is a hard floor otherwise, pushing Customize out of the row.
+          className="tw:mr-auto tw:w-80 tw:min-w-0"
           inputDataTestId="search-glossary-terms-input"
           placeholder={t('label.search-entity', {
             entity: t('label.term-plural'),
@@ -1427,48 +1583,68 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           onChange={handleSearchChange}
         />
 
-        <div className="d-flex items-center gap-5 flex-shrink">
-          <Dropdown
-            className="custom-glossary-dropdown-menu status-dropdown"
-            menu={statusDropdownMenu}
-            open={isStatusDropdownVisible}
-            trigger={['click']}
+        <div className="tw:flex tw:shrink tw:items-center tw:gap-5">
+          <PopoverTrigger
+            isOpen={isStatusDropdownVisible}
             onOpenChange={setIsStatusDropdownVisible}>
             <Button
-              className="text-primary remove-button-background-hover"
+              color="link-color"
               data-testid="glossary-status-dropdown"
-              size="small"
-              type="text">
-              <Space>
-                {t('label.status')}
-                <DownOutlined />
-              </Space>
+              iconTrailing={ChevronDown}
+              size="sm">
+              {t('label.status')}
             </Button>
-          </Dropdown>
+            <Popover containerClassName="tw:p-3" placement="bottom end">
+              <div
+                className="tw:flex tw:w-48 tw:flex-col tw:gap-3"
+                data-testid="glossary-status-dropdown-menu">
+                <div className="tw:flex tw:flex-col tw:gap-2">
+                  {GLOSSARY_TERM_STATUS_OPTIONS.map((option) => (
+                    <Checkbox
+                      data-testid={`glossary-status-option-${option.value}`}
+                      isSelected={statusDropdownSelection.includes(
+                        option.value
+                      )}
+                      key={option.value}
+                      label={option.text}
+                      onChange={(checked) =>
+                        handleCheckboxChange(option.value, checked)
+                      }
+                    />
+                  ))}
+                </div>
+                <div className="tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:pt-3">
+                  <Button
+                    color="secondary"
+                    data-testid="glossary-status-cancel-btn"
+                    size="sm"
+                    onPress={handleStatusSelectionDropdownCancel}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    color="primary"
+                    data-testid="glossary-status-save-btn"
+                    size="sm"
+                    onPress={handleStatusSelectionDropdownSave}>
+                    {t('label.save')}
+                  </Button>
+                </div>
+              </div>
+            </Popover>
+          </PopoverTrigger>
 
-          {getBulkEditButton(permissions.EditAll, handleEditGlossary)}
+          {getBulkEditButton(canEditAll, handleEditGlossary)}
 
           <Button
-            className="text-primary remove-button-background-hover"
+            showTextWhileLoading
+            color="link-color"
             data-testid="expand-collapse-all-button"
-            disabled={isExpandingAll}
-            size="small"
-            type="text"
-            onClick={toggleExpandAll}>
-            <Space align="center" size={4}>
-              {isExpandingAll ? (
-                <Loader size="small" />
-              ) : (
-                <Icon
-                  className="text-primary"
-                  component={
-                    toggleExpandBtn ? DownUpArrowIcon : UpDownArrowIcon
-                  }
-                  height="14px"
-                />
-              )}
-              {expandCollapseLabel}
-            </Space>
+            iconLeading={toggleExpandBtn ? DownUpArrowIcon : UpDownArrowIcon}
+            isDisabled={isExpandingAll}
+            isLoading={isExpandingAll}
+            size="sm"
+            onPress={toggleExpandAll}>
+            {expandCollapseLabel}
           </Button>
         </div>
       </>
@@ -1477,9 +1653,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     toggleExpandBtn,
     isExpandingAll,
     isStatusDropdownVisible,
-    statusDropdownMenu,
+    statusDropdownSelection,
+    handleCheckboxChange,
     searchInput,
     toggleExpandAll,
+    canEditAll,
   ]);
 
   const handleAddGlossaryTermClick = () => {
@@ -1502,10 +1680,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       if (isNested || isExpanded) {
         rowClasses.push('glossary-nested-row');
       }
+      const proposalSource = getProposalSource(record);
+      if (proposalSource) {
+        rowClasses.push(
+          proposalSource === 'ai'
+            ? 'glossary-ai-draft-row'
+            : 'glossary-person-proposal-row'
+        );
+      }
+      if (proposalSource && record.id === selectedProposalId) {
+        rowClasses.push('glossary-proposal-row-selected');
+      }
 
       return rowClasses.join(' ');
     },
-    [expandedRowKeys]
+    [expandedRowKeys, selectedProposalId]
   );
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
@@ -1818,8 +2007,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   }, [isDraggingTerm, moveDraggedGlossaryTermToRoot]);
 
-  // Trigger new fetch when search term or status filter changes. Both reset
-  // pagination back to the first page.
+  // Trigger new fetch when the search term, status filter or page size
+  // changes. Each resets pagination back to the first page.
   useEffect(() => {
     if (
       activeGlossary &&
@@ -1833,11 +2022,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }));
       fetchAllTerms();
     }
-  }, [searchTerm, selectedStatus]);
+  }, [searchTerm, selectedStatus, pageSize]);
 
   // Check if this is due to search or filter returning no results
   const isSearchActive = hasActiveSearchTerm(searchTerm);
-  const isStatusFilterActive = !selectedStatus.includes('all');
   const hasNoTerms = isEmpty(glossaryTerms);
 
   const showPagination = glossaryTerms.length > 0;
@@ -1874,17 +2062,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     );
   };
 
-  const glossaryPlaceholderText = useMemo(() => {
-    if (isSearchActive && searchTerm) {
-      return `No Glossary Term found for "${searchTerm}"`;
-    }
-    if (isSearchActive || isStatusFilterActive) {
-      return 'No Glossary Term found';
-    }
-
-    return 'No Glossary Terms';
-  }, [isSearchActive, isStatusFilterActive, searchTerm]);
-
   if (
     shouldShowEmptyPlaceholder(
       hasNoTerms,
@@ -1912,12 +2089,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const renderTableSection = () =>
     glossaryTerms.length > 0 ? (
       <TableCard.Root
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:border tw:border-secondary tw:outline-0"
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
         size="sm">
         <Table
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
-          containerClassName="glossary-terms-table drop-over-background tw:!border-0 tw:!rounded-none tw:min-h-0 tw:flex-1 tw:!overflow-auto"
+          // Flex column so the scroll region below has a bounded box to fill.
+          containerClassName="glossary-terms-table drop-over-background tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:min-h-0 tw:flex-1"
           data-testid="glossary-terms-table"
           dataSource={filteredGlossaryTerms}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
@@ -1929,6 +2107,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
           scroll={GLOSSARY_TABLE_SCROLL}
+          // Fill the panel rather than the rows' height, so the horizontal
+          // scrollbar sits at the bottom instead of floating above empty space.
+          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:max-h-none"
           size="small"
           staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
         />
@@ -1936,7 +2117,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           <div
             className="tw:flex tw:shrink-0 tw:items-center tw:gap-4 tw:border-t tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3"
             data-testid="expand-tree-load-more">
-            <CoreButton
+            <Button
               color="secondary"
               data-testid="expand-tree-load-more-button"
               isDisabled={isLoadingMoreTree}
@@ -1944,7 +2125,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               size="sm"
               onPress={handleExpandTreeLoadMore}>
               {t('label.load-more')}
-            </CoreButton>
+            </Button>
             <span className="tw:text-sm tw:text-tertiary">
               {t('label.showing-count-of-total-nested-terms', {
                 current: expandTree.loaded,
@@ -1962,6 +2143,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleGlossaryTermPageChange}
+              onShowSizeChange={handlePageSizeChange}
             />
           </div>
         )}
@@ -1969,12 +2151,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     ) : (
       // Show empty state within the table container when search returns no results
       // This keeps the search bar and filters visible
-      <TableCard.Root
-        className="tw:border tw:border-secondary tw:outline-0"
-        size="sm">
+      <TableCard.Root size="sm">
         <Table
           columns={columns}
-          containerClassName="glossary-terms-table tw:!border-0 tw:!rounded-none"
+          containerClassName="glossary-terms-table tw:border-0 tw:rounded-none"
           data-testid="glossary-terms-table"
           dataSource={[]}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
@@ -1984,11 +2164,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           loading={isTableLoading}
           locale={{
             emptyText: (
-              <ErrorPlaceHolder
-                className="p-md"
-                placeholderText={glossaryPlaceholderText}
-                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-              />
+              <div
+                className="tw:relative tw:min-h-[220px]"
+                data-testid={
+                  isSearchActive
+                    ? 'no-search-results-placeholder'
+                    : 'no-filtered-results-placeholder'
+                }>
+                {isSearchActive ? (
+                  <NoSearchResultsPlaceholder />
+                ) : (
+                  <NoFilteredResultsPlaceholder
+                    description={t('message.filter-no-matching-terms')}
+                  />
+                )}
+              </div>
             ),
           }}
           pagination={false}
@@ -2002,9 +2192,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     );
 
   return (
-    <Row className={className} gutter={[0, 16]}>
-      {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
-      <Col className="w-full" ref={tableContainerRef} span={24}>
+    <div
+      className={classNames(
+        'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+        className
+      )}>
+      <div
+        className="tw:flex tw:min-h-0 tw:w-full tw:flex-1 tw:flex-col"
+        ref={tableContainerRef}>
         <div
           className={classNames(
             'glossary-terms-scroll-container tw:flex tw:flex-col',
@@ -2018,6 +2213,47 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           style={{ position: 'relative' }}>
           {renderTableSection()}
         </div>
+        <ModalOverlay
+          isDismissable={!isRejecting}
+          isOpen={Boolean(pendingRejection)}
+          onOpenChange={(isOpen) => !isOpen && handleRejectDialogClose()}>
+          <Modal>
+            <Dialog
+              data-testid="glossary-term-reject-dialog"
+              showCloseButton={!isRejecting}
+              title={t('label.reject')}
+              width={480}
+              onClose={handleRejectDialogClose}>
+              <Dialog.Content>
+                <TextArea
+                  isRequired
+                  data-testid="glossary-term-reject-comment"
+                  isDisabled={isRejecting}
+                  label={t('label.comment')}
+                  rows={4}
+                  value={rejectionComment}
+                  onChange={setRejectionComment}
+                />
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button
+                  color="secondary"
+                  isDisabled={isRejecting}
+                  onPress={handleRejectDialogClose}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary-destructive"
+                  data-testid="confirm-reject-glossary-term"
+                  isDisabled={!rejectionComment.trim() || isRejecting}
+                  isLoading={isRejecting}
+                  onPress={handleRejectConfirm}>
+                  {t('label.reject')}
+                </Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
         <GlossaryTermMoveConfirmationModal
           activeGlossary={activeGlossary}
           confirmCheckboxChecked={confirmCheckboxChecked}
@@ -2030,8 +2266,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           onConfirmCheckboxChange={setConfirmCheckboxChecked}
           onDragConfirmationModalClose={onDragConfirmationModalClose}
         />
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 };
 

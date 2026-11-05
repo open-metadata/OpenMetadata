@@ -10,16 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Badge, Button, Modal, Popover, Typography } from 'antd';
+import {
+  BadgeWithDot,
+  Button,
+  ButtonUtility,
+  Popover,
+  PopoverTrigger,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
-import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   ChangePasswordRequest,
@@ -74,64 +79,44 @@ const ProfileManageOptions = ({
   <div style={{ width: '180px' }}>
     {isLoggedInUser && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
         data-testid="edit-displayname"
+        iconLeading={Edit01}
         onClick={onEditDisplayName}>
-        <EditProfileIcon
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography.Text className="profile-manage-label">
-          {t('label.edit-entity', {
-            entity: t('label.display-name'),
-          })}
-        </Typography.Text>
+        {t('label.edit-entity', {
+          entity: t('label.display-name'),
+        })}
       </Button>
     )}
     {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
         data-testid="change-password-button"
+        iconLeading={ChangePassword}
         onClick={onChangePassword}>
-        <ChangePassword
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography.Text className="profile-manage-label">
-          {t('label.change-entity', {
-            entity: t('label.password-lowercase'),
-          })}
-        </Typography.Text>
+        {t('label.change-entity', {
+          entity: t('label.password-lowercase'),
+        })}
       </Button>
     )}
     {userData?.deleted ? (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
+        iconLeading={Trash01}
         onClick={onRestore}>
-        <DeleteIcon
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography.Text className="profile-manage-label">
-          {t('label.restore')}
-        </Typography.Text>
+        {t('label.restore')}
       </Button>
     ) : (
       isAdminUser && (
         <Button
-          className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
+          className="tw:w-full tw:justify-start"
+          color="tertiary"
+          iconLeading={Trash01}
           onClick={onDelete}>
-          <DeleteIcon
-            className="m-r-xss"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-          <Typography.Text className="profile-manage-label">
-            {t('label.delete-profile')}
-          </Typography.Text>
+          {t('label.delete-profile')}
         </Button>
       )
     )}
@@ -211,11 +196,11 @@ const ProfileSectionUserDetailsCard = ({
   const userEmailRender = useMemo(
     () =>
       !isMaskedEmail(userData.email) && (
-        <Typography.Paragraph
-          className="m-b-0 profile-details-email"
+        <p
+          className="tw:m-0 tw:wrap-break-word tw:text-center tw:text-sm tw:leading-5 tw:text-brand-secondary"
           data-testid="user-email-value">
           {userData.email}
-        </Typography.Paragraph>
+        </p>
       ),
     [userData.email]
   );
@@ -261,23 +246,27 @@ const ProfileSectionUserDetailsCard = ({
   };
 
   return (
-    <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
-      <Popover
-        destroyTooltipOnHide
-        content={manageProfileOptions}
-        open={isPopoverVisible}
-        overlayClassName="profile-management-popover"
-        placement="bottomLeft"
-        trigger="click"
-        onOpenChange={(visible) => setisPopoverVisible(visible)}>
-        {(isAdminUser || isLoggedInUser) && (
-          <MenuDots
-            className="cursor-pointer user-details-menu-icon"
+    <div className="tw:relative tw:mb-5 tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-5">
+      {(isAdminUser || isLoggedInUser) && (
+        <PopoverTrigger
+          isOpen={isPopoverVisible}
+          onOpenChange={setisPopoverVisible}>
+          <ButtonUtility
+            className="tw:absolute tw:top-2.5 tw:right-2.5"
             data-testid="user-profile-manage-btn"
-            onClick={() => setisPopoverVisible((prev) => !prev)}
+            icon={MenuDots}
+            size="lg"
+            tooltip={t('label.manage-entity', {
+              entity: t('label.profile'),
+            })}
           />
-        )}
-      </Popover>
+          <Popover
+            className="profile-management-popover"
+            placement="bottom start">
+            {manageProfileOptions}
+          </Popover>
+        </PopoverTrigger>
+      )}
 
       <div className="m-t-sm">
         <UserPopOverCard userName={userData?.name}>
@@ -291,17 +280,19 @@ const ProfileSectionUserDetailsCard = ({
         </UserPopOverCard>
       </div>
       <div className="d-flex flex-col items-center">
-        <p className="profile-details-title" data-testid="user-display-name">
+        <p
+          className="tw:mt-5 tw:mb-0 tw:text-center tw:text-lg tw:font-semibold tw:leading-7 tw:break-words tw:text-primary"
+          data-testid="user-display-name">
           {getEntityName(userData)}
         </p>
         {userEmailRender}
         {onlineStatus && (
           <div className="m-t-sm">
-            <Badge
-              data-testid="user-online-status"
-              status={onlineStatus.status}
-              text={onlineStatus.text}
-            />
+            <span data-testid="user-online-status">
+              <BadgeWithDot color="success" size="sm">
+                {onlineStatus.text}
+              </BadgeWithDot>
+            </span>
           </div>
         )}
       </div>
@@ -338,47 +329,30 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <Icon
-            className="m-r-xss font-medium text-md ant-icon"
-            component={DeleteIcon}
-          />
+          <Trash01 className="tw:mr-1 tw:shrink-0" size={14} />
 
           {t('label.deleted')}
         </span>
       )}
 
       {showRestoreModal && (
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
-          <Modal
-            centered
-            cancelButtonProps={{
-              type: 'link',
-              disabled: isRestoring,
-            }}
-            className="reactive-modal"
-            closable={false}
-            confirmLoading={isRestoring}
-            data-testid="restore-user-modal"
-            maskClosable={false}
-            okButtonProps={{
-              loading: isRestoring,
-            }}
-            okText={t('label.restore')}
-            open={showRestoreModal}
-            title={t('label.restore-entity', {
-              entity: EntityType.USER,
+        <SimpleModal
+          data-testid="restore-user-modal"
+          isDismissable={false}
+          isOkLoading={isRestoring}
+          isOpen={showRestoreModal}
+          okText={t('label.restore')}
+          title={t('label.restore-entity', {
+            entity: EntityType.USER,
+          })}
+          onCancel={() => setShowRestoreModal(false)}
+          onOk={handleRestore}>
+          <Typography data-testid="restore-modal-body">
+            {t('message.are-you-want-to-restore', {
+              entity: getEntityName(userData),
             })}
-            onCancel={() => setShowRestoreModal(false)}
-            onOk={handleRestore}>
-            <Typography.Text data-testid="restore-modal-body">
-              {t('message.are-you-want-to-restore', {
-                entity: getEntityName(userData),
-              })}
-            </Typography.Text>
-          </Modal>
-        </Button>
+          </Typography>
+        </SimpleModal>
       )}
     </div>
   );

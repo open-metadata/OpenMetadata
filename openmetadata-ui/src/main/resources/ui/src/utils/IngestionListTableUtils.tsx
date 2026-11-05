@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Col, Row, Tag, Typography } from 'antd';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
 import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
@@ -25,18 +24,22 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionTexts';
 import { getEntityName } from './EntityNameUtils';
-import { highlightSearchText } from './EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from './EntitySearchUtils';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringUtils';
 
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>
     (
-      <Typography.Text
+      <Typography
         className="m-b-0 d-block break-word"
         data-testid="pipeline-name">
-        {stringToHTML(highlightSearchText(getEntityName(record), searchText))}
-      </Typography.Text>
+        {renderHighlightedText(
+          highlightSearchText(getEntityName(record), searchText)
+        )}
+      </Typography>
     );
 
 export const renderTypeField =
@@ -47,27 +50,30 @@ export const renderTypeField =
         : startCase(record.pipelineType);
 
     return (
-      <Typography.Text
+      <Typography
         className="m-b-0 d-block break-word"
         data-testid="pipeline-type">
-        {stringToHTML(highlightSearchText(typeText, searchText))}
-      </Typography.Text>
+        {renderHighlightedText(highlightSearchText(typeText, searchText))}
+      </Typography>
     );
   };
 
 export const renderStatusField = (_: string, record: IngestionPipeline) => {
-  const statusIcon = record.enabled ? ActiveIcon : PausedIcon;
+  const StatusIcon = record.enabled ? ActiveIcon : PausedIcon;
 
   return (
-    <Tag
+    <Badge
+      bordered={false}
       className={classNames(
         'ingestion-run-badge latest pipeline-status',
         record.enabled ? 'success' : 'paused'
       )}
-      data-testid="pipeline-active-status">
-      <Icon component={statusIcon} />
+      data-testid="pipeline-active-status"
+      size="sm"
+      type="color">
+      <StatusIcon fill="currentColor" height="1em" width="1em" />
       {record.enabled ? t('label.active') : t('label.paused')}
-    </Tag>
+    </Badge>
   );
 };
 
@@ -80,40 +86,33 @@ const ScheduleFieldCell = ({
     useScheduleDescriptionTexts(scheduleInterval);
 
   return (
-    <Row gutter={[8, 8]} wrap={false}>
-      <Col flex="none">
-        <TimeDateIcon className="m-t-xss" height={20} width={20} />
-      </Col>
-      <Col className="tw:min-w-0" flex="auto">
-        <Row className="line-height-16">
-          <Col span={24}>
-            <Typography.Text
-              className="font-medium"
-              data-testid="schedule-primary-details"
-              ellipsis={{ tooltip: descriptionFirstPart }}>
-              {descriptionFirstPart}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <Typography.Text
-              className="text-xs text-grey-muted"
-              data-testid="schedule-secondary-details"
-              ellipsis={{ tooltip: descriptionSecondPart }}>
-              {descriptionSecondPart}
-            </Typography.Text>
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+    <Box align="start" gap={2} wrap="nowrap">
+      <TimeDateIcon className="m-t-xss tw:shrink-0" height={20} width={20} />
+      <Box className="tw:min-w-0 tw:flex-auto line-height-16" direction="col">
+        <Typography
+          className="font-medium"
+          data-testid="schedule-primary-details"
+          ellipsis={{ tooltip: descriptionFirstPart }}>
+          {descriptionFirstPart}
+        </Typography>
+        <Typography
+          className="text-xs"
+          color="secondary"
+          data-testid="schedule-secondary-details"
+          ellipsis={{ tooltip: descriptionSecondPart }}>
+          {descriptionSecondPart}
+        </Typography>
+      </Box>
+    </Box>
   );
 };
 
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {
     return (
-      <Typography.Text data-testid="scheduler-no-data">
+      <Typography data-testid="scheduler-no-data">
         {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
+      </Typography>
     );
   }
 

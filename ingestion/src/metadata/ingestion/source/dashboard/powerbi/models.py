@@ -116,6 +116,7 @@ class PowerBiColumns(BaseModel):
     dataType: str | None = None  # noqa: N815
     columnType: str | None = None  # noqa: N815
     description: str | None = None
+    isHidden: bool | None = False  # noqa: N815
 
 
 class PowerBiMeasureModel(BaseModel):
@@ -137,9 +138,10 @@ class PowerBiMeasures(BaseModel):
     """
 
     name: str | None = None
-    expression: str | list[str] | None = None
+    expression: str | None = None
     description: str | None = None
     isHidden: bool | None = False  # noqa: N815
+    formatString: str | None = None  # noqa: N815
 
     @field_validator("expression", mode="before")
     @classmethod

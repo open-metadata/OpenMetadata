@@ -19,19 +19,22 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Retry wrapper for JDBI {@code @Transaction}-annotated methods that can lose a deadlock race on
- * hot rows.
+ * Retry wrapper for a self-contained unit of work that can lose a deadlock race on hot rows.
  *
- * <p>The retry scope is the full transaction: when JDBI rolls the transaction back on a deadlock,
- * we re-invoke the enclosing method so the entire unit of work replays in a fresh transaction. Do
- * not push this down into {@code CollectionDAO} — retrying one DAO statement outside its original
- * transaction context would leave earlier writes in that txn lost.
+ * <p>The retry scope is the whole enclosing unit of work — a JDBI {@code @Transaction}-annotated
+ * method, or a single self-contained Flowable command (e.g. {@code taskService.complete(...)},
+ * {@code runtimeService.startProcessInstanceById(...)}). When the database rolls the transaction
+ * back on a deadlock it has already released every lock it held, so re-invoking the enclosing
+ * operation replays it atomically in a fresh transaction. Do not push this down into
+ * {@code CollectionDAO} — retrying one DAO statement outside its original transaction context
+ * would leave earlier writes in that txn lost.
  *
  * <p>Backoff: retries are synchronous when invoked via {@link Retry#executeSupplier(Supplier)} —
  * the calling thread waits between attempts according to the configured interval. This matches
  * the existing retry pattern in {@code SearchRetryUtil} so operators see consistent behaviour
  * across subsystems. Exponential base 50 ms × 2^(attempt-1) with 50% jitter — attempt 1 ≈ 25-75
- * ms, attempt 2 ≈ 50-150 ms, attempt 3 ≈ 100-300 ms.
+ * ms, attempt 2 ≈ 50-150 ms, attempt 3 ≈ 100-300 ms. The wait is bounded and happens after the
+ * transaction has been rolled back, so no database lock is held while the thread backs off.
  */
 @Slf4j
 public final class DeadlockRetry {
@@ -43,6 +46,11 @@ public final class DeadlockRetry {
           .build();
 
   private static final Retry RETRY = Retry.of("db-deadlock", CONFIG);
+  private static final int MYSQL_LOCK_WAIT_TIMEOUT = 1205;
+  private static final int MYSQL_DEADLOCK = 1213;
+  private static final String SERIALIZATION_FAILURE = "40001";
+  private static final String POSTGRES_DEADLOCK = "40P01";
+  private static final String DEADLOCK_MESSAGE = "Deadlock found when trying to get lock";
 
   static {
     RETRY
@@ -57,11 +65,21 @@ public final class DeadlockRetry {
 
   private DeadlockRetry() {}
 
-  /** Execute {@code operation} with deadlock retry. {@code operation} must open its own JDBI
-   * transaction (typically via {@code @Transaction} on the method it delegates to) so each retry
-   * runs in a fresh, atomic unit of work. */
+  /** Execute {@code operation} with deadlock retry. {@code operation} must open its own
+   * transaction (a JDBI {@code @Transaction} method, or a self-contained Flowable command that
+   * commits on its own) so each retry runs in a fresh, atomic unit of work. */
   public static <T> T execute(Supplier<T> operation) {
     return RETRY.executeSupplier(operation);
+  }
+
+  /** Run a void {@code operation} with deadlock retry — the {@link Runnable} equivalent of
+   * {@link #execute(Supplier)} for a self-contained command with no return value. */
+  public static void run(Runnable operation) {
+    RETRY.executeSupplier(
+        () -> {
+          operation.run();
+          return null;
+        });
   }
 
   /** {@code true} if {@code throwable} (or any cause in its chain) is a MySQL/Postgres deadlock or
@@ -78,7 +96,7 @@ public final class DeadlockRetry {
         return true;
       }
       String message = current.getMessage();
-      if (message != null && message.contains("Deadlock found when trying to get lock")) {
+      if (message != null && message.contains(DEADLOCK_MESSAGE)) {
         return true;
       }
       if (current.getCause() == current) {
@@ -93,9 +111,29 @@ public final class DeadlockRetry {
     String sqlState = sqlException.getSQLState();
     int errorCode = sqlException.getErrorCode();
     // MySQL: 1213 deadlock, 1205 lock-wait timeout. Postgres: 40P01 deadlock. Generic: 40001.
-    return "40001".equals(sqlState)
-        || "40P01".equals(sqlState)
-        || errorCode == 1213
-        || errorCode == 1205;
+    return SERIALIZATION_FAILURE.equals(sqlState)
+        || POSTGRES_DEADLOCK.equals(sqlState)
+        || errorCode == MYSQL_DEADLOCK
+        || errorCode == MYSQL_LOCK_WAIT_TIMEOUT;
+  }
+
+  /**
+   * {@code true} if this statement's own error rolled back the whole transaction: a MySQL deadlock,
+   * or a Postgres deadlock or serialization failure. Causes are not followed, because the Postgres
+   * driver attaches that rollback as the cause of every later statement it rejects. A MySQL lock
+   * wait timeout does not count: it rolls back only its statement, although Connector/J reports it
+   * with the same SQLState {@code 40001}.
+   */
+  public static boolean rollsBackTransaction(SQLException statementError) {
+    String sqlState = statementError.getSQLState();
+    int errorCode = statementError.getErrorCode();
+    boolean rollbackState =
+        SERIALIZATION_FAILURE.equals(sqlState) || POSTGRES_DEADLOCK.equals(sqlState);
+    return errorCode == MYSQL_DEADLOCK || (rollbackState && errorCode != MYSQL_LOCK_WAIT_TIMEOUT);
+  }
+
+  /** {@code true} if this statement's own error is a MySQL lock wait timeout. */
+  public static boolean isLockWaitTimeout(SQLException statementError) {
+    return statementError.getErrorCode() == MYSQL_LOCK_WAIT_TIMEOUT;
   }
 }

@@ -14,6 +14,7 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -22,8 +23,11 @@ import org.apache.jena.rdf.model.Model;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 
-/** Marks inference output stale after each successful mutation of the source RDF dataset. */
-public final class InferenceInvalidatingRdfStorage implements RdfStorageInterface {
+/**
+ * Marks inference output stale after each successful mutation of the source RDF dataset, and after
+ * an entity write that failed once it may have reached the store.
+ */
+public final class InferenceInvalidatingRdfStorage extends ForwardingRdfStorage {
   private final RdfStorageInterface delegate;
   private final InferenceDirtyMarker dirtyMarker;
 
@@ -34,8 +38,32 @@ public final class InferenceInvalidatingRdfStorage implements RdfStorageInterfac
   }
 
   @Override
-  public void storeEntity(final String entityType, final UUID entityId, final Model entityModel) {
-    mutate(() -> delegate.storeEntity(entityType, entityId, entityModel));
+  protected RdfStorageInterface delegate() {
+    return delegate;
+  }
+
+  /**
+   * A write that found the projection already stored changes nothing a rule reads. A failed one may
+   * have changed the graph anyway, for a difference can commit before its read-back or reply fails,
+   * and its retry then finds the projection stored and reports nothing changed.
+   */
+  @Override
+  public RdfEntityWriteResult storeEntity(
+      final String entityType,
+      final UUID entityId,
+      final Model entityModel,
+      final RdfEntityWriteStrategy strategy) {
+    final RdfEntityWriteResult result;
+    try {
+      result = delegate.storeEntity(entityType, entityId, entityModel, strategy);
+    } catch (RuntimeException failure) {
+      dirtyMarker.markAllDirty();
+      throw failure;
+    }
+    if (result.changesGraph()) {
+      dirtyMarker.markAllDirty();
+    }
+    return result;
   }
 
   @Override
@@ -47,6 +75,12 @@ public final class InferenceInvalidatingRdfStorage implements RdfStorageInterfac
   public void bulkStoreEntities(
       final List<EntityWriteRequest> requests, final RdfWriteMode writeMode) {
     mutate(() -> delegate.bulkStoreEntities(requests, writeMode));
+  }
+
+  @Override
+  public void bulkStoreEntities(
+      final List<EntityWriteRequest> requests, final RdfWriteMode mode, final long budget) {
+    mutate(() -> delegate.bulkStoreEntities(requests, mode, budget));
   }
 
   @Override
@@ -66,23 +100,8 @@ public final class InferenceInvalidatingRdfStorage implements RdfStorageInterfac
   }
 
   @Override
-  public String buildEntityUri(final String entityType, final String entityId) {
-    return delegate.buildEntityUri(entityType, entityId);
-  }
-
-  @Override
-  public Model getEntity(final String entityType, final UUID entityId) {
-    return delegate.getEntity(entityType, entityId);
-  }
-
-  @Override
   public void deleteEntity(final String entityType, final UUID entityId) {
     mutate(() -> delegate.deleteEntity(entityType, entityId));
-  }
-
-  @Override
-  public String executeSparqlQuery(final String sparqlQuery, final String format) {
-    return delegate.executeSparqlQuery(sparqlQuery, format);
   }
 
   @Override
@@ -91,53 +110,23 @@ public final class InferenceInvalidatingRdfStorage implements RdfStorageInterfac
   }
 
   @Override
+  public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
+    mutate(() -> delegate.executeMaintenanceUpdate(sparqlUpdate, timeout));
+  }
+
+  @Override
   public void loadTurtleFile(final InputStream turtleStream, final String graphUri) {
     mutate(() -> delegate.loadTurtleFile(turtleStream, graphUri));
   }
 
   @Override
-  public List<String> getAllGraphs() {
-    return delegate.getAllGraphs();
-  }
-
-  @Override
-  public long getTripleCount() {
-    return delegate.getTripleCount();
-  }
-
-  @Override
-  public long getTripleCount(final String graphUri) {
-    return delegate.getTripleCount(graphUri);
+  public void replaceGraph(final String graph, final Model model) {
+    mutate(() -> delegate.replaceGraph(graph, model));
   }
 
   @Override
   public void clearGraph(final String graphUri) {
     mutate(() -> delegate.clearGraph(graphUri));
-  }
-
-  @Override
-  public void compactStorage() {
-    delegate.compactStorage();
-  }
-
-  @Override
-  public boolean testConnection() {
-    return delegate.testConnection();
-  }
-
-  @Override
-  public void ensureStorageReady() {
-    delegate.ensureStorageReady();
-  }
-
-  @Override
-  public String getStorageType() {
-    return delegate.getStorageType();
-  }
-
-  @Override
-  public void close() {
-    delegate.close();
   }
 
   private void mutate(final Runnable mutation) {

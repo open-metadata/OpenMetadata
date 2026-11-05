@@ -55,6 +55,7 @@ from metadata.generated.schema.api.data.createGlossaryTerm import (
 )
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
+from metadata.generated.schema.api.data.createPage import CreatePage
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createQueryCostRecord import (
@@ -166,6 +167,7 @@ from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.page import Page
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.queryCostRecord import QueryCostRecord
@@ -341,6 +343,9 @@ ROUTES = {
     CreateDomainRequest.__name__: "/domains",
     DataProduct.__name__: "/dataProducts",
     CreateDataProductRequest.__name__: "/dataProducts",
+    # Context Center
+    Page.__name__: "/contextCenter/pages",
+    CreatePage.__name__: "/contextCenter/pages",
     # Event Subscriptions
     EventSubscription.__name__: "/events/subscriptions",
     CreateEventSubscription.__name__: "/events/subscriptions",

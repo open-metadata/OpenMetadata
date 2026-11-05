@@ -1,15 +1,24 @@
 package org.openmetadata.service.security;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.security.SecurityUtil.buildPrincipalClaimsMapping;
+import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.validateDomainEnforcement;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.github.benmanes.caffeine.cache.Ticker;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.security.KeyPair;
@@ -18,15 +27,22 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
+import org.openmetadata.service.security.credentials.CredentialVerifierFixture;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Slf4j
@@ -48,15 +64,247 @@ class JWTTokenGeneratorTest {
   protected JWTTokenConfiguration jwtTokenConfiguration;
   protected JWTTokenGenerator jwtTokenGenerator;
 
-  @BeforeAll
+  private static final List<String> DEFAULT_CLAIM_ORDER =
+      List.of("email", "preferred_username", "sub");
+  private static final String PRINCIPAL_DOMAIN = "getcollate.io";
+
+  @BeforeEach
   public void setup() {
     jwtTokenConfiguration = new JWTTokenConfiguration();
     jwtTokenConfiguration.setJwtissuer("open-metadata.org");
+    jwtTokenConfiguration.setKeyId("minted-token-test-key");
     jwtTokenConfiguration.setRsaprivateKeyFilePath(rsaPrivateKeyPath);
     jwtTokenConfiguration.setRsapublicKeyFilePath(rsaPublicKeyPath);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
+    initGenerator(DEFAULT_CLAIM_ORDER, List.of());
+  }
+
+  private void initGenerator(List<String> principalClaims, List<String> principalClaimsMapping) {
+    initGenerator(
+        new AuthenticationConfiguration()
+            .withJwtPrincipalClaims(principalClaims)
+            .withJwtPrincipalClaimsMapping(principalClaimsMapping));
+  }
+
+  private void initGenerator(AuthenticationConfiguration authenticationConfiguration) {
+    jwtTokenGenerator.init(
+        authenticationConfiguration.withTokenValidationAlgorithm(
+            AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
+        jwtTokenConfiguration);
+  }
+
+  @Test
+  void mintedIdentityClaimsMirrorProviderShape() {
+    DecodedJWT jwt = mint("mohit", "mohit.yadav@getcollate.io");
+    assertEquals("mohit", jwt.getClaim("sub").asString());
+    assertEquals("mohit", jwt.getClaim("username").asString());
+    assertEquals("mohit.yadav@getcollate.io", jwt.getClaim("email").asString());
+    assertEquals("mohit.yadav@getcollate.io", jwt.getClaim("preferred_username").asString());
+  }
+
+  @Test
+  void preferredUsernameOrderPreservesStoredUsername() {
+    List<String> order = List.of("preferred_username", "email", "upn", "sub");
+    initGenerator(order, List.of());
+    DecodedJWT token = mint("admin_ab12", "admin@attacker.example");
+    Map<String, Claim> claims = token.getClaims();
+
+    assertEquals("admin_ab12", claims.get("preferred_username").asString());
+    assertEquals("admin@attacker.example", claims.get("email").asString());
+    assertEquals("admin_ab12", findUserNameFromClaims(Map.of(), order, claims));
+    assertMintedIdentity(order, token, "admin_ab12", "admin@attacker.example");
+  }
+
+  @Test
+  void mintedTokenCarriesMappedProviderClaims() {
+    List<String> mappingConfig = List.of("username:upn", "email:mail");
+    Map<String, String> mapping = buildPrincipalClaimsMapping(mappingConfig);
+    initGenerator(DEFAULT_CLAIM_ORDER, mappingConfig);
+    Map<String, Claim> claims = mint("mohit", "mohit.yadav@getcollate.io").getClaims();
+
+    assertEquals("mohit", findUserNameFromClaims(mapping, DEFAULT_CLAIM_ORDER, claims));
+    assertEquals(
+        "mohit.yadav@getcollate.io",
+        findEmailFromClaims(mapping, DEFAULT_CLAIM_ORDER, claims, "openmetadata.org"));
+    assertDoesNotThrow(
+        () ->
+            validateDomainEnforcement(
+                mapping, DEFAULT_CLAIM_ORDER, claims, PRINCIPAL_DOMAIN, Set.of(), true));
+  }
+
+  @Test
+  void mintedTokenCarriesFirstConfiguredClaimWhenNotMapped() {
+    List<String> order = List.of("unique_name", "sub");
+    initGenerator(order, List.of());
+    DecodedJWT token = mint("mohit", "mohit@getcollate.io");
+    Map<String, Claim> claims = token.getClaims();
+
+    assertEquals("mohit", claims.get("unique_name").asString());
+    assertMintedIdentity(order, token, "mohit", "mohit@getcollate.io");
+  }
+
+  /** No email to mirror: the bare name stands in, and the token still resolves to that user. */
+  @Test
+  void mintedTokenFallsBackToNameWhenEmailIsMissing() {
+    Map<String, Claim> claims = mint("ingestion-bot", null).getClaims();
+    assertEquals("ingestion-bot", claims.get("preferred_username").asString());
+    assertEquals("ingestion-bot", findUserNameFromClaims(Map.of(), DEFAULT_CLAIM_ORDER, claims));
+  }
+
+  /** Both logical names mapped onto one claim: the email wins, as in the provider's own token. */
+  @Test
+  void mappedUsernameAndEmailOnSameClaimKeepTheEmail() {
+    List<String> mappingConfig = List.of("username:email", "email:email");
+    Map<String, String> mapping = buildPrincipalClaimsMapping(mappingConfig);
+    initGenerator(DEFAULT_CLAIM_ORDER, mappingConfig);
+    Map<String, Claim> claims = mint("mohit", "mohit@getcollate.io").getClaims();
+
+    assertEquals("mohit@getcollate.io", claims.get("email").asString());
+    assertEquals("mohit", findUserNameFromClaims(mapping, DEFAULT_CLAIM_ORDER, claims));
+    assertEquals(
+        "mohit@getcollate.io",
+        findEmailFromClaims(mapping, DEFAULT_CLAIM_ORDER, claims, "openmetadata.org"));
+  }
+
+  @Test
+  void firstConfiguredClaimPreservesStoredUsername() {
+    List<String> order = List.of("sub", "email");
+    initGenerator(order, List.of());
+    DecodedJWT token = mint("admin_ab12", "admin@attacker.example");
+    Map<String, Claim> claims = token.getClaims();
+
+    assertEquals("admin_ab12", claims.get("sub").asString());
+    assertEquals("admin_ab12", claims.get("username").asString());
+    assertEquals("admin@attacker.example", claims.get("email").asString());
+    assertEquals("admin_ab12", findUserNameFromClaims(Map.of(), order, claims));
+    assertMintedIdentity(order, token, "admin_ab12", "admin@attacker.example");
+  }
+
+  /** The default order reads the email first, yet our token still names its own user. */
+  @Test
+  void defaultClaimOrderPreservesStoredUsername() {
+    DecodedJWT token = mint("admin_ab12", "admin@attacker.example");
+
+    assertMintedIdentity(DEFAULT_CLAIM_ORDER, token, "admin_ab12", "admin@attacker.example");
+  }
+
+  private static void assertMintedIdentity(
+      List<String> order, DecodedJWT token, String userName, String email) {
+    try (CredentialVerifierFixture credentials =
+        new CredentialVerifierFixture(
+            new SimpleMeterRegistry(),
+            Ticker.systemTicker(),
+            CredentialVerificationConfig.defaults())) {
+      credentials.withPats(Map.of(userName, List.of(token.getToken())));
+      JwtFilter filter =
+          new JwtFilter(
+              new MultiUrlJwkProvider(List.of()),
+              order,
+              "openmetadata.org",
+              false,
+              credentials::verifier);
+      CatalogPrincipal principal =
+          (CatalogPrincipal) filter.getCatalogSecurityContext(token.getToken()).getUserPrincipal();
+      assertEquals(userName, principal.getName());
+      assertEquals(email, principal.getEmail());
+    }
+  }
+
+  /**
+   * #32000 through the email-first flow: an emailClaim naming a claim the provider sends but we did
+   * not mint resolved our own token from the legacy order instead, i.e. to the email's local part.
+   */
+  @Test
+  void mintedTokenResolvesThroughConfiguredEmailClaim() {
+    initGenerator(
+        new AuthenticationConfiguration()
+            .withEmailClaim("upn")
+            .withJwtPrincipalClaims(DEFAULT_CLAIM_ORDER));
+    Map<String, Claim> claims = mint("jdoe", "john.doe@getcollate.io").getClaims();
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolveEmailFirst("upn", DEFAULT_CLAIM_ORDER, claims);
+    assertEquals("jdoe", identity.userName());
+    assertTrue(identity.emailFirstFlow());
+  }
+
+  /** Dropping the deprecated order, as the startup warning suggests, left no fallback at all. */
+  @Test
+  void mintedTokenResolvesThroughConfiguredEmailClaimWithoutLegacyOrder() {
+    initGenerator(new AuthenticationConfiguration().withEmailClaim("upn"));
+    Map<String, Claim> claims = mint("jdoe", "john.doe@getcollate.io").getClaims();
+
+    assertEquals("jdoe", resolveEmailFirst("upn", List.of(), claims).userName());
+  }
+
+  /** A mapping keeps identity resolution on the legacy flow, so the mapped claims stay as mapped. */
+  @Test
+  void configuredEmailClaimLeavesMappedClaimsAlone() {
+    initGenerator(
+        new AuthenticationConfiguration()
+            .withEmailClaim("upn")
+            .withJwtPrincipalClaims(DEFAULT_CLAIM_ORDER)
+            .withJwtPrincipalClaimsMapping(List.of("username:upn", "email:mail")));
+    Map<String, Claim> claims = mint("mohit", "mohit.yadav@getcollate.io").getClaims();
+
+    assertEquals("mohit", claims.get("upn").asString());
+    assertEquals("mohit.yadav@getcollate.io", claims.get("mail").asString());
+  }
+
+  private static JwtIdentityResolver.ResolvedIdentity resolveEmailFirst(
+      String emailClaim, List<String> order, Map<String, Claim> claims) {
+    return new JwtIdentityResolver(emailClaim, Map.of(), order, PRINCIPAL_DOMAIN, email -> "jdoe")
+        .resolve(claims, false);
+  }
+
+  /** Downstream still calls the algorithm-only overload; it must mint the same standard claims. */
+  @Test
+  @SuppressWarnings("removal")
+  void deprecatedAlgorithmOnlyInitStillMintsProviderShapedClaims() {
     jwtTokenGenerator.init(
         AuthenticationConfiguration.TokenValidationAlgorithm.RS_256, jwtTokenConfiguration);
+    Map<String, Claim> claims = mint("mohit", "mohit@getcollate.io").getClaims();
+
+    assertEquals("mohit", claims.get("sub").asString());
+    assertEquals("mohit@getcollate.io", claims.get("preferred_username").asString());
+    assertEquals("mohit", findUserNameFromClaims(Map.of(), DEFAULT_CLAIM_ORDER, claims));
+  }
+
+  private DecodedJWT mint(String userName, String email) {
+    return decodedJWT(
+        jwtTokenGenerator
+            .generateJWTToken(
+                userName, Set.of(), false, email, 3600, false, ServiceTokenType.PERSONAL_ACCESS)
+            .getJWTToken());
+  }
+
+  @Test
+  void tokensMintedForOneUserWithOneExpiryDifferInJtiAndBytes() {
+    Date expires = new Date(System.currentTimeMillis() + 3_600_000L);
+    String first = mintWithExpiry(expires);
+    String second = mintWithExpiry(expires);
+
+    assertNotEquals(first, second);
+    String firstJti = JWT.decode(first).getId();
+    String secondJti = JWT.decode(second).getId();
+    assertDoesNotThrow(() -> UUID.fromString(firstJti));
+    assertDoesNotThrow(() -> UUID.fromString(secondJti));
+    assertNotEquals(firstJti, secondJti);
+  }
+
+  private String mintWithExpiry(Date expires) {
+    return jwtTokenGenerator
+        .getJwtAuthMechanism(
+            "mohit",
+            Set.of(),
+            false,
+            "mohit@getcollate.io",
+            false,
+            ServiceTokenType.PERSONAL_ACCESS,
+            expires,
+            JWTTokenExpiry.OneHour,
+            List.of())
+        .getJWTToken();
   }
 
   @Test
@@ -82,6 +330,46 @@ class JWTTokenGeneratorTest {
     jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
     assertNull(jwt.getExpiresAt());
     assertNull(jwtAuthMechanism.getJWTTokenExpiresAt());
+  }
+
+  /** Only an MCP access token names its client; JwtFilter looks those up in the token store. */
+  @Test
+  void mcpAccessTokenNamesItsClient() {
+    JWTAuthMechanism mcpToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of(),
+            "mcp-client");
+    JWTAuthMechanism sameSecondToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of(),
+            "mcp-client");
+    JWTAuthMechanism sessionToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam", Set.of(), false, "sam@example.com", 600, false, ServiceTokenType.OM_USER);
+
+    assertEquals(
+        "mcp-client",
+        decodedJWT(mcpToken.getJWTToken()).getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM).asString());
+    assertTrue(
+        decodedJWT(sessionToken.getJWTToken())
+            .getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM)
+            .isMissing());
+    // Minted in the same second for the same user and client, yet distinct: the store keys by hash.
+    assertNotEquals(mcpToken.getJWTToken(), sameSecondToken.getJWTToken());
   }
 
   @Test

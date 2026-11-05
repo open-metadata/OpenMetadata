@@ -26,7 +26,7 @@ import { expect, test } from '../../../support/fixtures/base';
  * The left nav is pinned explicitly in every case. It is persisted per user in
  * localStorage (`user-preferences-store`), so it rides along in the saved
  * storageState and differs between machines — and it moves the table's container
- * from 1178px (expanded) to 1334px (collapsed). At 1334px the pre-fix layout
+ * from 1180px (expanded) to 1336px (collapsed). At 1336px the pre-fix layout
  * happens to fit, so without pinning the headline test below passes against the
  * unfixed code.
  */
@@ -45,8 +45,9 @@ const SEVERITY_CHIP_LABEL_TEST_ID = 'severity-chip-label';
  * bound under test — a precondition, so that a layout change which moves the
  * container fails loudly here instead of quietly changing what the geometry
  * assertions mean.
+ * TableCard draws its frame with an outline, so neither side consumes width.
  */
-const EXPANDED_NAV_CONTAINER_WIDTH = 1178;
+const EXPANDED_NAV_CONTAINER_WIDTH = 1180;
 
 /** The two widths LeftSidebar declares (`width` / `collapsedWidth`). */
 const EXPANDED_NAV_WIDTH = 228;
@@ -145,7 +146,9 @@ const openIncidentManager = async (
     })
   );
 
-  await page.goto(`/incident-manager?lng=${locale}`);
+  await page.goto(`/incident-manager?lng=${locale}`, {
+    waitUntil: 'domcontentloaded',
+  });
 
   await expect(page.getByTestId(INCIDENT_TABLE_TEST_ID)).toBeVisible();
   await expect(
@@ -276,7 +279,10 @@ test.describe('Incident Manager table in a long-string locale', () => {
     );
 
     expect(labelOverflow).toBeGreaterThan(0);
-    await expect(severityLabel).toHaveAttribute('title', RU_NO_SEVERITY);
+    // The full text is surfaced on hover by the design-system Tooltip (a
+    // react-aria overlay with role="tooltip"), not a native title attribute.
+    await severityLabel.hover();
+    await expect(page.getByRole('tooltip')).toContainText(RU_NO_SEVERITY);
 
     // Truncation is visual only — the button's accessible name still carries
     // the whole string.

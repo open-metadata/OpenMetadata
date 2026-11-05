@@ -392,12 +392,30 @@ test.describe(
 
           const taskResolve = waitForTaskResolveResponse(reviewerPage);
           await rejectButton.click();
-          await taskResolve;
+          const rejectDialog = reviewerPage.getByRole('dialog', {
+            name: 'Reject',
+          });
+          const requiresComment = await Promise.race([
+            rejectDialog
+              .waitFor({ state: 'visible' })
+              .then(() => true as const),
+            taskResolve.then(() => false as const),
+          ]);
 
-          await toastNotification(
-            reviewerPage,
-            /Task resolved successfully|Vote recorded/
-          );
+          if (requiresComment) {
+            await rejectDialog
+              .getByRole('textbox', { name: 'Comment *' })
+              .fill('Rejected after moving the parent glossary term');
+
+            const confirmReject = rejectDialog.getByRole('button', {
+              name: 'Reject',
+              exact: true,
+            });
+            await expect(confirmReject).toBeEnabled();
+            await confirmReject.click();
+          }
+
+          expect((await taskResolve).ok()).toBe(true);
         });
 
         await test.step('Verify term reaches Rejected status and zero remaining open tasks', async () => {

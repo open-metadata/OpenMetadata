@@ -320,6 +320,7 @@ describe('Tests for getNormalizedTaskPayload', () => {
   it('should normalize description payload fields', () => {
     const payload = getNormalizedTaskPayload({
       id: 'description-task',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00010',
       name: 'Update description',
       category: TaskCategory.MetadataUpdate,
@@ -347,6 +348,7 @@ describe('Tests for getNormalizedTaskPayload', () => {
   it('should normalize tag update payload fields and legacy suggested value', () => {
     const payload = getNormalizedTaskPayload({
       id: 'tag-task',
+      createdBy: { id: 'creator-id', type: 'user' },
       taskId: 'TASK-00011',
       name: 'Update tags',
       category: TaskCategory.MetadataUpdate,
@@ -482,6 +484,7 @@ describe('Tests for task approval status helpers', () => {
     expect(
       isTaskPendingFurtherApproval({
         id: 'pending-task',
+        createdBy: { id: 'creator-id', type: 'user' },
         taskId: 'TASK-00012',
         name: 'Pending approval',
         category: TaskCategory.Approval,
@@ -493,6 +496,7 @@ describe('Tests for task approval status helpers', () => {
     expect(
       isTaskPendingFurtherApproval({
         id: 'approved-task',
+        createdBy: { id: 'creator-id', type: 'user' },
         taskId: 'TASK-00013',
         name: 'Approved task',
         category: TaskCategory.Approval,

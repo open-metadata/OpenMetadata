@@ -35,6 +35,7 @@ import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { signInThroughForm } from '../../../utils/formSignIn';
 import {
   AppModeExpectation,
   assertAppMode,
@@ -64,7 +65,7 @@ type PersonaWithAppMode = {
 /**
  * Creates a persona + its docStore `UICustomization` doc with a single
  * `personaPreferences` entry forcing `appMode`. Mirrors what the admin persona
- * editor writes (see `CustomizablePage.tsx::handleAppModeSave`).
+ * editor writes (see `CustomizablePage.tsx::handleAppLayoutSave`).
  */
 const createPersonaWithAppMode = async (
   apiContext: APIRequestContext,
@@ -196,7 +197,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
       const context = await browser.newContext();
       const page = await context.newPage();
       try {
-        await user.login(page);
+        await signInThroughForm(page, user);
         await waitForAllLoadersToDisappear(page);
         // 'default' is the runtime name for Classic.
         await waitForAppMode(page, 'default');
@@ -228,7 +229,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
         browser,
         desired: 'classic',
         action: async (page) => {
-          await user.login(page);
+          await signInThroughForm(page, user);
           await waitForAllLoadersToDisappear(page);
           await waitForAppMode(page, 'ai');
         },
@@ -252,7 +253,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
         browser,
         desired: 'ai',
         action: async (page) => {
-          await user.login(page);
+          await signInThroughForm(page, user);
           await waitForAllLoadersToDisappear(page);
           await waitForAppMode(page, 'ai');
 
@@ -290,7 +291,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
         browser,
         desired: null,
         action: async (page) => {
-          await user.login(page);
+          await signInThroughForm(page, user);
           await waitForAllLoadersToDisappear(page);
           await waitForAppMode(page, 'default');
         },
@@ -327,7 +328,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
       try {
         // Log in and manually switch to AI in this tab. Persona still says
         // Classic; the manual switch overrides for this tab.
-        await user.login(page);
+        await signInThroughForm(page, user);
         await waitForAllLoadersToDisappear(page);
         await switchToAiModeViaProfileToggle(page);
         await expect(page.getByTestId('ask-sidebar')).toBeVisible();

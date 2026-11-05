@@ -14,9 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.jdbi3.ListFilter.escape;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeBackslashAndApostrophe;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeForMySqlRegexReplacement;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -57,7 +54,7 @@ import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
-public interface EntityDAO<T extends EntityInterface> {
+public interface EntityDAO<T extends EntityInterface<?>> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
 
   /**
@@ -467,8 +464,16 @@ public interface EntityDAO<T extends EntityInterface> {
     if (CollectionUtils.isEmpty(entityFQNs)) {
       return List.of();
     }
-    List<String> nameHashes =
-        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
+    return findReferencesByNameHashes(
+        entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList(), include);
+  }
+
+  /** {@link #findReferencesByFqns} for callers that hold name hashes rather than FQNs. */
+  default List<EntityReference> findReferencesByNameHashes(
+      List<String> nameHashes, Include include) {
+    if (CollectionUtils.isEmpty(nameHashes)) {
+      return List.of();
+    }
     int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
     if (nameHashes.size() <= maxChunkSize) {
       return findReferenceRows(nameHashes, include).stream()
@@ -532,54 +537,59 @@ public interface EntityDAO<T extends EntityInterface> {
     if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
-    // The regex replacement argument to MySQL's REGEXP_REPLACE has its own escape layer
-    // on top of the SQL string-literal layer — `\1`/`\2` are backreferences, `\\` is a
-    // literal backslash. Using escapeBackslashAndApostrophe here would only escape for the
-    // SQL layer, leaving a stray backslash in newPrefix to be interpreted by the regex
-    // engine. escapeForMySqlRegexReplacement applies both layers (regex-replacement first,
-    // then SQL string-literal) so an input backslash round-trips to a single literal
-    // backslash in the replacement output. The source pattern goes through escape() which
-    // already covers the SQL + LIKE-underscore layers — the regex-pattern layer is
-    // tolerated here because OpenMetadata's name validation forbids the regex metas that
-    // would matter (\ . * ? + ^ $ ( ) [ ] { } |).
-    String mySqlUpdate =
-        String.format(
-            "UPDATE %s SET json = "
-                + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), '^%s\\.', '%s.')) "
-                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(),
-            escape(oldPrefix),
-            escapeForMySqlRegexReplacement(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix));
-
-    // Postgres path embeds the prefixes inside a double-quoted JSON pattern, so escape
-    // backslashes and apostrophes first (so a literal "\\" or "''" isn't reparsed by the
-    // SQL string-literal layer), then escape double-quotes so the JSON-pattern delimiter
-    // can't be broken out of. Apostrophe escaping is still required because the JSON
-    // pattern itself sits inside a single-quoted SQL string literal.
-    String postgresUpdate =
-        String.format(
-            "UPDATE %s SET json = "
-                + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
-                + "'\"fullyQualifiedName\": \"%s.')::jsonb "
-                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(),
-            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(oldPrefix)),
-            ReindexingUtil.escapeDoubleQuotes(escapeBackslashAndApostrophe(newPrefix)),
-            FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix),
-            FullyQualifiedName.buildHash(oldPrefix));
-    updateFqnInternal(mySqlUpdate, postgresUpdate);
+    // Names are bound, never formatted into the statement: JDBI re-lexes rendered text with its
+    // own string-literal rules, so escaping a value before rendering is not reliable
+    // (ADR:2026-11-03-dao-statements-bind-every-value).
+    String oldHash = FullyQualifiedName.buildHash(oldPrefix);
+    String newHash = FullyQualifiedName.buildHash(newPrefix);
+    updateFqnInternal(
+        getTableName(),
+        oldPrefix,
+        newPrefix,
+        jsonFqnPrefix(oldPrefix),
+        jsonFqnPrefix(newPrefix),
+        oldHash + Entity.SEPARATOR,
+        newHash + Entity.SEPARATOR,
+        oldHash + Entity.SEPARATOR + "%");
   }
 
-  @ConnectionAwareSqlUpdate(value = "<mySqlUpdate>", connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(value = "<postgresUpdate>", connectionType = POSTGRES)
+  /**
+   * {@code "fullyQualifiedName": "<prefix>.} as the database writes it when it serializes a JSON
+   * document, for a bound {@code REPLACE} over that text.
+   */
+  static String jsonFqnPrefix(String prefix) {
+    return "\"fullyQualifiedName\": \""
+        + ReindexingUtil.escapeDoubleQuotes(prefix.replace("\\", "\\\\"))
+        + Entity.SEPARATOR;
+  }
+
+  // fqnHash LIKE 'oldHash.%' selects only rows whose FQN starts with "oldPrefix.", so MySQL swaps
+  // the prefix by length rather than matching the name as a regular expression.
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = "
+              + "JSON_REPLACE(json, '$.fullyQualifiedName', CONCAT(:newPrefix, SUBSTRING("
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), "
+              + "CHAR_LENGTH(:oldPrefix) + 1))) "
+              + ", fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+              + "WHERE fqnHash LIKE :oldHashLike",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = "
+              + "REPLACE(json::text, :oldJsonPrefix, :newJsonPrefix)::jsonb "
+              + ", fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+              + "WHERE fqnHash LIKE :oldHashLike",
+      connectionType = POSTGRES)
   void updateFqnInternal(
-      @Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
+      @Define("table") String table,
+      @Bind("oldPrefix") String oldPrefix,
+      @Bind("newPrefix") String newPrefix,
+      @Bind("oldJsonPrefix") String oldJsonPrefix,
+      @Bind("newJsonPrefix") String newJsonPrefix,
+      @Bind("oldHashPrefix") String oldHashPrefix,
+      @Bind("newHashPrefix") String newHashPrefix,
+      @Bind("oldHashLike") String oldHashLike);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
   String findById(
@@ -588,6 +598,15 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond> FOR UPDATE")
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT (json->>'version')::text FROM <table> WHERE id = :id FOR UPDATE",
+      connectionType = POSTGRES)
+  String findVersionByIdForUpdate(@Define("table") String table, @BindUUID("id") UUID id);
 
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
@@ -601,6 +620,18 @@ public interface EntityDAO<T extends EntityInterface> {
   // batches of endpoints with one query per entity type instead of a read per relationship.
   @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>)")
   List<String> findExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  /**
+   * Existence proof a writer takes inside its own transaction: the shared lock makes a concurrent
+   * hard delete of these rows wait for the writer's commit, so a reference the writer stores can
+   * never point at a row that is already gone.
+   */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) FOR SHARE")
+  List<String> lockExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  /** The delete's side of {@link #lockExistingIds}: an exclusive lock on rows about to go. */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) ORDER BY id FOR UPDATE")
+  List<String> lockIdsForUpdate(@Define("table") String table, @BindList("ids") List<String> ids);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
@@ -927,8 +958,16 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<CursorRow> listKeys(ListFilter filter, int limit, boolean ascending) {
     return ascending
-        ? listKeys(getTableName(), filter.getQueryParams(), filter.getCondition(), limit)
-        : listKeysDesc(getTableName(), filter.getQueryParams(), filter.getCondition(), limit);
+        ? listKeys(
+            getTableName(),
+            filter.getQueryParams(),
+            filter.getConditionForEntity(getTableName()),
+            limit)
+        : listKeysDesc(
+            getTableName(),
+            filter.getQueryParams(),
+            filter.getConditionForEntity(getTableName()),
+            limit);
   }
 
   record ServiceTypeCount(String serviceType, int count) {}
@@ -953,7 +992,8 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table, @BindMap Map<String, ?> params, @Define("cond") String cond);
 
   default List<ServiceTypeCount> listCountByServiceType(ListFilter filter) {
-    return listCountByServiceType(getTableName(), filter.getQueryParams(), filter.getCondition());
+    return listCountByServiceType(
+        getTableName(), filter.getQueryParams(), filter.getConditionForEntity(getTableName()));
   }
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
@@ -997,13 +1037,13 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insert(EntityInterface entity, String fqn) {
+  default void insert(EntityInterface<?> entity, String fqn) {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
   }
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insertMany(List<EntityInterface> entities) {
-    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+  default void insertMany(List<EntityInterface<?>> entities) {
+    List<String> fqns = entities.stream().map(EntityInterface<?>::getFullyQualifiedName).toList();
     insertMany(
         getTableName(),
         getNameHashColumn(),
@@ -1012,9 +1052,9 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   /** Batch update entities. Don't override */
-  default void updateMany(List<EntityInterface> entities) {
-    List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
-    List<UUID> ids = entities.stream().map(EntityInterface::getId).toList();
+  default void updateMany(List<EntityInterface<?>> entities) {
+    List<String> fqns = entities.stream().map(EntityInterface<?>::getFullyQualifiedName).toList();
+    List<UUID> ids = entities.stream().map(EntityInterface<?>::getId).toList();
     updateMany(
         getTableName(),
         getNameHashColumn(),
@@ -1023,7 +1063,7 @@ public interface EntityDAO<T extends EntityInterface> {
         entities.stream().map(JsonUtils::pojoToJson).toList());
   }
 
-  default void insert(String nameHash, EntityInterface entity, String fqn) {
+  default void insert(String nameHash, EntityInterface<?> entity, String fqn) {
     insert(getTableName(), nameHash, fqn, JsonUtils.pojoToJson(entity));
   }
 
@@ -1031,7 +1071,7 @@ public interface EntityDAO<T extends EntityInterface> {
     update(getTableName(), getNameHashColumn(), fqn, id.toString(), json);
   }
 
-  default void update(EntityInterface entity) {
+  default void update(EntityInterface<?> entity) {
     update(
         getTableName(),
         getNameHashColumn(),
@@ -1040,7 +1080,7 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
-  default void update(String nameHashColumn, EntityInterface entity) {
+  default void update(String nameHashColumn, EntityInterface<?> entity) {
     update(
         getTableName(),
         nameHashColumn,
@@ -1049,7 +1089,7 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
-  default int updateIfMatches(EntityInterface entity, String expectedJson) {
+  default int updateIfMatches(EntityInterface<?> entity, String expectedJson) {
     return updateIfMatches(
         getTableName(),
         getNameHashColumn(),
@@ -1181,7 +1221,10 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default int listCount(ListFilter filter) {
     return listCount(
-        getTableName(), getNameHashColumn(), filter.getQueryParams(), filter.getCondition());
+        getTableName(),
+        getNameHashColumn(),
+        filter.getQueryParams(),
+        filter.getConditionForEntity(getTableName()));
   }
 
   default int listTotalCount() {
@@ -1194,7 +1237,7 @@ public interface EntityDAO<T extends EntityInterface> {
     return listBefore(
         getTableName(),
         filter.getQueryParams(),
-        filter.getCondition(),
+        filter.getConditionForEntity(getTableName()),
         limit,
         beforeName,
         beforeId);
@@ -1203,7 +1246,12 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     return listAfter(
-        getTableName(), filter.getQueryParams(), filter.getCondition(), limit, afterName, afterId);
+        getTableName(),
+        filter.getQueryParams(),
+        filter.getConditionForEntity(getTableName()),
+        limit,
+        afterName,
+        afterId);
   }
 
   default List<String> listAll(String startHash, String endHash) {
@@ -1213,7 +1261,12 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<String> listAll(String startHash, String endHash, ListFilter filter) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
-    return listAll(getTableName(), filter.getCondition(), getNameHashColumn(), startHash, endHash);
+    return listAll(
+        getTableName(),
+        filter.getConditionForEntity(getTableName()),
+        getNameHashColumn(),
+        startHash,
+        endHash);
   }
 
   default List<String> listAfterWithOffset(int limit, int offset) {
@@ -1227,12 +1280,20 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
-    return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
+    return listAfter(
+        getTableName(),
+        filter.getQueryParams(),
+        filter.getConditionForEntity(getTableName()),
+        limit,
+        offset);
   }
 
   default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
     return getCursorAtOffset(
-        getTableName(), filter.getQueryParams(), filter.getCondition(), offset);
+        getTableName(),
+        filter.getQueryParams(),
+        filter.getConditionForEntity(getTableName()),
+        offset);
   }
 
   default void exists(UUID id) {

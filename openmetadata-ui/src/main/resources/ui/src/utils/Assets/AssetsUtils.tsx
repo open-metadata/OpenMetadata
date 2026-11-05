@@ -15,8 +15,8 @@ import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import { HTMLAttributes } from 'react';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { ENTITY_ICON_MAPPER } from '../../constants/Assets.constants';
+import { AssetsOfEntity } from '../../enums/Assets.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
@@ -46,6 +46,7 @@ import {
   getDataModelByFqn,
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
+import { getDataProductByName } from '../../rest/dataProductAPI';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import {
   getDriveAssetByFqn,
@@ -176,6 +177,7 @@ const GET_ENTITY_API_MAP: Partial<
   [EntityType.API_ENDPOINT]: getApiEndPointByFQN,
   [EntityType.METRIC]: getMetricByFqn,
   [EntityType.DOMAIN]: getDomainByName,
+  [EntityType.DATA_PRODUCT]: getDataProductByName,
   [EntityType.DIRECTORY]: (fqn: string, params?: ListParams) =>
     getDriveAssetByFqn<Directory>(
       fqn,
@@ -274,6 +276,8 @@ export function getEntityTypeString(type: string) {
       return t('label.tag-lowercase');
     case AssetsOfEntity.TEAM:
       return t('label.team-lowercase');
+    case AssetsOfEntity.METRIC:
+      return t('label.metric-lowercase');
     default:
       return t('label.data-product-lowercase');
   }
@@ -330,7 +334,7 @@ export const getEntityIconWithBg = (
       {Icon && (
         <Icon
           className={classNames(
-            style?.iconClass ?? 'tw:text-gray-500',
+            style?.iconClass ?? 'tw:text-quaternary',
             iconClassName
           )}
           height={size}

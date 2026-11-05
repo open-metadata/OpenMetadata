@@ -10,30 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Input, InputProps } from 'antd';
+import { Box, Input } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import './color-picker.style.less';
 
-const ColorPicker = (props: InputProps) => {
+export interface ColorPickerProps {
+  id?: string;
+  /** Names both controls, so each theme colour is distinguishable. */
+  label: string;
+  value?: string;
+  onBlur?: () => void;
+  onChange?: (value: string) => void;
+}
+
+const ColorPicker = ({
+  id,
+  label,
+  value = '',
+  onBlur,
+  onChange,
+}: ColorPickerProps) => {
   const { t } = useTranslation();
-  const { id, ...rest } = props;
+  const testId = id ? `${id}-color` : 'color';
 
   return (
-    <Input.Group compact>
-      <Input
-        {...rest}
-        className="style-color-picker"
-        data-testid={id ? `${id}-color-picker` : 'color-picker'}
+    <Box align="center" gap={2}>
+      {/* Core has no colour swatch control; a core Input squeezes the native
+          swatch into a thin stripe, so the swatch stays a native colour input. */}
+      <input
+        aria-label={t('label.select-field', { field: label })}
+        className="tw:h-10 tw:w-16 tw:shrink-0 tw:cursor-pointer tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:p-1"
+        data-testid={`${testId}-picker`}
         type="color"
+        value={value}
+        onBlur={onBlur}
+        onChange={(e) => onChange?.(e.target.value)}
       />
-      <Input
-        {...rest}
-        className="style-color-input"
-        data-testid={id ? `${id}-color-input` : 'color-input'}
-        id={id}
-        placeholder={t('message.hex-code-placeholder')}
-      />
-    </Input.Group>
+      <Box className="tw:flex-1">
+        <Input
+          aria-label={label}
+          id={id}
+          inputDataTestId={`${testId}-input`}
+          placeholder={t('message.hex-code-placeholder')}
+          value={value}
+          onBlur={onBlur}
+          onChange={onChange}
+        />
+      </Box>
+    </Box>
   );
 };
 

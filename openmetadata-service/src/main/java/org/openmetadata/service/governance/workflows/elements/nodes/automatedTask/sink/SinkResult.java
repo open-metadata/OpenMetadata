@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +34,12 @@ public class SinkResult {
 
   /** Number of entities that failed to sync. */
   private int failedCount;
+
+  /**
+   * Number of entities the provider left out on purpose, such as an entity type it does not write;
+   * they are neither synced nor failed.
+   */
+  private int skippedCount;
 
   /** List of fully qualified names of successfully synced entities. */
   @Builder.Default private List<String> syncedEntities = new ArrayList<>();
@@ -57,8 +64,8 @@ public class SinkResult {
     /** Error code for programmatic handling. */
     private String errorCode;
 
-    /** The exception that caused the error, if any. */
-    private Throwable cause;
+    /** The exception that caused the error, if any. Kept in memory only, never serialized. */
+    @JsonIgnore private Throwable cause;
   }
 
   /**

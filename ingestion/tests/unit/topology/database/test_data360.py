@@ -264,11 +264,25 @@ class TestData360Source:
 
     def test_get_columns(self):
         source = _build_source()
-        columns = source.get_columns(MOCK_DLO_TABLE[ResponseConstant.FIELDS])
+        columns = source.get_columns(MOCK_DLO_TABLE[ResponseConstant.FIELDS], "my_table")
         assert [str(c.name.root) for c in columns] == ["id", "amount"]
         assert columns[0].dataType == DataType.TEXT
         assert columns[0].ordinalPosition == 1
         assert columns[1].ordinalPosition == 2
+
+    def test_get_columns_maps_data_360_types(self):
+        source = _build_source()
+        fields = [
+            {
+                ResponseConstant.NAME: name,
+                ResponseConstant.DISPLAY_NAME: name,
+                ResponseConstant.TYPE: name,
+                ResponseConstant.BUSINESS_TYPE: name.lower(),
+            }
+            for name in ("STRING", "NUMBER", "DATE", "DATE_TIME")
+        ]
+        columns = source.get_columns(fields, "my_table")
+        assert [c.dataType for c in columns] == [DataType.STRING, DataType.NUMBER, DataType.DATE, DataType.DATETIME]
 
     def test_yield_table_data_lake_object(self):
         source = _build_source()

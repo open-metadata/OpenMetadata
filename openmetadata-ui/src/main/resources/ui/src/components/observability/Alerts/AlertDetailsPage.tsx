@@ -11,53 +11,78 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
-import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
+import {
+  Box,
+  ButtonUtility,
+  Owner,
+  PageLayout,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Bell01,
+  Edit01,
+  RefreshCw04,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { Key, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
+import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
 import { useFqn } from '../../../hooks/useFqn';
-import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
-import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAlertDetailsPage';
+import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OBSERVABILITY_ROUTES } from '../observability.constants';
-import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
+import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import AlertAiDiagnosticTab from './AlertAiDiagnosticTab';
+import AlertAiEventCounts from './AlertAiEventCounts';
 import AlertAiForm from './AlertAiForm.component';
 import { getAlertAiResources } from './AlertAiFormFieldsPureUtils';
+import AlertAiRecentEventsTab from './AlertAiRecentEventsTab';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 import AlertEditModal from './AlertEditModal.component';
-import { getAlertsObservabilityDetailsPath } from './alertUtils';
+import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 
-const ACTION_BUTTON_CLASS_NAME = 'tw:rounded-lg';
-const ACTION_ICON_CLASS_NAME = 'tw:h-4 tw:w-4 tw:text-fg-quaternary';
+interface AlertDetailsPageProps {
+  /** Which alerts this page serves (observability by default). */
+  kind?: AlertKind;
+}
 
-const AlertDetailsPage = () => {
+const AlertDetailsPage = ({
+  kind = OBSERVABILITY_ALERT_KIND,
+}: AlertDetailsPageProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { fqn } = useFqn();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const alertListPath = OBSERVABILITY_ROUTES.OBSERVABILITY_ALERTS;
+  const alertListPath = kind.listPath;
 
-  const handleAfterDelete = useCallback(() => {
+  const handleAfterDelete = useCallback(async () => {
+    await invalidateQueriesWithoutInitialRace(queryClient, {
+      queryKey: OBSERVABILITY_ALERT_COUNT_QUERY_KEY,
+    });
     navigate(alertListPath);
-  }, [alertListPath, navigate]);
+  }, [alertListPath, navigate, queryClient]);
 
   const handleEditAlert = useCallback(() => {
     setIsEditModalOpen(true);
@@ -65,30 +90,27 @@ const AlertDetailsPage = () => {
 
   const handleTabChange = useCallback(
     (tab: Key) => {
-      navigate(getAlertsObservabilityDetailsPath(fqn, String(tab)), {
+      navigate(kind.getDetailsPath(fqn, String(tab)), {
         replace: true,
       });
     },
-    [fqn, navigate]
+    [fqn, kind, navigate]
   );
 
-  const detailsState = useAlertDetailsPage({
+  const detailsState = useAlertDetailsData({
     afterDeleteAction: handleAfterDelete,
-    isNotificationAlert: false,
     onEditAlert: handleEditAlert,
     onTabChange: (tab) => handleTabChange(tab),
-  }) as ReturnType<typeof useAlertDetailsPage> & {
-    fetchAlertDetails?: () => Promise<void>;
-  };
-  const alertFormState = useObservabilityAlertForm({ fqn });
-
+  });
   const {
     alertDetails,
+    alertDetailsError,
+    alertEventCounts,
+    alertEventCountsLoading,
     deletePermission,
     editDescriptionPermission,
     editOwnersPermission,
     editPermission,
-    extraInfo,
     fetchAlertDetails,
     handleAlertDelete,
     handleAlertEdit,
@@ -102,14 +124,15 @@ const AlertDetailsPage = () => {
     setShowDeleteModal,
     showDeleteModal,
     tab,
-    tabItems,
     viewPermission,
   } = detailsState;
 
-  const alertName = getEntityName(alertDetails);
+  const entityName = getEntityName(alertDetails);
+  // Falls back to the route FQN so a failed load still names the alert.
+  const alertName = entityName || fqn;
   // `alertDetails` is undefined for the whole fetch, and `getEntityName`
   // returns '' for it — which would render a bare " | Collate" in the tab.
-  const documentTitle = alertName || t('label.alert-detail-plural');
+  const documentTitle = entityName || t('label.alert-detail-plural');
   const alertConfigValue = useMemo(
     () =>
       alertDetails
@@ -117,16 +140,17 @@ const AlertDetailsPage = () => {
         : undefined,
     [alertDetails]
   );
-  const [selectedSource] = alertConfigValue
-    ? getAlertAiResources(alertConfigValue)
-    : [];
-  const selectedAlertResource = useMemo(
-    () =>
-      alertFormState.filterResources.find(
-        (resource) => resource.name === selectedSource
-      ),
-    [alertFormState.filterResources, selectedSource]
+  // The configuration view follows every source the alert watches, as the server answers for them.
+  const sources = useMemo(
+    () => (alertConfigValue ? getAlertAiResources(alertConfigValue) : []),
+    [alertConfigValue]
   );
+  const alertFormState = useAlertFormData({
+    alertType: kind.alertType,
+    fqn,
+    sources,
+  });
+  const { selection } = alertFormState;
 
   const handleConfirmDelete = useCallback(async () => {
     if (!alertDetails?.id) {
@@ -153,35 +177,67 @@ const AlertDetailsPage = () => {
 
   const handleEditModalSaved = useCallback(async () => {
     setIsEditModalOpen(false);
-    await fetchAlertDetails?.();
+    await fetchAlertDetails();
   }, [fetchAlertDetails]);
 
+  const tabItems = useMemo(
+    () => [
+      {
+        key: AlertDetailTabs.CONFIGURATION,
+        label: t('label.configuration'),
+      },
+      {
+        key: AlertDetailTabs.RECENT_EVENTS,
+        label: t('label.recent-event-plural'),
+      },
+      {
+        key: AlertDetailTabs.DIAGNOSTIC_INFO,
+        label: t('label.diagnostic-info'),
+      },
+    ],
+    [t]
+  );
+
   const activeTabContent = useMemo<ReactNode>(() => {
+    if (tab === AlertDetailTabs.RECENT_EVENTS && alertDetails) {
+      return <AlertAiRecentEventsTab alertDetails={alertDetails} />;
+    }
+
+    if (tab === AlertDetailTabs.DIAGNOSTIC_INFO) {
+      return <AlertAiDiagnosticTab fqn={fqn} />;
+    }
+
     if (tab === AlertDetailTabs.CONFIGURATION && alertConfigValue) {
+      // The configuration shows what the server says the sources support, so it waits for it.
+      if (!selection.ready) {
+        return <Loader />;
+      }
+
       return (
         <AlertAiForm
           shouldShowActionsSection
           shouldShowFiltersSection
           alert={alertConfigValue}
-          filterResources={alertFormState.filterResources}
           mode="view"
-          supportedFilters={selectedAlertResource?.supportedFilters}
-          supportedTriggers={selectedAlertResource?.supportedActions}
+          selection={selection}
+          templateResourcePermission={alertFormState.templateResourcePermission}
           templates={alertFormState.templates}
+          templatesLoading={alertFormState.loadingState.templates}
           value={alertConfigValue}
         />
       );
     }
 
-    return tabItems?.find((item) => item.key === tab)?.children;
+    return null;
   }, [
     alertConfigValue,
-    alertFormState.filterResources,
+    alertDetails,
+    fqn,
+    alertFormState.loadingState.templates,
+    alertFormState.templateResourcePermission,
     alertFormState.templates,
-    selectedAlertResource?.supportedActions,
-    selectedAlertResource?.supportedFilters,
+    selection,
     tab,
-    tabItems,
   ]);
 
   const headerTabs = useMemo(
@@ -191,7 +247,7 @@ const AlertDetailsPage = () => {
         data-testid="alert-details-tabs"
         size="sm"
         type="underline">
-        {tabItems?.map((item) => (
+        {tabItems.map((item) => (
           <Tabs.Item
             id={String(item.key)}
             key={String(item.key)}
@@ -218,30 +274,56 @@ const AlertDetailsPage = () => {
     () => (
       <Box
         align="center"
-        className="tw:mt-1.5 tw:flex-wrap tw:text-secondary"
-        gap={3}>
-        {ownerLoading ? null : (
-          <OwnerLabel
-            hasPermission={editOwnersPermission}
-            owners={alertDetails?.owners}
-            onUpdate={onOwnerUpdate}
-          />
-        )}
-        {extraInfo}
+        className="tw:mt-1.5 tw:text-secondary"
+        gap={3}
+        wrap="nowrap">
+        {!ownerLoading &&
+          (!isEmpty(alertDetails?.owners) || editOwnersPermission) && (
+            <Box
+              align="center"
+              className="tw:min-w-0 tw:shrink-0"
+              data-testid="alert-owners"
+              gap={2}>
+              <Typography
+                as="span"
+                color="secondary"
+                size="text-sm"
+                weight="medium">
+                {t('label.owner-plural')}
+              </Typography>
+              {!isEmpty(alertDetails?.owners) && (
+                <Owner owners={alertDetails?.owners} />
+              )}
+              {editOwnersPermission && (
+                <UserTeamSelectableList
+                  hasPermission
+                  multiple={{ user: true, team: false }}
+                  owner={alertDetails?.owners}
+                  onUpdate={onOwnerUpdate}
+                />
+              )}
+            </Box>
+          )}
+        <AlertAiEventCounts
+          counts={alertEventCounts}
+          loading={alertEventCountsLoading}
+        />
       </Box>
     ),
     [
       alertDetails?.owners,
+      alertEventCounts,
+      alertEventCountsLoading,
       editOwnersPermission,
-      extraInfo,
       onOwnerUpdate,
       ownerLoading,
+      t,
     ]
   );
 
   const breadcrumbItems = useMemo(
     () => [
-      getObservabilityRootBreadcrumb(t),
+      ...kind.getRootBreadcrumbs(t),
       {
         label: t('label.alert-plural'),
         ariaLabel: t('label.alert-plural'),
@@ -252,7 +334,7 @@ const AlertDetailsPage = () => {
         ariaLabel: alertName,
       },
     ],
-    [alertListPath, alertName, t]
+    [alertListPath, alertName, kind, t]
   );
 
   const headerActions = useMemo(
@@ -260,9 +342,9 @@ const AlertDetailsPage = () => {
       <>
         {editPermission && alertDetails?.provider !== ProviderType.System && (
           <ButtonUtility
-            className={ACTION_BUTTON_CLASS_NAME}
             data-testid="edit-button"
-            icon={<Edit03 className={ACTION_ICON_CLASS_NAME} />}
+            icon={Edit01}
+            size="lg"
             tooltip={t('label.edit-entity', {
               entity: t('label.alert'),
             })}
@@ -271,9 +353,9 @@ const AlertDetailsPage = () => {
         )}
         {deletePermission && alertDetails?.provider !== ProviderType.System && (
           <ButtonUtility
-            className={ACTION_BUTTON_CLASS_NAME}
             data-testid="delete-button"
-            icon={<Trash01 className={ACTION_ICON_CLASS_NAME} />}
+            icon={Trash01}
+            size="lg"
             tooltip={t('label.delete-entity', {
               entity: t('label.alert'),
             })}
@@ -281,10 +363,10 @@ const AlertDetailsPage = () => {
           />
         )}
         <ButtonUtility
-          className={ACTION_BUTTON_CLASS_NAME}
           data-testid="sync-button"
-          icon={<RefreshCw04 className={ACTION_ICON_CLASS_NAME} />}
+          icon={RefreshCw04}
           isDisabled={isSyncing}
+          size="lg"
           tooltip={t('label.sync-alert-offset', {
             entity: t('label.alert'),
           })}
@@ -307,22 +389,75 @@ const AlertDetailsPage = () => {
   const guardPlaceholder = useMemo<ReactNode | null>(() => {
     if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.alert-detail-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.alert-detail-plural'),
+            })}
+          />
+        </div>
       );
     }
 
     if (!loadingCount && isUndefined(alertDetails)) {
-      return <ErrorPlaceHolder className="m-0" />;
+      const status = alertDetailsError?.response?.status;
+      let loadErrorPlaceholder = (
+        <SomethingWentWrongPlaceholder onReload={fetchAlertDetails} />
+      );
+      if (status === ClientErrors.NOT_FOUND) {
+        loadErrorPlaceholder = (
+          <NoDataPlaceholder
+            description={t('message.alert-not-found-description')}
+            icon={<Bell01 className="tw:text-secondary" />}
+            title={t('label.alert-not-found')}
+          />
+        );
+      } else if (status === ClientErrors.FORBIDDEN) {
+        loadErrorPlaceholder = (
+          <PermissionPlaceholder
+            permissionValue={t('label.view-entity', {
+              entity: t('label.alert-detail-plural'),
+            })}
+          />
+        );
+      }
+
+      return (
+        <ObservabilityPageShell
+          header={
+            <PageLayout.PageHeader
+              breadcrumb={
+                <HeaderBreadcrumb
+                  noMargin
+                  className="tw:text-xs"
+                  items={breadcrumbItems}
+                  showHome={false}
+                />
+              }
+              title={alertName}
+              variant="gradient"
+            />
+          }
+          pageTitle={alertName}>
+          <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+            {loadErrorPlaceholder}
+          </Box>
+        </ObservabilityPageShell>
+      );
     }
 
     return null;
-  }, [loadingCount, viewPermission, alertDetails, t]);
+  }, [
+    loadingCount,
+    viewPermission,
+    alertDetails,
+    alertDetailsError,
+    alertName,
+    breadcrumbItems,
+    fetchAlertDetails,
+    t,
+  ]);
 
   if (guardPlaceholder) {
     return guardPlaceholder;
@@ -339,7 +474,7 @@ const AlertDetailsPage = () => {
         <ObservabilityPageShell
           data-testid="alert-details-ai-page"
           header={
-            <HeaderShell
+            <PageLayout.PageHeader
               actions={headerActions}
               breadcrumb={
                 <HeaderBreadcrumb
@@ -352,10 +487,17 @@ const AlertDetailsPage = () => {
               data-testid="alerts-observability-ai-details-header"
               footer={headerFooter}
               meta={headerMetadata}
-              padding="comfortable"
               /* The subtitle should mirror the alert identifier from the route,
                * not the backend entity id returned in alertDetails. */
-              subtitle={fqn}
+              subtitle={
+                <Typography
+                  className="tw:truncate tw:text-secondary"
+                  data-testid="alert-details-fqn"
+                  size="text-sm"
+                  title={fqn}>
+                  {fqn}
+                </Typography>
+              }
               title={alertName}
               variant="gradient"
             />
@@ -388,6 +530,7 @@ const AlertDetailsPage = () => {
         <AlertEditModal
           fqn={fqn}
           isOpen={isEditModalOpen}
+          kind={kind}
           onClose={() => setIsEditModalOpen(false)}
           onSaved={handleEditModalSaved}
         />

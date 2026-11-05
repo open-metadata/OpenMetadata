@@ -13,7 +13,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import EntityImportRouter from './EntityImportRouter';
 

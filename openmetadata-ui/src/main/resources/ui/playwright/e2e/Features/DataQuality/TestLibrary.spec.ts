@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
@@ -18,8 +19,10 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
+import { expectFormHint } from '../../../utils/dataQuality';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
+import { waitForAriaOverlayToSettle } from '../../../utils/waitHelpers';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
 const TEST_DEFINITION_DISPLAY_NAME = `Aaro Custom Test Definition ${uuid()}`;
@@ -27,6 +30,8 @@ const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Aaro Updated Custom Test Definition
 const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
 
+// Only for the multi-select combobox — its popup is typing-driven, so
+// chooseSelectOption's aria-expanded guard does not apply.
 const selectOptionWithMouse = async (page: Page, option: Locator) => {
   await expect(option).toBeVisible();
 
@@ -43,26 +48,23 @@ const selectOptionWithMouse = async (page: Page, option: Locator) => {
   );
 };
 
-// React Aria's listbox is a non-modal popover, and a press on a trigger that
-// does not already hold focus both opens it and — via the focus transition that
-// same press produces — dismisses it a frame later. That leaves roughly 160ms to
-// pick an option, and nothing reopens the listbox afterwards, so a loaded runner
-// that misses the window retries the option click until the test times out.
-// Focusing the trigger first removes the transition, and with it the window.
+// Assert on the trigger, never on the Select root: the root also holds React
+// Aria's hidden <select>, whose <option> text makes toContainText on the root
+// pass for any value the field offers, selected or not.
 const selectEntityType = async (page: Page, entityType: string) => {
-  const entityTypeSelect = page.getByTestId('entity-type');
-  const entityTypeTrigger = entityTypeSelect.getByRole('button');
+  const entityTypeTrigger = page.getByTestId('entity-type').getByRole('button');
 
   await entityTypeTrigger.focus();
   await expect(entityTypeTrigger).toBeFocused();
   await entityTypeTrigger.click();
+  const entityTypeOption = page.getByRole('option', {
+    name: entityType,
+    exact: true,
+  });
+  await expect(entityTypeOption).toBeVisible();
+  await entityTypeOption.click();
 
-  await selectOptionWithMouse(
-    page,
-    page.getByRole('option', { name: entityType, exact: true })
-  );
-
-  await expect(entityTypeSelect).toContainText(entityType);
+  await expect(entityTypeTrigger).toHaveText(entityType);
 };
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -77,12 +79,12 @@ test.describe(
 
     test('should navigate to Test Library page', async ({ page }) => {
       // Navigate directly to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for page to load
       await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       // Verify URL
@@ -99,7 +101,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify table is displayed
@@ -114,7 +116,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify at least one test definition is displayed
@@ -130,7 +132,7 @@ test.describe(
     }) => {
       await test.step('Create a new test definition', async () => {
         // Navigate to Test Library
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         const testDefinitionFormDoc = page.waitForResponse(
           '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
@@ -145,21 +147,17 @@ test.describe(
           .waitFor({ state: 'visible' });
         await testDefinitionFormDoc;
 
-        // The form body + doc panel confirm the drawer opened. We don't assert
-        // the "Add Test Definition" title text because it also matches the list
-        // page's Add button (strict-mode ambiguity).
-        await expect(
-          page.locator('.drawer-doc-panel.service-doc-panel')
-        ).toBeVisible();
+        // The form body + Show Hint toggle confirm the drawer opened. We don't
+        // assert the "Add Test Definition" title text because it also matches
+        // the list page's Add button (strict-mode ambiguity).
+        await expect(page.getByTestId('show-hint-toggle')).toBeChecked();
 
         // Fill in form fields
         await page
           .getByTestId('test-definition-name')
           .locator('input')
           .fill(TEST_DEFINITION_NAME);
-        await expect(
-          page.locator('.drawer-doc-panel.service-doc-panel')
-        ).toContainText('Name');
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('display-name')
           .locator('input')
@@ -223,11 +221,9 @@ test.describe(
           state: 'visible',
         });
 
-        // Find and click edit button on first row
-        const firstEditButton = page
+        await page
           .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
-          .first();
-        await firstEditButton.click();
+          .click();
 
         // Wait for drawer to open (form body confirms the edit drawer opened).
         await page
@@ -295,10 +291,7 @@ test.describe(
         await toastNotification(page, /updated successfully/i);
 
         // Verify switch state changed
-        await expect(firstSwitch).toHaveAttribute(
-          'aria-checked',
-          String('false')
-        );
+        await expect(firstSwitch.getByRole('switch')).not.toBeChecked();
       });
 
       await test.step('should delete a test definition', async () => {
@@ -345,7 +338,7 @@ test.describe(
 
     test('should validate required fields in create form', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -362,7 +355,9 @@ test.describe(
       await expect(page.getByTestId('test-definition-form-body')).toBeVisible();
     });
 
-    test('should require supported data types only when OpenMetadata platform is selected', async ({
+    // Leaving supported data types empty means "all data types", so the form must
+    // submit without them on any platform, OpenMetadata included. See issue #27718.
+    test('should create a test definition without supported data types', async ({
       page,
     }) => {
       test.slow();
@@ -370,52 +365,21 @@ test.describe(
 
       try {
         await test.step('Open create form', async () => {
-          await page.goto('/test-library');
+          await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
           await page.getByTestId('add-test-definition-button').click();
           await page
             .getByTestId('test-definition-form-body')
             .waitFor({ state: 'visible' });
         });
 
-        await test.step('Verify supported data types is required with default OpenMetadata platform', async () => {
-          // Fill required fields except supportedDataTypes
+        await test.step('Submit with the default OpenMetadata platform and no supported data types', async () => {
+          // Fill every required field, leaving supportedDataTypes untouched
           await page
             .getByTestId('test-definition-name')
             .locator('input')
             .fill(`validation-test-${uuid()}`);
           await selectEntityType(page, 'TABLE');
 
-          // Submit the form
-          await page.getByTestId('save-test-definition').click();
-
-          // Expect validation error on supportedDataTypes
-          await expect(page.getByTestId('supported-data-types')).toBeVisible();
-        });
-
-        await test.step('Remove OpenMetadata and select only dbt — field should not be required', async () => {
-          // Remove OpenMetadata from testPlatforms via its chip's remove button,
-          // then assert it is gone so a mis-matched selector can't silently no-op.
-          await page
-            .getByTestId('test-platforms')
-            .locator('div')
-            .filter({ hasText: 'OpenMetadata' })
-            .getByRole('button')
-            .first()
-            .click();
-          await expect(
-            page
-              .getByTestId('test-platforms')
-              .getByText('OpenMetadata', { exact: true })
-          ).toHaveCount(0);
-
-          // Add dbt
-          await page.getByTestId('test-platforms').click();
-          await page.getByRole('option', { name: 'dbt', exact: true }).click();
-
-          // Close dropdown
-          await page.keyboard.press('Escape');
-
-          // Submit the form — supportedDataTypes should no longer block submission
           const testDefinitionResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/dataQuality/testDefinitions') &&
@@ -445,7 +409,7 @@ test.describe(
 
     test('should cancel form and close drawer', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -480,7 +444,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -499,31 +463,46 @@ test.describe(
 
     test('should display test platform badges correctly', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
-      // Wait for table to load
-      await page.getByTestId('test-definition-table').waitFor({
-        state: 'visible',
-      });
+      // The table is visible with skeleton rows while the first page loads, so
+      // only a retrying assertion waits for the real rows.
+      const platformCells = page
+        .getByTestId('test-definition-table')
+        .getByRole('gridcell', { name: /OpenMetadata/ });
 
-      // Verify test platform tags/badges are displayed
-      const platformTags = page.locator('.ant-tag, .ant-badge');
-      const tagCount = await platformTags.count();
-
-      expect(tagCount).toBeGreaterThan(0);
+      await expect(platformCells).not.toHaveCount(0);
     });
 
-    test('should not show edit and delete buttons for system test definitions', async ({
+    test('should keep system test definitions editable but not deletable', async ({
       page,
     }) => {
       const systemTestDef = await findSystemTestDefinition(page);
 
-      // Verify edit button does not exist for system test definition
+      // The form opens for a system test definition because its data quality dimension can be
+      // reclassified — every other field stays read-only — but it can never be deleted.
       const editButton = page.getByTestId(
         `edit-test-definition-${systemTestDef.name}`
       );
 
-      await expect(editButton).toBeDisabled();
+      await expect(editButton).toBeEnabled();
+
+      // An enabled edit button on its own says nothing about what the form lets through, so
+      // open it and check that a field other than the dimension is still read-only.
+      await editButton.click();
+      await page
+        .getByTestId('test-definition-form-body')
+        .waitFor({ state: 'visible' });
+
+      await expect(page.locator('[id="root/entityType"]')).toBeDisabled();
+      await expect(
+        page.getByTestId('data-quality-dimension')
+      ).not.toBeDisabled();
+
+      await page.getByRole('button', { name: /Cancel/i }).click();
+      await expect(
+        page.getByTestId('test-definition-form-body')
+      ).not.toBeVisible();
 
       // Verify delete button does not exist for system test definition
       const deleteButton = page.getByTestId(
@@ -563,10 +542,7 @@ test.describe(
       expect(disableResponse.status()).toBe(200);
 
       // Verify switch state changed
-      await expect(enabledSwitch).toHaveAttribute(
-        'aria-checked',
-        String('false')
-      );
+      await expect(enabledSwitch.getByRole('switch')).not.toBeChecked();
 
       const patchResponse2 = page.waitForResponse(
         (response) =>
@@ -589,7 +565,7 @@ test.describe(
           response.url().includes('/api/v1/dataQuality/testDefinitions') &&
           response.request().method() === 'GET'
       );
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -603,7 +579,7 @@ test.describe(
           `enable-switch-${externalTest.name}`
         );
 
-        await expect(enableSwitch).toBeDisabled();
+        await expect(enableSwitch.getByRole('switch')).toBeDisabled();
 
         const switchParent = enableSwitch.locator('..');
         await switchParent.hover();
@@ -622,7 +598,7 @@ test.describe(
       let createdTestDisplayName = EXTERNAL_TEST_DISPLAY_NAME;
 
       await test.step('Create external test definition', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -760,26 +736,22 @@ test.describe(
 
         // Add a DQ Dimension — verifies that editing a test definition with existing
         // parameters does not prevent the dimension from being saved correctly.
-        const dimensionField = page.getByTestId('data-quality-dimension');
+        const dimensionTrigger = page
+          .getByTestId('data-quality-dimension')
+          .getByRole('button');
         const accuracyOption = page.getByRole('option', {
           name: 'Accuracy',
           exact: true,
         });
 
-        // The listbox is a non-modal React Aria popover, so it is dismissed by any
-        // scroll of the pane holding the trigger — including the one Playwright
-        // emits to bring this field into view, delivered a frame after the popup
-        // opened. Reopen on each attempt; nothing else reopens it.
-        await expect(async () => {
-          if (!(await accuracyOption.isVisible())) {
-            await dimensionField.getByRole('button').click();
-            await expect(accuracyOption).toBeVisible({ timeout: 2_000 });
-          }
-          await selectOptionWithMouse(page, accuracyOption);
-          await expect(dimensionField).toContainText('Accuracy', {
-            timeout: 2_000,
-          });
-        }).toPass({ timeout: 20_000, intervals: [500, 1_000, 2_000] });
+        await dimensionTrigger.focus();
+        await expect(dimensionTrigger).toBeFocused();
+        await dimensionTrigger.click();
+        await expect(accuracyOption).toBeVisible();
+        await accuracyOption.click();
+        // The field's hidden native select contains every option's text even
+        // when empty, so only the visible trigger proves selection succeeded.
+        await expect(dimensionTrigger).toHaveText('Accuracy');
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(
@@ -837,12 +809,16 @@ test.describe(
     test('should handle supported services field correctly', async ({
       page,
     }) => {
+      // Creates a test definition, filters the library, edits, deletes —
+      // 4+ heavy modal round-trips. Under load the 60 s default is tight.
+      test.slow();
+
       const SUPPORTED_SERVICES_TEST_NAME = `AaaaServiceFilterTest${uuid()}`;
       const SUPPORTED_SERVICES_DISPLAY_NAME = `Aaaa Service Filter Test ${uuid()}`;
       let createdTestId: string;
 
       await test.step('Create test definition with specific supported services', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -1000,14 +976,11 @@ test.describe(
         await expect(
           page.getByTestId('test-definition-form-body')
         ).toBeVisible();
+        // A tag-remove click that lands while the drawer is still sliding in
+        // is swallowed: the button takes focus but onPress never fires.
+        await waitForAriaOverlayToSettle(page);
 
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'Mysql' })
-          .getByRole('button')
-          .first()
-          .click();
+        await page.getByRole('button', { name: 'Remove Mysql' }).click();
 
         await expect(
           page
@@ -1094,14 +1067,9 @@ test.describe(
         await expect(
           page.getByTestId('test-definition-form-body')
         ).toBeVisible();
+        await waitForAriaOverlayToSettle(page);
 
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'Postgres' })
-          .getByRole('button')
-          .first()
-          .click();
+        await page.getByRole('button', { name: 'Remove Postgres' }).click();
 
         await expect(
           page
@@ -1109,13 +1077,7 @@ test.describe(
             .getByText('Postgres', { exact: true })
         ).toHaveCount(0);
 
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'BigQuery' })
-          .getByRole('button')
-          .first()
-          .click();
+        await page.getByRole('button', { name: 'Remove BigQuery' }).click();
 
         await expect(
           page
@@ -1182,7 +1144,7 @@ test.describe(
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
 
       await test.step('Create a test definition starting with "z"', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('add-test-definition-button').click();
         await expect(
           page.getByTestId('test-definition-form-body')
@@ -1239,15 +1201,20 @@ test.describe(
             response.request().method() === 'GET'
         );
         // Wait for dropdown to open and select 25
-        await page.locator('.ant-dropdown:visible').getByText('25').click();
+        await page.getByRole('menuitem', { name: /^25 \// }).click();
         await pageChangeResponse;
       });
 
       await test.step('Navigate until we find our test definition or reach last page', async () => {
         const nextButton = page.getByTestId('next');
         const testDefLocator = page.getByTestId(PAGINATION_TEST_NAME);
+        // The GET resolves before React renders its rows; isVisible() is a
+        // one-shot read, so wait for the table to settle before each check.
+        const tableContainer = page.getByTestId(
+          'test-definition-table-container'
+        );
 
-        // Check if item is already visible on current page
+        await expect(tableContainer).toHaveAttribute('aria-busy', 'false');
         let isItemVisible = await testDefLocator.isVisible();
 
         // Navigate until we find our test definition or reach the last page
@@ -1260,7 +1227,7 @@ test.describe(
           await nextButton.click();
           await fetchResponse;
 
-          // Check again after page load
+          await expect(tableContainer).toHaveAttribute('aria-busy', 'false');
           isItemVisible = await testDefLocator.isVisible();
         }
 

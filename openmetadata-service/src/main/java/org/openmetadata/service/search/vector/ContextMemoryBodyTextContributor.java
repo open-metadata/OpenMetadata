@@ -43,7 +43,7 @@ public final class ContextMemoryBodyTextContributor implements VectorBodyTextCon
     return ContextMemoryBodyTextContributor::extractBodyText;
   }
 
-  static String extractBodyText(EntityInterface entity) {
+  static String extractBodyText(EntityInterface<?> entity) {
     if (!(entity instanceof ContextMemory memory)) {
       return null;
     }
@@ -53,6 +53,9 @@ public final class ContextMemoryBodyTextContributor implements VectorBodyTextCon
     appendIfPresent(parts, "question", memory.getQuestion());
     appendIfPresent(parts, "answer", memory.getAnswer());
     appendIfPresent(parts, "description", memory.getDescription());
+    if (memory.getSourceFile() != null) {
+      appendIfPresent(parts, "source file", memory.getSourceFile().getName());
+    }
     return parts.isEmpty() ? "" : String.join("; ", parts);
   }
 

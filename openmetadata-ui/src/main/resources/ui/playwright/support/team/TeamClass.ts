@@ -12,13 +12,18 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  requireEntityIdentity,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import { searchTeam } from '../../utils/team';
 import { EntityReference } from '../entity/Entity.interface';
-type ResponseDataType = {
+type TeamData = {
   name: string;
   displayName: string;
   description: string;
@@ -30,13 +35,16 @@ type ResponseDataType = {
   policies?: string[];
   owners?: EntityReference[];
   isJoinable?: boolean;
+  parents?: string[];
 };
 
+type ResponseDataType = TeamData & { id: string; fullyQualifiedName: string };
+
 export class TeamClass {
-  data: ResponseDataType;
+  data: TeamData;
   responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(data?: ResponseDataType) {
+  constructor(data?: TeamData) {
     const id = uuid();
     this.data = data ?? {
       name: `PW%team-${id}`,
@@ -75,7 +83,10 @@ export class TeamClass {
     }
 
     const fetchOrganizationResponse = page.waitForResponse(
-      `/api/v1/teams/name/Organization?fields=users%2CuserCount%2CdefaultRoles%2CdefaultPersona%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
+      (response) =>
+        response.url().includes('/api/v1/teams/name/Organization') &&
+        response.url().includes('include=all') &&
+        response.url().includes('defaultPersona')
     );
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.TEAMS);
@@ -105,15 +116,22 @@ export class TeamClass {
     const response = await apiContext.post('/api/v1/teams', {
       data: this.data,
     });
-    const data = await okJson(response, 'TeamClass.create');
+    const data = requireEntityIdentity(
+      await okJson<TeamData>(response, 'TeamClass.create'),
+      'TeamClass.create'
+    );
     this.responseData = data;
 
     return data;
   }
 
-  async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
-      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
+  async delete(
+    apiContext: APIRequestContext,
+    { recursive = false }: { recursive?: boolean } = {}
+  ) {
+    const response = await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=${recursive}`
     );
 
     return await response.json();
@@ -133,9 +151,12 @@ export class TeamClass {
       })
     );
 
-    this.responseData = await okJson(response, 'TeamClass.patch');
+    this.responseData = requireEntityIdentity(
+      await okJson<TeamData>(response, 'TeamClass.patch'),
+      'TeamClass.patch'
+    );
 
-    return await okJson(response, 'TeamClass.patch');
+    return this.responseData;
   }
 
   async addUser(apiContext: APIRequestContext, userId: string) {

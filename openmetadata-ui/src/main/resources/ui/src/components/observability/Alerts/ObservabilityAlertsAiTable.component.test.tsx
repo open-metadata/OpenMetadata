@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { ReactNode } from 'react';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -80,13 +81,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Table.Head = ({
     className,
     id,
+    isRowHeader,
     label,
   }: {
     className?: string;
     id: string;
+    isRowHeader?: boolean;
     label: string;
   }) => (
-    <div className={className} data-testid={`header-${id}`}>
+    <div
+      className={className}
+      data-row-header={String(Boolean(isRowHeader))}
+      data-testid={`header-${id}`}>
       {label}
     </div>
   );
@@ -205,10 +211,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   AlertTriangle: () => null,
   Bell01: () => null,
-  Edit03: () => null,
+  Edit01: () => null,
+  Lock01: () => null,
   MarkerPin01: () => null,
   Plus: () => null,
   Trash01: () => null,
@@ -350,7 +357,21 @@ describe('ObservabilityAlertsAiTable', () => {
     expect(onViewAlert).toHaveBeenCalledWith(alertRecord);
   });
 
-  it('disables delete action for system alerts', () => {
+  it('marks only the alert name column as the row header', () => {
+    render(<ObservabilityAlertsAiTable {...baseProps} />);
+
+    // react-aria throws at runtime when a table has no row-header column.
+    expect(screen.getByTestId('header-name')).toHaveAttribute(
+      'data-row-header',
+      'true'
+    );
+    expect(screen.getByTestId('header-trigger')).toHaveAttribute(
+      'data-row-header',
+      'false'
+    );
+  });
+
+  it('disables edit and delete actions for system alerts', () => {
     render(
       <ObservabilityAlertsAiTable
         {...baseProps}
@@ -359,6 +380,8 @@ describe('ObservabilityAlertsAiTable', () => {
     );
 
     expect(screen.getByTestId('alert-delete-test-alert')).toBeDisabled();
+    // Notification lists include the read-only system ActivityFeedAlert.
+    expect(screen.getByTestId('alert-edit-test-alert')).toBeDisabled();
   });
 
   it('renders the features EmptyPlaceholder when there are no alerts', () => {
@@ -435,9 +458,51 @@ describe('ObservabilityAlertsAiTable', () => {
       screen.queryByText('label.new-entity:label.alert')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('label.try-again'));
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
 
     expect(onRetryPermission).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders an error + retry state instead of the onboarding when the alerts list failed to load', () => {
+    const onRetry = jest.fn();
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[]}
+        alertsError={{ response: { status: 500 } } as AxiosError}
+        onRetry={onRetry}
+      />
+    );
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.observability-alert-empty-heading')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders an access-denied state when the alerts list is forbidden', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[]}
+        alertsError={{ response: { status: 403 } } as AxiosError}
+        onRetry={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('label.new-entity:label.alert')
+    ).not.toBeInTheDocument();
   });
 
   it('maps pagination changes to cursor params', () => {

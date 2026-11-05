@@ -33,7 +33,7 @@ import org.openmetadata.schema.utils.JsonUtils;
  */
 class DataProductIndexMappingTest {
 
-  private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
+  private static final List<String> LANGUAGES = List.of("en", "jp", "ko", "ru", "zh");
   private static final List<String> ENUM_FIELDS =
       List.of("dataProductType", "visibility", "portfolioPriority", "lifecycleStage");
 

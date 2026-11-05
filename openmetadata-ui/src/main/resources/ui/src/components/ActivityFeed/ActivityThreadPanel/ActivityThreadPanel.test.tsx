@@ -12,8 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityThreadPanel from './ActivityThreadPanel';
 
@@ -22,10 +20,6 @@ jest.mock('./ActivityThreadPanelBody', () =>
 );
 
 describe('ActivityThreadPanel', () => {
-  beforeAll(() => {
-    ReactDOM.createPortal = jest.fn((element) => element as React.ReactPortal);
-  });
-
   it('opens on conversations and can switch to dedicated tasks', async () => {
     render(
       <MemoryRouter>
@@ -40,5 +34,42 @@ describe('ActivityThreadPanel', () => {
     fireEvent.click(screen.getByText('label.task-plural'));
 
     expect(await screen.findByTestId('panel-tasks')).toBeInTheDocument();
+  });
+
+  it('keeps the conversations panel mounted after switching to tasks', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityThreadPanel open threadLink="<#E::table::table>" />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('panel-conversations');
+
+    fireEvent.click(screen.getByText('label.task-plural'));
+
+    await screen.findByTestId('panel-tasks');
+
+    expect(
+      screen.getByTestId('panel-conversations').closest('[data-inert]')
+    ).toHaveAttribute('data-inert', 'true');
+  });
+
+  it('closes from the slideout header', async () => {
+    const onCancel = jest.fn();
+    render(
+      <MemoryRouter>
+        <ActivityThreadPanel
+          open
+          threadLink="<#E::table::table>"
+          onCancel={onCancel}
+        />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('label.activity-feed')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('closeDrawer'));
+
+    expect(onCancel).toHaveBeenCalled();
   });
 });

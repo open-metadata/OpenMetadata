@@ -50,7 +50,7 @@ jest.mock('../../pages/AccessNotAllowedPage/AccessNotAllowedPage', () => ({
   default: () => <div data-testid="access-not-allowed" />,
 }));
 
-jest.mock('../../pages/SamlCallback', () => ({
+jest.mock('../../pages/SamlCallback/SamlCallback', () => ({
   __esModule: true,
   default: () => <div data-testid="saml-callback" />,
 }));

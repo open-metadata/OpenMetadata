@@ -15,7 +15,7 @@ Test Dagster using the topology
 import json
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -37,10 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
     TagLabel,
-    TagSource,
 )
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
@@ -282,16 +279,12 @@ class DagsterUnitTest(TestCase):
         assert self.dagster.get_pipeline_name(GraphOrError(**EXPECTED_DAGSTER_DETAILS)) in EXPTECTED_PIPELINE_NAME
 
     @patch("metadata.ingestion.source.pipeline.dagster.client.DagsterClient.get_jobs")
-    @patch("metadata.utils.tag_utils.get_tag_label")
-    def test_yield_pipeline(self, get_tag_label, get_jobs):
-        results = self.dagster.yield_pipeline(GraphOrError(**EXPECTED_DAGSTER_DETAILS))
+    def test_yield_pipeline(self, get_jobs):
+        self.dagster.metadata = Mock()
+        details = GraphOrError(**EXPECTED_DAGSTER_DETAILS)
+        list(self.dagster.yield_tag_details(details))
+        results = self.dagster.yield_pipeline_details(details)
         get_jobs.return_value = GraphOrError(**EXPECTED_DAGSTER_DETAILS)
-        get_tag_label.return_value = TagLabel(
-            tagFQN="DagsterTags.hacker_new_repository",
-            labelType=LabelType.Automated.value,
-            state=State.Suggested.value,
-            source=TagSource.Classification.value,
-        )
         pipelines_list = []
         for result in results:
             pipelines_list.append(result.right)  # noqa: PERF401

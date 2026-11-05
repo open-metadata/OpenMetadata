@@ -24,6 +24,7 @@ from metadata.data_quality.validations.base_test_handler import (
     DimensionInfo,
     TestEvaluation,
 )
+from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -40,6 +41,8 @@ NULL_COUNT = "nullCount"
 
 class BaseColumnValuesMissingCountValidator(BaseTestValidator):
     """Validator for column value missing count to be equal test case"""
+
+    SAMPLING_STABILITY = SamplingStability.SCALES_WITH_SAMPLE
 
     MISSING_VALUE_MATCH = "missingValueMatch"
     MISSING_COUNT_VALUE = "missingCountValue"
@@ -166,7 +169,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
         total_missing_count = metric_values[self.TOTAL_MISSING_COUNT]
         expected_missing_count = test_params[self.MISSING_COUNT_VALUE]
 
-        matched = total_missing_count == expected_missing_count
+        matched = self.matches_expected(total_missing_count, expected_missing_count, "the expected missing count")
 
         return {
             "matched": matched,
@@ -197,13 +200,13 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
         total_missing_count = metric_values[self.TOTAL_MISSING_COUNT]
         expected_missing_count = test_params[self.MISSING_COUNT_VALUE]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found nullCount={total_missing_count} vs. the expected nullCount={expected_missing_count}."
-            )
-        else:  # noqa: RET505
-            return f"Found nullCount={total_missing_count} vs. the expected nullCount={expected_missing_count}."
+        return self.format_expected_value_message(
+            f"Missing values in {self.column_label()}",
+            total_missing_count,
+            expected_missing_count,
+            self._matched(metric_values, test_params),
+            dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for missing count test

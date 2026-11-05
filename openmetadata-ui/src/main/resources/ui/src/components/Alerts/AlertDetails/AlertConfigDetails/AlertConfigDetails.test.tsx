@@ -12,20 +12,34 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { useAlertCapabilities } from '../../../../hooks/useAlertCapabilities';
 import { mockAlertDetails } from '../../../../mocks/Alerts.mock';
-import { MOCK_FILTER_RESOURCES } from '../../../../test/unit/mocks/observability.mock';
+import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
+import alertsClassBase from '../../../../utils/AlertsClassBase';
 import AlertConfigDetails from './AlertConfigDetails';
 
-jest.mock('../../../../rest/observabilityAPI', () => ({
-  getResourceFunctions: jest.fn().mockImplementation(() => ({
-    data: MOCK_FILTER_RESOURCES,
+const ANSWERED = {
+  selection: undefined,
+  knownSources: [],
+  loading: false,
+  settled: true,
+  retry: jest.fn(),
+};
+
+jest.mock('../../../../hooks/useAlertCapabilities', () => ({
+  useAlertCapabilities: jest.fn().mockImplementation(() => ANSWERED),
+}));
+
+const mockGetResourcePermission = jest.fn();
+
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn(() => ({
+    getResourcePermission: mockGetResourcePermission,
   })),
 }));
 
-jest.mock('../../../../rest/alertsAPI', () => ({
-  getResourceFunctions: jest.fn().mockImplementation(() => ({
-    data: MOCK_FILTER_RESOURCES,
-  })),
+jest.mock('../../../../rest/notificationtemplateAPI', () => ({
+  getAllNotificationTemplates: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../../common/Loader/Loader', () =>
@@ -48,11 +62,55 @@ jest.mock(
     jest.fn().mockImplementation(() => <div>ObservabilityFormTriggerItem</div>)
 );
 
-jest.mock('../../DestinationFormItem/DestinationFormItemFormBridge', () =>
+jest.mock('../../DestinationFormItem/DestinationFormItem.component', () =>
   jest.fn().mockImplementation(() => <div>DestinationFormItem</div>)
 );
 
+describe('AlertConfigDetails notification template permissions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest
+      .spyOn(alertsClassBase, 'getAddAlertFormExtraWidgets')
+      .mockReturnValue({ template: jest.fn() });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const renderDetails = async () => {
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={mockAlertDetails}
+          isNotificationAlert={false}
+        />
+      );
+    });
+  };
+
+  it('should fetch templates when ViewAll is granted on the template resource', async () => {
+    mockGetResourcePermission.mockResolvedValue({ ViewAll: true });
+
+    await renderDetails();
+
+    expect(getAllNotificationTemplates).toHaveBeenCalled();
+  });
+
+  it('should not fetch templates when ViewAll is denied on the template resource', async () => {
+    mockGetResourcePermission.mockResolvedValue({ ViewBasic: true });
+
+    await renderDetails();
+
+    expect(getAllNotificationTemplates).not.toHaveBeenCalled();
+  });
+});
+
 describe('AlertConfigDetails', () => {
+  beforeEach(() => {
+    (useAlertCapabilities as jest.Mock).mockImplementation(() => ANSWERED);
+  });
+
   it('should render the component', async () => {
     await act(async () => {
       render(
@@ -105,14 +163,64 @@ describe('AlertConfigDetails', () => {
     ).toBeInTheDocument();
   });
 
-  it('should show loader when fetching data', async () => {
-    render(
-      <AlertConfigDetails
-        alertDetails={mockAlertDetails}
-        isNotificationAlert={false}
-      />
+  // Asked for one saved source as for several.
+  it('asks the server what the saved sources support', async () => {
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={{
+            ...mockAlertDetails,
+            filteringRules: {
+              ...mockAlertDetails.filteringRules,
+              resources: ['table', 'topic'],
+            },
+          }}
+          isNotificationAlert={false}
+        />
+      );
+    });
+
+    expect(useAlertCapabilities).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table', 'topic'] })
     );
 
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={{
+            ...mockAlertDetails,
+            filteringRules: {
+              ...mockAlertDetails.filteringRules,
+              resources: ['table'],
+            },
+          }}
+          isNotificationAlert={false}
+        />
+      );
+    });
+
+    expect(useAlertCapabilities).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table'] })
+    );
+  });
+
+  it('shows the loader until the server has answered for the saved sources', async () => {
+    (useAlertCapabilities as jest.Mock).mockImplementation(() => ({
+      ...ANSWERED,
+      loading: true,
+      settled: false,
+    }));
+
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={mockAlertDetails}
+          isNotificationAlert={false}
+        />
+      );
+    });
+
     expect(screen.getByText('Loader')).toBeInTheDocument();
+    expect(screen.queryByText('AlertFormSourceItem')).not.toBeInTheDocument();
   });
 });

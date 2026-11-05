@@ -24,6 +24,7 @@
  *  - expandable        → tree/nested rows via record.children, plus expandedRowRender
  *  - onRow             → onClick and onDoubleClick are forwarded to the row element
  *  - onCell            → onClick, data-*, colSpan forwarded to the underlying td element
+ *                        (colSpan: 0 skips the cell, matching AntD's covered-cell convention)
  *  - filterIcon/filterDropdown/onFilter → filter state managed internally; confirm/close close the dropdown
  *
  * Test contract — these hooks are stable and tests may rely on them:
@@ -40,17 +41,19 @@
  */
 
 import {
-  Button,
-  Dropdown,
-  EmptyPlaceholder,
+  ButtonUtility,
+  MUTED_TABLE_SURFACE_CLASSES,
   PaginationCardWithControls,
   Table as UntitledTable,
-  Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronRight, SearchLg } from '@untitledui/icons';
+import {
+  ChevronDown,
+  ChevronRight,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, MouseEvent } from 'react';
 import React, {
   forwardRef,
   ReactElement,
@@ -60,18 +63,18 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
-  Button as AriaButton,
   ColumnResizer,
   Dialog,
-  DialogTrigger,
   Popover,
   ResizableTableContainer,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
+import { twMerge } from 'tailwind-merge';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
@@ -79,12 +82,13 @@ import {
 } from '../../../utils/CustomizeColumnUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import NoDataPlaceholder from '../EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar, {
   SearchBarProps,
 } from '../SearchBarComponent/SearchBar.component';
-import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
+import ColumnCustomizeDropdown from './ColumnCustomizeDropdown/ColumnCustomizeDropdown';
 import type {
   ColumnsType,
   ColumnType,
@@ -102,6 +106,7 @@ import type {
   AriaSelection,
   AriaSortDescriptor,
   FlatRow,
+  TableV2ExtensionProps,
 } from './TableV2.interface';
 import {
   flattenTreeRows,
@@ -110,6 +115,7 @@ import {
   getColumnStickyStyle,
   getSelectedKeysSet,
   getSortDescriptorProp,
+  getStickyBodyCellClass,
   getTableContainerStyle,
   getTableLayoutClasses,
   getTableWidthStyle,
@@ -145,18 +151,19 @@ type CustomPaginationProps = NonNullable<
  */
 type PaginationContract<T> =
   | {
-      customPaginationProps?: undefined;
-      pagination?: TableComponentProps<T>['pagination'];
+      customPaginationProps?: never;
+      pagination?: NonNullable<TableComponentProps<T>['pagination']>;
     }
-  | { customPaginationProps: CustomPaginationProps; pagination: false };
+  | { customPaginationProps?: CustomPaginationProps; pagination: false };
 
 type TableV2Props<T extends object> = Omit<
   TableComponentProps<T>,
   UnsupportedProps | 'customPaginationProps' | 'pagination'
 > &
-  PaginationContract<T>;
+  PaginationContract<T> &
+  TableV2ExtensionProps<T>;
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = PAGE_SIZE_BASE;
 const DEFAULT_INDENT_PX = 12;
 const EXPANDER_GUTTER_PX = 16;
 
@@ -168,7 +175,7 @@ const EXPANDER_GUTTER_PX = 16;
  * the app, not just the ones being migrated. `compact` is available to a call
  * site that opts into it deliberately.
  */
-const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
+const CORE_SIZE_BY_TABLE_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
   compact: 'compact',
   small: 'sm',
   middle: 'md',
@@ -176,7 +183,7 @@ const CORE_SIZE_BY_ANTD_SIZE: Record<string, 'compact' | 'sm' | 'md'> = {
 };
 
 const toCoreSize = (size: TableComponentProps<never>['size']) =>
-  CORE_SIZE_BY_ANTD_SIZE[size ?? 'middle'] ?? 'md';
+  CORE_SIZE_BY_TABLE_SIZE[size ?? 'middle'] ?? 'md';
 
 /**
  * The core `Table` root's `size` prop only accepts `'sm' | 'md'` today — the
@@ -199,7 +206,42 @@ const toCoreTableSize = (size: TableComponentProps<never>['size']) => {
  * padding every migrated table already renders with; the other steps move
  * around it.
  */
-const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
+// AntD's fixed-column "ping" shadow: a 30px strip translated past the boundary
+// cell carrying an inset shadow — a plain outset box-shadow reads as a hairline,
+// not the wide soft band. The row bottom border owns ::after, so it lives on
+// ::before.
+const PING_LEFT_CLASS = classNames(
+  "tw:before:content-[''] tw:before:absolute tw:before:top-0",
+  'tw:before:-bottom-px tw:before:right-0 tw:before:w-[30px]',
+  'tw:before:translate-x-full tw:before:pointer-events-none',
+  'tw:before:shadow-[inset_10px_0_8px_-8px_rgba(5,5,5,0.15)]'
+);
+const PING_RIGHT_CLASS = classNames(
+  "tw:before:content-[''] tw:before:absolute tw:before:top-0",
+  'tw:before:-bottom-px tw:before:left-0 tw:before:w-[30px]',
+  'tw:before:-translate-x-full tw:before:pointer-events-none',
+  'tw:before:shadow-[inset_-10px_0_8px_-8px_rgba(5,5,5,0.15)]'
+);
+
+const pingShadowClass = (
+  fixed: ColumnType<unknown>['fixed'],
+  colIdx: number,
+  lastLeftFixedIdx: number,
+  firstRightFixedIdx: number,
+  pingLeft: boolean,
+  pingRight: boolean
+): string => {
+  if (fixed === 'left' && colIdx === lastLeftFixedIdx && pingLeft) {
+    return PING_LEFT_CLASS;
+  }
+  if (fixed === 'right' && colIdx === firstRightFixedIdx && pingRight) {
+    return PING_RIGHT_CLASS;
+  }
+
+  return '';
+};
+
+const CELL_PADDING_BY_TABLE_SIZE: Record<string, string> = {
   compact: 'tw:py-1.5 tw:pl-3 tw:pr-2',
   small: 'tw:p-2',
   middle: 'tw:py-2 tw:pl-4 tw:pr-2',
@@ -207,8 +249,8 @@ const CELL_PADDING_BY_ANTD_SIZE: Record<string, string> = {
 };
 
 const toCellPaddingClass = (size: TableComponentProps<never>['size']) =>
-  CELL_PADDING_BY_ANTD_SIZE[size ?? 'middle'] ??
-  CELL_PADDING_BY_ANTD_SIZE.middle;
+  CELL_PADDING_BY_TABLE_SIZE[size ?? 'middle'] ??
+  CELL_PADDING_BY_TABLE_SIZE.middle;
 
 const resolvePageSize = (
   pageSizeOverride: number | null,
@@ -284,6 +326,84 @@ const getIndentStyle = (
 
 const toAriaDirection = (order: 'ascend' | 'descend') =>
   order === 'descend' ? ('descending' as const) : ('ascending' as const);
+
+// The filter trigger cannot sit inside a `DialogTrigger`: a React Aria column
+// header is itself pressable, and its PressResponder both forwards the column's
+// press onto this button and closes the popover in the same click that opened
+// it (jsdom's synthetic click hides both). Owning the press and anchoring the
+// Popover through triggerRef, with propagation stopped at the boundary, keeps
+// the column's press machinery out of the loop.
+// AntD truncates an `ellipsis` column's header along with its cells, so a long
+// plain-text title clips instead of overflowing its fixed-width cell into the
+// next column. Only string titles qualify: wrapping arbitrary header JSX
+// (icons, sort affordances) in `truncate` would clip it. Type guard so the
+// render can hand `title` straight to the span.
+const hasTruncatingHeader = <T,>(
+  col: ColumnType<T>
+): col is ColumnType<T> & { title: string } =>
+  Boolean(col.ellipsis) && typeof col.title === 'string';
+
+// Kept out of the header render so it does not add to that function's
+// cyclomatic complexity.
+const renderColumnHeaderTitle = <T,>(
+  col: ColumnType<T>,
+  propsColumns: ColumnsType<T>
+): ReactNode =>
+  hasTruncatingHeader(col) ? (
+    // Native title, not the design-system <Tooltip>: AntD's `ellipsis` header
+    // exposed the clipped text through a native title, and react-aria's
+    // Tooltip does not reliably open on hover inside a column header that
+    // already owns press handling (see TableAliases for the same call).
+    // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- see comment above
+    <span className="tw:min-w-0 tw:truncate" title={col.title}>
+      {col.title}
+    </span>
+  ) : (
+    resolveColumnTitle(col, propsColumns)
+  );
+
+const HeaderFilterTrigger = ({
+  icon,
+  isOpen,
+  onOpenChange,
+  children,
+}: {
+  icon: ReactNode;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <span
+      className="tw:inline-flex"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}>
+      <ButtonUtility
+        aria-label="filter"
+        className="tw:ml-1"
+        data-testid="filter-trigger"
+        icon={icon}
+        ref={triggerRef}
+        size="xs"
+        onPress={() => onOpenChange(!isOpen)}
+      />
+      <Popover
+        isOpen={isOpen}
+        placement="bottom right"
+        triggerRef={triggerRef}
+        onOpenChange={onOpenChange}>
+        <Dialog aria-label="filter" className="tw:outline-none">
+          {children}
+        </Dialog>
+      </Popover>
+    </span>
+  );
+};
 
 /**
  * React Aria always opens a fresh sort on 'ascending'. AntD lets a column say
@@ -393,6 +513,12 @@ const getRowInteractionProps = (
  * unique among themselves. Both are internal: `columnKeys` carries the original
  * key for anything reported back to the call site.
  */
+// `.table-container` paints bg-surface from unlayered LESS, so only an
+// `!important` utility can lift it onto the muted step; the bg-secondary row
+// hover is the same step as the muted rows, hence the translucent hover.
+// ADR:2026-10-27-settings-modal-surfaces-use-the-muted-step
+const MUTED_CONTAINER_CLASSES = `tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt! ${MUTED_TABLE_SURFACE_CLASSES}`;
+
 /**
  * AntD's `bordered` draws a full grid. Rows already carry their own horizontal
  * rule, so this adds the outer frame and the vertical separators, dropping the
@@ -490,98 +616,20 @@ const recordMatchesActiveFilters = <T,>(
       : true;
   });
 
-interface ColumnCustomizeDropdownProps {
-  columnDropdownSelections: string[];
-  dropdownColumnList: TableColumnDropdownList[];
-  onBulkAction: () => void;
-  onMoveItem: (updatedList: TableColumnDropdownList[]) => void;
-  onSelect: (key: string, selected: boolean) => void;
-}
-
-/** The "customize columns" dropdown hung off the toolbar's filter row. */
-const ColumnCustomizeDropdown = ({
-  columnDropdownSelections,
-  dropdownColumnList,
-  onBulkAction,
-  onMoveItem,
-  onSelect,
-}: ColumnCustomizeDropdownProps) => {
-  const { t } = useTranslation();
-  const allSelected =
-    dropdownColumnList.length === columnDropdownSelections.length;
-
-  return (
-    <Dropdown.Root>
-      <Button
-        color="tertiary"
-        data-testid="column-dropdown"
-        iconLeading={ColumnIcon}
-        size="sm"
-        title={t('label.show-or-hide-column-plural')}>
-        {t('label.customize')}
-      </Button>
-      <Dropdown.Popover>
-        <Dropdown.Menu>
-          <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
-            <Typography
-              className="tw:text-tertiary"
-              data-testid="column-dropdown-title"
-              weight="medium">
-              {t('label.column')}
-            </Typography>
-            <Button
-              color="link-color"
-              data-testid="column-dropdown-action-button"
-              size="xs"
-              onClick={onBulkAction}>
-              {allSelected ? t('label.hide-all') : t('label.view-all')}
-            </Button>
-          </Dropdown.SectionHeader>
-
-          <Dropdown.Separator />
-          <Dropdown.Section>
-            {dropdownColumnList.map((item, index) => (
-              <DraggableMenuItemV2
-                currentItem={item}
-                index={index}
-                itemList={dropdownColumnList}
-                key={item.value}
-                selectedOptions={columnDropdownSelections}
-                onMoveItem={onMoveItem}
-                onSelect={onSelect}
-              />
-            ))}
-          </Dropdown.Section>
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
-  );
-};
-
 interface TableToolbarProps {
-  columnDropdownSelections: string[];
-  dropdownColumnList: TableColumnDropdownList[];
+  columnCustomize: ReactNode;
   extraTableFilters?: ReactNode;
   extraTableFiltersClassName?: string;
-  isCustomizeColumnEnable: boolean;
-  onBulkColumnAction: () => void;
-  onMoveColumnItem: (updatedList: TableColumnDropdownList[]) => void;
   onSearch: (value: string) => void;
-  onSelectColumnItem: (key: string, selected: boolean) => void;
   searchProps?: SearchBarProps;
 }
 
 /** Search box and extra/customize-column filters row above the table. */
 const TableToolbar = ({
-  columnDropdownSelections,
-  dropdownColumnList,
+  columnCustomize,
   extraTableFilters,
   extraTableFiltersClassName,
-  isCustomizeColumnEnable,
-  onBulkColumnAction,
-  onMoveColumnItem,
   onSearch,
-  onSelectColumnItem,
   searchProps,
 }: TableToolbarProps) => {
   const { t } = useTranslation();
@@ -600,26 +648,82 @@ const TableToolbar = ({
           />
         </div>
       )}
-      {(extraTableFilters || isCustomizeColumnEnable) && (
+      {(extraTableFilters || columnCustomize) && (
         <div
           className={classNames(
-            'd-flex justify-end items-center gap-5',
+            // min-w-0: else the row takes min-content width and overflows the clip.
+            'd-flex justify-end items-center gap-5 tw:min-w-0',
             extraTableFiltersClassName
           )}
           style={{ flex: 1 }}>
           {extraTableFilters}
-          {isCustomizeColumnEnable && (
-            <ColumnCustomizeDropdown
-              columnDropdownSelections={columnDropdownSelections}
-              dropdownColumnList={dropdownColumnList}
-              onBulkAction={onBulkColumnAction}
-              onMoveItem={onMoveColumnItem}
-              onSelect={onSelectColumnItem}
-            />
-          )}
+          {columnCustomize}
         </div>
       )}
     </div>
+  );
+};
+
+type TableToolbarSectionProps = TableToolbarProps &
+  Pick<TableV2ExtensionProps<object>, 'renderToolbar'>;
+
+/** The toolbar band: the call site's own `renderToolbar`, else the default row. */
+const TableToolbarSection = ({
+  renderToolbar,
+  ...toolbarProps
+}: TableToolbarSectionProps) => {
+  if (renderToolbar) {
+    return (
+      <div data-testid="table-toolbar">
+        {renderToolbar(toolbarProps.columnCustomize)}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={classNames('p-x-md', {
+        'p-y-md':
+          toolbarProps.searchProps ||
+          toolbarProps.extraTableFilters ||
+          toolbarProps.columnCustomize,
+      })}
+      data-testid="table-toolbar">
+      <TableToolbar {...toolbarProps} />
+    </div>
+  );
+};
+
+/**
+ * A record drawn as one cell across every column, the selection column
+ * included — so the row must also drop its selection cell.
+ */
+const buildFullWidthRow = <T extends object>(
+  content: ReactNode,
+  flatRow: FlatRow<T>,
+  rowId: string,
+  columnCount: number,
+  hasSelectionCell: boolean,
+  className?: string
+) => {
+  if (content === null || content === undefined) {
+    return null;
+  }
+
+  return (
+    <UntitledTable.Row
+      hideSelectionCell
+      className={className}
+      data-level={flatRow.depth}
+      data-row-key={flatRow.rowKey}
+      id={rowId}
+      key={rowId}>
+      <UntitledTable.Cell
+        className="tw:p-0"
+        colSpan={columnCount + (hasSelectionCell ? 1 : 0)}>
+        {content}
+      </UntitledTable.Cell>
+    </UntitledTable.Row>
   );
 };
 
@@ -645,6 +749,8 @@ const ExpandControl = <T extends object>({
   rowKey,
   onToggle,
 }: ExpandControlProps<T>) => {
+  const { t } = useTranslation();
+
   if (hasChildren) {
     if (ExpandIcon) {
       return (
@@ -662,20 +768,18 @@ const ExpandControl = <T extends object>({
     }
 
     return (
-      <button
+      <ButtonUtility
         aria-expanded={isExpanded}
-        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+        aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
+        className="tw:mr-1"
         data-testid="expand-icon"
-        onClick={(e) => {
+        icon={isExpanded ? ChevronDown : ChevronRight}
+        size="xs"
+        onClick={(e: MouseEvent) => {
           e.stopPropagation();
           onToggle(record, rowKey);
-        }}>
-        {isExpanded ? (
-          <ChevronDown className="tw:size-4" />
-        ) : (
-          <ChevronRight className="tw:size-4" />
-        )}
-      </button>
+        }}
+      />
     );
   }
 
@@ -691,7 +795,7 @@ const ExpandControl = <T extends object>({
     );
   }
 
-  return <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+  return <span className="tw:inline-block tw:w-5 tw:mr-1" />;
 };
 
 interface SizeChangerProps {
@@ -778,10 +882,16 @@ const TableV2 = <T extends object>(
     dragAndDropHooks,
     'data-testid': dataTestId,
     scroll,
+    renderToolbar,
+    fullWidthRowRender,
+    'aria-label': ariaLabel = 'data-table',
     ...rest
   }: TableV2Props<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
+  // Read once so callbacks depend on the handler, not on `rest` (a new object
+  // every render).
+  const { onChange: onTableChange } = rest;
   const { t } = useTranslation();
   const { type } = useGenericContext();
   const [reorderedList, setReorderedList] = useState<
@@ -822,6 +932,84 @@ const TableV2 = <T extends object>(
         return next;
       }),
     []
+  );
+
+  // A column carrying `filteredValue` owns its filter state (AntD's controlled
+  // filters): the value drives the rows and lights the icon regardless of the
+  // dropdown draft. Keyed by the plain `key ?? dataIndex` the call sites use.
+  const controlledFilterState = useMemo((): Record<
+    string,
+    React.Key[] | undefined
+  > => {
+    const entries: Record<string, React.Key[] | undefined> = {};
+    (rest.columns ?? []).forEach((col, idx) => {
+      const c = col as ColumnType<T>;
+      if (c.filteredValue !== undefined) {
+        entries[String(c.key ?? c.dataIndex ?? idx)] = (c.filteredValue ??
+          []) as React.Key[];
+      }
+    });
+
+    return entries;
+  }, [rest.columns]);
+
+  // Live mirror of the dropdown drafts: `ColumnFilter` and its siblings call
+  // setSelectedKeys(...) then confirm() in the same tick, so the confirm reads
+  // the draft here rather than waiting for the state update to flush.
+  const filterDraftRef = useRef<Record<string, React.Key[]>>({});
+
+  // A controlled column (filteredValue set) normally shows the parent value,
+  // but while its dropdown is open the user's in-progress draft must win so the
+  // checkboxes reflect each click; confirm still applies the draft either way.
+  const effectiveFilterOf = useCallback(
+    (colKey: string): React.Key[] => {
+      const draft = filterState[colKey];
+      const controlled = controlledFilterState[colKey];
+      if (openFilterKey === colKey) {
+        return draft ?? controlled ?? [];
+      }
+
+      return controlled ?? draft ?? [];
+    },
+    [openFilterKey, controlledFilterState, filterState]
+  );
+
+  // AntD's fixed-column scroll shadows. The core table owns the horizontal
+  // scroller (its overflow-x wrapper) and scroll does not bubble, so a native
+  // passive listener is attached to it; the flags flip only on boundary
+  // crossings to avoid re-render churn while scrolling.
+  const scrollWrapRef = useRef<HTMLDivElement>(null);
+  const pingScrollerRef = useRef<HTMLElement | null>(null);
+  const [pingLeft, setPingLeft] = useState(false);
+  const [pingRight, setPingRight] = useState(false);
+  const syncPing = useCallback(() => {
+    const el = pingScrollerRef.current;
+    if (!el) {
+      return;
+    }
+    const left = el.scrollLeft > 0;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setPingLeft((prev) => (prev === left ? prev : left));
+    setPingRight((prev) => (prev === right ? prev : right));
+  }, []);
+  useEffect(() => {
+    const scroller = scrollWrapRef.current?.querySelector('table[role="grid"]')
+      ?.parentElement as HTMLElement | null;
+    if (scroller && scroller !== pingScrollerRef.current) {
+      pingScrollerRef.current?.removeEventListener('scroll', syncPing);
+      pingScrollerRef.current = scroller;
+      scroller.addEventListener('scroll', syncPing, { passive: true });
+    }
+    syncPing();
+  });
+
+  // Unmount-only cleanup. The attach effect above deliberately runs every
+  // render (to catch the scroller when the grid re-mounts), so its own return
+  // cannot own removal without stripping the listener between renders.
+  useEffect(
+    () => () =>
+      pingScrollerRef.current?.removeEventListener('scroll', syncPing),
+    [syncPing]
   );
 
   const {
@@ -882,15 +1070,11 @@ const TableV2 = <T extends object>(
    */
   const sizeByContent = scroll?.x === 'max-content';
 
-  const scrollStyle = useMemo((): React.CSSProperties => {
-    if (!scroll) {
-      return {};
-    }
-
-    return {
-      ...(scroll.x ? { overflowX: 'auto' } : {}),
-    };
-  }, [scroll?.x]);
+  const scrollX = scroll?.x;
+  const scrollStyle = useMemo(
+    (): React.CSSProperties => (scrollX ? { overflowX: 'auto' } : {}),
+    [scrollX]
+  );
 
   /**
    * Derived, not state: seeding this from an effect left the first render with
@@ -921,6 +1105,19 @@ const TableV2 = <T extends object>(
 
   const columnKeys = useMemo(() => getColumnKeys(propsColumns), [propsColumns]);
   const columnIds = useMemo(() => getColumnIds(columnKeys), [columnKeys]);
+
+  const lastLeftFixedIdx = useMemo(
+    () =>
+      propsColumns.reduce(
+        (acc, c, idx) => ((c as ColumnType<T>).fixed === 'left' ? idx : acc),
+        -1
+      ),
+    [propsColumns]
+  );
+  const firstRightFixedIdx = useMemo(
+    () => propsColumns.findIndex((c) => (c as ColumnType<T>).fixed === 'right'),
+    [propsColumns]
+  );
 
   /**
    * Total of the columns' pixel widths, but only for a table that should
@@ -1005,18 +1202,78 @@ const TableV2 = <T extends object>(
     return effectiveSort.direction === 'descending' ? sorted.reverse() : sorted;
   }, [rest.dataSource, effectiveSort, propsColumns, columnIds]);
 
-  const filteredDataSource = useMemo((): T[] => {
-    const activeFilters = Object.entries(filterState).filter(
-      ([, keys]) => keys.length > 0
-    );
-    if (!activeFilters.length) {
-      return sortedDataSource;
-    }
+  const applyColumnFilters = useCallback(
+    (state: Record<string, React.Key[]>): T[] => {
+      const activeFilters = Object.entries(state).filter(
+        ([, keys]) => keys.length > 0
+      );
+      if (!activeFilters.length) {
+        return sortedDataSource;
+      }
 
-    return sortedDataSource.filter((record) =>
-      recordMatchesActiveFilters(record, activeFilters, propsColumns, columnIds)
-    );
-  }, [sortedDataSource, filterState, propsColumns, columnIds]);
+      return sortedDataSource.filter((record) =>
+        recordMatchesActiveFilters(
+          record,
+          activeFilters,
+          propsColumns,
+          columnKeys
+        )
+      );
+    },
+    [sortedDataSource, propsColumns, columnKeys]
+  );
+
+  const filteredDataSource = useMemo((): T[] => {
+    // Controlled columns override the draft — `filteredValue` is the state of
+    // record wherever a call site provides it.
+    const merged: Record<string, React.Key[]> = { ...filterState };
+    Object.entries(controlledFilterState).forEach(([key, keys]) => {
+      if (keys !== undefined) {
+        merged[key] = keys;
+      }
+    });
+
+    return applyColumnFilters(merged);
+  }, [applyColumnFilters, filterState, controlledFilterState]);
+
+  // AntD's `onChange` filter map: every filterable column keyed by
+  // `key ?? dataIndex`, active columns carrying their keys and inactive ones
+  // null — the filteredValue call sites read the next state off this argument.
+  const reportFilterChange = useCallback(
+    (nextState: Record<string, React.Key[]>) => {
+      if (!onTableChange) {
+        return;
+      }
+      const filters: Record<string, FilterValue | null> = {};
+      const effectiveNext: Record<string, React.Key[]> = {};
+      (rest.columns ?? []).forEach((col, idx) => {
+        const c = col as ColumnType<T>;
+        if (!c.filters && !c.filterDropdown) {
+          return;
+        }
+        const key = String(c.key ?? c.dataIndex ?? idx);
+        // A controlled column the user never opened has no draft entry — its
+        // filteredValue must still be reported, or a parent syncing from this
+        // map clears the untouched filter.
+        const keys = nextState[key] ?? controlledFilterState[key] ?? [];
+        effectiveNext[key] = keys;
+        filters[key] = keys.length ? (keys as FilterValue) : null;
+      });
+      onTableChange(
+        {} as TablePaginationConfig,
+        filters,
+        {} as SorterResult<T>,
+        {
+          // Recomputed from the just-confirmed state, not the memo — for a
+          // controlled column the memo only updates once the parent echoes the
+          // new filteredValue back.
+          currentDataSource: applyColumnFilters(effectiveNext),
+          action: 'filter',
+        } as TableCurrentDataSource<T>
+      );
+    },
+    [onTableChange, rest.columns, controlledFilterState, applyColumnFilters]
+  );
 
   const currentPage =
     clientPagination?.controlledCurrent ?? internalCurrentPage;
@@ -1029,7 +1286,7 @@ const TableV2 = <T extends object>(
   const handlePageChange = useCallback(
     (nextPage: number) => {
       setInternalCurrentPage(nextPage);
-      rest.onChange?.(
+      onTableChange?.(
         {
           current: nextPage,
           pageSize: clientPagination?.pageSize ?? DEFAULT_PAGE_SIZE,
@@ -1043,7 +1300,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
-    [rest.onChange, clientPagination, filteredDataSource]
+    [onTableChange, clientPagination, filteredDataSource]
   );
 
   /**
@@ -1059,7 +1316,7 @@ const TableV2 = <T extends object>(
       // AntD reports a page-size change through `onChange` as well, which is
       // the only callback a server-paged table has to refetch on. Without it
       // the picker moves and nothing else happens.
-      rest.onChange?.(
+      onTableChange?.(
         {
           current: 1,
           pageSize: size,
@@ -1073,7 +1330,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
-    [clientPagination, rest.onChange, filteredDataSource]
+    [clientPagination, onTableChange, filteredDataSource]
   );
 
   const pagedDataSource = useMemo((): T[] => {
@@ -1122,7 +1379,12 @@ const TableV2 = <T extends object>(
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, selectedEntityTableColumns, entityKey]
+    [
+      columnDropdownSelections,
+      selectedEntityTableColumns,
+      entityKey,
+      setPreference,
+    ]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -1149,6 +1411,7 @@ const TableV2 = <T extends object>(
     columnDropdownSelections,
     selectedEntityTableColumns,
     entityKey,
+    setPreference,
   ]);
 
   // ─── Row key ──────────────────────────────────────────────────────────────
@@ -1161,7 +1424,12 @@ const TableV2 = <T extends object>(
       if (typeof rest.rowKey === 'string') {
         const val = (record as Record<string, unknown>)[rest.rowKey];
 
-        return val !== undefined && val !== null ? String(val) : String(index);
+        // An empty string is as missing as undefined: React Aria drops a row
+        // whose id is '' — a CSV import result keys its failure rows on a blank
+        // name, and AntD still rendered them.
+        return val !== undefined && val !== null && String(val) !== ''
+          ? String(val)
+          : String(index);
       }
 
       return String(index);
@@ -1328,7 +1596,7 @@ const TableV2 = <T extends object>(
       );
       setSortState({ columnKey: newKey, direction: newDirection });
 
-      if (!rest.onChange) {
+      if (!onTableChange) {
         return;
       }
 
@@ -1336,7 +1604,7 @@ const TableV2 = <T extends object>(
       const reportedOrder =
         newDirection === 'ascending' ? 'ascend' : descendingOrder;
 
-      rest.onChange(
+      onTableChange(
         {
           current: internalCurrentPage,
           pageSize: clientPagination?.pageSize ?? 10,
@@ -1356,9 +1624,10 @@ const TableV2 = <T extends object>(
       );
     },
     [
-      rest.onChange,
+      onTableChange,
       propsColumns,
       rest.dataSource,
+      filteredDataSource.length,
       internalCurrentPage,
       clientPagination,
       sortState.columnKey,
@@ -1449,11 +1718,29 @@ const TableV2 = <T extends object>(
                 Boolean(entry)
               );
 
-      rest.rowSelection.onChange(
-        selected.map(({ key }) => key),
-        selected.map(({ record }) => record),
-        { type: selectionMode === 'single' ? 'single' : 'multiple' }
-      );
+      let selectedKeys: React.Key[] = selected.map(({ key }) => key);
+      const selectedRecords = selected.map(({ record }) => record);
+
+      // AntD's `preserveSelectedRowKeys` keeps rows selected on other pages.
+      // React Aria's collection is only the current page, so onSelectionChange
+      // reports the current page alone; without merging, selecting on a new page
+      // (or clearing the current one) would silently drop every off-page
+      // selection. Re-attach the previously selected keys that aren't on this
+      // page. Their records aren't loaded here, which matches AntD's own
+      // behavior under preserveSelectedRowKeys.
+      if (rest.rowSelection.preserveSelectedRowKeys) {
+        const currentPageKeys = new Set(
+          rowEntries.map(({ key }) => String(key))
+        );
+        const preservedKeys = (rest.rowSelection.selectedRowKeys ?? []).filter(
+          (key) => !currentPageKeys.has(String(key))
+        );
+        selectedKeys = [...preservedKeys, ...selectedKeys];
+      }
+
+      rest.rowSelection.onChange(selectedKeys, selectedRecords, {
+        type: selectionMode === 'single' ? 'single' : 'multiple',
+      });
     },
     [rest.rowSelection, rowEntries, rowEntryById, selectionMode]
   );
@@ -1470,39 +1757,41 @@ const TableV2 = <T extends object>(
 
   return (
     <div
-      className={classNames(
-        'table-container',
-        'tw:[&_tbody_tr:hover_td]:bg-secondary',
+      className={twMerge(
+        'table-container tw:rounded-xl',
+        rest.variant === 'muted'
+          ? MUTED_CONTAINER_CLASSES
+          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody:not([data-empty])_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
       ref={ref}>
-      <div
-        className={classNames('p-x-md', {
-          'p-y-md':
-            searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
-        })}
-        data-testid="table-toolbar">
-        <TableToolbar
-          columnDropdownSelections={columnDropdownSelections}
-          dropdownColumnList={dropdownColumnList}
-          extraTableFilters={rest.extraTableFilters}
-          extraTableFiltersClassName={rest.extraTableFiltersClassName}
-          isCustomizeColumnEnable={isCustomizeColumnEnable}
-          searchProps={searchProps}
-          onBulkColumnAction={handleBulkColumnAction}
-          onMoveColumnItem={handleMoveItem}
-          onSearch={handleSearchAction}
-          onSelectColumnItem={handleColumnItemSelect}
-        />
-      </div>
+      <TableToolbarSection
+        columnCustomize={
+          isCustomizeColumnEnable ? (
+            <ColumnCustomizeDropdown
+              columnDropdownSelections={columnDropdownSelections}
+              dropdownColumnList={dropdownColumnList}
+              onBulkAction={handleBulkColumnAction}
+              onMoveItem={handleMoveItem}
+              onSelect={handleColumnItemSelect}
+            />
+          ) : null
+        }
+        extraTableFilters={rest.extraTableFilters}
+        extraTableFiltersClassName={rest.extraTableFiltersClassName}
+        renderToolbar={renderToolbar}
+        searchProps={searchProps}
+        onSearch={handleSearchAction}
+      />
 
       <div
         // `tw:relative` anchors the loading overlay below. Without it the
         // overlay's `inset-0` resolves against the viewport instead of the
         // table, so it dims the whole page and centres the spinner wherever
         // the viewport happens to be rather than over the rows it is masking.
-        className="tw:relative tw:flex tw:flex-col tw:w-full"
+        className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:w-full"
         data-testid={dataTestId}
+        ref={scrollWrapRef}
         style={scrollStyle}>
         {rest.title && (
           // AntD's table-level title slot: a band above the table, handed the
@@ -1526,7 +1815,7 @@ const TableV2 = <T extends object>(
           );
           const tableContent = (
             <UntitledTable
-              aria-label="data-table"
+              aria-label={ariaLabel}
               // AntD sticks the header only when the call site asks for it —
               // via `sticky`, or `scroll.y`, which gives the body its own
               // scroll container. Sticking it unconditionally put a
@@ -1544,6 +1833,7 @@ const TableV2 = <T extends object>(
                 'tw:table-fixed': tableLayoutClasses.fixed,
                 'tw:table-auto': tableLayoutClasses.auto,
               })}
+              containerClassName={rest.scrollContainerClassName}
               containerStyle={getTableContainerStyle(
                 scroll?.y as string | number | undefined
               )}
@@ -1593,11 +1883,20 @@ const TableV2 = <T extends object>(
                     isRowHeader?: boolean;
                   };
                   const colKey = columnIds[colIdx];
+                  // Filter state is keyed by AntD's `key ?? dataIndex`, not the
+                  // React Aria column id (which carries a `col:` prefix and
+                  // dedup suffixes) — the row filter and onChange map both read
+                  // the plain key.
+                  const filterKey = columnKeys[colIdx];
                   const colWidth =
                     columnWidths[colKey] ??
                     (colType.width as number | undefined);
 
-                  const stickyStyle = getColumnStickyStyle(colType.fixed, 2);
+                  const stickyStyle = getColumnStickyStyle(
+                    colType.fixed,
+                    2,
+                    'var(--om-color-bg-secondary)'
+                  );
 
                   return (
                     <UntitledTable.Head
@@ -1606,9 +1905,25 @@ const TableV2 = <T extends object>(
                         toCellPaddingClass(rest.size),
                         // The same rule covers `th`: a header sits on the first
                         // line of a row its own cells may wrap past.
-                        'tw:align-top tw:text-sm tw:text-tertiary',
+                        'tw:align-top tw:text-xs tw:font-semibold tw:text-quaternary',
+                        // The core Table.Head wraps the label in its own flex
+                        // group (`& > div`); it needs min-w-0 too, or the inner
+                        // truncating title has no shrinkable ancestor and a long
+                        // header still overflows the fixed-width cell.
+                        {
+                          'tw:[&>div]:min-w-0 tw:[&>div>div]:min-w-0':
+                            hasTruncatingHeader(colType),
+                        },
                         getAlignClass(colType.align),
-                        getHeaderAlignClass(colType.align)
+                        getHeaderAlignClass(colType.align),
+                        pingShadowClass(
+                          colType.fixed,
+                          colIdx,
+                          lastLeftFixedIdx,
+                          firstRightFixedIdx,
+                          pingLeft,
+                          pingRight
+                        )
                       )}
                       id={colKey}
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
@@ -1630,56 +1945,72 @@ const TableV2 = <T extends object>(
                         stickyStyle
                       )}>
                       <div
-                        className="tw:flex tw:items-center tw:gap-1"
+                        className={classNames(
+                          'tw:flex tw:items-center tw:gap-1',
+                          // min-w-0 lets the truncating title shrink instead of
+                          // overflowing the fixed-width cell into its neighbour.
+                          { 'tw:min-w-0': hasTruncatingHeader(colType) }
+                        )}
                         data-testid="column-header-content">
-                        {resolveColumnTitle(colType, propsColumns)}
+                        {renderColumnHeaderTitle(colType, propsColumns)}
                         {Boolean(colType.filters || colType.filterDropdown) && (
-                          <DialogTrigger
+                          <HeaderFilterTrigger
+                            icon={
+                              typeof colType.filterIcon === 'function'
+                                ? colType.filterIcon(
+                                    Boolean(effectiveFilterOf(filterKey).length)
+                                  )
+                                : colType.filterIcon ?? null
+                            }
                             isOpen={openFilterKey === colKey}
                             onOpenChange={(isOpen) =>
                               setOpenFilterKey(isOpen ? colKey : null)
                             }>
-                            {/*
-                              `DialogTrigger` opens its popover through a React
-                              Aria `PressResponder`, which only reaches a React
-                              Aria pressable child. A core `Button` here is not
-                              one — it warns "PressResponder was rendered
-                              without a pressable child" and the dropdown never
-                              opens. */}
-                            <AriaButton
-                              aria-label="filter"
-                              className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
-                              data-testid="filter-trigger">
-                              {typeof colType.filterIcon === 'function'
-                                ? colType.filterIcon(
-                                    Boolean(filterState[colKey]?.length)
-                                  )
-                                : colType.filterIcon ?? null}
-                            </AriaButton>
-                            <Popover placement="bottom right">
-                              <Dialog className="tw:outline-none">
-                                <div
-                                  className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
-                                  data-testid="filter-dropdown"
-                                  style={{ minWidth: '200px' }}>
-                                  {typeof colType.filterDropdown === 'function'
-                                    ? colType.filterDropdown({
-                                        prefixCls: 'ant-table-filter-dropdown',
-                                        setSelectedKeys: (keys) =>
-                                          setFilterSelectedKeys(colKey, keys),
-                                        selectedKeys: filterState[colKey] ?? [],
-                                        confirm: () => setOpenFilterKey(null),
-                                        clearFilters: () =>
-                                          clearFilterKeys(colKey),
-                                        filters: colType.filters,
-                                        visible: true,
-                                        close: () => setOpenFilterKey(null),
-                                      })
-                                    : colType.filterDropdown}
-                                </div>
-                              </Dialog>
-                            </Popover>
-                          </DialogTrigger>
+                            <div
+                              // Caps at ~264px and scrolls, like the filter
+                              // dropdown it replaced.
+                              className={classNames(
+                                'tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
+                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto'
+                              )}
+                              data-testid="filter-dropdown"
+                              style={{ minWidth: '200px' }}>
+                              {typeof colType.filterDropdown === 'function'
+                                ? colType.filterDropdown({
+                                    prefixCls: '',
+                                    setSelectedKeys: (keys) => {
+                                      filterDraftRef.current = {
+                                        ...filterDraftRef.current,
+                                        [filterKey]: keys,
+                                      };
+                                      setFilterSelectedKeys(filterKey, keys);
+                                    },
+                                    selectedKeys: effectiveFilterOf(filterKey),
+                                    confirm: () => {
+                                      reportFilterChange({
+                                        ...filterState,
+                                        ...filterDraftRef.current,
+                                      });
+                                      setOpenFilterKey(null);
+                                    },
+                                    clearFilters: () => {
+                                      filterDraftRef.current = {
+                                        ...filterDraftRef.current,
+                                        [filterKey]: [],
+                                      };
+                                      clearFilterKeys(filterKey);
+                                      reportFilterChange({
+                                        ...filterState,
+                                        ...filterDraftRef.current,
+                                      });
+                                    },
+                                    filters: colType.filters,
+                                    visible: true,
+                                    close: () => setOpenFilterKey(null),
+                                  })
+                                : colType.filterDropdown}
+                            </div>
+                          </HeaderFilterTrigger>
                         )}
                       </div>
                       {rest.resizableColumns && (
@@ -1696,12 +2027,17 @@ const TableV2 = <T extends object>(
 
               <UntitledTable.Body
                 renderEmptyState={() =>
-                  isLoading ? null : (
-                    // The padding is the placeholder's breathing room and
-                    // belongs to whatever fills the slot: a call site's own
-                    // placeholder needs it as much as the fallback does, and
-                    // without it the empty state crowds the header.
-                    <div className="tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
+                  isLoading ? (
+                    // A real body height while loading — collapsed to zero the
+                    // absolute spinner overlay would centre on the header row.
+                    <div className="tw:min-h-32" />
+                  ) : (
+                    // `relative` + a real min-height contain call-site
+                    // placeholders (the core EmptyPlaceholder is
+                    // absolute/inset-0 and fills its nearest positioned
+                    // ancestor); the padding is the placeholder's breathing
+                    // room and belongs to whatever fills the slot.
+                    <div className="tw:relative tw:min-h-40 tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
                       {
                         // AntD fell back to its own <Empty> illustration, not
                         // bare text, so a table with no rows read as an empty
@@ -1709,12 +2045,11 @@ const TableV2 = <T extends object>(
                         // `locale.emptyText` still win — most hand in their own
                         // ErrorPlaceHolder or FilterTablePlaceHolder.
                         (rest.locale?.emptyText as ReactNode) ?? (
-                          <EmptyPlaceholder
+                          <NoDataPlaceholder
                             icon={
-                              <SearchLg className="tw:text-fg-brand-primary" />
+                              <Search className="tw:text-fg-brand-primary" />
                             }
                             title={t('label.no-data')}
-                            variant="blank"
                           />
                         )
                       }
@@ -1729,6 +2064,21 @@ const TableV2 = <T extends object>(
                   // This is the boundary between the two, narrowed once.
                   const rowHandlers = (rest.onRow?.(record, actualIndex) ??
                     {}) as RowInteractionProps;
+                  const rowClassName =
+                    typeof rest.rowClassName === 'function'
+                      ? rest.rowClassName(record, actualIndex, depth)
+                      : rest.rowClassName;
+                  const fullWidthRow = buildFullWidthRow(
+                    fullWidthRowRender?.(record),
+                    flatRow,
+                    rowIds[flatIndex],
+                    propsColumns.length,
+                    selectionMode !== 'none',
+                    rowClassName
+                  );
+                  if (fullWidthRow) {
+                    return [fullWidthRow];
+                  }
                   const isExpanded = expandedKeys.has(rowKey);
                   const detailRow = buildExpandedDetailRow(
                     rest.expandable,
@@ -1741,9 +2091,7 @@ const TableV2 = <T extends object>(
                     <UntitledTable.Row
                       className={classNames(
                         'tw:group tw:transition-colors tw:hover:bg-secondary tw:data-[selected]:bg-secondary',
-                        typeof rest.rowClassName === 'function'
-                          ? rest.rowClassName(record, actualIndex, depth)
-                          : rest.rowClassName
+                        rowClassName
                       )}
                       data-level={depth}
                       data-row-key={rowKey}
@@ -1768,6 +2116,11 @@ const TableV2 = <T extends object>(
                             actualIndex
                           ) as React.TdHTMLAttributes<HTMLTableCellElement>) ??
                           {};
+
+                        // AntD uses colSpan 0 for cells covered by an earlier span.
+                        if (cellHandlerProps.colSpan === 0) {
+                          return null;
+                        }
 
                         const cellValue = resolveCellValue(
                           colType,
@@ -1829,6 +2182,15 @@ const TableV2 = <T extends object>(
                                   'tw:align-top'
                                 ),
                               getAlignClass(colType.align),
+                              getStickyBodyCellClass(colType.fixed),
+                              pingShadowClass(
+                                colType.fixed,
+                                colIdx,
+                                lastLeftFixedIdx,
+                                firstRightFixedIdx,
+                                pingLeft,
+                                pingRight
+                              ),
                               'tw:group-data-[dragging]:opacity-40',
                               'tw:group-data-[drop-target]:bg-[#e8f4ff] tw:group-data-[drop-target]:outline tw:group-data-[drop-target]:outline-2',
                               'tw:group-data-[drop-target]:outline-dashed tw:group-data-[drop-target]:outline-[--color-border-brand] tw:group-data-[drop-target]:-outline-offset-2'
@@ -1858,12 +2220,15 @@ const TableV2 = <T extends object>(
                               // inline — a Glossary Terms dropdown came out a
                               // few pixels wide.
                               className={classNames({
-                                'tw:flex tw:gap-1 tw:max-w-full':
+                                // items-start + a text-line-height icon box
+                                // keep the expander on the value's first line
+                                // (center floats it low when the cell wraps).
+                                'tw:flex tw:items-start tw:gap-1 tw:max-w-full':
                                   showExpandInCell,
                                 'tw:contents': !showExpandInCell,
                               })}>
                               {showExpandInCell && (
-                                <div className="tw:flex tw:items-center tw:shrink-0">
+                                <div className="tw:flex tw:h-5 tw:items-center tw:shrink-0">
                                   <ExpandControl
                                     ExpandIcon={ExpandIcon}
                                     hasChildren={hasChildren}

@@ -29,7 +29,7 @@ public final class RdfIndexingFields {
     // The RDF mapper emits even fields absent from its JSON-LD contexts, so a search-index field
     // subset can silently remove triples. Start from the repository's complete field contract.
     return supportedFields.stream()
-        .filter(field -> !RdfPropertyMapper.isIgnoredEntityField(field))
+        .filter(RdfPropertyMapper::isIndexableEntityField)
         .sorted()
         .toList();
   }

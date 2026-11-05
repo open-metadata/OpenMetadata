@@ -210,9 +210,21 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     description: 'This is Table Column custom property',
     entityApiType: 'column',
   },
+  entity_team: {
+    ...commonCustomPropertyValues,
+    name: 'team',
+    description: 'This is Team custom property',
+    entityApiType: 'teams',
+  },
+  entity_user: {
+    ...commonCustomPropertyValues,
+    name: 'user',
+    description: 'This is User custom property',
+    entityApiType: 'users',
+  },
 };
 
-export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR = String.raw`Name must start with a letter or number. Invalid characters: " * : ^ $ \ < > & ~ /`;
+export const NAME_SUFFIX = ".!@#%`()_-=+{}[]|;',.?";
 
 export const CUSTOM_PROPERTY_INVALID_NAMES = {
   STARTS_WITH_SPECIAL_CHAR: '_invalidName',
@@ -229,4 +241,4 @@ export const CUSTOM_PROPERTY_INVALID_NAMES = {
   DISALLOWED_TILDE: 'name~invalid',
 };
 
-export const NAME_SUFFIX = ".!@#%`()_-=+{}[]|;',.?";
+export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR = String.raw`Name must start with a letter or number. Invalid characters: " * : ^ $ \ < > & ~ /`;

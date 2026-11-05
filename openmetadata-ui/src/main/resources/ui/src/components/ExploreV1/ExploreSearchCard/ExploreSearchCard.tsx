@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
+import {
+  Breadcrumbs,
+  Button as CoreButton,
+  Card,
+  Checkbox,
+  ClassificationTag,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
@@ -20,8 +27,6 @@ import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
@@ -39,18 +44,20 @@ import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
+import {
+  highlightEntityNameAndDescription,
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
-import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import DomainTags from '../../common/DomainTags/DomainTags';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
@@ -128,6 +135,8 @@ const getReadableExplanation = (description: string) => {
   if (signalMatch?.[1]) {
     return signalMatch[1];
   }
+
+  return undefined;
 };
 
 /**
@@ -201,27 +210,28 @@ const CheckboxCell = ({
   checked,
   showCheckboxes,
   onCheckboxChange,
+  t,
 }: {
   checked: boolean;
   showCheckboxes: boolean;
   onCheckboxChange?: (checked: boolean) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }) => {
   if (!showCheckboxes) {
     return null;
   }
 
   return (
-    <Col flex="25px">
+    <div className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex-[0_0_25px]">
       <Checkbox
-        checked={checked}
+        aria-label={t('label.select-entity', { entity: t('label.asset') })}
         className="assets-checkbox"
-        onChange={(e) => {
-          onCheckboxChange?.(e.target.checked);
-          e.stopPropagation();
-        }}
-        onClick={(e) => e.stopPropagation()}
+        data-testid="asset-checkbox"
+        isSelected={checked}
+        size="md"
+        onChange={(isSelected) => onCheckboxChange?.(isSelected)}
       />
-    </Col>
+    </div>
   );
 };
 
@@ -243,7 +253,7 @@ const BreadcrumbAndScoreCell = ({
   }
 
   return (
-    <Col className="d-flex justify-between items-center" flex="auto">
+    <div className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex tw:flex-auto tw:items-center tw:justify-between">
       <Breadcrumbs
         autoCollapse
         className={classNames(
@@ -256,15 +266,15 @@ const BreadcrumbAndScoreCell = ({
         <div className="flex items-center gap-1 score-container">
           <ScoreIcon />
 
-          <Typography.Text className="text-xs score">
+          <Typography className="text-xs score">
             <span className="font-normal">
               {t('label.score-label').toUpperCase()}
             </span>
             <span className="font-semibold">{score.toFixed(4)}</span>
-          </Typography.Text>
+          </Typography>
         </div>
       )}
-    </Col>
+    </div>
   );
 };
 
@@ -274,7 +284,6 @@ const EntityTitleColumn = ({
   entityLink,
   handlePrefetch,
   hasGlossaryTermStatus,
-  isTourOpen,
   openEntityInNewPage,
   source,
 }: {
@@ -283,49 +292,43 @@ const EntityTitleColumn = ({
   entityLink: ReturnType<typeof searchClassBase.getEntityLink>;
   handlePrefetch: () => void;
   hasGlossaryTermStatus: boolean;
-  isTourOpen: boolean;
   openEntityInNewPage?: boolean;
   source: ExploreSearchCardProps['source'];
 }) => (
-  <Col
+  <div
+    className="tw:relative tw:max-w-full tw:min-h-px tw:px-0.5 tw:flex-[0_0_100%]"
     data-testid={`${
       source.service?.name ? `${source.service.name}-` : 'explore-card-'
-    }${source.name}`}
-    span={24}>
-    {isTourOpen ? (
-      <Button data-testid={source.fullyQualifiedName} type="link">
-        <Typography.Text
-          className="text-lg font-medium text-link-color"
-          data-testid="entity-header-display-name">
-          {stringToHTML(searchClassBase.getEntityName(source))}
-        </Typography.Text>
-      </Button>
-    ) : (
-      <div className="w-full d-flex items-center">
-        {entityIcon}
+    }${source.name}`}>
+    <div className="w-full d-flex items-center">
+      {entityIcon}
 
-        <Link
-          className={classNames('d-flex no-underline line-height-22 ', {
-            'w-max-full': !hasGlossaryTermStatus,
-            'm-r-xs': hasGlossaryTermStatus,
-          })}
-          data-testid="entity-link"
-          state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
-          target={searchClassBase.getSearchEntityLinkTarget(
-            source,
-            openEntityInNewPage
-          )}
-          to={isObject(entityLink) ? entityLink.pathname : entityLink}
-          onFocus={handlePrefetch}
-          onMouseEnter={handlePrefetch}>
-          <Typography.Text
-            className="text-lg font-medium text-link-color break-word whitespace-normal"
-            data-testid="entity-header-display-name">
-            {stringToHTML(searchClassBase.getEntityName(source))}
-          </Typography.Text>
-        </Link>
+      <Link
+        className={classNames('d-flex no-underline line-height-22 ', {
+          'w-max-full': !hasGlossaryTermStatus,
+          'm-r-xs': hasGlossaryTermStatus,
+        })}
+        data-testid="entity-link"
+        state={{ breadcrumbData: breadcrumbs }}
+        target={searchClassBase.getSearchEntityLinkTarget(
+          source,
+          openEntityInNewPage
+        )}
+        to={isObject(entityLink) ? entityLink.pathname : entityLink}
+        onFocus={handlePrefetch}
+        onMouseEnter={handlePrefetch}>
+        <Typography
+          className="tw:text-link tw:wrap-anywhere tw:whitespace-normal"
+          data-testid="entity-header-display-name"
+          size="text-sm"
+          weight="medium">
+          {renderHighlightedText(searchClassBase.getEntityName(source))}
+        </Typography>
+      </Link>
 
-        {!isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
+      {/* Column docs carry the parent table's certification; a column isn't certified itself */}
+      {source.entityType !== EntityType.TABLE_COLUMN &&
+        !isEmpty((source as Table)?.certification?.tagLabel?.tagFQN) && (
           <div className="tw:ml-1.5">
             <CertificationTag
               certification={
@@ -335,139 +338,16 @@ const EntityTitleColumn = ({
           </div>
         )}
 
-        {hasGlossaryTermStatus && (
-          <EntityStatusBadge
-            status={
-              (source as GlossaryTerm).entityStatus ?? EntityStatus.Approved
-            }
-          />
-        )}
-      </div>
-    )}
-  </Col>
+      {hasGlossaryTermStatus && (
+        <EntityStatusBadge
+          status={
+            (source as GlossaryTerm).entityStatus ?? EntityStatus.Approved
+          }
+        />
+      )}
+    </div>
+  </div>
 );
-
-const getColumnOtherDetails = (
-  columnSource: TableColumnSearchSource,
-  t: TFunc
-): ExtraInfo[] => {
-  const columnDetails: ExtraInfo[] = [];
-
-  if (columnSource.table) {
-    columnDetails.push({
-      key: t('label.table'),
-      value: (
-        <Link
-          className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
-          title={getEntityName(columnSource.table)}
-          to={searchClassBase.getEntityLink({
-            ...columnSource.table,
-            entityType: EntityType.TABLE,
-          } as SourceType)}>
-          {getEntityName(columnSource.table)}
-        </Link>
-      ),
-    });
-  }
-
-  columnDetails.push({
-    key: 'Owner',
-    value: (
-      <OwnerLabel
-        avatarSize={18}
-        isCompactView={false}
-        owners={columnSource?.owners ?? []}
-        showLabel={false}
-      />
-    ),
-  });
-
-  return columnDetails;
-};
-
-const getDomainEntries = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo[] => {
-  const shouldShowDomainField = !searchClassBase
-    .getListOfEntitiesWithoutDomain()
-    .includes(source?.entityType ?? '');
-
-  const emptyDomainInfo: ExtraInfo[] = shouldShowDomainField
-    ? [
-        {
-          key: 'Domain',
-          value: '',
-        },
-      ]
-    : [];
-
-  return source?.domains && source.domains.length > 0
-    ? [
-        {
-          key: 'Domains',
-          value: <DomainDisplay domains={source.domains} />,
-        },
-      ]
-    : emptyDomainInfo;
-};
-
-const getOwnerEntry = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo => ({
-  key: 'Owner',
-  value: (
-    <OwnerLabel
-      avatarSize={18}
-      isCompactView={false}
-      owners={(source?.owners as EntityReference[]) ?? []}
-      showLabel={false}
-    />
-  ),
-});
-
-const getTierEntries = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo[] => {
-  const tierValue = isString(source.tier)
-    ? source.tier
-    : source.tier && (
-        <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={source.tier} />
-      );
-
-  return searchClassBase
-    .getListOfEntitiesWithoutTier()
-    .includes((source?.entityType ?? '') as EntityType)
-    ? []
-    : [
-        {
-          key: 'Tier',
-          value: tierValue,
-        },
-      ];
-};
-
-const getUsageEntries = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo[] =>
-  'usageSummary' in source
-    ? [
-        {
-          value: getUsagePercentile(
-            source.usageSummary?.weeklyStats?.percentileRank ?? 0,
-            true
-          ),
-        },
-      ]
-    : [];
-
-const getEntityOtherDetails = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo[] => [
-  ...getDomainEntries(source),
-  getOwnerEntry(source),
-  ...getTierEntries(source),
-  ...getUsageEntries(source),
-];
 
 interface SignalBoosts {
   contributions: { label: string; value: number }[];
@@ -518,11 +398,12 @@ const SignalBoostsSection = ({
       className="ranking-score-explanation"
       data-testid="ranking-signal-boosts">
       <div className="ranking-details-header">
-        <Typography.Text className="text-xs font-medium">
+        <Typography className="text-xs font-medium">
           {t('label.signal-boost-plural')}
-        </Typography.Text>
-        <Typography.Text
-          className="text-xs text-grey-muted"
+        </Typography>
+        <Typography
+          className="text-xs"
+          color="secondary"
           data-testid="ranking-signal-total">
           {signalBoosts.isCapped && signalBoosts.maxBoost !== undefined
             ? t('message.search-ranking-signal-capped', {
@@ -530,30 +411,31 @@ const SignalBoostsSection = ({
                 raw: formatScoreValue(signalBoosts.rawTotal),
               })
             : `+${formatScoreValue(signalBoosts.total)}`}
-        </Typography.Text>
+        </Typography>
       </div>
       {signalBoosts.contributions.map(({ label, value }) => (
         <div
           className="ranking-score-contributor"
           data-testid="ranking-signal-contributor"
           key={`${label}-${value}`}>
-          <Typography.Text className="text-xs font-medium">
+          <Typography className="text-xs font-medium">
             {`+${formatScoreValue(value)}`}
-          </Typography.Text>
-          <Typography.Text className="text-xs text-grey-muted">
+          </Typography>
+          <Typography className="text-xs" color="secondary">
             {label}
-          </Typography.Text>
+          </Typography>
         </div>
       ))}
       {signalBoosts.lexicalScore !== undefined ? (
-        <Typography.Text
-          className="text-xs text-grey-muted"
+        <Typography
+          className="text-xs"
+          color="secondary"
           data-testid="ranking-score-breakdown">
           {t('message.search-ranking-score-breakdown', {
             lexical: formatScoreValue(signalBoosts.lexicalScore),
             signals: formatScoreValue(signalBoosts.total),
           })}
-        </Typography.Text>
+        </Typography>
       ) : null}
     </div>
   );
@@ -579,15 +461,15 @@ const RankingDetailsSection = ({
   return (
     <div className="ranking-details-container" data-testid="ranking-details">
       <div className="ranking-details-header">
-        <Typography.Text className="ranking-details-title">
+        <Typography className="ranking-details-title">
           {t('label.ranking-detail-plural')}
-        </Typography.Text>
+        </Typography>
         {score !== undefined && (
-          <Typography.Text
+          <Typography
             className="ranking-details-score"
             data-testid="ranking-score">
             {t('label.score')}: {formatScoreValue(score)}
-          </Typography.Text>
+          </Typography>
         )}
       </div>
       {rankingStages.length > 0 ? (
@@ -597,12 +479,10 @@ const RankingDetailsSection = ({
               className="ranking-stage-item"
               data-testid={`ranking-stage-${name}`}
               key={name}>
-              <Typography.Text className="text-xs font-medium">
-                {label}
-              </Typography.Text>
-              <Typography.Text className="text-xs text-grey-muted">
+              <Typography className="text-xs font-medium">{label}</Typography>
+              <Typography className="text-xs" color="secondary">
                 {description}
-              </Typography.Text>
+              </Typography>
             </div>
           ))}
         </div>
@@ -611,28 +491,28 @@ const RankingDetailsSection = ({
         <div
           className="ranking-score-explanation"
           data-testid="ranking-score-explanation">
-          <Typography.Text className="text-xs font-medium">
+          <Typography className="text-xs font-medium">
             {t('label.reason')}
-          </Typography.Text>
+          </Typography>
           {scoreReasons.map(({ description, value }) => (
             <div
               className="ranking-score-contributor"
               data-testid="ranking-score-contributor"
               key={`${description}-${value}`}>
-              <Typography.Text className="text-xs font-medium">
+              <Typography className="text-xs font-medium">
                 {formatScoreValue(value)}
-              </Typography.Text>
-              <Typography.Text className="text-xs text-grey-muted">
+              </Typography>
+              <Typography className="text-xs" color="secondary">
                 {description}
-              </Typography.Text>
+              </Typography>
             </div>
           ))}
         </div>
       ) : null}
       <SignalBoostsSection signalBoosts={signalBoosts} t={t} />
-      <Typography.Text className="text-xs text-grey-muted">
+      <Typography className="text-xs" color="secondary">
         {t('message.search-ranking-signals-explanation')}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };
@@ -666,14 +546,18 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   ) => {
     const { t } = useTranslation();
     const { tab } = useRequiredParams<{ tab: string }>();
-    const { isTourOpen } = useTourProvider();
     const queryClient = useQueryClient();
 
-    const source = useMemo(() => {
-      return highlight
-        ? highlightEntityNameAndDescription(_source, highlight)
-        : _source;
-    }, [_source, highlight]);
+    const source = useMemo(
+      () =>
+        highlight
+          ? highlightEntityNameAndDescription(_source, highlight, true)
+          : {
+              ..._source,
+              description: stripMarkdown(_source.description ?? ''),
+            },
+      [_source, highlight]
+    );
 
     const rankingStages = useMemo(() => {
       const stageNames = new Set<string>();
@@ -805,20 +689,127 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
-    const otherDetails = useMemo(
-      () =>
-        source?.entityType === EntityType.TABLE_COLUMN
-          ? getColumnOtherDetails(source as TableColumnSearchSource, t)
-          : getEntityOtherDetails(source),
-      [source, t]
-    );
+    const otherDetails = useMemo(() => {
+      const buildColumnDetails = (): ExtraInfo[] => {
+        const columnSource = source as TableColumnSearchSource;
+        const columnDetails: ExtraInfo[] = [];
+
+        if (columnSource.table) {
+          const tableLink = searchClassBase.getEntityLink({
+            ...columnSource.table,
+            entityType: EntityType.TABLE,
+          } as SourceType);
+          columnDetails.push({
+            key: t('label.table'),
+            value: (
+              <CoreButton
+                ellipsis
+                noTextPadding
+                className="tw:max-w-52 tw:align-middle"
+                color="link-color"
+                href={isString(tableLink) ? tableLink : tableLink.pathname}
+                size="xs"
+                tooltip={getEntityName(columnSource.table)}>
+                {getEntityName(columnSource.table)}
+              </CoreButton>
+            ),
+          });
+        }
+
+        columnDetails.push({
+          key: 'Owner',
+          value: (
+            <Owner
+              avatarSize={24}
+              isCompactView={false}
+              owners={(source as TableColumnSearchSource)?.owners ?? []}
+              showLabel={false}
+            />
+          ),
+        });
+
+        return columnDetails;
+      };
+
+      const buildEntityDetails = (): ExtraInfo[] => {
+        const tierValue = isString(source.tier)
+          ? source.tier
+          : source.tier && (
+              <ClassificationTag
+                color={source.tier.style?.color}
+                href={getTagRedirectLink(source.tier)}
+                icon={source.tier.style?.iconURL}
+                label={getTagName(source.tier)}
+                size="sm"
+              />
+            );
+
+        const getTierDetails = (): ExtraInfo[] =>
+          searchClassBase
+            .getListOfEntitiesWithoutTier()
+            .includes((source?.entityType ?? '') as EntityType)
+            ? []
+            : [{ key: 'Tier', value: tierValue }];
+
+        const getUsageDetails = (): ExtraInfo[] =>
+          'usageSummary' in source
+            ? [
+                {
+                  value: getUsagePercentile(
+                    source.usageSummary?.weeklyStats?.percentileRank ?? 0,
+                    true
+                  ),
+                },
+              ]
+            : [];
+
+        const shouldShowDomainField = !searchClassBase
+          .getListOfEntitiesWithoutDomain()
+          .includes(source?.entityType ?? '');
+
+        const emptyDomainInfo: ExtraInfo[] = shouldShowDomainField
+          ? [{ key: 'Domain', value: '' }]
+          : [];
+
+        const domainInfo: ExtraInfo[] =
+          source?.domains && source.domains.length > 0
+            ? [
+                {
+                  key: 'Domains',
+                  value: <DomainTags domains={source.domains} maxVisible={1} />,
+                },
+              ]
+            : emptyDomainInfo;
+
+        return [
+          ...domainInfo,
+          {
+            key: 'Owner',
+            value: (
+              <Owner
+                avatarSize={24}
+                isCompactView={false}
+                owners={(source?.owners as EntityReference[]) ?? []}
+                showLabel={false}
+              />
+            ),
+          },
+          ...getTierDetails(),
+          ...getUsageDetails(),
+        ];
+      };
+
+      return source?.entityType === EntityType.TABLE_COLUMN
+        ? buildColumnDetails()
+        : buildEntityDetails();
+    }, [source, t]);
 
     const breadcrumbs = useMemo(
       () =>
         searchClassBase.getEntityBreadcrumbs(
           source,
           source.entityType as EntityType,
-          false
+          true
         ),
       [source]
     );
@@ -830,11 +821,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             return (
               <img
                 alt={source.entityType}
-                className="align-middle m-r-xs object-contain"
+                className="align-middle tw:mr-1.5 object-contain"
                 data-testid="icon"
-                height={24}
+                height={20}
                 src={source.style.iconURL}
-                width={24}
+                width={20}
               />
             );
           }
@@ -843,10 +834,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         }
 
         return (
-          <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
+          <span className="tw:mr-1.5 d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(
               source.entityType ?? '',
-              'text-link-color'
+              'text-link-color tw:w-5 tw:h-5'
             )}
           </span>
         );
@@ -871,10 +862,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
-        <Row gutter={[4, 8]}>
+        <div className="tw:-mx-0.5 tw:flex tw:flex-wrap tw:gap-y-2">
           <CheckboxCell
             checked={checked}
             showCheckboxes={Boolean(showCheckboxes)}
+            t={t}
             onCheckboxChange={onCheckboxChange}
           />
           <BreadcrumbAndScoreCell
@@ -890,11 +882,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             entityLink={entityLink}
             handlePrefetch={handlePrefetch}
             hasGlossaryTermStatus={hasGlossaryTermStatus}
-            isTourOpen={isTourOpen}
             openEntityInNewPage={openEntityInNewPage}
             source={source}
           />
-        </Row>
+        </div>
       );
     }, [
       breadcrumbs,
@@ -910,7 +901,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       onCheckboxChange,
       entityIcon,
       handlePrefetch,
-      isTourOpen,
       openEntityInNewPage,
     ]);
 
@@ -920,7 +910,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
-        onClick={() => {
+        onClick={(e) => {
+          // Toggling selection must not also open the summary panel.
+          if ((e.target as HTMLElement).closest('.assets-checkbox')) {
+            return;
+          }
           handleSummaryPanelDisplay?.(source, tab);
         }}>
         {header}
@@ -941,7 +935,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           t={t}
         />
         {actionPopoverContent && (
-          <Space className="explore-card-actions">{actionPopoverContent}</Space>
+          <div className="explore-card-actions tw:gap-2">
+            {actionPopoverContent}
+          </div>
         )}
       </Card>
     );

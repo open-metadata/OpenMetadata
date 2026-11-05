@@ -22,7 +22,7 @@ const OVERVIEW_ROWS = 6;
  * tabs, the overview key/value card, and the comments header + editor.
  */
 const TaskDetailSkeleton: React.FC = () => (
-  <Box className="tw:h-full tw:w-full" direction="col" gap={4}>
+  <Box className="tw:h-full tw:w-full tw:px-6 tw:py-5" direction="col" gap={4}>
     <Box align="start" className="tw:justify-between tw:gap-3">
       <Box direction="col" gap={2}>
         <Skeleton height={12} variant="text" width={70} />

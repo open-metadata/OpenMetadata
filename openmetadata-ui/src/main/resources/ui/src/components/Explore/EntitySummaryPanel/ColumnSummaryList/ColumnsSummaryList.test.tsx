@@ -44,9 +44,9 @@ jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE_LARGE: 10,
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: jest
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  SkeletonParagraph: jest
     .fn()
     .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
 }));

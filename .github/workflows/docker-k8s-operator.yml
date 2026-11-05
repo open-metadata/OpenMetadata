@@ -46,7 +46,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mvn -DskipTests clean package -pl openmetadata-k8s-operator -am
+          mvn -DskipTests clean install -pl openmetadata-k8s-operator -am
 
       - name: Run K8s Operator Tests
         run: |
@@ -86,7 +86,7 @@ jobs:
     needs: [ maven-build ]
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
+        uses: lewagon/wait-on-check-action@v1.9.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

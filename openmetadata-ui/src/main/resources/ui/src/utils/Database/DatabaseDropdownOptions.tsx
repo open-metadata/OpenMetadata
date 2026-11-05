@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Download01, Upload01 } from '@openmetadata/ui-core-components/icons';
 import type { NavigateFunction } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import type { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../../constants/Export.constants';
 import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -27,10 +26,9 @@ export const ExtraDatabaseDropdownOptions = (
   fqn: string,
   permission: OperationPermission,
   deleted: boolean,
-  navigate: NavigateFunction
+  navigate: NavigateFunction,
+  showModal: (data: ExportData) => void
 ) => {
-  const { showModal } = useEntityExportModalProvider();
-
   const { ViewAll, EditAll } = permission;
 
   return [
@@ -43,16 +41,16 @@ export const ExtraDatabaseDropdownOptions = (
                   description={t('message.import-entity-help', {
                     entity: t('label.database'),
                   })}
-                  icon={ImportIcon}
+                  icon={Upload01}
                   id="import-button"
                   name={t('label.import')}
-                  onClick={() =>
-                    navigate(getEntityImportPath(EntityType.DATABASE, fqn))
-                  }
                 />
               </LimitWrapper>
             ),
             key: 'import-button',
+            limitResource: 'database',
+            onClick: () =>
+              navigate(getEntityImportPath(EntityType.DATABASE, fqn)),
           },
         ]
       : []),
@@ -64,19 +62,18 @@ export const ExtraDatabaseDropdownOptions = (
                 description={t('message.export-entity-help', {
                   entity: t('label.database'),
                 })}
-                icon={ExportIcon}
+                icon={Download01}
                 id="export-button"
                 name={t('label.export')}
-                onClick={() =>
-                  showModal({
-                    name: fqn,
-                    onExport: exportDatabaseDetailsInCSV,
-                    exportTypes: [ExportTypes.CSV],
-                  })
-                }
               />
             ),
             key: 'export-button',
+            onClick: () =>
+              showModal({
+                name: fqn,
+                onExport: exportDatabaseDetailsInCSV,
+                exportTypes: [ExportTypes.CSV],
+              }),
           },
         ]
       : []),

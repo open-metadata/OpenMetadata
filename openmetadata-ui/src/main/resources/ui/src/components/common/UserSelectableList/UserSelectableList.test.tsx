@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { ReactNode } from 'react';
+import { EntityReference } from '../../../generated/entity/type';
+import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserSelectableList } from './UserSelectableList.component';
 
 const mockOnUpdate = jest.fn();
@@ -30,6 +33,14 @@ jest.mock('../../../rest/searchAPI', () => ({
 
 jest.mock('../SelectableList/SelectableList.component', () => ({
   SelectableList: jest.fn().mockReturnValue(<div>selectable-list</div>),
+}));
+
+jest.mock('../UserTag/UserTag.component', () => ({
+  UserTag: jest
+    .fn()
+    .mockImplementation(({ name }) => (
+      <span data-testid="user-tag">{name}</span>
+    )),
 }));
 
 describe('UserSelectableList Component Test', () => {
@@ -75,5 +86,47 @@ describe('UserSelectableList Component Test', () => {
     });
 
     expect(screen.getByText('selectable-list')).toBeInTheDocument();
+  });
+
+  it('should render the bot indicator after the bot name so rows stay aligned', () => {
+    const bot = {
+      id: 'bot-id',
+      name: 'ingestion-bot',
+      type: 'user',
+      isBot: true,
+    };
+    const human = { id: 'user-id', name: 'aaron', type: 'user' };
+
+    render(
+      <UserSelectableList
+        hasPermission
+        includeBot
+        selectedUsers={[bot, human]}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('add-user'));
+    });
+
+    const { customTagRenderer } = (SelectableList as jest.Mock).mock.calls.at(
+      -1
+    )[0] as { customTagRenderer: (item: EntityReference) => ReactNode };
+
+    const { container: botRow } = render(<>{customTagRenderer(bot)}</>);
+    const userTag = within(botRow).getByTestId('user-tag');
+    const botIndicator = within(botRow).getByTestId('bot-indicator');
+
+    expect(
+      userTag.compareDocumentPosition(botIndicator) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    const { container: humanRow } = render(<>{customTagRenderer(human)}</>);
+
+    expect(
+      within(humanRow).queryByTestId('bot-indicator')
+    ).not.toBeInTheDocument();
   });
 });

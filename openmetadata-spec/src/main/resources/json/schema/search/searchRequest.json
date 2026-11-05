@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/search/searchRequest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SearchRequest",
   "description": "Search Request to find entities from Elastic Search based on different parameters.",
   "javaType": "org.openmetadata.schema.search.SearchRequest",
@@ -111,6 +111,11 @@
     },
     "includeAggregations": {
       "description": "Include aggregations in the search response. Defaults to true. Set to false to skip aggregations for faster response times when only search results are needed.",
+      "type": "boolean",
+      "default": true
+    },
+    "includeHighlights": {
+      "description": "Include highlights in the search response. Defaults to true. Set to false to skip highlighting when the caller does not read it.",
       "type": "boolean",
       "default": true
     }

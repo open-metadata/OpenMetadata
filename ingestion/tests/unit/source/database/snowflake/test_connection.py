@@ -90,7 +90,6 @@ def test_query_tag_is_passed_to_every_driver_connection_without_mutating_config(
     assert connect_args["session_parameters"]["QUERY_TAG"] == expected_tag
     if query_tag:
         assert connect_args["session_parameters"]["STATEMENT_TIMEOUT_IN_SECONDS"] == 60
-    assert connect_args["network_timeout"] == 600
     assert config.connectionArguments == configured_arguments
 
 
@@ -107,7 +106,6 @@ def test_absent_query_tag_does_not_create_session_parameters():
 
     connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](config)
     assert "session_parameters" not in connect_args
-    assert connect_args["network_timeout"] == 600
     assert config.connectionArguments is None
 
 
@@ -448,3 +446,63 @@ def test_account_usage_queries_built_lazily_not_at_construction():
     checks = SnowflakeChecks(db=Borrowed.of(client), service_connection=_config(account="acc"))
     assert checks._engine_wrapper.database_name is None
     client.connect.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("check_name", "view_name"),
+    [
+        ("get_tags", "tag_references"),
+        ("get_queries", "query_history"),
+        ("get_access_history", "ACCESS_HISTORY"),
+    ],
+)
+def test_account_usage_checks_quote_configured_identifier(check_name, view_name):
+    account_usage = 'GOVERNANCE."ACCOUNT_USAGE""; DROP TABLE secret; --"'
+    checks = SnowflakeChecks(
+        db=Borrowed.of(MagicMock()),
+        service_connection=_config(accountUsageSchema=account_usage),
+    )
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.run_sql",
+        return_value=Evidence(summary="ok", command="query"),
+    ) as mock_run_sql:
+        getattr(checks, check_name)()
+
+    statement = mock_run_sql.call_args.args[1]
+    assert f'"GOVERNANCE"."ACCOUNT_USAGE""; DROP TABLE secret; --".{view_name}' in statement
+    assert account_usage not in statement
+
+
+def test_no_client_side_timeout_is_imposed_by_default():
+    """`network_timeout` doubles as a client-side cancel timer on every statement, so a
+    default would kill queries that legitimately run longer than it, with `000604 (57014):
+    SQL execution was cancelled by the client due to a timeout`. A `socket_timeout` default
+    would only loosen the driver's own 60-second per-request read timeout."""
+    engine = MagicMock()
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.create_generic_db_connection",
+        return_value=engine,
+    ) as build_engine:
+        assert SnowflakeConnection(_config()).client is engine
+
+    connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](_config())
+    assert "network_timeout" not in connect_args
+    assert "socket_timeout" not in connect_args
+
+
+def test_user_supplied_timeouts_still_win():
+    """A user who deliberately caps their statements keeps that cap."""
+    config = _config(connectionArguments={"socket_timeout": 30, "network_timeout": 120})
+    engine = MagicMock()
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.create_generic_db_connection",
+        return_value=engine,
+    ) as build_engine:
+        assert SnowflakeConnection(config).client is engine
+
+    connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](config)
+    assert connect_args["socket_timeout"] == 30
+    assert connect_args["network_timeout"] == 120

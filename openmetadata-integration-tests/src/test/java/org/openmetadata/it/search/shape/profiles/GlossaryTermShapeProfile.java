@@ -33,7 +33,7 @@ public final class GlossaryTermShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new GlossaryTerm()
         .withId(ctx.id())
         .withName("term")
@@ -50,7 +50,7 @@ public final class GlossaryTermShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface synonyms(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> synonyms(final EntityInterface<?> entity, final Rung rung) {
     final GlossaryTerm term = (GlossaryTerm) entity;
     final List<String> synonyms = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {

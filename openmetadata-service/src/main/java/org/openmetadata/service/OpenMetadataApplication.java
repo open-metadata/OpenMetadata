@@ -16,6 +16,7 @@ package org.openmetadata.service;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -42,6 +43,7 @@ import io.swagger.v3.oas.annotations.servers.Server;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
 import jakarta.servlet.SessionCookieConfig;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Validation;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ContainerResponseFilter;
@@ -51,6 +53,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -69,6 +72,8 @@ import org.eclipse.jetty.ee10.servlet.ServletHandler;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.ee10.servlet.ServletMapping;
 import org.eclipse.jetty.ee10.servlet.SessionHandler;
+import org.eclipse.jetty.ee10.websocket.server.JettyServerUpgradeRequest;
+import org.eclipse.jetty.ee10.websocket.server.JettyServerUpgradeResponse;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
@@ -90,11 +95,12 @@ import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.alerting.channel.Channels;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
-import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -103,17 +109,29 @@ import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.config.source.ConfigSources;
+import org.openmetadata.service.config.source.ConfigTemplateKind;
+import org.openmetadata.service.config.source.DeploymentConfig;
+import org.openmetadata.service.config.source.DeploymentConfigReconciler;
+import org.openmetadata.service.config.source.LocalSettingsRefresher;
+import org.openmetadata.service.config.source.RawConfigCapture;
+import org.openmetadata.service.config.source.SettingsChangeWatcher;
+import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
+import org.openmetadata.service.exception.CredentialUnavailableExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
+import org.openmetadata.service.exception.RdfStorageMaintenanceExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.approval.ChangeRequestRecoveryScheduler;
+import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -122,6 +140,7 @@ import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.BackgroundJobCleanupScheduler;
@@ -136,12 +155,10 @@ import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.monitoring.JettyMetricsIntegration;
-import org.openmetadata.service.monitoring.JettyQoSIntegration;
-import org.openmetadata.service.monitoring.UserMetricsServlet;
+import org.openmetadata.service.monitoring.*;
 import org.openmetadata.service.ontology.OntologyBulkJobHandler;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
+import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
@@ -167,6 +184,7 @@ import org.openmetadata.service.security.AuthRefreshServlet;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerFactory;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
 import org.openmetadata.service.security.CspNonceHandler;
@@ -180,12 +198,17 @@ import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginSessionSweeper;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
+import org.openmetadata.service.security.credentials.CredentialVerifier;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
+import org.openmetadata.service.security.saml.SamlLoginCompletionServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
 import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
@@ -195,6 +218,8 @@ import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionTimeoutResolver;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.socket.FeedServlet;
+import org.openmetadata.service.socket.HandshakeIdentity;
+import org.openmetadata.service.socket.HandshakeRejectedException;
 import org.openmetadata.service.socket.Jetty12WebSocketHandler;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
@@ -203,6 +228,7 @@ import org.openmetadata.service.swagger.SwaggerBundle;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CustomParameterNameProvider;
+import org.openmetadata.service.util.PerRequestContextCleanupFilter;
 import org.openmetadata.service.util.StartupTimer;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
@@ -233,6 +259,8 @@ import org.quartz.SchedulerException;
     scheme = "bearer",
     bearerFormat = "JWT")
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
+  private static final String CATALOG_VERSION_RESOURCE = "/catalog/VERSION";
+  private static final Duration DEFAULT_SETTINGS_WATCH_INTERVAL = Duration.ofSeconds(10);
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   protected Limits limits;
@@ -241,6 +269,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Jdbi jdbi;
   private Environment environment;
   private AuditLogRepository auditLogRepository;
+  private SettingsChangeWatcher settingsWatcher;
   private org.openmetadata.service.socket.SocketAddressFilter socketAddressFilter;
 
   @Override
@@ -272,6 +301,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     JenaSystem.init();
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
+    // Captured before anything copies database values into the configuration object.
+    ConfigSources.install(DeploymentConfig.capture(catalogConfig));
 
     configureUriCompliance(catalogConfig);
     environment
@@ -300,6 +331,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Metrics initialization now handled by MicrometerBundle
 
     AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
+    environment.lifecycle().manage(RdfBackgroundScheduler.getInstance());
 
     jdbi =
         startupTimer.time(
@@ -340,6 +372,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setAuditLogRepository(auditLogRepository);
     ResourceRegistry.addResource(
         Entity.AUDIT_LOG, List.of(MetadataOperation.AUDIT_LOGS), Collections.emptySet());
+    ResourceRegistry.addResource(
+        Entity.RDF, List.of(MetadataOperation.EXECUTE_SPARQL_QUERY), Collections.emptySet());
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -352,9 +386,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // reports and reclaim orphaned Running ones so they don't hang forever.
     startupTimer.time("audit report recovery", AuditPackGenerator::recoverInterruptedReports);
 
+    // Validate native migrations before anything writes settings: seeding and reconciling them
+    // use columns a pending migration adds, and must not run against a schema it has not reached.
+    startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
+
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     startupTimer.time(
         "settings cache initialization", () -> SettingsCache.initialize(catalogConfig));
+    startupTimer.time("deployment settings reconciliation", this::reconcileDeploymentSettings);
+    settingsWatcher = settingsChangeWatcher();
+    settingsWatcher.rememberCurrentHashes();
 
     // Phase 2: Advanced search features (after settings are available)
     startupTimer.time("advanced search features", this::initializeAdvancedSearchFeatures);
@@ -367,7 +408,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig(),
             catalogConfig.getJwtTokenConfiguration());
 
     initializeWebsockets(catalogConfig, environment);
@@ -396,11 +437,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .buildValidatorFactory()
             .getValidator());
 
-    // Validate native migrations
-    startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
-
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
+
+    startCredentialVerifier(catalogConfig, environment);
 
     // Register Authenticator
     registerAuthenticator(SecurityConfigurationManager.getInstance());
@@ -437,6 +477,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // context) after every response so state cannot leak across requests that share a Jetty
     // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
+    // The same cleanup around servlets and filters outside Jersey. Prepended, so it runs before the
+    // filters registered earlier on the application context, including ones that answer without
+    // chaining.
+    environment
+        .servlets()
+        .addFilter("PerRequestContextCleanupFilter", new PerRequestContextCleanupFilter())
+        .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), false, "/*");
 
     // Blocks impersonated sessions from the identity-affecting endpoints (token mint/revoke,
     // password change, logout) - those call no authorizer, so nothing else would stop them.
@@ -448,6 +495,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
+    environment
+        .lifecycle()
+        .manage(new OntologyReviewReconciler(jdbi.onDemand(CollectionDAO.class)));
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
@@ -464,9 +514,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             new SearchIndexRetryWorker(
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
+    environment.lifecycle().manage(new ChangeRequestRecoveryScheduler());
+
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);
-    registerDistributedRdfJobParticipant(environment, jdbi);
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created
@@ -529,6 +580,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,
         new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
     registry.register(OntologyBulkJobManager.HANDLER_NAME, ontologyBulkJobHandler);
+    registry.register(new ContextMemoryExtractionJobHandler());
+    registry.register(new MemoryGlossaryDerivationJobHandler());
     return registry;
   }
 
@@ -549,6 +602,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
     environment.lifecycle().manage(sessionService);
     environment.lifecycle().manage(new WebSocketSessionValidator(sessionService));
+    environment.lifecycle().manage(new TestLoginSessionSweeper());
+    environment.lifecycle().manage(settingsWatcher);
     setAuthServletAttributes(
         contextHandler,
         AuthServeletHandlerFactory.getHandler(config, sessionService),
@@ -564,8 +619,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SessionCookieConfig cookieConfig =
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
     boolean isSecure =
-        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie();
+        isHttps(config)
+            || (authConfig != null
+                && Boolean.TRUE.equals(authConfig.getForceSecureSessionCookie()));
     cookieConfig.setSecure(isSecure);
 
     if (isSecure) {
@@ -689,6 +747,25 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
+   * Builds this server's credential verifier, starts its sweep and installs it for every
+   * authentication entry point. The ops CLI never reaches here, so it installs none.
+   */
+  private void startCredentialVerifier(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    CredentialVerifier verifier =
+        CredentialVerifier.create(
+            catalogConfig
+                .getCredentialVerification()
+                .forPool(catalogConfig.getDataSourceFactory().getMaxSize()),
+            jdbi,
+            SecretsManagerFactory::getSecretsManager,
+            List.of());
+    verifier.start();
+    Credentials.install(verifier);
+    environment.lifecycle().manage(verifier);
+  }
+
+  /**
    * Phase 1: Initialize core search infrastructure without advanced features.
    * This creates the basic SearchRepository and SearchClient but defers
    * lineage builders that depend on settings.
@@ -712,6 +789,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     int createdIndexCount = searchRepository.createMissingIndexes();
+    // Drops a column index left behind while column indexing was off, e.g. one a server with a
+    // stale settings cache recreated by writing to it.
+    searchRepository.reconcileColumnIndex();
     searchRepository.createOrUpdateIndexTemplates(createdIndexCount);
 
     LOG.info("Core search infrastructure initialization completed");
@@ -751,6 +831,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
+    environment.jersey().register(CredentialUnavailableExceptionMapper.class);
+    environment.jersey().register(RdfStorageMaintenanceExceptionMapper.class);
   }
 
   private void registerMicrometerFilter(
@@ -762,7 +844,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         EnumSet.allOf(DispatcherType.class), true, eventMonitorConfiguration.getPathPattern());
   }
 
-  private void registerAssetServlet(
+  protected void registerAssetServlet(
       OpenMetadataApplicationConfig config,
       OMWebConfiguration webConfiguration,
       Environment environment) {
@@ -770,13 +852,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info("Registering Asset Servlet with basePath: {}", config.getBasePath());
     LOG.info("Application Context Path: {}", environment.getApplicationContext().getContextPath());
 
-    // Handle Asset Using Servlet
-    OpenMetadataAssetServlet assetServlet =
-        new OpenMetadataAssetServlet(
-            config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
+    OpenMetadataAssetServlet assetServlet = createAssetServlet(config, webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
 
     LOG.info("Asset Servlet registered with mapping: /*");
+  }
+
+  /**
+   * Subclass hook: construct the servlet that serves the SPA shell. Override to return a subclass
+   * of {@link OpenMetadataAssetServlet} that uses the {@code renderIndex} / {@code etagVariant}
+   * hooks to inject per-request transforms (feature-flag shells, CDN URL rewriting, tenant
+   * branding, …). Default returns an unmodified {@link OpenMetadataAssetServlet}.
+   */
+  protected OpenMetadataAssetServlet createAssetServlet(
+      OpenMetadataApplicationConfig config, OMWebConfiguration webConfiguration) {
+    return new OpenMetadataAssetServlet(
+        config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
@@ -790,12 +881,19 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    // The ACS is registered whatever the live provider, so a SAML candidate can be tested from any
+    // instance. While SAML is not live it answers 404 to anything that is not such a test.
+    if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
+      contextHandler.addServlet(
+          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+    }
+
     // Ensure we have a session handler
     if (SecurityConfigurationManager.getCurrentAuthConfig() != null
         && SecurityConfigurationManager.getCurrentAuthConfig()
             .getProvider()
             .equals(AuthProvider.SAML)) {
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
       if (contextHandler.getSessionHandler() == null) {
         contextHandler.setSessionHandler(new SessionHandler());
       }
@@ -807,9 +905,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/login")) {
         contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
       }
-      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
+      if (!isSamlServletRegistered(contextHandler, SamlLoginCompletionServlet.PATH)) {
         contextHandler.addServlet(
-            new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+            new ServletHolder(new SamlLoginCompletionServlet()), SamlLoginCompletionServlet.PATH);
       }
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
         contextHandler.addServlet(
@@ -852,12 +950,41 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  /**
+   * Applies the deployment configuration to the settings that also live in the database, before
+   * the security system reads them. Runs only here: CLI jobs may not carry the server's
+   * environment.
+   */
+  private void reconcileDeploymentSettings() {
+    ConfigSources.deployment()
+        .ifPresent(
+            deployment ->
+                new DeploymentConfigReconciler(
+                        Entity.getCollectionDAO().systemDAO(),
+                        Entity.getSystemRepository(),
+                        VersionUtils.getOpenMetadataServerVersion(CATALOG_VERSION_RESOURCE)
+                            .getVersion())
+                    .reconcileAll(deployment));
+  }
+
+  /** Applies settings changed by another server or the CLI without a restart (#30882). */
+  private static SettingsChangeWatcher settingsChangeWatcher() {
+    SystemDAO systemDAO = Entity.getCollectionDAO().systemDAO();
+    return new SettingsChangeWatcher(
+        systemDAO::listSettingsFingerprints,
+        new LocalSettingsRefresher(),
+        ConfigSources.deployment()
+            .map(DeploymentConfig::watchInterval)
+            .orElse(DEFAULT_SETTINGS_WATCH_INTERVAL));
+  }
+
   @SneakyThrows
   @Override
   public void initialize(Bootstrap<OpenMetadataApplicationConfig> bootstrap) {
     bootstrap.setConfigurationSourceProvider(
         new SubstitutingSourceProvider(
-            bootstrap.getConfigurationSourceProvider(),
+            new RawConfigCapture(
+                bootstrap.getConfigurationSourceProvider(), ConfigTemplateKind.SERVER),
             new EnvironmentVariableSubstitutor(false, true)));
 
     // Register custom filter factories
@@ -920,10 +1047,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void validateConfiguration(OpenMetadataApplicationConfig catalogConfig)
       throws ConfigurationException {
-    if (catalogConfig.getAuthorizerConfiguration().getBotPrincipals() != null) {
+    AuthorizerConfiguration authorizerConfiguration = catalogConfig.getAuthorizerConfiguration();
+    if (authorizerConfiguration != null && authorizerConfiguration.getBotPrincipals() != null) {
       throw new ConfigurationException(
           "'botPrincipals' configuration is deprecated. Please remove it from "
               + "'openmetadata.yaml and restart the server");
+    }
+    List<String> undefinedEnvSettings =
+        ConfigSources.deployment()
+            .map(DeploymentConfig::envModeSettingsWithoutDeploymentValue)
+            .orElse(List.of());
+    if (!undefinedEnvSettings.isEmpty()) {
+      throw new ConfigurationException(
+          "These settings use the ENV configuration source but the configuration file does not "
+              + "define them: "
+              + String.join(", ", undefinedEnvSettings));
     }
     if (catalogConfig.getPipelineServiceClientConfiguration().getAuthConfig() != null) {
       LOG.warn(
@@ -933,9 +1071,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   public void reinitializeAuthSystem(
       OpenMetadataApplicationConfig config, Environment environment) {
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    AuthServeletHandler previousHandler =
+        AuthServeletHandlerRegistry.getHandler(contextHandler.getServletContext());
+    AuthenticatorHandler previousAuthenticator = authenticatorHandler;
     try {
       LOG.info("Starting authentication system reinitialization");
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
       SessionService sessionService =
           AuthServeletHandlerRegistry.getSessionService(contextHandler.getServletContext());
       if (sessionService == null) {
@@ -955,14 +1096,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Update JWT configuration first
       JWTTokenGenerator.getInstance()
           .init(
-              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              SecurityConfigurationManager.getCurrentAuthConfig(),
               config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config
-      registerAuthenticator(SecurityConfigurationManager.getInstance());
+      AuthenticatorHandler reloadedAuthenticator = authenticatorForCurrentProvider();
       reRegisterAuthorizer(config, environment);
       config.setAuthenticationConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
-      authenticatorHandler.init(config);
+      initializeThenPublish(reloadedAuthenticator, config);
+      authenticatorHandler = reloadedAuthenticator;
 
       // Reinitialize SAML settings if SAML is enabled
       if (SecurityConfigurationManager.getCurrentAuthConfig() != null
@@ -979,6 +1121,58 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Trigger rollback in AuthenticationConfigurationManager
       // Rollback is handled internally by SecurityConfigurationManager
       throw new RuntimeException("Authentication system reinitialization failed", e);
+    } finally {
+      closeReplacedAuthHandlers(
+          previousHandler,
+          AuthServeletHandlerRegistry.getHandler(contextHandler.getServletContext()),
+          previousAuthenticator,
+          authenticatorHandler);
+    }
+  }
+
+  /**
+   * Closes the handlers a security reload swapped out, including when the reload failed after the
+   * swap: nothing routes to them any more, and an LDAP one would otherwise keep its pool probing
+   * the directory it was built for. A handler the reload never replaced is still serving logins
+   * and stays open. Every reload builds new instances, so identity tells the two apart.
+   */
+  @VisibleForTesting
+  static void closeReplacedAuthHandlers(
+      AuthServeletHandler previousHandler,
+      AuthServeletHandler currentHandler,
+      AuthenticatorHandler previousAuthenticator,
+      AuthenticatorHandler currentAuthenticator) {
+    if (previousHandler != currentHandler) {
+      closeQuietly(previousHandler::close);
+    }
+    if (previousAuthenticator != currentAuthenticator) {
+      closeQuietly(previousAuthenticator::close);
+    }
+  }
+
+  /**
+   * Registers an authenticator a reload built only once it is initialized, since logins read the
+   * registered one on every request. One that fails to start is closed and never registered, so
+   * logins keep the previous authenticator while the reload rolls back.
+   */
+  @VisibleForTesting
+  static void initializeThenPublish(
+      AuthenticatorHandler authenticator, OpenMetadataApplicationConfig config) {
+    try {
+      authenticator.init(config);
+    } catch (RuntimeException e) {
+      closeQuietly(authenticator::close);
+      throw e;
+    }
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticator);
+  }
+
+  /** A failed close must neither hide the reload's own error nor fail a reload that worked. */
+  private static void closeQuietly(Runnable close) {
+    try {
+      close.run();
+    } catch (RuntimeException e) {
+      LOG.warn("Could not close an auth handler replaced by a security reload", e);
     }
   }
 
@@ -1062,6 +1256,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       ContainerRequestFilterManager.getInstance().registerFilter(filter);
     }
+    Entity.setAuthorizer(authorizer);
   }
 
   private void reRegisterAuthorizer(
@@ -1098,19 +1293,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       ContainerRequestFilterManager.getInstance().registerFilter(filter);
     }
+    Entity.setAuthorizer(authorizer);
   }
 
   private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
-    AuthenticationConfiguration authenticationConfiguration =
-        SecurityConfigurationManager.getCurrentAuthConfig();
-    switch (authenticationConfiguration.getProvider()) {
-      case BASIC -> authenticatorHandler = new BasicAuthenticator();
-      case LDAP -> authenticatorHandler = new LdapAuthenticator();
-      default ->
-      // For all other types, google, okta etc. auth is handled externally
-      authenticatorHandler = new NoopAuthenticator();
-    }
+    authenticatorHandler = authenticatorForCurrentProvider();
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
+  }
+
+  private static AuthenticatorHandler authenticatorForCurrentProvider() {
+    return switch (SecurityConfigurationManager.getCurrentAuthConfig().getProvider()) {
+      case BASIC -> new BasicAuthenticator();
+      case LDAP -> new LdapAuthenticator();
+        // For all other types, google, okta etc. auth is handled externally
+      default -> new NoopAuthenticator();
+    };
   }
 
   private void registerLimits(OpenMetadataApplicationConfig serverConfig)
@@ -1231,19 +1428,29 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         "Application Context Path during WebSocket init: {}",
         environment.getApplicationContext().getContextPath());
 
-    if (catalogConfig.getAuthorizerConfiguration() != null) {
+    if (SecurityConfigurationManager.getCurrentAuthzConfig() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
               SecurityConfigurationManager.getCurrentAuthConfig(),
               SecurityConfigurationManager.getCurrentAuthzConfig());
     } else {
+      LOG.warn(
+          "No authorizer configuration is present: push-feed WebSocket handshakes have no token"
+              + " validator or session store and will be rejected"
+              + " (ADR:2026-10-26-push-feed-handshakes-always-authenticate)");
       socketAddressFilter = new SocketAddressFilter();
     }
+    SocketAddressFilter websocketFilter = socketAddressFilter;
+    SecurityConfigurationManager.getInstance()
+        .addConfigurationChangeListener(
+            (authConfig, authzConfig, mcpConfig) ->
+                websocketFilter.updateConfiguration(authConfig, authzConfig));
 
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     eioOptions.setMaxTimeoutThreadPoolSize(8);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
+    initializeWebSocketRelay(catalogConfig, environment);
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment
@@ -1261,13 +1468,113 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             // Register endpoint using Jetty 12 WebSocket API
             wsContainer.addMapping(
                 pathSpec,
-                (req, resp) ->
-                    new Jetty12WebSocketHandler(
-                        WebSocketManager.getInstance().getEngineIoServer()));
+                (upgradeRequest, upgradeResponse) -> {
+                  HandshakeIdentity identity =
+                      authenticateUpgrade(websocketFilter, upgradeRequest, upgradeResponse);
+                  // A rejected upgrade already answered with 401, 403 or 503; a null creator result
+                  // stops the negotiation instead of surfacing it as a creator failure.
+                  return identity == null
+                      ? null
+                      : new Jetty12WebSocketHandler(
+                          WebSocketManager.getInstance().getEngineIoServer(), identity);
+                });
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
+  }
+
+  /**
+   * The servlet filter chain never sees a WebSocket upgrade — Jetty's upgrade negotiation runs
+   * before it — so this is where the websocket transport's handshake is authenticated. The
+   * returned identity is stamped into the socket's connection headers by the handler, mirroring
+   * what the servlet filter stamps for the polling transport (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+   */
+  static HandshakeIdentity authenticateUpgrade(
+      SocketAddressFilter websocketFilter,
+      JettyServerUpgradeRequest upgradeRequest,
+      JettyServerUpgradeResponse upgradeResponse) {
+    try {
+      return websocketFilter.authenticate(upgradeRequest.getHttpServletRequest());
+    } catch (CredentialUnavailableException unavailable) {
+      LOG.debug("[WSUpgrade] Push-feed upgrade token could not be confirmed", unavailable);
+      answerRetryLater(upgradeResponse, unavailable.retryAfterSeconds());
+    } catch (HandshakeRejectedException reject) {
+      LOG.info("[WSUpgrade] Rejected push-feed WebSocket upgrade: {}", reject.getMessage());
+      answerFailedUpgrade(upgradeResponse, reject.getStatus(), reject.getMessage());
+    } catch (AuthenticationException reject) {
+      answerFailedUpgrade(
+          upgradeResponse, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    }
+    // The failed upgrade response completes the exchange; null only stops the socket negotiation.
+    return null;
+  }
+
+  private static void answerRetryLater(
+      JettyServerUpgradeResponse upgradeResponse, long retryAfterSeconds) {
+    upgradeResponse.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+    answerFailedUpgrade(
+        upgradeResponse,
+        HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+        CredentialUnavailableException.CLIENT_MESSAGE);
+  }
+
+  private static void answerFailedUpgrade(
+      JettyServerUpgradeResponse upgradeResponse, int status, String message) {
+    try {
+      upgradeResponse.sendError(status, message);
+    } catch (IOException ex) {
+      LOG.warn("[WSUpgrade] Failed to answer push-feed handshake rejection", ex);
+    }
+  }
+
+  // Selects the cross-pod WebSocket relay behind sendToOne: Redis pub/sub when a Redis cache is
+  // configured, otherwise the DB-poll relay. A Redis relay that cannot start fails boot loudly
+  // (below) rather than leaving cross-pod delivery silently off.
+  private void initializeWebSocketRelay(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    org.openmetadata.service.cache.CacheConfig cacheConfig = catalogConfig.getCacheConfig();
+    boolean redisConfigured =
+        cacheConfig != null
+            && cacheConfig.provider == org.openmetadata.service.cache.CacheConfig.Provider.redis;
+    org.openmetadata.service.socket.WebSocketRelay relay = null;
+    try {
+      if (redisConfigured) {
+        relay = new org.openmetadata.service.socket.RedisWebSocketRelay(cacheConfig);
+      } else {
+        relay =
+            new org.openmetadata.service.socket.DbWebSocketRelay(
+                Entity.getJdbi().onDemand(org.openmetadata.service.socket.WsRelayDAO.class));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to initialize WebSocket relay; staying node-local", e);
+      return; // WebSocketManager keeps its no-op relay (node-local delivery).
+    }
+    relay.start();
+    if (redisConfigured && !relay.isRunning()) {
+      // Boot continues with the relay inert rather than failing. Log loudly so the condition is
+      // visible; cross-pod WebSocket delivery stays off until Redis is reachable.
+      LOG.warn(
+          "Redis WebSocket relay did not connect (CACHE_PROVIDER=redis); cross-pod WebSocket "
+              + "delivery is disabled until Redis is reachable. Check the Redis connection.");
+    }
+    WebSocketManager.getInstance().setRelay(relay);
+    org.openmetadata.service.socket.WebSocketRelay startedRelay = relay;
+    environment
+        .lifecycle()
+        .manage(
+            new Managed() {
+              @Override
+              public void start() {
+                // Already started above so it is active before the first frame.
+              }
+
+              @Override
+              public void stop() {
+                startedRelay.stop();
+              }
+            });
+    LOG.info("WebSocket relay enabled: {}", relay.getClass().getSimpleName());
   }
 
   protected void registerDistributedJobParticipant(Environment environment, Jdbi jdbi) {
@@ -1284,17 +1591,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           "Registered DistributedJobParticipant for distributed search indexing using database polling");
     } catch (Exception e) {
       LOG.warn("Failed to register DistributedJobParticipant", e);
-    }
-  }
-
-  protected void registerDistributedRdfJobParticipant(Environment environment, Jdbi jdbi) {
-    try {
-      CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
-      RdfDistributedJobParticipant participant = new RdfDistributedJobParticipant(collectionDAO);
-      environment.lifecycle().manage(participant);
-      LOG.info("Registered RdfDistributedJobParticipant for distributed RDF indexing");
-    } catch (Exception e) {
-      LOG.warn("Failed to register RdfDistributedJobParticipant", e);
     }
   }
 
@@ -1317,9 +1613,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EntityCacheRepair.shutdown();
       EventSubscriptionScheduler.shutDown();
+      Channels.closeTransports();
+      RdfUpdater.stop();
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
+      // Before RDF teardown: closing the engine can still fire workflow listeners that write
+      // through to repositories, and those writes may fan out to the RDF updater.
+      WorkflowHandler.shutDown();
+      RdfUpdater.disable();
       LOG.info("Stopping the application");
     }
   }

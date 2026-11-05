@@ -11,16 +11,14 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import { getMetricByFqn } from '../../../../rest/metricsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import * as SearchPureUtils from '../../../../utils/SearchPureUtils';
-import * as StringUtils from '../../../../utils/StringUtils';
-import * as TagsPureUtils from '../../../../utils/TagsPureUtils';
 import AssetsTabs from './AssetsTabs.component';
-import { AssetsOfEntity } from './AssetsTabs.interface';
 
 const buildOperationPermission = (
   overrides: Partial<Record<Operation, boolean>> = {}
@@ -78,6 +76,14 @@ jest.mock('../../../../rest/tagAPI', () => ({
   removeAssetsFromTags: jest.fn().mockResolvedValue({}),
 }));
 
+jest.mock('../../../../rest/metricsAPI', () => ({
+  getMetricByFqn: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../../rest/metricTabsAPI', () => ({
+  removeMetricTabAssets: jest.fn().mockResolvedValue({}),
+}));
+
 jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(() => <div>Searchbar.component</div>),
@@ -88,20 +94,6 @@ jest.mock('../../../common/NextPrevious/NextPrevious', () => ({
   default: jest
     .fn()
     .mockImplementation(() => <div>NextPrevious.component</div>),
-}));
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolder.component</div>),
-}));
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolderNew.component</div>),
 }));
 
 jest.mock('../../../Explore/ExploreQuickFilters', () => ({
@@ -150,16 +142,23 @@ const mockGetEncodedFqn = jest.fn((fqn) => fqn);
 const mockEscapeESReservedCharacters = jest.fn((fqn) => fqn);
 const mockGetTagAssetsQueryFilter = jest.fn();
 
-jest
-  .spyOn(SearchPureUtils, 'getTermQuery')
-  .mockImplementation(mockGetTermQuery);
-jest.spyOn(StringUtils, 'getEncodedFqn').mockImplementation(mockGetEncodedFqn);
-jest
-  .spyOn(StringUtils, 'escapeESReservedCharacters')
-  .mockImplementation(mockEscapeESReservedCharacters);
-jest
-  .spyOn(TagsPureUtils, 'getTagAssetsQueryFilter')
-  .mockImplementation(mockGetTagAssetsQueryFilter);
+jest.mock('../../../../utils/SearchPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/SearchPureUtils'),
+  getTermQuery: (...args: unknown[]) => mockGetTermQuery(...args),
+}));
+
+jest.mock('../../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../../utils/StringUtils'),
+  getEncodedFqn: (fqn: string) => mockGetEncodedFqn(fqn),
+  escapeESReservedCharacters: (fqn: string) =>
+    mockEscapeESReservedCharacters(fqn),
+}));
+
+jest.mock('../../../../utils/TagsPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/TagsPureUtils'),
+  getTagAssetsQueryFilter: (...args: unknown[]) =>
+    mockGetTagAssetsQueryFilter(...args),
+}));
 
 const mockOnAddAsset = jest.fn();
 const mockOnAssetClick = jest.fn();
@@ -305,6 +304,51 @@ describe('AssetsTabs queryParam logic', () => {
 
       await waitFor(() => {
         expect(mockGetTagAssetsQueryFilter).toHaveBeenCalledWith(entityFqn);
+      });
+    });
+  });
+
+  describe('METRIC type', () => {
+    it('should search with the linked asset ids filter passed by the metric', async () => {
+      const metricQueryFilter = {
+        query: { bool: { must: [{ ids: { values: ['asset-1'] } }] } },
+      };
+
+      renderWithRouter(
+        <AssetsTabs
+          {...defaultProps}
+          entityFqn="revenue"
+          queryFilter={metricQueryFilter}
+          type={AssetsOfEntity.METRIC}
+        />
+      );
+
+      await waitFor(() => {
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({ queryFilter: metricQueryFilter })
+        );
+      });
+
+      expect(getMetricByFqn).toHaveBeenCalledWith('revenue');
+    });
+
+    it('should match no assets when the linked asset ids are not provided', async () => {
+      renderWithRouter(
+        <AssetsTabs
+          {...defaultProps}
+          entityFqn="revenue"
+          type={AssetsOfEntity.METRIC}
+        />
+      );
+
+      await waitFor(() => {
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            queryFilter: {
+              query: { bool: { must: [{ ids: { values: [] } }] } },
+            },
+          })
+        );
       });
     });
   });
@@ -498,6 +542,26 @@ describe('AssetsTabs queryParam logic', () => {
           'tags.tagFQN': '',
         });
       });
+    });
+  });
+
+  describe('Empty state', () => {
+    it('shows the caller message as the description instead of the generic text', async () => {
+      renderWithRouter(
+        <AssetsTabs
+          {...defaultProps}
+          entityFqn="test.domain"
+          noDataPlaceholder={{ message: 'No assets in this domain' }}
+          type={AssetsOfEntity.DOMAIN}
+        />
+      );
+
+      expect(
+        await screen.findByText('No assets in this domain')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-data-available')
+      ).not.toBeInTheDocument();
     });
   });
 });

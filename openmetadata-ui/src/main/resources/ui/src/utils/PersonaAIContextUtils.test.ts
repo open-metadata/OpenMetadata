@@ -13,11 +13,14 @@
 import { PERSONA_CONTEXT_ASSET_TYPES } from '../constants/PersonaAIContext.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ContextSection } from '../generated/type/personaContextDefinition';
+import { CacheState } from '../generated/type/personaContextStatus';
 import {
   buildPersonaContextVersionHistory,
   getDefaultPersonaContextSections,
+  getPersonaContextFreshness,
   getPersonaContextSections,
   getRuleConditionCount,
+  getRuleExplorePath,
   getRuleFilterTree,
   getScopedRuleCount,
   isKnowledgeContextRule,
@@ -194,23 +197,58 @@ describe('PersonaAIContextUtils', () => {
     // The backend drops disabled rules from the served scope, so counting them here would tell the
     // admin more of their search is narrowed than actually is.
     expect(
-      getScopedRuleCount([
-        { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
-        { entityType: EntityType.TABLE, filteredInSearch: false, name: 'Two' },
-        { entityType: EntityType.TABLE, name: 'Three' },
-        {
-          enabled: false,
-          entityType: EntityType.TABLE,
-          filteredInSearch: true,
-          name: 'Disabled',
-        },
-        {
-          entityType: EntityType.GLOSSARY_TERM,
-          filteredInSearch: true,
-          name: 'Knowledge',
-        },
-      ])
+      getScopedRuleCount({
+        rules: [
+          { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
+          {
+            entityType: EntityType.TABLE,
+            filteredInSearch: false,
+            name: 'Two',
+          },
+          { entityType: EntityType.TABLE, name: 'Three' },
+          {
+            enabled: false,
+            entityType: EntityType.TABLE,
+            filteredInSearch: true,
+            name: 'Disabled',
+          },
+          {
+            entityType: EntityType.GLOSSARY_TERM,
+            filteredInSearch: true,
+            name: 'Knowledge',
+          },
+        ],
+      })
     ).toBe(1);
+  });
+
+  it('counts no scoped rule when the definition itself is disabled', () => {
+    // searchScope() returns an empty scope before it ever looks at the rules, so a switched-off
+    // definition narrows nothing however its rules are flagged.
+    expect(
+      getScopedRuleCount({
+        enabled: false,
+        rules: [
+          {
+            enabled: true,
+            entityType: EntityType.TABLE,
+            filteredInSearch: true,
+            name: 'One',
+          },
+        ],
+      })
+    ).toBe(0);
+  });
+
+  it('counts scoped rules when enabled is left unset, matching the schema default', () => {
+    expect(
+      getScopedRuleCount({
+        rules: [
+          { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
+        ],
+      })
+    ).toBe(1);
+    expect(getScopedRuleCount(undefined)).toBe(0);
   });
 
   describe('buildPersonaContextVersionHistory', () => {
@@ -293,5 +331,102 @@ describe('PersonaAIContextUtils', () => {
         },
       ]);
     });
+
+    it('reports a prompt-only edit as an AI context change', () => {
+      const history = {
+        entityType: 'persona',
+        versions: [
+          versionSnapshot(3.1, { characterBudget: 120000, rules: [] }),
+          versionSnapshot(3.2, {
+            characterBudget: 120000,
+            prompt: 'You assist finance analysts.',
+            rules: [],
+          }),
+        ],
+      };
+
+      const entries = buildPersonaContextVersionHistory(history as never);
+
+      // Left out of the comparison, a prompt edit read as "no AI context change".
+      expect(entries[0].changes).toEqual([
+        { key: 'message.persona-context-history-prompt' },
+      ]);
+    });
   });
+});
+
+// Explore validates a deep-linked tree against its own config and silently
+// resets when a field is unknown. This editor is pinned to one entity type, so
+// its custom-property keys omit the entity segment Explore expects — without
+// the rewrite the link landed on the unfiltered estate with no filter chip.
+describe('getRuleExplorePath', () => {
+  const filterJsonTree = JSON.stringify({
+    id: 'root',
+    type: 'group',
+    properties: { conjunction: 'AND', not: false },
+    children1: {
+      r1: {
+        type: 'rule',
+        id: 'r1',
+        properties: {
+          field: 'extension.testCp.keyword',
+          operator: 'equal',
+          value: ['2026-09-03'],
+          valueSrc: ['value'],
+        },
+      },
+    },
+  });
+
+  const fieldsIn = (path: string) =>
+    decodeURIComponent(path).match(/"field":"[^"]+"/g) ?? [];
+
+  it('should deep link with the entity-segmented custom property key', () => {
+    const path = getRuleExplorePath(EntityType.TABLE, filterJsonTree);
+
+    expect(fieldsIn(path)).toContain(
+      '"field":"extension.table.testCp.keyword"'
+    );
+  });
+
+  it('should not rewrite a key that already carries the segment', () => {
+    const already = filterJsonTree.replace(
+      'extension.testCp.keyword',
+      'extension.table.testCp.keyword'
+    );
+
+    expect(fieldsIn(getRuleExplorePath(EntityType.TABLE, already))).toContain(
+      '"field":"extension.table.testCp.keyword"'
+    );
+  });
+});
+
+describe('getPersonaContextFreshness', () => {
+  const status = (cacheState: CacheState, lastGeneratedAt?: number) => ({
+    cacheState,
+    tokensEst: 0,
+    entitiesIncluded: 0,
+    lastGeneratedAt,
+    personaId: 'p',
+  });
+
+  it.each([
+    [false, status(CacheState.Fresh, 1), 'message.not-configured', 'error'],
+    [true, undefined, undefined, undefined],
+    [true, status(CacheState.Fresh, 1), 'label.fresh', 'success'],
+    [true, status(CacheState.Stale, 1), 'label.stale', 'warning'],
+    [true, status(CacheState.Stale), 'label.not-generated', 'gray'],
+    [true, status(CacheState.Generating), 'label.generating', 'warning'],
+    [true, status(CacheState.Failed), 'label.failed', 'error'],
+  ])(
+    'hasRules=%s status=%o -> %s',
+    (hasRules, cacheStatus, labelKey, color) => {
+      expect(getPersonaContextFreshness(hasRules, cacheStatus)?.labelKey).toBe(
+        labelKey
+      );
+      expect(getPersonaContextFreshness(hasRules, cacheStatus)?.color).toBe(
+        color
+      );
+    }
+  );
 });

@@ -38,6 +38,5 @@ export interface TagsContainerV2Props {
   newLook?: boolean;
   // Props to control the dropdown state from the Generic Provider
   useGenericControls?: boolean;
-  tagNewLook?: boolean;
   multiSelect?: boolean;
 }

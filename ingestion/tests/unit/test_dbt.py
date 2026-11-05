@@ -2,7 +2,9 @@
 Test dbt
 """
 
+import fnmatch
 import json
+import logging
 import uuid
 from copy import deepcopy
 from datetime import datetime
@@ -11,6 +13,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
 from collate_dbt_artifacts_parser.parser import (
     parse_catalog,
     parse_manifest,
@@ -20,8 +23,9 @@ from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -39,6 +43,7 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     build_upstream_name_map,
@@ -1844,8 +1849,6 @@ class DbtUnitTest(TestCase):
 
         self.dbt_source_obj.process_dbt_domain(data_model_link)
 
-    # Test Custom Properties processing functionality
-
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_custom_properties")
     def test_process_dbt_custom_properties_success(self, mock_patch_custom_properties):
         """
@@ -2755,7 +2758,10 @@ class DbtUnitTest(TestCase):
 
         def fake_get_table_entity(table_fqn):
             if table_fqn == expected_fqn:
-                return MagicMock()
+                table = MagicMock()
+                table.id.root = uuid.uuid4()
+                table.fullyQualifiedName.root = table_fqn
+                return table
             return None
 
         with patch.object(self.dbt_source_obj, "_get_table_entity", side_effect=fake_get_table_entity):  # noqa: SIM117
@@ -3473,6 +3479,7 @@ class TestStorageStreamingBehavior(TestCase):
         config = MagicMock()
         config.dbtPrefixConfig.dbtBucketName = "test-bucket"
         config.dbtPrefixConfig.dbtObjectPrefix = None
+        config.dbtSecurityConfig.gcpImpersonateServiceAccount = None
 
         with patch("google.cloud.storage.Client", return_value=mock_client):
             list(gcs_handler(config))
@@ -4215,6 +4222,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.upstream_table_ids = {}
 
         results = list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4237,6 +4245,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
         data_model_link.datamodel.sql = None
+        data_model_link.upstream_table_ids = {}
 
         results = list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4255,6 +4264,7 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.upstream_table_ids = {}
 
         list(DbtSource.create_dbt_lineage(source, data_model_link))
 
@@ -4274,6 +4284,7 @@ class TestDbtLineageUnresolvedUpstream:
             data_model_link = MagicMock()
             data_model_link.table_entity = to_entity
             data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+            data_model_link.upstream_table_ids = {}
             list(DbtSource.create_dbt_lineage(source, data_model_link))
 
         assert source.status.warning.call_count == 1
@@ -4288,10 +4299,98 @@ class TestDbtLineageUnresolvedUpstream:
         data_model_link = MagicMock()
         data_model_link.table_entity = to_entity
         data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders", "svc.db.sch.raw_customers"]
+        data_model_link.upstream_table_ids = {}
 
         list(DbtSource.create_dbt_lineage(source, data_model_link))
 
         assert source.status.warning.call_count == 2
+
+
+class TestDbtLineageReusesParsedUpstream:
+    """Issue #34011.
+
+    Parsing a model already searches OpenMetadata for each upstream table and gets
+    the table back, including its id. Lineage used that result as a yes/no and
+    searched again. This runs the real manifest through yield and lineage. The
+    only stand-in is the catalog search, which answers with the tables that exist.
+    """
+
+    MANIFEST = Path(__file__).parent / "resources" / "datasets" / "manifest_upstream_lineage.json"
+    SERVICE = "snowflake_svc"
+    RAW_FQN = "snowflake_svc.analytics.public.raw_orders"
+    ORDERS_FQN = "snowflake_svc.analytics.public.orders"
+
+    @classmethod
+    def _catalog(cls):
+        def table(fqn):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn.rsplit(".", 1)[-1],
+                columns=[],
+                fullyQualifiedName=fqn,
+            )
+
+        return {cls.RAW_FQN: table(cls.RAW_FQN), cls.ORDERS_FQN: table(cls.ORDERS_FQN)}
+
+    @staticmethod
+    def _search(catalog, searches):
+        def _es(*_args, fqn_search_string, **_kwargs):
+            searches.append(fqn_search_string)
+            for known, entity in catalog.items():
+                service, _, rest = known.partition(".")
+                searched_service, _, searched_rest = fqn_search_string.partition(".")
+                if searched_rest == rest and searched_service in (service, "*"):
+                    return [entity]
+            return []
+
+        return _es
+
+    def _source(self, catalog, searches):
+        from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import (
+            DbtLocalConfig,
+        )
+        from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
+
+        source = DbtSource.__new__(DbtSource)
+        source.config = SimpleNamespace(serviceName=self.SERVICE)
+        source.source_config = DbtPipeline(
+            dbtConfigSource=DbtLocalConfig(dbtConfigType="local", dbtManifestFilePath="manifest.json"),
+            includeTags=False,
+        )
+        source.metadata = MagicMock()
+        source.metadata.es_search_from_fqn.side_effect = self._search(catalog, searches)
+        source.status = MagicMock()
+        source.tag_classification_name = "dbtTags"
+        source.reported_unresolved_upstreams = set()
+        source.context = SimpleNamespace(get=lambda: self._ctx)
+        return source
+
+    def test_lineage_does_not_search_for_an_upstream_it_already_resolved(self):
+        from metadata.ingestion.source.database.dbt.models import DbtObjects
+
+        catalog = self._catalog()
+        searches = []
+        self._ctx = SimpleNamespace()
+        source = self._source(catalog, searches)
+
+        with self.MANIFEST.open(encoding="utf-8") as manifest_file:
+            manifest = parse_manifest(json.load(manifest_file))
+
+        links = []
+        for item in source.yield_data_models(DbtObjects(dbt_manifest=manifest)):
+            assert item.left is None, item.left
+            links.append(item.right)
+
+        orders = next(link for link in links if str(link.table_entity.fullyQualifiedName.root) == self.ORDERS_FQN)
+        assert orders.datamodel.upstream == [self.RAW_FQN]
+
+        searches_after_parse = len(searches)
+        results = list(source.create_dbt_lineage(orders))
+
+        assert len(searches) == searches_after_parse, searches[searches_after_parse:]
+        assert len(results) == 1
+        assert results[0].right.lineage_request.edge.fromEntity.id.root == catalog[self.RAW_FQN].id.root
+        source.status.warning.assert_not_called()
 
 
 class TestAddDbtTestResultFailureReporting:
@@ -4648,3 +4747,842 @@ class TestAddDbtSourceFreshnessResults:
             source.metadata.add_test_case_results.call_args.kwargs["test_case_fqn"]
             == "actual_svc.RAW_DB.RAW.orders.orders_freshness"
         )
+
+
+class TestDbtV12MetricIngest:
+    """Unit tests for dbt 1.12+ inline metric spec (measure-less semantic models)."""
+
+    # ------------------------------------------------------------------
+    # _simple_metric_expression
+    # ------------------------------------------------------------------
+
+    def test_simple_metric_expression_old_spec_returns_measure_name(self):
+        """Pre-1.12 path: type_params.measure.name is used as the expression."""
+        measure_ref = SimpleNamespace(name="revenue")
+        type_params = SimpleNamespace(measure=measure_ref, expr=None)
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert related is None
+        assert expr is not None
+        assert expr.code == "revenue"
+
+    def test_simple_metric_expression_dbt_v12_falls_back_to_expr(self):
+        """dbt 1.12+: type_params.measure is None; type_params.expr is the column expression."""
+        type_params = SimpleNamespace(measure=None, expr="user_id")
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert related is None
+        assert expr is not None
+        assert expr.code == "user_id"
+        assert expr.language == Language.SQL
+
+    def test_simple_metric_expression_dbt_v12_no_measure_no_expr_returns_none(self):
+        """Both measure and expr absent → no expression emitted (no crash)."""
+        type_params = SimpleNamespace(measure=None, expr=None)
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert expr is None
+        assert related is None
+
+    def test_simple_metric_expression_measure_without_name_falls_back_to_expr(self):
+        """measure present but .name is None → fall back to expr."""
+        type_params = SimpleNamespace(measure=SimpleNamespace(name=None), expr="amount")
+
+        expr, _ = DbtSource._simple_metric_expression(type_params)
+
+        assert expr is not None
+        assert expr.code == "amount"
+
+    # ------------------------------------------------------------------
+    # _extract_measures
+    # ------------------------------------------------------------------
+
+    def _make_source(self):
+        """Return a minimally wired DbtSource with mocked metadata."""
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        metadata = MagicMock()
+        return DbtSource.__new__(DbtSource), metadata
+
+    def test_extract_measures_from_semantic_model(self):
+        """Pre-1.12: measures come from the semantic model."""
+        source, _ = self._make_source()
+
+        agg = SimpleNamespace(value="count_distinct")
+        sm_measure = SimpleNamespace(name="m_users", agg=agg, description="users", expr="user_id")
+        sm = SimpleNamespace(name="sm1", measures=[sm_measure])
+        metric_node = SimpleNamespace(
+            name="distinct_users",
+            type_params=SimpleNamespace(measure=SimpleNamespace(name="m_users"), expr=None),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "m_users"
+        assert result[0].aggregation == "count_distinct"
+        assert result[0].expression == "user_id"
+
+    def test_extract_measures_dbt_v12_empty_sm_measures_uses_type_params_expr(self):
+        """dbt 1.12+: semantic model has no measures → synthetic measure from type_params.expr,
+        carrying the aggregation from metric_aggregation_params (as the pre-1.12 measure did)."""
+        source, _ = self._make_source()
+
+        sm = SimpleNamespace(name="sm1", measures=[])
+        metric_node = SimpleNamespace(
+            name="distinct_users",
+            type="simple",
+            type_params=SimpleNamespace(
+                measure=None,
+                expr="user_id",
+                metric_aggregation_params={"agg": "count_distinct"},
+            ),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "distinct_users"
+        assert result[0].expression == "user_id"
+        assert result[0].aggregation == "count_distinct"
+
+    def test_extract_measures_dbt_v12_no_sm_uses_type_params_expr(self):
+        """dbt 1.12+: no semantic models at all → synthetic measure from type_params.expr."""
+        source, _ = self._make_source()
+
+        metric_node = SimpleNamespace(
+            name="active_users",
+            type="simple",
+            type_params=SimpleNamespace(measure=None, expr="user_id"),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "active_users"
+        assert result[0].expression == "user_id"
+
+    def test_extract_measures_dbt_v12_no_expr_returns_empty(self):
+        """dbt 1.12+: no semantic model measures and no expr → empty list (no crash)."""
+        source, _ = self._make_source()
+
+        sm = SimpleNamespace(name="sm1", measures=[])
+        metric_node = SimpleNamespace(
+            name="my_metric",
+            type="simple",
+            type_params=SimpleNamespace(measure=None, expr=None),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert result == []
+
+
+class TestDbtV12MetricAggregationAndCumulative:
+    """dbt 1.12+ inline metrics: aggregation carried onto the measure, and cumulative
+    metrics resolved from cumulative_type_params.metric. The pre-1.12 (measure-based)
+    paths must stay byte-for-byte unchanged, so each new behaviour is guarded on the
+    absence of the old field."""
+
+    def _make_source(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        return DbtSource.__new__(DbtSource)
+
+    # ------------------------------------------------------------------
+    # _metric_aggregation
+    # ------------------------------------------------------------------
+
+    def test_metric_aggregation_from_dict(self):
+        tp = SimpleNamespace(metric_aggregation_params={"agg": "count_distinct"})
+        assert DbtSource._metric_aggregation(tp) == "count_distinct"
+
+    def test_metric_aggregation_from_object(self):
+        tp = SimpleNamespace(metric_aggregation_params=SimpleNamespace(agg="sum"))
+        assert DbtSource._metric_aggregation(tp) == "sum"
+
+    def test_metric_aggregation_unwraps_enum_value(self):
+        tp = SimpleNamespace(metric_aggregation_params={"agg": SimpleNamespace(value="median")})
+        assert DbtSource._metric_aggregation(tp) == "median"
+
+    def test_metric_aggregation_none_when_absent(self):
+        assert DbtSource._metric_aggregation(SimpleNamespace(metric_aggregation_params=None)) is None
+        assert DbtSource._metric_aggregation(SimpleNamespace()) is None
+
+    # ------------------------------------------------------------------
+    # _extract_measures aggregation (dbt 1.12+)
+    # ------------------------------------------------------------------
+
+    def test_v12_count_star_no_expr_still_creates_measure(self):
+        """agg with no expr (e.g. count(*)) → measure carrying only the aggregation."""
+        source = self._make_source()
+        metric_node = SimpleNamespace(
+            name="row_count",
+            type="simple",
+            type_params=SimpleNamespace(measure=None, expr=None, metric_aggregation_params={"agg": "count"}),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            result = source._extract_measures(metric_node, {})
+        assert len(result) == 1
+        assert result[0].name == "row_count"
+        assert result[0].aggregation == "count"
+        assert result[0].expression is None
+
+    def test_v12_no_expr_no_agg_returns_empty(self):
+        source = self._make_source()
+        metric_node = SimpleNamespace(
+            name="empty_metric",
+            type="simple",
+            type_params=SimpleNamespace(measure=None, expr=None, metric_aggregation_params=None),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            assert source._extract_measures(metric_node, {}) == []
+
+    def test_v12_derived_metric_does_not_fabricate_measure(self):
+        """Regression: a derived metric stores its formula in type_params.expr, so the
+        inline fallback must not publish that formula as a measure. Only simple metrics
+        own a measure."""
+        source = self._make_source()
+        metric_node = SimpleNamespace(
+            name="profit",
+            type="derived",
+            type_params=SimpleNamespace(
+                measure=None,
+                expr="total_revenue - total_cost",
+                metric_aggregation_params=None,
+            ),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            assert source._extract_measures(metric_node, {}) == []
+
+    def test_old_spec_measure_aggregation_unchanged(self):
+        """Pre-1.12: aggregation and name still come straight from the semantic-model measure."""
+        source = self._make_source()
+        measure = SimpleNamespace(
+            name="num_distinct",
+            agg=SimpleNamespace(value="count_distinct"),
+            description="distinct customer count",
+            expr="customer_id",
+        )
+        sm = SimpleNamespace(name="sm1", measures=[measure])
+        metric_node = SimpleNamespace(
+            name="distinct_customers",
+            type_params=SimpleNamespace(
+                measure=SimpleNamespace(name="num_distinct"),
+                expr=None,
+                metric_aggregation_params=None,
+            ),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+        assert result[0].name == "num_distinct"
+        assert result[0].aggregation == "count_distinct"
+        assert result[0].expression == "customer_id"
+        assert result[0].description == "distinct customer count"
+
+    # ------------------------------------------------------------------
+    # _cumulative_metric_expression (dbt 1.12+)
+    # ------------------------------------------------------------------
+
+    def _cumulative_type_params(self, metric):
+        return SimpleNamespace(
+            window=SimpleNamespace(count=7, granularity=SimpleNamespace(value="day")),
+            metric=metric,
+        )
+
+    def test_cumulative_v12_wraps_metric_from_dict(self):
+        type_params = SimpleNamespace(
+            measure=None,
+            cumulative_type_params=self._cumulative_type_params({"name": "distinct_customers"}),
+        )
+        expression, related = DbtSource._cumulative_metric_expression(type_params)
+        assert related is None
+        assert expression.code == "cumulative(distinct_customers over 7 day)"
+
+    def test_cumulative_v12_wraps_metric_from_object(self):
+        type_params = SimpleNamespace(
+            measure=None,
+            cumulative_type_params=self._cumulative_type_params(SimpleNamespace(name="distinct_customers")),
+        )
+        expression, _ = DbtSource._cumulative_metric_expression(type_params)
+        assert expression.code == "cumulative(distinct_customers over 7 day)"
+
+    def test_cumulative_old_spec_wraps_measure_unchanged(self):
+        type_params = SimpleNamespace(
+            measure=SimpleNamespace(name="revenue"),
+            cumulative_type_params=self._cumulative_type_params(None),
+        )
+        expression, _ = DbtSource._cumulative_metric_expression(type_params)
+        assert expression.code == "cumulative(revenue over 7 day)"
+
+    def test_cumulative_v12_no_metric_returns_none(self):
+        type_params = SimpleNamespace(
+            measure=None,
+            cumulative_type_params=SimpleNamespace(window=None, metric=None),
+        )
+        expression, _ = DbtSource._cumulative_metric_expression(type_params)
+        assert expression is None
+
+
+class TestDbtDataProducts:
+    """process_dbt_data_products attaches tables to their dbt-declared Data Products,
+    resolving each through the API and degrading unknown or failed assignments to
+    bounded warnings."""
+
+    def _source(self):
+        source = MagicMock(spec=DbtSource)
+        source.extracted_data_products = {}
+        source.source_config = MagicMock(includeTags=False)
+        source.metadata = MagicMock()
+        return source
+
+    def _link(self, fqn="service.db.schema.table1"):
+        table_entity = MagicMock()
+        table_entity.fullyQualifiedName.root = fqn
+        table_entity.id = uuid.uuid4()
+        data_model_link = MagicMock()
+        data_model_link.table_entity = table_entity
+        return data_model_link
+
+    def test_meta_extraction_stores_products_per_table(self):
+        source = self._source()
+        manifest_meta = {"openmetadata": {"dataProducts": ["Marketing", "Domain.Sales"]}}
+
+        DbtSource.process_dbt_meta(source, manifest_meta, "service.db.schema.table1")
+
+        assert source.extracted_data_products == {"service.db.schema.table1": ["Marketing", "Domain.Sales"]}
+
+    def test_existing_products_are_attached_as_assets(self):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
+        product = MagicMock()
+        product.fullyQualifiedName = "Marketing"
+        source.metadata.get_by_name.return_value = product
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.get_by_name.assert_called_once()
+        source.metadata.add_assets_to_data_product.assert_called_once()
+        assert source.metadata.add_assets_to_data_product.call_args.args[0] == "Marketing"
+
+    def test_no_products_declared_is_a_noop(self):
+        source = self._source()
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.get_by_name.assert_not_called()
+        source.metadata.add_assets_to_data_product.assert_not_called()
+
+    def test_unknown_product_is_skipped_never_created(self):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Ghost"]}
+        source.metadata.get_by_name.return_value = None
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.add_assets_to_data_product.assert_not_called()
+
+    def test_assignment_failure_is_a_bounded_warning(self, caplog):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
+        product = MagicMock()
+        product.fullyQualifiedName = "Marketing"
+        source.metadata.get_by_name.return_value = product
+        source.metadata.add_assets_to_data_product.side_effect = Exception("400 Client Error: Bad Request")
+
+        with caplog.at_level(logging.WARNING):
+            DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.add_assets_to_data_product.assert_called_once()
+        assert "Marketing" in caplog.text
+        assert "domain" in caplog.text.lower()
+
+
+class TestDbtMetricGovernanceMetadata:
+    """yield_dbt_metrics must propagate node-level meta governance metadata to the metric."""
+
+    def _source(self, metric_custom_properties=None):
+        source = DbtSource.__new__(DbtSource)
+        source.metadata = MagicMock()
+        source.status = MagicMock()
+        source.config = MagicMock()
+        source.config.serviceName = "my_svc"
+        source.source_config = MagicMock()
+        source.source_config.includeTags = False
+        source.omd_metric_custom_properties = metric_custom_properties or {}
+        return source
+
+    def _simple_metric(self, meta=None):
+        metric_node = SimpleNamespace(
+            name="segmented_drivers",
+            type=SimpleNamespace(value="simple"),
+            description="Distinct drivers.",
+            label="Segmented Drivers",
+            type_params=SimpleNamespace(measure=SimpleNamespace(name="driver_count")),
+            time_granularity=SimpleNamespace(value="month"),
+            tags=[],
+            depends_on=SimpleNamespace(nodes=[]),
+            meta=meta,
+        )
+        return {
+            "metric_node": metric_node,
+            "semantic_models": {},
+            "all_metrics": {metric_node.name: metric_node},
+        }
+
+    def test_metric_governance_metadata_is_propagated(self):
+        from metadata.generated.schema.entity.data.metric import MetricType
+
+        source = self._source(
+            metric_custom_properties={"steward": {"name": "steward", "propertyType": {"name": "string"}}}
+        )
+        source.get_dbt_owner = MagicMock(return_value=MOCK_OWNER)
+        source.get_dbt_domain = MagicMock(
+            return_value=EntityReference(
+                id="0f4e1cd5-6a6e-4f5f-9f0e-0f3a2b1c9d8e",
+                type="domain",
+                name="Customer",
+                fullyQualifiedName="Customer",
+            )
+        )
+        # tags / tag channel is empty for this case
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {
+            "openmetadata": {
+                "owner": "data_analytics",
+                "domain": "Customer",
+                "unit": "count",
+                "customProperties": {"steward": "some.user"},
+            }
+        }
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+
+        assert request.name.root == "segmented_drivers"
+        assert request.metricType == MetricType.SIMPLE
+        assert request.metricExpression.code == "driver_count"
+        assert request.owners == MOCK_OWNER
+        assert request.domains == ["Customer"]
+        assert request.unitOfMeasurement.value == "COUNT"
+        assert request.customUnitOfMeasurement is None
+        assert request.extension.root == {"steward": "some.user"}
+        assert request.relatedMetrics is None
+
+    def test_metric_without_meta_governance_stays_unchanged(self):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        metric_requests = [
+            item for item in DbtSource.yield_dbt_metrics(source, self._simple_metric()) if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+        assert request.owners is None
+        assert request.domains is None
+        assert request.unitOfMeasurement is None
+        assert request.extension is None
+
+    def _request_for_unit(self, unit):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {"openmetadata": {"unit": unit}}
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        return metric_requests[0].right
+
+    def test_free_form_unit_is_sent_as_other_with_the_custom_unit(self):
+        """
+        MetricRepository.validateCustomUnitOfMeasurement nulls customUnitOfMeasurement unless
+        unitOfMeasurement is OTHER, so a free-form unit sent on its own is dropped server-side.
+        """
+        request = self._request_for_unit("basis points")
+
+        assert request.unitOfMeasurement.value == "OTHER"
+        assert request.customUnitOfMeasurement == "basis points"
+
+    def test_explicit_other_unit_still_carries_a_custom_unit(self):
+        """OTHER without a customUnitOfMeasurement is rejected by the server, losing the metric."""
+        request = self._request_for_unit("other")
+
+        assert request.unitOfMeasurement.value == "OTHER"
+        assert request.customUnitOfMeasurement == "other"
+
+    def test_custom_properties_undefined_for_metrics_are_dropped(self):
+        """
+        EntityRepository.validateExtension rejects the whole create request on an unknown field,
+        so a property defined only for tables must not reach the metric extension.
+        """
+        source = self._source(
+            metric_custom_properties={"steward": {"name": "steward", "propertyType": {"name": "string"}}}
+        )
+        source.get_dbt_owner = MagicMock(return_value=MOCK_OWNER)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {
+            "openmetadata": {
+                "owner": "data_analytics",
+                "customProperties": {"steward": "some.user", "tableOnlyProperty": "value"},
+            }
+        }
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        request = metric_requests[0].right
+
+        assert request.extension.root == {"steward": "some.user"}
+        # the metric itself and the rest of its governance metadata survive
+        assert request.owners == MOCK_OWNER
+
+    def test_metric_with_only_unknown_custom_properties_sends_no_extension(self):
+        source = self._source()
+        source.get_dbt_owner = MagicMock(return_value=None)
+        source.get_dbt_domain = MagicMock(return_value=None)
+        source.process_dbt_meta = MagicMock(return_value=[])
+        source._extract_metric_tags = MagicMock(return_value=[])
+
+        meta = {"openmetadata": {"customProperties": {"tableOnlyProperty": "value"}}}
+        metric_requests = [
+            item
+            for item in DbtSource.yield_dbt_metrics(source, self._simple_metric(meta=meta))
+            if item.right is not None
+        ]
+        assert len(metric_requests) == 1
+        assert metric_requests[0].right.extension is None
+
+
+class TestCatalogMapping:
+    """
+    dbt-trino writes the Trino catalog name into the manifest database, while the BigQuery
+    connector ingests the same table under the GCP project id. catalogMapping states which
+    OpenMetadata database a manifest database is (issue #34633).
+    """
+
+    BQ_MODEL = "bq_svc.my-gcp-project.analytics.stg_customers"
+    BQ_SOURCE = "bq_svc.my-gcp-project.raw.customers"
+    MANIFEST_FQN = "trino_svc.bq_catalog.analytics.stg_customers"
+
+    @staticmethod
+    def _source(*ingested_fqns, catalog_mapping=None, search_across_databases=False):
+        """A DbtSource built from an agent config, whose search answers wildcard FQN queries."""
+        config = {
+            "type": "dbt",
+            "serviceName": "trino_svc",
+            "sourceConfig": {
+                "config": {
+                    "type": "DBT",
+                    "dbtConfigSource": {"dbtConfigType": "local", "dbtManifestFilePath": "/dbt/manifest.json"},
+                    "searchAcrossDatabases": search_across_databases,
+                    **({"catalogMapping": catalog_mapping} if catalog_mapping is not None else {}),
+                }
+            },
+        }
+        tables = [
+            Table(id=uuid.uuid4(), name=ingested.split(".")[-1], columns=[], fullyQualifiedName=ingested)
+            for ingested in ingested_fqns
+        ]
+
+        def _search(*_args, fqn_search_string, **_kwargs):
+            return [
+                table
+                for table in tables
+                if fnmatch.fnmatchcase(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ] or None
+
+        metadata = MagicMock()
+        metadata.es_search_from_fqn.side_effect = _search
+        return DbtSource.create(config, metadata)
+
+    @staticmethod
+    def _manifest_node(name, database, schema, resource_type="model", depends_on=(), meta=None):
+        return SimpleNamespace(
+            name=name,
+            alias=name,
+            database=database,
+            schema_=schema,
+            resource_type=resource_type,
+            package_name="trino_bq",
+            meta=meta or {},
+            tags=[],
+            description=None,
+            columns={},
+            original_file_path=f"models/{name}.sql",
+            raw_code=f"select * from {name}",
+            compiled_code=f"select * from {name}",
+            config=SimpleNamespace(materialized="table"),
+            depends_on=SimpleNamespace(nodes=list(depends_on)),
+        )
+
+    def test_agent_config_accepts_catalog_mapping(self):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        assert source.source_config.catalogMapping == {"bq_catalog": "my-gcp-project"}
+        assert self._source().source_config.catalogMapping is None
+
+    def test_mapped_catalog_resolves_in_another_service_without_search_across_databases(self):
+        source = self._source(self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == self.BQ_MODEL
+
+    @pytest.mark.parametrize(
+        "mapped_catalog, manifest_fqn",
+        [
+            ("BQ_Catalog", "trino_svc.bq_catalog.analytics.stg_customers"),
+            ("bq_catalog", "trino_svc.BQ_Catalog.analytics.stg_customers"),
+        ],
+    )
+    def test_catalog_is_matched_ignoring_case(self, mapped_catalog, manifest_fqn):
+        source = self._source(self.BQ_MODEL, catalog_mapping={mapped_catalog: "my-gcp-project"})
+
+        assert source._get_table_entity(manifest_fqn).fullyQualifiedName.root == self.BQ_MODEL
+
+    def test_mapping_picks_its_database_where_the_same_schema_and_table_exist_in_two(self):
+        source = self._source(
+            "bq_svc.proj-a.analytics.stg_customers",
+            "bq_svc.proj-b.analytics.stg_customers",
+            catalog_mapping={"bq_catalog": "proj-b"},
+        )
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == "bq_svc.proj-b.analytics.stg_customers"
+
+    def test_mapping_prefers_the_configured_service(self):
+        source = self._source(
+            "bq_other.my-gcp-project.analytics.stg_customers",
+            "trino_svc.my-gcp-project.analytics.stg_customers",
+            catalog_mapping={"bq_catalog": "my-gcp-project"},
+        )
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == "trino_svc.my-gcp-project.analytics.stg_customers"
+
+    def test_mapping_that_finds_nothing_falls_back_to_the_manifest_database(self):
+        source = self._source(self.MANIFEST_FQN, catalog_mapping={"bq_catalog": "no-such-project"})
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == self.MANIFEST_FQN
+
+    def test_unmapped_catalog_is_looked_up_as_before(self):
+        source = self._source(
+            self.BQ_MODEL, "trino_svc.hive.default.hive_model", catalog_mapping={"bq_catalog": "my-gcp-project"}
+        )
+
+        assert source._get_table_entity("trino_svc.hive.default.hive_model") is not None
+        assert source._get_table_entity("trino_svc.other_catalog.analytics.stg_customers") is None
+
+    def test_without_a_mapping_the_aliased_table_stays_unresolved(self):
+        source = self._source(self.BQ_MODEL, search_across_databases=True)
+
+        assert source._get_table_entity(self.MANIFEST_FQN) is None
+
+    def test_upstream_is_recorded_under_the_table_that_was_found(self):
+        """Lineage, dbt tests and exposures all reuse the upstream FQN, so it must be the real one."""
+        parent = self._manifest_node("customers", "bq_catalog", "raw", resource_type="source")
+        parent.source_name = "bq_raw"
+        model = self._manifest_node(
+            "stg_customers", "bq_catalog", "analytics", depends_on=["source.trino_bq.bq_raw.customers"]
+        )
+        source = self._source(self.BQ_SOURCE, self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        upstream_nodes = source.parse_upstream_nodes_with_names({"source.trino_bq.bq_raw.customers": parent}, model)
+
+        assert [node.fqn for node in upstream_nodes] == [self.BQ_SOURCE]
+        assert upstream_nodes[0].table_id is not None
+
+    def test_meta_domain_is_keyed_by_the_table_that_was_found(self):
+        """Domain, data products and custom properties are applied by the resolved table's FQN."""
+        node = self._manifest_node(
+            "stg_customers", "bq_catalog", "analytics", meta={"openmetadata": {"domain": "Finance"}}
+        )
+        source = self._source(self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+        source.context = MagicMock()
+        dbt_objects = SimpleNamespace(
+            dbt_manifest=SimpleNamespace(
+                sources={},
+                nodes={"model.trino_bq.stg_customers": node},
+                exposures={},
+                metadata=SimpleNamespace(project_name="trino_bq"),
+            ),
+            dbt_catalog=None,
+            dbt_run_results=None,
+            dbt_sources=None,
+        )
+
+        with (
+            patch.object(DbtSource, "get_dbt_domain", return_value=None),
+            patch.object(DbtSource, "_collect_dbt_metrics"),
+        ):
+            links = [either.right for either in source.yield_data_models(dbt_objects)]
+
+        assert [model_str(link.table_entity.fullyQualifiedName) for link in links] == [self.BQ_MODEL]
+        assert source.extracted_domains == {self.BQ_MODEL: "Finance"}
+
+    @pytest.mark.parametrize(
+        ("compiled_sql", "lineage_sql"),
+        [
+            (
+                'select id from "bq_catalog"."raw"."customers"',
+                'select id from "my-gcp-project"."raw"."customers"',
+            ),
+            ("select id from BQ_Catalog.raw.customers", 'select id from "my-gcp-project".raw.customers'),
+            (
+                'select * from bq_catalog.raw.a join "bq_catalog" . "raw" . "b" using (id)',
+                'select * from "my-gcp-project".raw.a join "my-gcp-project" . "raw" . "b" using (id)',
+            ),
+            # a schema or column that shares the catalog's name is not a catalog
+            ("select bq_catalog.id from raw.bq_catalog", "select bq_catalog.id from raw.bq_catalog"),
+            ("select id from bq_catalog_dev.raw.customers", "select id from bq_catalog_dev.raw.customers"),
+            ('select id from "other"."bq_catalog"."t"', 'select id from "other"."bq_catalog"."t"'),
+        ],
+    )
+    def test_mapped_catalog_is_swapped_in_compiled_sql(self, compiled_sql, lineage_sql):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        assert source._map_catalogs_in_sql(compiled_sql) == lineage_sql
+
+    @pytest.mark.parametrize(
+        ("catalog_mapping", "column_links"),
+        [
+            (
+                {"bq_catalog": "my-gcp-project"},
+                [
+                    ("bq_svc.my-gcp-project.raw.customers.id", "bq_svc.my-gcp-project.analytics.stg_customers.id"),
+                    ("bq_svc.my-gcp-project.raw.customers.name", "bq_svc.my-gcp-project.analytics.stg_customers.name"),
+                ],
+            ),
+            (None, []),
+        ],
+    )
+    def test_query_lineage_links_the_columns_of_the_mapped_source(self, catalog_mapping, column_links):
+        def table(table_fqn):
+            return Table(
+                id=uuid.uuid4(),
+                name=table_fqn.split(".")[-1],
+                fullyQualifiedName=table_fqn,
+                columns=[
+                    Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.{name}")
+                    for name in ("id", "name")
+                ],
+            )
+
+        tables = [table(self.BQ_SOURCE), table(self.BQ_MODEL)]
+        source = self._source(catalog_mapping=catalog_mapping)
+        source.metadata.es_search_from_fqn.side_effect = lambda *_args, fqn_search_string, **_kwargs: (
+            [
+                ingested
+                for ingested in tables
+                if fnmatch.fnmatchcase(ingested.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ]
+            or None
+        )
+        source.metadata.get_by_name.return_value = None
+        source.config = SimpleNamespace(
+            serviceName="trino_svc",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="Trino")))
+            ),
+        )
+        data_model_link = SimpleNamespace(
+            table_entity=tables[1],
+            datamodel=SimpleNamespace(
+                sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"')
+            ),
+        )
+
+        requests = [
+            either.right.lineage_request
+            for either in source.create_dbt_query_lineage(data_model_link)
+            if either.right is not None
+        ]
+
+        assert [
+            (model_str(link.fromColumns[0]), model_str(link.toColumn))
+            for request in requests
+            for link in request.lineage_details.columnsLineage
+        ] == column_links
+
+    def test_each_catalog_is_mapped_once_when_a_database_is_also_a_mapped_catalog(self):
+        source = self._source(catalog_mapping={"hive": "warehouse", "warehouse": "warehouse_prod"})
+
+        assert source._map_catalogs_in_sql("select * from hive.raw.a join warehouse.raw.b using (id)") == (
+            'select * from "warehouse".raw.a join "warehouse_prod".raw.b using (id)'
+        )
+
+    def test_without_a_mapping_compiled_sql_is_unchanged(self):
+        sql = 'select id from "bq_catalog"."raw"."customers"'
+
+        assert self._source()._map_catalogs_in_sql(sql) == sql

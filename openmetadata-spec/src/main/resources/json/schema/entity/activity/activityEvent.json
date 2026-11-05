@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/activity/activityEvent.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ActivityEvent",
   "description": "A lightweight activity notification for user dashboards and feeds. NOT for compliance, audit trails, or workflows - use entity version history and Task entity for those purposes.",
   "javaType": "org.openmetadata.schema.entity.activity.ActivityEvent",

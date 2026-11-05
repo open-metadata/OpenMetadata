@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Data360PipelineConnection",
   "description": "Salesforce Data 360 Pipeline Connection Config",
   "type": "object",

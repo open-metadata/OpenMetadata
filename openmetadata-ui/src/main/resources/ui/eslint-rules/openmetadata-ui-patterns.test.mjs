@@ -1,0 +1,261 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+import process from 'node:process';
+import { describe, it } from 'node:test';
+import { URL } from 'node:url';
+import { RuleTester } from 'eslint';
+import tseslint from 'typescript-eslint';
+import uiPatternsPlugin from './openmetadata-ui-patterns.mjs';
+
+RuleTester.describe = describe;
+RuleTester.it = it;
+
+const ruleTester = new RuleTester({
+  languageOptions: {
+    ecmaVersion: 'latest',
+    parser: tseslint.parser,
+    parserOptions: {
+      ecmaFeatures: { jsx: true },
+    },
+    sourceType: 'module',
+  },
+});
+
+ruleTester.run(
+  'no-raw-title-attribute',
+  uiPatternsPlugin.rules['no-raw-title-attribute'],
+  {
+    valid: [
+      { code: '<PageHeader title="Explore" />;' },
+      { code: '<PageLayout.PageHeader title="Explore" />;' },
+      { code: '<title>Explore</title>;' },
+    ],
+    invalid: [
+      {
+        code: '<div title="Explore" />;',
+        errors: [{ messageId: 'noRawTitle' }],
+      },
+    ],
+  }
+);
+
+ruleTester.run(
+  'no-non-adaptive-palette',
+  uiPatternsPlugin.rules['no-non-adaptive-palette'],
+  {
+    valid: [
+      { code: "const a = 'tw:bg-surface tw:text-primary';" },
+      { code: "const a = 'tw:bg-utility-blue-50';" },
+      { code: "const a = 'tw:dark:bg-blue-500';" },
+      { code: "const a = 'tw:bg-primary';" },
+      { code: "const a = 'flex items-center';" },
+      { code: 'const a = `tw:bg-utility-blue-50`;' },
+      // Semantic tokens (no numeric shade) are fine.
+      { code: "const a = 'tw:bg-error-primary tw:text-brand-secondary';" },
+      // Non-color utilities with a numeric segment must not false-positive.
+      { code: "const a = 'tw:divide-x-2 tw:ring-offset-2 tw:border-t-2';" },
+    ],
+    invalid: [
+      {
+        code: "const a = 'tw:bg-blue-50';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:text-gray-500 tw:bg-yellow-50';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:hover:bg-brand-100';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: "const a = 'tw:border-gray-blue-200 tw:p-2';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      {
+        code: 'const a = `tw:bg-blue-50 ${x}`;',
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      // Non-utility family (no utility- ramp) — still flagged, report-only.
+      {
+        code: "const a = 'tw:bg-cyan-50 tw:text-teal-600';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+      // Opacity modifier must not evade detection.
+      {
+        code: "const a = 'tw:bg-brand-900/20';",
+        errors: [{ messageId: 'rawPalette' }],
+      },
+    ],
+  }
+);
+
+ruleTester.run(
+  'no-nested-ellipsis-tooltip-trigger',
+  uiPatternsPlugin.rules['no-nested-ellipsis-tooltip-trigger'],
+  {
+    valid: [
+      // Not nested in anything interactive.
+      {
+        code: '<div><Typography ellipsis={{ tooltip: true }}>x</Typography></div>;',
+      },
+      // Opted into the span trigger.
+      {
+        code: '<Link to="/x"><Typography ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>x</Typography></Link>;',
+      },
+      // No tooltip means no trigger.
+      {
+        code: '<a href="/x"><Typography ellipsis={{ rows: 2 }}>x</Typography></a>;',
+      },
+      { code: '<a href="/x"><Typography ellipsis>x</Typography></a>;' },
+      // A clickable div is not an interactive element: no nested-button issue.
+      {
+        code: '<div onClick={f}><Typography ellipsis={{ tooltip: true }}>x</Typography></div>;',
+      },
+    ],
+    invalid: [
+      {
+        code: '<Link to="/x"><Typography ellipsis={{ tooltip: true }}>x</Typography></Link>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'Link' } }],
+      },
+      {
+        code: '<Button><span><Typography ellipsis={{ tooltip: true, rows: 2 }}>x</Typography></span></Button>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'Button' } }],
+      },
+      {
+        code: '<div role="button" onClick={f}><Typography ellipsis={{ tooltip: name }}>x</Typography></div>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'div' } }],
+      },
+      // An explicit `false` is not an opt-out.
+      {
+        code: '<a href="/x"><Typography ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: false }}>x</Typography></a>;',
+        errors: [{ messageId: 'nestedTrigger', data: { ancestor: 'a' } }],
+      },
+    ],
+  }
+);
+
+for (const ruleName of ['deprecated-om-tokens', 'no-new-om-tokens']) {
+  ruleTester.run(ruleName, uiPatternsPlugin.rules[ruleName], {
+    valid: [
+      { code: "const color = 'var(--tw-text-color-primary)';" },
+      { code: '<div className="tw:bg-surface tw:p-4" />;' },
+      { code: '// var(--om-space-4)\nconst size = 4;' },
+    ],
+    invalid: [
+      {
+        code: "const color = 'var(--om-color-text-primary)';",
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+      {
+        code: 'const size = `var(--om-space-${size})`;',
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+      {
+        code: '<div className="tw:bg-(--om-grey-15)" />;',
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+      {
+        code: "style.getPropertyValue('--om-color-border-hover');",
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+      {
+        code: "const size = 'var(--om-space-4) var(--om-space-8)';",
+        errors: [
+          { messageId: 'deprecatedOmToken' },
+          { messageId: 'deprecatedOmToken' },
+        ],
+      },
+      {
+        code: "const style = { '--om-new-token': 'red' };",
+        errors: [{ messageId: 'deprecatedOmToken' }],
+      },
+    ],
+  });
+}
+
+it('keeps legacy warnings, blocks increased usage, and prunes migrated references', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'om-eslint-ratchet-'));
+  try {
+    const pluginUrl = new URL('./openmetadata-ui-patterns.mjs', import.meta.url)
+      .href;
+    fs.writeFileSync(
+      path.join(dir, 'eslint.config.mjs'),
+      `
+      import plugin from ${JSON.stringify(pluginUrl)};
+      export default [{
+        plugins: { 'openmetadata-ui-patterns': plugin },
+        rules: {
+          'openmetadata-ui-patterns/deprecated-om-tokens': 'warn',
+          'openmetadata-ui-patterns/no-new-om-tokens': 'error',
+        },
+      }];
+    `
+    );
+    fs.writeFileSync(
+      path.join(dir, 'eslint-suppressions.json'),
+      JSON.stringify({
+        'legacy.js': {
+          'openmetadata-ui-patterns/no-new-om-tokens': { count: 1 },
+        },
+      })
+    );
+    const file = path.join(dir, 'legacy.js');
+    const eslint = path.join(
+      path.dirname(
+        createRequire(import.meta.url).resolve('eslint/package.json')
+      ),
+      'bin/eslint.js'
+    );
+    const lint = (code, ...args) => {
+      fs.writeFileSync(file, code);
+      const result = spawnSync(
+        process.execPath,
+        [eslint, 'legacy.js', '--format', 'json', ...args],
+        {
+          cwd: dir,
+          encoding: 'utf8',
+        }
+      );
+      assert.ok(result.stdout, result.stderr);
+      return { status: result.status, result: JSON.parse(result.stdout)[0] };
+    };
+    const existing = lint("const old = 'var(--om-space-4)';");
+    assert.equal(existing.status, 0);
+    assert.equal(existing.result.warningCount, 1);
+    assert.equal(existing.result.errorCount, 0);
+    const added = lint("const old = 'var(--om-space-4) var(--om-space-4)';");
+    assert.equal(added.status, 1);
+    assert.equal(added.result.errorCount, 2);
+    const migrated = lint(
+      "const size = 'var(--tw-spacing)';",
+      '--prune-suppressions'
+    );
+    assert.equal(migrated.status, 0);
+    assert.equal(migrated.result.warningCount, 0);
+    assert.deepEqual(
+      JSON.parse(
+        fs.readFileSync(path.join(dir, 'eslint-suppressions.json'), 'utf8')
+      ),
+      {}
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

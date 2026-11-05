@@ -12,14 +12,14 @@
  */
 
 import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useQuickFiltersWithComponent } from '../../../../components/common/atoms/filters/useQuickFiltersWithComponent';
 import { ExploreQuickFilterField } from '../../../../components/Explore/ExplorePage.interface';
-import { AssetsOfEntity } from '../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';

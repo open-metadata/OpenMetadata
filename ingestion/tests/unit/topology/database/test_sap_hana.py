@@ -12,17 +12,25 @@
 Test SAP Hana source
 """
 
+import datetime
+import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
+import pytest
+from sqlalchemy.exc import DBAPIError, ProgrammingError
+from sqlalchemy_hana.dialect import HANAHDBCLIDialect
+
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureType,
 )
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaSQLConnection import (
     SapHanaSQLConnection,
 )
@@ -30,15 +38,34 @@ from metadata.generated.schema.entity.services.connections.database.sapHanaConne
     SapHanaConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage import sql_lineage
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.ometa_lineage import (
+    OMetaFQNLineageRequest,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.database.lineage_source import LineageSource, TableView
+from metadata.ingestion.source.database.saphana import lineage as saphana_lineage
+from metadata.ingestion.source.database.saphana import metadata as saphana_metadata
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ColumnMapping,
     DataSource,
@@ -52,6 +79,12 @@ from metadata.ingestion.source.database.saphana.cdata_parser import (
 )
 from metadata.ingestion.source.database.saphana.lineage import SaphanaLineageSource
 from metadata.ingestion.source.database.saphana.models import SapHanaStoredProcedure
+from metadata.ingestion.source.database.saphana.queries import (
+    SAPHANA_QUERY_HISTORY_STATEMENT,
+)
+from metadata.ingestion.source.database.saphana.query_parser import (
+    SapHanaQueryParserSource,
+)
 
 RESOURCES_DIR = Path(__file__).parent.parent.parent / "resources" / "saphana"
 
@@ -778,7 +811,12 @@ def test_sap_hana_lineage_filter_pattern() -> None:
         ),
     )
 
-    with patch("metadata.ingestion.source.database.saphana.lineage.get_ssl_connection") as mock_get_engine:
+    # The engine is built by QueryParserSource now that the source inherits the shared
+    # lineage framework, so patch it where it is actually looked up.
+    with (
+        patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection") as mock_get_engine,
+        patch.object(SaphanaLineageSource, "test_connection"),
+    ):
         mock_engine = MagicMock()
         mock_connection = MagicMock()
         mock_get_engine.return_value = mock_engine
@@ -853,7 +891,9 @@ def test_sap_hana_lineage_filter_pattern() -> None:
             return iter([])
 
         with patch.object(source, "parse_cdata", side_effect=mock_parse_cdata):
-            list(source._iter())
+            # Exercise the repository pass directly. _iter now also runs the shared
+            # SQL passes, which are covered by the framework's own tests.
+            list(source.yield_cdata_lineage())
 
         assert "CV_INCLUDE_VIEW" in processed_views
         assert "CV_INCLUDE_ANOTHER" in processed_views
@@ -1442,3 +1482,789 @@ def test_yield_stored_procedure_empty_definition() -> None:
     assert len(results) == 1
     request = results[0].right
     assert request.storedProcedureCode.code == ""
+
+
+# ---------------------------------------------------------------------------
+# SQL-based lineage via the shared LineageSource (issue #24764)
+#
+# SAP HANA Cloud has no _SYS_REPO, so the CDATA pass yields nothing there and
+# these SQL paths carry the entire result.
+# ---------------------------------------------------------------------------
+
+
+def test_lineage_source_uses_the_shared_framework() -> None:
+    """The source must inherit LineageSource, or Cloud gets no lineage at all.
+
+    The CDATA pass only reads _SYS_REPO, which does not exist on HANA Cloud.
+    """
+    assert issubclass(SaphanaLineageSource, LineageSource)
+    assert issubclass(SaphanaLineageSource, SapHanaQueryParserSource)
+    # QueryParserSource requires both to build the query-history statement.
+    assert SaphanaLineageSource.sql_stmt
+    assert SaphanaLineageSource.filters
+
+
+def test_query_history_statement_formats_into_valid_sql() -> None:
+    """The statement must survive .format() with the values the framework passes."""
+    sql = SAPHANA_QUERY_HISTORY_STATEMENT.format(
+        filters=SaphanaLineageSource.filters,
+        start_time="2026-09-09 00:00:00",
+        end_time="2026-09-10 00:00:00",
+        result_limit=100,
+    )
+
+    # The framework maps these aliases onto TableQuery, so all of them must survive.
+    for column in (
+        "user_name",
+        "database_name",
+        "schema_name",
+        "aborted",
+        "query_text",
+        "start_time",
+        "duration",
+        "end_time",
+    ):
+        assert f"AS {column}" in sql
+
+    # database_name has to resolve to the real database rather than being selected as
+    # NULL, because it becomes the database level of every FQN the parsed lineage
+    # resolves against. Nulled, the edges have nowhere to land.
+    assert "(SELECT DATABASE_NAME FROM SYS.M_DATABASE) AS database_name" in sql
+    assert "NULL AS database_name" not in sql
+
+    assert "SYS.M_SQL_PLAN_CACHE" in sql
+    assert "LIMIT 100" in sql
+    # Escaped literal braces must not leak through as format placeholders.
+    assert '{"app": "OpenMetadata"' in sql
+
+
+def test_query_filters_select_only_data_movement() -> None:
+    """The filter must catch statements that move data and ignore plain reads.
+
+    HANA's plan cache holds no DDL at all, so CREATE TABLE AS SELECT is absent by
+    construction and is deliberately not matched here.
+    """
+    filters = SaphanaLineageSource.filters
+
+    assert "INSERT%INTO%SELECT%" in filters
+    assert "MERGE%INTO%" in filters
+    # A plain SELECT moves nothing and would only add noise.
+    assert "'SELECT%'" not in filters
+
+
+def _lineage_source_with(source_config: DatabaseServiceQueryLineagePipeline) -> SaphanaLineageSource:
+    """Build the source without touching a real engine"""
+    with (
+        patch.object(SaphanaLineageSource, "test_connection"),
+        patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection"),
+    ):
+        return SaphanaLineageSource(
+            config=WorkflowSource(
+                type="saphana-lineage",
+                serviceName="test_sap_hana",
+                serviceConnection=DatabaseConnection(
+                    config=SapHanaConnection(
+                        connection=SapHanaSQLConnection(username="test", password="test", hostPort="localhost:39015")
+                    )
+                ),
+                sourceConfig=SourceConfig(config=source_config),
+            ),
+            metadata=create_autospec(OpenMetadata),
+        )
+
+
+def test_query_history_failure_is_contained() -> None:
+    """An unreadable plan cache must not stop the other passes.
+
+    yield_table_query does not guard its own execute, so a restricted
+    SYS.M_SQL_PLAN_CACHE raises. Only that pass is guarded, so view lineage still runs.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    def explode(*_, **__):
+        # What a restricted read actually raises, and the only family the guard catches.
+        raise ProgrammingError("SELECT 1", None, Exception("insufficient privilege: SYS.M_SQL_PLAN_CACHE"))
+
+    with patch.object(LineageSource, "yield_query_lineage", side_effect=explode):
+        results = list(source.yield_query_lineage())
+
+    # Surfaced on the workflow status rather than swallowed, so the run is not
+    # reported as a clean success that happened to produce nothing.
+    assert len(results) == 1
+    assert results[0].right is None
+    assert "CATALOG READ" in results[0].left.error
+
+
+def test_iter_reaches_the_repository_pass_after_a_query_failure() -> None:
+    """The failure must be contained inside _iter, not just inside the one method.
+
+    Asserting on yield_query_lineage alone would stay green if _iter stopped before
+    the repository pass, which is the regression that actually costs lineage.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    def explode(*_, **__):
+        # What a restricted read actually raises, and the only family the guard catches.
+        raise ProgrammingError("SELECT 1", None, Exception("insufficient privilege: SYS.M_SQL_PLAN_CACHE"))
+
+    # A sentinel rather than a call recorder, so the repository pass has to reach _iter's
+    # output and not merely be invoked and discarded.
+    repository_edge = Either(
+        right=OMetaFQNLineageRequest(
+            from_entity_fqn="test_sap_hana.H00.GE370603.LT_CUSTOMER",
+            from_entity_type="table",
+            to_entity_fqn="test_sap_hana.H00._sys_bic.my-package/CV",
+            to_entity_type="table",
+        )
+    )
+
+    with (
+        patch.object(LineageSource, "yield_query_lineage", side_effect=explode),
+        patch.object(LineageSource, "yield_view_lineage", return_value=iter([])),
+        patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([repository_edge])),
+    ):
+        results = list(source._iter())
+
+    assert repository_edge in results
+    assert any(either.left is not None for either in results)
+
+
+def test_view_pass_failure_still_surfaces() -> None:
+    """A view-pass failure must not be swallowed.
+
+    On SAP HANA Cloud the view pass is the entire result, so hiding its failure would
+    report success while producing no lineage at all.
+    """
+    source = _lineage_source_with(
+        DatabaseServiceQueryLineagePipeline(processQueryLineage=False, processStoredProcedureLineage=False)
+    )
+
+    def explode(*_, **__):
+        raise RuntimeError("view definition parsing blew up")
+
+    # The real LineageSource._iter runs, so this also proves the view pass is reached at
+    # all. Patching _iter itself would stay green if the pass were skipped entirely.
+    with (
+        patch.object(LineageSource, "yield_view_lineage", side_effect=explode),
+        pytest.raises(RuntimeError, match="view definition parsing blew up"),
+    ):
+        list(source._iter())
+
+
+def test_query_filters_match_real_statement_shapes() -> None:
+    """The DML filter must survive what the plan cache actually stores.
+
+    Statements keep the whitespace they were submitted with, and tools routinely prefix
+    DML with a comment, so a filter anchored at character one silently drops real DML.
+    A leading wildcard is not the answer either, because it matches a SELECT that merely
+    quotes the keyword.
+    """
+    filters = SaphanaLineageSource.filters
+
+    # Leading comments and whitespace are stripped before the keyword is matched.
+    assert "REPLACE_REGEXPR" in filters
+    assert "LTRIM(" in filters
+    # Still anchored afterwards, so a quoted keyword mid-statement does not match.
+    assert "LIKE 'INSERT%INTO%SELECT%'" in filters
+    assert "LIKE '%INSERT" not in filters
+
+
+def test_real_plan_cache_statement_resolves_to_lineage() -> None:
+    """The statements this connector selects must actually resolve under its dialect.
+
+    SAP HANA has no dialect of its own in the parser, so it runs as ANSI. This pins
+    that pairing against a statement taken verbatim from a live HANA plan cache,
+    which is what the filters above are written to select.
+    """
+    statement = 'INSERT INTO "LT_ORDER_ARCHIVE" SELECT ORDER_ID, CUSTOMER_ID, AMOUNT FROM "LT_ORDER"'
+
+    parser = LineageParser(statement, dialect=Dialect.ANSI)
+
+    assert parser.query_parsing_failure_reason is None
+    assert {str(table).split(".")[-1].lower() for table in parser.source_tables} == {"lt_order"}
+    assert {str(table).split(".")[-1].lower() for table in parser.target_tables} == {"lt_order_archive"}
+    assert len(parser.column_lineage) == 3
+
+
+def test_saphana_maps_to_the_ansi_dialect() -> None:
+    """The parser has no HANA dialect, so the connector depends on the ANSI fallback.
+
+    If that mapping ever changed, every assertion above would still pass while real
+    lineage silently stopped resolving.
+    """
+    assert ConnectionTypeDialectMapper.dialect_of("SapHana") == Dialect.ANSI
+
+
+def test_cdata_pass_honours_process_view_lineage() -> None:
+    """Disabling view lineage must disable the repository pass too.
+
+    Calculation, Analytic and Attribute Views are views, so leaving this pass on
+    would keep emitting view edges for a user who turned view lineage off.
+    """
+    # Both shared passes off, so the real base _iter runs and has nothing to do. Patching
+    # it out instead would hide a regression in the gating this test exists to protect.
+    source = _lineage_source_with(
+        DatabaseServiceQueryLineagePipeline(processViewLineage=False, processQueryLineage=False)
+    )
+    repository_edge = Either(
+        right=OMetaFQNLineageRequest(
+            from_entity_fqn="test_sap_hana.H00.GE370603.LT_CUSTOMER",
+            from_entity_type="table",
+            to_entity_fqn="test_sap_hana.H00._sys_bic.my-package/CV",
+            to_entity_type="table",
+        )
+    )
+
+    with patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([repository_edge])) as cdata:
+        results = list(source._iter())
+
+    cdata.assert_not_called()
+    assert repository_edge not in results
+
+
+def test_plan_cache_row_becomes_a_table_query() -> None:
+    """Run a real plan-cache row through the connector's own SQL path.
+
+    Covers the wiring the other tests mock out: the column aliases the query selects,
+    the row-to-TableQuery mapping, and the dialect the parser is handed. A regression
+    in any of those would otherwise pass every assertion in this file.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    statement = 'INSERT INTO "LT_ORDER_ARCHIVE" SELECT ORDER_ID, CUSTOMER_ID, AMOUNT FROM "LT_ORDER"'
+
+    class Row(dict):
+        def _asdict(self):
+            return dict(self)
+
+    # The aliases here are exactly the ones SAPHANA_QUERY_HISTORY_STATEMENT selects.
+    # database_name carries what M_DATABASE reports, which becomes the database level of
+    # every FQN the parsed lineage resolves against. Left null, the edges land nowhere.
+    row = Row(
+        user_name=None,
+        database_name="H00",
+        schema_name="GE370603",
+        aborted=None,
+        query_text=statement,
+        start_time=datetime.datetime(2026, 9, 10, 12, 0),
+        duration=1.0,
+        end_time=datetime.datetime(2026, 9, 10, 12, 0),
+    )
+
+    mock_connection = MagicMock()
+    mock_connection.execute.return_value = iter([row])
+    source.engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+    source.engine.connect.return_value.__exit__ = Mock()
+
+    with patch.object(SaphanaLineageSource, "get_engine", return_value=iter([source.engine])):
+        queries = list(source.yield_table_query())
+
+    assert len(queries) == 1
+    assert queries[0].query == statement
+    assert queries[0].databaseName == "H00"
+    assert queries[0].databaseSchema == "GE370603"
+    assert queries[0].serviceName == "test_sap_hana"
+    # No HANA dialect exists, so the connector must hand the parser ANSI.
+    assert queries[0].dialect == Dialect.ANSI.value
+
+
+def test_view_pass_skips_repository_models() -> None:
+    """The two passes must not both describe a _SYS_BIC view.
+
+    On-premise surfaces calculation, analytic and attribute views as runtime views in
+    _SYS_BIC. Where such a view carries a definition, the SQL pass would parse it while
+    the CDATA pass emits XML lineage for the same entity, producing duplicate or
+    conflicting edges.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    repository_view = TableView(
+        table_name="pkg/CV_SALES", schema_name="_SYS_BIC", db_name="H00", view_definition="select 1 from dummy"
+    )
+    plain_view = TableView(
+        table_name="LT_V_CHAINED", schema_name="GE370603", db_name="H00", view_definition="select 1 from dummy"
+    )
+
+    with patch.object(LineageSource, "view_lineage_producer", return_value=iter([repository_view, plain_view])):
+        produced = list(source.view_lineage_producer())
+
+    assert [view.table_name for view in produced] == ["LT_V_CHAINED"]
+    assert len(source.status.filtered) == 1
+
+
+def test_query_history_excludes_sap_internal_schemas() -> None:
+    """SAP's own statements must not consume the result limit.
+
+    The statement orders by execution time and truncates at resultLimit, and on an
+    on-premise instance the internal statistics and task servers hold the bulk of the
+    plan cache. Without this exclusion they crowd user statements out of the window.
+    The guard has to sit outside the keyword group, which is a chain of ORs, or it
+    would only apply to the last branch.
+    """
+    # Exactly the reserved prefix: SYS and SYSTEM are ordinary schemas a user can own.
+    guard = "AND LEFT(SCHEMA_NAME, 5) <> '_SYS_'"
+    assert guard in SAPHANA_QUERY_HISTORY_STATEMENT
+
+    filters = SaphanaLineageSource.filters
+    assert filters.count("(") == filters.count(")")
+    assert filters.strip().endswith(")")
+
+    sql = SAPHANA_QUERY_HISTORY_STATEMENT.format(
+        filters=filters,
+        start_time="2026-09-14 00:00:00",
+        end_time="2026-09-15 00:00:00",
+        result_limit=100,
+    )
+    assert sql.index(guard) > sql.index(filters.strip())
+
+
+def _cdata_source_raising(error_code: int | None) -> SaphanaLineageSource:
+    """A source whose _SYS_REPO read fails with a given HANA error code."""
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    orig = Mock()
+    orig.errorcode = error_code
+    connection = MagicMock()
+    connection.execution_options.return_value.execute.side_effect = DBAPIError("SELECT 1", None, orig)
+    source.engine.connect.return_value.__enter__ = Mock(return_value=connection)
+    source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+    return source
+
+
+@pytest.mark.parametrize("error_code", [362, 259])
+def test_missing_sys_repo_is_not_a_failure(error_code: int) -> None:
+    """A missing _SYS_REPO is the normal state on HANA Cloud, not an error.
+
+    This is the whole Cloud path: the classic repository was never carried over, so the
+    read always fails there and the SQL passes carry the entire result. Were this to
+    escape, every Cloud run would abort instead of producing view and query lineage.
+    """
+    source = _cdata_source_raising(error_code)
+
+    assert list(source.yield_cdata_lineage()) == []
+    assert source.status.failures == []
+
+
+def test_an_unexpected_repository_error_still_surfaces() -> None:
+    """Only the two "it is not there" codes are swallowed.
+
+    A dropped connection, a timeout or a missing privilege must not be reported as a
+    clean run that happened to find no repository models.
+    """
+    source = _cdata_source_raising(258)
+
+    with pytest.raises(DBAPIError):
+        list(source.yield_cdata_lineage())
+
+
+@pytest.mark.parametrize(
+    ("statements_read", "expected"),
+    [(2, "No lineage was created from 2 analysed queries"), (0, "no queries were found to analyse")],
+)
+def test_no_edge_warning_distinguishes_an_empty_source(statements_read: int, expected: str) -> None:
+    """The two no-edge diagnoses must be told apart by statements read, not by queries.
+
+    A CreateQueryRequest is only ever emitted next to an edge, so counting those can
+    never reach the "read something, resolved nothing" case: the early return fires
+    first. Counting what the producer returned reaches it, and the two cases send a
+    reader to different places, an uningested schema against a source with nothing in it.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
+
+    rows = [
+        TableQuery(query="INSERT INTO A SELECT * FROM B", serviceName="test_sap_hana") for _ in range(statements_read)
+    ]
+
+    def drain_producer(*_, **__):
+        # What the real pass does: pull every row, then emit no edge for any of them.
+        list(source.query_lineage_producer())
+        return iter([])
+
+    with (
+        patch.object(LineageSource, "query_lineage_producer", return_value=iter(rows)),
+        patch.object(LineageSource, "_iter", side_effect=drain_producer),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        list(source._iter())
+
+    assert source.statements_read == statements_read
+    assert expected in warning.call_args[0][0] % warning.call_args[0][1:]
+
+
+def test_a_plan_cache_statement_becomes_a_lineage_edge() -> None:
+    """The whole query path, end to end, with nothing of ours mocked.
+
+    Every other test here stubs out a stage: the parser tests call LineageParser
+    directly, the orchestration tests patch LineageSource._iter, and the row test stops
+    at yield_table_query. None of them would catch the stages in between breaking. This
+    drives a real plan-cache row through the connector's own _iter and asserts an edge
+    comes out, mocking only the two boundaries, the database and the OpenMetadata client.
+    """
+    # Module-level LRU shared by every test in the process, so a stale entry from an
+    # earlier resolution would decide this one.
+    sql_lineage.search_cache.clear()
+
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False, threads=1))
+
+    statement = 'INSERT INTO "LT_ORDER_ARCHIVE" SELECT ORDER_ID, AMOUNT FROM "LT_ORDER"'
+
+    class Row(dict):
+        def _asdict(self):
+            return dict(self)
+
+    row = Row(
+        user_name=None,
+        database_name="H00",
+        schema_name="GE370603",
+        aborted=None,
+        query_text=statement,
+        start_time=datetime.datetime(2026, 9, 10, 12, 0),
+        duration=1.0,
+        end_time=datetime.datetime(2026, 9, 10, 12, 0),
+    )
+
+    mock_connection = MagicMock()
+    mock_connection.execute.return_value = iter([row])
+    source.engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+    source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+    def table(name: str) -> Table:
+        fqn = f"test_sap_hana.H00.GE370603.{name}"
+        return Table(
+            id=uuid.uuid4(),
+            name=name,
+            fullyQualifiedName=fqn,
+            # Column FQNs are what the column-level pairs are built from, so a column
+            # carrying only a name yields an edge with no column lineage at all.
+            columns=[
+                Column(name=column, dataType=DataType.BIGINT, fullyQualifiedName=f"{fqn}.{column}")
+                for column in ("ORDER_ID", "AMOUNT")
+            ],
+        )
+
+    known = {"lt_order_archive": table("LT_ORDER_ARCHIVE"), "lt_order": table("LT_ORDER")}
+
+    def resolve(fqn_search_string: str | None = None, **_) -> list[Table] | None:
+        # Longest first, so LT_ORDER does not shadow LT_ORDER_ARCHIVE.
+        for name in sorted(known, key=len, reverse=True):
+            if name in (fqn_search_string or "").lower():
+                return [known[name]]
+        return None
+
+    source.metadata.es_search_from_fqn.side_effect = resolve
+
+    with patch.object(SaphanaLineageSource, "get_engine", return_value=iter([source.engine])):
+        produced = list(source._iter())
+
+    assert [either.left for either in produced if either.left] == []
+    edges = [
+        either.right
+        for either in produced
+        if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest)
+    ]
+    assert len(edges) == 1
+
+    # Direction matters: the archive is written from the order table, not the reverse.
+    edge = edges[0]
+    assert isinstance(edge, OMetaFQNLineageRequest)
+    assert edge.from_entity_fqn == "test_sap_hana.H00.GE370603.LT_ORDER"
+    assert edge.to_entity_fqn == "test_sap_hana.H00.GE370603.LT_ORDER_ARCHIVE"
+    # Sorted because the parser does not preserve the SELECT order.
+    pairs = sorted(
+        (model_str(column.toColumn), [model_str(source) for source in column.fromColumns or []])
+        for column in (edge.lineage_details.columnsLineage or [])
+    )
+    assert pairs == [
+        ("test_sap_hana.H00.GE370603.LT_ORDER_ARCHIVE.AMOUNT", ["test_sap_hana.H00.GE370603.LT_ORDER.AMOUNT"]),
+        ("test_sap_hana.H00.GE370603.LT_ORDER_ARCHIVE.ORDER_ID", ["test_sap_hana.H00.GE370603.LT_ORDER.ORDER_ID"]),
+    ]
+
+
+def test_a_view_definition_becomes_a_lineage_edge() -> None:
+    """The view path end to end, which is the whole of lineage on HANA Cloud.
+
+    The plan-cache test covers the query path. This covers the other one, so a change
+    that left Cloud view lineage empty cannot pass while the query path still works.
+    """
+    sql_lineage.search_cache.clear()
+
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processQueryLineage=False, threads=1))
+
+    # As metadata ingestion stores it: the dialect names the target, without which the
+    # parser has nothing to attach column pairs to.
+    view = TableView(
+        table_name="LT_V_CUSTOMER_SIMPLE",
+        schema_name="GE370603",
+        db_name="H00",
+        view_definition=(
+            'CREATE VIEW "GE370603"."LT_V_CUSTOMER_SIMPLE" AS SELECT CUSTOMER_ID, CUSTOMER_NAME FROM "LT_CUSTOMER"'
+        ),
+    )
+
+    def table(name: str) -> Table:
+        fqn = f"test_sap_hana.H00.GE370603.{name}"
+        return Table(
+            id=uuid.uuid4(),
+            name=name,
+            fullyQualifiedName=fqn,
+            columns=[
+                Column(name=column, dataType=DataType.STRING, fullyQualifiedName=f"{fqn}.{column}")
+                for column in ("CUSTOMER_ID", "CUSTOMER_NAME")
+            ],
+        )
+
+    known = {"lt_v_customer_simple": table("LT_V_CUSTOMER_SIMPLE"), "lt_customer": table("LT_CUSTOMER")}
+
+    def resolve(fqn_search_string: str | None = None, **_) -> list[Table] | None:
+        for name in sorted(known, key=len, reverse=True):
+            if name in (fqn_search_string or "").lower():
+                return [known[name]]
+        return None
+
+    source.metadata.es_search_from_fqn.side_effect = resolve
+
+    # The view pass resolves its own target by FQN rather than through the search index.
+    def get_by_name(fqn: str | None = None, **_) -> Table | None:
+        for name in sorted(known, key=len, reverse=True):
+            if name in str(fqn).lower():
+                return known[name]
+        return None
+
+    source.metadata.get_by_name.side_effect = get_by_name
+
+    with patch.object(LineageSource, "view_lineage_producer", return_value=iter([view])):
+        produced = list(source._iter())
+
+    edges = [
+        either.right
+        for either in produced
+        if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest)
+    ]
+    assert len(edges) == 1
+    edge = edges[0]
+    request = edge.lineage_request if isinstance(edge, OMetaLineageRequest) else edge
+    assert isinstance(request, OMetaFQNLineageRequest)
+    assert request.from_entity_fqn == "test_sap_hana.H00.GE370603.LT_CUSTOMER"
+    assert request.to_entity_fqn == "test_sap_hana.H00.GE370603.LT_V_CUSTOMER_SIMPLE"
+
+    # Column level lineage is the reason the definition is given a target at all, so a
+    # table-level edge alone means the wrapping has stopped working.
+    pairs = sorted(
+        (model_str(column.toColumn), [model_str(source) for source in column.fromColumns or []])
+        for column in (request.lineage_details.columnsLineage or [])
+    )
+    assert pairs == [
+        (
+            "test_sap_hana.H00.GE370603.LT_V_CUSTOMER_SIMPLE.CUSTOMER_ID",
+            ["test_sap_hana.H00.GE370603.LT_CUSTOMER.CUSTOMER_ID"],
+        ),
+        (
+            "test_sap_hana.H00.GE370603.LT_V_CUSTOMER_SIMPLE.CUSTOMER_NAME",
+            ["test_sap_hana.H00.GE370603.LT_CUSTOMER.CUSTOMER_NAME"],
+        ),
+    ]
+
+
+def test_a_non_database_failure_is_not_disguised_as_a_privilege_error() -> None:
+    """The query guard covers the database read, not the parsing that follows it.
+
+    yield_query_lineage also runs the parser and the lineage pipeline. A guard catching
+    everything would report a parser regression as a missing CATALOG READ and drop the
+    rest of the run's query lineage, which is the kind of failure that has to be loud.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    def explode(*_, **__):
+        raise RuntimeError("the parser blew up")
+
+    with (
+        patch.object(LineageSource, "yield_query_lineage", side_effect=explode),
+        pytest.raises(RuntimeError, match="the parser blew up"),
+    ):
+        list(source.yield_query_lineage())
+
+
+def test_no_lineage_warning_names_the_disabled_passes() -> None:
+    """Neither pass ran, so neither pass is worth diagnosing.
+
+    Telling an operator to check CATALOG READ, or that only view definitions were read,
+    is wrong when the pipeline was configured to read nothing at all. The configuration
+    itself is the finding, so the warning says so.
+    """
+    source = _lineage_source_with(
+        DatabaseServiceQueryLineagePipeline(processViewLineage=False, processQueryLineage=False)
+    )
+
+    # The real base _iter runs. With both passes off it has no database work to do, so
+    # patching it out would only hide a regression in that gating.
+    with patch.object(saphana_lineage.logger, "warning") as warning:
+        assert list(source._iter()) == []
+
+    assert "both View Lineage and Query Lineage are turned off" in warning.call_args[0][0]
+
+
+def test_one_bad_statement_does_not_silence_the_diagnosis() -> None:
+    """A single unparseable statement is not a reason to withhold the advice.
+
+    Only a pass that failed outright has explained itself. One statement failing among
+    many says nothing about why the others produced no edges, and the tables being
+    uningested stays the likeliest cause, so the guidance still has to appear.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
+
+    rows = [TableQuery(query="INSERT INTO A SELECT * FROM B", serviceName="test_sap_hana") for _ in range(3)]
+    failure = Either(left=StackTraceError(name="one statement", error="could not parse"))
+
+    # Routed through the query pass rather than injected into _iter, because that is the
+    # only place the failure can be told apart from a view one.
+    def query_pass(*_, **__):
+        list(source.query_lineage_producer())
+        return iter([failure])
+
+    with (
+        patch.object(LineageSource, "query_lineage_producer", return_value=iter(rows)),
+        patch.object(LineageSource, "yield_query_lineage", side_effect=query_pass),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        list(source._iter())
+
+    message = warning.call_args[0][0] % warning.call_args[0][1:]
+    assert "No lineage was created from 3 analysed queries" in message
+    assert "1 of which reported an error above" in message
+    assert "run metadata ingestion for this service first" in message
+
+
+def test_a_view_failure_is_not_counted_as_a_failed_query() -> None:
+    """Both passes report failures the same way, so attribution has to be deliberate.
+
+    _iter sees one interleaved stream, where a failed view definition and a failed
+    statement are indistinguishable. Counting there would let the warning tell an
+    operator that a query failed when no query did.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    rows = [TableQuery(query="INSERT INTO A SELECT * FROM B", serviceName="test_sap_hana")]
+    view_failure = Either(left=StackTraceError(name="a view", error="could not parse the definition"))
+
+    def query_pass(*_, **__):
+        list(source.query_lineage_producer())
+        return iter([])
+
+    with (
+        patch.object(LineageSource, "query_lineage_producer", return_value=iter(rows)),
+        patch.object(LineageSource, "yield_query_lineage", side_effect=query_pass),
+        # The shared view pass, so the failure reaches _iter the way a real one would.
+        patch.object(LineageSource, "yield_view_lineage", return_value=iter([view_failure])),
+        patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([])),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        list(source._iter())
+
+    assert source.query_failures == 0
+    assert "reported an error above" not in warning.call_args[0][0]
+
+
+def test_a_reported_query_failure_is_not_talked_over() -> None:
+    """A surfaced failure already carries the real cause.
+
+    The no-edge diagnosis guesses at a cause. Running it after the query pass has
+    already reported one would hand the operator a second, less accurate explanation.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
+
+    def explode(*_, **__):
+        raise ProgrammingError("SELECT 1", None, Exception("insufficient privilege: SYS.M_SQL_PLAN_CACHE"))
+
+    with (
+        patch.object(LineageSource, "yield_query_lineage", side_effect=explode),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        results = list(source._iter())
+
+    assert any(either.left is not None for either in results)
+    warning.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        (
+            "SELECT A FROM T",
+            'CREATE VIEW "GE370603"."LT_V" AS SELECT A FROM T',
+        ),
+        # Already named, so prefixing again would nest one CREATE inside another.
+        (
+            "CREATE VIEW X AS SELECT A FROM T",
+            "CREATE VIEW X AS SELECT A FROM T",
+        ),
+        ("CREATE OR REPLACE VIEW X AS SELECT A FROM T", "CREATE OR REPLACE VIEW X AS SELECT A FROM T"),
+        # The words also occur inside data. Reading this as a name would skip the prefix
+        # and cost the view exactly the column lineage the prefix exists to add.
+        (
+            "SELECT 'CREATE VIEW x AS' AS LABEL FROM T",
+            'CREATE VIEW "GE370603"."LT_V" AS SELECT \'CREATE VIEW x AS\' AS LABEL FROM T',
+        ),
+        ("  CREATE VIEW X AS SELECT A FROM T", "  CREATE VIEW X AS SELECT A FROM T"),
+        # The upstream method raises rather than returning nothing, so this only guards
+        # against that changing under us.
+        ("", ""),
+    ],
+)
+def test_view_definitions_are_given_a_target(stored: str, expected: str) -> None:
+    """SYS.VIEWS.DEFINITION stores the SELECT body without the CREATE VIEW that names it.
+
+    The parser only derives column-level pairs once a statement has a target, so a bare
+    SELECT costs every SAP HANA view its column lineage. Vertica and Redshift prefix the
+    same way for the same reason.
+    """
+    dialect = HANAHDBCLIDialect()
+    dialect.default_schema_name = "GE370603"
+
+    with patch.object(saphana_metadata, "_sqlalchemy_hana_get_view_definition", return_value=stored) as upstream:
+        result = saphana_metadata._get_view_definition(dialect, MagicMock(), "LT_V", schema="GE370603")
+
+    assert upstream.called
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    ("schema", "view", "expected"),
+    [
+        ("GE370603", "my-view", '"GE370603"."my-view"'),
+        # A double quote inside a name would otherwise close the identifier early and
+        # leave the parser with SQL it cannot read, costing that view its lineage.
+        ('sales"north', 'v"1', '"sales""north"."v""1"'),
+    ],
+)
+def test_awkward_view_names_survive_the_prefix(schema: str, view: str, expected: str) -> None:
+    """HANA allows hyphens and embedded quotes, so the prefix has to escape them.
+
+    Quoting by hand would turn `sales"north` into `"sales"north"`, which ends the
+    identifier at the second quote. The dialect's preparer doubles it instead.
+    """
+    dialect = HANAHDBCLIDialect()
+    dialect.default_schema_name = schema
+
+    with patch.object(saphana_metadata, "_sqlalchemy_hana_get_view_definition", return_value="SELECT A FROM T"):
+        result = saphana_metadata._get_view_definition(dialect, MagicMock(), view, schema=schema)
+
+    assert result == f"CREATE VIEW {expected} AS SELECT A FROM T"
+    # The point of escaping is that the parser can still read it.
+    assert LineageParser(result, Dialect.ANSI, timeout_seconds=30).target_tables
+
+
+def test_a_named_view_definition_yields_column_pairs() -> None:
+    """The prefix exists for column lineage, so assert that is what it buys.
+
+    A bare SELECT resolves no target, and the shared path then emits a table-level edge
+    with no column pairs at all. This is the behaviour the whole change turns on.
+    """
+    bare = 'SELECT CUSTOMER_ID, CUSTOMER_NAME FROM "LT_CUSTOMER"'
+    named = f'CREATE VIEW "GE370603"."LT_V" AS {bare}'
+
+    assert LineageParser(bare, Dialect.ANSI, timeout_seconds=30).target_tables == []
+    assert not LineageParser(bare, Dialect.ANSI, timeout_seconds=30).column_lineage
+
+    parsed = LineageParser(named, Dialect.ANSI, timeout_seconds=30)
+    assert [str(target) for target in parsed.target_tables] == ["ge370603.lt_v"]
+    assert len(parsed.column_lineage) == 2

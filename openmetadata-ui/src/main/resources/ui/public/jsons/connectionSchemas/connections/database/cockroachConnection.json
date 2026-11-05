@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CockroachConnection",
   "description": "Cockroach Database Connection Config",
   "type": "object",
@@ -51,7 +50,6 @@
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Basic Auth",
           "description": "Common Database Connection Config",
           "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -96,7 +94,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
@@ -111,9 +108,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -125,9 +120,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -139,9 +132,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             }
@@ -186,6 +177,14 @@
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^information_schema$",
+          "^crdb_internal$",
+          "^pg_extension$"
+        ]
+      },
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
       "properties": {
@@ -232,6 +231,12 @@
     "databaseFilterPattern": {
       "title": "Default Database Filter Pattern",
       "description": "Regex to only include/exclude databases that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^system$"
+        ]
+      },
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
       "properties": {
@@ -261,6 +266,12 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
       "type": "boolean",
       "default": true
     }

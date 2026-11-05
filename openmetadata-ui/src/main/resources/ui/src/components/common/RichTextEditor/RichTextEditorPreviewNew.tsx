@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,29 +45,28 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const clampStyle: Record<string, string | number> | undefined =
-    useMemo(() => {
-      if (readMore) {
-        return undefined;
-      }
+  const clampStyle = useMemo<React.CSSProperties | undefined>(() => {
+    if (readMore) {
+      return undefined;
+    }
 
-      // clampByLines clamps to an exact number of text lines (clean cut-off,
-      // no partial last line), instead of the height-based approximation.
-      if (clampByLines) {
-        return {
-          display: '-webkit-box',
-          WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: Number(maxLineLength),
-          overflow: 'hidden',
-        };
-      }
-
+    // clampByLines clamps to an exact number of text lines (clean cut-off,
+    // no partial last line), instead of the height-based approximation.
+    if (clampByLines) {
       return {
+        display: '-webkit-box',
+        WebkitBoxOrient: 'vertical',
+        WebkitLineClamp: Number(maxLineLength),
         overflow: 'hidden',
-        maxHeight: `${Number(maxLineLength) * 2}em`,
-        transition: 'max-height 0.3s ease',
       };
-    }, [readMore, maxLineLength, clampByLines]);
+    }
+
+    return {
+      overflow: 'hidden',
+      maxHeight: `${Number(maxLineLength) * 2}em`,
+      transition: 'max-height 0.3s ease',
+    };
+  }, [readMore, maxLineLength, clampByLines]);
 
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
@@ -164,9 +163,10 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       {isContentLoaded && isOverflowing && enableSeeMoreVariant && (
         <Button
           className="text-right view-more-less-button"
+          color="link-color"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
-          type="link"
-          onClick={handleReadMoreToggle}>
+          size="sm"
+          onPress={handleReadMoreToggle}>
           {readMore ? t('label.view-less') : t('label.view-more')}
         </Button>
       )}

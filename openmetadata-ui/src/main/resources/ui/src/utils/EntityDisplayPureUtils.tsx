@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Badge, Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import type { CurrentState } from 'Models';
@@ -24,24 +25,34 @@ const Loader = lazy(() => import('../components/common/Loader/Loader'));
 export const getCountBadge = (
   count = 0,
   className = '',
-  isActive?: boolean
+  isActive?: boolean,
+  excludeTriggerFromTabOrder?: boolean
 ) => {
-  const activeCls = isActive ? 'bg-primary text-white no-border' : 'ant-tag';
-  const clsBG = isUndefined(isActive) ? '' : activeCls;
+  if (!isUndefined(isActive)) {
+    return (
+      <Badge
+        className={classNames('m-x-xss', className)}
+        color={isActive ? 'brand' : 'gray'}
+        data-testid="filter-count"
+        size="sm">
+        {count}
+      </Badge>
+    );
+  }
 
   return (
     <span
       className={classNames(
         'p-x-xss m-x-xss global-border rounded-4 text-center',
-        clsBG,
         className
       )}>
-      <span
-        className="text-xs"
-        data-testid="filter-count"
+      <Tooltip
+        excludeTriggerFromTabOrder={excludeTriggerFromTabOrder}
         title={count.toString()}>
-        {count}
-      </span>
+        <span className="text-xs" data-testid="filter-count">
+          {count}
+        </span>
+      </Tooltip>
     </span>
   );
 };

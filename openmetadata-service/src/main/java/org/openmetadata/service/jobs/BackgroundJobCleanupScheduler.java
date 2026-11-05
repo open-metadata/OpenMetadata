@@ -50,6 +50,7 @@ public class BackgroundJobCleanupScheduler implements Managed {
   private static final Duration JOB_ROW_RETENTION = Duration.ofDays(7);
   private static final int PRUNE_BATCH_SIZE = 500;
   private static final int PRUNE_MAX_ITERATIONS = 100;
+  private static final int MEMORY_REQUEUE_MAX_ITERATIONS = 500;
 
   private final JobDAO jobDao;
   private final CsvAsyncJobManager csvJobManager;
@@ -93,12 +94,32 @@ public class BackgroundJobCleanupScheduler implements Managed {
 
   void runCleanupOnce(final long now) {
     final long staleBefore = now - GenericBackgroundWorker.RUNNING_JOB_STALE_AFTER.toMillis();
+    final int requeuedMemoryJobs = requeueStaleMemoryJobs(now, staleBefore);
+    if (requeuedMemoryJobs > 0) {
+      LOG.info("Requeued {} interrupted memory extraction jobs", requeuedMemoryJobs);
+    }
+    final int supersededMemoryJobs = jobDao.cancelStaleMemoryJobsWithPending(now, staleBefore);
+    if (supersededMemoryJobs > 0) {
+      LOG.info("Cancelled {} superseded memory extraction jobs", supersededMemoryJobs);
+    }
     final int failedJobs = jobDao.markStaleRunningJobsFailed(now, staleBefore);
     if (failedJobs > 0) {
       LOG.info("Marked {} unresponsive background jobs as failed", failedJobs);
     }
     csvJobManager.runCleanupOnce();
     pruneTerminalJobRows(now - JOB_ROW_RETENTION.toMillis());
+  }
+
+  private int requeueStaleMemoryJobs(long now, long staleBefore) {
+    int requeued = 0;
+    for (int iteration = 0; iteration < MEMORY_REQUEUE_MAX_ITERATIONS; iteration++) {
+      if (jobDao.requeueStaleMemoryJobs(now, staleBefore) == 0) {
+        return requeued;
+      }
+      requeued++;
+    }
+    LOG.warn("Memory job recovery reached its {} job limit", MEMORY_REQUEUE_MAX_ITERATIONS);
+    return requeued;
   }
 
   /**

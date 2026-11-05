@@ -11,6 +11,50 @@ OpenMetadata supports RDF (Resource Description Framework) for knowledge graph c
 - JSON-LD serialization of entities
 - Semantic search and graph exploration
 
+## Standards Compatibility
+
+The RDF stack runs Apache Jena and Fuseki 6.2.0. RDF 1.2 terms survive the whole round trip —
+import, storage, query, and result serialization:
+
+- **Triple terms**, including `rdf:reifies` statements and nested blank nodes, and **directional
+  language-tagged literals** such as `"قطة"@ar--rtl`.
+- **Storage.** Entities reach Fuseki as RDF Thrift and land in TDB2 named graphs; both carry triple
+  terms and preserve the `rdf:dirLangString` datatype.
+- **SPARQL 1.2.** `VERSION "1.2"` declarations, `TRIPLE()`/`LANGDIR()` expressions, and `<<( s p o )>>`
+  patterns all execute. Both the administrator (`/v1/rdf/sparql`) and agent query paths return them;
+  the agent path keeps its existing SELECT-only and graph-access restrictions.
+- **Results JSON.** A triple binding is `type: "triple"` with recursive `subject`, `predicate`, and
+  `object` terms; directional literals carry `its:dir`. Both `sparqlResponse.json` and
+  `agentSparqlResponse.json` model this, so typed clients and the SPARQL playground render a triple
+  term as `<<( <urn:s> <urn:p> "قطة"@ar--rtl )>>` rather than failing on it.
+- **SHACL.** The bundled shapes accept plain, language-tagged, and directional strings wherever they
+  constrain free text, so a conforming RDF 1.2 graph validates against them.
+
+### Choosing a serialization
+
+| Format | RDF 1.2 triple terms | Notes |
+|---|---|---|
+| Turtle, N-Triples | yes | The portable choice; N-Quads and TriG cover datasets. |
+| RDF/XML | yes, via Jena | Written as `rdf:parseType="Triple"`. Jena reads back what it writes; interoperability with other RDF/XML toolchains is not verified — prefer Turtle when the consumer is not Jena. |
+| JSON-LD | **no** | JSON-LD 1.1 has no triple-term syntax. Asking for `jsonld` on a result that contains one is rejected with a message naming the formats that work, rather than failing mid-write. Directional literals *are* written, as the JSON-LD 1.1 `i18n` datatype (`"@type": "https://www.w3.org/ns/i18n#ar_rtl"`), which does not read back as an `rdf:dirLangString` — so do not round-trip RDF 1.2 text through JSON-LD. |
+
+### Scope
+
+OpenMetadata does not itself emit RDF 1.2 terms: entity RDF is derived from JSON-LD contexts
+(`JsonLdTranslator`), so the graph the platform writes for its own entities is RDF 1.1. RDF 1.2
+terms enter through imported ontologies and user-authored SPARQL, and the guarantees above are about
+carrying those through unchanged.
+
+For example, both query paths accept this read query:
+
+```sparql
+VERSION "1.2"
+SELECT (TRIPLE(<https://example.com/subject>,
+               <https://example.com/predicate>,
+               "قطة"@ar--rtl) AS ?statement)
+WHERE {}
+```
+
 ## Architecture
 
 ```
@@ -158,7 +202,7 @@ rdf:
   shaclValidationMode: ${RDF_SHACL_VALIDATION_MODE:-"REPORT"}
   dereferenceableIris: ${RDF_DEREFERENCEABLE_IRIS:-false}
   strictOwlProfile: ${RDF_STRICT_OWL_PROFILE:-true}
-  askCollateEnabled: ${RDF_ASK_COLLATE_ENABLED:-false}
+  aiEnabled: ${RDF_AI_ENABLED:-false}
 ```
 
 ### Environment Variables
@@ -172,42 +216,53 @@ rdf:
 | `RDF_REMOTE_ENDPOINT` | Deprecated fallback when `RDF_ENDPOINT` is unset | unset |
 | `RDF_CONNECT_TIMEOUT_MS` | Fuseki connection timeout | `2000` |
 | `RDF_REQUEST_TIMEOUT_MS` | Per-request timeout | `60000` |
+| `ASYNC_MAX_CONCURRENT_RDF_WRITES` | In-flight live writes (automatically clamped to one for Fuseki) | `8` |
 | `RDF_BULK_ENTITY_BATCH_SIZE` | Entity models per bulk write | `100` |
 | `RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE` | Relationship sources per bulk write | `100` |
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | Detailed lineage edges per bulk write | `50` |
 | `RDF_REMOTE_USERNAME` | Fuseki admin username | `admin` |
 | `RDF_REMOTE_PASSWORD` | Fuseki admin password | `admin` |
 | `RDF_DATASET` | Fuseki dataset name | `openmetadata` |
-| `RDF_INFERENCE_ENABLED` | Enable in-process full-graph inference | `false` |
-| `RDF_DEFAULT_INFERENCE_LEVEL` | Default inference selection | `NONE` |
-| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Legacy in-process safety limit | `100000` |
+| `RDF_INFERENCE_ENABLED` | Deprecated and ignored; OpenMetadata no longer runs reasoners in-process | `false` |
+| `RDF_DEFAULT_INFERENCE_LEVEL` | Deprecated and ignored | `NONE` |
+| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Deprecated and ignored | `100000` |
 | `RDF_MATERIALIZED_INFERENCE_ENABLED` | Enable durable per-rule inference graphs | `false` |
 | `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |
 | `RDF_STRICT_OWL_PROFILE` | Enforce supported OWL profile rules | `true` |
-| `RDF_ASK_COLLATE_ENABLED` | Enable Ontology Studio AI | `false` |
+| `RDF_AI_ENABLED` | Enable Ontology Studio AI | `false` |
+
+`RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of `RDF_AI_ENABLED`. Deriving
+glossary terms from Context Center memories is not an Ontology AI feature: it runs only when the
+configured `llmConfiguration.aiProviderClass` supplies a glossary-term deriver, which Collate's
+does and the built-in provider does not.
 
 ### Docker Compose Configuration
 
-The Fuseki container (`docker/development/docker-compose-fuseki.yml`):
+The Fuseki container (`docker/development/docker-compose-fuseki.yml`) runs the published image;
+[rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) explains each setting:
 
 ```yaml
 services:
   fuseki:
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:6.2.0
+    image: openmetadata/fuseki:6.2.0-318ff87
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"
     environment:
-      - FUSEKI_ADMIN_PASSWORD=admin
-      - FUSEKI_OPENMETADATA_PASSWORD=openmetadata-secret
-      - JVM_ARGS=-Xmx1500m -Xms256m
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
     volumes:
-      - fuseki-tdb2-data:/fuseki-data
+      - fuseki-store:/fuseki
 ```
+
+The Fuseki web UI and every dataset endpoint ask for the admin credentials; only `/$/ping` is
+anonymous.
 
 ## API Endpoints
 
@@ -242,6 +297,30 @@ Content-Type: application/json
   "query": "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"
 }
 ```
+
+### Execute Agent SPARQL Query
+```bash
+POST /api/v1/rdf/sparql/agent
+Content-Type: application/json
+
+{
+  "query": "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"
+}
+```
+
+Unlike the admin endpoint above, this is a permissioned read surface for agent tools:
+it requires the `ExecuteSparqlQuery` operation on the `rdf` resource. The seeded Data Consumer
+policy grants it through `DataConsumerPolicy-ExecuteSparqlQuery-Rule`, so every user inherits it
+by default; delete that rule to opt out, or add a role with a deny rule to remove it for specific
+users. Outside that rule, only a policy that names the operation grants it — wildcard `All`/`All`
+policies do not. Only `SELECT` queries run,
+with no `FROM`, `GRAPH`, or `SERVICE` clauses; inference is disabled; results carry a
+completeness status relative to the submitted query. Queries evaluate over the
+server-configured dataset without persona filtering and without asset-level
+authorization — callers must already be entitled to see the whole projected graph. If you
+restrict what users can view through custom policies, also remove
+`DataConsumerPolicy-ExecuteSparqlQuery-Rule`, or those users can query assets they cannot
+otherwise see.
 
 ### Get Glossary Term Relationship Graph
 ```bash
@@ -358,8 +437,8 @@ To clear all RDF data and start fresh:
 # Stop Fuseki
 docker compose -f docker/development/docker-compose-fuseki.yml down
 
-# Remove volume
-docker volume rm openmetadata_fuseki-data
+# Remove volume (Compose prefixes it with the project name)
+docker volume rm development_fuseki-store
 
 # Restart Fuseki
 docker compose -f docker/development/docker-compose-fuseki.yml up -d

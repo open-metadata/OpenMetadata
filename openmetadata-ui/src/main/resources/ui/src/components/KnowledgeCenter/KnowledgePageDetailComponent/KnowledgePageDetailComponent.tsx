@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
+import {
+  File06 as Articles,
+  Lock01 as Lock,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
@@ -19,6 +21,7 @@ import { EntityTags } from 'Models';
 import {
   FC,
   KeyboardEvent,
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -31,11 +34,13 @@ import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/Activit
 import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.interface';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
-import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
   KNOWLEDGE_CENTER_CLASSIFICATION,
@@ -46,15 +51,12 @@ import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import {
   getKnowledgePageFields,
+  isKnowledgePageFullWidthTab,
   KNOWLEDGE_PAGE_FIELDS,
   KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
 } from '../../../constants/KnowledgeCenter.constant';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -63,6 +65,11 @@ import {
   useArticleDraftStore,
 } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import {
+  QueryVoteType,
+  VotingDataProps,
+} from '../../../interface/entity/vote.interface';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   ContentChangeState,
@@ -90,15 +97,27 @@ import {
   addToKnowledgeCenterRecentViewed,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
 
 // Pure helper (module scope): decides whether a locally-stashed draft should be
 // merged into the freshly fetched page, and produces the merged shape. Kept out of
@@ -154,7 +173,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const pendingSaveCountByArticleRef = useRef<Map<string, number>>(new Map());
   const knowledgePageIdRef = useRef<string | undefined>();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -162,7 +180,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const USERId = currentUser?.id ?? '';
 
   const { fqn, tab } = useRequiredParams<{ fqn: string; tab?: string }>();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Entity-only loading now (permission loading moved to useEntityPermissions below) — starts
+  // `false` rather than the old shared `true`, since fetchPermission's own finally used to be
+  // what settled this flag to `false` when view permission was denied and fetchKnowledgePage
+  // never ran; that responsibility now belongs to isPermissionsLoading.
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [knowledgePage, setKnowledgePage] = useState<KnowledgePage>();
   const [activeTab, setActiveTab] = useState<string>(
     tab ?? EntityTabs.OVERVIEW
@@ -172,9 +194,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [permissions, setPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const [contentChangeState, setContentChangeState] =
     useState<ContentChangeState>(ContentChangeState.SAVED);
 
@@ -184,20 +203,30 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
-  const fetchPermission = async () => {
-    setIsLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.KNOWLEDGE_PAGE as unknown as ResourceEntity,
-        fqn
-      );
-      setPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
+  // Single useEntityPermissions call, by fqn — no genuine cycle: `hasViewAccess` gates the
+  // `fetchKnowledgePage` effect below (mirrors the old `permissions.ViewAll ||
+  // permissions.ViewBasic` gate exactly, now via the named flag), but `deleted` doesn't gate
+  // the permission fetch itself — it only feeds the canEdit* flags, and `knowledgePage` is
+  // component state independent of this hook, so referencing `knowledgePage?.deleted` here
+  // creates no ordering/TDZ problem (contrast TableDetailsPageV1's two-call pattern).
+  const {
+    permissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: hasViewPermission,
+    canEditDescription,
+    canEditDisplayName,
+    canEditCustomFields,
+    canViewCustomFields,
+  } = useEntityPermissions(ResourceEntity.KNOWLEDGE_PAGE, fqn, {
+    deleted: Boolean(knowledgePage?.deleted),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
     }
-  };
+  }, [permissionsError]);
 
   // Persists a locally-stashed draft (created while offline/unsaved) back to the
   // server once the canonical page has been fetched.
@@ -240,6 +269,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           KNOWLEDGE_PAGE_FIELDS.RELATED_ARTICLES,
           KNOWLEDGE_PAGE_FIELDS.EDITORS,
           KNOWLEDGE_PAGE_FIELDS.PARENT,
+          KNOWLEDGE_PAGE_FIELDS.EXTENSION,
         ]),
       });
 
@@ -426,10 +456,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const updatedPageContent = useCallback(
     async (updatedContent: string) => {
-      const hasContentEditPermission =
-        permissions.EditAll || permissions.EditDescription;
-
-      if (isUndefined(knowledgePage) || !hasContentEditPermission) {
+      if (isUndefined(knowledgePage) || !canEditDescription) {
         return;
       }
 
@@ -478,7 +505,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [
       knowledgePage,
       setKnowledgePage,
-      permissions,
+      canEditDescription,
       beginTrackedSave,
       endTrackedSave,
       onArticleSaved,
@@ -487,7 +514,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleContentSave = useCallback(
     debounce(updatedPageContent, updateDelay),
-    [updatedPageContent, updateDelay, permissions]
+    [updatedPageContent, updateDelay, canEditDescription]
   );
 
   const saveDraftContent = useCallback(
@@ -544,6 +571,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         reviewers: response.reviewers,
         domains: response.domains,
         dataProducts: response.dataProducts,
+        extension: response.extension,
         version: response.version,
       }));
 
@@ -591,10 +619,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleDisplayNameUpdate = useCallback(
     async (updatedDisplayName: string) => {
-      const hasDisplayNameEditPermission =
-        permissions.EditAll || permissions.EditDisplayName;
-
-      if (!knowledgePage || !hasDisplayNameEditPermission) {
+      if (!knowledgePage || !canEditDisplayName) {
         return;
       }
       const currentKnowledgePage = cloneDeep(knowledgePage);
@@ -645,7 +670,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [
       knowledgePage,
       setKnowledgePage,
-      permissions,
+      canEditDisplayName,
       beginTrackedSave,
       endTrackedSave,
       onArticleSaved,
@@ -654,7 +679,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleDisplayNameSave = useCallback(
     debounce(handleDisplayNameUpdate, updateDelay),
-    [handleDisplayNameUpdate, updateDelay, permissions]
+    [handleDisplayNameUpdate, updateDelay, canEditDisplayName]
   );
 
   const saveDraftDisplayName = useCallback(
@@ -799,7 +824,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when creating a new page
               autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
               placeholder={getKnowledgePageName(knowledgePage)}
-              readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
+              readOnly={!canEditDisplayName}
               ref={titleRef}
               value={displayName}
               onChange={handleDisplayNameChange}
@@ -811,7 +836,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
               entityType={EntityType.KNOWLEDGE_PAGE}>
               <BlockEditor
                 content={knowledgePage?.description ?? ''}
-                editable={permissions.EditAll || permissions.EditDescription}
+                editable={canEditDescription}
                 ref={editorRef}
                 showInlineAlert={false}
                 onChange={handleContentOnChange}
@@ -842,15 +867,39 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           />
         ),
       },
+      {
+        name: t('label.custom-property-plural'),
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: knowledgePage && (
+          <CustomPropertyTable<EntityType.KNOWLEDGE_PAGE>
+            entityDetails={knowledgePage}
+            entityType={EntityType.KNOWLEDGE_PAGE}
+            hasEditAccess={canEditCustomFields}
+            hasPermission={canViewCustomFields}
+            onEntityUpdate={updatePage}
+          />
+        ),
+      },
     ];
 
     return items;
-  }, [knowledgePage, feedCount, activeTab, permissions, displayName, fqn]);
-
-  const hasViewPermission = useMemo(
-    () => permissions.ViewAll || permissions.ViewBasic,
-    [permissions]
-  );
+  }, [
+    knowledgePage,
+    feedCount,
+    activeTab,
+    canEditDisplayName,
+    canEditDescription,
+    canEditCustomFields,
+    canViewCustomFields,
+    displayName,
+    fqn,
+  ]);
 
   const isContentUnsaved = useMemo(
     () => KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE.includes(contentChangeState),
@@ -858,12 +907,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
-    knowledgePageIdRef.current = knowledgePage?.id;
-  }, [knowledgePage?.id]);
-
-  useEffect(() => {
-    fetchPermission();
-  }, []);
+    // A route can change before its page fetch resolves. Saves for the previous
+    // article must stop controlling the new route's badge during that gap.
+    knowledgePageIdRef.current =
+      knowledgePage?.fullyQualifiedName === fqn ? knowledgePage.id : undefined;
+  }, [fqn, knowledgePage?.fullyQualifiedName, knowledgePage?.id]);
 
   useEffect(() => {
     if (tab) {
@@ -872,6 +920,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   }, [tab]);
 
   useEffect(() => {
+    // Clear eagerly so a stale debounced save from the previous article cannot
+    // match this ref and set SAVING state after we've already navigated away.
+    knowledgePageIdRef.current = undefined;
     setContentChangeState(ContentChangeState.SAVED);
   }, [fqn]);
 
@@ -921,9 +972,17 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
-    return () => {
+    const flushDrafts = () => {
       saveDraftContent.flush();
       saveDraftDisplayName.flush();
+    };
+    // A reload or tab close never unmounts, so the last 300ms of edits would
+    // otherwise miss the draft stash and a stale draft gets synced on return.
+    window.addEventListener('pagehide', flushDrafts);
+
+    return () => {
+      window.removeEventListener('pagehide', flushDrafts);
+      flushDrafts();
     };
   }, [saveDraftContent, saveDraftDisplayName]);
 
@@ -939,7 +998,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     let rightPanel = null;
     if (
       isRightPanelOpen &&
-      activeTab !== EntityTabs.ACTIVITY_FEED &&
+      !isKnowledgePageFullWidthTab(activeTab) &&
       knowledgePage
     ) {
       rightPanel = (
@@ -995,14 +1054,14 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     onPageChange(pageConfig);
   }, [pageConfig, onPageChange]);
 
-  if (isLoading) {
+  if (isPermissionsLoading || isLoading) {
     return <KnowledgePageDetailSkeleton />;
   }
 
   if (!hasViewPermission) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
-        <EmptyPlaceholder
+        <PermissionPlaceholder
           description={
             <Transi18next
               i18nKey="message.no-access-placeholder"
@@ -1012,7 +1071,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
               }}
             />
           }
-          icon={<Lock className="tw:text-secondary" />}
+          icon={<Lock />}
           title={t('label.access-denied')}
         />
       </div>
@@ -1022,8 +1081,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   if (!knowledgePage) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
-        <EmptyPlaceholder
-          icon={<Articles className="tw:text-secondary" />}
+        <NoDataPlaceholder
+          icon={<Articles />}
           title={t('label.no-entity', { entity: t('label.article') })}
         />
       </div>

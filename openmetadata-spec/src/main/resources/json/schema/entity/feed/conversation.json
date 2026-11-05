@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/feed/conversation.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Conversation",
   "description": "A bounded conversation root whose replies are stored separately.",
   "javaType": "org.openmetadata.schema.entity.feed.Conversation",

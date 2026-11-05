@@ -1,11 +1,16 @@
 package org.openmetadata.service.jdbi3.locator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import org.jdbi.v3.core.config.ConfigRegistry;
-import org.jdbi.v3.sqlobject.SqlOperation;
+import org.jdbi.v3.core.extension.annotation.UseExtensionHandler;
+import org.jdbi.v3.sqlobject.SqlObjectFactory;
+import org.jdbi.v3.sqlobject.statement.internal.SqlBatchHandler;
+import org.jdbi.v3.sqlobject.statement.internal.SqlQueryHandler;
+import org.jdbi.v3.sqlobject.statement.internal.SqlUpdateHandler;
 import org.junit.jupiter.api.Test;
 
 class ConnectionAwareAnnotationSqlLocatorTest {
@@ -23,10 +28,21 @@ class ConnectionAwareAnnotationSqlLocatorTest {
   }
 
   @Test
-  void singleAnnotationCarriesSqlOperationMetadata() {
-    assertTrue(ConnectionAwareSqlBatch.class.isAnnotationPresent(SqlOperation.class));
-    assertTrue(ConnectionAwareSqlQuery.class.isAnnotationPresent(SqlOperation.class));
-    assertTrue(ConnectionAwareSqlUpdate.class.isAnnotationPresent(SqlOperation.class));
+  void everyAnnotationRegistersItsSqlObjectStatementHandler() {
+    assertStatementHandler(ConnectionAwareSqlBatch.class, SqlBatchHandler.class);
+    assertStatementHandler(ConnectionAwareSqlBatchContainer.class, SqlBatchHandler.class);
+    assertStatementHandler(ConnectionAwareSqlQuery.class, SqlQueryHandler.class);
+    assertStatementHandler(ConnectionAwareSqlQueryContainer.class, SqlQueryHandler.class);
+    assertStatementHandler(ConnectionAwareSqlUpdate.class, SqlUpdateHandler.class);
+    assertStatementHandler(ConnectionAwareSqlUpdateContainer.class, SqlUpdateHandler.class);
+  }
+
+  private static void assertStatementHandler(
+      Class<? extends Annotation> annotationType, Class<?> expectedHandler) {
+    UseExtensionHandler handler = annotationType.getAnnotation(UseExtensionHandler.class);
+    assertNotNull(handler, annotationType.getSimpleName() + " has no SQL object handler");
+    assertEquals(SqlObjectFactory.EXTENSION_ID, handler.id());
+    assertEquals(expectedHandler, handler.value());
   }
 
   @Test

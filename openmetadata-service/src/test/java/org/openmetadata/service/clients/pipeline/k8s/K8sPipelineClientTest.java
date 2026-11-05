@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -57,6 +58,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.ConnectException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -91,11 +93,16 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.jdbi3.BotRepository;
@@ -157,7 +164,13 @@ class K8sPipelineClientTest {
     config.setMetadataApiEndpoint("http://localhost:8585/api");
     config.setParameters(params);
 
-    client = new K8sPipelineClient(config);
+    client =
+        new K8sPipelineClient(config) {
+          @Override
+          protected long getRetryBackoffMillis() {
+            return 0L;
+          }
+        };
     client.setBatchApi(batchApi);
     client.setCoreApi(coreApi);
     setField(client, "customObjectsApi", customObjectsApi);
@@ -246,6 +259,35 @@ class K8sPipelineClientTest {
         "The run ID must be reported back so the server can record the queued status");
   }
 
+  /**
+   * K8s rebuilds a run from the pipeline it is handed, so a run's scope reaches the job through the
+   * interface default: a scoped copy, leaving the caller's pipeline as it was.
+   */
+  @Test
+  void testRunPipelineScopesTheJobToTheRunsTestCases() throws Exception {
+    IngestionPipeline pipeline =
+        createTestPipeline("suite-pipeline", null)
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()));
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runPipelineWithOptions(
+        pipeline,
+        testService,
+        RunOptions.withSourceConfigOverride(Map.of("testCases", List.of("row_count"))));
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+    V1PodSpec podSpec = jobCaptor.getValue().getSpec().getTemplate().getSpec();
+    String workflowConfig = toEnvMap(podSpec.getContainers().getFirst().getEnv()).get("config");
+    assertTrue(workflowConfig.contains("testCases"), workflowConfig);
+    assertTrue(workflowConfig.contains("row_count"), workflowConfig);
+    assertNull(
+        JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), TestSuitePipeline.class)
+            .getTestCases());
+  }
+
   @Test
   void testBuildEnvVarsIncludeConfigAndExtraEnvVars() {
     K8sPipelineClient clientWithExtraEnvs = createClientWithExtraEnvVars();
@@ -300,6 +342,93 @@ class K8sPipelineClientTest {
     assertNotNull(source);
     assertNotNull(source.getConfigMapKeyRef());
     assertEquals("om-config-test-pipeline", source.getConfigMapKeyRef().getName());
+  }
+
+  @Test
+  void testConfiguredLabelsAndAnnotationsOnCronOMJob() {
+    String podLabels = "app.kubernetes.io/instance=argocd-app,app.kubernetes.io/component=x";
+    String podAnnotations =
+        "argocd.argoproj.io/compare-options=IgnoreExtraneous,"
+            + "argocd.argoproj.io/sync-options=Prune=false";
+    K8sPipelineClient clientWithMetadata =
+        createClientWithParams(
+            Map.of(
+                "useOMJobOperator",
+                "true",
+                "podLabels",
+                podLabels,
+                "podAnnotations",
+                podAnnotations));
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    CronOMJob cronOMJob = clientWithMetadata.buildCronOMJob(pipeline);
+
+    Map<String, String> labels = cronOMJob.getMetadata().getLabels();
+    assertEquals("argocd-app", labels.get("app.kubernetes.io/instance"));
+    assertEquals("ingestion", labels.get("app.kubernetes.io/component"));
+    Map<String, String> annotations = cronOMJob.getMetadata().getAnnotations();
+    assertEquals("IgnoreExtraneous", annotations.get("argocd.argoproj.io/compare-options"));
+    assertEquals("Prune=false", annotations.get("argocd.argoproj.io/sync-options"));
+
+    OMJob.OMJobSpec omJobSpec = cronOMJob.getSpec().getOmJobSpec();
+    for (OMJob.OMJobPodSpec pod :
+        List.of(omJobSpec.getMainPodSpec(), omJobSpec.getExitHandlerSpec())) {
+      assertEquals("argocd-app", pod.getLabels().get("app.kubernetes.io/instance"));
+      assertEquals("ingestion", pod.getLabels().get("app.kubernetes.io/component"));
+      assertEquals(
+          "IgnoreExtraneous", pod.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    }
+  }
+
+  @Test
+  void testConfiguredLabelsAndAnnotationsOnPlainCronJobResources() throws Exception {
+    K8sPipelineClient plainClient =
+        createClientWithParams(
+            Map.of(
+                "useOMJobOperator",
+                "false",
+                "podLabels",
+                "app.kubernetes.io/instance=argocd-app",
+                "podAnnotations",
+                "argocd.argoproj.io/compare-options=IgnoreExtraneous"));
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    when(coreApi.readNamespacedConfigMap(any(), eq(NAMESPACE))).thenReturn(readConfigMapRequest);
+    when(readConfigMapRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedConfigMap(eq(NAMESPACE), any()))
+        .thenReturn(createConfigMapRequest);
+    when(createConfigMapRequest.execute()).thenReturn(new V1ConfigMap());
+    when(coreApi.readNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(readSecretRequest);
+    when(readSecretRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedSecret(eq(NAMESPACE), any())).thenReturn(createSecretRequest);
+    when(createSecretRequest.execute()).thenReturn(new V1Secret());
+    when(batchApi.readNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(readCronJobRequest);
+    when(readCronJobRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(batchApi.createNamespacedCronJob(eq(NAMESPACE), any())).thenReturn(createCronJobRequest);
+    when(createCronJobRequest.execute()).thenReturn(new V1CronJob());
+
+    plainClient.deployPipeline(pipeline, testService);
+
+    ArgumentCaptor<V1ConfigMap> configMapCaptor = ArgumentCaptor.forClass(V1ConfigMap.class);
+    ArgumentCaptor<V1Secret> secretCaptor = ArgumentCaptor.forClass(V1Secret.class);
+    ArgumentCaptor<V1CronJob> cronJobCaptor = ArgumentCaptor.forClass(V1CronJob.class);
+    verify(coreApi).createNamespacedConfigMap(eq(NAMESPACE), configMapCaptor.capture());
+    verify(coreApi).createNamespacedSecret(eq(NAMESPACE), secretCaptor.capture());
+    verify(batchApi).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
+
+    V1CronJob cronJob = cronJobCaptor.getValue();
+    List<V1ObjectMeta> allMetadata =
+        List.of(
+            configMapCaptor.getValue().getMetadata(),
+            secretCaptor.getValue().getMetadata(),
+            cronJob.getMetadata(),
+            cronJob.getSpec().getJobTemplate().getMetadata(),
+            cronJob.getSpec().getJobTemplate().getSpec().getTemplate().getMetadata());
+    for (V1ObjectMeta metadata : allMetadata) {
+      assertEquals("argocd-app", metadata.getLabels().get("app.kubernetes.io/instance"));
+      assertEquals(
+          "IgnoreExtraneous", metadata.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    }
   }
 
   @Test
@@ -635,6 +764,41 @@ class K8sPipelineClientTest {
 
     // Verify the API was only called once (no retry)
     verify(batchApi, times(1)).createNamespacedJob(eq(NAMESPACE), any());
+  }
+
+  @Test
+  void runFailureReadsAsATriggerAndIsA503WhenARetryCanHelp() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+
+    // Code 0: the request got no answer, so a retry once the cluster API is back can work.
+    when(createJobRequest.execute())
+        .thenThrow(new ApiException(new ConnectException("Connection refused")));
+    IngestionPipelineDeploymentException unreachable =
+        assertThrows(
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(pipeline, testService));
+    assertEquals(503, unreachable.getResponse().getStatus());
+    assertTrue(unreachable.getMessage().startsWith("Failed to trigger pipeline [test-pipeline]"));
+
+    // Throttled, or failing on the cluster's side: the codes the client itself retries on.
+    for (int transientCode : new int[] {429, 500}) {
+      // doThrow: re-stubbing through when() would call the mock, which still throws.
+      doThrow(new ApiException(transientCode, "Transient")).when(createJobRequest).execute();
+      IngestionPipelineDeploymentException retryable =
+          assertThrows(
+              IngestionPipelineDeploymentException.class,
+              () -> client.runPipeline(pipeline, testService));
+      assertEquals(503, retryable.getResponse().getStatus());
+    }
+
+    doThrow(new ApiException(403, "Forbidden")).when(createJobRequest).execute();
+    IngestionPipelineDeploymentException rejected =
+        assertThrows(
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(pipeline, testService));
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().startsWith("Failed to trigger pipeline [test-pipeline]"));
   }
 
   @Test
@@ -1020,7 +1184,7 @@ class K8sPipelineClientTest {
     when(listConfigMapRequest.execute()).thenThrow(new ApiException(403, "forbidden configmaps"));
 
     PipelineServiceClientResponse configMapFailure = client.getServiceStatus();
-    assertEquals(500, configMapFailure.getCode());
+    assertEquals(403, configMapFailure.getCode());
     assertTrue(configMapFailure.getReason().contains("missing ConfigMap permissions"));
 
     reset(listConfigMapRequest);
@@ -1033,7 +1197,7 @@ class K8sPipelineClientTest {
     when(listSecretRequest.execute()).thenThrow(new ApiException(403, "forbidden secrets"));
 
     PipelineServiceClientResponse secretFailure = client.getServiceStatus();
-    assertEquals(500, secretFailure.getCode());
+    assertEquals(403, secretFailure.getCode());
     assertTrue(secretFailure.getReason().contains("missing Secret permissions"));
   }
 
@@ -1072,6 +1236,42 @@ class K8sPipelineClientTest {
   }
 
   @Test
+  void testGetServiceStatusRetriesThrottledPermissionProbe() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute()).thenReturn(new V1PodList());
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.limit(1)).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(new V1JobList());
+
+    when(coreApi.listNamespacedConfigMap(eq(NAMESPACE))).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.limit(1)).thenReturn(listConfigMapRequest);
+    when(listConfigMapRequest.execute()).thenThrow(new ApiException(429, "too many requests"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    // Throttling clears on its own, unlike the 403 an RBAC gap produces, so it stays retryable.
+    assertEquals(500, response.getCode());
+    verify(listConfigMapRequest, times(3)).execute();
+  }
+
+  @Test
+  void testGetServiceStatusKeepsApiServerOutageRetryable() throws Exception {
+    when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
+    when(listPodRequest.limit(1)).thenReturn(listPodRequest);
+    when(listPodRequest.execute()).thenThrow(new ApiException(503, "api server unavailable"));
+
+    PipelineServiceClientResponse response = client.getServiceStatus();
+
+    // 5xx from the API server is a blip, so it keeps the retryable 500 rather than its own code
+    // and getServiceStatus() gives it the full three attempts.
+    assertEquals(500, response.getCode());
+    assertTrue(response.getReason().contains("api server unavailable"));
+    verify(listPodRequest, times(3)).execute();
+  }
+
+  @Test
   void testGetServiceStatusReportsMalformedStatusAsUnhealthy() throws Exception {
     when(coreApi.listNamespacedPod(eq(NAMESPACE))).thenReturn(listPodRequest);
     when(listPodRequest.limit(1)).thenReturn(listPodRequest);
@@ -1080,7 +1280,7 @@ class K8sPipelineClientTest {
 
     PipelineServiceClientResponse response = client.getServiceStatus();
 
-    assertEquals(500, response.getCode());
+    assertEquals(422, response.getCode());
     assertTrue(response.getReason().contains("Failed to parse Kubernetes pod/job status"));
     verifyNoInteractions(batchApi, listConfigMapRequest, listSecretRequest);
   }
@@ -1105,7 +1305,7 @@ class K8sPipelineClientTest {
 
     PipelineServiceClientResponse response = client.getServiceStatus();
 
-    assertEquals(500, response.getCode());
+    assertEquals(403, response.getCode());
     assertTrue(response.getReason().contains("missing ConfigMap permissions"));
     verify(coreApi).listNamespacedConfigMap(eq(NAMESPACE));
   }
@@ -1149,6 +1349,51 @@ class K8sPipelineClientTest {
         applicationJob.getSpec().getTemplate().getSpec().getContainers().get(0).getCommand());
     assertEquals(
         "query-runner", applicationJob.getMetadata().getLabels().get("app.kubernetes.io/app-name"));
+  }
+
+  @Test
+  void testConfiguredLabelsAndAnnotationsOnAutomationAndApplicationJobs() throws Exception {
+    K8sPipelineClient clientWithMetadata =
+        createClientWithParams(
+            Map.of(
+                "useOMJobOperator",
+                "false",
+                "podLabels",
+                "app.kubernetes.io/instance=argocd-app,app.kubernetes.io/component=x",
+                "podAnnotations",
+                "argocd.argoproj.io/compare-options=IgnoreExtraneous"));
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    clientWithMetadata.runAutomationsWorkflow(createTestWorkflow("Nightly Cleanup"));
+
+    ArgumentCaptor<V1Job> workflowJobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), workflowJobCaptor.capture());
+    assertConfiguredMetadataOnJobAndPod(workflowJobCaptor.getValue(), "automation");
+
+    reset(batchApi, createJobRequest);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    clientWithMetadata.runApplicationFlow(createTestApplication("Query Runner"));
+
+    ArgumentCaptor<V1Job> applicationJobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), applicationJobCaptor.capture());
+    assertConfiguredMetadataOnJobAndPod(applicationJobCaptor.getValue(), "application");
+  }
+
+  private static void assertConfiguredMetadataOnJobAndPod(V1Job job, String builtInComponent) {
+    for (V1ObjectMeta metadata :
+        List.of(job.getMetadata(), job.getSpec().getTemplate().getMetadata())) {
+      assertEquals("argocd-app", metadata.getLabels().get("app.kubernetes.io/instance"));
+      assertEquals(
+          builtInComponent,
+          metadata.getLabels().get("app.kubernetes.io/component"),
+          "a built-in label wins over the configured value for the same key");
+      assertEquals(
+          "IgnoreExtraneous", metadata.getAnnotations().get("argocd.argoproj.io/compare-options"));
+    }
   }
 
   @Test
@@ -1544,6 +1789,8 @@ class K8sPipelineClientTest {
 
       assertEquals("http://localhost:8585/api", connection.getHostPort());
       assertEquals(AuthProvider.OPENMETADATA, connection.getAuthProvider());
+      assertEquals(VerifySSL.NO_SSL, connection.getVerifySSL());
+      assertNull(connection.getSslConfig());
       assertEquals("ingestion-token", connection.getSecurityConfig().getJwtToken());
     }
   }
@@ -1801,13 +2048,17 @@ class K8sPipelineClientTest {
   }
 
   private K8sPipelineClient createClientWithUseOMJobOperator(boolean enabled) {
+    return createClientWithParams(Map.of("useOMJobOperator", Boolean.toString(enabled)));
+  }
+
+  private K8sPipelineClient createClientWithParams(Map<String, String> extraParams) {
     Parameters params = new Parameters();
     params.setAdditionalProperty("namespace", NAMESPACE);
     params.setAdditionalProperty("inCluster", "false");
     params.setAdditionalProperty("skipInit", "true");
     params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
     params.setAdditionalProperty("serviceAccountName", "test-sa");
-    params.setAdditionalProperty("useOMJobOperator", Boolean.toString(enabled));
+    extraParams.forEach(params::setAdditionalProperty);
 
     PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
     config.setEnabled(true);

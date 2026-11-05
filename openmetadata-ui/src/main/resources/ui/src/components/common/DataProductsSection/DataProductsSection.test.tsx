@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -21,6 +21,8 @@ import { AxiosError } from 'axios';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import { getDomainStyles } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DataProductsSection from './DataProductsSection';
 
 // Mock react-router-dom
@@ -61,33 +63,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 // Partial mock antd to preserve DatePicker and others used transitively
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Button: jest.fn().mockImplementation(({ children, ...props }) => (
-      <button data-testid="button" {...props}>
-        {children}
-      </button>
-    )),
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
-
 // Mock svg icons
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
-}));
 jest.mock('../../../assets/svg/close-icon.svg', () => ({
   ReactComponent: () => <div data-testid="close-icon-svg">Close</div>,
 }));
@@ -98,83 +74,79 @@ jest.mock('../../../assets/svg/ic-data-product.svg', () => ({
   ReactComponent: () => <div data-testid="data-product-icon">DP</div>,
 }));
 
-// Mock DataProductsSelectListV1 inline to avoid TDZ
-jest.mock(
-  '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1',
-  () => ({
-    DataProductsSelectListV1: jest
-      .fn()
-      .mockImplementation(
-        ({
-          onCancel,
-          onUpdate,
-          selectedDataProducts,
-          fetchOptions,
-          children,
-          ...props
-        }: {
-          onCancel?: () => void;
-          onUpdate?: (items: EntityReference[]) => void;
-          selectedDataProducts?: EntityReference[];
-          fetchOptions?: (searchText: string, after?: number) => void;
-          children?: React.ReactNode;
-        }) => (
-          <div data-testid="data-products-select-list" {...props}>
-            <button data-testid="dps-cancel" onClick={() => onCancel?.()}>
-              Cancel
-            </button>
-            <button
-              data-testid="dps-submit"
-              onClick={() =>
-                onUpdate?.([
-                  {
-                    id: 'dp-2',
-                    fullyQualifiedName: 'domain.dp2',
-                    name: 'dp2',
-                    displayName: 'DP 2',
-                    type: 'dataProduct',
-                  },
-                ])
-              }>
-              Submit
-            </button>
-            <button
-              data-testid="dps-fetch"
-              onClick={() => fetchOptions?.('term', 2)}>
-              Fetch
-            </button>
-            <div data-testid="dps-default-values">
-              {Array.isArray(selectedDataProducts)
-                ? selectedDataProducts
-                    .map((i: EntityReference) => i.fullyQualifiedName)
-                    .join(',')
-                : ''}
-            </div>
-            {children}
-          </div>
-        )
-      ),
-  })
-);
-
 // Mock ToastUtils
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
 
-// Mock EditIconButton
-jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button
-      className="edit-icon"
-      data-testid="edit-icon-button"
-      onClick={onClick}
-      {...props}>
-      Edit
-    </button>
-  )),
-}));
+const mockDp2: EntityReference = {
+  id: 'dp-2',
+  fullyQualifiedName: 'domain.dp2',
+  name: 'dp2',
+  displayName: 'DP 2',
+  type: 'dataProduct',
+};
+// What the mocked picker submits; a test may swap it.
+let mockSubmitItems: EntityReference[] = [mockDp2];
+
+// The picker renders its trigger, plus these controls while open.
+jest.mock(
+  '../../DataProducts/DataProductsSelectList/DataProductsSelectList',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(
+        ({
+          isOpen,
+          onOpenChange,
+          onSubmit,
+          selectedDataProducts,
+          fetchOptions,
+          children,
+        }: {
+          isOpen?: boolean;
+          onOpenChange?: (open: boolean) => void;
+          onSubmit?: (items: EntityReference[]) => void;
+          selectedDataProducts?: EntityReference[];
+          fetchOptions?: (searchText: string, page: number) => void;
+          children?: React.ReactNode;
+        }) => (
+          <>
+            {/* Like FilterSelect, the trigger toggles the picker. */}
+            <span onClickCapture={() => onOpenChange?.(!isOpen)}>
+              {children}
+            </span>
+            {isOpen && (
+              <div data-testid="data-products-select-list">
+                <button
+                  data-testid="dps-cancel"
+                  onClick={() => onOpenChange?.(false)}>
+                  Cancel
+                </button>
+                <button
+                  data-testid="dps-submit"
+                  onClick={() => onSubmit?.(mockSubmitItems)}>
+                  Submit
+                </button>
+                <button
+                  data-testid="dps-fetch"
+                  onClick={() => fetchOptions?.('term', 2)}>
+                  Fetch
+                </button>
+                <div data-testid="dps-default-values">
+                  {(selectedDataProducts ?? [])
+                    .map((i: EntityReference) => i.fullyQualifiedName)
+                    .join(',')}
+                </div>
+              </div>
+            )}
+          </>
+        )
+      ),
+  })
+);
 
 // Mock Loader
 jest.mock('../Loader/Loader', () => ({
@@ -187,6 +159,10 @@ jest.mock('../Loader/Loader', () => ({
 }));
 
 // Mock APIs
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainStyles: jest.fn(),
+}));
+
 jest.mock('../../../rest/dataProductAPI', () => ({
   fetchDataProductsElasticSearch: jest.fn().mockResolvedValue({ hits: [] }),
 }));
@@ -234,8 +210,13 @@ const defaultProps = {
 };
 
 describe('DataProductsSection', () => {
+  afterEach(() => {
+    mockSubmitItems = [mockDp2];
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    (getDomainStyles as jest.Mock).mockResolvedValue({ data: [] });
     // Set default entity rules
     (useEntityRules as jest.Mock).mockReturnValue({
       entityRules: {
@@ -251,10 +232,13 @@ describe('DataProductsSection', () => {
 
   describe('Rendering', () => {
     it('renders with data products', () => {
-      const { container } = render(<DataProductsSection {...defaultProps} />);
+      const { container } = renderWithQueryClient(
+        <DataProductsSection {...defaultProps} />
+      );
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
-      expect(screen.getByText('label.data-product-plural')).toBeInTheDocument();
+      expect(screen.getByText('label.data-product-plural').tagName).toBe(
+        'SPAN'
+      );
 
       // display list
       expect(screen.getByText('DP 1')).toBeInTheDocument();
@@ -266,8 +250,32 @@ describe('DataProductsSection', () => {
       expect(within(list).getByTestId('data-product-icon')).toBeInTheDocument();
     });
 
+    // Data product chips drew the default bar whatever the data product's
+    // style; they now read its colour and icon by id.
+    it('draws each data product chip in its own colour', async () => {
+      (getDomainStyles as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 'dp-1',
+            type: 'dataProduct',
+            style: { color: '#F79009', iconURL: 'Tag01' },
+          },
+        ],
+      });
+
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('data-product-item')).toHaveStyle({
+          '--tag-color': '#F79009',
+        })
+      );
+    });
+
     it('renders no-data state when no data products', () => {
-      render(<DataProductsSection {...defaultProps} dataProducts={[]} />);
+      renderWithQueryClient(
+        <DataProductsSection {...defaultProps} dataProducts={[]} />
+      );
 
       expect(
         screen.getByText(
@@ -278,8 +286,20 @@ describe('DataProductsSection', () => {
   });
 
   describe('Edit Mode', () => {
+    it('closes the picker when the edit button is pressed again, saving nothing', () => {
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(
+        screen.queryByTestId('data-products-select-list')
+      ).not.toBeInTheDocument();
+      expect(defaultProps.onDataProductsUpdate).not.toHaveBeenCalled();
+    });
+
     it('enters edit mode and shows select list', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -296,7 +316,7 @@ describe('DataProductsSection', () => {
     });
 
     it('exits edit mode on cancel', () => {
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -321,7 +341,7 @@ describe('DataProductsSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection
           {...defaultProps}
           entityType={EntityType.TABLE}
@@ -352,7 +372,7 @@ describe('DataProductsSection', () => {
       const error = new Error('fail') as AxiosError;
       patchTableDetails.mockRejectedValue(error);
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
@@ -373,38 +393,18 @@ describe('DataProductsSection', () => {
     it('does not call API when no changes', async () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
 
-      // Override the select list to return same items
-      const { DataProductsSelectListV1 } = jest.requireMock(
-        '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1'
-      );
-      DataProductsSelectListV1.mockImplementationOnce(
-        ({
-          onUpdate,
-          ...props
-        }: {
-          onUpdate?: (products: unknown[]) => void;
-        }) => (
-          <div data-testid="data-products-select-list" {...props}>
-            <button
-              data-testid="dps-submit"
-              onClick={() =>
-                onUpdate?.([
-                  {
-                    id: 'dp-1',
-                    fullyQualifiedName: 'domain.dp1',
-                    name: 'dp1',
-                    displayName: 'DP 1',
-                    type: 'dataProduct',
-                  },
-                ])
-              }>
-              Submit
-            </button>
-          </div>
-        )
-      );
+      // Submit exactly what the section already has.
+      mockSubmitItems = [
+        {
+          id: 'dp-1',
+          fullyQualifiedName: 'domain.dp1',
+          name: 'dp1',
+          displayName: 'DP 1',
+          type: 'dataProduct',
+        },
+      ];
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
@@ -428,7 +428,7 @@ describe('DataProductsSection', () => {
       });
       patchTableDetails.mockReturnValue(promise);
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
@@ -466,7 +466,7 @@ describe('DataProductsSection', () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
       patchTableDetails.mockResolvedValue({});
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
@@ -490,7 +490,7 @@ describe('DataProductsSection', () => {
       );
       patchDashboardDetails.mockResolvedValue({});
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection
           {...defaultProps}
           entityType={EntityType.DASHBOARD}
@@ -516,7 +516,9 @@ describe('DataProductsSection', () => {
     it('shows error when entityId missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(<DataProductsSection {...defaultProps} entityId={undefined} />);
+      renderWithQueryClient(
+        <DataProductsSection {...defaultProps} entityId={undefined} />
+      );
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -548,7 +550,7 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -560,7 +562,8 @@ describe('DataProductsSection', () => {
         expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
           'term',
           ['domain'],
-          2
+          2,
+          50
         );
       });
     });
@@ -570,7 +573,7 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -582,7 +585,8 @@ describe('DataProductsSection', () => {
         expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
           'term',
           [],
-          2
+          2,
+          50
         );
       });
     });
@@ -602,7 +606,7 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...defaultProps} />);
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
 
       const editIcon = screen.getByTestId('edit-data-products');
       if (editIcon) {
@@ -614,7 +618,8 @@ describe('DataProductsSection', () => {
         expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
           'term',
           ['domain'],
-          2
+          2,
+          50
         );
       });
     });
@@ -633,7 +638,7 @@ describe('DataProductsSection', () => {
         isLoading: false,
       });
 
-      render(
+      renderWithQueryClient(
         <DataProductsSection
           {...defaultProps}
           activeDomains={[]}
@@ -650,7 +655,7 @@ describe('DataProductsSection', () => {
     });
 
     it('allows editing with no domains when rule is disabled', () => {
-      render(
+      renderWithQueryClient(
         <DataProductsSection
           {...defaultProps}
           activeDomains={[]}
@@ -662,6 +667,188 @@ describe('DataProductsSection', () => {
         screen.queryByText('message.select-domain-to-add-data-product')
       ).not.toBeInTheDocument();
       expect(screen.getByTestId('edit-data-products')).toBeInTheDocument();
+    });
+  });
+
+  describe('Multi-Select Rule Gating', () => {
+    const getLastMultiSelect = () => {
+      const { default: DataProductsSelectList } = jest.requireMock(
+        '../../DataProducts/DataProductsSelectList/DataProductsSelectList'
+      );
+
+      return (DataProductsSelectList as jest.Mock).mock.calls.at(-1)?.[0]
+        ?.multiple;
+    };
+
+    const enterEditMode = () => {
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+    };
+
+    it('holds the single-select default while entity rules are still loading', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: false,
+        isLoading: true,
+      });
+
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
+      enterEditMode();
+
+      expect(getLastMultiSelect()).toBe(false);
+    });
+
+    it('re-enables multi-select once rules load and the multi-product rule is not enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
+      enterEditMode();
+
+      expect(getLastMultiSelect()).toBe(true);
+    });
+
+    it('keeps single-select once rules load and the multi-product rule is enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: false,
+          maxDataProducts: 1,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
+      enterEditMode();
+
+      expect(getLastMultiSelect()).toBe(false);
+    });
+
+    it('updates multiSelect from strict to permissive once rules finish loading', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: false,
+        isLoading: true,
+      });
+
+      const { rerender } = renderWithQueryClient(
+        <DataProductsSection {...defaultProps} />
+      );
+      enterEditMode();
+
+      expect(getLastMultiSelect()).toBe(false);
+
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      rerender(<DataProductsSection {...defaultProps} />);
+
+      expect(getLastMultiSelect()).toBe(true);
+    });
+  });
+
+  describe('Outside-click dismiss (onOpenChange(false))', () => {
+    const getLastPopoverOnOpenChange = ():
+      | ((open: boolean) => void)
+      | undefined => {
+      const { default: DataProductsSelectList } = jest.requireMock(
+        '../../DataProducts/DataProductsSelectList/DataProductsSelectList'
+      );
+
+      return (DataProductsSelectList as jest.Mock).mock.calls.at(-1)?.[0]
+        ?.onOpenChange;
+    };
+
+    it('keeps the data products list visible while the picker is open, and closes it on dismiss', () => {
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(screen.getByTestId('data-products-list')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('data-products-select-list')
+      ).toBeInTheDocument();
+
+      act(() => {
+        getLastPopoverOnOpenChange()?.(false);
+      });
+
+      expect(
+        screen.queryByTestId('data-products-select-list')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('data-products-list')).toBeInTheDocument();
+    });
+
+    it('keeps the no-data placeholder while the empty section picker is open', () => {
+      const placeholder = () =>
+        screen.queryByText(
+          'label.no-entity-assigned - {"entity":"label.data-product-plural"}'
+        );
+
+      renderWithQueryClient(
+        <DataProductsSection {...defaultProps} dataProducts={[]} />
+      );
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(placeholder()).toBeInTheDocument();
+
+      act(() => {
+        getLastPopoverOnOpenChange()?.(false);
+      });
+
+      expect(
+        screen.queryByTestId('data-products-select-list')
+      ).not.toBeInTheDocument();
+      expect(placeholder()).toBeInTheDocument();
+    });
+
+    it('keeps the edit button visible and re-opens the editor after a dismiss', () => {
+      renderWithQueryClient(<DataProductsSection {...defaultProps} />);
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      act(() => {
+        getLastPopoverOnOpenChange()?.(false);
+      });
+
+      expect(screen.getByTestId('edit-data-products')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('data-products-select-list')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(
+        screen.getByTestId('data-products-select-list')
+      ).toBeInTheDocument();
     });
   });
 });

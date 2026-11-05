@@ -112,41 +112,5 @@ export const selectOption = async (
   await page.mouse.move(1280, 0);
 
   await dropdownLocator.click();
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
-  // Logic to scroll to find the option
-  // Since antd dropdown only ingests 10 option at a time in the DOM.
-  await page.getByTestId('global-search-select-dropdown').hover();
-
-  const maxScrollAttempts = 15; // Prevent infinite loop
-  let scrollAttempts = 0;
-  const scrollStep = 50; // Pixels to scroll each time
-
-  while (scrollAttempts < maxScrollAttempts) {
-    // Check if option is visible in current view
-    const optionLocator = page.getByTestId(
-      `global-search-select-option-${optionTitle}`
-    );
-
-    const isOptionVisible = await optionLocator
-      .first()
-      .isVisible()
-      .catch(() => false);
-
-    if (isOptionVisible) {
-      await optionLocator.first().click();
-
-      return;
-    }
-
-    // Scroll down
-    await page.mouse.wheel(0, scrollStep);
-
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- DOM update delay after scroll
-    await page.waitForTimeout(100);
-
-    scrollAttempts++;
-  }
+  await page.getByTestId(`global-search-select-option-${optionTitle}`).click();
 };

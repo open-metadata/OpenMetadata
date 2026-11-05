@@ -10,25 +10,79 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.rdf;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import lombok.extern.slf4j.Slf4j;
 
+/** SQL is authoritative once RDF is initialized; local failures are flushed after SQL recovers. */
+@Slf4j
 public final class RdfProjectionHealth {
-  private static final AtomicBoolean DEGRADED = new AtomicBoolean();
+  private static final AtomicLong LOCAL_FAILURES = new AtomicLong();
+  private static final AtomicLong LOCAL_REPAIRED = new AtomicLong();
+  private static volatile RdfLiveWriteStore store;
 
   private RdfProjectionHealth() {}
 
+  public static void initialize(final RdfLiveWriteStore liveWriteStore) {
+    store = liveWriteStore;
+    flushLocalFailures();
+  }
+
   public static boolean isDegraded() {
-    return DEGRADED.get();
+    try {
+      flushLocalFailures();
+      return LOCAL_FAILURES.get() > LOCAL_REPAIRED.get() || (store != null && store.isDegraded());
+    } catch (RuntimeException exception) {
+      LOG.warn("Cannot read shared RDF projection health", exception);
+      return true;
+    }
   }
 
   public static void markDegraded() {
-    DEGRADED.set(true);
+    markDegraded(new IllegalStateException("RDF operation failed without durable recovery"));
+  }
+
+  public static void markDegraded(final Throwable failure) {
+    if (store == null) {
+      LOCAL_FAILURES.incrementAndGet();
+      return;
+    }
+    try {
+      store.markDegraded(RdfLiveWriteStore.failureReason(failure));
+    } catch (RuntimeException exception) {
+      LOCAL_FAILURES.incrementAndGet();
+      LOG.error("Could not persist RDF projection failure", exception);
+    }
+  }
+
+  public static long failureVersion() {
+    flushLocalFailures();
+    return store != null ? store.failureVersion() : LOCAL_FAILURES.get();
+  }
+
+  public static void markReady(final long failureVersion) {
+    if (store != null) {
+      store.markRebuilt(failureVersion);
+    } else {
+      LOCAL_REPAIRED.accumulateAndGet(failureVersion, Math::max);
+    }
   }
 
   public static void markReady() {
-    DEGRADED.set(false);
+    markReady(failureVersion());
+  }
+
+  static synchronized void flushLocalFailures() {
+    final long failures = LOCAL_FAILURES.get();
+    if (store != null && failures > LOCAL_REPAIRED.get()) {
+      try {
+        store.markDegraded("RDF operation failed while shared health storage was unavailable");
+        LOCAL_REPAIRED.set(failures);
+      } catch (RuntimeException exception) {
+        LOG.warn(
+            "Could not flush RDF projection failures; local state retained for retry", exception);
+      }
+    }
   }
 }

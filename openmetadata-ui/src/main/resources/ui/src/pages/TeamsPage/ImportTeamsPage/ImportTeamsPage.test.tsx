@@ -17,7 +17,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   MOCK_CURRENT_TEAM,
   MOCK_MARKETING_TEAM,
@@ -27,6 +26,7 @@ import {
   importTeam,
   importUserInTeam,
 } from '../../../rest/teamsAPI';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
 import ImportTeamsPage from './ImportTeamsPage';
 
@@ -73,19 +73,6 @@ jest.mock(
         }
       ),
   })
-);
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(({ children }) => {
-      return (
-        <div>
-          ErrorPlaceHolder
-          <div>{children}</div>
-        </div>
-      );
-    });
-  }
 );
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
@@ -147,16 +134,37 @@ jest.mock('../../../rest/teamsAPI', () => ({
   importTeam: jest.fn(),
   importUserInTeam: jest.fn(),
 }));
-jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      EditAll: true,
-    }),
-  }),
+// ImportTeamsPage now fetches its own permission via useEntityPermissions rather than the
+// raw PermissionProvider.getEntityPermissionByFqn REST boundary — mock the hook directly
+// (TeamsPage.test.tsx pattern), since this test file's `render` never wraps a
+// QueryClientProvider.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<Record<string, boolean>> = { Create: true, EditAll: true }
+) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
+setMockPermissions();
+
 describe('ImportTeamsPage', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('Component should render', async () => {
     act(() => {
       render(<ImportTeamsPage />);
@@ -169,18 +177,16 @@ describe('ImportTeamsPage', () => {
   });
 
   it('No permission Placeholder should visible, if there is no create permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
-        Promise.resolve({
-          Create: false,
-        })
-      ),
-    }));
+    setMockPermissions({ Create: false });
     act(() => {
       render(<ImportTeamsPage />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('ErrorPlaceHolder should be visible if teams API fail', async () => {
@@ -189,7 +195,11 @@ describe('ImportTeamsPage', () => {
       render(<ImportTeamsPage />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('Loader should visible is data is loading', async () => {
@@ -200,7 +210,11 @@ describe('ImportTeamsPage', () => {
     // To check if loader was rendered when the loading state was true and then removed after loading is false
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('TeamImportResult should visible', async () => {
@@ -226,7 +240,11 @@ describe('ImportTeamsPage', () => {
       render(<ImportTeamsPage />);
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(
         'message.group-type-team-not-allowed-to-have-sub-team'

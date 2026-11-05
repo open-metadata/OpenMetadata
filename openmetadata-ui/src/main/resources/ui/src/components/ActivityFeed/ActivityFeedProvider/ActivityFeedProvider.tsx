@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isEqual, orderBy } from 'lodash';
+import { isEqual, orderBy, uniqBy } from 'lodash';
 import { PagingResponse } from 'Models';
 import {
   createContext,
@@ -175,7 +175,9 @@ const fetchTaskList = (
   const scoped = { statusGroup: taskStatusGroup, ...common };
 
   if (feedFilterType === FeedFilter.MENTIONS) {
-    return listTasks({ ...mentionedTaskParams(scope), ...common });
+    // `scoped`, not `common`: mentioned tasks are status-filtered like every
+    // other branch. mentionedTaskParams never sets statusGroup, so no collision.
+    return listTasks({ ...mentionedTaskParams(scope), ...scoped });
   }
 
   if (isOwnProfile(scope)) {
@@ -223,6 +225,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState<AxiosError>();
   const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [isTestCaseResolutionLoading, setIsTestCaseResolutionLoading] =
     useState(false);
@@ -234,22 +237,59 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const { currentUser } = useApplicationStore();
   const activeDomain = useDomainStore((state) => state.activeDomain);
 
-  const fetchTestCaseResolution = useCallback(async (id: string) => {
-    setIsTestCaseResolutionLoading(true);
-    try {
-      const { data } = await getListTestCaseIncidentByStateId(id, {
-        limit: PAGE_SIZE_LARGE,
-      });
+  const incidentRequestSeq = useRef(0);
+  const incidentScope = useRef<string>();
+  const incidentLoading = useRef(false);
+  const [incidentAfter, setIncidentAfter] = useState<string>();
 
-      setTestCaseResolutionStatus(
-        orderBy(data, (item) => item.timestamp, ['asc'])
-      );
-    } catch {
-      setTestCaseResolutionStatus([]);
-    } finally {
-      setIsTestCaseResolutionLoading(false);
+  const fetchTestCaseResolution = useCallback(
+    async (id: string, after?: string) => {
+      if (after && (incidentScope.current !== id || incidentLoading.current)) {
+        return;
+      }
+      const requestId = ++incidentRequestSeq.current;
+      incidentScope.current = id;
+      incidentLoading.current = true;
+      setIsTestCaseResolutionLoading(true);
+      if (!after) {
+        setTestCaseResolutionStatus([]);
+        setIncidentAfter(undefined);
+      }
+      try {
+        const { data, paging } = await getListTestCaseIncidentByStateId(id, {
+          limit: PAGE_SIZE_LARGE,
+          after,
+        });
+        if (requestId !== incidentRequestSeq.current) {
+          return;
+        }
+        setTestCaseResolutionStatus((previous) =>
+          orderBy(
+            uniqBy([...(after ? previous : []), ...data], 'id'),
+            ['timestamp', 'id'],
+            ['asc', 'asc']
+          )
+        );
+        setIncidentAfter(paging.after);
+      } catch (error) {
+        if (requestId === incidentRequestSeq.current) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (requestId === incidentRequestSeq.current) {
+          incidentLoading.current = false;
+          setIsTestCaseResolutionLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  const loadMoreIncidentHistory = useCallback(async () => {
+    if (incidentScope.current && incidentAfter) {
+      await fetchTestCaseResolution(incidentScope.current, incidentAfter);
     }
-  }, []);
+  }, [fetchTestCaseResolution, incidentAfter]);
 
   const fetchPostsFeed = useCallback(async (active: Conversation) => {
     if (
@@ -281,6 +321,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const setActiveTask = useCallback(
     (active?: Task) => {
       setSelectedTask(active);
+      ++incidentRequestSeq.current;
+      incidentScope.current = undefined;
+      incidentLoading.current = false;
+      setIncidentAfter(undefined);
+      setTestCaseResolutionStatus([]);
+      setIsTestCaseResolutionLoading(false);
 
       // Fetch TCRS records for this incident task to populate the timeline.
       // In task-first mode the task UUID equals the TCRS stateId (see
@@ -338,6 +384,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        setListError(undefined);
         if (!after) {
           // A first-page fetch replaces the result set. Dropping the rows and the
           // paging cursor now is what stops the previous query's list staying on
@@ -372,6 +419,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           return;
         }
 
+        setListError(err as AxiosError);
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -398,6 +446,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       const requestId = ++listRequestSeq.current;
       try {
         setLoading(true);
+        setListError(undefined);
         if (!after) {
           setEntityThread([]);
           setEntityPaging({} as Paging);
@@ -412,6 +461,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
         const { data, paging } = await listConversations({
           entityLink: getConversationsEntityLink(entityType, fqn),
+          includeFields: true,
           after,
           filterType: getConversationsFilterType(feedFilterType, userId),
           userId,
@@ -428,6 +478,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           return;
         }
 
+        setListError(err as AxiosError);
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
@@ -616,44 +667,51 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       reactionType: ReactionType,
       reactionOperation: ReactionOperation
     ) => {
-      if (isThread) {
-        const conversation =
+      try {
+        if (isThread) {
+          const conversation =
+            reactionOperation === ReactionOperation.ADD
+              ? await addConversationReaction(feedId, reactionType)
+              : await removeConversationReaction(feedId, reactionType);
+          setEntityThread((current) =>
+            current.map((item) => (item.id === feedId ? conversation : item))
+          );
+          setSelectedThread((current) =>
+            current?.id === feedId ? conversation : current
+          );
+
+          return;
+        }
+
+        const reply =
           reactionOperation === ReactionOperation.ADD
-            ? await addConversationReaction(feedId, reactionType)
-            : await removeConversationReaction(feedId, reactionType);
+            ? await addConversationReplyReaction(feedId, post.id, reactionType)
+            : await removeConversationReplyReaction(
+                feedId,
+                post.id,
+                reactionType
+              );
+        const updateReplies = (replies?: ConversationReply[]) =>
+          (replies ?? []).map((item) => (item.id === reply.id ? reply : item));
         setEntityThread((current) =>
-          current.map((item) => (item.id === feedId ? conversation : item))
+          current.map((conversation) =>
+            conversation.id === feedId
+              ? {
+                  ...conversation,
+                  replies: updateReplies(conversation.replies),
+                }
+              : conversation
+          )
         );
         setSelectedThread((current) =>
-          current?.id === feedId ? conversation : current
+          current?.id === feedId
+            ? { ...current, replies: updateReplies(current.replies) }
+            : current
         );
-
-        return;
+        setActivityReplies(updateReplies);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-
-      const reply =
-        reactionOperation === ReactionOperation.ADD
-          ? await addConversationReplyReaction(feedId, post.id, reactionType)
-          : await removeConversationReplyReaction(
-              feedId,
-              post.id,
-              reactionType
-            );
-      const updateReplies = (replies?: ConversationReply[]) =>
-        (replies ?? []).map((item) => (item.id === reply.id ? reply : item));
-      setEntityThread((current) =>
-        current.map((conversation) =>
-          conversation.id === feedId
-            ? { ...conversation, replies: updateReplies(conversation.replies) }
-            : conversation
-        )
-      );
-      setSelectedThread((current) =>
-        current?.id === feedId
-          ? { ...current, replies: updateReplies(current.replies) }
-          : current
-      );
-      setActivityReplies(updateReplies);
     },
     []
   );
@@ -704,15 +762,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setFocusReplyEditor(isFocused);
   }, []);
 
-  const showDrawer = useCallback(
-    (thread: Conversation) => {
-      setIsDrawerOpen(true);
-      setActiveThread(thread);
-      setSelectedTask(undefined);
-    },
-    [setActiveThread]
-  );
-
   const showTaskDrawer = useCallback(
     (task: Task) => {
       setIsDrawerOpen(true);
@@ -757,6 +806,20 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     }
   }, []);
 
+  // The drawer shows an activity ahead of a thread, and closing it keeps the
+  // activity selected, so opening a conversation drops it here. Dropped first:
+  // clearing an activity turns the replies loading state off, which would
+  // otherwise hide the thread's own fetch.
+  const showDrawer = useCallback(
+    (thread: Conversation) => {
+      setIsDrawerOpen(true);
+      void setActiveActivity();
+      setActiveThread(thread);
+      setSelectedTask(undefined);
+    },
+    [setActiveThread, setActiveActivity]
+  );
+
   const showActivityDrawer = useCallback(
     (activity: ActivityEvent) => {
       setIsDrawerOpen(true);
@@ -781,16 +844,22 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     },
     []
   );
+  // Leaves the selection alone: the entity Activity tab's side panel shows the
+  // same thread or activity the drawer opened on.
   const hideDrawer = useCallback(() => {
     setFocusReplyEditor(false);
     setIsDrawerOpen(false);
-    setSelectedActivity(undefined);
-    setActivityReplies([]);
   }, []);
 
   const updateTestCaseIncidentStatus = useCallback(
     (status: TestCaseResolutionStatus[]) => {
-      setTestCaseResolutionStatus(status);
+      setTestCaseResolutionStatus((current) =>
+        orderBy(
+          uniqBy([...status].reverse().concat(current), 'id'),
+          ['timestamp', 'id'],
+          ['asc', 'asc']
+        )
+      );
 
       // After a header-driven transition the selected task's status/stage is
       // stale. Re-fetch it so the left-panel task card reflects the new state
@@ -910,6 +979,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       selectedTask,
       isDrawerOpen,
       loading,
+      listError,
       isActivityLoading,
       isPostsLoading,
       isTestCaseResolutionLoading,
@@ -935,6 +1005,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
       testCaseResolutionStatus,
+      incidentAfter,
+      loadMoreIncidentHistory,
       fetchUpdatedThread,
       updateTestCaseIncidentStatus,
       activityEvents,
@@ -954,6 +1026,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     selectedTask,
     isDrawerOpen,
     loading,
+    listError,
     isActivityLoading,
     isPostsLoading,
     isTestCaseResolutionLoading,
@@ -980,6 +1053,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     user,
     currentUser,
     testCaseResolutionStatus,
+    incidentAfter,
+    loadMoreIncidentHistory,
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     activityEvents,

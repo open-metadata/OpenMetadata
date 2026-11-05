@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EventSubscription } from '../../generated/events/eventSubscription';
+import {
+  AlertType,
+  EventSubscription,
+} from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
 import { AlertTableColumn } from './ObservabilityAlertsPage.constants';
 
@@ -24,6 +28,10 @@ export interface AlertPermission {
 }
 
 export interface UseObservabilityAlertsOptions {
+  /** Defaults to Observability; the AI pages also serve Notification alerts. */
+  alertType?: AlertType;
+  /** Show system-provided alerts (the Notification `ActivityFeedAlert`). */
+  includeSystemAlerts?: boolean;
   getAlertDetailsPath?: (fqn: string) => string;
   onAddAlert?: () => void;
   onViewAlert?: (alert: EventSubscription) => void;
@@ -35,6 +43,7 @@ export interface UseObservabilityAlertsReturn {
   hasResourcePermissionError: boolean;
   refetchResourcePermission: () => Promise<void>;
   alerts: EventSubscription[];
+  alertsError?: AxiosError;
   columnList: AlertTableColumn[];
   currentPage: number;
   getAlertDetailsPath: (fqn: string) => string;
@@ -71,12 +80,14 @@ export interface ObservabilityAlertsTableProps {
   alertResourcePermission?: OperationPermission;
   hasResourcePermissionError?: boolean;
   alerts: EventSubscription[];
+  alertsError?: AxiosError;
   columnList: AlertTableColumn[];
   currentPage: number;
   loading: boolean;
   loadingCount: number;
   getAlertDetailsPath: (fqn: string) => string;
   onAddAlert: () => void;
+  onRetry?: () => void;
   onRetryPermission?: () => void;
   onEditAlert?: (alert: EventSubscription) => void;
   onPageChange: (params: PagingHandlerParams) => void;

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -38,11 +39,13 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -50,6 +53,9 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
  * Integration tests for Tag entity operations.
@@ -98,6 +104,13 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     request.setDescription("Test tag");
 
     return request;
+  }
+
+  private static CreateTag tagIn(String name, Classification classification) {
+    return new CreateTag()
+        .withName(name)
+        .withClassification(classification.getFullyQualifiedName())
+        .withDescription("Test tag");
   }
 
   private Classification createClassification(TestNamespace ns) {
@@ -545,6 +558,33 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     ListResponse<Tag> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() <= 2);
+  }
+
+  @Test
+  void list_tagsWithUsageCount_countsTheAssetsTheGetCounts(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+    CreateTag request =
+        new CreateTag()
+            .withName(ns.shortPrefix("it's \\ counted"))
+            .withClassification(classification.getFullyQualifiedName())
+            .withDescription("Tag whose usage count is listed");
+    Tag tag = createEntity(request);
+    createTableTaggedWith(ns, tag, "usage_count");
+
+    ListResponse<Tag> listed =
+        listEntities(
+            new ListParams()
+                .setFields("usageCount")
+                .setParent(classification.getFullyQualifiedName())
+                .setLimit(10));
+
+    Tag listedTag =
+        listed.getData().stream()
+            .filter(t -> t.getId().equals(tag.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(1, listedTag.getUsageCount());
+    assertEquals(1, getEntityWithFields(tag.getId().toString(), "usageCount").getUsageCount());
   }
 
   @Test
@@ -1880,6 +1920,62 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
+  void patch_systemTagParentOrClassification_rejected(TestNamespace ns) {
+    // A system tag is matched by its FQN, so a new parent or classification renames it as much as
+    // a new name does.
+    Classification home = createClassification(ns);
+    Classification elsewhere = createClassification(ns);
+    Tag sibling = createEntity(tagIn(ns.shortPrefix("sibling"), home));
+    CreateTag systemRequest = tagIn(ns.shortPrefix("seeded"), home);
+    systemRequest.setProvider(ProviderType.SYSTEM);
+    Tag systemTag = createEntity(systemRequest);
+
+    for (JsonNode move :
+        List.of(
+            JsonUtils.valueToTree(
+                List.of(
+                    Map.of(
+                        "op",
+                        "add",
+                        "path",
+                        "/parent",
+                        "value",
+                        Map.of("id", sibling.getId().toString(), "type", Entity.TAG)))),
+            JsonUtils.valueToTree(
+                List.of(
+                    Map.of(
+                        "op",
+                        "replace",
+                        "path",
+                        "/classification",
+                        "value",
+                        Map.of(
+                            "id",
+                            elsewhere.getId().toString(),
+                            "type",
+                            Entity.CLASSIFICATION)))))) {
+      assertThrows(
+          InvalidRequestException.class,
+          () -> SdkClients.adminClient().tags().patch(systemTag.getId(), move),
+          move.toString());
+    }
+    assertEquals(
+        systemTag.getFullyQualifiedName(),
+        SdkClients.adminClient().tags().get(systemTag.getId().toString()).getFullyQualifiedName());
+  }
+
+  @Test
+  void post_tagWithParentFromAnotherClassification_rejected(TestNamespace ns) {
+    Classification named = createClassification(ns);
+    Classification other = createClassification(ns);
+    Tag otherParent = createEntity(tagIn(ns.shortPrefix("otherParent"), other));
+    CreateTag request = tagIn(ns.shortPrefix("child"), named);
+    request.setParent(otherParent.getFullyQualifiedName());
+
+    assertThrows(InvalidRequestException.class, () -> createEntity(request));
+  }
+
+  @Test
   void put_systemTagProvider_preserved(TestNamespace ns) throws Exception {
     // A PUT carrying a user provider must not downgrade a seeded system tag - the system provider
     // is preserved silently instead of stored as user.
@@ -2155,6 +2251,14 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     OpenMetadataClient client = SdkClients.adminClient();
     Tag tag = createTagForBulk(ns, "dr_false");
     Table table = createTableTaggedWith(ns, tag, "dr_false");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(table.getTags()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
 
     AddTagToAssetsRequest realRemove =
         new AddTagToAssetsRequest()
@@ -2193,6 +2297,119 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .atMost(Duration.ofSeconds(45))
         .during(Duration.ofSeconds(20))
         .until(() -> !tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkAddTagToAssets_dryRunFalse_updatesCachedTable(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "add_cached");
+    Table table = createBareTable(ns, "add_cached");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(List.of()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
+
+    AddTagToAssetsRequest request =
+        new AddTagToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags/" + tag.getId() + "/assets/add", request, Void.class);
+
+    Awaitility.await("Tag should be applied to asset when dryRun=false")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(45))
+        .untilAsserted(
+            () -> assertTrue(tableHasTag(client, table.getId(), tag.getFullyQualifiedName())));
+  }
+
+  @Test
+  void test_bulkAddTagsToAssets_partialFailure_onePassRestFail_reportsPartialSuccess(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Mutually-exclusive classification with two sibling tags; an asset that
+    // already carries one sibling fails the per-asset mutual-exclusion check
+    // when the other sibling is bulk-added. One bare asset passes; the rest
+    // fail → status must be PARTIAL_SUCCESS (the old `> 1` threshold reported
+    // FAILURE, hiding the single passing asset).
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("mx_cls_pf"))
+                    .withDescription("Mutually-exclusive classification for partial-failure")
+                    .withMutuallyExclusive(true));
+    Tag conflictTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("mx_conf_pf"))
+                    .withClassification(classification.getName())
+                    .withDescription("conflicting sibling already on the failing assets"));
+    Tag addingTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("mx_add_pf"))
+                    .withClassification(classification.getName())
+                    .withDescription("the tag being bulk-added"));
+    TagLabel conflictLabel =
+        new TagLabel()
+            .withTagFQN(conflictTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Table passTable = createBareTable(ns, "mx_pass_pf");
+    List<Table> failTables = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      Table t = createBareTable(ns, "mx_fail_pf" + i);
+      Table fetched = client.tables().get(t.getId().toString(), "tags");
+      fetched.setTags(List.of(conflictLabel));
+      client.tables().update(t.getId().toString(), fetched);
+      failTables.add(t);
+    }
+
+    // Each asset is saved on its own: the lone passing asset gets `addingTag` and
+    // the failing ones keep their tags. The /v1/tags/{id}/assets/add endpoint is
+    // *asynchronous* (EntityResource.bulkAddToAssetsAsync): the HTTP body is just a jobId ack,
+    // and the final BulkOperationResult — whose status is computed by the shared
+    // deriveBulkOperationStatus helper (the `> 0` fix) — is delivered via
+    // websocket, not in the HTTP body. The Tag path's status fix is therefore
+    // covered by EntityRepositoryBulkOperationStatusTest plus the synchronous
+    // glossary ITs; this test verifies the Tag path's validation+apply behavior
+    // via the observable side effect: exactly one asset passes and gets the tag.
+    List<EntityReference> assets = new ArrayList<>();
+    assets.add(passTable.getEntityReference());
+    assets.addAll(failTables.stream().map(Table::getEntityReference).toList());
+
+    AddTagToAssetsRequest add = new AddTagToAssetsRequest().withDryRun(false).withAssets(assets);
+    String path = "/v1/tags/" + addingTag.getId() + "/assets/add";
+    client.getHttpClient().execute(HttpMethod.PUT, path, add, Void.class);
+
+    UUID passTableId = passTable.getId();
+    String addingTagFqn = addingTag.getFullyQualifiedName();
+    Awaitility.await("lone passing asset must receive the adding tag (1 validation pass)")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertTrue(tableHasTag(client, passTableId, addingTagFqn)));
+    // The failing assets already carry the mutually-exclusive sibling, so they
+    // must not receive addingTag.
+    for (Table t : failTables) {
+      assertFalse(
+          tableHasTag(client, t.getId(), addingTagFqn),
+          "failing assets must not receive the mutually-exclusive adding tag");
+    }
   }
 
   @Test

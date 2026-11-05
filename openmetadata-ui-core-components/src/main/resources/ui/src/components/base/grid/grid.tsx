@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { forwardRef } from 'react';
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cx } from '@/utils/cx';
 
@@ -63,17 +64,13 @@ export interface GridProps extends HTMLAttributes<HTMLDivElement> {
 
 const GRID_COLUMNS = 24;
 
-export const Grid = ({
-  gap,
-  rowGap,
-  colGap,
-  className,
-  children,
-  style,
-  ...props
-}: GridProps) => {
+const GridRoot = forwardRef<HTMLDivElement, GridProps>(function Grid(
+  { gap, rowGap, colGap, className, children, style, ...props }: GridProps,
+  ref
+) {
   return (
     <div
+      ref={ref}
       {...props}
       className={cx(
         'tw:grid',
@@ -89,9 +86,9 @@ export const Grid = ({
       {children}
     </div>
   );
-};
+});
 
-Grid.displayName = 'Grid';
+GridRoot.displayName = 'Grid';
 
 export interface GridItemProps extends HTMLAttributes<HTMLDivElement> {
   span?: number;
@@ -103,7 +100,7 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
 export const GridItem = ({
-  span = GRID_COLUMNS,
+  span,
   start,
   className,
   children,
@@ -114,15 +111,20 @@ export const GridItem = ({
     start !== undefined ? clamp(start, 1, GRID_COLUMNS) : undefined;
   const maxSpan =
     clampedStart !== undefined ? GRID_COLUMNS - clampedStart + 1 : GRID_COLUMNS;
-  const clampedSpan = clamp(span, 1, maxSpan);
+  const clampedSpan = clamp(span ?? GRID_COLUMNS, 1, maxSpan);
 
   const gridColumn =
     clampedStart !== undefined
       ? `${clampedStart} / span ${clampedSpan}`
-      : `span ${clampedSpan}`;
+      : span !== undefined
+      ? `span ${clampedSpan}`
+      : undefined;
 
   return (
-    <div {...props} className={cx(className)} style={{ gridColumn, ...style }}>
+    <div
+      {...props}
+      className={cx('tw:col-span-full', className)}
+      style={{ gridColumn, ...style }}>
       {children}
     </div>
   );
@@ -130,4 +132,4 @@ export const GridItem = ({
 
 GridItem.displayName = 'Grid.Item';
 
-Grid.Item = GridItem;
+export const Grid = Object.assign(GridRoot, { Item: GridItem });

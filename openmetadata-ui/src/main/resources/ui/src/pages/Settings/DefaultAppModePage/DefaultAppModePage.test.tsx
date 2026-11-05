@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+  ConfigSourceMode,
+  SettingType,
+} from '../../../generated/system/settingsSourceResponse';
 import {
   getAppConfiguration,
+  getSettingsSource,
   patchAppConfiguration,
 } from '../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DefaultAppModePage from './DefaultAppModePage';
 
 jest.mock('react-i18next', () => ({
@@ -28,6 +28,8 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('../../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn().mockResolvedValue({ settings: [] }),
+  adoptDeploymentConfig: jest.fn(),
   getAppConfiguration: jest.fn().mockResolvedValue({ defaultAppMode: null }),
   patchAppConfiguration: jest.fn().mockResolvedValue({ defaultAppMode: 'ai' }),
 }));
@@ -46,7 +48,7 @@ const mockPatchAppConfiguration = patchAppConfiguration as jest.Mock;
 
 const renderPage = async () => {
   await act(async () => {
-    render(<DefaultAppModePage />);
+    renderWithQueryClient(<DefaultAppModePage />);
   });
 };
 
@@ -64,6 +66,19 @@ describe('DefaultAppModePage', () => {
     expect(screen.getByTestId('app-mode-option-null')).toBeInTheDocument();
     expect(screen.getByTestId('app-mode-option-classic')).toBeInTheDocument();
     expect(screen.getByTestId('app-mode-option-ai')).toBeInTheDocument();
+  });
+
+  it('marks only the Classic option as deprecated, with the release notes link', async () => {
+    await renderPage();
+
+    const classic = screen.getByTestId('app-mode-option-classic');
+
+    expect(classic).toHaveTextContent('label.deprecated');
+    expect(classic).toHaveTextContent('message.classic-mode-retiring-admin');
+    expect(screen.getAllByTestId('classic-deprecated-badge')).toHaveLength(1);
+    expect(
+      screen.getByTestId('classic-deprecation-release-notes')
+    ).toHaveAttribute('target', '_blank');
   });
 
   it('keeps Save disabled until the selection changes', async () => {
@@ -104,5 +119,29 @@ describe('DefaultAppModePage', () => {
         defaultAppMode: null,
       })
     );
+  });
+
+  it('locks the choice and offers no save when the deployment sets the default', async () => {
+    (getSettingsSource as jest.Mock).mockResolvedValueOnce({
+      settings: [
+        {
+          configType: SettingType.AppConfiguration,
+          source: ConfigSourceMode.Env,
+          sourceVariable: 'APP_CONFIG_SOURCE',
+          editable: false,
+          managedPaths: ['/defaultAppMode'],
+        },
+      ],
+    });
+
+    await renderPage();
+
+    expect(
+      await screen.findByTestId('settings-source-env-alert')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'label.ai' })).toBeDisabled();
+    expect(
+      screen.queryByTestId('save-app-mode-settings')
+    ).not.toBeInTheDocument();
   });
 });

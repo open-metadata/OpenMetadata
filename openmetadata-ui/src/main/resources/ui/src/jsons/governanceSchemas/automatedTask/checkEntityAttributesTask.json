@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CheckEntityAttributesTaskDefinition",
   "description": "Checks if an Entity attributes fit given rules.",
   "javaInterfaces": [
@@ -57,7 +56,6 @@
       "default": [
         "relatedEntity"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -83,7 +81,6 @@
         "true",
         "false"
       ],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

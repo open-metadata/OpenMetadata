@@ -34,6 +34,7 @@ from metadata.ingestion.models.patch_request import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
+from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauDashboard,
     TableauSource,
@@ -198,7 +199,7 @@ class TableauUnitTest(TestCase):
             mock_tableau_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.tableau.client = SimpleNamespace()
+        self.tableau.client = SimpleNamespace(metadata_api_backfill_running=False)
         self.tableau.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_dashboard_name(self):
@@ -802,6 +803,67 @@ class TableauUnitTest(TestCase):
                 mock_get_by_name.assert_called_once()
                 assert result is None
 
+    def _search_finds_only_sales_orders(self, entity_type, fqn_search_string, **_):
+        """OM holds svc.dev.sales.orders and nothing else."""
+        return MagicMock(spec=Table) if fqn_search_string.endswith("dev.sales.orders") else None
+
+    def _lineage_tables_for_prefix(self, db_service_prefix, schema="sales"):
+        table = UpstreamTable(
+            id="t1",
+            luid="t1-luid",
+            name="sales.orders" if schema else "orders",
+            fullName="[dev].[sales].[orders]",
+            schema_=schema,
+            database={"id": "db1", "name": "dev"},
+        )
+        with (
+            patch.object(self.tableau.metadata, "get_by_name", return_value=None),
+            patch.object(
+                self.tableau.metadata, "search_in_any_service", side_effect=self._search_finds_only_sales_orders
+            ) as search,
+        ):
+            return self.tableau._get_table_entities_from_api(db_service_prefix=db_service_prefix, table=table), search
+
+    def test_table_lineage_matches_a_schema_prefix(self):
+        result, _ = self._lineage_tables_for_prefix("svc.dev.sales")
+
+        assert result is not None and len(result) == 1
+
+    def test_table_lineage_skips_a_table_outside_the_schema_prefix(self):
+        # dbServicePrefixes svc.dev.inventory must not link a table of schema sales
+        result, search = self._lineage_tables_for_prefix("svc.dev.inventory")
+
+        assert result is None
+        search.assert_not_called()
+
+    def test_table_lineage_skips_a_table_other_than_the_table_prefix(self):
+        result, search = self._lineage_tables_for_prefix("svc.dev.sales.customers")
+
+        assert result is None
+        search.assert_not_called()
+
+    def test_table_lineage_full_name_fallback_respects_the_schema_prefix(self):
+        # Tableau reports no schema, so only the fullName [dev].[sales].[orders] carries it
+        result, _ = self._lineage_tables_for_prefix("svc.dev.inventory", schema=None)
+
+        assert result is None
+
+    def test_datamodel_dashboard_lineage_skipped_when_the_dashboard_failed(self):
+        # A workbook whose yield_dashboard failed leaves no dashboard in the context; its
+        # data models must not try to build a lineage edge to it.
+        context = self.tableau.context.get()
+        context.__dict__["dataModels"] = ["ds-bad"]
+        context.__dict__["dashboard"] = None
+        datamodel = MagicMock(spec=DashboardDataModel, dataModelType="TableauEmbeddedDatasource")
+        with (
+            patch.object(self.tableau.metadata, "get_by_name", return_value=datamodel),
+            patch("metadata.ingestion.source.dashboard.tableau.metadata.logger") as log,
+        ):
+            lineage = list(self.tableau.yield_datamodel_dashboard_lineage())
+
+        assert lineage == []
+        log.error.assert_not_called()
+
     def test_datamodel_uses_own_project_over_dashboard_project(self):
         """
         Test that when a published datasource has its own projectName,
@@ -1005,6 +1067,155 @@ class TableauUnitTest(TestCase):
         assert len(columns) == 1
         assert columns[0].description is None
 
+    def test_embedded_column_inherits_published_formula(self):
+        """
+        An embedded datasource reports a field it reads from a published datasource as a bare
+        field with no formula; its column takes the formula from the published definition, and
+        a formula the embedded datasource defines itself still wins.
+        """
+        published = DataSource(
+            id="pds-1",
+            name="Sales Summary",
+            fields=[
+                DatasourceField(id="pub-calc", name="Has Activity", formula="LOOKUP(ZN([Net Flow $]),0)<>0"),
+                DatasourceField(id="pub-local", name="Local Calc", formula="[a] + 1"),
+            ],
+        )
+        embedded = DataSource(
+            id="eds-1",
+            name="Sales Summary",
+            fields=[
+                DatasourceField(id="emb-calc", name="Has Activity"),
+                DatasourceField(id="emb-local", name="Local Calc", formula="[a] + 2"),
+                DatasourceField(id="emb-plain", name="Region"),
+            ],
+            upstreamDatasources=[published],
+        )
+
+        descriptions = {
+            column.displayName: column.description.root if column.description else None
+            for column in self.tableau.get_column_info(embedded)
+        }
+
+        assert descriptions == {
+            "Has Activity": "**Formula:** `LOOKUP(ZN([Net Flow $]),0)<>0`",
+            "Local Calc": "**Formula:** `[a] + 2`",
+            "Region": None,
+        }
+
+    def test_datamodel_col_lineage_carries_published_formula(self):
+        """The published -> embedded column edge of a calculated field carries its formula."""
+
+        def model(name: str, columns: list[str]) -> DashboardDataModel:
+            return DashboardDataModel(
+                id=uuid.uuid4(),
+                name=name,
+                service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+                dataModelType="TableauDataModel",
+                columns=[
+                    Column(
+                        name=column,
+                        displayName=column,
+                        dataType=DataType.RECORD,
+                        fullyQualifiedName=f"svc.model.{name}.{column}",
+                    )
+                    for column in columns
+                ],
+            )
+
+        published = DataSource(
+            id="pds-1",
+            fields=[DatasourceField(id="pub-calc", name="Has Activity", formula="LOOKUP(ZN([Net Flow $]),0)<>0")],
+        )
+
+        lineage = self.tableau._get_datamodel_col_lineage(
+            data_model_entity=model("emb", ["Has Activity", "Region"]),
+            upstream_data_model_entity=model("pub", ["Has Activity", "Region"]),
+            upstream_formulas=self.tableau._get_field_formulas(published),
+        )
+
+        functions = {line.toColumn.root: line.function.root if line.function else None for line in lineage}
+        assert functions == {
+            "svc.model.emb.Has Activity": "LOOKUP(ZN([Net Flow $]),0)<>0",
+            "svc.model.emb.Region": None,
+        }
+
+    def test_column_data_length_set_for_guid_mirrored_column(self):
+        """
+        Test that a GUID column (mapped to DataType.BINARY) gets a non-null
+        dataLength, since the server rejects char/varchar/binary/varbinary
+        columns with dataLength=None, and Tableau never reports a real length.
+        """
+        data_source = DataSource(
+            id="ds-guid-001",
+            name="Job Runs",
+            fields=[
+                DatasourceField(
+                    id="fld-005",
+                    name="Job Id",
+                    description=None,
+                    formula=None,
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-005",
+                            name="Job Id",
+                            remoteType="GUID",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+        assert len(columns) == 1
+        assert columns[0].dataType == DataType.BINARY
+        assert columns[0].dataLength is not None
+
+    def test_column_data_length_set_for_guid_child_column(self):
+        """
+        Test that a nested (non-mirrored) GUID child column also gets a
+        non-null dataLength.
+        """
+        data_source = DataSource(
+            id="ds-guid-002",
+            name="Job Runs Detail",
+            fields=[
+                DatasourceField(
+                    id="fld-006",
+                    name="Job Reference",
+                    description=None,
+                    formula="[Job Id] + [Job Name]",
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-006",
+                            name="Job Id",
+                            remoteType="GUID",
+                        ),
+                        UpstreamColumn(
+                            id="col-007",
+                            name="Job Name",
+                            remoteType="VARCHAR",
+                        ),
+                        UpstreamColumn(
+                            id="col-008",
+                            name="Job Count",
+                            remoteType="INTEGER",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+        assert len(columns) == 1
+        children = {child.name.root: child for child in columns[0].children}
+        assert children["col-006"].dataType == DataType.BINARY
+        assert children["col-006"].dataLength is not None
+        assert children["col-007"].dataType == DataType.VARCHAR
+        assert children["col-007"].dataLength is not None
+        assert children["col-008"].dataType != DataType.BINARY
+        assert children["col-008"].dataLength is None
+
     def test_yield_lineage_emits_both_paths_when_upstream_datasources_and_tables_present(
         self,
     ):
@@ -1090,6 +1301,146 @@ class TableauUnitTest(TestCase):
         registry = self.tableau.progress_tracking.registry
         assert registry._global["Dashboard"].reconcilable is True
         assert registry._global["Dashboard"].total is None
+
+    def test_get_workbooks_dashboard_filter_skips_populate_views(self):
+        """
+        A workbook whose name matches the exclude pattern must never reach
+        populate_views -- filtering happens on the listing data.
+        """
+        client = TableauClient.__new__(TableauClient)
+        client.tableau_server = MagicMock()
+        client.owner_cache = {}
+        client.custom_sql_table_queries = {}
+        client.all_projects = {}
+
+        workbook = SimpleNamespace(
+            id="wb-1",
+            name="skip_me",
+            project_id="p1",
+            project_name="Sales",
+            views=[],
+            owner_id=None,
+            description=None,
+            tags=[],
+            webpage_url="http://tableauHost.com/wb-1",
+        )
+
+        with (
+            patch.object(TableauClient, "get_all_projects"),
+            patch.object(TableauClient, "cache_custom_sql_tables"),
+            patch(
+                "metadata.ingestion.source.dashboard.tableau.client.Pager",
+                side_effect=lambda endpoint: iter([workbook]),
+            ),
+        ):
+            on_filtered = MagicMock()
+            dashboards = list(
+                client.get_workbooks(
+                    dashboard_filter_pattern=FilterPattern(excludes=["^skip_me$"]),
+                    on_filtered=on_filtered,
+                )
+            )
+
+        assert dashboards == []
+        client.tableau_server.workbooks.populate_views.assert_not_called()
+        on_filtered.assert_called_once_with("skip_me", "Dashboard Filtered Out")
+
+    def test_get_workbooks_project_filter_skips_populate_views(self):
+        """
+        A workbook in an excluded project must never reach populate_views, even
+        when the project is resolved through the parent hierarchy.
+        """
+        client = TableauClient.__new__(TableauClient)
+        client.tableau_server = MagicMock()
+        client.owner_cache = {}
+        client.custom_sql_table_queries = {}
+        client.all_projects = {
+            "parent": SimpleNamespace(id="parent", name="Finance", parent_id=None),
+            "child": SimpleNamespace(id="child", name="Reporting", parent_id="parent"),
+        }
+
+        workbook = SimpleNamespace(
+            id="wb-2",
+            name="finance_dashboard",
+            project_id="child",
+            project_name="Reporting",
+            views=[],
+            owner_id=None,
+            description=None,
+            tags=[],
+            webpage_url="http://tableauHost.com/wb-2",
+        )
+
+        with (
+            patch.object(TableauClient, "get_all_projects"),
+            patch.object(TableauClient, "cache_custom_sql_tables"),
+            patch(
+                "metadata.ingestion.source.dashboard.tableau.client.Pager",
+                side_effect=lambda endpoint: iter([workbook]),
+            ),
+        ):
+            on_filtered = MagicMock()
+            dashboards = list(
+                client.get_workbooks(
+                    project_filter_pattern=FilterPattern(excludes=["^Finance.Reporting$"]),
+                    on_filtered=on_filtered,
+                )
+            )
+
+        assert dashboards == []
+        client.tableau_server.workbooks.populate_views.assert_not_called()
+        on_filtered.assert_called_once_with("Finance.Reporting", "Project / Workspace Filtered Out")
+
+    def test_get_workbooks_not_filtered_calls_populate_views(self):
+        """
+        A workbook that passes both filters still goes through populate_views
+        and is yielded as usual.
+        """
+        client = TableauClient.__new__(TableauClient)
+        client.tableau_server = MagicMock()
+        client.owner_cache = {}
+        client.custom_sql_table_queries = {}
+        client.all_projects = {}
+
+        workbook = SimpleNamespace(
+            id="wb-3",
+            name="keep_me",
+            project_id="p1",
+            project_name="Sales",
+            views=[],
+            owner_id=None,
+            description="desc",
+            tags=[],
+            webpage_url="http://tableauHost.com/wb-3",
+        )
+
+        with (
+            patch.object(TableauClient, "get_all_projects"),
+            patch.object(TableauClient, "cache_custom_sql_tables"),
+            patch(
+                "metadata.ingestion.source.dashboard.tableau.client.Pager",
+                side_effect=lambda endpoint: iter([workbook]),
+            ),
+        ):
+            dashboards = list(client.get_workbooks(include_owners=False))
+
+        assert len(dashboards) == 1
+        assert dashboards[0].name == "keep_me"
+        client.tableau_server.workbooks.populate_views.assert_called_once_with(workbook, usage=True)
+
+    def test_get_project_parents_by_id_dict_lookup(self):
+        """
+        get_project_parents_by_id resolves the parent chain via the id-keyed
+        all_projects dict instead of scanning a list.
+        """
+        client = TableauClient.__new__(TableauClient)
+        client.all_projects = {
+            "parent": SimpleNamespace(id="parent", name="Finance", parent_id=None),
+            "child": SimpleNamespace(id="child", name="Reporting", parent_id="parent"),
+        }
+
+        assert client.get_project_parents_by_id("child") == "Finance.Reporting"
+        assert client.get_project_parents_by_id("missing") is None
 
     def test_yield_dashboard_tracks_progress(self):
         self.tableau.progress_tracking.manual.set_total(Dashboard.__name__, 3)

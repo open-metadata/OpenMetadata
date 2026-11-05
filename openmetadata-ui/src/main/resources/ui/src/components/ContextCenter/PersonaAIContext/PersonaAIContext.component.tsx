@@ -21,7 +21,13 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, ClockRewind, Eye, FolderPlus, Plus } from '@untitledui/icons';
+import {
+  Clock,
+  ClockRewind,
+  Eye,
+  FolderPlus,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,6 +57,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { ContextPreviewModal } from './ContextPreviewModal/ContextPreviewModal.component';
+import { ContextPromptCard } from './ContextPromptCard/ContextPromptCard.component';
 import { ContextRuleCard } from './ContextRuleCard/ContextRuleCard.component';
 import { ContextRuleEditor } from './ContextRuleEditor/ContextRuleEditor.component';
 import { VersionHistoryDrawer } from './VersionHistoryDrawer/VersionHistoryDrawer.component';
@@ -63,7 +70,7 @@ interface PersonaAIContextProps {
 
 const VERSION_BADGE_CLASS = [
   'tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:rounded-lg',
-  'tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:text-secondary',
+  'tw:border tw:border-primary tw:bg-surface tw:px-3 tw:py-2 tw:text-secondary',
   'tw:transition tw:hover:bg-primary_hover',
 ].join(' ');
 
@@ -361,7 +368,7 @@ const PersonaAIContextRulesSection = ({
     return (
       <Box
         align="center"
-        className="tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-primary tw:p-10 tw:text-center"
+        className="tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-surface tw:p-10 tw:text-center"
         direction="col">
         <FeaturedIcon
           className="tw:isolate tw:mb-4 tw:bg-brand-primary"
@@ -521,6 +528,41 @@ export const PersonaAIContext = ({
     [applyServerDefinition, persona.id]
   );
 
+  // The endpoint overwrites all three settings from the body, so they ride along unchanged.
+  const persistPrompt = useCallback(
+    async (prompt: string) => {
+      const mutationId = ++mutationIdRef.current;
+      try {
+        const response = await updatePersonaAIContext(persona.id, {
+          cacheTtlMinutes:
+            definition.cacheTtlMinutes ??
+            DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes,
+          characterBudget:
+            definition.characterBudget ??
+            DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget,
+          enabled: definition.enabled,
+          prompt,
+        });
+        if (mutationId === mutationIdRef.current) {
+          applyServerDefinition(response);
+        }
+        showSuccessToast(
+          t('message.entity-saved-successfully', { entity: t('label.prompt') })
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [
+      applyServerDefinition,
+      definition.cacheTtlMinutes,
+      definition.characterBudget,
+      definition.enabled,
+      persona.id,
+      t,
+    ]
+  );
+
   const handleRuleSubmit = useCallback(
     async (rule: ContextRule) => {
       const previous = definition;
@@ -647,6 +689,12 @@ export const PersonaAIContext = ({
         setTtlDraft={setTtlDraft}
         settingsDisabled={settingsDisabled}
         ttlDraft={ttlDraft}
+      />
+
+      <ContextPromptCard
+        canEdit={canEdit}
+        prompt={definition.prompt}
+        onSave={persistPrompt}
       />
 
       <PersonaAIContextRulesSection

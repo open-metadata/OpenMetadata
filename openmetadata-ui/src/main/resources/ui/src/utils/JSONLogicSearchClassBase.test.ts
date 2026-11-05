@@ -10,8 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ImmutableTree,
+  OldJsonTree,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/ui';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
+import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
+import { formatQuery } from './queryBuilder/formatters';
+import { generateUUID } from './StringUtils';
 
 // Define extended widget interface for testing widget properties
 interface ExtendedWidget {
@@ -43,6 +55,57 @@ describe('JSONLogicSearchClassBase', () => {
 
   beforeEach(() => {
     jsonLogicSearchClassBase = new JSONLogicSearchClassBase();
+  });
+
+  describe('updatedBy field', () => {
+    it('should use the user name as the option value and display name as the label', async () => {
+      jest.useFakeTimers();
+      const autocomplete = advancedSearchClassBase.autocomplete as jest.Mock;
+      const mockedAutocomplete = autocomplete.getMockImplementation();
+      autocomplete.mockImplementation(
+        jest.requireActual('./AdvancedSearchClassBase').default.autocomplete
+      );
+      (getAggregateFieldOptions as jest.Mock).mockResolvedValueOnce({
+        data: {
+          aggregations: {
+            'sterms#displayName.keyword': {
+              buckets: [
+                {
+                  key: 'aaron johnson',
+                  doc_count: 1,
+                  'top_hits#top': {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            displayName: 'aaron johnson',
+                            name: 'aaron_johnson0',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      const field = jsonLogicSearchClassBase.mapFields[
+        EntityReferenceFields.UPDATED_BY
+      ] as { fieldSettings: { asyncFetch: (q: string) => Promise<unknown> } };
+      const result = field.fieldSettings.asyncFetch('aaron');
+      jest.runAllTimers();
+
+      await expect(result).resolves.toEqual({
+        values: [{ title: 'aaron johnson', value: 'aaron_johnson0' }],
+        hasMore: false,
+      });
+
+      autocomplete.mockImplementation(mockedAutocomplete);
+      jest.useRealTimers();
+    });
   });
 
   describe('configOperators', () => {
@@ -144,7 +207,10 @@ describe('JSONLogicSearchClassBase', () => {
       expect(typeof result).toBe('number');
       expect(result).toBeGreaterThan(0);
 
-      // Test jsonLogicImport function (converts from timestamp to ISO string)
+      // jsonLogicImport must hand back the widget's own value format. The date
+      // widget is a native `<input type="date">`, which renders its value
+      // verbatim and blanks anything that is not `YYYY-MM-DD` — an ISO
+      // datetime came back from the API as an empty field.
       expect((dateWidget as ExtendedWidget).jsonLogicImport).toBeDefined();
 
       const timestamp = 1704067200000; // 2024-01-01T00:00:00Z
@@ -152,6 +218,10 @@ describe('JSONLogicSearchClassBase', () => {
         utils: {
           moment: {
             utc: (val: number) => ({
+              format: (fmt: string) =>
+                fmt === 'YYYY-MM-DD'
+                  ? new Date(val).toISOString().slice(0, 10)
+                  : new Date(val).toISOString(),
               toISOString: () => new Date(val).toISOString(),
             }),
           },
@@ -163,8 +233,8 @@ describe('JSONLogicSearchClassBase', () => {
         >
       ).call(mockContext2, timestamp);
 
-      expect(typeof result2).toBe('string');
-      expect(result2).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      expect(result2).toBe('2024-01-01');
+      expect(result2).not.toMatch(/T\d{2}:\d{2}/);
     });
 
     it('should have multiselect widget with proper configuration', () => {
@@ -235,11 +305,101 @@ describe('JSONLogicSearchClassBase', () => {
     });
   });
 
+  // Tier only exists on a serialized entity as a `Tier.*` entry in the `tags`
+  // list — there is no `tier` property — so a governance rule keyed on
+  // `{"var":"tier"}` resolves to null under `RuleEngine.apply` and silently never
+  // matches. The export pipeline therefore rewrites the Tier group variable to
+  // `tags` on save (the entity `tags` list the rule can actually evaluate), while
+  // the Tier field keeps its `tier` key so a saved Tags rule is still routed to
+  // the Tags field on load.
+  describe('Tier field exports a server-evaluable rule', () => {
+    const buildTierRuleTree = (
+      tierFQN: string,
+      operator = 'array_contains'
+    ): OldJsonTree => {
+      const group = generateUUID();
+      const rule = generateUUID();
+
+      return {
+        id: generateUUID(),
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          [group]: {
+            type: 'rule_group',
+            id: group,
+            properties: {
+              conjunction: 'AND',
+              not: false,
+              mode: 'some',
+              field: EntityReferenceFields.TIER,
+              fieldSrc: 'field',
+            },
+            children1: {
+              [rule]: {
+                type: 'rule',
+                id: rule,
+                properties: {
+                  field: `${EntityReferenceFields.TIER}.tagFQN`,
+                  operator,
+                  value: [[tierFQN]],
+                  valueSrc: ['value'],
+                  valueType: ['multiselect'],
+                  fieldSrc: 'field',
+                },
+              },
+            },
+          },
+        },
+      };
+    };
+
+    const exportTierRule = (tierFQN: string) => {
+      const config = jsonLogicSearchClassBase.getQbConfigs([SearchIndex.TABLE]);
+      const tree = QbUtils.checkTree(
+        QbUtils.loadTree(buildTierRuleTree(tierFQN)),
+        config
+      );
+
+      return formatQuery(tree, config, SearchOutputType.JSONLogic).value;
+    };
+
+    it('keeps the Tier field on the `tier` key without a `tags` alias (a `fieldName` alias would hijack saved Tags rules on import)', () => {
+      const tierField = jsonLogicSearchClassBase.mapFields[
+        EntityReferenceFields.TIER
+      ] as { fieldName?: string; type: string };
+
+      expect(tierField.type).toBe('!group');
+      expect(tierField.fieldName).toBeUndefined();
+    });
+
+    it('saves a "Tier is Tier1" rule against the tags list the server can evaluate', () => {
+      expect(exportTierRule('Tier.Tier1')).toBe(
+        JSON.stringify({
+          and: [
+            {
+              some: [
+                { var: 'tags' },
+                { contains: [{ var: 'tagFQN' }, ['Tier.Tier1']] },
+              ],
+            },
+          ],
+        })
+      );
+    });
+
+    it('never saves the non-existent "tier" variable a server cannot resolve', () => {
+      expect(exportTierRule('Tier.Tier1')).not.toContain('"var":"tier"');
+    });
+  });
+
   describe('getQbConfigs', () => {
     it('should return config with proper operators for non-explore page', () => {
       const config = jsonLogicSearchClassBase.getQbConfigs(
         [SearchIndex.TABLE],
-        false
+        {
+          showLabels: false,
+        }
       );
 
       expect(config.operators.equal.label).toContain('label.is');
@@ -251,7 +411,9 @@ describe('JSONLogicSearchClassBase', () => {
     it('should return config with original labels for explore page', () => {
       const config = jsonLogicSearchClassBase.getQbConfigs(
         [SearchIndex.TABLE],
-        true
+        {
+          showLabels: true,
+        }
       );
 
       // For explore page, labels should be original from base config
@@ -264,6 +426,141 @@ describe('JSONLogicSearchClassBase', () => {
       expect(config.fields).toBeDefined();
       expect(Object.keys(config.fields).length).toBeGreaterThan(0);
     });
+
+    it('should surface column-tag (columns.tags) for TABLE and lock the full field set', () => {
+      const config = jsonLogicSearchClassBase.getQbConfigs([SearchIndex.TABLE]);
+      const fieldKeys = Object.keys(config.fields);
+
+      expect(fieldKeys).toContain(EntityReferenceFields.COLUMN_TAG);
+      expect(fieldKeys).toContain(EntityReferenceFields.TAG);
+      expect(fieldKeys).toContain(EntityReferenceFields.DATABASE);
+
+      expect(fieldKeys.sort()).toEqual(
+        [
+          EntityReferenceFields.SERVICE,
+          EntityReferenceFields.OWNERS,
+          EntityReferenceFields.DISPLAY_NAME,
+          EntityReferenceFields.NAME,
+          EntityReferenceFields.DESCRIPTION,
+          EntityReferenceFields.TAG,
+          EntityReferenceFields.TIER,
+          EntityReferenceFields.DOMAIN,
+          EntityReferenceFields.DATA_PRODUCTS,
+          EntityReferenceFields.EXTENSION,
+          EntityReferenceFields.UPDATED_AT,
+          EntityReferenceFields.UPDATED_BY,
+          EntityReferenceFields.VERSION,
+          EntityReferenceFields.ENTITY_STATUS,
+          EntityReferenceFields.DATABASE,
+          EntityReferenceFields.DATABASE_SCHEMA,
+          EntityReferenceFields.TABLE_TYPE,
+          EntityReferenceFields.TEST_SUITE,
+          EntityReferenceFields.COLUMN_TAG,
+        ].sort()
+      );
+    });
+
+    it('should surface column-tag (columns.tags) for DATA_ASSET without leaking table-only fields', () => {
+      const config = jsonLogicSearchClassBase.getQbConfigs([
+        SearchIndex.DATA_ASSET,
+      ]);
+      const fieldKeys = Object.keys(config.fields);
+
+      expect(fieldKeys).toContain(EntityReferenceFields.COLUMN_TAG);
+
+      expect(fieldKeys).not.toContain(EntityReferenceFields.DATABASE);
+      expect(fieldKeys).not.toContain(EntityReferenceFields.DATABASE_SCHEMA);
+      expect(fieldKeys).not.toContain(EntityReferenceFields.TABLE_TYPE);
+      expect(fieldKeys).not.toContain(EntityReferenceFields.TEST_SUITE);
+
+      expect(fieldKeys.sort()).toEqual(
+        [
+          EntityReferenceFields.SERVICE,
+          EntityReferenceFields.OWNERS,
+          EntityReferenceFields.DISPLAY_NAME,
+          EntityReferenceFields.NAME,
+          EntityReferenceFields.DESCRIPTION,
+          EntityReferenceFields.TAG,
+          EntityReferenceFields.TIER,
+          EntityReferenceFields.DOMAIN,
+          EntityReferenceFields.DATA_PRODUCTS,
+          EntityReferenceFields.EXTENSION,
+          EntityReferenceFields.UPDATED_AT,
+          EntityReferenceFields.UPDATED_BY,
+          EntityReferenceFields.VERSION,
+          EntityReferenceFields.ENTITY_STATUS,
+          EntityReferenceFields.COLUMN_TAG,
+        ].sort()
+      );
+    });
+  });
+
+  describe('getEntitySpecificQueryBuilderFields - column tag gating', () => {
+    it('should NOT include column-tag for non-column-bearing indices', () => {
+      [
+        SearchIndex.GLOSSARY_TERM,
+        SearchIndex.PIPELINE,
+        SearchIndex.DASHBOARD,
+        SearchIndex.TOPIC,
+        SearchIndex.KNOWLEDGE_PAGE_INDEX,
+      ].forEach((index) => {
+        const result =
+          jsonLogicSearchClassBase.getEntitySpecificQueryBuilderFields([index]);
+
+        expect(Object.keys(result)).not.toContain(
+          EntityReferenceFields.COLUMN_TAG
+        );
+      });
+    });
+
+    it('should not leak column-tag into the common config used by semantic-rule fields', () => {
+      const commonConfig = jsonLogicSearchClassBase.getCommonConfig();
+
+      expect(Object.keys(commonConfig)).not.toContain(
+        EntityReferenceFields.COLUMN_TAG
+      );
+    });
+
+    it('lets a status rule ask whether a stage is set', () => {
+      const config = jsonLogicSearchClassBase.getCommonConfig([
+        SearchIndex.TABLE,
+      ]);
+      const field = config[EntityReferenceFields.ENTITY_STATUS];
+
+      expect('operators' in field ? field.operators : []).toEqual(
+        expect.arrayContaining(['is_null', 'is_not_null'])
+      );
+    });
+
+    it.each(['Superseded', 'Invalidated'])(
+      'does not offer %s when filtering tables',
+      async (status) => {
+        const config = jsonLogicSearchClassBase.getCommonConfig([
+          SearchIndex.TABLE,
+        ]);
+        const field = config[EntityReferenceFields.ENTITY_STATUS];
+        if (!('fieldSettings' in field)) {
+          throw new Error('Status must be a selectable field');
+        }
+        const settings = field.fieldSettings;
+        const fetch =
+          settings && 'asyncFetch' in settings
+            ? settings.asyncFetch
+            : undefined;
+        if (typeof fetch !== 'function') {
+          throw new Error(
+            'Status options must resolve through lifecycle discovery'
+          );
+        }
+
+        await expect(fetch('', 0)).resolves.toMatchObject({
+          values: expect.arrayContaining([
+            expect.objectContaining({ value: 'Approved' }),
+          ]),
+        });
+        await expect(fetch(status, 0)).resolves.toMatchObject({ values: [] });
+      }
+    );
   });
 
   describe('getNegativeQueryForNotContainsReverserOperation', () => {
@@ -440,7 +737,76 @@ describe('JSONLogicSearchClassBase', () => {
       const props = jsonLogicSearchClassBase.mainWidgetProps;
 
       expect(props.fullWidth).toBe(true);
-      expect(props.valueLabel).toContain('label.criteria');
+      // The canvas draws the Value column's own label, so the widget no longer
+      // carries a "Criteria:" prefix of its own.
+      expect(props.valueLabel).toContain('label.value');
     });
+  });
+});
+
+jest.mock('../rest/metadataTypeAPI', () => ({
+  getEntityLifecycleStages: jest.fn(),
+}));
+
+beforeEach(() => {
+  (
+    getEntityLifecycleStages as jest.MockedFunction<
+      typeof getEntityLifecycleStages
+    >
+  ).mockResolvedValue({
+    stages: ['Approved', 'In Review', 'Superseded', 'Invalidated'],
+    entityTypes: [
+      {
+        entityType: 'table',
+        stages: ['Approved', 'In Review'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+      {
+        entityType: 'contextMemory',
+        stages: ['Approved', 'Superseded', 'Invalidated'],
+        transitions: [],
+        stageWorkflows: [],
+      },
+    ],
+  });
+});
+
+describe('provider field for glossary terms', () => {
+  const automationProposal = {
+    and: [
+      { '==': [{ var: 'provider' }, 'automation'] },
+      { '!=': [{ var: 'entityStatus' }, 'Approved'] },
+    ],
+  };
+
+  it('offers the three providers a glossary term can have', () => {
+    const fields = new JSONLogicSearchClassBase().getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]).fields;
+
+    expect(
+      Object.keys(
+        (
+          fields[EntityReferenceFields.PROVIDER] as {
+            fieldSettings: { listValues: Record<string, string> };
+          }
+        ).fieldSettings.listValues
+      )
+    ).toEqual(['user', 'system', 'automation']);
+  });
+
+  it('keeps an automation proposal rule through a load and a save', () => {
+    const config = new JSONLogicSearchClassBase().getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]);
+    const tree = QbUtils.loadFromJsonLogic(
+      automationProposal,
+      config
+    ) as ImmutableTree;
+
+    expect(QbUtils.jsonLogicFormat(tree, config).logic).toEqual(
+      automationProposal
+    );
   });
 });

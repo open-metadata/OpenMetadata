@@ -14,10 +14,6 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import GlossaryRouter from './GlossaryRouter';
 
-jest.mock('../../../pages/AddGlossary/AddGlossaryPage.component', () => {
-  return jest.fn(() => <div>AddGlossaryPage</div>);
-});
-
 jest.mock('../../Glossary/GlossaryVersion/GlossaryVersion.component', () => {
   return jest.fn(() => <div>GlossaryVersion</div>);
 });
@@ -40,14 +36,14 @@ jest.mock('../AdminProtectedRoute', () => ({
 }));
 
 describe('GlossaryRouter', () => {
-  it('should render AddGlossaryPage component for add glossary route', async () => {
+  it('should redirect the retired add glossary route to the glossary page', async () => {
     render(
       <MemoryRouter initialEntries={['/add']}>
         <GlossaryRouter />
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('AddGlossaryPage')).toBeInTheDocument();
+    expect(await screen.findByText('GlossaryPage')).toBeInTheDocument();
   });
 
   it('should render GlossaryVersion component for glossary version route', async () => {

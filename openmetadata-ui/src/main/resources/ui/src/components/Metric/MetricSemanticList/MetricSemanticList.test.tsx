@@ -57,7 +57,12 @@ const setContext = (overrides = {}) => {
   (useGenericContext as jest.Mock).mockReturnValue({
     data: { id: 'metric-1', name: 'revenue', dimensions: ITEMS },
     onUpdate: mockOnUpdate,
-    permissions: { EditAll: true, EditDescription: false },
+    // EditAll granted, EditDescription absent (not explicitly denied) — falls back to
+    // EditAll under the prioritized getDerivedPermissionFlags derivation (Task 8 Batch 9),
+    // same as it did under the old bare `EditAll || EditDescription` OR. Deliberately NOT
+    // `EditDescription: false`, which would now correctly deny access (explicit-deny-wins) —
+    // see the dedicated regression test below for that case.
+    permissions: { EditAll: true },
     ...overrides,
   });
 };
@@ -117,6 +122,19 @@ describe('MetricSemanticList', () => {
 
   it('hides the edit button when the user lacks permission', () => {
     setContext({ permissions: { EditAll: false, EditDescription: false } });
+    renderList();
+
+    expect(
+      screen.queryByTestId('edit-description-order_date')
+    ).not.toBeInTheDocument();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit EditDescription: false must win over a bare EditAll: true grant
+  // (explicit-deny-wins) — the old raw `EditAll || EditDescription` OR let EditAll grant
+  // unconditionally.
+  it('hides the edit button when EditDescription is explicitly false, even with EditAll true', () => {
+    setContext({ permissions: { EditAll: true, EditDescription: false } });
     renderList();
 
     expect(

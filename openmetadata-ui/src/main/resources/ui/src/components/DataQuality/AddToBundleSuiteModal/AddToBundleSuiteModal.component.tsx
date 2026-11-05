@@ -16,11 +16,11 @@ import {
   Dialog,
   Modal,
   ModalOverlay,
+  Select,
 } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
@@ -31,7 +31,6 @@ import {
   getListTestSuitesBySearch,
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
@@ -50,6 +49,7 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
     { label: string; value: string; suite: TestSuite }[]
   >([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const selectedIds = useMemo(
@@ -98,9 +98,32 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
   useEffect(() => {
     if (open) {
       setSelectedSuiteId(undefined);
+      setInputValue('');
       fetchLogicalSuites('');
     }
   }, [open, fetchLogicalSuites]);
+
+  const suiteItems = useMemo(
+    () => options.map((option) => ({ id: option.value, label: option.label })),
+    [options]
+  );
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    setSelectedSuiteId(undefined);
+    debouncedSearch(value);
+  };
+
+  const handleSelectionChange = (key: Key | null) => {
+    const suiteId = key === null ? undefined : String(key);
+    setSelectedSuiteId(suiteId);
+    if (suiteId) {
+      debouncedSearch.cancel();
+      setInputValue(
+        options.find((option) => option.value === suiteId)?.label ?? ''
+      );
+    }
+  };
 
   const handleOk = async () => {
     if (selectedIds.length === 0) {
@@ -150,24 +173,25 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
           title={t('label.add-test-cases-to-bundle-suite')}
           onClose={onCancel}>
           <Dialog.Content className="tw:min-h-45">
-            <Select
-              allowClear
-              showSearch
-              className="w-full"
+            <Select.ComboBox
+              allowsEmptyCollection
+              aria-label={t('label.bundle-suite')}
               data-testid="bundle-suite-select"
-              disabled={submitting}
-              filterOption={false}
-              getPopupContainer={getPopupContainer}
-              listHeight={150}
-              loading={optionsLoading}
-              options={options}
+              emptyState={optionsLoading ? t('label.loading') : undefined}
+              fontSize="sm"
+              inputValue={inputValue}
+              isDisabled={submitting}
+              items={suiteItems}
               placeholder={t('label.select-field', {
                 field: t('label.bundle-suite'),
               })}
-              value={selectedSuiteId}
-              onChange={(value) => setSelectedSuiteId(value)}
-              onSearch={(value) => debouncedSearch(value)}
-            />
+              selectedKey={selectedSuiteId ?? null}
+              shortcut={false}
+              showSearchIcon={false}
+              onInputChange={handleInputChange}
+              onSelectionChange={handleSelectionChange}>
+              {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+            </Select.ComboBox>
           </Dialog.Content>
           <Dialog.Footer>
             <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">

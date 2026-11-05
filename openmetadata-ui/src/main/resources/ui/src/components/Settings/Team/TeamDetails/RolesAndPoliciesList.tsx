@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tooltip } from 'antd';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -26,8 +26,8 @@ import {
   getRoleWithFqnPath,
 } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 
 const ListEntities = ({
   list,
@@ -84,23 +84,17 @@ const ListEntities = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              placement="left"
-              title={
+            <ButtonUtility
+              data-testid={`remove-action-${getEntityName(record)}`}
+              icon={IconRemove}
+              isDisabled={!hasAccess}
+              size="lg"
+              tooltip={
                 hasAccess ? t('label.remove') : t(NO_PERMISSION_FOR_ACTION)
-              }>
-              <Button
-                data-testid={`remove-action-${getEntityName(record)}`}
-                disabled={!hasAccess}
-                type="text"
-                onClick={() => onDelete(record)}>
-                <Icon
-                  className="align-middle"
-                  component={IconRemove}
-                  style={{ fontSize: '16px' }}
-                />
-              </Button>
-            </Tooltip>
+              }
+              tooltipPlacement="left"
+              onClick={() => onDelete(record)}
+            />
           );
         },
       },

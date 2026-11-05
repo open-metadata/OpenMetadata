@@ -69,6 +69,7 @@ export enum PipelineType {
     Metadata = "metadata",
     PolicyAgent = "policyAgent",
     Profiler = "profiler",
+    ReverseMetadata = "reverseMetadata",
     TestSuite = "TestSuite",
     Usage = "usage",
 }

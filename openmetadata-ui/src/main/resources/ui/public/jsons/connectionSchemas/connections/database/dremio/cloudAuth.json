@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Dremio Cloud Authentication",
   "description": "Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio Cloud is a fully managed SaaS platform.",
   "javaType": "org.openmetadata.schema.services.connections.database.dremio.CloudAuth",

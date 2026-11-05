@@ -13,7 +13,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { DataInsightLatestRun } from '../components/Settings/Applications/AppDetails/AppDetails.interface';
 import { AgentType, App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
@@ -24,8 +23,9 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/type';
 import { ListParams } from '../interface/API.interface';
+import { DataInsightLatestRun } from '../interface/platform/application.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/apps';
 
@@ -209,14 +209,21 @@ export const getApplicationLogs = (
 };
 
 /** Lists the AI Automations AutoPilot runs for a service, in template order. */
-export const getAiAutomationsByService = async (serviceFqn: string) => {
+export const getAiAutomationsByService = async (
+  serviceFqn: string,
+  serviceType: string
+) => {
   const response = await APIClient.get<
     PagingResponse<CollateAgentAutomation[]>
   >('/ai/automations', {
     // The list endpoint defaults to provider=user when omitted, which filters
     // out AutoPilot's provider=automation entries; request them explicitly.
+    // Service names are unique only within a service type, so the type is sent
+    // too: without it, a name two types share is rejected
+    // (ADR:openmetadata-collate/2026-10-15-an-autopilot-automation-name-carries-its-service-type-on-a-clash).
     params: {
       service: serviceFqn,
+      serviceType,
       isTemplate: false,
       provider: ProviderType.Automation,
     },

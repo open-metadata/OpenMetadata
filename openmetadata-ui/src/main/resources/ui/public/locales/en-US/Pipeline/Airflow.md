@@ -33,7 +33,7 @@ $$section
 
 Select your underlying database connection. We support the <a href="https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html" target="_blank">official</a> backends from Airflow.
 
-Note that the **Backend Connection** is only used to extract metadata from a DAG running directly in your instance, for example to get the metadata out of <a href="https://docs.open-metadata.org/connectors/pipeline/airflow/gcp" target="_blank">GCS Composer</a>.
+Note that the **Backend Connection** is only used to extract metadata from a DAG running directly in your instance, for example to get the metadata out of <a href="https://docs.open-metadata.org/connectors/pipeline/airflow/gcp-composer" target="_blank">GCS Composer</a>.
 
 $$
 
@@ -274,7 +274,7 @@ There are 2 types of auth configs:
 - IAM based Auth.
 - Azure Based Auth.
 
-User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Based Authentication` to connect to Azure related services.
 $$
 
 ## Basic Auth
@@ -491,12 +491,12 @@ $$
 
 $$section
 ### Auth Config $(id="authType")
-There are 2 types of auth configs:
+There are 3 types of auth configs:
 - Basic Auth.
 - IAM based Auth.
 - Azure Based Auth.
 
-User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Based Authentication` to connect to Azure related services.
 $$
 
 

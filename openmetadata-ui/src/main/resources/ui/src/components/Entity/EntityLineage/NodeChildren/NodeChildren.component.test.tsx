@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
+import { LineageNodeType } from '../../../../interface/lineage.interface';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
-import { LineageNodeType } from '../../../Lineage/Lineage.interface';
 import NodeChildren from './NodeChildren.component';
 
 const mockUpdateColumnsInCurrentPages = jest.fn();
@@ -125,38 +125,20 @@ describe('NodeChildren Component', () => {
 
   describe('Rendering and Visibility', () => {
     it('should render column container when children list is expanded and columns exist', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       expect(screen.getByTestId('column-container')).toBeInTheDocument();
     });
 
     it('should not render when isChildrenListExpanded is false', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded={false}
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded={false} node={mockNode} />);
 
       expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
     });
 
     it('should not render when node has no columns', () => {
       const nodeWithoutColumns = { ...mockNode, columns: [] };
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={nodeWithoutColumns}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={nodeWithoutColumns} />);
 
       expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
     });
@@ -168,27 +150,30 @@ describe('NodeChildren Component', () => {
         columns: undefined,
       } as unknown as LineageNodeType;
 
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={unsupportedNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={unsupportedNode} />);
 
       expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
+    });
+
+    it('should render a metric node with the metric itself as its endpoint', () => {
+      const metricNode = {
+        id: 'metric-id',
+        type: EntityType.METRIC,
+        entityType: EntityType.METRIC,
+        name: 'total_sales',
+        fullyQualifiedName: 'metricService.total_sales',
+      } as unknown as LineageNodeType;
+
+      render(<NodeChildren isChildrenListExpanded node={metricNode} />);
+
+      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId('column-total_sales')).toBeInTheDocument();
     });
 
     it('should render when column layer is enabled', () => {
       mockLineageStoreState.activeLayer = [LineageLayer.ColumnLevelLineage];
 
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       expect(screen.getByTestId('column-container')).toBeInTheDocument();
     });
@@ -196,13 +181,7 @@ describe('NodeChildren Component', () => {
     it('should render when data observability layer is enabled', () => {
       mockLineageStoreState.activeLayer = [LineageLayer.DataObservability];
 
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       expect(screen.getByTestId('column-container')).toBeInTheDocument();
     });
@@ -210,13 +189,7 @@ describe('NodeChildren Component', () => {
 
   describe('Search Functionality', () => {
     it('should render search input with correct placeholder', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const searchInput = screen.getByTestId('search-column-input');
 
@@ -225,26 +198,14 @@ describe('NodeChildren Component', () => {
     });
 
     it('should show all columns when search value is empty', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       expect(screen.getByTestId('column-column1')).toBeInTheDocument();
       expect(screen.getByTestId('column-column2')).toBeInTheDocument();
     });
 
     it('should filter columns based on search input', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const searchInput = screen.getByTestId('search-column-input');
 
@@ -255,13 +216,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should filter columns case-insensitively', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const searchInput = screen.getByTestId('search-column-input');
 
@@ -272,13 +227,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should reset to all columns when search is cleared', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const searchInput = screen.getByTestId('search-column-input');
 
@@ -293,13 +242,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should stop event propagation on search input click', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const searchInput = screen.getByTestId('search-column-input');
       const stopPropagationSpy = jest.fn();
@@ -315,13 +258,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should show partial match results', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const searchInput = screen.getByTestId('search-column-input');
 
@@ -366,7 +303,6 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isOnlyShowColumnsWithLineageFilterActive
-          isConnectable={false}
           node={nodeWithMultipleColumns as unknown as LineageNodeType}
         />
       );
@@ -380,7 +316,6 @@ describe('NodeChildren Component', () => {
       render(
         <NodeChildren
           isChildrenListExpanded
-          isConnectable={false}
           isOnlyShowColumnsWithLineageFilterActive={false}
           node={mockNode}
         />
@@ -394,7 +329,6 @@ describe('NodeChildren Component', () => {
       const { rerender } = render(
         <NodeChildren
           isChildrenListExpanded
-          isConnectable={false}
           isOnlyShowColumnsWithLineageFilterActive={false}
           node={mockNode}
         />
@@ -407,7 +341,6 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isOnlyShowColumnsWithLineageFilterActive
-          isConnectable={false}
           node={mockNode}
         />
       );
@@ -449,7 +382,6 @@ describe('NodeChildren Component', () => {
         <NodeChildren
           isChildrenListExpanded
           isOnlyShowColumnsWithLineageFilterActive
-          isConnectable={false}
           node={nodeWithMultipleColumns as unknown as LineageNodeType}
         />
       );
@@ -461,6 +393,56 @@ describe('NodeChildren Component', () => {
       expect(screen.getByTestId('column-column1')).toBeInTheDocument();
       expect(screen.queryByTestId('column-column3')).not.toBeInTheDocument();
     });
+
+    it('should search all columns when no column with lineage matches', () => {
+      const columnsMap = new Map();
+      columnsMap.set(mockNode.id, new Set(['test.fqn.column1']));
+      mockLineageStoreState.columnsHavingLineage = columnsMap;
+
+      render(
+        <NodeChildren
+          isChildrenListExpanded
+          isOnlyShowColumnsWithLineageFilterActive
+          node={mockNode}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('search-column-input'), {
+        target: { value: 'column2' },
+      });
+
+      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.queryByTestId('column-column1')).not.toBeInTheDocument();
+    });
+
+    it('should keep the search applied when the lineage filter is toggled', () => {
+      const columnsMap = new Map();
+      columnsMap.set(mockNode.id, new Set(['test.fqn.column1']));
+      mockLineageStoreState.columnsHavingLineage = columnsMap;
+
+      const { rerender } = render(
+        <NodeChildren
+          isChildrenListExpanded
+          isOnlyShowColumnsWithLineageFilterActive={false}
+          node={mockNode}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('search-column-input'), {
+        target: { value: 'column2' },
+      });
+
+      rerender(
+        <NodeChildren
+          isChildrenListExpanded
+          isOnlyShowColumnsWithLineageFilterActive
+          node={mockNode}
+        />
+      );
+
+      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.queryByTestId('column-column1')).not.toBeInTheDocument();
+    });
   });
 
   describe('Data Observability', () => {
@@ -471,11 +453,7 @@ describe('NodeChildren Component', () => {
       mockGetTestCaseExecutionSummary.mockResolvedValue(mockSummary);
 
       render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNodeWithTestSuite}
-        />
+        <NodeChildren isChildrenListExpanded node={mockNodeWithTestSuite} />
       );
 
       await waitFor(() => {
@@ -489,11 +467,7 @@ describe('NodeChildren Component', () => {
       mockLineageStoreState.activeLayer = [LineageLayer.ColumnLevelLineage];
       mockLineageStoreState.isDQEnabled = false;
       render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNodeWithTestSuite}
-        />
+        <NodeChildren isChildrenListExpanded node={mockNodeWithTestSuite} />
       );
 
       expect(mockGetTestCaseExecutionSummary).not.toHaveBeenCalled();
@@ -502,13 +476,7 @@ describe('NodeChildren Component', () => {
     it('should not fetch test suite summary when node has no test suite', () => {
       mockLineageStoreState.activeLayer = [LineageLayer.DataObservability];
       mockLineageStoreState.isDQEnabled = true;
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       expect(mockGetTestCaseExecutionSummary).not.toHaveBeenCalled();
     });
@@ -519,11 +487,7 @@ describe('NodeChildren Component', () => {
       mockGetTestCaseExecutionSummary.mockRejectedValue(new Error('API Error'));
 
       render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNodeWithTestSuite}
-        />
+        <NodeChildren isChildrenListExpanded node={mockNodeWithTestSuite} />
       );
 
       await waitFor(() => {
@@ -540,11 +504,7 @@ describe('NodeChildren Component', () => {
       mockGetTestCaseExecutionSummary.mockResolvedValue(mockSummary);
 
       const { rerender } = render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNodeWithTestSuite}
-        />
+        <NodeChildren isChildrenListExpanded node={mockNodeWithTestSuite} />
       );
 
       await waitFor(() => {
@@ -552,11 +512,7 @@ describe('NodeChildren Component', () => {
       });
 
       rerender(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNodeWithTestSuite}
-        />
+        <NodeChildren isChildrenListExpanded node={mockNodeWithTestSuite} />
       );
 
       expect(mockGetTestCaseExecutionSummary).toHaveBeenCalledTimes(1);
@@ -567,13 +523,7 @@ describe('NodeChildren Component', () => {
     it('should apply "any-column-selected" class when a column is selected', () => {
       mockLineageStoreState.selectedColumn = 'test.fqn.column1';
 
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const container = screen.getByTestId('column-container');
 
@@ -583,13 +533,7 @@ describe('NodeChildren Component', () => {
     it('should apply "creating-edge" class when creating edge', () => {
       mockLineageStoreState.isCreatingEdge = true;
 
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const container = screen.getByTestId('column-container');
 
@@ -600,13 +544,7 @@ describe('NodeChildren Component', () => {
       mockLineageStoreState.selectedColumn = 'test.fqn.column1';
       mockLineageStoreState.isCreatingEdge = true;
 
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const container = screen.getByTestId('column-container');
 
@@ -625,7 +563,6 @@ describe('NodeChildren Component', () => {
       render(
         <NodeChildren
           isChildrenListExpanded
-          isConnectable={false}
           node={dashboardDataModelNode as unknown as LineageNodeType}
         />
       );
@@ -653,7 +590,6 @@ describe('NodeChildren Component', () => {
       render(
         <NodeChildren
           isChildrenListExpanded
-          isConnectable={false}
           node={topicNode as unknown as LineageNodeType}
         />
       );
@@ -679,7 +615,6 @@ describe('NodeChildren Component', () => {
       render(
         <NodeChildren
           isChildrenListExpanded
-          isConnectable={false}
           node={mlModelNode as unknown as LineageNodeType}
         />
       );
@@ -704,7 +639,6 @@ describe('NodeChildren Component', () => {
       render(
         <NodeChildren
           isChildrenListExpanded
-          isConnectable={false}
           node={nodeWithEmptyNames as unknown as LineageNodeType}
         />
       );
@@ -732,7 +666,6 @@ describe('NodeChildren Component', () => {
       render(
         <NodeChildren
           isChildrenListExpanded
-          isConnectable={false}
           node={nodeWithSpecialChars as unknown as LineageNodeType}
         />
       );
@@ -754,7 +687,6 @@ describe('NodeChildren Component', () => {
       render(
         <NodeChildren
           isChildrenListExpanded
-          isConnectable={false}
           node={nodeWithMissingFQN as unknown as LineageNodeType}
         />
       );
@@ -763,13 +695,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should handle rapid search input changes', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const searchInput = screen.getByTestId('search-column-input');
 
@@ -785,13 +711,7 @@ describe('NodeChildren Component', () => {
     });
 
     it('should handle whitespace in search input', () => {
-      render(
-        <NodeChildren
-          isChildrenListExpanded
-          isConnectable={false}
-          node={mockNode}
-        />
-      );
+      render(<NodeChildren isChildrenListExpanded node={mockNode} />);
 
       const searchInput = screen.getByTestId('search-column-input');
 

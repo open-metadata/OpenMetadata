@@ -54,6 +54,16 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Used only when emailClaim is
+     * configured.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. When omitted, OpenMetadata continues
+     * using the legacy jwtPrincipalClaims flow for backward compatibility.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -67,12 +77,15 @@ export interface AuthenticationConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
-    jwtPrincipalClaims: string[];
+    jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -349,11 +362,20 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
+     */
+    endSessionWithProvider?: boolean;
+    /**
      * Client ID.
      */
     id: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * OIDC max_age authentication request parameter: the maximum time in seconds since the user
+     * last actively authenticated at the identity provider. Leave empty so the identity
+     * provider can reuse its own session; '0' is treated as unset. To force re-authentication
+     * on every login, set prompt to 'login' instead.
      */
     maxAge?: string;
     /**
@@ -365,7 +387,9 @@ export interface OidcClientConfig {
      */
     preferredJwsAlgorithm?: string;
     /**
-     * Prompt whether login/consent
+     * OIDC prompt authentication request parameter (for example 'login', 'consent' or
+     * 'select_account'). Leaving it empty is recommended: OpenMetadata sends prompt=none on its
+     * own when it re-authenticates a user silently.
      */
     prompt?: string;
     /**
@@ -393,7 +417,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**
@@ -522,7 +548,7 @@ export interface Security {
      */
     strictMode?: boolean;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.
      */
     tokenValidity?: number;
     /**
@@ -588,19 +614,32 @@ export enum TokenValidationAlgorithm {
  */
 export interface AuthorizerConfiguration {
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
      */
-    adminPrincipals: string[];
+    adminEmails?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
+     */
+    adminPrincipals?: string[];
+    /**
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -617,17 +656,19 @@ export interface AuthorizerConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
-    enforcePrincipalDomain: boolean;
+    enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
-    principalDomain: string;
+    principalDomain?: string;
     /**
      * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
      * TO BE USED IN PRODUCTION SETUP**

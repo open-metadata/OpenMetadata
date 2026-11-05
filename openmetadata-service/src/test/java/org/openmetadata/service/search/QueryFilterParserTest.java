@@ -8,8 +8,55 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class QueryFilterParserTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {"\"PII.Sensitive\"", "{\"value\":\"PII.Sensitive\",\"boost\":2.0}"})
+  void termQueryFormsPreserveExactMatches(String termValue) {
+    String queryFilter = "{\"term\":{\"tags.tagFQN.keyword\":" + termValue + "}}";
+    Map<String, List<String>> expected = Map.of("tags.tagFQN", List.of("PII.Sensitive"));
+
+    assertEquals(expected, QueryFilterParser.parseFilter(queryFilter));
+    assertEquals(List.of(expected), QueryFilterParser.parseFilterClauses(queryFilter));
+    assertTrue(
+        QueryFilterParser.matchesFilter(
+            Map.of("tags", List.of(Map.of("tagFQN", "PII.Sensitive"))), queryFilter));
+    assertFalse(
+        QueryFilterParser.matchesFilter(
+            Map.of("tags", List.of(Map.of("tagFQN", "PII.SensitiveData"))), queryFilter));
+    assertFalse(
+        QueryFilterParser.matchesFilter(
+            Map.of("tags", List.of(Map.of("tagFQN", "Public.Open"))), queryFilter));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"\"sales\"", "{\"query\":\"sales\",\"operator\":\"and\"}"})
+  void matchQueryFormsPreservePartialMatches(String matchValue) {
+    String queryFilter = "{\"match\":{\"description\":" + matchValue + "}}";
+    Map<String, List<String>> expected = Map.of("description", List.of("sales"));
+
+    assertEquals(expected, QueryFilterParser.parseFilter(queryFilter));
+    assertEquals(List.of(expected), QueryFilterParser.parseFilterClauses(queryFilter));
+    assertTrue(
+        QueryFilterParser.matchesFilter(
+            Map.of("description", "Monthly sales report"), queryFilter));
+    assertFalse(
+        QueryFilterParser.matchesFilter(Map.of("description", "Customer accounts"), queryFilter));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"deleted,false", "childCount,12"})
+  void objectTermQueriesPreserveScalarValues(String field, String value) {
+    String queryFilter = "{\"term\":{\"" + field + "\":{\"value\":" + value + "}}}";
+
+    assertEquals(Map.of(field, List.of(value)), QueryFilterParser.parseFilter(queryFilter));
+    assertTrue(QueryFilterParser.matchesFilter(Map.of(field, value), queryFilter));
+    assertFalse(QueryFilterParser.matchesFilter(Map.of(field, "other"), queryFilter));
+  }
 
   @Test
   void parseFilterExtractsFieldValuesFromJsonDsl() {

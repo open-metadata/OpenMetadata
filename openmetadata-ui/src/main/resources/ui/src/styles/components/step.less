@@ -25,7 +25,7 @@
   width: 20px;
   height: 20px;
   border: 3px solid @primary-1;
-  background: white;
+  background: var(--tw-color-bg-primary);
   border-radius: 50%;
   margin-top: var(--om-space-2_4);
   z-index: var(--om-z-1);
@@ -61,108 +61,4 @@
   border-radius: 50%;
   margin-top: var(--om-space-2_4);
   z-index: var(--om-z-1);
-}
-
-.ant-steps-label-vertical .ant-steps-item-tail {
-  padding: var(--om-space-3_5) 0;
-}
-
-.ant-steps-item-finish
-  > .ant-steps-item-container
-  > .ant-steps-item-tail::after {
-  background-color: @primary-1;
-  height: 2px;
-}
-
-.ant-steps-item-process
-  > .ant-steps-item-container
-  > .ant-steps-item-tail::after {
-  background-color: @primary-1;
-  height: 2px;
-}
-
-.ant-steps-item-wait > .ant-steps-item-container > .ant-steps-item-tail::after {
-  background-color: @primary-1;
-  height: 2px;
-}
-
-.ant-steps-small .ant-steps-item-title {
-  font-size: var(--om-font-size-xs);
-  color: @primary-color;
-}
-
-.ant-steps-item-finish
-  > .ant-steps-item-container
-  > .ant-steps-item-content
-  > .ant-steps-item-title {
-  color: @primary-color;
-}
-
-.ant-steps-item-process
-  > .ant-steps-item-container
-  > .ant-steps-item-content
-  > .ant-steps-item-title {
-  color: black;
-}
-.ant-steps-item-wait
-  > .ant-steps-item-container
-  > .ant-steps-item-content
-  > .ant-steps-item-title {
-  color: black;
-}
-
-.task-resolution-steps {
-  .ant-steps-item-tail {
-    padding: var(--om-space-3_5) var(--om-space-24);
-  }
-
-  .ant-steps-item-finish
-    > .ant-steps-item-container
-    > .ant-steps-item-content
-    > .ant-steps-item-title {
-    color: @text-color;
-  }
-
-  .ant-steps-item-container > .ant-steps-item-tail::after {
-    background-color: var(--om-legacy-color-757575);
-    height: 1px;
-  }
-
-  .new {
-    .ant-steps-item-icon {
-      background-color: @purple-1;
-      border-color: @purple-2;
-      .ant-steps-icon {
-        color: @purple-2;
-      }
-    }
-  }
-
-  .ack {
-    .ant-steps-item-icon {
-      background-color: @blue-1;
-      border-color: @blue-2;
-      .ant-steps-icon {
-        color: @blue-2;
-      }
-    }
-  }
-  .assigned {
-    .ant-steps-item-icon {
-      background-color: @yellow-3;
-      border-color: @yellow-2;
-      .ant-steps-icon {
-        color: @yellow-2;
-      }
-    }
-  }
-  .resolved {
-    .ant-steps-item-icon {
-      background-color: @green-4;
-      border-color: @green-3;
-      .ant-steps-icon {
-        color: @green-3;
-      }
-    }
-  }
 }

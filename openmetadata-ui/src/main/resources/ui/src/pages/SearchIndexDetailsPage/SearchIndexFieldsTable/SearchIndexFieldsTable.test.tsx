@@ -42,20 +42,20 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () =>
-    jest.fn().mockImplementation(() => <div>testFilterTablePlaceHolder</div>)
-);
-
-jest.mock(
   '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
     ...jest.requireActual(
-      '../../../components/Customization/GenericProvider/GenericProvider'
+      '../../../components/Customization/GenericProvider/GenericContext'
     ),
     useGenericContext: jest.fn().mockReturnValue({
       type: 'searchIndex',
       setDisplayedColumns: jest.fn(),
+      // Bare minimal object, not a spread of every Operation key — the real
+      // GenericContext default is DEFAULT_ENTITY_PERMISSION (never undefined);
+      // this mock previously omitted `permissions` entirely, which only worked
+      // because the old raw-optional-chaining read (`permissions?.ViewAll`)
+      // tolerated `undefined`. getDerivedPermissionFlags does not.
+      permissions: {},
     }),
   })
 );

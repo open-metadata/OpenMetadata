@@ -10,11 +10,22 @@
 #  limitations under the License.
 """Unit tests for Elasticsearch connection handling."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.entity.services.connections.common.sslCertPaths import (
+    SslCertificatesByPath,
+)
+from metadata.generated.schema.entity.services.connections.common.sslCertValues import (
+    SslCertificatesByValues,
+)
+from metadata.generated.schema.entity.services.connections.common.sslConfig import (
+    SslConfig,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.search.elasticsearch.connection import (
     ElasticsearchConnection,
+    get_ssl_context,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.search.elasticsearch.connection"
@@ -43,3 +54,28 @@ def test_test_connection_runs_steps():
         result = conn.test_connection(metadata=MagicMock())
 
     assert result is mock_steps.return_value
+
+
+def test_empty_certificate_configuration_uses_default_server_verification(
+    tmp_path: Path,
+):
+    ssl_config = SslConfig(certificates=SslCertificatesByValues(stagingDir=str(tmp_path)))
+
+    with patch(f"{CONNECTION_MODULE}.create_ssl_context") as mock_create_context:
+        ssl_context = get_ssl_context(ssl_config)
+
+    assert ssl_context is mock_create_context.return_value
+    mock_create_context.assert_called_once_with(verify=True)
+
+
+def test_client_certificate_uses_default_server_verification():
+    ssl_config = SslConfig(certificates=SslCertificatesByPath(clientCertPath="/certs/client.pem"))
+
+    with patch(f"{CONNECTION_MODULE}.create_ssl_context") as mock_create_context:
+        ssl_context = get_ssl_context(ssl_config)
+
+    assert ssl_context is mock_create_context.return_value
+    mock_create_context.assert_called_once_with(
+        cert="/certs/client.pem",
+        verify=True,
+    )

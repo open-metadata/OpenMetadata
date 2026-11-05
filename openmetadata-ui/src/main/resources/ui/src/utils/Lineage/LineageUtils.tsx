@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import {
   BreadcrumbItemType,
   Breadcrumbs,
 } from '@openmetadata/ui-core-components';
+import { ArrowLeft, ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
-import { NodeData } from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { NodeData } from '../../interface/lineage.interface';
 import i18n from '../i18next/LocalUtil';
 
 export const LINEAGE_IMPACT_OPTIONS = [
@@ -42,12 +42,12 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
   {
     label: 'Direct',
     key: 'direct',
-    icon: <ArrowRightOutlined />,
+    icon: <ArrowRight className="tw:shrink-0" size={14} />,
   },
   {
     label: 'Indirect',
     key: 'indirect',
-    icon: <ArrowLeftOutlined />,
+    icon: <ArrowLeft className="tw:shrink-0" size={14} />,
   },
 ];
 
@@ -60,7 +60,16 @@ export const renderTruncatedPath = (path: string) => {
     .split('>')
     .map((label, index) => ({ id: String(index), label: label.trim() }));
 
-  return <Breadcrumbs items={items} maxItems={2} size="xs" type="text" />;
+  return (
+    // first + … + last at 80px each fits the summary panel's lineage card.
+    <Breadcrumbs
+      items={items}
+      maxItemWidth={80}
+      maxItems={2}
+      size="xs"
+      type="text"
+    />
+  );
 };
 
 export const addBaseNodeDepthToNodes = (

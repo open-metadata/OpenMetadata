@@ -39,6 +39,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -49,12 +50,18 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
+import org.openmetadata.schema.services.connections.database.AthenaConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -362,6 +369,25 @@ class JsonUtilsTest {
   }
 
   @Test
+  void applyPatchNeverQuotesTheRejectedValue() {
+    EventSubscription original =
+        new EventSubscription()
+            .withId(UUID.randomUUID())
+            .withName("alert")
+            .withDescription("value-from-elsewhere")
+            .withBatchSize(10);
+    JsonPatch patch = Json.createPatchBuilder().copy("/batchSize", "/description").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, EventSubscription.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'batchSize'"), ex.getMessage());
+    assertTrue(ex.getMessage().contains("must be a valid Integer"), ex.getMessage());
+    assertFalse(ex.getMessage().contains("value-from-elsewhere"), ex.getMessage());
+  }
+
+  @Test
   void applyPatchRejectsMalformedJsonPointerPath() {
     JsonObjectBuilder teamJson = Json.createObjectBuilder();
     teamJson.add("id", UUID.randomUUID().toString()).add("name", "finance");
@@ -451,6 +477,28 @@ class JsonUtilsTest {
     assertEquals(0, actualJson.get("connection").size());
     assertTrue(actualJson.has("deleted"));
     assertFalse(actualJson.get("deleted").asBoolean());
+  }
+
+  @Test
+  void testPojoToMaskedJsonLeavesOutAUsersAuthenticationMechanism() {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("alice")
+            .withEmail("alice@example.com")
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+                    .withConfig(new BasicAuthMechanism().withPassword("$2a$12$storedHash")));
+    ChangeEvent changeEvent = new ChangeEvent().withEntityType("user").withEntity(user);
+
+    JsonNode userJson = JsonUtils.readTree(JsonUtils.pojoToMaskedJson(user));
+    JsonNode changeEventJson = JsonUtils.readTree(JsonUtils.pojoToMaskedJson(changeEvent));
+
+    assertEquals("alice", userJson.get("name").asText());
+    assertFalse(userJson.has("authenticationMechanism"));
+    assertFalse(changeEventJson.get("entity").has("authenticationMechanism"));
+    assertFalse(changeEventJson.toString().contains("storedHash"));
   }
 
   @Test
@@ -637,5 +685,145 @@ class JsonUtilsTest {
     assertTrue(
         cause.getMessage().contains("appliedAt") || cause.getMessage().contains("ISO-8601"),
         "error should mention the field or expected format: " + cause.getMessage());
+  }
+
+  /**
+   * An object or array where a date belongs is refused; returning without reading it would leave
+   * its members to be bound as fields of the label.
+   */
+  @Test
+  void testTagLabelAppliedAtObjectOrArrayIsRefused() {
+    for (String value : List.of("{\"tagFQN\":\"other.tag\"}", "[\"other.tag\"]")) {
+      String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":" + value + "}";
+      assertThrows(
+          org.openmetadata.schema.exception.JsonParsingException.class,
+          () -> JsonUtils.readValue(json, TagLabel.class),
+          json);
+    }
+  }
+
+  @Test
+  void describeBindingFailureNamesTheFieldAndUriConstraintWithoutTheValue() {
+    Map<String, Object> config = athenaConfigWith("s3StagingDir", "s3://bucket/athena results/");
+
+    Optional<String> description = describeAthenaBindingFailure(config);
+
+    assertEquals(
+        Optional.of("'s3StagingDir' must be a valid URI (Illegal character in path at index 18)"),
+        description);
+  }
+
+  @Test
+  void describeBindingFailureListsTheAllowedEnumValues() {
+    Map<String, Object> config = athenaConfigWith("scheme", "not-a-scheme");
+
+    Optional<String> description = describeAthenaBindingFailure(config);
+
+    assertEquals(Optional.of("'scheme' must be one of: awsathena+rest"), description);
+  }
+
+  @Test
+  void describeBindingFailureNamesAnUnknownField() {
+    Map<String, Object> config = athenaConfigWith("s3StagingDirectory", "s3://bucket/results/");
+
+    Optional<String> description = describeAthenaBindingFailure(config);
+
+    assertEquals(Optional.of("unknown field 's3StagingDirectory'"), description);
+  }
+
+  @Test
+  void describeBindingFailureNamesTheExpectedTypeForOtherMismatches() {
+    Map<String, Object> config = athenaConfigWith("supportsMetadataExtraction", "sometimes");
+
+    Optional<String> description = describeAthenaBindingFailure(config);
+
+    assertEquals(Optional.of("'supportsMetadataExtraction' must be a valid Boolean"), description);
+  }
+
+  @Test
+  void describeBindingFailureIsEmptyForAFailureThatIsNotABindingFailure() {
+    assertEquals(
+        Optional.empty(), JsonUtils.describeBindingFailure(new IllegalStateException("boom")));
+  }
+
+  private static Map<String, Object> athenaConfigWith(String field, Object value) {
+    Map<String, Object> config = new HashMap<>();
+    config.put("type", "Athena");
+    config.put("s3StagingDir", "s3://bucket/results/");
+    config.put("workgroup", "primary");
+    config.put("awsConfig", Map.of("awsRegion", "us-east-1"));
+    config.put(field, value);
+    return config;
+  }
+
+  private static Optional<String> describeAthenaBindingFailure(Map<String, Object> config) {
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.convertValue(config, AthenaConnection.class));
+    return JsonUtils.describeBindingFailure(failure);
+  }
+
+  @Test
+  void applyPatch_refusesAPatchThatDoublesTheDocumentPastTheBudget() {
+    JsonObject document =
+        Json.createObjectBuilder().add("items", Json.createArrayBuilder()).build();
+    // Each copy appends the whole "items" array to itself, doubling it every operation.
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    ops.add(
+        Json.createObjectBuilder()
+            .add("op", "add")
+            .add("path", "/items/-")
+            .add("value", "x".repeat(1024)));
+    for (int i = 0; i < 40; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "copy")
+              .add("from", "/items")
+              .add("path", "/items/-"));
+    }
+    JsonPatch patch = Json.createPatch(ops.build());
+
+    IllegalArgumentException refused =
+        assertThrows(IllegalArgumentException.class, () -> JsonUtils.applyPatch(document, patch));
+    assertTrue(refused.getMessage().contains("size"), refused.getMessage());
+  }
+
+  @Test
+  void applyPatch_allowsAnOrdinaryGrowingPatch() {
+    JsonObject document =
+        Json.createObjectBuilder().add("items", Json.createArrayBuilder()).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < 1000; i++) {
+      ops.add(Json.createObjectBuilder().add("op", "add").add("path", "/items/-").add("value", i));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(document, Json.createPatch(ops.build()));
+    assertEquals(1000, patched.asJsonObject().getJsonArray("items").size());
+  }
+
+  /** The values a patch adds are in its body, which the reader bounds; only copy is charged. */
+  @Test
+  void applyPatch_acceptsAnAddHeavyPatchOnALargeDocument() {
+    int columnCount = 256;
+    String text = "d".repeat(JsonUtils.MAX_PATCH_GROWTH_BYTES / columnCount + 1);
+    JsonArrayBuilder columns = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      columns.add(Json.createObjectBuilder().add("name", "column" + i).add("description", text));
+    }
+    JsonObject table = Json.createObjectBuilder().add("columns", columns).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "add")
+              .add("path", "/columns/" + i + "/displayName")
+              .add("value", text));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(table, Json.createPatch(ops.build()));
+
+    JsonArray patchedColumns = patched.asJsonObject().getJsonArray("columns");
+    assertEquals(text, patchedColumns.getJsonObject(columnCount - 1).getString("displayName"));
   }
 }

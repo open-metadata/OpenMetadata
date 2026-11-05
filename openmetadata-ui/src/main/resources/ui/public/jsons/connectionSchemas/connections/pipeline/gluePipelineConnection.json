@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GluePipelineConnection",
   "description": "Glue Pipeline Connection Config",
   "type": "object",
@@ -26,7 +25,6 @@
     },
     "awsConfig": {
       "title": "AWS Credentials Configuration",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "AWS credentials configs.",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -56,7 +54,8 @@
         "awsSessionToken": {
           "title": "AWS Session Token",
           "description": "AWS Session Token.",
-          "type": "string"
+          "type": "string",
+          "format": "password"
         },
         "endPointURL": {
           "title": "Endpoint URL",

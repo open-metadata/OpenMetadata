@@ -14,10 +14,13 @@
 package org.openmetadata.service.rdf.inference;
 
 import jakarta.ws.rs.BadRequestException;
+import java.time.Clock;
 import java.util.List;
 import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs;
+import org.openmetadata.service.rdf.RdfRepository;
 
 /** Application service shared by REST and scheduled inference execution. */
 public final class InferenceRuleService {
@@ -28,6 +31,23 @@ public final class InferenceRuleService {
       final InferenceRuleRepository ruleRepository, final InferenceMaterializer materializer) {
     this.ruleRepository = ruleRepository;
     this.materializer = materializer;
+  }
+
+  /**
+   * Rules stored in SQL, materialized inside the repository's Fuseki dataset, one run at a time
+   * across the cluster.
+   */
+  public static InferenceRuleService forRepository(
+      final RdfRepository rdfRepository, final RdfInfraDAOs daos, final Clock clock) {
+    final InferenceRuleRepository ruleRepository =
+        new InferenceRuleRepository(daos.rdfInferenceRuleDAO(), clock, rdfRepository.getBaseUri());
+    final InferenceMaterializer materializer =
+        new InferenceMaterializer(
+            InferenceGraphStore.forRepository(rdfRepository),
+            ruleRepository,
+            InferenceRunLock.forCluster(daos.rdfReindexLockDAO()),
+            clock);
+    return new InferenceRuleService(ruleRepository, materializer);
   }
 
   public List<InferenceRuleStatus> list() {
@@ -47,9 +67,7 @@ public final class InferenceRuleService {
   public void delete(final String name) {
     final InferenceRuleStatus status = ruleRepository.get(name);
     requireCustomRule(status);
-    materializer.clear(status.getGraphUri().toString());
-    ruleRepository.delete(name);
-    ruleRepository.markAllDirty();
+    materializer.deleteRule(status);
   }
 
   public InferenceMaterializationResult materialize(

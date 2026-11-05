@@ -10,8 +10,11 @@
 #  limitations under the License.
 """Unit tests for Doris connection handling."""
 
+import sys
+
 import pytest
-from sqlalchemy import Column, Integer, MetaData, Table, select
+from pydoris.sqlalchemy.dialect import DorisDialect
+from sqlalchemy import DATETIME, TIMESTAMP, Column, Integer, MetaData, Table, select, text
 
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection as DorisConnectionConfig,
@@ -21,6 +24,7 @@ from metadata.generated.schema.entity.services.connections.database.dorisConnect
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.doris.connection import DorisConnection
+from metadata.utils.sqa_utils import dispatch_to_date_or_datetime
 
 
 @pytest.fixture
@@ -58,6 +62,19 @@ def test_doris_identifiers_are_always_quoted(column_name: str, doris_connection_
     assert "FROM `events`" in query
 
 
+@pytest.mark.parametrize(
+    "column_type",
+    [DATETIME(), TIMESTAMP()],
+    ids=["datetime", "timestamp"],
+)
+def test_doris_time_partition_filter_uses_datetime_cast(column_type: DATETIME | TIMESTAMP):
+    partition_boundary = dispatch_to_date_or_datetime(1, text("DAY"), column_type)
+
+    query = str(partition_boundary.compile(dialect=DorisDialect()))
+
+    assert query == "CAST(CURRENT_TIMESTAMP - interval '1' DAY AS DATETIME)"
+
+
 def test_basic_auth_builds_doris_engine(
     doris_connection_config: DorisConnectionConfig,
 ):
@@ -67,3 +84,14 @@ def test_basic_auth_builds_doris_engine(
             owned.client.url.render_as_string(hide_password=False)
             == "doris://openmetadata_user:openmetadata_password@localhost:9030/openmetadata_db"
         )
+
+
+def test_doris_engine_does_not_need_mysqlclient(
+    doris_connection_config: DorisConnectionConfig,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setitem(sys.modules, "MySQLdb", None)
+
+    with DorisConnection(doris_connection_config) as owned:
+        assert owned.client.dialect.driver == "pymysql"
+        assert isinstance(owned.client.dialect, DorisDialect)

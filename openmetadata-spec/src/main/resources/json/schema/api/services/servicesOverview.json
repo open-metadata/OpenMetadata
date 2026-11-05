@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/services/servicesOverview.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ServicesOverview",
   "description": "Cross-service-type overview: per-entity-type service counts plus one globally name-sorted page of slim service summaries. Serves list UIs that show all service types side by side without issuing one request per type. Connection configuration is never returned. Deep pagination is bounded: `offset` + `limit` must not exceed 10000; beyond that use the per-service-type list APIs with cursor pagination.",
   "type": "object",

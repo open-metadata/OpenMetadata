@@ -43,7 +43,7 @@ const SignUpPage = withPageSuspenseFallback(
 );
 
 const SamlCallback = withPageSuspenseFallback(
-  lazy(() => import('../../pages/SamlCallback'))
+  lazy(() => import('../../pages/SamlCallback/SamlCallback'))
 );
 
 export const AuthenticatedRoutes = () => {

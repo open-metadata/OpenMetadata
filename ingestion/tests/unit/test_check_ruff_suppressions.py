@@ -261,3 +261,14 @@ def test_missing_ruff_executable_is_reported_as_policy_error(tmp_path: Path) -> 
 
     with pytest.raises(PolicyError, match="cannot run"):
         collect_policy_state(repo_root, str(tmp_path / "missing-ruff"))
+
+
+def test_discovery_ignores_nox_dependencies_but_checks_project_source(tmp_path: Path) -> None:
+    repo_root, source_path = _write_repo(tmp_path, "VALUE = 1  # noqa: UP006\n")
+    dependency = repo_root / "ingestion/.nox/style/lib/site-packages/dependency.py"
+    dependency.parent.mkdir(parents=True)
+    dependency.write_text("VALUE = 1  # noqa: UP045\n")
+
+    state = collect_policy_state(repo_root, _ruff_executable())
+
+    assert [(finding.path, finding.code) for finding in state.forbidden_suppressions] == [(str(source_path), "UP006")]

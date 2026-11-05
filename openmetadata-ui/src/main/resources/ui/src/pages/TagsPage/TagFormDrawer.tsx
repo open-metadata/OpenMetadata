@@ -52,7 +52,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
       className="tw:z-999"
       data-testid="tag-form-drawer"
       isOpen={open}
-      width={480}
+      width="40%"
       onOpenChange={handleOpenChange}>
       {({ close }) => (
         <>

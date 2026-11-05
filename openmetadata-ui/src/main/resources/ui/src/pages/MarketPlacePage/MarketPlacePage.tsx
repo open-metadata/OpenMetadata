@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Box, Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -24,6 +26,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -34,6 +37,7 @@ import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlace
 import { isCacheWarmupApplication } from '../../utils/ApplicationUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
@@ -50,9 +54,8 @@ const MarketPlacePage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
-    showPagination,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(undefined, GRID_PAGE_SIZE_OPTIONS);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] =
@@ -118,8 +121,8 @@ const MarketPlacePage = () => {
     <PageLayoutV1
       className="marketplace-page"
       pageTitle={t('label.market-place')}>
-      <Row className="marketplace-header">
-        <Col span={24}>
+      <Grid className="layout-row layout-grid marketplace-header">
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb
             className="p-md"
             titleLinks={[
@@ -133,10 +136,15 @@ const MarketPlacePage = () => {
               },
             ]}
           />
-        </Col>
-        <Col span={24}>
-          <Row className="marketplace-header-row" justify="center">
-            <Col span={18}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            className="layout-row marketplace-header-row"
+            justify="center"
+            wrap="wrap">
+            <Box
+              className="layout-column tw:block"
+              style={{ maxWidth: '75%', flex: '0 0 75%' }}>
               <div className="d-flex items-center justify-between h-full">
                 <PageHeader
                   data={{
@@ -151,14 +159,21 @@ const MarketPlacePage = () => {
                 />
                 <HeadingIcon />
               </div>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+            </Box>
+          </Box>
+        </Grid.Item>
+      </Grid>
 
-      <Row className="m-t-lg" justify="center">
-        <Col span={20}>
-          <Row className="marketplace-card-container" gutter={[20, 20]}>
+      <Box className="layout-row m-t-lg" justify="center" wrap="wrap">
+        <Box
+          className="layout-column tw:block"
+          style={{
+            maxWidth: '83.33333333333334%',
+            flex: '0 0 83.33333333333334%',
+          }}>
+          <Grid
+            className="layout-row layout-grid marketplace-card-container"
+            style={{ ...getLayoutGutter(20, 20) }}>
             {applicationData?.map((item) => {
               const disabledReason =
                 item.enabled === false && isCacheWarmupApplication(item.name)
@@ -166,7 +181,9 @@ const MarketPlacePage = () => {
                   : undefined;
 
               return (
-                <Col key={item.fullyQualifiedName} lg={8} md={12} sm={24}>
+                <Grid.Item
+                  className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8"
+                  key={item.fullyQualifiedName}>
                   <ApplicationCard
                     appName={item.fullyQualifiedName ?? ''}
                     description={item.description ?? ''}
@@ -179,24 +196,27 @@ const MarketPlacePage = () => {
                     title={getEntityName(item)}
                     onClick={() => viewAppDetails(item)}
                   />
-                </Col>
+                </Grid.Item>
               );
             })}
-          </Row>
-        </Col>
-        <Col span={18}>
-          {showPagination && (
+          </Grid>
+        </Box>
+        <Box
+          className="layout-column tw:block"
+          style={{ maxWidth: '75%', flex: '0 0 75%' }}>
+          {shouldShowPager(applicationData) && (
             <NextPrevious
               currentPage={currentPage}
               isLoading={isLoading}
               pageSize={pageSize}
+              pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
               paging={paging}
               pagingHandler={handleMarketPlacePageChange}
               onShowSizeChange={handlePageSizeChange}
             />
           )}
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     </PageLayoutV1>
   );
 };

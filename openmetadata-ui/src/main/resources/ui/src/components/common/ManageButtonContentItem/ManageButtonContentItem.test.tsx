@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { act } from 'react-test-renderer';
 import { ReactComponent as Icon } from '../../../assets/svg/teams-grey.svg';
 import { ManageButtonItemLabel } from './ManageButtonContentItem.component';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
@@ -42,14 +41,11 @@ describe('ManageButtonContentItem component', () => {
     ).toBeInTheDocument();
   });
 
-  it('should call onClick for clicking on item', async () => {
-    const mockClick = jest.fn();
-    render(<ManageButtonItemLabel {...mockProps} onClick={mockClick} />);
+  it('should render as disabled when disabled', async () => {
+    render(<ManageButtonItemLabel {...mockProps} disabled />);
 
-    await act(async () => {
-      screen.getByTestId(`${mockProps.id}`).click();
-    });
-
-    expect(mockClick).toHaveBeenCalled();
+    expect(await screen.findByTestId(`${mockProps.id}`)).toHaveClass(
+      'tw:cursor-not-allowed'
+    );
   });
 });

@@ -1,0 +1,360 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { fireEvent, render, screen } from '@testing-library/react';
+import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
+import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
+import { useDataQualitySummary } from '../../../../hooks/useDataQualitySummary';
+import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
+import DataQualityWidget from './DataQualityWidget';
+
+jest.mock('react-i18next', () => ({
+  Trans: ({
+    i18nKey,
+    values,
+  }: {
+    i18nKey: string;
+    values?: Record<string, unknown>;
+  }) => <>{`${i18nKey} ${JSON.stringify(values)}`}</>,
+  useTranslation: () => ({
+    // Echoes the options, so a test can tell which figures a label carries.
+    t: (key: string, options?: Record<string, unknown>) =>
+      options ? `${key} ${JSON.stringify(options)}` : key,
+    i18n: { language: 'en' },
+  }),
+}));
+
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
+  useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: (selector: (state: unknown) => unknown) =>
+    selector({
+      currentUser: { id: 'user-1', name: 'dale', teams: [{ id: 'team-1' }] },
+    }),
+}));
+
+// Spread the real module: the widget also reads its exported row count.
+jest.mock('../../../../hooks/useDataQualitySummary', () => ({
+  ...jest.requireActual('../../../../hooks/useDataQualitySummary'),
+  useDataQualitySummary: jest.fn(),
+}));
+
+jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getDataQualityPagePath: () => '/data-quality',
+    getTestCaseDetailPagePath: (fqn: string, tab?: string) =>
+      `/test-case/${encodeURIComponent(fqn)}${tab ? `?tab=${tab}` : ''}`,
+  },
+}));
+
+// The real control is a popover listbox; here each option is a button so a
+// test can pick one without driving react-aria's pointer dance.
+jest.mock('../Common/TopicWidget/FilterButton', () => ({
+  __esModule: true,
+  default: ({
+    options,
+    value,
+    onChange,
+    testId,
+  }: {
+    options: FilterButtonOption[];
+    value: string;
+    onChange: (next: string) => void;
+    testId?: string;
+  }) => (
+    <div data-selected={value} data-testid={testId}>
+      {options.map((option) => (
+        <button
+          data-testid={`${testId}-${option.value}`}
+          key={option.value}
+          onClick={() => onChange(option.value)}>
+          {option.label}
+        </button>
+      ))}
+    </div>
+  ),
+}));
+
+// Only the fields the card reads; the rest of a TestCase is irrelevant here.
+const failingTest = (index: number): TestCase =>
+  ({
+    entityLink: `<#E::table::svc.db.schema.orders_${index}>`,
+    fullyQualifiedName: `svc.db.schema.orders_${index}.null_check #${index}`,
+    id: `test-${index}`,
+    name: `null_check_${index}`,
+    testCaseResult: { testCaseStatus: TestCaseStatus.Failed, timestamp: 1 },
+  } as TestCase);
+
+const SUMMARY = {
+  aborted: 1,
+  failed: 25,
+  tests: [0, 1, 2, 3].map(failingTest),
+  tableCounts: {},
+  hasNoTests: false,
+  isError: false,
+  isFetching: false,
+  isLoading: false,
+  passed: 74,
+  refetch: jest.fn(),
+  total: 100,
+};
+
+const renderWidget = (summary: Partial<typeof SUMMARY> = {}) => {
+  (useDataQualitySummary as jest.Mock).mockReturnValue({
+    ...SUMMARY,
+    ...summary,
+  });
+
+  return render(<DataQualityWidget widgetKey="KnowledgePanel.DataQuality-1" />);
+};
+
+describe('DataQualityWidget', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('lists the latest tests with a view action each', () => {
+    renderWidget();
+
+    expect(screen.getByTestId('dq-test-test-0')).toBeInTheDocument();
+    expect(screen.getByTestId('dq-view-test-test-3')).toBeInTheDocument();
+  });
+
+  it('groups the tests under the table each runs on by default', () => {
+    renderWidget({
+      tests: [
+        failingTest(0),
+        {
+          ...failingTest(1),
+          entityLink: '<#E::table::svc.db.schema.orders_0::columns::id>',
+          testCaseResult: {
+            testCaseStatus: TestCaseStatus.Success,
+            timestamp: 1,
+          },
+        },
+      ],
+    });
+
+    const group = screen.getByTestId('dq-table-group-svc.db.schema.orders_0');
+
+    expect(group).toContainElement(screen.getByTestId('dq-test-test-0'));
+    expect(group).toContainElement(screen.getByTestId('dq-test-test-1'));
+    expect(group).toHaveTextContent('message.count-passed-test {"count":1}');
+    expect(group).toHaveTextContent('message.count-failed-test {"count":1}');
+    // Under its table, a column test names its column, not the table again.
+    expect(screen.getByTestId('dq-test-test-1')).toHaveTextContent('id');
+  });
+
+  it('heads each table with all of its results, not just the rows shown', () => {
+    renderWidget({
+      tableCounts: {
+        'svc.db.schema.orders_0': { passed: 4, failed: 3, aborted: 0 },
+      },
+      tests: [failingTest(0)],
+    });
+
+    const group = screen.getByTestId('dq-table-group-svc.db.schema.orders_0');
+
+    expect(group).toHaveTextContent('message.count-passed-test {"count":4}');
+    expect(group).toHaveTextContent('message.count-failed-test {"count":3}');
+    expect(group).not.toHaveTextContent('message.count-aborted-test');
+  });
+
+  it('finds the counts of a table whose FQN has uppercase letters', () => {
+    // The report buckets `originEntityFQN` through a lowercase normalizer.
+    renderWidget({
+      tableCounts: {
+        'snow.db.public.orders': { passed: 6, failed: 2, aborted: 0 },
+      },
+      tests: [
+        {
+          ...failingTest(0),
+          entityLink: '<#E::table::SNOW.DB.PUBLIC.Orders>',
+        },
+      ],
+    });
+
+    const group = screen.getByTestId('dq-table-group-SNOW.DB.PUBLIC.Orders');
+
+    expect(group).toHaveTextContent('message.count-passed-test {"count":6}');
+    expect(group).toHaveTextContent('message.count-failed-test {"count":2}');
+  });
+
+  it("names a failing test's incident stage", () => {
+    renderWidget({
+      tests: [
+        {
+          ...failingTest(0),
+          incidentStatus: {
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+          } as never,
+        },
+      ],
+    });
+
+    expect(screen.getByTestId('dq-incident-test-0')).toHaveTextContent(
+      'message.incident-with-status {"status":"label.assigned"}'
+    );
+  });
+
+  it('offers to raise an incident on an aborted run nobody has picked up', () => {
+    renderWidget({
+      tests: [
+        {
+          ...failingTest(0),
+          testCaseResult: {
+            testCaseStatus: TestCaseStatus.Aborted,
+            timestamp: 1,
+          },
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByTestId('dq-raise-incident-test-0'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      `/test-case/${encodeURIComponent(
+        'svc.db.schema.orders_0.null_check #0'
+      )}?tab=issues`
+    );
+    expect(screen.queryByTestId('dq-view-test-test-0')).toBeNull();
+  });
+
+  it('lists the tests flat, each naming its table, when grouped by test case', () => {
+    renderWidget();
+
+    fireEvent.click(screen.getByTestId(`dq-group-by-testCase`));
+
+    expect(screen.queryByTestId(/^dq-table-group-/)).toBeNull();
+    expect(screen.getByTestId('dq-test-test-2')).toHaveTextContent(
+      'svc.db.schema.orders_2'
+    );
+  });
+
+  // "View test" used to open the Data Quality list with a `?testCase=` param
+  // nothing reads, and an unencoded FQN in it.
+  it('opens the test case page itself, with the FQN encoded', () => {
+    renderWidget();
+
+    fireEvent.click(screen.getByTestId('dq-view-test-test-1'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      `/test-case/${encodeURIComponent('svc.db.schema.orders_1.null_check #1')}`
+    );
+  });
+
+  // "N more" compared against the ten fetched while four rendered, and said
+  // "assets match this rule".
+  it('counts what is hidden against the bucket total, in test wording', () => {
+    renderWidget();
+
+    expect(
+      screen.getByText('message.count-more-failing-tests {"count":21}')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/count-more-assets-match-rule/)).toBeNull();
+  });
+
+  it('builds the summary from one interpolated key', () => {
+    renderWidget();
+
+    expect(
+      screen.getByText(
+        'message.count-tests-count-failed {"count":100,"failed":25}'
+      )
+    ).toBeInTheDocument();
+  });
+
+  // A clean run used to read "No test results yet."
+  it('says nothing is failing when tests ran and all passed', () => {
+    renderWidget({
+      aborted: 0,
+      failed: 0,
+      tests: [],
+      passed: 12,
+      total: 12,
+    });
+
+    expect(screen.getByTestId('data-quality-empty')).toHaveTextContent(
+      'message.no-failing-tests'
+    );
+    expect(screen.queryByTestId('topic-status-dataQuality')).toBeNull();
+  });
+
+  it('reserves "no results" for a scope where nothing has run', () => {
+    renderWidget({
+      aborted: 0,
+      failed: 0,
+      tests: [],
+      passed: 0,
+      total: 0,
+    });
+
+    expect(screen.getByTestId('data-quality-empty')).toHaveTextContent(
+      'message.no-test-results-yet'
+    );
+  });
+
+  it('refetches through the filters without dropping back to a skeleton', () => {
+    renderWidget({ isFetching: true });
+
+    fireEvent.click(screen.getByTestId('dq-range-filter-30'));
+
+    expect(useDataQualitySummary).toHaveBeenLastCalledWith(
+      expect.objectContaining({ range: '30' }),
+      'dale',
+      // "Mine" covers the viewer's teams, as the test search resolves it.
+      { id: 'user-1', teamIds: ['team-1'] }
+    );
+    // Still mounted, so the filter just used keeps its place and focus.
+    expect(screen.getByTestId('dq-range-filter')).toBeInTheDocument();
+    expect(screen.queryByTestId('topic-body-skeleton-dataQuality')).toBeNull();
+  });
+
+  it('shows an error body, not "no results", when the fetch fails', () => {
+    renderWidget({ failed: 0, tests: [], isError: true, total: 0 });
+
+    expect(screen.getByTestId('topic-error-dataQuality')).toBeInTheDocument();
+    expect(screen.queryByTestId('data-quality-empty')).toBeNull();
+  });
+
+  // No test anywhere is a setup gap: the filters have nothing to narrow, so
+  // the card offers the first test instead.
+  it('offers to create the first test when none exist at all', () => {
+    renderWidget({
+      aborted: 0,
+      failed: 0,
+      tests: [],
+      hasNoTests: true,
+      passed: 0,
+      total: 0,
+    });
+
+    expect(screen.getByTestId('topic-empty-dataQuality')).toHaveTextContent(
+      'message.no-test-cases-yet'
+    );
+    expect(screen.getByTestId('topic-status-dataQuality')).toHaveTextContent(
+      'label.not-set-up'
+    );
+    expect(screen.queryByTestId('dq-range-filter')).toBeNull();
+    expect(screen.queryByTestId('data-quality-empty')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('topic-empty-action-dataQuality'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/data-quality');
+  });
+});

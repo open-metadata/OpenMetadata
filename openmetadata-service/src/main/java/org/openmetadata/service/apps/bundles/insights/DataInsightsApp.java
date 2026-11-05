@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.insights;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
@@ -69,11 +70,22 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
-  public record Backfill(String startDate, String endDate) {}
+  public record Backfill(String startDate, String endDate) {
+    public Backfill {
+      if (startDate == null || startDate.isBlank() || endDate == null || endDate.isBlank()) {
+        throw new IllegalArgumentException("Backfill requires both startDate and endDate");
+      }
+      if (TimestampUtils.getTimestampFromDateString(startDate)
+          > TimestampUtils.getTimestampFromDateString(endDate)) {
+        throw new IllegalArgumentException("Backfill startDate must not be after endDate");
+      }
+    }
+  }
 
   private CostAnalysisConfig costAnalysisConfig;
   private DataAssetsConfig dataAssetsConfig;
   private AppAnalyticsConfig webAnalyticsConfig;
+  private BackfillConfiguration backfillConfiguration;
 
   private Optional<Boolean> recreateDataAssetsIndex;
 
@@ -148,11 +160,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
             ? config.getSearchIndexMappingLanguage().value()
             : "en";
 
-    try {
-      for (String dataAssetType : getDataAssetTypes()) {
-        IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
-        String dataStreamName =
-            getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
+    for (String dataAssetType : getDataAssetTypes()) {
+      IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
+      String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
+      try {
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
               dataStreamName,
@@ -160,10 +171,21 @@ public class DataInsightsApp extends AbstractNativeApplication {
               dataAssetIndex,
               language,
               dataAssetsConfig.getRetention());
+        } else {
+          // updateDataAssetsDataStream applies the current template to the write index and, on a
+          // 400 (a field type can't change in place, e.g. owners/extension on pre-1.13 streams),
+          // rolls the stream over so a fresh write index picks it up. Any other failure falls
+          // through to the outer catch and is retried on the next run — no data is deleted.
+          searchInterface.updateDataAssetsDataStream(
+              dataStreamName, dataAssetType, dataAssetIndex, language);
         }
+      } catch (IOException ex) {
+        LOG.error(
+            "Could not prepare Data Insights snapshot index for asset type {} (data stream {}).",
+            dataAssetType,
+            dataStreamName,
+            ex);
       }
-    } catch (IOException ex) {
-      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
     }
   }
 
@@ -200,17 +222,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
     // Configure recreate
     recreateDataAssetsIndex = Optional.ofNullable(config.getRecreateDataAssetsIndex());
 
-    // Configure Backfill
-    Optional<BackfillConfiguration> backfillConfig =
-        Optional.ofNullable(config.getBackfillConfiguration());
-
+    backfillConfiguration = config.getBackfillConfiguration();
     backfill = Optional.empty();
-
-    if (backfillConfig.isPresent() && backfillConfig.get().getEnabled()) {
-      backfill =
-          Optional.of(
-              new Backfill(backfillConfig.get().getStartDate(), backfillConfig.get().getEndDate()));
-    }
 
     createOrUpdateDataAssetsDataStream();
 
@@ -244,10 +257,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
       String runType =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
 
+      backfill =
+          runType.equals(ON_DEMAND_JOB)
+              ? Optional.ofNullable(backfillConfiguration)
+                  .filter(config -> Boolean.TRUE.equals(config.getEnabled()))
+                  .map(config -> new Backfill(config.getStartDate(), config.getEndDate()))
+              : Optional.empty();
       if (!runType.equals(ON_DEMAND_JOB)) {
-        backfill = Optional.empty();
         recreateDataAssetsIndex = Optional.empty();
       }
 

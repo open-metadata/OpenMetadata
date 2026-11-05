@@ -11,25 +11,28 @@ OpenMetadata uses a hybrid migration system that combines:
 
 ## Migration Execution Order
 
-The migration system executes in a specific order to ensure database consistency:
+All migrations run in one order, sorted by version number. When a native and an extension
+version share a number, the native one runs first. Flyway migrations are numbered `0.0.x`, so
+they always come first:
 
 ```
-1. Flyway Migrations (Legacy)
-   ├── v000__create_server_change_log.sql  (Creates migration tracking tables)
-   ├── v001__*.sql
-   ├── v002__*.sql
-   └── ...
-
-2. Native OpenMetadata Migrations
-   ├── 1.1.0/
-   ├── 1.1.1/
-   ├── 1.2.0/
-   └── ...
-
-3. Extension Migrations
-   ├── custom-extension-1.0.0/
-   └── ...
+0.0.0 … 0.0.15        Flyway (legacy); v000 creates the migration tracking tables
+1.1.0, 1.1.1, …       native
+1.2.0, 1.2.0-collate  native, then the extension version with the same number
+1.2.1, …, 1.6.0, 1.6.0-collate, 1.6.1, 1.6.1-collate, …
 ```
+
+The order is the same on an empty database and on one that has already run some versions. A
+run that stops part way leaves the versions before the failure recorded, and the next run
+continues with exactly the rest of the order. A database can therefore be upgraded across many
+versions, or retried after a failure, without reaching a state an empty database never goes
+through.
+
+This means a version's SQL and its Java data migration run on the schema of every version at or
+below it, native and extension alike, and on nothing newer. A native migration may depend on
+an older extension migration and the other way round, but neither may depend on a later version.
+Java data migrations run with the current code, so a data migration must not call code paths
+that read or write tables or columns added by a later version.
 
 ## Migration Tracking Tables
 
@@ -49,20 +52,34 @@ Detailed SQL execution logs:
 - `checksum`: Hash of the SQL statement (PRIMARY KEY)
 - `executedAt`: Timestamp of SQL execution
 
+This table also records Java data migrations. A migration class that overrides
+`runDataMigration()` is identified by a fingerprint of its compiled code: the class itself plus
+every class in the version's `migration/utils/vXYZ` package. The fingerprint is written here as a
+marker row once the migration returns without throwing. That is what lets the workflow add
+Java-only work to a version that is already in `SERVER_CHANGE_LOG`: the version is reprocessed
+while its fingerprint is unrecorded, and dropped again afterwards. Adding a step to the
+migration, or changing one of its helpers, changes the fingerprint, so deployments that already
+ran it run the whole `runDataMigration()` once more — keep it safe to re-run. A toolchain change
+that alters the bytecode (a JDK or Lombok upgrade) causes one extra run the same way.
+
+This applies to the current release train's latest version only. The previous train's latest
+version is reprocessed for appended SQL alone: its data migration was written against that
+train's schema, so it never runs again on a database that has moved to a newer train. Ship Java
+work that newer-train deployments need in the current train's version instead.
+
 ## Migration Logic
 
 The migration workflow follows this decision tree:
 
 ```
-IF native migrations are already executed:
-    └── Skip all Flyway migrations (they've already run)
-    └── Execute remaining native migrations
-    └── Execute extension migrations
+IF SERVER_CHANGE_LOG has executed versions:
+    ├── Skip all Flyway migrations (they've already run)
+    ├── Select pending native versions and pending extension versions, each against
+    │   its own executed history (including the versions it reprocesses)
+    └── Execute them together, in the execution order above
 
-ELSE IF no native migrations executed:
-    ├── Execute Flyway migrations (creates SERVER_CHANGE_LOG tables)
-    ├── Execute native migrations  
-    └── Execute extension migrations
+ELSE (empty database):
+    └── Execute every Flyway, native and extension migration, in the execution order above
 ```
 
 ## File Structure
@@ -120,7 +137,7 @@ The parsers split SQL files into individual statements via `SqlStatementIterator
 2. **Backward Compatibility**: Flyway migrations continue to work during transition period
 3. **Single Source of Truth**: All migrations are tracked in `SERVER_CHANGE_LOG` regardless of type
 4. **Database Agnostic**: Separate migration files for MySQL and PostgreSQL
-5. **Execution Order**: Flyway → Native → Extensions ensures proper dependency resolution
+5. **Execution Order**: one version order for native and extension migrations, the same on an empty database and on a partly migrated one
 6. **Migration Tracking**: v000 Flyway migration creates the tracking infrastructure before any other migrations
 
 ## Troubleshooting

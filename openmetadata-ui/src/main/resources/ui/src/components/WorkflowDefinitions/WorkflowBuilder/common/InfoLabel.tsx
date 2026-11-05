@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 
 interface InfoLabelProps {
@@ -42,14 +42,16 @@ export const InfoLabel: React.FC<InfoLabelProps> = ({
           weight="medium">
           {text}
         </Typography>
-        {showIcon && (
-          <InfoCircle
-            className={`tw:w-4 tw:h-4 tw:text-brand-600 ${
-              onInfoClick ? 'tw:cursor-pointer' : ''
-            }`}
-            onClick={onInfoClick}
-          />
-        )}
+        {showIcon &&
+          (onInfoClick ? (
+            <ButtonUtility
+              aria-label={text}
+              icon={InfoCircle}
+              onClick={onInfoClick}
+            />
+          ) : (
+            <InfoCircle className="tw:text-fg-brand-primary" size={16} />
+          ))}
       </div>
       {description && (
         <Typography className="tw:block tw:text-tertiary" size="text-xs">

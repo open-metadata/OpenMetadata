@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactElement, ReactNode } from 'react';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import {
   AddTestCaseListSubmitPayload,
@@ -32,6 +33,7 @@ export interface AddTestCaseModalProps {
   testCaseParams?: ListTestCaseParamsBySearch;
   selectedTest?: string[];
   showButton?: boolean;
+  renderLayout?: (content: ReactNode, actions: ReactNode) => ReactElement;
   hideTableFilter?: boolean;
   getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
 }

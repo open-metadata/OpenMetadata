@@ -14,6 +14,8 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ROUTES } from '../../../constants/constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import {
   AdvanceSearchProvider,
   useAdvanceSearch,
@@ -168,5 +170,82 @@ describe('AdvanceSearchProvider component', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.objectContaining({ pathname: ROUTES.EXPLORE })
     );
+  });
+});
+
+describe('AdvanceSearchProvider — search index changes', () => {
+  const IndexProbe = () => {
+    const { onChangeSearchIndex, isUpdating, searchIndex, config } =
+      useAdvanceSearch();
+
+    return (
+      <>
+        <span data-testid="is-updating">{String(isUpdating)}</span>
+        <span data-testid="fields">{Object.keys(config.fields).join(',')}</span>
+        <button onClick={() => onChangeSearchIndex(SearchIndex.TABLE)}>
+          select tables
+        </button>
+        <button
+          data-testid="reselect-same"
+          onClick={() =>
+            onChangeSearchIndex(searchIndex as SearchIndex | SearchIndex[])
+          }>
+          reselect
+        </button>
+      </>
+    );
+  };
+
+  const ProbeWithProvider = mockWithAdvanceSearch(IndexProbe);
+
+  it('ignores stale configuration responses after StrictMode remounts and the index changes', async () => {
+    let finishOldRequest!: (value: Record<string, never>) => void;
+    jest.mocked(getAllCustomProperties).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishOldRequest = resolve;
+        })
+    );
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await act(async () => {
+      render(
+        <React.StrictMode>
+          <ProbeWithProvider />
+        </React.StrictMode>
+      );
+    });
+    await user.click(screen.getByRole('button', { name: 'select tables' }));
+
+    expect(screen.getByTestId('fields')).toHaveTextContent(
+      'databaseSchema.displayName.keyword'
+    );
+
+    await act(async () => {
+      finishOldRequest({});
+    });
+
+    expect(screen.getByTestId('fields')).toHaveTextContent(
+      'databaseSchema.displayName.keyword'
+    );
+    expect(screen.getByTestId('is-updating')).toHaveTextContent('false');
+  });
+
+  // `loadData` is what clears `isUpdating`, and it only re-runs when
+  // `searchIndex` actually changes. Flipping the flag for a no-op change
+  // strands every consumer in "updating" forever — which is how the workflow
+  // Exclude Filter, asking for the provider's own default index, rendered
+  // nothing while Data Asset Filter (a different index) worked.
+  it('should not enter the updating state when the index is unchanged', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    await act(async () => {
+      render(<ProbeWithProvider />);
+    });
+
+    await act(async () => {
+      await user.click(screen.getByTestId('reselect-same'));
+    });
+
+    expect(screen.getByTestId('is-updating')).toHaveTextContent('false');
   });
 });

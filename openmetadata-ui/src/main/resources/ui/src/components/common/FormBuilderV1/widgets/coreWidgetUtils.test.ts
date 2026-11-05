@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 describe('coreWidgetUtils', () => {
   it('prefers raw errors over help text and schema description', () => {
@@ -66,27 +70,53 @@ describe('coreWidgetUtils', () => {
     ).toBe('Raw Field Name');
   });
 
+  it('hides the label of a map entry, whose key is already shown beside it', () => {
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'bq_catalog',
+        schema: { type: 'string', __additional_property: true },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('names a map entry value by its key and leaves other fields alone', () => {
+    expect(
+      getWidgetAriaProps({
+        label: 'bq_catalog',
+        schema: { type: 'string', __additional_property: true },
+      } as never)
+    ).toEqual({ 'aria-label': 'bq_catalog' });
+
+    expect(
+      getWidgetAriaProps({
+        label: 'catalogMapping',
+        schema: { type: 'string' },
+      } as never)
+    ).toEqual({});
+  });
+
   it('formats raw camelCase labels and preserves display labels', () => {
     expect(
       getWidgetLabel({
         hideLabel: false,
-        label: 'sampleDataStorageConfig',
+        label: 'storedProcedureFilterPattern',
       } as never)
-    ).toBe('Sample Data Storage Config');
+    ).toBe('Stored Procedure Filter Pattern');
 
     expect(
       getWidgetLabel({
         hideLabel: false,
-        label: 'label.sample-data-storage-config',
+        label: 'label.stored-procedure-filter-pattern',
       } as never)
-    ).toBe('label.sample-data-storage-config');
+    ).toBe('label.stored-procedure-filter-pattern');
 
     expect(
       getWidgetLabel({
         hideLabel: false,
-        label: 'Sample data storage config',
+        label: 'Stored procedure filter pattern',
       } as never)
-    ).toBe('Sample data storage config');
+    ).toBe('Stored procedure filter pattern');
   });
 
   it('preserves connector acronyms in raw camelCase labels', () => {

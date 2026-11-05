@@ -20,9 +20,11 @@ import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -57,6 +59,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   private static final int MAX_CHARACTER_BUDGET = 2_000_000;
   private static final int MIN_CACHE_TTL_MINUTES = 1;
   private static final int MAX_CACHE_TTL_MINUTES = 1_440;
+  private static final int MAX_PROMPT_LENGTH = 8_000;
   private static final Set<ContextSection> ASSET_SECTIONS =
       Set.of(
           ContextSection.DESCRIPTION,
@@ -103,6 +106,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
         PERSONA_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = false;
+    fieldFetchers.put(FIELD_USERS, this::fetchAndSetUsers);
   }
 
   @Override
@@ -165,6 +169,34 @@ public class PersonaRepository extends EntityRepository<Persona> {
     return findTo(persona.getId(), PERSONA, Relationship.APPLIED_TO, Entity.USER);
   }
 
+  // List endpoints go through setFieldsInBulk, which only runs fieldFetchers — setFields is never
+  // called there, so without this the list response carried no users.
+  private void fetchAndSetUsers(List<Persona> personas, Fields fields) {
+    if (!fields.contains(FIELD_USERS) || nullOrEmpty(personas)) {
+      return;
+    }
+    List<String> personaIds =
+        personas.stream().map(Persona::getId).map(UUID::toString).distinct().toList();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(personaIds, Relationship.APPLIED_TO.ordinal(), PERSONA, USER);
+    Map<UUID, EntityReference> userRefsById =
+        batchResolveRefs(USER, records.stream().map(r -> UUID.fromString(r.getToId())).toList());
+    Map<UUID, List<EntityReference>> personaToUsers = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject relation : records) {
+      EntityReference userRef = userRefsById.get(UUID.fromString(relation.getToId()));
+      if (userRef != null) {
+        personaToUsers
+            .computeIfAbsent(UUID.fromString(relation.getFromId()), k -> new ArrayList<>())
+            .add(userRef);
+      }
+    }
+    for (Persona persona : personas) {
+      persona.setUsers(personaToUsers.getOrDefault(persona.getId(), new ArrayList<>()));
+    }
+  }
+
   @Transaction
   private void unsetExistingDefaultPersona(String newDefaultPersonaId) {
     // Capture both id and FQN *before* the bulk update. The bulk update rewrites JSON directly —
@@ -196,6 +228,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
     definition.setLastGeneratedAt(null);
     definition.setCacheState(null);
     definition.setLastError(null);
+    definition.setPrompt(normalizedPrompt(definition.getPrompt()));
     if (definition.getCharacterBudget() == null
         || definition.getCharacterBudget() < MIN_CHARACTER_BUDGET
         || definition.getCharacterBudget() > MAX_CHARACTER_BUDGET) {
@@ -261,6 +294,16 @@ public class PersonaRepository extends EntityRepository<Persona> {
         }
       }
     }
+  }
+
+  /** Trimmed, or null when blank so an emptied editor clears the prompt instead of storing "". */
+  private static String normalizedPrompt(String prompt) {
+    String trimmed = prompt == null ? "" : prompt.strip();
+    if (trimmed.length() > MAX_PROMPT_LENGTH) {
+      throw new IllegalArgumentException(
+          "Persona context prompt must be at most " + MAX_PROMPT_LENGTH + " characters");
+    }
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
   private static Set<ContextSection> allowedSections(String entityType) {

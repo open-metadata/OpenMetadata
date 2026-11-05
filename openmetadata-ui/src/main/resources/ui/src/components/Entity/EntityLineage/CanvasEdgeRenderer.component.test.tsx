@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, waitFor } from '@testing-library/react';
-import { Edge } from 'reactflow';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { Edge, Node } from 'reactflow';
+import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { CanvasEdgeRenderer } from './CanvasEdgeRenderer.component';
 
 const mockRedraw = jest.fn();
@@ -31,15 +32,12 @@ const mockEdges: Edge[] = [
 ];
 
 const mockUseLineageStore = {
-  isEditMode: false,
   columnsInCurrentPages: new Map<string, string[]>(),
   isCanvasReady: false,
   tracedNodes: new Set<string>(),
   tracedColumns: new Set<string>(),
-};
-
-const mockUseLineageProvider = {
   edges: mockEdges,
+  nodes: [] as Node[],
 };
 
 const mockGetNode = jest.fn();
@@ -49,14 +47,13 @@ const mockUseReactFlow = {
 
 const mockViewport = { x: 0, y: 0, zoom: 1 };
 
+const mockFlowNodes: Node[] = [];
+
 jest.mock('reactflow', () => ({
   ...jest.requireActual('reactflow'),
+  useNodes: () => mockFlowNodes,
   useReactFlow: () => mockUseReactFlow,
   useViewport: () => mockViewport,
-}));
-
-jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: () => mockUseLineageProvider,
 }));
 
 jest.mock('../../../hooks/useCanvasEdgeRenderer', () => ({
@@ -64,7 +61,9 @@ jest.mock('../../../hooks/useCanvasEdgeRenderer', () => ({
 }));
 
 jest.mock('../../../hooks/useLineageStore', () => ({
-  useLineageStore: () => mockUseLineageStore,
+  useLineageStore: jest.fn((selector) =>
+    selector ? selector(mockUseLineageStore) : mockUseLineageStore
+  ),
 }));
 
 jest.mock('../../../hooks/useLineageEdgeColors', () => ({
@@ -72,6 +71,8 @@ jest.mock('../../../hooks/useLineageEdgeColors', () => ({
     primary: '#1890ff',
     columnHighlight: '#3F51B5',
     dqHighlight: '#F44336',
+    labelBackground: '#FFFFFF',
+    labelText: '#475467',
   }),
 }));
 
@@ -93,7 +94,6 @@ describe('CanvasEdgeRenderer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseLineageStore.isEditMode = false;
     mockUseLineageStore.tracedNodes = new Set<string>();
     mockUseLineageStore.tracedColumns = new Set<string>();
     mockGetEdgeAtPoint.mockReturnValue(null);
@@ -130,7 +130,7 @@ describe('CanvasEdgeRenderer', () => {
     reactFlowContainer.appendChild(wrapper);
     document.body.appendChild(reactFlowContainer);
 
-    return render(ui, { container: wrapper });
+    return render(ui, { container: wrapper, wrapper: ThemeProvider });
   };
 
   it('renders canvas element', () => {
@@ -163,7 +163,7 @@ describe('CanvasEdgeRenderer', () => {
     expect(ResizeObserver).toHaveBeenCalled();
   });
 
-  it('handles pane click events when not in edit mode', async () => {
+  it('handles pane click events', async () => {
     const onEdgeClick = jest.fn();
     mockGetEdgeAtPoint.mockReturnValue(mockEdges[0]);
 
@@ -206,50 +206,6 @@ describe('CanvasEdgeRenderer', () => {
 
     await waitFor(() => {
       expect(mockGetEdgeAtPoint).toHaveBeenCalled();
-      expect(onEdgeClick).toHaveBeenCalledWith(
-        mockEdges[0],
-        expect.any(MouseEvent)
-      );
-    });
-  });
-
-  it('handles click events even in edit mode', async () => {
-    const onEdgeClick = jest.fn();
-    mockUseLineageStore.isEditMode = true;
-    mockGetEdgeAtPoint.mockReturnValue(mockEdges[0]);
-
-    renderInReactFlow(
-      <CanvasEdgeRenderer {...defaultProps} onEdgeClick={onEdgeClick} />
-    );
-
-    const lineageContainer = document.querySelector(
-      '.lineage-canvas-container'
-    );
-    jest
-      .spyOn(lineageContainer as HTMLElement, 'getBoundingClientRect')
-      .mockReturnValue({
-        left: 0,
-        top: 0,
-        width: 800,
-        height: 600,
-        right: 800,
-        bottom: 600,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      });
-
-    const clickEvent = new MouseEvent('click', {
-      bubbles: true,
-      clientX: 100,
-      clientY: 100,
-    });
-
-    (document.querySelector('.react-flow__pane') as HTMLElement).dispatchEvent(
-      clickEvent
-    );
-
-    await waitFor(() => {
       expect(onEdgeClick).toHaveBeenCalledWith(
         mockEdges[0],
         expect.any(MouseEvent)
@@ -345,7 +301,7 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} />
     );
 
-    mockUseLineageProvider.edges = [
+    mockUseLineageStore.edges = [
       ...mockEdges,
       {
         id: 'edge-2',
@@ -459,7 +415,7 @@ describe('CanvasEdgeRenderer', () => {
         },
       ] as unknown as ResizeObserverEntry[];
 
-      resizeCallback(mockEntries, {} as ResizeObserver);
+      act(() => resizeCallback?.(mockEntries, {} as ResizeObserver));
     }
 
     await waitFor(() => {
@@ -493,7 +449,7 @@ describe('CanvasEdgeRenderer', () => {
         .calculateEdgeMidpoints as jest.Mock;
 
     beforeEach(() => {
-      mockUseLineageProvider.edges = mockEdges;
+      mockUseLineageStore.edges = mockEdges;
       mockUseLineageStore.columnsInCurrentPages = new Map<string, string[]>();
       mockUseLineageStore.isCanvasReady = true;
       mockIsPlaywrightEnv.mockReturnValue(true);
@@ -640,7 +596,7 @@ describe('CanvasEdgeRenderer', () => {
 
       expect(mockCalculateEdgeMidpoints).toHaveBeenCalledTimes(1);
 
-      mockUseLineageProvider.edges = [
+      mockUseLineageStore.edges = [
         ...mockEdges,
         {
           id: 'edge-2',

@@ -16,6 +16,7 @@ package org.openmetadata.service.jobs;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,6 +36,12 @@ class BackgroundJobCleanupSchedulerTest {
     scheduler.runCleanupOnce(NOW);
 
     verify(jobDao)
+        .requeueStaleMemoryJobs(
+            NOW, NOW - GenericBackgroundWorker.RUNNING_JOB_STALE_AFTER.toMillis());
+    verify(jobDao)
+        .cancelStaleMemoryJobsWithPending(
+            NOW, NOW - GenericBackgroundWorker.RUNNING_JOB_STALE_AFTER.toMillis());
+    verify(jobDao)
         .markStaleRunningJobsFailed(
             NOW, NOW - GenericBackgroundWorker.RUNNING_JOB_STALE_AFTER.toMillis());
     verify(csvJobManager).runCleanupOnce();
@@ -49,5 +56,16 @@ class BackgroundJobCleanupSchedulerTest {
         .thenThrow(new IllegalStateException("Database unavailable"));
 
     assertDoesNotThrow(() -> scheduler.runCleanupSafely());
+  }
+
+  @Test
+  void requeuesEveryEligibleMemoryJobInOneCleanupPass() {
+    final JobDAO jobDao = mock(JobDAO.class);
+    final long staleBefore = NOW - GenericBackgroundWorker.RUNNING_JOB_STALE_AFTER.toMillis();
+    when(jobDao.requeueStaleMemoryJobs(NOW, staleBefore)).thenReturn(1, 1, 0);
+
+    new BackgroundJobCleanupScheduler(jobDao, mock(CsvAsyncJobManager.class)).runCleanupOnce(NOW);
+
+    verify(jobDao, times(3)).requeueStaleMemoryJobs(NOW, staleBefore);
   }
 }

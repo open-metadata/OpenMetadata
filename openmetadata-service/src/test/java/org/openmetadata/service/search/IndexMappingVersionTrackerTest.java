@@ -94,6 +94,15 @@ class IndexMappingVersionTrackerTest {
     return mappings;
   }
 
+  @Test
+  void metricGroupIsDiscoverableWithoutBeingADataAsset() {
+    IndexMapping metricGroup =
+        IndexMappingLoader.getInstance().getIndexMapping().get("metricGroup");
+
+    assertEquals(List.of("all"), metricGroup.getParentAliases());
+    assertFalse(metricGroup.getParentAliases().contains("dataAsset"));
+  }
+
   // --- Basic functionality tests ---
 
   @Test
@@ -294,7 +303,7 @@ class IndexMappingVersionTrackerTest {
     assertFalse(realMappings.isEmpty(), "indexMapping.json should not be empty");
 
     List<String> missingMappings = new ArrayList<>();
-    String[] languages = {"en", "jp", "ru", "zh"};
+    String[] languages = {"en", "jp", "ko", "ru", "zh"};
 
     for (Map.Entry<String, IndexMapping> entry : realMappings.entrySet()) {
       String entityType = entry.getKey();

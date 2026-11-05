@@ -45,6 +45,7 @@ permissions:
   #   pull-requests — the digest is rebuilt from PR search and timelineItems
   #   contents      — checkout
   checks: read
+  actions: read
   contents: read
   pull-requests: read
 

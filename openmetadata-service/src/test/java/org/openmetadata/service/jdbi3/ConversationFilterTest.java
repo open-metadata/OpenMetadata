@@ -53,6 +53,31 @@ class ConversationFilterTest {
   }
 
   @Test
+  void matchesTheExactEntityLinkByDefault() {
+    ConversationFilter.Sql sql =
+        ConversationFilter.builder()
+            .entityLink("<#E::table::svc.db.sch.my_table>")
+            .build()
+            .build(false);
+
+    assertTrue(sql.condition().contains("c.about = :entityLink"));
+    assertFalse(sql.condition().contains("LIKE :fieldLinkPrefix"));
+  }
+
+  @Test
+  void includesFieldLinksOnRequest() {
+    ConversationFilter.Sql sql =
+        ConversationFilter.builder()
+            .entityLink("<#E::table::svc.db.sch.my_table>")
+            .includeFields(true)
+            .build()
+            .build(false);
+
+    assertTrue(sql.condition().contains("c.about LIKE :fieldLinkPrefix ESCAPE '!'"));
+    assertEquals("<#E::table::svc.db.sch.my!_table::%", sql.params().get("fieldLinkPrefix"));
+  }
+
+  @Test
   void omitsDomainPredicateForUnrestrictedSubjects() {
     ConversationFilter.Sql sql = ConversationFilter.builder().build().build(false);
 

@@ -15,16 +15,8 @@ import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import { useTranslation } from 'react-i18next';
 import { App } from '../../../../generated/entity/applications/app';
-import { PipelineStatus } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../../../generated/entity/type';
 import applicationsClassBase from './ApplicationsClassBase';
-
-export interface DataInsightLatestRun {
-  data_insight_task: string;
-  application_task: string;
-  total: string;
-  pipelineStatus: PipelineStatus;
-}
 
 export enum AppAction {
   ENABLE = 'enable',

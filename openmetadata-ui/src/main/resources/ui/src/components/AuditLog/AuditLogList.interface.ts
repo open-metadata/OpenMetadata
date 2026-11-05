@@ -16,6 +16,9 @@ import { AuditLogEntry } from '../../types/auditLogs.interface';
 export interface AuditLogListProps {
   logs: AuditLogEntry[];
   isLoading?: boolean;
+  hasActiveSearch?: boolean;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
 export interface AuditLogListItemProps {

@@ -28,6 +28,10 @@ import {
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { TriggerConfigSectionProps } from '../../../../interface/workflow-builder-components.interface';
+import {
+  EXTENSION_FIELD_PREFIX,
+  getFieldLabel,
+} from '../../../../utils/WorkflowConfigUtils';
 import { FormField } from '../common/FormField';
 import { CronExpressionBuilder } from './CronExpressionBuilder';
 
@@ -41,14 +45,6 @@ const getScheduleTypeDisabled = (
   (lockScheduleTypeField ??
     lockPeriodicBatchFields ??
     lockNonIncludeExcludeFields);
-
-const getFieldLabel = (v: string): string => {
-  if (v.startsWith('extension.')) {
-    return v.slice('extension.'.length);
-  }
-
-  return v;
-};
 
 /** Sync a useListData instance with an external string[] value. Replaces list content to avoid duplicates. */
 const useSyncedListData = (
@@ -84,6 +80,7 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
   onRemoveEventType,
   excludeFields = [],
   availableExcludeFields = [],
+  fieldGroups = {},
   onExcludeFieldsChange,
   onRemoveExcludeField,
   include = [],
@@ -164,21 +161,42 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
     </Autocomplete.Item>
   );
 
-  const fieldItems = useMemo(
-    () =>
-      availableExcludeFields.map((v) => {
-        if (v.startsWith('extension.')) {
-          return {
-            id: v,
-            label: v.slice('extension.'.length),
-            supportingText: t('label.custom-property'),
-          };
-        }
+  const fieldItems = useMemo(() => {
+    // Order the options as: common fields first, then entity-specific fields (labelled with the
+    // entity type they belong to, e.g. `columns` under `table`), then custom properties. The entity
+    // label / "custom property" tag is shown as the option's supporting text so the flat selector
+    // still reads as grouped.
+    const items = availableExcludeFields.map((v) => {
+      if (v.startsWith(EXTENSION_FIELD_PREFIX)) {
+        return {
+          id: v,
+          label: getFieldLabel(v),
+          supportingText: t('label.custom-property'),
+          sortRank: 2,
+          sortKey: v,
+        };
+      }
 
-        return { id: v, label: v };
-      }),
-    [availableExcludeFields, t]
-  );
+      const entityGroup = fieldGroups[v];
+      if (entityGroup) {
+        return {
+          id: v,
+          label: v,
+          supportingText: entityGroup,
+          sortRank: 1,
+          sortKey: `${entityGroup}:${v}`,
+        };
+      }
+
+      return { id: v, label: v, sortRank: 0, sortKey: v };
+    });
+
+    return items.sort((a, b) =>
+      a.sortRank === b.sortRank
+        ? a.sortKey.localeCompare(b.sortKey)
+        : a.sortRank - b.sortRank
+    );
+  }, [availableExcludeFields, fieldGroups, t]);
 
   return (
     <div className="tw:mb-6" data-testid="trigger-config-section">

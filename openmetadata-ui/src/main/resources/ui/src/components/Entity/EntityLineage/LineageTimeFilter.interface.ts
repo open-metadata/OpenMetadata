@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { LineageTimeRange } from '../../../context/LineageProvider/LineageProvider.interface';
+import type { LineageTimeRange } from '../../../hooks/lineage/types';
 
 export interface LineageTimeFilterProps {
   startTime?: number;

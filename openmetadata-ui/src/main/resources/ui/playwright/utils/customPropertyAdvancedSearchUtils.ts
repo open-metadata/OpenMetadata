@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { isObject, isUndefined } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   CP_BASE_VALUES,
   MULTISELECT_OPERATORS,
@@ -456,47 +457,49 @@ const handlePropertyValueInput = async (
   value: string | number | { start: string | number; end: string | number },
   propertyType?: string
 ) => {
-  const inputElement = ruleLocator.locator('.rule--widget input');
+  const inputElement = ruleLocator
+    .getByTestId('advanced-search-value')
+    .locator('input');
   const entityRefProperties = ['entityReference', 'entityReferenceList'];
   const isEntityRefProperty = entityRefProperties.includes(propertyType || '');
-  // Fill the input only if it's visible
-  if (await inputElement.isVisible()) {
-    // Convert object values to JSON strings
-    const stringValue = isObject(value) ? JSON.stringify(value) : value;
+  await expect(inputElement).toBeVisible();
+  // Convert object values to JSON strings
+  const stringValue = isObject(value) ? JSON.stringify(value) : value;
 
-    const apiResponsePromise = isEntityRefProperty
-      ? page.waitForResponse('/api/v1/search/aggregate?*value=.%2A*')
-      : undefined;
+  // Autofocus can load these options before this helper runs. Opening an
+  // already focused picker need not issue another request.
+  await inputElement.click();
 
-    await inputElement.click();
+  // An entity-reference picker fetches its options, so the list has to arrive
+  // before anything is typed into the box (from main).
+  if (isEntityRefProperty) {
+    await expect(
+      page.locator('[role="listbox"]:visible').getByRole('option')
+    ).not.toHaveCount(0);
+  }
 
-    if (apiResponsePromise) {
-      await apiResponsePromise;
-    }
+  await fillPropertyValue(inputElement, stringValue);
 
-    await fillPropertyValue(inputElement, stringValue);
+  if (MULTISELECT_OPERATORS.includes(operator)) {
+    await page
+      .locator('[role="listbox"]:visible')
+      .getByRole('option', { name: String(value), exact: true })
+      .click();
+  } else if (
+    ((operator === 'equal' || operator === 'not_equal') &&
+      propertyType === 'dateTime-cp') ||
+    propertyType === 'date-cp'
+  ) {
+    await page.keyboard.press('Enter');
+  }
 
-    if (MULTISELECT_OPERATORS.includes(operator)) {
-      await page
-        .locator('[role="listbox"]:visible')
-        .getByRole('option', { name: String(value), exact: true })
-        .click();
-    } else if (
-      ((operator === 'equal' || operator === 'not_equal') &&
-        propertyType === 'dateTime-cp') ||
-      propertyType === 'date-cp'
-    ) {
-      await page.keyboard.press('Enter');
-    }
-
-    // Handle entity reference selection
-    if (isEntityRefProperty) {
-      await page
-        .locator('[role="listbox"]:visible [role="option"]')
-        .filter({ hasText: value as string })
-        .first()
-        .click();
-    }
+  // Handle entity reference selection
+  if (isEntityRefProperty) {
+    await page
+      .locator('[role="listbox"]:visible [role="option"]')
+      .filter({ hasText: value as string })
+      .first()
+      .click();
   }
 };
 
@@ -508,25 +511,27 @@ export const applyCustomPropertyFilter = async (
   entityType: string = 'Dashboard',
   propertyType?: string
 ) => {
-  const ruleLocator = page.locator('.rule').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-rule-0');
 
+  // Each drill level gets its own control in the row, suffixed by depth:
+  // Custom Properties -> the entity -> the property.
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     'Custom Properties',
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select-1'),
     entityType,
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select-2'),
     propertyName,
     true
   );
@@ -534,7 +539,7 @@ export const applyCustomPropertyFilter = async (
   const operatorLabel = getOperatorLabel(operator);
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     operatorLabel
   );
 
@@ -544,8 +549,14 @@ export const applyCustomPropertyFilter = async (
         start: string | number;
         end: string | number;
       };
-      const startInput = ruleLocator.locator('.rule--value input').first();
-      const endInput = ruleLocator.locator('.rule--value input').last();
+      const startInput = ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .first();
+      const endInput = ruleLocator
+        .getByTestId('advanced-search-value')
+        .locator('input')
+        .last();
 
       await startInput.click();
       await fillPropertyValue(startInput, rangeValue.start);
@@ -596,7 +607,9 @@ export const verifySearchResults = async (
               const retryResponse = await apiContext.get(response.url());
 
               if (!retryResponse.ok()) {
-                return false;
+                throw new Error(
+                  `HTTP ${retryResponse.status()} querying ${retryResponse.url()}`
+                );
               }
 
               const searchData =
@@ -608,7 +621,7 @@ export const verifySearchResults = async (
             },
             {
               intervals: [1000, 2000, 5000],
-              timeout: 30000,
+              timeout: ACTION_TIMEOUT,
             }
           )
           .toBe(true);
@@ -626,7 +639,7 @@ export const verifySearchResults = async (
     await expect(dashboardCard).toBeVisible({ timeout: 10000 });
   } else {
     await expect(dashboardCard).not.toBeVisible({
-      timeout: 30000,
+      timeout: ACTION_TIMEOUT,
     });
   }
 

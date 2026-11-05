@@ -50,7 +50,7 @@ describe('API breadcrumbs point at whatever surface owns the service listing', (
   ])('builds the settings path for an API %s by default', (_, build) => {
     const [crumb] = build();
 
-    expect(crumb.name).toBe('Api Services');
+    expect(crumb.name).toBe('label.api-uppercase-plural');
     expect(crumb.url).toBe('/settings/services/apiServices');
   });
 

@@ -31,21 +31,28 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PersonaAIContextIT extends McpTestBase {
+  private static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
   private static Persona persona;
   private static Table table;
+  private static Metric metric;
   private static String directMemberToken;
   private static String inheritedMemberToken;
   private static String nonMemberToken;
@@ -56,6 +63,7 @@ class PersonaAIContextIT extends McpTestBase {
     initAuth();
     String suffix = UUID.randomUUID().toString().substring(0, 8);
     table = createServiceDatabaseSchemaTable("persona_context_" + suffix);
+    metric = createMetricWithAsset(suffix);
 
     User directMember = createUser("persona_direct_" + suffix);
     User inheritedMember = createUser("persona_inherited_" + suffix);
@@ -93,6 +101,41 @@ class PersonaAIContextIT extends McpTestBase {
             .withCacheTtlMinutes(30),
         PersonaContextDefinition.class);
     post(contextPath() + "/rules", tableRule("Baseline tables"), PersonaContextDefinition.class);
+  }
+
+  @Test
+  void metricKnowledgeRuleRendersAssetsFromTheBoundedRelationshipRepository() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Persona metricPersona =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("metric_persona_context_" + suffix)
+                .withDescription("Metric asset persona context integration test"),
+            Persona.class);
+    String metricContextPath = "personas/" + metricPersona.getId() + "/aiContext";
+    put(
+        metricContextPath,
+        new PersonaContextDefinition().withEnabled(true).withCharacterBudget(400_000),
+        PersonaContextDefinition.class);
+    ContextRule requested = metricRule("Revenue metric assets");
+    PersonaContextDefinition created =
+        post(metricContextPath + "/rules", requested, PersonaContextDefinition.class);
+    ContextRule createdRule =
+        created.getRules().stream()
+            .filter(rule -> requested.getName().equals(rule.getName()))
+            .findFirst()
+            .orElseThrow();
+
+    try {
+      JsonNode document = post(metricContextPath + "/document:refresh", Map.of(), JsonNode.class);
+      assertThat(document.path("markdown").asText())
+          .contains(metric.getFullyQualifiedName())
+          .contains("### Related Assets")
+          .contains(table.getFullyQualifiedName());
+    } finally {
+      deleteResponse(metricContextPath + "/rules/" + createdRule.getId());
+    }
   }
 
   @Test
@@ -272,6 +315,76 @@ class PersonaAIContextIT extends McpTestBase {
     }
   }
 
+  /**
+   * The settings controls PUT only their own three fields, so a null prompt has to mean "leave it
+   * alone" — otherwise flipping the Enabled toggle would silently delete the admin's instructions.
+   */
+  @Test
+  void promptSurvivesASettingsOnlyUpdateAndClearsWhenBlank() throws Exception {
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("persona_prompt_" + shortId())
+                .withDescription("Persona prompt integration test"),
+            Persona.class);
+    String ownedContextPath = "personas/" + owned.getId() + "/aiContext";
+    String documentPath = "personas/name/" + owned.getFullyQualifiedName() + "/context";
+    String prompt = "You assist finance analysts with quarterly revenue questions.";
+
+    try {
+      PersonaContextDefinition written =
+          put(
+              ownedContextPath,
+              settings(true).withPrompt("  " + prompt + "\n"),
+              PersonaContextDefinition.class);
+      assertThat(written.getPrompt()).isEqualTo(prompt);
+
+      PersonaContextDefinition afterSettingsOnly =
+          put(ownedContextPath, settings(true), PersonaContextDefinition.class);
+      assertThat(afterSettingsOnly.getPrompt()).isEqualTo(prompt);
+
+      JsonNode structured =
+          OBJECT_MAPPER.readTree(
+              getResponse(documentPath + "?format=json&refresh=true", authToken).body());
+      assertThat(structured.path("prompt").asText()).isEqualTo(prompt);
+      // Consumers read the markdown as reference data, never as instructions.
+      assertThat(getResponse(documentPath + "?refresh=true", authToken).body())
+          .doesNotContain(prompt);
+
+      // MCP clients get the prompt on part 1 under its own key, outside the paged document.
+      JsonNode toolResult =
+          executeMcp(
+                  McpTestUtils.createToolCallRequest(
+                      "get_persona_context", Map.of("personaName", owned.getFullyQualifiedName())),
+                  authToken)
+              .path("result");
+      JsonNode page =
+          OBJECT_MAPPER.readTree(toolResult.path("content").get(0).path("text").asText());
+      assertThat(page.path("instructions").asText()).isEqualTo(prompt);
+      assertThat(page.path("content").asText()).doesNotContain(prompt);
+
+      put(ownedContextPath, settings(false), PersonaContextDefinition.class);
+      JsonNode disabled =
+          OBJECT_MAPPER.readTree(
+              getResponse(documentPath + "?format=json&refresh=true", authToken).body());
+      assertThat(disabled.hasNonNull("prompt")).isFalse();
+
+      PersonaContextDefinition cleared =
+          put(ownedContextPath, settings(true).withPrompt(""), PersonaContextDefinition.class);
+      assertThat(cleared.getPrompt()).isNull();
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  private static PersonaContextDefinition settings(boolean enabled) {
+    return new PersonaContextDefinition()
+        .withEnabled(enabled)
+        .withCharacterBudget(400_000)
+        .withCacheTtlMinutes(30);
+  }
+
   private static ContextRule ruleNamed(PersonaContextDefinition definition, String name) {
     return definition.getRules().stream()
         .filter(rule -> name.equals(rule.getName()))
@@ -321,6 +434,104 @@ class PersonaAIContextIT extends McpTestBase {
     } finally {
       deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
     }
+  }
+
+  @Test
+  void mcpSearchAppliesPersonaScopeByDefaultAndCanExplicitlyBypassIt() throws Exception {
+    String suffix = shortId();
+    Table selected = createServiceDatabaseSchemaTable("persona_mcp_selected_" + suffix);
+    Table excluded = createServiceDatabaseSchemaTable("persona_mcp_excluded_" + suffix);
+    User member = createUser("persona_mcp_member_" + suffix);
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("persona_mcp_" + suffix)
+                .withDescription("MCP persona search scope integration test")
+                .withUsers(List.of(member.getId())),
+            Persona.class);
+    String contextPath = "personas/" + owned.getId() + "/aiContext";
+    String token = tokenFor(member);
+
+    try {
+      put(
+          contextPath,
+          new PersonaContextDefinition().withEnabled(true),
+          PersonaContextDefinition.class);
+      post(
+          contextPath + "/rules",
+          scopedFqnRule("MCP scope", selected.getFullyQualifiedName()),
+          PersonaContextDefinition.class);
+
+      Awaitility.await("MCP search consumes the active persona scope")
+          .atMost(Duration.ofSeconds(60))
+          .pollDelay(Duration.ofSeconds(1))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                JsonNode scoped =
+                    searchMetadataWithPersona(owned, token, selected, excluded, false);
+                assertThat(resultFqns(scoped)).containsExactly(selected.getFullyQualifiedName());
+                assertThat(scoped.path("personaScopeApplied").asBoolean()).isTrue();
+
+                JsonNode unscoped =
+                    searchMetadataWithPersona(owned, token, selected, excluded, true);
+                assertThat(resultFqns(unscoped))
+                    .containsExactlyInAnyOrder(
+                        selected.getFullyQualifiedName(), excluded.getFullyQualifiedName());
+                assertThat(unscoped.has("personaScopeApplied")).isFalse();
+              });
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  private JsonNode searchMetadataWithPersona(
+      Persona activePersona, String token, Table first, Table second, boolean ignoreScope)
+      throws Exception {
+    String queryFilter =
+        OBJECT_MAPPER.writeValueAsString(
+            Map.of(
+                "bool",
+                Map.of(
+                    "filter",
+                    List.of(
+                        Map.of("term", Map.of("entityType", Entity.TABLE)),
+                        Map.of(
+                            "terms",
+                            Map.of(
+                                "fullyQualifiedName",
+                                List.of(
+                                    first.getFullyQualifiedName(),
+                                    second.getFullyQualifiedName())))))));
+    Map<String, Object> arguments =
+        Map.of(
+            "query",
+            "*",
+            "entityType",
+            Entity.TABLE,
+            "queryFilter",
+            queryFilter,
+            "size",
+            10,
+            "ignorePersonaScope",
+            ignoreScope);
+    JsonNode response =
+        executeMcp(
+            McpTestUtils.createToolCallRequest("search_metadata", arguments),
+            token,
+            activePersona.getFullyQualifiedName());
+    JsonNode toolResult = response.path("result");
+    assertThat(toolResult.path("isError").asBoolean(false)).isFalse();
+    return OBJECT_MAPPER.readTree(toolResult.path("content").get(0).path("text").asText());
+  }
+
+  private static Set<String> resultFqns(JsonNode response) {
+    Set<String> fqns = new HashSet<>();
+    response
+        .path("results")
+        .forEach(result -> fqns.add(result.path("fullyQualifiedName").asText()));
+    return fqns;
   }
 
   /** Polls until the served scope includes selected assets and excludes unscoped assets. */
@@ -461,8 +672,81 @@ class PersonaAIContextIT extends McpTestBase {
                     .isTrue());
   }
 
+  @Test
+  void aiContextStatusListsCachedStateForEveryPersonaAndIsAdminOnly() throws Exception {
+    String statusPath = "personas/aiContext/status?limit=1000";
+    assertThat(getResponse(statusPath, nonMemberToken).statusCode()).isEqualTo(403);
+
+    // Polled for the same reason as above: a sibling test may invalidate the shared cache.
+    Awaitility.await("status reports the compiled document")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              assertThat(getResponse(contextPath() + "/document", authToken).statusCode())
+                  .isEqualTo(200);
+              HttpResponse<String> response = getResponse(statusPath, authToken);
+              assertThat(response.statusCode()).isEqualTo(200);
+              JsonNode status =
+                  statusOf(OBJECT_MAPPER.readTree(response.body()).path("data"), persona);
+              assertThat(status.path("cacheState").asText()).isEqualTo("FRESH");
+              assertThat(status.path("tokensEst").asInt()).isPositive();
+              assertThat(status.hasNonNull("lastGeneratedAt")).isTrue();
+            });
+  }
+
+  private static JsonNode statusOf(JsonNode statuses, Persona target) {
+    for (JsonNode status : statuses) {
+      if (target.getId().toString().equals(status.path("personaId").asText())) {
+        return status;
+      }
+    }
+    throw new AssertionError("No AI context status for persona " + target.getName());
+  }
+
+  @Test
+  void aiContextStatusPagesWithTheSameCursorAsThePersonaList() {
+    // The two lists are read one after the other, and a sibling test in the parallel lane may
+    // create or delete a persona in between; compare them again until both reads see one state.
+    Awaitility.await("status pages like the persona list")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(this::assertStatusPagesLikeThePersonaList);
+  }
+
+  private void assertStatusPagesLikeThePersonaList() throws Exception {
+    JsonNode statusPage =
+        OBJECT_MAPPER.readTree(getResponse("personas/aiContext/status?limit=1", authToken).body());
+    JsonNode personaPage =
+        OBJECT_MAPPER.readTree(getResponse("personas?limit=1", authToken).body());
+    assertThat(statusPage.path("data")).hasSize(1);
+    assertThat(personaPage.path("data")).hasSize(1);
+    assertThat(statusPage.path("data").get(0).path("personaId").asText())
+        .isEqualTo(personaPage.path("data").get(0).path("id").asText());
+    assertThat(statusPage.path("paging").path("total").asInt())
+        .isEqualTo(personaPage.path("paging").path("total").asInt());
+
+    String rawAfter = statusPage.path("paging").path("after").asText();
+    assertThat(rawAfter).isNotEmpty().isEqualTo(personaPage.path("paging").path("after").asText());
+    String after = URLEncoder.encode(rawAfter, StandardCharsets.UTF_8);
+    JsonNode nextStatus =
+        OBJECT_MAPPER.readTree(
+            getResponse("personas/aiContext/status?limit=1&after=" + after, authToken).body());
+    JsonNode nextPersona =
+        OBJECT_MAPPER.readTree(getResponse("personas?limit=1&after=" + after, authToken).body());
+    assertThat(nextStatus.path("data")).hasSize(1);
+    assertThat(nextPersona.path("data")).hasSize(1);
+    assertThat(nextStatus.path("data").get(0).path("personaId").asText())
+        .isEqualTo(nextPersona.path("data").get(0).path("id").asText());
+  }
+
   private JsonNode executeMcp(Map<String, Object> requestBody, String token) throws Exception {
-    HttpRequest request =
+    return executeMcp(requestBody, token, null);
+  }
+
+  private JsonNode executeMcp(Map<String, Object> requestBody, String token, String activePersona)
+      throws Exception {
+    HttpRequest.Builder request =
         HttpRequest.newBuilder()
             .uri(URI.create(getMcpUrl("/mcp")))
             .header("Content-Type", "application/json")
@@ -470,9 +754,12 @@ class PersonaAIContextIT extends McpTestBase {
             .header("Authorization", token)
             .POST(
                 HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(requestBody)))
-            .timeout(Duration.ofSeconds(30))
-            .build();
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            .timeout(Duration.ofSeconds(30));
+    if (activePersona != null) {
+      request.header(ACTIVE_PERSONA_HEADER, activePersona);
+    }
+    HttpResponse<String> response =
+        HTTP_CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString());
     assertThat(response.statusCode()).isEqualTo(200);
     return OBJECT_MAPPER.readTree(extractJsonFromResponse(response.body()));
   }
@@ -480,6 +767,23 @@ class PersonaAIContextIT extends McpTestBase {
   private static User createUser(String name) throws Exception {
     return post(
         "users", new CreateUser().withName(name).withEmail(name + "@example.com"), User.class);
+  }
+
+  private static Metric createMetricWithAsset(String suffix) throws Exception {
+    Metric created =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("persona_context_metric_" + suffix)
+                .withDescription("Revenue metric used by persona context"),
+            Metric.class);
+    put(
+        "metrics/" + created.getName() + "/assets/add",
+        new BulkAssets()
+            .withAssets(
+                List.of(new EntityReference().withId(table.getId()).withType(Entity.TABLE))),
+        BulkOperationResult.class);
+    return created;
   }
 
   private static String tokenFor(User user) {
@@ -499,6 +803,19 @@ class PersonaAIContextIT extends McpTestBase {
         .withMaxAssets(1)
         .withEnabled(true)
         .withFilteredInSearch(false);
+  }
+
+  private static ContextRule metricRule(String name) {
+    return new ContextRule()
+        .withName(name)
+        .withEntityType(Entity.METRIC)
+        .withQueryFilter(
+            "{\"query\":{\"term\":{\"fullyQualifiedName\":\""
+                + metric.getFullyQualifiedName()
+                + "\"}}}")
+        .withSections(Set.of(ContextSection.RELATED_ASSETS))
+        .withMaxAssets(1)
+        .withEnabled(true);
   }
 
   private static String contextPath() {

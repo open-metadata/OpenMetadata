@@ -21,12 +21,14 @@ import {
 } from '../generated/entity/feed/conversation';
 import { ConversationFilterType } from '../generated/type/conversationFilterType';
 import { ReactionType } from '../generated/type/reaction';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/conversations';
 
 export interface ListConversationsParams {
   entityLink?: string;
+  // With `entityLink`, also returns the conversations on the entity's fields (e.g. its columns).
+  includeFields?: boolean;
   userId?: string;
   filterType?: ConversationFilterType;
   resolved?: boolean;

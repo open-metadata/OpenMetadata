@@ -11,31 +11,81 @@
  *  limitations under the License.
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { ReactNode } from 'react';
+import { MemoryRouter, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import { useTestCaseStore } from '../../components/DataQuality/IncidentManager/useTestCase.store';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import tableClassBase from '../../utils/TableClassBase';
+// Mocked globally in src/setupTests.js — imported here only to assert on it.
+import { showErrorToast } from '../../utils/ToastUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
 
-const mockEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 const mockNavigate = jest.fn();
 
 const COMMON_API_FIELDS =
   'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
+// The page now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context, so mocking that hook (instead of the old
+// getEntityPermissionByFqn REST boundary) is what drives the page's permission-gated
+// behavior in these tests. mockUseEntityPermissions is asserted against directly (see
+// "should fetch permissions" below) so it needs a `mock`-prefixed name to be usable inside
+// the (hoisted) jest.mock factory below.
+const mockUseEntityPermissions = jest.fn();
+
+/**
+ * Configures the mocked useEntityPermissions hook to return the flags derived from a raw
+ * OperationPermission object — mirroring the shape tests used to hand to the mocked
+ * getEntityPermissionByFqn, but run through the real {@link getDerivedPermissionFlags} so
+ * the derived flags (e.g. the ViewAll fallback for an unset field-level permission) stay
+ * accurate without every test having to hand-compute them.
+ *
+ * Deliberately does NOT merge `overrides` onto a fully-populated default (e.g.
+ * DEFAULT_ENTITY_PERMISSION): getPrioritizedViewPermission/getPrioritizedEditPermission
+ * fall back to ViewAll/EditAll only when the field-specific key is truly *absent* (lodash
+ * `has()`), not merely `false`. The real backend response (see getOperationPermissions in
+ * PermissionsUtils.ts) already omits operations a policy doesn't mention, so a partial
+ * object here is the faithful mock, not a shortcut — filling in every key with `false`
+ * would silently defeat the fallback (caught a real test failure during this conversion).
+ *
+ * Uses mockReturnValue rather than mockImplementationOnce because React re-renders can call
+ * the hook more than once during a test.
+ */
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 jest.mock('../../rest/tableAPI', () => ({
@@ -57,6 +107,25 @@ jest.mock('../../rest/tableAPI', () => ({
   removeFollower: jest.fn(),
   restoreTable: jest.fn(),
   updateTablesVotes: jest.fn(),
+}));
+
+jest.mock('../../rest/testAPI', () => ({
+  ...jest.requireActual('../../rest/testAPI'),
+  getListTestCaseBySearch: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+}));
+
+jest.mock('../../rest/incidentManagerAPI', () => ({
+  ...jest.requireActual('../../rest/incidentManagerAPI'),
+  getListTestCaseIncidentStatus: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 0 } }),
+}));
+
+jest.mock('../../rest/lineageAPI', () => ({
+  ...jest.requireActual('../../rest/lineageAPI'),
+  getDataQualityLineage: jest.fn().mockResolvedValue({ nodes: [], edges: [] }),
 }));
 
 jest.mock('../../rest/suggestionsAPI', () => ({
@@ -108,10 +177,12 @@ jest.mock(
 jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <p>testDescription</p>);
 });
+// Distinct sentinel so "skeleton shown" assertions don't collide with other components
+// that render data-testid="loader".
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton',
   () => {
-    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
+    return jest.fn().mockImplementation(() => <p>testPermissionSkeleton</p>);
   }
 );
 
@@ -126,19 +197,30 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest.fn().mockImplementation(({ breadcrumbData }) => (
-      <div>
-        testDataAssetsHeader
-        <span data-testid="header-breadcrumb-data">
-          {JSON.stringify(breadcrumbData)}
-        </span>
-      </div>
-    )),
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(({ badge, breadcrumbData }) => (
+        <div>
+          testDataAssetsHeader
+          {badge}
+          <span data-testid="header-breadcrumb-data">
+            {JSON.stringify(breadcrumbData)}
+          </span>
+        </div>
+      )),
   })
 );
 
+jest.mock('../../components/Lineage/Lineage/Lineage', () => ({
+  Lineage: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 jest.mock('../../components/Lineage/Lineage.component', () => {
-  return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
+  return jest
+    .fn()
+    .mockImplementation(({ hasEditAccess }: { hasEditAccess: boolean }) => (
+      <p data-has-edit-access={String(hasEditAccess)}>testEntityLineage</p>
+    ));
 });
 
 jest.mock(
@@ -220,14 +302,6 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
-jest.mock('../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn().mockImplementation(() => ({
-    isTourOpen: false,
-    activeTabForTourDatasetPage: 'schema',
-    isTourPage: false,
-  })),
-}));
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(() => <>testLoader</>),
@@ -260,6 +334,10 @@ jest.mock(
 );
 
 describe('TestDetailsPageV1 component', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('TableDetailsPageV1 should fetch permissions', () => {
     renderWithQueryClient(
       <MemoryRouter>
@@ -267,7 +345,10 @@ describe('TestDetailsPageV1 component', () => {
       </MemoryRouter>
     );
 
-    expect(mockEntityPermissionByFqn).toHaveBeenCalledWith('table', 'fqn');
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.TABLE,
+      'fqn'
+    );
   });
 
   it('TableDetailsPageV1 should not fetch table details if permission is there', () => {
@@ -280,12 +361,94 @@ describe('TestDetailsPageV1 component', () => {
     expect(getTableDetailsByFQN).not.toHaveBeenCalled();
   });
 
-  it('TableDetailsPageV1 should fetch table details with basic fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
+  // Covers the hand-written (not generated by the recipe's destructure) bits of the
+  // conversion: the loading gate and the error-toast effect. These are exactly the pieces
+  // a mechanical destructure-swap could get wrong without a test catching it, so every
+  // conversion copying this template should carry an equivalent pair.
+  describe('permission hook loading/error states', () => {
+    it('renders the permission-loading skeleton while isLoading is true', () => {
+      setMockPermissions({}, { isLoading: true });
+
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
+      expect(
+        screen.queryByText('testDataAssetsHeader')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows the permission-fetch error toast when the hook reports an error', async () => {
+      setMockPermissions({}, { error: new Error('permission fetch failed') });
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      // t() is globally mocked to the identity function (see src/setupTests.js), so the
+      // interpolated `entity` option collapses out and only the outer key survives.
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'server.fetch-entity-permissions-error'
+      );
+    });
+  });
+
+  // Regression for #35848: a hidden tab in the URL (Knowledge Graph while RDF is
+  // off) selected Schema but the provider built its layout from the hidden tab,
+  // which has no widgets, so the panel rendered empty.
+  it('renders the Schema layout when the URL tab is hidden', async () => {
+    setMockPermissions({ ViewBasic: true });
+    (useParams as jest.Mock).mockImplementation(() => ({
+      fqn: 'fqn',
+      tab: EntityTabs.KNOWLEDGE_GRAPH,
     }));
+    // Read the layout the real GenericProvider computed, instead of fixed text.
+    (GenericTab as jest.Mock).mockImplementation(() => {
+      const { layout } = useGenericContext();
+
+      return (
+        <div data-testid="generic-tab-layout">
+          {layout.map((widget) => widget.i).join(',')}
+        </div>
+      );
+    });
+
+    try {
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      expect(
+        await screen.findByText('testDataAssetsHeader')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('tab', { selected: true })).toHaveTextContent(
+        'label.column-plural'
+      );
+      expect(await screen.findByTestId('generic-tab-layout')).toHaveTextContent(
+        DetailPageWidgetKeys.LEFT_PANEL
+      );
+    } finally {
+      (useParams as jest.Mock).mockImplementation(() => ({
+        fqn: 'fqn',
+        tab: 'schema',
+      }));
+      (GenericTab as jest.Mock).mockImplementation(() => <>GenericTab</>);
+    }
+  });
+
+  it('TableDetailsPageV1 should fetch table details with basic fields', async () => {
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(
@@ -301,13 +464,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should fetch table details with all the permitted fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewAll: true,
-        ViewBasic: true,
-        ViewUsage: true,
-      })),
-    }));
+    setMockPermissions({ ViewAll: true, ViewBasic: true, ViewUsage: true });
 
     await act(async () => {
       renderWithQueryClient(
@@ -322,12 +479,28 @@ describe('TestDetailsPageV1 component', () => {
     });
   });
 
+  it('keeps the entity skeleton, not a spinner, while the table itself is still loading', async () => {
+    setMockPermissions({ ViewBasic: true });
+    // Never settles, so the page stays on its entity-loading branch.
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(
+      () => new Promise(() => undefined)
+    );
+
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.queryByText('testDataAssetsHeader')).not.toBeInTheDocument();
+  });
+
   it('TableDetailsPageV1 should render page for ViewBasic permissions', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(
@@ -359,11 +532,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should dbt tab if data is present', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -388,11 +557,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should dbt tab for rawSql, when sql is empty', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -417,11 +582,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should dbt tab for rawSql, when there is no sql available', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -446,11 +607,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should show dbt tab when path is available without sql', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -475,11 +632,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should show dbt tab when dbtSourceProject is available without sql', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -504,11 +657,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should render schema definition tab table type is not view', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -538,11 +687,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should render view definition tab if table type is view', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -568,11 +713,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should render schemaTab by default', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(
@@ -597,11 +738,7 @@ describe('TestDetailsPageV1 component', () => {
       columns: [],
     };
 
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve(mockTableData)
@@ -640,11 +777,7 @@ describe('TestDetailsPageV1 component', () => {
       },
     ];
 
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        ViewBasic: true,
-      }),
-    }));
+    setMockPermissions({ ViewBasic: true });
     mockNavigate.mockClear();
 
     await act(async () => {
@@ -682,11 +815,7 @@ describe('TestDetailsPageV1 component', () => {
     const getLatestQueriesTabProps = () => getQueriesTabProps().pop();
 
     const renderOnSchemaTab = async () => {
-      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-        getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-          ViewBasic: true,
-        })),
-      }));
+      setMockPermissions({ ViewBasic: true });
 
       await act(async () => {
         renderWithQueryClient(
@@ -771,5 +900,169 @@ describe('TestDetailsPageV1 component', () => {
         )
       );
     });
+  });
+});
+
+describe('TableDetailsPageV1 data quality indicator', () => {
+  let alertGate: jest.SpyInstance;
+
+  const renderPage = async () => {
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+  };
+
+  const openCard = () => {
+    // Establish pointer modality so react-aria accepts hover events.
+    fireEvent.mouseMove(document);
+    fireEvent.mouseEnter(
+      screen.getByTestId('dq-indicator').parentElement as HTMLElement,
+      { pointerType: 'mouse' }
+    );
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+  };
+
+  const incidentOn = (testCaseId: string) => ({
+    testCaseReference: { id: testCaseId, type: 'testCase' },
+  });
+
+  beforeEach(() => {
+    setMockPermissions({ ViewAll: true });
+    alertGate = jest
+      .spyOn(tableClassBase, 'getAlertEnableStatus')
+      .mockReturnValue(true);
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      name: 'test',
+      id: '123',
+      columns: [],
+      fullyQualifiedName: 'fqn',
+    });
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    (getDataQualityLineage as jest.Mock).mockResolvedValue({
+      nodes: [],
+      edges: [],
+    });
+    useTestCaseStore.getState().setDqLineageData(undefined);
+  });
+
+  afterEach(() => {
+    alertGate.mockRestore();
+  });
+
+  it('counts failing tests from paging.total, not the returned page', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'failing-1' }],
+      paging: { total: 3 },
+    });
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'failing'
+    );
+
+    openCard();
+
+    expect(
+      screen.getByText('message.dq-failing-tests-description-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('does not count an open incident on a currently failing test again', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'failing-1' }],
+      paging: { total: 1 },
+    });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('failing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    const indicator = await screen.findByTestId('dq-indicator');
+
+    expect(indicator).toHaveAttribute('data-level', 'failing');
+    expect(indicator).toHaveAttribute(
+      'aria-label',
+      'label.data-quality-test-failing'
+    );
+  });
+
+  it('stays amber for an open incident when the other calls fail', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockRejectedValue(
+      new Error('search failed')
+    );
+    (getDataQualityLineage as jest.Mock).mockRejectedValue(
+      new Error('lineage failed')
+    );
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('passing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'incident'
+    );
+    expect(useTestCaseStore.getState().dqLineageData).toBeUndefined();
+  });
+
+  it('skips the incidents request without ViewTests permission', async () => {
+    setMockPermissions({ ViewBasic: true });
+    (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
+      data: [incidentOn('passing-1')],
+      paging: { total: 1 },
+    });
+
+    await renderPage();
+
+    await waitFor(() => expect(getDataQualityLineage).toHaveBeenCalled());
+
+    expect(getListTestCaseIncidentStatus).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
+  });
+
+  it('shows the upstream state and stores the lineage response', async () => {
+    const lineage = {
+      nodes: [{ fullyQualifiedName: 'fqn' }, { fullyQualifiedName: 'raw' }],
+      edges: [],
+    };
+    (getDataQualityLineage as jest.Mock).mockResolvedValue(lineage);
+
+    await renderPage();
+
+    expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+      'data-level',
+      'upstream'
+    );
+    expect(useTestCaseStore.getState().dqLineageData).toEqual(lineage);
+  });
+
+  it('renders no indicator and skips the requests when alerts are disabled', async () => {
+    alertGate.mockReturnValue(false);
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await renderPage();
+
+    expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
+    expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
+    expect(getListTestCaseBySearch).not.toHaveBeenCalled();
   });
 });

@@ -10,39 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Avatar } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Avatar,
+  Box,
+  Button,
+  ButtonUtility,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import {
+  Announcement02,
+  Collapse,
+  Download01,
+  Edit01,
+  Expand,
+  RefreshCcw01,
+  Trash01,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, toLower, toString } from 'lodash';
+import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
-import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import {
   EntityTabs,
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
@@ -50,15 +51,19 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import {
+  QueryVote,
+  VotingDataProps,
+} from '../../../interface/entity/vote.interface';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   AnnouncementEntity,
@@ -76,7 +81,6 @@ import {
   getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -92,10 +96,6 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-} from '../../../utils/PermissionsUtils';
-import {
   getDataProductDetailsPath,
   getDomainPath,
   getVersionPath,
@@ -103,29 +103,34 @@ import {
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { DEFAULT_DATA_PRODUCT_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
+import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
+import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
-import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-import { DataProductMetadataModal } from '../DataProductMetadataModal';
-import { ODPSImportModal } from '../ODPSImportModal';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
+import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
+import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
@@ -134,6 +139,11 @@ import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interfac
 // ambiguous) TFunction type.
 type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 
+// Reproduces the former antd look inside `.ant-btn-group.spaced` (40px tall,
+// 6/12px padding + 1px border, 12px radius, three-layer shadow). px-3.25 =
+// 12px padding + the 1px antd border that the core ::after outline no longer
+// takes; not-last:-mr-px keeps antd's `.ant-btn + .ant-btn` 1px overlap with
+// the next group button.
 // Extracted from DataProductsDetailsPage's render to keep the component's
 // complexity down. Builds the "Manage" dropdown menu content from the
 // permission flags and the modal/action toggles the page owns.
@@ -163,14 +173,14 @@ const getManageButtonContent = ({
   setIsMetadataEditing: (value: boolean) => void;
   setIsDelete: (value: boolean) => void;
   setIsOdpsImportOpen: (value: boolean) => void;
-}): ItemType[] => [
+}): ManageMenuItem[] => [
   ...(editAllPermission
     ? ([
         {
           label: (
             <ManageButtonItemLabel
               description={t('message.announcement-action-description')}
-              icon={IconAnnouncementsBlack}
+              icon={Announcement02}
               id="announcement-button"
               name={t('label.announcement-plural')}
             />
@@ -182,7 +192,7 @@ const getManageButtonContent = ({
             setShowActions(false);
           },
         },
-      ] as ItemType[])
+      ] as ManageMenuItem[])
     : []),
   ...(editDisplayNamePermission
     ? ([
@@ -192,7 +202,7 @@ const getManageButtonContent = ({
               description={t('message.rename-entity', {
                 entity: t('label.data-product'),
               })}
-              icon={EditIcon}
+              icon={Edit01}
               id="rename-button"
               name={t('label.rename')}
             />
@@ -204,7 +214,7 @@ const getManageButtonContent = ({
             setShowActions(false);
           },
         },
-      ] as ItemType[])
+      ] as ManageMenuItem[])
     : []),
   ...(editAllPermission
     ? ([
@@ -230,7 +240,7 @@ const getManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.edit-metadata-description')}
-              icon={EditIcon}
+              icon={Edit01}
               id="edit-metadata-button"
               name={t('label.edit-metadata')}
             />
@@ -242,7 +252,7 @@ const getManageButtonContent = ({
             setShowActions(false);
           },
         },
-      ] as ItemType[])
+      ] as ManageMenuItem[])
     : []),
   ...(deleteDataProductPermission
     ? ([
@@ -252,7 +262,7 @@ const getManageButtonContent = ({
               description={t('message.delete-entity-type-action-description', {
                 entityType: t('label.data-product'),
               })}
-              icon={DeleteIcon}
+              icon={Trash01}
               id="delete-button"
               name={t('label.delete')}
             />
@@ -264,13 +274,13 @@ const getManageButtonContent = ({
             setShowActions(false);
           },
         },
-      ] as ItemType[])
+      ] as ManageMenuItem[])
     : []),
   {
     label: (
       <ManageButtonItemLabel
         description={t('message.export-entity-as-odps-description')}
-        icon={ExportIcon}
+        icon={Download01}
         id="export-odps-button"
         name={t('label.export-as-odps')}
       />
@@ -293,7 +303,7 @@ const getManageButtonContent = ({
           label: (
             <ManageButtonItemLabel
               description={t('message.import-odps-description')}
-              icon={ImportIcon}
+              icon={Upload01}
               id="import-odps-button"
               name={t('label.import-from-odps')}
             />
@@ -305,7 +315,7 @@ const getManageButtonContent = ({
             setShowActions(false);
           },
         },
-      ] as ItemType[])
+      ] as ManageMenuItem[])
     : []),
 ];
 
@@ -336,7 +346,8 @@ const getCoverImageProps = (
 function DataProductActionButtons(
   props: Readonly<{
     isVersionsView: boolean;
-    dataProductPermission: OperationPermission;
+    /** Derived Create flag replacing the raw permission read. */
+    canCreate: boolean;
     openAssetDrawer: () => void;
     t: TranslateFn;
     dataContractLatestResultButton: JSX.Element | null;
@@ -346,16 +357,14 @@ function DataProductActionButtons(
     handleVoteChange: (data: VotingDataProps) => Promise<void>;
     version?: string;
     handleVersionClick: () => void;
-    manageButtonContent: ItemType[];
+    manageButtonContent: ManageMenuItem[];
     showActions: boolean;
     setShowActions: (value: boolean) => void;
-    activeAnnouncement: AnnouncementEntity | undefined;
-    handleOpenAnnouncementDrawer: () => void;
   }>
 ) {
   const {
     isVersionsView,
-    dataProductPermission,
+    canCreate,
     openAssetDrawer,
     t,
     dataContractLatestResultButton,
@@ -368,26 +377,31 @@ function DataProductActionButtons(
     manageButtonContent,
     showActions,
     setShowActions,
-    activeAnnouncement,
-    handleOpenAnnouncementDrawer,
   } = props;
 
   return (
     <div className="tw:flex tw:flex-wrap tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
       {dataProductClassBase.getRequestDataAccessButton()}
 
-      {!isVersionsView && dataProductPermission.Create && (
+      {!isVersionsView && canCreate && (
         <Button
+          color="primary"
           data-testid="data-product-details-add-button"
-          type="primary"
-          onClick={openAssetDrawer}>
+          onPress={openAssetDrawer}>
           {t('label.add-entity', {
             entity: t('label.asset-plural'),
           })}
         </Button>
       )}
 
-      <ButtonGroup className="spaced" size="small">
+      {!isVersionsView && (
+        <ChangeRequestsIndicator
+          entityId={dataProduct.id}
+          entityType={EntityType.DATA_PRODUCT}
+        />
+      )}
+
+      <Box align="center" gap={4}>
         {dataContractLatestResultButton}
 
         {onUpdateVote && (
@@ -399,68 +413,34 @@ function DataProductActionButtons(
         )}
 
         {dataProduct?.version && (
-          <Tooltip
-            title={t(
+          <StatItem
+            count={toString(dataProduct.version)}
+            icon={RefreshCcw01}
+            isActive={Boolean(version)}
+            testId="version-button"
+            tooltip={t(
               `label.${
                 isVersionsView
                   ? 'exit-version-history'
                   : 'version-plural-history'
               }`
-            )}>
-            <Button
-              className={classNames('', {
-                'text-primary border-primary': version,
-              })}
-              data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
-              onClick={handleVersionClick}>
-              <Typography.Text
-                className={classNames('', {
-                  'text-primary': version,
-                })}>
-                {toString(dataProduct.version)}
-              </Typography.Text>
-            </Button>
-          </Tooltip>
+            )}
+            onClick={handleVersionClick}
+          />
         )}
 
         {!isVersionsView && manageButtonContent.length > 0 && (
-          <Dropdown
-            align={{ targetOffset: [-12, 0] }}
-            className="m-l-xs"
-            menu={{
-              items: manageButtonContent,
-            }}
-            open={showActions}
-            overlayClassName="domain-manage-dropdown-list-container"
-            overlayStyle={{ width: '350px' }}
-            placement="bottomRight"
-            trigger={['click']}
-            onOpenChange={setShowActions}>
-            <Tooltip
-              placement="topRight"
-              title={t('label.manage-entity', {
-                entity: t('label.data-product'),
-              })}>
-              <Button
-                className="domain-manage-dropdown-button tw-px-1.5"
-                data-testid="manage-button"
-                icon={
-                  <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                }
-                onClick={() => setShowActions(true)}
-              />
-            </Tooltip>
-          </Dropdown>
+          <ManageMenu
+            isOpen={showActions}
+            items={manageButtonContent}
+            label={t('label.manage-entity', {
+              entity: t('label.data-product'),
+            })}
+            triggerClassName="m-l-xs"
+            onOpenChange={setShowActions}
+          />
         )}
-      </ButtonGroup>
-
-      {activeAnnouncement && (
-        <AnnouncementCard
-          announcement={activeAnnouncement}
-          onClick={handleOpenAnnouncementDrawer}
-        />
-      )}
+      </Box>
     </div>
   );
 }
@@ -483,12 +463,12 @@ const DataProductsDetailsPage = ({
   const fromMarketplace =
     (location.state as { fromMarketplace?: boolean } | null)?.fromMarketplace ??
     false;
-  const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
     tab: string;
     version: string;
   }>();
   const { fqn: dataProductFqn } = useFqn();
+
   // The "Data Product Domain Validation" rule is a cross-cutting data-asset
   // rule; read it against TABLE as a representative asset type since the "Add
   // Assets" picker spans every asset type. Hold the strict domain-scoped
@@ -497,8 +477,36 @@ const DataProductsDetailsPage = ({
   const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TABLE);
   const requireDomainForDataProduct =
     !isRulesLoaded || entityRules.requireDomainForDataProduct;
-  const [dataProductPermission, setDataProductPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  // Single useEntityPermissions call, by id — mirrors DomainDetails.component.tsx (same batch)
+  // and MlModelDetail.component.tsx (Task 7C): `dataProduct` (and therefore `dataProduct.id`)
+  // is already available on first render via props, no ordering cycle. No `deleted` option:
+  // the generated `DataProduct` type carries no top-level `deleted` field (confirmed via
+  // generated/entity/domains/dataProduct.ts — data products aren't soft-deletable), matching
+  // the old component, which never referenced one either. `dataProductPermission` keeps its
+  // original name (aliased from the hook's `permissions`) to minimize the diff — it is still
+  // consumed as a raw OperationPermission by GenericProvider, dataProductClassBase, and the
+  // inline `dataProductPermission.Create` JSX check below.
+  const {
+    permissions: dataProductPermission,
+    error: dataProductPermissionError,
+    canEditAll,
+    canEditDisplayName,
+    canCreate,
+    canDelete,
+  } = useEntityPermissions(ResourceEntity.DATA_PRODUCT, { id: dataProduct.id });
+
+  useEffect(() => {
+    if (dataProductPermissionError) {
+      // Preserved verbatim: the old fetchDataProductPermission catch called
+      // showErrorToast(error as AxiosError) with no message/entity interpolation — same
+      // distinctive bare-error-object shape as DomainDetails.component.tsx (same batch) and
+      // APICollectionPage.tsx (Task 7C, File 3), not the majority
+      // `server.fetch-entity-permissions-error` pattern.
+      showErrorToast(dataProductPermissionError as AxiosError);
+    }
+  }, [dataProductPermissionError]);
+
   const [showActions, setShowActions] = useState(false);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
@@ -519,8 +527,9 @@ const DataProductsDetailsPage = ({
   );
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] =
-    useState<AnnouncementEntity>();
+  const [activeAnnouncements, setActiveAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
   const [dataContract, setDataContract] = useState<DataContract>();
   const [inputPortsCount, setInputPortsCount] = useState(0);
   const [outputPortsCount, setOutputPortsCount] = useState(0);
@@ -566,11 +575,7 @@ const DataProductsDetailsPage = ({
           dataProduct.fullyQualifiedName ?? ''
         )
       );
-      if (isEmpty(announcements.data)) {
-        setActiveAnnouncement(undefined);
-      } else {
-        setActiveAnnouncement(announcements.data[0]);
-      }
+      setActiveAnnouncements(announcements.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -627,14 +632,10 @@ const DataProductsDetailsPage = ({
       });
     }
 
+    items.push({ label: getEntityName(dataProduct) });
+
     return items;
-  }, [
-    dataProduct.domains,
-    isMarketplace,
-    fromMarketplace,
-    dataProductBasePath,
-    t,
-  ]);
+  }, [dataProduct, isMarketplace, fromMarketplace, dataProductBasePath, t]);
 
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
@@ -658,6 +659,13 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct, isVersionsView]);
 
+  // isVersionsView forces every edit/delete affordance off, regardless of the actual
+  // permissions — a read-only mode, not a permission value. Matches the old useMemo's
+  // isVersionsView branch (which omitted editDisplayNamePermission/deleteDataProductPermission
+  // from its returned object, leaving them `undefined` — falsy, same as `false` at every call
+  // site below, which only ever treat these as booleans in `? [] : []` / prop-boolean
+  // position). editDescriptionPermission/editOwnerPermission from the old memo were computed
+  // but never destructured/consumed anywhere — confirmed dead, dropped (Task 7C precedent).
   const {
     editDisplayNamePermission,
     editAllPermission,
@@ -665,29 +673,18 @@ const DataProductsDetailsPage = ({
   } = useMemo(() => {
     if (isVersionsView) {
       return {
-        editDescriptionPermission: false,
-        editOwnerPermission: false,
+        editDisplayNamePermission: false,
         editAllPermission: false,
+        deleteDataProductPermission: false,
       };
     }
 
     return {
-      editDescriptionPermission: getPrioritizedEditPermission(
-        dataProductPermission,
-        Operation.EditDescription
-      ),
-      editOwnerPermission: getPrioritizedEditPermission(
-        dataProductPermission,
-        Operation.EditOwners
-      ),
-      editAllPermission: dataProductPermission.EditAll,
-      editDisplayNamePermission: getPrioritizedEditPermission(
-        dataProductPermission,
-        Operation.EditDisplayName
-      ),
-      deleteDataProductPermission: dataProductPermission.Delete,
+      editDisplayNamePermission: canEditDisplayName,
+      editAllPermission: canEditAll,
+      deleteDataProductPermission: canDelete,
     };
-  }, [dataProductPermission, isVersionsView]);
+  }, [isVersionsView, canEditDisplayName, canEditAll, canDelete]);
 
   const { currentUser } = useApplicationStore();
 
@@ -731,18 +728,6 @@ const DataProductsDetailsPage = ({
     }
   };
 
-  const fetchDataProductPermission = useCallback(async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.DATA_PRODUCT,
-        dataProduct.id
-      );
-      setDataProductPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [dataProduct]);
-
   const fetchPortCounts = useCallback(async () => {
     try {
       const data = await getDataProductPortsView(
@@ -761,7 +746,7 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct.fullyQualifiedName]);
 
-  const manageButtonContent: ItemType[] = getManageButtonContent({
+  const manageButtonContent: ManageMenuItem[] = getManageButtonContent({
     editAllPermission,
     editDisplayNamePermission,
     deleteDataProductPermission,
@@ -890,6 +875,7 @@ const DataProductsDetailsPage = ({
       feedCount,
       getEntityFeedCount,
       labelMap: tabLabelMap,
+      onUpdateEntityDetails: onRefresh,
     });
 
     return getDetailsTabWithNewLabel(
@@ -909,6 +895,7 @@ const DataProductsDetailsPage = ({
     feedCount,
     inputPortsCount,
     outputPortsCount,
+    onRefresh,
   ]);
 
   // `/dataProduct/:fqn` has no tab segment; resolve to the first rendered tab when the
@@ -929,7 +916,6 @@ const DataProductsDetailsPage = ({
   }, [dataProduct]);
 
   useEffect(() => {
-    fetchDataProductPermission();
     fetchDataProductAssets();
     fetchTaskCounts();
     fetchActivityCount();
@@ -961,28 +947,25 @@ const DataProductsDetailsPage = ({
         ContractExecutionStatus.Running,
       ].includes(dataContract.latestResult.status)
     ) {
-      const icon = getDataContractStatusIcon(dataContract.latestResult.status);
-
       return (
-        <Button
-          className={classNames(
-            'data-contract-latest-result-button',
-            toLower(dataContract.latestResult.status)
-          )}
-          data-testid="data-contract-latest-result-btn"
-          icon={icon ? <Icon component={icon} /> : null}
-          onClick={() => {
-            handleTabChange(EntityTabs.CONTRACT);
-          }}>
-          {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
-            entity: t('label.contract'),
-          })}
-        </Button>
+        <ContractLatestResultBadge
+          href={
+            isVersionsView
+              ? getVersionPath(
+                  EntityType.DATA_PRODUCT,
+                  dataProductFqn,
+                  toString(dataProduct.version),
+                  EntityTabs.CONTRACT
+                )
+              : getDataProductDetailsPath(dataProductFqn, EntityTabs.CONTRACT)
+          }
+          status={dataContract.latestResult.status}
+        />
       );
     }
 
     return null;
-  }, [dataContract]);
+  }, [dataContract, dataProductFqn, dataProduct.version, isVersionsView]);
 
   const statusBadge = useMemo(() => {
     const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
@@ -1024,6 +1007,11 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
+          <DomainMismatchAlert
+            className="tw:mx-5"
+            domains={dataProduct.domains}
+            entityId={dataProduct.id}
+          />
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
             <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
@@ -1046,11 +1034,9 @@ const DataProductsDetailsPage = ({
             </div>
             <div className="tw:shrink-0 tw:max-w-full">
               <DataProductActionButtons
-                activeAnnouncement={activeAnnouncement}
+                canCreate={canCreate}
                 dataContractLatestResultButton={dataContractLatestResultButton}
                 dataProduct={dataProduct}
-                dataProductPermission={dataProductPermission}
-                handleOpenAnnouncementDrawer={handleOpenAnnouncementDrawer}
                 handleVersionClick={handleVersionClick}
                 handleVoteChange={handleVoteChange}
                 isVersionsView={isVersionsView}
@@ -1066,29 +1052,53 @@ const DataProductsDetailsPage = ({
             </div>
           </div>
 
+          <AnnouncementsWidgetV3Body
+            announcements={activeAnnouncements}
+            className="tw:mx-5 tw:mt-3"
+            testId="entity-header-announcements"
+            onItemClick={handleOpenAnnouncementDrawer}
+          />
+
           {dataProductClassBase.getRequestDataAccessBanner()}
 
           <div className="data-product-details-page-tabs tw:w-full">
             <div className="tw:p-5">
               <Tabs
-                destroyInactiveTabPane
-                activeKey={currentTab}
-                className="tabs-new"
+                className="tw:gap-3"
                 data-testid="tabs"
-                items={tabs}
-                tabBarExtraContent={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
-                onChange={handleTabChange}
-              />
+                selectedKey={getRenderedActiveTab(tabs, currentTab)}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List
+                  actions={
+                    isExpandViewSupported && (
+                      <ButtonUtility
+                        data-testid="tab-expand-button"
+                        icon={isTabExpanded ? Collapse : Expand}
+                        size="lg"
+                        tooltip={
+                          isTabExpanded
+                            ? t('label.collapse')
+                            : t('label.expand')
+                        }
+                        onClick={toggleTabExpanded}
+                      />
+                    )
+                  }
+                  size="sm"
+                  type="underline"
+                  variant="card">
+                  {tabs.map(({ key, label }) => (
+                    <Tabs.Item id={key} key={key}>
+                      {label}
+                    </Tabs.Item>
+                  ))}
+                </Tabs.List>
+                {tabs.map(({ key, children }) => (
+                  <Tabs.Panel id={key} key={key}>
+                    {children}
+                  </Tabs.Panel>
+                ))}
+              </Tabs>
             </div>
           </div>
         </GenericProvider>
@@ -1138,7 +1148,8 @@ const DataProductsDetailsPage = ({
         }}
       />
 
-      <StyleModal
+      <IconColorModal
+        defaultIcon={DEFAULT_DATA_PRODUCT_ICON}
         open={isStyleEditing}
         style={dataProduct.style}
         onCancel={() => setIsStyleEditing(false)}

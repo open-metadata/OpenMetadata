@@ -20,7 +20,14 @@ from unittest.mock import Mock, patch
 import jsonpatch
 from pydantic import BaseModel
 
-from metadata.ingestion.models.patch_request import JsonPatchUpdater, build_patch
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    ARRAY_ENTITY_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    JsonPatchUpdater,
+    build_patch,
+)
 
 
 class JsonPatchUpdaterTest(TestCase):
@@ -372,3 +379,85 @@ class BuildPatchEntityReferenceListTest(TestCase):
 
         result = build_patch(source=source, destination=dest, skip_on_failure=False)
         self.assertIsNotNone(result)
+
+
+def test_build_patch_extends_immutable_operations_with_column_replacements():
+    source = Table(id=str(uuid.uuid4()), name="my_table", columns=[Column(name="my_column", dataType="INT")])
+    destination = source.model_copy(deep=True)
+    destination.description = "updated"
+    destination.columns.append(Column(name="new_column", dataType="INT"))
+    operations = ({"op": "add", "path": "/description", "value": "updated"},)
+    original_patch = jsonpatch.JsonPatch(operations)
+
+    with patch("metadata.ingestion.models.patch_request.jsonpatch.make_patch", return_value=original_patch):
+        result = build_patch(
+            source=source, destination=destination, array_entity_fields=ARRAY_ENTITY_FIELDS, skip_on_failure=False
+        )
+
+    assert result is not None
+    updated = result.apply(source.model_dump(mode="json", exclude_unset=True, exclude_none=True))
+    assert updated["description"] == "updated"
+    assert updated["columns"] == [
+        {"name": "my_column", "dataType": "INT", "ordinalPosition": 1},
+        {"name": "new_column", "dataType": "INT", "ordinalPosition": 2},
+    ]
+    assert operations == ({"op": "add", "path": "/description", "value": "updated"},)
+
+
+class TestBuildPatchTableAliases:
+    """Table.aliases has to survive the allow-listed patch the sink actually sends.
+
+    `metadata_rest.patch_entity` passes ALLOWED_COMMON_PATCH_FIELDS, and `build_patch`
+    diffs the models through `include=allowed_fields`. A field missing from that list
+    can never produce an operation, so a connector that recomputes aliases every run
+    would silently drop them on every table that already exists in OpenMetadata.
+    """
+
+    @staticmethod
+    def _table(aliases):
+        return Table(
+            id=str(uuid.uuid4()),
+            name="orders",
+            columns=[],
+            fullyQualifiedName="svc.db.schema.orders",
+            aliases=aliases,
+        )
+
+    def _patch_ops(self, source_aliases, destination_aliases):
+        """Diff two alias states through the exact call the sink makes."""
+        result = build_patch(
+            source=self._table(source_aliases),
+            destination=self._table(destination_aliases),
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            skip_on_failure=False,
+        )
+
+        return result.patch if result else []
+
+    def test_aliases_are_patchable(self):
+        """The allow-list carries aliases at all."""
+        assert "aliases" in ALLOWED_COMMON_PATCH_FIELDS
+
+    def test_first_alias_is_added(self):
+        assert self._patch_ops(None, ["svc.db.schema.orders_syn"]) == [
+            {"op": "add", "path": "/aliases", "value": ["svc.db.schema.orders_syn"]}
+        ]
+
+    def test_further_alias_is_added(self):
+        ops = self._patch_ops(
+            ["svc.db.schema.orders_syn"],
+            ["svc.db.schema.orders_syn", "svc.db.reporting.orders_v"],
+        )
+
+        assert ops == [{"op": "add", "path": "/aliases/1", "value": "svc.db.reporting.orders_v"}]
+
+    def test_dropped_alias_is_removed(self):
+        """Aliases are source-managed: dropping the synonym has to clear the field."""
+        ops = self._patch_ops(["svc.db.schema.orders_syn"], None)
+
+        assert ops == [{"op": "remove", "path": "/aliases"}]
+
+    def test_unchanged_aliases_produce_no_operation(self):
+        assert self._patch_ops(["svc.db.schema.orders_syn"], ["svc.db.schema.orders_syn"]) == []

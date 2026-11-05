@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import type { ItemType } from 'antd/lib/menu/hooks/useItems';
 import type { Operation } from 'fast-json-patch';
 import { capitalize } from 'lodash';
 import type { FC } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
+import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
+import type { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
-import {
-  ResourceEntity,
-  type OperationPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
+import { type OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { ServiceCategoryPlural } from '../enums/service.enum';
 import type { APICollection } from '../generated/entity/data/apiCollection';
 import type { Database } from '../generated/entity/data/database';
@@ -100,8 +99,17 @@ import {
   getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
+
+/**
+ * Entities whose lifecycle is driven by a governance approval workflow, so their entity status is
+ * meaningful enough to surface in the page header.
+ */
+const ENTITY_STATUS_SUPPORTED_TYPES: ReadonlySet<EntityType> = new Set([
+  EntityType.METRIC,
+]);
 type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 
 const SERVICE_ROUTE_CATEGORIES: Set<string> = new Set(
@@ -129,6 +137,7 @@ const ENTITY_DETAILS_PATH_TYPE_MAP: Record<string, EntityType> = {
   [EntityType.FILE]: EntityType.FILE,
   [EntityType.SPREADSHEET]: EntityType.SPREADSHEET,
   [EntityType.WORKSHEET]: EntityType.WORKSHEET,
+  [EntityType.DATA_CONTRACT]: EntityType.DATA_CONTRACT,
 };
 
 interface EntityLinkParams {
@@ -176,9 +185,11 @@ const ENTITY_LINK_HANDLERS: Record<
   [EntityType.WEBHOOK]: ({ fullyQualifiedName }) =>
     getEditWebhookPath(fullyQualifiedName),
   [EntityType.TYPE]: ({ fullyQualifiedName }) =>
-    getSettingPath(
-      GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-      `${fullyQualifiedName}s`
+    getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+        `${fullyQualifiedName}s`
+      )
     ),
   [EntityType.TAG]: ({ fullyQualifiedName, tab, subTab }) =>
     getClassificationTagPath(fullyQualifiedName, tab, subTab),
@@ -193,25 +204,26 @@ const ENTITY_LINK_HANDLERS: Record<
   [EntityType.DATA_PRODUCT]: ({ fullyQualifiedName, tab, subTab }) =>
     getDataProductDetailsPath(fullyQualifiedName, tab, subTab),
   [EntityType.APPLICATION]: ({ fullyQualifiedName }) =>
-    getApplicationDetailsPath(fullyQualifiedName),
+    getSettingsLink(getApplicationDetailsPath(fullyQualifiedName)),
   [EntityType.USER]: ({ fullyQualifiedName, tab, subTab }) =>
-    getUserPath(fullyQualifiedName, tab, subTab),
+    getSettingsLink(getUserPath(fullyQualifiedName, tab, subTab)),
   [EntityType.TEAM]: ({ fullyQualifiedName }) =>
-    getTeamsWithFqnPath(fullyQualifiedName),
+    getSettingsLink(getTeamsWithFqnPath(fullyQualifiedName)),
   [EntityType.EVENT_SUBSCRIPTION]: ({
     fullyQualifiedName,
     isObservabilityAlert,
   }) =>
     isObservabilityAlert
       ? getObservabilityAlertDetailsPath(fullyQualifiedName)
-      : getNotificationAlertDetailsPath(fullyQualifiedName),
+      : getSettingsLink(getNotificationAlertDetailsPath(fullyQualifiedName)),
   [EntityType.ROLE]: ({ fullyQualifiedName }) =>
-    getRoleWithFqnPath(fullyQualifiedName),
+    getSettingsLink(getRoleWithFqnPath(fullyQualifiedName)),
   [EntityType.POLICY]: ({ fullyQualifiedName }) =>
-    getPolicyWithFqnPath(fullyQualifiedName),
+    getSettingsLink(getPolicyWithFqnPath(fullyQualifiedName)),
   [EntityType.PERSONA]: ({ fullyQualifiedName }) =>
-    getPersonaDetailsPath(fullyQualifiedName),
-  [EntityType.BOT]: ({ fullyQualifiedName }) => getBotsPath(fullyQualifiedName),
+    getSettingsLink(getPersonaDetailsPath(fullyQualifiedName)),
+  [EntityType.BOT]: ({ fullyQualifiedName }) =>
+    getSettingsLink(getBotsPath(fullyQualifiedName)),
   [EntityType.KPI]: ({ fullyQualifiedName }) => getKpiPath(fullyQualifiedName),
   [EntityType.KNOWLEDGE_PAGE]: ({ fullyQualifiedName, tab, subTab }) =>
     getKnowledgePagePath(fullyQualifiedName, tab, subTab),
@@ -490,6 +502,7 @@ class EntityUtilClassBase {
     return { entityFqn: fqn, columnFqn: undefined };
   }
 
+  // Hook-free; the page passes showModal in. ADR:2026-10-21-class-base-menu-helpers-take-showmodal
   public getManageExtraOptions(
     _entityType: EntityType,
     _fqn: string,
@@ -500,7 +513,9 @@ class EntityUtilClassBase {
       | Database
       | DatabaseSchema
       | APICollection,
-    navigate: NavigateFunction
+    navigate: NavigateFunction,
+    showModal: (data: ExportData) => void,
+    _tab?: string
   ): ItemType[] {
     const isEntityDeleted = _entityDetails?.deleted ?? false;
     switch (_entityType) {
@@ -510,7 +525,8 @@ class EntityUtilClassBase {
             _fqn,
             _permission,
             isEntityDeleted,
-            navigate
+            navigate,
+            showModal
           ),
         ];
       case EntityType.DATABASE:
@@ -519,7 +535,8 @@ class EntityUtilClassBase {
             _fqn,
             _permission,
             isEntityDeleted,
-            navigate
+            navigate,
+            showModal
           ),
         ];
       case EntityType.DATABASE_SCHEMA:
@@ -528,7 +545,8 @@ class EntityUtilClassBase {
             _fqn,
             _permission,
             isEntityDeleted,
-            navigate
+            navigate,
+            showModal
           ),
         ];
       case EntityType.DATABASE_SERVICE:
@@ -537,7 +555,8 @@ class EntityUtilClassBase {
             _fqn,
             _permission,
             isEntityDeleted,
-            navigate
+            navigate,
+            showModal
           ),
         ];
       default:
@@ -571,8 +590,14 @@ class EntityUtilClassBase {
     );
   }
 
-  public shouldShowEntityStatus(_entityType: string): boolean {
-    return false;
+  /**
+   * Whether the entity header should carry a Draft / In review / Approved badge.
+   *
+   * Only entities that actually run an approval workflow qualify — for everything else the status
+   * is always `Unprocessed`, and a badge saying so is noise.
+   */
+  public shouldShowEntityStatus(entityType: string): boolean {
+    return ENTITY_STATUS_SUPPORTED_TYPES.has(entityType as EntityType);
   }
 
   public getEntityTypes(): string[] {

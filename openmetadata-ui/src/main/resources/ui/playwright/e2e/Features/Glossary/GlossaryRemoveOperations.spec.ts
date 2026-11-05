@@ -20,6 +20,8 @@ import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   addMultiOwner,
   assignTag,
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
   removeTag,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
@@ -278,7 +280,6 @@ test.describe('Glossary Remove Operations', () => {
           .getByTestId(`tag-${tagFqn}`)
       ).toBeVisible();
 
-      // Remove the tag
       await removeTag(page, [tagFqn]);
 
       // Verify tag is removed
@@ -315,30 +316,27 @@ test.describe('Glossary Remove Operations', () => {
       const tagName = 'Sensitive';
 
       // On glossary term page, tags are in the main content area, not KnowledgePanel
-      // Click add tag button in tags section
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
-
-      // Wait for tag selector form
-      await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
       // Search and select tag
       const searchTags = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(tagName)}*`
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response
+            .url()
+            .includes(encodeURIComponent(escapeESReservedCharacters(tagName)))
       );
-      await page.locator('#tagsForm_tags').fill(tagName);
+      await page.getByTestId('classification-tag-picker-search').fill(tagName);
       await searchTags;
 
-      await page.getByTestId(`tag-${tagFqn}`).click();
+      await page.getByTestId(`tree-node-${tagFqn}`).click();
 
-      // Wait for save button and click
-      await page
-        .locator('.ant-select-dropdown')
-        .getByTestId('saveAssociatedTag')
-        .waitFor({ state: 'visible' });
-
-      await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
 
       await expect(page.getByRole('heading')).toContainText(
         'Would you like to proceed with updating the tags?'
@@ -353,28 +351,26 @@ test.describe('Glossary Remove Operations', () => {
         page.getByTestId('tags-container').getByTestId(`tag-${tagFqn}`)
       ).toBeVisible();
 
-      // Remove the tag - click edit button
-      await page
-        .getByTestId('tags-container')
-        .getByTestId('edit-button')
-        .click();
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('edit-button')
+      );
 
-      // Remove tag by clicking the X icon
-      await page
-        .getByTestId(`selected-tag-${tagFqn}`)
-        .getByTestId('remove-tags')
-        .locator('svg')
-        .click();
+      const searchRemove = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response
+            .url()
+            .includes(encodeURIComponent(escapeESReservedCharacters(tagName)))
+      );
+      await page.getByTestId('classification-tag-picker-search').fill(tagName);
+      await searchRemove;
 
-      // Save the changes
-      await page
-        .locator('.ant-select-dropdown')
-        .getByTestId('saveAssociatedTag')
-        .waitFor({ state: 'visible' });
+      await page.getByTestId(`tree-node-${tagFqn}`).click();
 
-      await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-      await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
 
       await expect(page.getByRole('heading')).toContainText(
         'Would you like to proceed with updating the tags?'

@@ -13,10 +13,15 @@
 
 import { Card, Divider } from '@openmetadata/ui-core-components';
 import {
+  ChevronDown,
+  InfoCircle,
+  Key01,
+  Lock01,
+} from '@openmetadata/ui-core-components/icons';
+import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { ChevronDown, InfoCircle, Key01, Lock01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -189,7 +194,7 @@ const SectionHeader = ({
     {collapsible && (
       <ChevronDown
         className={classNames(
-          'tw:flex-shrink-0 tw:text-fg-quaternary tw:transition-transform',
+          'tw:flex-shrink-0 tw:text-quaternary tw:transition-transform',
           open && 'tw:rotate-180'
         )}
         size={18}

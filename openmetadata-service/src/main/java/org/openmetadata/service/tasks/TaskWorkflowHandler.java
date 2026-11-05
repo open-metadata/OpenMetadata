@@ -13,14 +13,21 @@
 
 package org.openmetadata.service.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTION_COMMENT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -29,6 +36,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -46,16 +54,29 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TaskReviewVote;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.exception.TaskStateConflictException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.approval.ChangeRequestTasks;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
+import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowHandler.TaskResolutionOutcome;
+import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
@@ -80,12 +101,26 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Slf4j
 public class TaskWorkflowHandler {
 
+  static final int DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS = 6;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS = 50L;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_WAIT_MILLIS =
+      (DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS - 1) * DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS;
+
   /** Suggestion payload {@code source} marking a suggestion an agent produced. */
   private static final String AGENT_SUGGESTION_SOURCE = "Agent";
 
   private static TaskWorkflowHandler instance;
+  private final int runtimeTaskReadinessAttempts;
+  private final long runtimeTaskReadinessDelayMillis;
 
-  private TaskWorkflowHandler() {}
+  private TaskWorkflowHandler() {
+    this(DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS, DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS);
+  }
+
+  TaskWorkflowHandler(int runtimeTaskReadinessAttempts, long runtimeTaskReadinessDelayMillis) {
+    this.runtimeTaskReadinessAttempts = Math.max(1, runtimeTaskReadinessAttempts);
+    this.runtimeTaskReadinessDelayMillis = Math.max(0L, runtimeTaskReadinessDelayMillis);
+  }
 
   public static synchronized TaskWorkflowHandler getInstance() {
     if (instance == null) {
@@ -122,6 +157,31 @@ public class TaskWorkflowHandler {
       Object resolvedPayload,
       String comment,
       String user) {
+    return resolveTask(
+        task,
+        transitionId,
+        requestedResolutionType,
+        newValue,
+        resolvedPayload,
+        comment,
+        user,
+        null);
+  }
+
+  /**
+   * Resolve a task, first recording the resolver's decision in the catalog when the task reviews a
+   * change request. {@code review} names the revision the resolver reviewed and, when they decided
+   * change by change, their decision on each.
+   */
+  public Task resolveTask(
+      Task task,
+      String transitionId,
+      TaskResolutionType requestedResolutionType,
+      String newValue,
+      Object resolvedPayload,
+      String comment,
+      String user,
+      ChangeRequestReview review) {
     UUID taskId = task.getId();
     TaskAvailableTransition selectedTransition =
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
@@ -133,17 +193,42 @@ public class TaskWorkflowHandler {
         transitionId,
         effectiveResolutionType,
         user);
+    TaskTagTarget.requireTagFieldToApply(task, effectiveResolutionType, resolvedPayload);
+
+    ReviewOutcome outcome =
+        ApprovalDecisionService.recordForTask(task, effectiveResolutionType, review, comment, user);
+    if (outcome == ReviewOutcome.WAIT) {
+      LOG.info(
+          "[TaskWorkflowHandler] Recorded {}'s decision on task '{}'; no change is agreed yet",
+          user,
+          taskId);
+      return refreshTask(taskId);
+    }
+    // A review decided change by change routes the workflow by what the reviewers agreed on: a
+    // partial outcome is settled inside the approval step without resolving the task, which stays
+    // open with the changes still pending.
+    String routedTransition = outcome == ReviewOutcome.NONE ? transitionId : outcome.transition();
+    TaskResolutionType routedResolution = routedResolution(outcome, effectiveResolutionType);
+    TaskAvailableTransition routedSelection =
+        outcome == ReviewOutcome.NONE ? selectedTransition : null;
 
     // During migration cutover, legacy workflow tasks can be converted to Task entities before
     // workflowInstanceId is backfilled. Runtime-task presence is the source of truth in that case.
     boolean isWorkflowManaged = isWorkflowManaged(task);
+    if (OntologyApprovalWorkflow.isReview(task)) {
+      if (!isWorkflowManaged || resolvedPayload != null || newValue != null) {
+        throw TaskStateConflictException.of(
+            "Ontology review must complete its workflow task without changing the reviewed content");
+      }
+      OntologyApprovalWorkflow.validate(task, user);
+    }
 
     if (isWorkflowManaged) {
       return resolveWorkflowTask(
           task,
-          transitionId,
-          effectiveResolutionType,
-          selectedTransition,
+          routedTransition,
+          routedResolution,
+          routedSelection,
           newValue,
           resolvedPayload,
           comment,
@@ -158,6 +243,13 @@ public class TaskWorkflowHandler {
           comment,
           user);
     }
+  }
+
+  private static boolean isMetricApprovalTask(Task task) {
+    return task != null
+        && task.getType() == TaskEntityType.RequestApproval
+        && task.getAbout() != null
+        && Entity.METRIC.equals(task.getAbout().getType());
   }
 
   /**
@@ -176,6 +268,30 @@ public class TaskWorkflowHandler {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
+    boolean ontologyReview = OntologyApprovalWorkflow.isReview(task);
+    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task) || ontologyReview;
+
+    if (requiresRuntimeTaskReadiness && TaskRepository.isTerminalStatus(task.getStatus())) {
+      throw new IllegalStateException(
+          String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
+    }
+    if (requiresRuntimeTaskReadiness && !awaitActiveRuntimeTask(workflowHandler, taskId)) {
+      throw new IllegalStateException(
+          String.format(
+              "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
+              taskId));
+    }
+    // Settle before anything is written to the workflow: process variables set on a runtime task
+    // Flowable cannot see yet are dropped without an error, so a task still not visible after the
+    // wait is refused while nothing has reached the workflow and a retry is safe.
+    if (!requiresRuntimeTaskReadiness
+        && isRuntimeTaskStillBeingCommitted(workflowHandler, task)
+        && !awaitActiveRuntimeTask(workflowHandler, taskId)) {
+      throw workflowStillPreparing(taskId);
+    }
+    if (ontologyReview) {
+      OntologyApprovalWorkflow.validateRuntime(task);
+    }
 
     if (payloadAssignees != null && !payloadAssignees.isEmpty()) {
       task = persistWorkflowAssignees(taskRepository, task, payloadAssignees, user);
@@ -209,22 +325,85 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
+    if (isRejection(resolutionType, selectedTransition)) {
+      final String reason =
+          nullOrEmpty(comment)
+              ? latestCommentBy(
+                  user,
+                  taskRepository
+                      .get(null, taskId, taskRepository.getFields("comments"))
+                      .getComments())
+              : comment;
+      recordRejection(workflowHandler, taskId, reason, user);
+    }
+
     // Resolve in Flowable workflow. A null namespace map means the runtime user task never
     // materialised (async advance timed out) — completing with no variables would drop the
     // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
+    if (ontologyReview && namespacedVariables != null) {
+      TaskResolutionType decision =
+          resolutionType != null
+              ? resolutionType
+              : TaskWorkflowLifecycleResolver.isApproveTransition(selectedTransition)
+                  ? TaskResolutionType.Approved
+                  : TaskResolutionType.Rejected;
+      OntologyApprovalWorkflow.recordDecision(
+          task,
+          new OntologyWorkflowDecision(
+              taskId,
+              task.getOntologyReview(),
+              decision,
+              user,
+              List.of(user),
+              selectedTransition,
+              comment),
+          namespacedVariables);
+    }
+    final TaskReviewVoteDecision voteDecision =
+        TaskReviewVotes.decisionForResult(variables.get(RESULT_VARIABLE));
+    final String voteProcessId;
+    if (namespacedVariables != null
+        && voteDecision != null
+        && workflowHandler.hasMultiApprovalSupport(taskId)) {
+      voteProcessId = workflowHandler.approvalTaskContext(taskId).processInstanceId();
+      namespacedVariables.put(
+          TaskReviewVotes.variable(taskId),
+          JsonUtils.pojoToJson(
+              List.of(
+                  TaskReviewVotes.vote(
+                      task,
+                      Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED),
+                      voteDecision,
+                      comment,
+                      System.currentTimeMillis()))));
+    } else {
+      voteProcessId = null;
+    }
+    TaskResolutionOutcome ontologyOutcome =
+        ontologyReview && namespacedVariables != null
+            ? workflowHandler.resolveTaskOutcome(taskId, namespacedVariables)
+            : null;
     boolean workflowSuccess =
-        namespacedVariables != null && workflowHandler.resolveTask(taskId, namespacedVariables);
+        ontologyReview
+            ? ontologyOutcome != null
+                && ontologyOutcome != TaskResolutionOutcome.RESOLUTION_FAILED
+                && ontologyOutcome != TaskResolutionOutcome.PROCESS_FAILED
+            : namespacedVariables != null
+                && workflowHandler.resolveTask(taskId, namespacedVariables);
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
-        // Report M1: two clients racing the same task, or a stale resolve arriving after
-        // Flowable already advanced past this node. Return a 409 CONFLICT via a typed
-        // WebServiceException so the caller learns the state changed under them — the
-        // generic exception mapper would otherwise surface these as 500s. Kept narrow
-        // (only these two resolve-race sites) so unrelated IllegalStateException bugs
-        // still surface as 500.
+        // Governed approval tasks must not bypass their approval workflow when the runtime
+        // task disappears between the readiness check and resolution.
+        if (requiresRuntimeTaskReadiness) {
+          throw TaskStateConflictException.of(
+              String.format(
+                  "Flowable runtime task for workflow-managed approval task '%s' disappeared while resolving transition '%s'; the task was not finalized",
+                  taskId,
+                  transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
+        }
         if (resolutionType == null) {
           throw TaskStateConflictException.of(
               String.format(
@@ -235,16 +414,52 @@ public class TaskWorkflowHandler {
           throw TaskStateConflictException.of(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
+        // The task row commits before the workflow's own transaction, so a live instance without
+        // its runtime task has not finished creating it. Closing the task directly would leave the
+        // workflow waiting on a task nobody can resolve any more.
+        if (isWorkflowStillRunning(task)) {
+          throw workflowStillPreparing(taskId);
+        }
         LOG.warn(
             "[TaskWorkflowHandler] No active Flowable runtime task found for '{}'; applying direct task resolution fallback",
             taskId);
         return applyTaskResolution(
-            task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+            task,
+            resolutionType,
+            selectedTransition,
+            newValue,
+            resolvedPayload,
+            comment,
+            user,
+            null);
+      }
+      // The variable lookup ran before the runtime task committed and nothing reached the
+      // workflow, so the caller can retry against the task that now exists.
+      if (namespacedVariables == null) {
+        throw workflowStillPreparing(taskId);
       }
       throw TaskStateConflictException.of(
           String.format(
               "Workflow resolution failed for task '%s' on transition '%s'",
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
+    }
+
+    final boolean waitingForVotes =
+        resolutionType != null
+            && (ontologyReview
+                ? ontologyOutcome == TaskResolutionOutcome.WAITING_FOR_VOTES
+                : workflowHandler.isAwaitingAdditionalVotes(taskId));
+    if (waitingForVotes) {
+      LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
+      persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
+    }
+    final List<TaskReviewVote> recordedVotes =
+        voteProcessId == null ? null : workflowHandler.recordedReviewVotes(voteProcessId, taskId);
+    if (recordedVotes != null
+        && (waitingForVotes
+            || resolutionType == null
+            || ontologyOutcome == TaskResolutionOutcome.STAGE_ADVANCED)) {
+      taskRepository.recordReviewVotes(taskId, recordedVotes, user);
     }
 
     // Non-terminal transition: the next stage's CreateTask already updated the Task
@@ -254,23 +469,87 @@ public class TaskWorkflowHandler {
           "[TaskWorkflowHandler] Non-terminal transition '{}' for task '{}' — workflow advanced, no resolution applied",
           transitionId,
           taskId);
-      if (isApproveTransition(selectedTransition)) {
+      if (TaskWorkflowLifecycleResolver.isApproveTransition(selectedTransition)) {
         captureApprover(taskRepository, taskId, user);
       }
       return refreshTask(taskId);
     }
 
-    // Check if multi-approval task is still waiting for more votes
-    if (workflowHandler.isAwaitingAdditionalVotes(taskId)) {
-      LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
-      persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
-      updateTaskVotes(task, user, isPositiveResolution(resolutionType));
+    if (waitingForVotes) {
       return refreshTask(taskId);
     }
 
     // Task threshold met, apply resolution
+    if (ontologyReview) {
+      new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(taskId);
+      return refreshTask(taskId);
+    }
     return applyTaskResolution(
-        task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+        task,
+        resolutionType,
+        selectedTransition,
+        newValue,
+        resolvedPayload,
+        comment,
+        user,
+        recordedVotes);
+  }
+
+  private static boolean isRejection(
+      final TaskResolutionType resolutionType, final TaskAvailableTransition selectedTransition) {
+    return resolutionType == TaskResolutionType.Rejected
+        || (selectedTransition != null
+            && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Rejected);
+  }
+
+  /**
+   * The user's latest comment on the task: a reviewer can explain in the task thread and then
+   * reject without a comment of their own.
+   */
+  static String latestCommentBy(final String user, final List<TaskComment> comments) {
+    return listOrEmpty(comments).stream()
+        .filter(posted -> posted.getAuthor() != null && user.equals(posted.getAuthor().getName()))
+        .max(
+            Comparator.comparing(
+                TaskComment::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
+        .map(TaskComment::getMessage)
+        .orElse(null);
+  }
+
+  // The steps after a rejected approval read why it was rejected and by whom, e.g. to ask the
+  // asset's owners for a revision. A rejection without a reason clears an earlier one.
+  private static void recordRejection(
+      final WorkflowHandler workflowHandler,
+      final UUID taskId,
+      final String comment,
+      final String user) {
+    workflowHandler.setProcessVariable(
+        taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTION_COMMENT_VARIABLE), comment);
+    workflowHandler.setProcessVariable(
+        taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTED_BY_VARIABLE), user);
+  }
+
+  private boolean awaitActiveRuntimeTask(WorkflowHandler workflowHandler, UUID taskId) {
+    boolean isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+    int attempt = 1;
+    while (!isActive && attempt < runtimeTaskReadinessAttempts && waitForRuntimeTaskRetry(taskId)) {
+      isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+      attempt++;
+    }
+    return isActive;
+  }
+
+  private boolean waitForRuntimeTaskRetry(UUID taskId) {
+    boolean completed = true;
+    try {
+      TimeUnit.MILLISECONDS.sleep(runtimeTaskReadinessDelayMillis);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      completed = false;
+      LOG.warn(
+          "[TaskWorkflowHandler] Interrupted while waiting for Flowable runtime task '{}'", taskId);
+    }
+    return completed;
   }
 
   private Task persistWorkflowAssignees(
@@ -305,16 +584,6 @@ public class TaskWorkflowHandler {
   }
 
   /**
-   * Identify an approval transition by its target status rather than its `id` string. Every
-   * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
-   * coupling the handler to the literal `"approve"` id that the workflow JSON happens to use.
-   */
-  private static boolean isApproveTransition(TaskAvailableTransition selectedTransition) {
-    return selectedTransition != null
-        && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Approved;
-  }
-
-  /**
    * Resolve a standalone task (not managed by a workflow).
    */
   private Task resolveStandaloneTask(
@@ -326,7 +595,7 @@ public class TaskWorkflowHandler {
       String comment,
       String user) {
     return applyTaskResolution(
-        task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+        task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user, null);
   }
 
   /**
@@ -339,7 +608,8 @@ public class TaskWorkflowHandler {
       String newValue,
       Object resolvedPayload,
       String comment,
-      String user) {
+      String user,
+      List<TaskReviewVote> reviewVotes) {
     UUID taskId = task.getId();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     boolean approved = isPositiveResolution(resolutionType);
@@ -358,8 +628,15 @@ public class TaskWorkflowHandler {
       addResolutionComment(task, taskRepository, newValue, user);
     }
 
-    // Only positive resolutions should mutate the target entity.
-    if (approved && task.getAbout() != null) {
+    // A memory conflict review decides on rejection too, and a refused decision must fail the
+    // resolution. Other types mutate the target entity only on positive resolutions.
+    if (MemoryConflictResolution.decides(task)) {
+      MemoryConflictResolution.decide(task, resolutionType, comment, user, resolvedPayload);
+    } else if (MetadataCollectionService.decides(task)) {
+      // A metadata completion task changes no entity: resolving it re-checks the fields it asks
+      // for.
+      MetadataCollectionService.requireFilledIn(task);
+    } else if (approved && task.getAbout() != null) {
       applyEntityChanges(task, approved, newValue, resolvedPayload, user);
     } else {
       LOG.info(
@@ -380,18 +657,7 @@ public class TaskWorkflowHandler {
             .withComment(comment)
             .withPayload(resolvedPayload);
 
-    if (selectedTransition != null) {
-      task.setWorkflowStageId(selectedTransition.getTargetStageId());
-      task.setWorkflowStageDisplayName(selectedTransition.getTargetStageId());
-      task.setAvailableTransitions(List.of());
-      if (isApproveTransition(selectedTransition)) {
-        task.setApprovedBy(resolvedByRef);
-        task.setApprovedById(resolvedByRef.getId().toString());
-        task.setApprovedAt(System.currentTimeMillis());
-      }
-    }
-
-    task = taskRepository.resolveTask(task, resolution, user);
+    task = taskRepository.resolveTask(task, resolution, selectedTransition, user, reviewVotes);
 
     LOG.info(
         "[TaskWorkflowHandler] Task '{}' resolved: status={}, resolution={}",
@@ -533,8 +799,17 @@ public class TaskWorkflowHandler {
       return;
     }
 
+    // A change request's task publishes through its workflow's commit step, which applies exactly
+    // the reviewed change, so the task form's own entity actions do not run.
+    if (ChangeRequestTasks.reviewsChangeRequest(task)) {
+      LOG.debug(
+          "[TaskWorkflowHandler] Task '{}' reviews a change request, skipping entity changes",
+          task.getId());
+      return;
+    }
+
     try {
-      EntityInterface entity = Entity.getEntity(aboutRef, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(aboutRef, "*", Include.ALL);
       EntityRepository<?> repository = Entity.getEntityRepository(aboutRef.getType());
 
       List<TaskExecutionAction> actions =
@@ -559,7 +834,7 @@ public class TaskWorkflowHandler {
   private void executeConfiguredActions(
       List<TaskExecutionAction> actions,
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -584,7 +859,7 @@ public class TaskWorkflowHandler {
 
   private void applyDescriptionAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String newValue,
@@ -622,12 +897,9 @@ public class TaskWorkflowHandler {
           fieldPath,
           newDescription.length() > 50 ? newDescription.substring(0, 50) + "..." : newDescription);
 
-      // Use FieldPathUtils for clean field update
-      boolean success =
-          FieldPathUtils.updateFieldDescription(
-              entity, repository, user, fieldPath, newDescription);
-
-      if (success) {
+      String before = JsonUtils.pojoToJson(entity);
+      if (FieldPathUtils.setFieldDescription(entity, fieldPath, newDescription)) {
+        saveChange(entity, repository, user, before, null);
         LOG.info(
             "[TaskWorkflowHandler] Successfully applied description update for task '{}'",
             task.getId());
@@ -642,7 +914,7 @@ public class TaskWorkflowHandler {
 
   private void applyMergeTagsAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String newValue,
@@ -672,87 +944,88 @@ public class TaskWorkflowHandler {
         }
       }
 
-      if (isEntityLevelTagPath(fieldPath)) {
+      if (TaskTagTarget.isEntityLevel(fieldPath)) {
         // Entity-level: patch the entity so the versioned path runs — tag_usage is synced,
         // version is bumped, change event fires. Same code path as PATCH /v1/tables/{id} tags.
         patchEntityTags(entity, repository, user, tagsToAdd, tagsToRemove);
-      } else if (!patchFieldTags(entity, repository, user, fieldPath, tagsToAdd, tagsToRemove)) {
-        // Fallback: field POJO could not be located (unusual container or renamed field).
-        // Keep the direct tag_usage write so the tag still applies — the audit/version gap
-        // in this branch is a knowingly-accepted degradation.
-        String targetFqn = resolveTagTargetFqn(entity, fieldPath);
-        if (tagsToRemove != null && !tagsToRemove.isEmpty()) {
-          repository.applyTagsDelete(tagsToRemove, targetFqn);
-        }
-        if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
-          repository.applyTags(tagsToAdd, targetFqn);
-        }
+      } else {
+        patchFieldTags(entity, repository, user, fieldPath, tagsToAdd, tagsToRemove);
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
     }
   }
 
-  private boolean isEntityLevelTagPath(String fieldPath) {
-    return fieldPath == null
-        || fieldPath.isEmpty()
-        || "tags".equals(fieldPath)
-        || "entity".equals(fieldPath);
-  }
-
   private void patchEntityTags(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       List<TagLabel> tagsToAdd,
       List<TagLabel> tagsToRemove) {
-    String originalJson = JsonUtils.pojoToJson(entity);
-    entity.setTags(mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
-    if (patch != null && !patch.toJsonArray().isEmpty()) {
-      PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
-      recordChangeEvent(response, user);
-    }
+    patchEntityTags(entity, repository, user, mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
   }
 
+  private void patchEntityTags(
+      EntityInterface<?> entity,
+      EntityRepository<?> repository,
+      String user,
+      List<TagLabel> updatedTags) {
+    String before = JsonUtils.pojoToJson(entity);
+    entity.setTags(updatedTags);
+    saveChange(entity, repository, user, before, null);
+  }
+
+  // Approval refuses a field path that names no tagged field (TaskTagTarget), so a field that is
+  // missing here has gone since; nothing is written for it.
   @SuppressWarnings("unchecked")
-  private boolean patchFieldTags(
-      EntityInterface entity,
+  private void patchFieldTags(
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
       List<TagLabel> tagsToAdd,
       List<TagLabel> tagsToRemove) {
-    Optional<Object> target = FieldPathUtils.findField(entity, fieldPath);
+    Optional<Object> target =
+        FieldPathUtils.findField(entity, TaskTagTarget.locatablePath(fieldPath));
     if (target.isEmpty()) {
       LOG.warn(
-          "[TaskWorkflowHandler] Could not locate field '{}' for TagUpdate; falling back to direct DAO",
-          fieldPath);
-      return false;
+          "[TaskWorkflowHandler] Could not locate tagged field '{}'; no tags applied", fieldPath);
+      return;
     }
-    boolean applied = false;
     try {
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       Object field = target.get();
       Method getTags = field.getClass().getMethod("getTags");
       Method setTags = field.getClass().getMethod("setTags", List.class);
       List<TagLabel> current = (List<TagLabel>) getTags.invoke(field);
       setTags.invoke(field, mergeTags(current, tagsToAdd, tagsToRemove));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
-        recordChangeEvent(response, user);
-      }
-      applied = true;
+      saveChange(entity, repository, user, before, null);
     } catch (NoSuchMethodException e) {
       LOG.warn(
-          "[TaskWorkflowHandler] Field at '{}' has no tags setter; falling back to direct DAO",
-          fieldPath);
+          "[TaskWorkflowHandler] Field at '{}' has no tags setter; no tags applied", fieldPath);
     } catch (Exception e) {
       LOG.warn(
           "[TaskWorkflowHandler] patchFieldTags failed at '{}': {}", fieldPath, e.getMessage(), e);
     }
-    return applied;
+  }
+
+  /**
+   * Saves what an approved task changed on its entity and records it as the entity's own change
+   * event, as a direct edit would. The write runs inside the task's request, so no response filter
+   * records it. The description, tag, tier, owner, domain and suggestion writes all save through
+   * here (ADR:2026-10-30-an-approved-tasks-change-is-the-entitys-own-change-event).
+   */
+  private void saveChange(
+      EntityInterface<?> entity,
+      EntityRepository<?> repository,
+      String user,
+      String before,
+      ChangeSource changeSource) {
+    JsonPatch patch = JsonUtils.getJsonPatch(before, JsonUtils.pojoToJson(entity));
+    if (patch != null && !patch.toJsonArray().isEmpty()) {
+      recordChangeEvent(
+          repository.patch(null, entity.getId(), user, patch, changeSource, null), user);
+    }
   }
 
   private void recordChangeEvent(PatchResponse<?> response, String user) {
@@ -764,15 +1037,12 @@ public class TaskWorkflowHandler {
       return;
     }
     Object patchedEntity = response.entity();
-    if (!(patchedEntity instanceof EntityInterface entityInterface)) {
+    if (!(patchedEntity instanceof EntityInterface<?> entityInterface)) {
       return;
     }
     try {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(user, changeType, entityInterface);
-      Object entityForEvent = changeEvent.getEntity();
-      changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
-      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
+          ChangeEventHandler.entityChangeEvent(user, changeType, entityInterface);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     } catch (Exception e) {
       LOG.warn(
@@ -800,56 +1070,6 @@ public class TaskWorkflowHandler {
       }
     }
     return merged;
-  }
-
-  private String resolveTagTargetFqn(EntityInterface entity, String fieldPath) {
-    if (fieldPath == null || fieldPath.isEmpty() || "tags".equals(fieldPath)) {
-      return entity.getFullyQualifiedName();
-    }
-
-    String normalizedFieldPath = fieldPath.replace("\"", "");
-    if (normalizedFieldPath.endsWith(".tags")) {
-      normalizedFieldPath =
-          normalizedFieldPath.substring(0, normalizedFieldPath.length() - ".tags".length());
-    }
-
-    if (normalizedFieldPath.startsWith("requestSchema.schemaFields.")) {
-      return entity.getFullyQualifiedName()
-          + ".requestSchema."
-          + normalizedFieldPath.substring("requestSchema.schemaFields.".length());
-    }
-
-    if (normalizedFieldPath.startsWith("responseSchema.schemaFields.")) {
-      return entity.getFullyQualifiedName()
-          + ".responseSchema."
-          + normalizedFieldPath.substring("responseSchema.schemaFields.".length());
-    }
-
-    if (normalizedFieldPath.startsWith("requestSchema.")) {
-      return entity.getFullyQualifiedName() + "." + normalizedFieldPath;
-    }
-
-    if (normalizedFieldPath.startsWith("responseSchema.")) {
-      return entity.getFullyQualifiedName() + "." + normalizedFieldPath;
-    }
-
-    String[] supportedPrefixes = {
-      "columns.",
-      "messageSchema.schemaFields.",
-      "messageSchema.",
-      "dataModel.columns.",
-      "dataModel."
-    };
-
-    for (String prefix : supportedPrefixes) {
-      if (normalizedFieldPath.startsWith(prefix)) {
-        return entity.getFullyQualifiedName()
-            + "."
-            + normalizedFieldPath.substring(prefix.length());
-      }
-    }
-
-    return entity.getFullyQualifiedName() + "." + normalizedFieldPath;
   }
 
   private String readPayloadString(
@@ -895,7 +1115,7 @@ public class TaskWorkflowHandler {
 
   private void applyReplaceOwnersAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -913,18 +1133,13 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       entity.setOwners(newOwners);
-      String updatedJson = JsonUtils.pojoToJson(entity);
-
-      jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        repository.patch(null, entity.getId(), user, patch, null, null);
-        LOG.info(
-            "[TaskWorkflowHandler] Applied OwnershipUpdate for entity '{}': {} owners",
-            entity.getName(),
-            newOwners.size());
-      }
+      saveChange(entity, repository, user, before, null);
+      LOG.info(
+          "[TaskWorkflowHandler] Applied OwnershipUpdate for entity '{}': {} owners",
+          entity.getName(),
+          newOwners.size());
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply OwnershipUpdate: {}", e.getMessage(), e);
     }
@@ -932,7 +1147,7 @@ public class TaskWorkflowHandler {
 
   private void applyApplyTierAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -949,8 +1164,9 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String targetFqn = entity.getFullyQualifiedName();
-      repository.applyTags(List.of(newTier), targetFqn);
+      List<TagLabel> updatedTags =
+          TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), List.of(newTier));
+      patchEntityTags(entity, repository, user, updatedTags);
       LOG.info(
           "[TaskWorkflowHandler] Applied TierUpdate for entity '{}': tier={}",
           entity.getName(),
@@ -962,7 +1178,7 @@ public class TaskWorkflowHandler {
 
   private void applyReplaceDomainsAction(
       Task task,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       Object payload,
@@ -980,25 +1196,24 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       entity.setDomains(newDomains);
-      String updatedJson = JsonUtils.pojoToJson(entity);
-
-      jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        repository.patch(null, entity.getId(), user, patch, null, null);
-        LOG.info(
-            "[TaskWorkflowHandler] Applied DomainUpdate for entity '{}': domain={}",
-            entity.getName(),
-            newDomains.get(0).getFullyQualifiedName());
-      }
+      saveChange(entity, repository, user, before, null);
+      LOG.info(
+          "[TaskWorkflowHandler] Applied DomainUpdate for entity '{}': domain={}",
+          entity.getName(),
+          newDomains.get(0).getFullyQualifiedName());
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply DomainUpdate: {}", e.getMessage(), e);
     }
   }
 
   private void applyPatchEntityFieldAction(
-      Task task, EntityInterface entity, String user, Object payload, TaskExecutionAction action) {
+      Task task,
+      EntityInterface<?> entity,
+      String user,
+      Object payload,
+      TaskExecutionAction action) {
     if (action.entityField() == null) {
       LOG.warn(
           "[TaskWorkflowHandler] Missing entity field binding for patchEntityField action on task '{}'",
@@ -1016,7 +1231,7 @@ public class TaskWorkflowHandler {
           entity.getEntityReference().getType(),
           user,
           action.entityField(),
-          value == null ? null : String.valueOf(value),
+          value == null || value instanceof String ? (String) value : JsonUtils.pojoToJson(value),
           true,
           WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {
@@ -1049,7 +1264,7 @@ public class TaskWorkflowHandler {
   private void applySuggestion(
       Task task,
       Object payload,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user) {
     if (payload == null) return;
@@ -1078,15 +1293,14 @@ public class TaskWorkflowHandler {
               fieldPath);
           return;
         }
-        boolean success =
-            FieldPathUtils.updateFieldDescription(
-                entity,
-                repository,
-                user,
-                fieldPath,
-                suggestedValue,
-                isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
-        if (success) {
+        String before = JsonUtils.pojoToJson(entity);
+        if (FieldPathUtils.setFieldDescription(entity, fieldPath, suggestedValue)) {
+          saveChange(
+              entity,
+              repository,
+              user,
+              before,
+              isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
           LOG.warn(
@@ -1099,10 +1313,10 @@ public class TaskWorkflowHandler {
         if (tags != null && !tags.isEmpty()) {
           // Reuse the same field-path resolution as applyTagUpdate so both "::" and dot-form
           // paths (e.g. columns.customer_id.tags) land on the suggested field, not the parent.
-          if (isEntityLevelTagPath(fieldPath)) {
+          if (TaskTagTarget.isEntityLevel(fieldPath)) {
             applyEntityLevelTags(entity, repository, user, tags);
-          } else if (!patchFieldTags(entity, repository, user, fieldPath, tags, null)) {
-            repository.applyTags(tags, resolveTagTargetFqn(entity, fieldPath));
+          } else {
+            patchFieldTags(entity, repository, user, fieldPath, tags, null);
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",
@@ -1118,17 +1332,10 @@ public class TaskWorkflowHandler {
   }
 
   private void applyEntityLevelTags(
-      EntityInterface entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
-    String originalJson = JsonUtils.pojoToJson(entity);
-    List<TagLabel> mergedTags =
-        org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence(
-            entity.getTags(), tags);
-    entity.setTags(mergedTags);
-    String updatedJson = JsonUtils.pojoToJson(entity);
-    jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-    if (patch != null && !patch.toJsonArray().isEmpty()) {
-      repository.patch(null, entity.getId(), user, patch, null, null);
-    }
+      EntityInterface<?> entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
+    String before = JsonUtils.pojoToJson(entity);
+    entity.setTags(TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), tags));
+    saveChange(entity, repository, user, before, null);
   }
 
   private String resolveSuggestionChangeSummaryField(String fieldPath) {
@@ -1201,42 +1408,6 @@ public class TaskWorkflowHandler {
   }
 
   /**
-   * Update task to reflect that a user has voted (for multi-approval tasks).
-   */
-  private void updateTaskVotes(Task task, String user, boolean approved) {
-    // This updates metadata to track who has voted
-    // The actual vote tracking is in Flowable variables
-    LOG.debug(
-        "[TaskWorkflowHandler] User '{}' voted {} on task '{}'",
-        user,
-        approved ? "approve" : "reject",
-        task.getId());
-  }
-
-  /**
-   * Reopen a previously resolved task.
-   */
-  public Task reopenTask(Task task, String user) {
-    if (task.getStatus() == TaskEntityStatus.Open
-        || task.getStatus() == TaskEntityStatus.InProgress) {
-      LOG.warn("[TaskWorkflowHandler] Task '{}' is already open", task.getId());
-      return task;
-    }
-
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-
-    task.setStatus(TaskEntityStatus.Open);
-    task.setResolution(null);
-    task.setUpdatedBy(user);
-    task.setUpdatedAt(System.currentTimeMillis());
-
-    taskRepository.createOrUpdate(null, task, user);
-
-    LOG.info("[TaskWorkflowHandler] Task '{}' reopened by '{}'", task.getId(), user);
-    return task;
-  }
-
-  /**
    * Close a task without applying any entity changes.
    */
   public Task closeTask(Task task, String user, String comment) {
@@ -1266,6 +1437,27 @@ public class TaskWorkflowHandler {
       return false;
     }
     return WorkflowHandler.getInstance().hasMultiApprovalSupport(task.getId());
+  }
+
+  // CreateTask commits the task row on its own connection before the workflow command that
+  // creates the runtime task commits, so a caller can list the task and resolve it in between.
+  private static boolean isRuntimeTaskStillBeingCommitted(
+      WorkflowHandler workflowHandler, Task task) {
+    return !TaskRepository.isTerminalStatus(task.getStatus())
+        && !workflowHandler.hasActiveRuntimeTask(task.getId())
+        && isWorkflowStillRunning(task);
+  }
+
+  private static TaskStateConflictException workflowStillPreparing(UUID taskId) {
+    return TaskStateConflictException.of(
+        String.format("The workflow is still preparing task '%s'; retry the resolution", taskId));
+  }
+
+  private static boolean isWorkflowStillRunning(Task task) {
+    return task.getWorkflowInstanceId() != null
+        && ((WorkflowInstanceRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+            .isRunning(task.getWorkflowInstanceId());
   }
 
   private boolean isWorkflowManaged(Task task) {
@@ -1324,6 +1516,16 @@ public class TaskWorkflowHandler {
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
       case Expired -> "expired";
+    };
+  }
+
+  private static TaskResolutionType routedResolution(
+      ReviewOutcome outcome, TaskResolutionType requested) {
+    return switch (outcome) {
+      case NONE -> requested;
+      case APPROVE -> TaskResolutionType.Approved;
+      case REJECT -> TaskResolutionType.Rejected;
+      case WAIT, PARTIAL_APPROVE, PARTIAL_REJECT -> null;
     };
   }
 

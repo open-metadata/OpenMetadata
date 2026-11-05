@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  FeaturedIcon,
+  PageLayout,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
-import HeaderShell from '../HeaderShell/HeaderShell.component';
 import { EntityDetailHeaderProps } from './EntityDetailHeader.interface';
 import './EntityDetailHeader.less';
 
@@ -125,14 +129,15 @@ const EntityDetailHeader = ({
   );
 
   return (
-    <HeaderShell
+    <PageLayout.PageHeader
       actions={actions}
       badge={badge}
       breadcrumb={breadcrumb}
       className={classNames('entity-detail-header', className)}
       data-testid={dataTestId}
+      density="compact"
       footer={footer}
-      leading={resolvedLeading}
+      icon={resolvedLeading}
       meta={meta}
       subtitle={subtitle}
       title={title}

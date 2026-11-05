@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -41,7 +40,7 @@ public final class ImpersonationAuthorizer {
     if (!Boolean.TRUE.equals(bot.getIsBot()) || !Boolean.TRUE.equals(bot.getAllowImpersonation())) {
       LOG.warn(
           "Impersonation denied: bot={} does not have allowImpersonation enabled", bot.getName());
-      throw new AuthorizationException(
+      throw new ImpersonationDeniedException(
           "Bot " + bot.getName() + " does not have impersonation enabled");
     }
     authorizeTarget(bot.getName(), targetUser);
@@ -54,11 +53,11 @@ public final class ImpersonationAuthorizer {
       bot = Entity.getEntityByName(Entity.USER, botName, BOT_FIELDS, ALL);
     } catch (Exception e) { // deliberately broad: any failure to resolve the bot denies the swap
       LOG.error("Failed to get bot user: {}", botName, e);
-      throw new AuthorizationException("Bot user not found: " + botName);
+      throw new ImpersonationDeniedException("Bot user not found: " + botName);
     }
     if (bot == null) {
       LOG.warn("Impersonation denied: bot user {} was not found", botName);
-      throw new AuthorizationException("Bot user not found: " + botName);
+      throw new ImpersonationDeniedException("Bot user not found: " + botName);
     }
     return bot;
   }
@@ -80,15 +79,19 @@ public final class ImpersonationAuthorizer {
           "Impersonation denied: bot={} is not authorized to impersonate user={}",
           botName,
           targetUser.getName());
-      throw new AuthorizationException(
+      throw new ImpersonationDeniedException(
           "Bot " + botName + " is not authorized to impersonate user " + targetUser.getName());
     }
   }
 
-  @SuppressWarnings("unchecked")
-  private static ResourceContextInterface targetUserResourceContext(User targetUser) {
-    EntityRepository<User> userRepository =
-        (EntityRepository<User>) Entity.getEntityRepository(Entity.USER);
-    return new ResourceContext<>(Entity.USER, targetUser, userRepository);
+  /**
+   * Resolved from the store rather than wrapping {@code targetUser}: callers load the target with
+   * only the fields they need, and a condition such as {@code hasDomain()} reads an unloaded
+   * attribute as empty, which makes a Deny rule fail open.
+   */
+  static ResourceContextInterface targetUserResourceContext(User targetUser) {
+    return targetUser.getId() != null
+        ? new ResourceContext<>(Entity.USER, targetUser.getId(), null)
+        : new ResourceContext<>(Entity.USER, null, targetUser.getName());
   }
 }

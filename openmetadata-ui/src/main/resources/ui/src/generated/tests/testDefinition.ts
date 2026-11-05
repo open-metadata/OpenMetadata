@@ -18,8 +18,13 @@ export interface TestDefinition {
     /**
      * Change that lead to this version of the entity.
      */
-    changeDescription?:    ChangeDescription;
-    dataQualityDimension?: DataQualityDimensions;
+    changeDescription?: ChangeDescription;
+    /**
+     * Name of the data quality dimension test cases of this test definition are classified with
+     * by default. Any dimension registered in Settings > Preferences > Data Quality can be
+     * used, system and custom alike.
+     */
+    dataQualityDimension?: string;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
@@ -79,7 +84,11 @@ export interface TestDefinition {
      * testPlatforms set to 'OpenMetadata' and is used to execute custom SQL queries for data
      * quality validation.
      */
-    sqlExpression?:      string;
+    sqlExpression?: string;
+    /**
+     * List of column data types that this test definition supports. When empty, it implies all
+     * data types are supported.
+     */
     supportedDataTypes?: DataType[];
     /**
      * List of services that this test definition supports. When empty, it implies all services
@@ -178,20 +187,6 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
-}
-
-/**
- * This enum defines the dimension a test case belongs to.
- */
-export enum DataQualityDimensions {
-    Accuracy = "Accuracy",
-    Completeness = "Completeness",
-    Consistency = "Consistency",
-    Integrity = "Integrity",
-    NoDimension = "NoDimension",
-    SQL = "SQL",
-    Uniqueness = "Uniqueness",
-    Validity = "Validity",
 }
 
 /**

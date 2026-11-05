@@ -11,34 +11,33 @@
  *  limitations under the License.
  */
 
-import { Alert, TreeSelect } from 'antd';
-import { BaseOptionType } from 'antd/lib/select';
+import {
+  Alert,
+  TreeSelect,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
-import { BaseSelectRef } from 'rc-select';
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
+import { buildTeamsSelectableTree } from './TeamsSelectable.utils';
 
-const renderMaxTagPlaceholder = (
-  count: number,
-  t: ReturnType<typeof useTranslation>['t']
-) => (
-  <span className="max-tag-text">
-    {t('label.plus-count-more', {
-      count,
-    })}
-  </span>
-);
-
-const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
+const TeamsSelectableNew = forwardRef<HTMLDivElement, TeamsSelectableProps>(
   (
     {
       showTeamsAlert,
@@ -55,11 +54,16 @@ const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
     ref
   ) => {
     const [noTeam, setNoTeam] = useState<boolean>(false);
-    const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const { t } = useTranslation();
 
-    const onChange = (newValue: { label: string; value: string }[]) => {
+    const onChange = (value: TreeSelectNode | TreeSelectNode[] | null) => {
+      const newValue: TreeSelectNode[] = [];
+      if (Array.isArray(value)) {
+        newValue.push(...value);
+      } else if (value) {
+        newValue.push(value);
+      }
       onSelectionChange &&
         onSelectionChange(
           newValue.map((val) => ({
@@ -70,95 +74,93 @@ const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
         );
     };
 
-    const loadOptions = async () => {
-      try {
-        setIsLoading(true);
-        const { data } = await getTeamsHierarchy(filterJoinable);
-        setTeams(data);
-        showTeamsAlert && setNoTeam(isEmpty(data));
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    // TreeSelect fetches once when it first opens; awaiting the shared request
+    // keeps an early open (e.g. a popover opened straight away) from caching an empty tree.
+    const teamsRequest = useRef<{
+      filterJoinable?: boolean;
+      promise: Promise<TeamHierarchy[]>;
+    }>();
+    const notifiedError = useRef<unknown>();
 
-    useEffect(() => {
-      loadOptions();
+    const notifyError = useCallback((error: unknown) => {
+      // The mount load and the picker share one request; toast its failure once.
+      if (error !== notifiedError.current) {
+        notifiedError.current = error;
+        showErrorToast(error as AxiosError);
+      }
     }, []);
 
-    const showLeafIcon = false;
+    const loadTeams = useCallback(() => {
+      if (
+        !teamsRequest.current ||
+        teamsRequest.current.filterJoinable !== filterJoinable
+      ) {
+        const promise = getTeamsHierarchy(filterJoinable)
+          .then(({ data }) => data)
+          .catch((error) => {
+            // Forget the failed request so the next open retries.
+            teamsRequest.current = undefined;
 
-    const getTreeNodeData = (team: TeamHierarchy): BaseOptionType => {
-      const teamName = getEntityName(team);
-      const value = team.id;
-      const disabled = filterJoinable ? !team.isJoinable : false;
+            throw error;
+          });
+        teamsRequest.current = { filterJoinable, promise };
+      }
 
-      return {
-        title: teamName,
-        value,
-        selectable: !team.children?.length,
-        disabled,
-        children:
-          team.children &&
-          team.children.map((n: TeamHierarchy) => getTreeNodeData(n)),
-      };
-    };
+      return teamsRequest.current?.promise ?? Promise.resolve([]);
+    }, [filterJoinable]);
 
-    const teamsTree = useMemo(() => {
-      return teams.map((team) => getTreeNodeData(team));
-    }, [teams]);
+    useEffect(() => {
+      setIsLoading(true);
+      loadTeams()
+        .then((data) => showTeamsAlert && setNoTeam(isEmpty(data)))
+        .catch(notifyError)
+        .finally(() => setIsLoading(false));
+    }, [loadTeams, notifyError, showTeamsAlert]);
+
+    const fetchData = useCallback(
+      async () => ({
+        nodes: buildTeamsSelectableTree(await loadTeams(), filterJoinable),
+      }),
+      [loadTeams, filterJoinable]
+    );
 
     const selectedTeamsInternal = useMemo(() => {
       return selectedTeams?.map((selectedTeam) => ({
+        id: selectedTeam.id,
         label: getEntityName(selectedTeam),
         value: selectedTeam.id,
       }));
     }, [selectedTeams]);
 
     return (
-      <>
+      <div ref={ref}>
         <TreeSelect
-          allowClear
-          labelInValue
           multiple
-          showSearch
-          treeDefaultExpandAll
+          searchable
           data-testid="team-select"
-          dropdownMatchSelectWidth={false}
-          dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
-          getPopupContainer={(trigger) => trigger.parentElement}
-          loading={isLoading}
-          maxTagCount={maxValueCount}
-          maxTagPlaceholder={(omittedValues) =>
-            renderMaxTagPlaceholder(omittedValues.length, t)
-          }
-          open={open}
+          fetchData={fetchData}
+          isLoading={isLoading}
+          isOpen={open}
+          maxVisibleItems={maxValueCount}
           placeholder={placeholder}
-          placement="bottomLeft"
-          popupClassName="teams-custom-dropdown-class"
-          ref={ref}
-          showCheckedStrategy={TreeSelect.SHOW_CHILD}
-          style={{ width: '100%' }}
-          tagRender={TagRenderer}
-          treeData={teamsTree}
-          treeLine={{ showLeafIcon }}
-          treeNodeFilterProp="title"
+          showCheckbox={false}
+          showIcon={false}
           value={selectedTeamsInternal}
           onChange={onChange}
-          onDropdownVisibleChange={handleDropdownChange}
+          onFetchError={notifyError}
+          onOpenChange={handleDropdownChange}
         />
         {noTeam && (
           <Alert
             showIcon
             className="m-t-md"
-            message={t('message.no-entity-data-available', {
+            title={t('message.no-entity-data-available', {
               entity: t('label.team-plural'),
             })}
-            type="info"
+            variant="brand"
           />
         )}
-      </>
+      </div>
     );
   }
 );

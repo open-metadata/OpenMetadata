@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/feed/announcement.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Announcement",
   "description": "An Announcement is a time-bound notification associated with a data asset. It has a start and end time and is displayed to users viewing the asset during that period.",
   "javaInterfaces": ["org.openmetadata.schema.NamedEntityInterface"],
@@ -16,6 +16,55 @@
         {"name": "Active"},
         {"name": "Expired"},
         {"name": "Scheduled"}
+      ]
+    },
+    "announcementType": {
+      "javaType": "org.openmetadata.schema.type.AnnouncementType",
+      "description": "Severity/category of the announcement, used to style it in the UI.",
+      "type": "string",
+      "enum": ["Critical", "Notice", "Warning", "Deprecation", "Custom"],
+      "javaEnums": [
+        {"name": "Critical"},
+        {"name": "Notice"},
+        {"name": "Warning"},
+        {"name": "Deprecation"},
+        {"name": "Custom"}
+      ],
+      "default": "Notice"
+    },
+    "announcementColor": {
+      "javaType": "org.openmetadata.schema.type.AnnouncementColor",
+      "description": "Palette family the announcement is rendered with. Only meaningful when the type is `Custom`; every other type derives its colour from the type itself.",
+      "type": "string",
+      "enum": [
+        "gray",
+        "brand",
+        "error",
+        "warning",
+        "success",
+        "gray-blue",
+        "blue-light",
+        "blue",
+        "blue-dark",
+        "indigo",
+        "purple",
+        "pink",
+        "orange"
+      ],
+      "javaEnums": [
+        {"name": "Gray"},
+        {"name": "Brand"},
+        {"name": "Error"},
+        {"name": "Warning"},
+        {"name": "Success"},
+        {"name": "GrayBlue"},
+        {"name": "BlueLight"},
+        {"name": "Blue"},
+        {"name": "BlueDark"},
+        {"name": "Indigo"},
+        {"name": "Purple"},
+        {"name": "Pink"},
+        {"name": "Orange"}
       ]
     }
   },
@@ -38,6 +87,11 @@
       "description": "Announcement content in Markdown format.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "type": {
+      "description": "Severity/category of the announcement, used to style it in the UI.",
+      "$ref": "#/definitions/announcementType",
+      "default": "Notice"
+    },
     "entityLink": {
       "description": "Link to the entity this announcement is about.",
       "$ref": "../../type/basic.json#/definitions/entityLink"
@@ -49,6 +103,15 @@
     "endTime": {
       "description": "End time when the announcement expires.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "color": {
+      "$ref": "#/definitions/announcementColor"
+    },
+    "customTypeName": {
+      "description": "Label shown in place of the type name when the type is `Custom`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
     },
     "status": {
       "$ref": "#/definitions/announcementStatus"

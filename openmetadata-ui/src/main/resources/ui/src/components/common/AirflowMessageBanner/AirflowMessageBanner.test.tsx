@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { AIRFLOW_HYBRID } from '../../../constants/constants';
+import { AIRFLOW_HYBRID, DISABLED } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AirflowMessageBanner from './AirflowMessageBanner';
 
@@ -91,6 +91,60 @@ describe('Test Airflow Message Banner', () => {
         isFetchingStatus: false,
         platform: AIRFLOW_HYBRID,
       }));
+      render(<AirflowMessageBanner />);
+
+      expect(
+        screen.queryByTestId('no-airflow-placeholder')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Disabled Pipeline Client Scenarios', () => {
+    // The status call answers 200 for a client that is switched off in the configuration, so none
+    // of the cases above catch it and the banner said nothing while deploy, run and kill all
+    // quietly did nothing.
+    const disabledStatus = {
+      reason: 'Pipeline Client Disabled',
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: DISABLED,
+    };
+
+    it('Should render the caller message when the pipeline client is disabled', () => {
+      (useAirflowStatus as jest.Mock).mockImplementationOnce(
+        () => disabledStatus
+      );
+      render(
+        <AirflowMessageBanner disabledFallbackMessage="agents cannot be run" />
+      );
+
+      expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
+      expect(screen.getByText('agents cannot be run')).toBeInTheDocument();
+    });
+
+    it('Should prefer the caller message over the untranslated server reason', () => {
+      (useAirflowStatus as jest.Mock).mockImplementationOnce(
+        () => disabledStatus
+      );
+      render(
+        <AirflowMessageBanner
+          disabledFallbackMessage="agents cannot be run"
+          unreachableFallbackMessage="agents keep listing"
+        />
+      );
+
+      expect(
+        screen.queryByText('Pipeline Client Disabled')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('agents keep listing')).not.toBeInTheDocument();
+    });
+
+    it('Should render nothing when no disabled message was supplied', () => {
+      // Shared with the connection setup and success screens, which have nothing on screen that a
+      // disabled-client message would explain.
+      (useAirflowStatus as jest.Mock).mockImplementationOnce(
+        () => disabledStatus
+      );
       render(<AirflowMessageBanner />);
 
       expect(

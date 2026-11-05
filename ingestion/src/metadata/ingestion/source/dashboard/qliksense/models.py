@@ -17,9 +17,15 @@ from pydantic import BaseModel
 # dashboard models
 
 
+class QlikStream(BaseModel):
+    id: str | None = None
+    name: str | None = None
+
+
 class QlikDashboardMeta(BaseModel):
     description: str | None = None
     published: bool | None = None
+    stream: QlikStream | None = None
 
 
 class QlikDashboard(BaseModel):
