@@ -151,16 +151,17 @@ changed=$(git diff --name-only --diff-filter=d origin/main...HEAD -- . | sed 's|
 This finds `from metadata.x.y import z`. It misses `from metadata.x import y`, so also add the
 connector's `tests/integration/<connector>/` directory when you change a connector.
 
-Run them. Integration tests need a local server (`./docker/run_local_docker.sh -m no-ui -i false`) and Docker, for testcontainers:
+For PR creation, run the focused checks selected for changed behavior and report the remainder
+as pending. For merge readiness, run the full affected list. Integration tests need a local server (`./docker/run_local_docker.sh -m no-ui -i false`) and Docker, for testcontainers:
 ```bash
 source ../env/bin/activate
 grep '^tests/unit/' /tmp/affected-tests.txt | xargs -r python -m pytest -n auto --cov=metadata --cov-report=term-missing
 grep '^tests/integration/' /tmp/affected-tests.txt | xargs -r python -m pytest
 ```
 Put the commands you ran and their pass/fail counts in the PR body, under "Unit tests" and
-"Ingestion integration tests". If the list is very large (you changed a shared module like
-`metadata/utils/`), run the full unit suite with `nox --no-venv -s unit-tests`. Then run the
-integration directories for the connectors you touched, and say in the PR body that you ran a subset.
+"Ingestion integration tests". For merge readiness, a shared-module change may require the full unit suite with
+`nox --no-venv -s unit-tests` and affected connector integration directories. For focused work,
+select regressions with a stated reason and report the broader list as pending.
 
 **Frontend unit tests (Jest):**
 ```bash
@@ -169,10 +170,11 @@ yarn test <ChangedComponent> --coverage
 ```
 
 **Playwright (UI E2E):** PR checks no longer run Playwright (the merge queue runs the full suite),
-so run the impact-mapped specs locally and record the results in the PR body:
+so inspect the impact-mapped specs and select relevant workflow regressions for PR creation.
+Record exact commands/results and list outstanding specs; merge readiness runs all impacted specs:
 ```bash
 make playwright_affected                          # specs selected from .github/playwright/impact-map.json
-make playwright_affected_run ARGS="--update-pr"   # run them; writes the results block into the PR body
+make playwright_affected_run ARGS="--update-pr"   # full impacted run for merge readiness
 ```
 Without `gh`, paste `playwright/output/local-pr-results.md` between the
 `local-playwright-results` markers under "Playwright (UI) tests".

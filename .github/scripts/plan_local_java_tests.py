@@ -827,6 +827,7 @@ class Planner:
         focused = Plan(broad.changed_files, scope="focused")
         focused.unmapped_files = broad.unmapped_files
         focused.untested_classes = broad.untested_classes
+        focused.not_run_locally = dict(broad.not_run_locally)
         for path in broad.changed_files:
             relative = path.removeprefix(self.repo.it_root + "/")
             if (
@@ -2668,7 +2669,16 @@ def evidence_fingerprint(repo_root: Path) -> str:
         digest.update(path.encode())
         digest.update(b"\0")
         digest.update(hashlib.sha256(source.read_bytes()).digest())
-    for name in ("JAVA_HOME", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS", "MAVEN_OPTS"):
+    for name in (
+        "JAVA_HOME",
+        "JAVA_TOOL_OPTIONS",
+        "JDK_JAVA_OPTIONS",
+        "_JAVA_OPTIONS",
+        "MAVEN_OPTS",
+        "MAVEN_ARGS",
+        "MAVEN_HOME",
+        "M2_HOME",
+    ):
         digest.update(f"{name}={os.environ.get(name, '')}\0".encode())
     for tool in ("java", "mvn"):
         executable = shutil.which(tool)

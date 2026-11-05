@@ -895,6 +895,9 @@ def test_focused_search_fix_keeps_regression_and_defers_broad_coverage() -> None
     assert set(its(plan)) == {"TestCaseSoftDeleteSearchIT"}
     assert not plan.full_unit_modules
     assert plan.deferred_commands
+    full = planner.plan(changed)
+    assert full.not_run_locally
+    assert plan.not_run_locally == full.not_run_locally
     summary = PLANNER.render_block(plan, [], "abc", "origin/main", False)
     assert "focused" in summary
     assert "merge readiness is not established" in summary
@@ -989,15 +992,16 @@ def test_focused_author_selection_is_recorded_and_default_remains_full() -> None
         PLANNER.parse_args(["--publish-results", "--run"])
 
 
+@pytest.mark.parametrize("option", ["MAVEN_OPTS", "MAVEN_ARGS", "_JAVA_OPTIONS"])
 def test_evidence_rejects_changed_java_options(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, option: str
 ) -> None:
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     summary = tmp_path / PLANNER.RESULTS_MARKDOWN
     summary.parent.mkdir(parents=True)
     summary.write_text("result")
     PLANNER.save_evidence(tmp_path, 0)
-    monkeypatch.setenv("MAVEN_OPTS", "-Xmx99m")
+    monkeypatch.setenv(option, "-DdatabaseImage=mysql:8.4")
     with pytest.raises(SystemExit, match="changed"):
         PLANNER.load_evidence(tmp_path)
 
