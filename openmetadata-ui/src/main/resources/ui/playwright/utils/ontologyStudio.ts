@@ -15,6 +15,7 @@ import {
   APIRequestContext,
   Browser,
   expect,
+  Locator,
   Page,
   TestInfo,
 } from '@playwright/test';
@@ -25,7 +26,13 @@ import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { UserClass } from '../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from './apiResponse';
-import { getAuthContext, getToken, redirectToHomePage, uuid } from './common';
+import {
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+  scrollIntoViewAndSettle,
+  uuid,
+} from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
 
 export interface GraphTermRef {
@@ -888,4 +895,33 @@ export async function attachStudioShot(
   const path = testInfo.outputPath(`${name}.png`);
   await page.screenshot({ path, fullPage: true });
   await testInfo.attach(name, { path, contentType: 'image/png' });
+}
+
+/**
+ * Picks an ontology from a core Select the way a user does in a long list. Past
+ * 100 items the list is virtualized and only the rows in view are in the DOM,
+ * so typing the name lets react-aria's type-to-select focus and scroll to the
+ * row. The trigger is settled in view first because a scroll of its container
+ * after the popover opens closes the popover. A picker that is replaced by the
+ * next step once a row is chosen passes `replacedOnPick` instead of showing the
+ * name in its trigger.
+ */
+export async function selectOntologyOption(
+  page: Page,
+  trigger: Locator,
+  name: string,
+  { replacedOnPick = false }: { replacedOnPick?: boolean } = {}
+) {
+  await scrollIntoViewAndSettle(trigger);
+  await trigger.click();
+  const listbox = page.locator('[role="listbox"]:focus-within');
+  await expect(listbox).toHaveCount(1);
+  await page.keyboard.type(name, { delay: 20 });
+  await listbox.getByRole('option', { name, exact: true }).click();
+  await expect(listbox).toHaveCount(0);
+  if (replacedOnPick) {
+    await expect(trigger).toHaveCount(0);
+  } else {
+    await expect(trigger).toContainText(name);
+  }
 }

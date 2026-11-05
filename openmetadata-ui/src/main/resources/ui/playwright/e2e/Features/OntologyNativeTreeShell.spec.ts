@@ -26,7 +26,10 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
-import { findOntologyInQueryPicker } from '../../utils/ontologyStudio';
+import {
+  findOntologyInQueryPicker,
+  selectOntologyOption,
+} from '../../utils/ontologyStudio';
 
 const armQueryLibraryResponses = (page: Page) => [
   page.waitForResponse(
@@ -343,10 +346,12 @@ test.describe(
               const target = page.getByTestId('ontology-import-target-picker');
               await expect(target).toContainText('Select Ontology');
               await expectNativeStudioCopy(page.getByRole('dialog'));
-              await target.getByRole('button').click();
-              await page
-                .getByRole('option', { name: owner.name, exact: true })
-                .click();
+              await selectOntologyOption(
+                page,
+                target.getByRole('button'),
+                owner.name,
+                { replacedOnPick: true }
+              );
             }
             const transfer = page.getByRole('dialog');
             await expect(transfer).toHaveCount(1);
