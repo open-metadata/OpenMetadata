@@ -280,6 +280,7 @@ const AllOntologiesGraphView = ({
       return createPortal(
         <Input
           aria-label={t('label.find-concept')}
+          autoComplete="off"
           icon={Search}
           inputDataTestId="ontology-graph-search"
           placeholder={t('label.find-concept')}
@@ -300,6 +301,7 @@ const AllOntologiesGraphView = ({
         }>
         <Input
           aria-label={t('label.find-concept')}
+          autoComplete="off"
           className="tw:w-54"
           icon={Search}
           inputDataTestId="ontology-graph-search"

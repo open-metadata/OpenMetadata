@@ -391,6 +391,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
     }
   }
 
+  /** The CronJob, ConfigMap, Secret and Job names and the pipeline label are the name alone. */
+  @Override
+  public boolean addressesPipelinesByName() {
+    return true;
+  }
+
   @Override
   public PipelineServiceClientResponse deployPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {

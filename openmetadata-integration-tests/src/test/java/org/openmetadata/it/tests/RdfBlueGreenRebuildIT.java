@@ -68,6 +68,8 @@ import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
 import org.openmetadata.service.rdf.storage.InferenceInvalidatingRdfStorage;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.RelationshipData;
@@ -636,8 +638,9 @@ public class RdfBlueGreenRebuildIT {
               }
 
               @Override
-              public void storeEntity(String type, UUID id, Model model) {
-                storage.storeEntity(type, id, model);
+              public RdfEntityWriteResult storeEntity(
+                  String type, UUID id, Model model, RdfEntityWriteStrategy strategy) {
+                final RdfEntityWriteResult result = storage.storeEntity(type, id, model, strategy);
                 if (dataset.equals("openmetadata")
                     && failAfterLiveWrite.compareAndSet(true, false)) {
                   throw new IllegalStateException(
@@ -648,6 +651,7 @@ public class RdfBlueGreenRebuildIT {
                   duringBuildWrite = null;
                   mutation.run();
                 }
+                return result;
               }
             };
           },

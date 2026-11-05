@@ -77,6 +77,7 @@ test.describe(
       testTypeId: string;
       paramsValue?: string;
       expectSchedulerCard?: boolean;
+      createPipeline?: boolean;
     }) => {
       const {
         page,
@@ -84,7 +85,9 @@ test.describe(
         testTypeId,
         paramsValue,
         expectSchedulerCard = true,
+        createPipeline = true,
       } = data;
+      const expectPipeline = expectSchedulerCard && createPipeline;
       await page.getByTestId('test-case-name').click();
       await expectFormHint(page, 'Name');
 
@@ -129,6 +132,18 @@ test.describe(
         await expect(page.getByTestId('scheduler-card')).not.toBeVisible();
       }
 
+      if (expectSchedulerCard && !createPipeline) {
+        await page
+          .getByTestId('create-pipeline')
+          .getByTestId('toggle-root')
+          .click();
+
+        await expect(
+          page.getByTestId('create-pipeline').getByRole('switch')
+        ).not.toBeChecked();
+        await expect(page.getByTestId('pipeline-name')).not.toBeVisible();
+      }
+
       // Set up response tracking
       const tableTestCaseResponse = page.waitForResponse(
         (response: Response) =>
@@ -137,7 +152,7 @@ test.describe(
       );
 
       let ingestionPipelineCalled = false;
-      if (expectSchedulerCard) {
+      if (expectPipeline) {
         const ingestionPipeline = page.waitForResponse(
           (response: Response) =>
             response.url().includes('/api/v1/services/ingestionPipelines') &&
@@ -182,7 +197,7 @@ test.describe(
         .getByTestId('test-case-form-v1')
         .waitFor({ state: 'detached' });
 
-      if (!expectSchedulerCard) {
+      if (!expectPipeline) {
         expect(ingestionPipelineCalled).toBe(false);
       }
     };
@@ -272,6 +287,57 @@ test.describe(
               `[data-row-key*="${table.entityResponseData.fullyQualifiedName}.testSuite"]`
             )
         ).toHaveCount(1);
+      });
+    });
+
+    /**
+     * Tests creating a test case without a pipeline
+     * @description Creates a table-level test case with the Create Pipeline switch turned off and verifies no TestSuite pipeline is created for the table.
+     * Steps
+     * 1. Open the test case form and select a table that has no pipeline.
+     * 2. Fill the test details, switch off Create Pipeline, and submit.
+     * 3. Assert no pipeline creation call occurs and the table's pipeline tab stays empty.
+     */
+    test('Add Table Test Case without creating a pipeline', async ({
+      page,
+    }) => {
+      const table = new TableClass();
+      const { apiContext } = await getApiContext(page);
+      await table.create(apiContext);
+
+      await visitDataQualityPage(page);
+
+      await test.step('Create table-level test case with pipeline switched off', async () => {
+        await openTestCaseForm(page);
+        await selectTable(page, table);
+        await createTestCase({
+          page,
+          ...tableTestCaseDetails,
+          createPipeline: false,
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByTestId('entity-header-name')).toHaveText(
+          `${tableTestCaseDetails.testTypeId}_test_case`
+        );
+      });
+
+      await test.step('Validate no pipeline on the entity page', async () => {
+        const pipelineCountResponse = page.waitForResponse(
+          (response: Response) =>
+            response.url().includes('/api/v1/services/ingestionPipelines?') &&
+            response.url().includes('pipelineType=TestSuite') &&
+            response.url().includes('limit=0')
+        );
+        await visitDataQualityTab(page, table);
+        await pipelineCountResponse;
+
+        await expect(
+          page.getByTestId('tableRowCountToEqual_test_case')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('pipeline').getByTestId('count')
+        ).toHaveText('0');
       });
     });
 
