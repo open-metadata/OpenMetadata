@@ -369,13 +369,18 @@ public final class SearchUtils {
    */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
-    return Boolean.TRUE.equals(
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
-                .getGlobalSettings()
-                .getEnableAccessControl())
+    return isAccessControlEnabled()
         && subjectContext != null
         && !subjectContext.isAdmin()
         && rbacConditionEvaluator != null;
+  }
+
+  /** Whether "Enable Roles & Policies in Search" is on. */
+  public static boolean isAccessControlEnabled() {
+    return Boolean.TRUE.equals(
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+            .getGlobalSettings()
+            .getEnableAccessControl());
   }
 
   public static SSLContext createElasticSearchSSLContext(

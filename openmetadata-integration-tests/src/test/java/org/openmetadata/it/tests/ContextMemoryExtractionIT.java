@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -9,9 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +26,6 @@ import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
@@ -55,13 +57,18 @@ import org.openmetadata.service.context.center.ContextMemoryReconciler;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor;
 import org.openmetadata.service.context.center.PageContextProcessingEngine;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
+import org.openmetadata.service.context.center.SemanticMemoryDuplicateFinder;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.CompletionOptions;
+import org.openmetadata.service.llm.CompletionResult;
 import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.LLMCompletionClient;
+import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.llm.NoopCompletionClient;
 
 /** Persistent sources and queue rows, scripting only the document-provider boundary. */
@@ -74,6 +81,7 @@ class ContextMemoryExtractionIT {
   private AiProvider previousProvider;
   private boolean partial;
   private DocumentMemoryExtractor extractor;
+  private Runnable duringDerivation = () -> {};
   private GenericBackgroundWorker worker;
   private TestNamespace namespace;
   private final Set<UUID> trackedMemories = new HashSet<>();
@@ -87,6 +95,7 @@ class ContextMemoryExtractionIT {
     extractor =
         (text, source, type) -> {
           calls.incrementAndGet();
+          duringDerivation.run();
           List<ContextMemory> pills =
               text.isBlank() ? List.of() : List.of(pill(text, source, type));
           return new DocumentMemoryExtractor.DeriveResult(pills, partial ? 2 : 1, 1);
@@ -208,6 +217,156 @@ class ContextMemoryExtractionIT {
     assertGone("v1/contextCenter/memories/" + pill.getId());
   }
 
+  @Test
+  void fileProcessingKeepsMetadataEditedDuringDerivation(TestNamespace ns) throws Exception {
+    ContextFile file = file(ns, "edited-file", "Definition " + ns.shortPrefix());
+    duringDerivation =
+        () ->
+            assertDoesNotThrow(
+                () -> {
+                  ContextFile current =
+                      RestClient.admin().getById(FILES, file.getId(), "", ContextFile.class);
+                  RestClient.admin()
+                      .patch(
+                          FILES,
+                          file.getId(),
+                          JsonUtils.pojoToJson(current),
+                          JsonUtils.deepCopy(current, ContextFile.class)
+                              .withDescription("Current description")
+                              .withShareConfig(
+                                  new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)),
+                          ContextFile.class);
+                });
+
+    runFile(file);
+
+    ContextFile stored = RestClient.admin().getById(FILES, file.getId(), "", ContextFile.class);
+    assertEquals("Current description", stored.getDescription());
+    assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
+    assertEquals(ProcessingStatus.Processed, stored.getProcessingStatus());
+    assertNotNull(stored.getExtractionStats().getSourceHash());
+    assertEquals(1, calls.get());
+  }
+
+  @Test
+  void pageProcessingKeepsBodyEditedDuringDerivation(TestNamespace ns) throws Exception {
+    Page page = page(ns, "Original definition");
+    duringDerivation = () -> assertDoesNotThrow(() -> edit(readPage(page), "Current definition"));
+
+    runPage(
+        Entity.getJobDAO()
+            .findPendingMemoryJobId(
+                ContextMemoryExtractionJobHandler.Args.page(page.getId()).jobKey()));
+
+    Page stored = readPage(page);
+    assertEquals("Current definition", stored.getDescription());
+    assertEquals(PageProcessingStatus.Processed, stored.getProcessingStatus());
+    assertEquals(
+        DigestUtils.sha256Hex("Original definition"), stored.getExtractionStats().getSourceHash());
+    assertEquals(1, calls.get());
+  }
+
+  @Test
+  void invalidDuplicateResponsePreservesPersistedMemoriesAndSourceLinks(TestNamespace ns)
+      throws Exception {
+    ContextFile source = file(ns, "comparison-failure", "Source content");
+    ContextFile other = file(ns, "other-source", "Other content");
+    ContextMemory changed = persistedPill(source, "What is GDPR?", "Original definition.");
+    persistedPill(
+        source, "Which protocol carries billing alerts?", "PagerDuty pages the operator.");
+    ContextMemory shared =
+        persistedPill(source, "How long is data retained?", "Keep it for 90 days.");
+    memoryRepository().linkExtractedMemory(shared.getId(), other.getEntityReference());
+    ContextMemory reusable = persistedPill(other, "What is churn?", "The share of customers lost.");
+    Map<UUID, String> originalSource = persistedAnswers(source);
+    Map<UUID, String> originalOther = persistedAnswers(other);
+    ContextMemory fresh =
+        pill(
+                "All data is encrypted.",
+                source.getEntityReference(),
+                ContextMemorySourceType.FILE_EXTRACTION)
+            .withQuestion("How is storage secured?");
+    ContextMemory reuse =
+        pill(
+                reusable.getAnswer(),
+                source.getEntityReference(),
+                ContextMemorySourceType.FILE_EXTRACTION)
+            .withQuestion(reusable.getQuestion());
+    ContextMemory failing =
+        pill(
+                "Use explicit consent.",
+                source.getEntityReference(),
+                ContextMemorySourceType.FILE_EXTRACTION)
+            .withQuestion("How is consent collected?");
+    AtomicInteger attempts = new AtomicInteger();
+    LLMCompletionClient client = invalidJsonClient(attempts);
+    ContextMemoryReconciler reconciler =
+        new ContextMemoryReconciler(
+            memoryRepository(),
+            memory -> {
+              if (memory.getId().equals(failing.getId())) {
+                client.completeStructured(
+                    "Return only a JSON array",
+                    "Compare the supplied facts",
+                    SemanticMemoryDuplicateFinder.MatchChoice.class);
+              }
+              return memory.getId().equals(reuse.getId()) ? reusable : null;
+            });
+    List<ContextMemory> derived =
+        List.of(
+            pill(
+                    "Revised definition.",
+                    source.getEntityReference(),
+                    ContextMemorySourceType.FILE_EXTRACTION)
+                .withQuestion(changed.getQuestion()),
+            pill(
+                    "Keep it for 30 days.",
+                    source.getEntityReference(),
+                    ContextMemorySourceType.FILE_EXTRACTION)
+                .withQuestion(shared.getQuestion()),
+            fresh,
+            reuse,
+            failing);
+
+    assertThrows(
+        LLMCompletionException.class,
+        () -> reconciler.reconcile(source.getEntityReference(), Entity.CONTEXT_FILE, derived));
+
+    assertEquals(2, attempts.get());
+    assertEquals(originalSource, persistedAnswers(source));
+    assertEquals(originalOther, persistedAnswers(other));
+    assertGone("v1/contextCenter/memories/" + fresh.getId());
+  }
+
+  private ContextMemory persistedPill(ContextFile file, String question, String answer) {
+    ContextMemory memory =
+        pill(answer, file.getEntityReference(), ContextMemorySourceType.FILE_EXTRACTION)
+            .withQuestion(question);
+    memoryRepository().create(null, memory);
+    return memory;
+  }
+
+  private Map<UUID, String> persistedAnswers(ContextFile file) {
+    return extracted(file.getEntityReference()).stream()
+        .collect(Collectors.toMap(ContextMemory::getId, ContextMemory::getAnswer));
+  }
+
+  private LLMCompletionClient invalidJsonClient(AtomicInteger attempts) {
+    return new LLMCompletionClient(1) {
+      @Override
+      protected CompletionResult doComplete(
+          String systemPrompt, String userPrompt, CompletionOptions options) {
+        attempts.incrementAndGet();
+        return new CompletionResult("I cannot identify an equivalent fact.", 0, 0);
+      }
+
+      @Override
+      public String getModelId() {
+        return "invalid-json-test";
+      }
+    };
+  }
+
   private void installPageWorker(long quietPeriod) {
     PageContextProcessingEngineHolder.setForTesting(
         new PageContextProcessingEngine(
@@ -313,15 +472,23 @@ class ContextMemoryExtractionIT {
   }
 
   private ContextFile file(TestNamespace ns, String label, String text) throws Exception {
+    UUID contentId = UUID.randomUUID();
     ContextFile file =
         ns.trackRoot(
             Entity.CONTEXT_FILE,
-            RestClient.admin()
+            fileRepository()
                 .create(
-                    FILES, new CreateContextFile().withName(ns.prefix(label)), ContextFile.class));
+                    null,
+                    new ContextFile()
+                        .withId(UUID.randomUUID())
+                        .withName(ns.prefix(label))
+                        .withHeadContentId(contentId.toString())
+                        .withProcessingStatus(ProcessingStatus.ExtractingContext)
+                        .withUpdatedBy(Entity.ADMIN_USER_NAME)
+                        .withUpdatedAt(System.currentTimeMillis())));
     ContextFileContent content =
         new ContextFileContent()
-            .withId(UUID.randomUUID())
+            .withId(contentId)
             .withName(UUID.randomUUID().toString())
             .withContextFile(file.getEntityReference())
             .withChecksum(DigestUtils.sha256Hex(text))
@@ -330,12 +497,7 @@ class ContextMemoryExtractionIT {
             .withUpdatedAt(System.currentTimeMillis())
             .withProcessingStatus(ProcessingStatus.Processed);
     fileRepository().getContentRepository().create(null, content);
-    ContextFile updated =
-        JsonUtils.deepCopy(file, ContextFile.class)
-            .withHeadContentId(content.getId().toString())
-            .withProcessingStatus(ProcessingStatus.ExtractingContext);
-    fileRepository().update(null, file, updated, Entity.ADMIN_USER_NAME);
-    return updated;
+    return file;
   }
 
   private List<ContextMemory> extracted(EntityReference source) {

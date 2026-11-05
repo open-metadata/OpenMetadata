@@ -199,6 +199,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     BadgeWithButton: actual.BadgeWithButton,
     Box,
     Button,
+    ButtonUtility: actual.ButtonUtility,
     Card,
     Dialog: actual.Dialog,
     Divider,
@@ -218,7 +219,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
-  Edit05: () => <span data-testid="edit-05-icon" />,
+  Edit01: () => <span data-testid="edit-01-icon" />,
   FilterFunnel01: () => <span data-testid="filter-funnel-icon" />,
   Trash01: () => <span data-testid="trash-icon" />,
   XCircle: () => <span data-testid="x-circle-icon" />,
@@ -257,6 +258,17 @@ jest.mock('react-router-dom', () => ({
       {children}
     </a>
   ),
+}));
+
+jest.mock('../common/DomainFilterChip/DomainFilterChip.component', () => ({
+  DomainFilterChip: () => <div data-testid="domain-filter-chip" />,
+}));
+
+const mockIsAiMode = jest.fn().mockReturnValue(false);
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: () => mockIsAiMode(),
 }));
 
 jest.mock('../Explore/ExploreTree/ExploreTree', () => {
@@ -436,6 +448,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsAiMode.mockReturnValue(false);
     window.location.search = '';
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
       search: '',
@@ -506,6 +519,21 @@ describe('ExploreV1', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('query-bar-empty-text')).toBeInTheDocument();
   });
+
+  // AI mode shows the chip in its search header instead.
+  it.each([
+    [false, 1],
+    [true, 0],
+  ])(
+    'with AI mode %s, renders %i domain chips under the filters',
+    (isAiMode, count) => {
+      mockIsAiMode.mockReturnValue(isAiMode);
+
+      render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+      expect(screen.queryAllByTestId('domain-filter-chip')).toHaveLength(count);
+    }
+  );
 
   it('uses the query-panel Clear action when a browse filter is active', () => {
     render(

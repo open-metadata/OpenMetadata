@@ -120,6 +120,17 @@ test.describe('Domain isolation - lineage graph @domain-isolation', () => {
     }
   );
 
+  // `enableAccessControl` is global and other specs turn it off; re-assert it per test.
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await enableDisableSearchRBAC(apiContext, true);
+    } finally {
+      await afterAction();
+    }
+  });
+
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 

@@ -34,12 +34,12 @@ import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { formatFormDataForSubmit } from '../../../../../../utils/JSONSchemaFormUtils';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBuilderV1LabelUtils';
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
 import { AppFooter } from './AppFooter';
 
 export interface AppConfigFormProps {
@@ -103,7 +103,10 @@ export const AppToggleCardField = ({
   const label = schema.title ?? getFormDisplayLabel(name);
 
   return (
-    <Card data-testid={`toggle-card-${getFieldName(idSchema.$id)}`} size="sm">
+    <Card
+      data-testid={`toggle-card-${getFieldName(idSchema.$id)}`}
+      size="sm"
+      variant="muted">
       <Card.Content>
         <Box align="center" direction="row" gap={4} justify="between">
           <Box className="tw:min-w-0" direction="col">
@@ -214,8 +217,14 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
           </Button>
         </AppFooter>
       )}
-      {/* Full-width fields leave no room beside them, so the hint opens above. */}
-      <FieldDocPopover placement="top end" />
+      {/* Full-width fields leave no room beside them, so the hint opens below
+          the field. Never flipped above, where the first field's hint covered
+          the modal header; short of room below, the card shrinks and scrolls. */}
+      <FieldDocPopover
+        placement="bottom end"
+        shouldFlip={false}
+        variant="muted"
+      />
     </FieldDocProvider>
   );
 };

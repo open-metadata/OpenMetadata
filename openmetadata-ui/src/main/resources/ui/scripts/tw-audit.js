@@ -14,7 +14,7 @@
 
 /**
  * UntitledUI + Tailwind design-system audit — flags hardcoded values in
- * .tsx/.ts and inventories Antd/Less migration debt.
+ * .tsx/.ts and inventories Less migration debt.
  *
  *   node scripts/tw-audit.js            # summary + CI exit code
  *   node scripts/tw-audit.js --report   # full grouped inventory
@@ -24,7 +24,7 @@
  * Errors (exit 1): arbitrary Tailwind color / spacing / radius values that map
  * to a design-system utility. Warnings (exit 0): raw hex, explicit dark-theme
  * overrides, unsupported AI theme tokens, inline styles, and unresolved
- * arbitraries. Info: Antd imports (deprecated) + .less files.
+ * arbitraries. Info: .less files.
  */
 const fs = require('fs');
 const path = require('path');
@@ -82,18 +82,14 @@ function tally(findings) {
   const byCategory = {};
   const bySeverity = { error: 0, warning: 0, info: 0 };
   const byFile = {};
-  const antdFiles = new Set();
   for (const f of findings) {
     byCategory[f.category] = (byCategory[f.category] || 0) + 1;
     bySeverity[f.severity]++;
     if (f.severity === 'error') {
       byFile[f.file] = (byFile[f.file] || 0) + 1;
     }
-    if (f.category === 'antd-import') {
-      antdFiles.add(f.file);
-    }
   }
-  return { byCategory, bySeverity, byFile, antdFiles };
+  return { byCategory, bySeverity, byFile };
 }
 
 function printSummary(findings, scanned, t, lessCount) {
@@ -104,7 +100,6 @@ function printSummary(findings, scanned, t, lessCount) {
     process.stdout.write(`  ${cat.padEnd(18)} ${n}\n`);
   }
   process.stdout.write(`\n${C.bold('Migration debt (deprecated stacks)')}\n`);
-  process.stdout.write(`  ${C.yellow('Antd')}: ${t.antdFiles.size} files import 'antd'\n`);
   if (lessCount !== null) {
     process.stdout.write(`  ${C.yellow('Less')}: ${lessCount} .less files\n`);
   }

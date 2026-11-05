@@ -18,6 +18,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyIriMinter;
+import org.openmetadata.service.ontology.OntologyPropertyRules;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -77,8 +78,9 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
   protected abstract void validateDefinition(T entity);
 
   protected static void requireAbsoluteIri(final URI iri, final String field) {
-    if (iri == null || !iri.isAbsolute()) {
-      throw new BadRequestException("Ontology " + field + " must be an absolute IRI");
+    final String message = OntologyPropertyRules.relativeIriMessage(iri, field);
+    if (message != null) {
+      throw new BadRequestException(message);
     }
   }
 
@@ -182,6 +184,11 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
     if (operation.isPut() && Boolean.TRUE.equals(original.getDeleted())) {
       useRestoredRevision(original);
     }
+    return newUpdater(original, updated, operation, source);
+  }
+
+  protected OntologyUpdater newUpdater(
+      final T original, final T updated, final Operation operation, final ChangeSource source) {
     return new OntologyUpdater(original, updated, operation, source);
   }
 

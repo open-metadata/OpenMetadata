@@ -100,6 +100,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       {children}
     </button>
   );
+  const ButtonUtility = ({
+    icon: _icon,
+    size: _size,
+    tooltip,
+    ...props
+  }: any) => <button aria-label={tooltip} {...props} />;
   const Dialog = Object.assign(
     ({ children }: any) => <div role="dialog">{children}</div>,
     { Content: ({ children }: any) => <div>{children}</div> }
@@ -165,6 +171,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .EmptyPlaceholder,
     Box,
     Button,
+    ButtonUtility,
     CloseButton,
     Dialog,
     DialogTrigger,
@@ -201,7 +208,17 @@ jest.mock(
   'components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="pipeline-tab-body">pipeline-tab</div>,
+    default: ({
+      onPipelinesChange,
+    }: {
+      onPipelinesChange?: (total: number) => void;
+    }) => (
+      <button
+        data-testid="pipeline-tab-body"
+        onClick={() => onPipelinesChange?.(3)}>
+        pipeline-tab
+      </button>
+    ),
   })
 );
 
@@ -261,6 +278,7 @@ const baseHookReturn = {
   pagingData: { paging: { total: 4 } },
   showPagination: false,
   ingestionPipelineCount: 2,
+  handlePipelinesChange: jest.fn(),
   canAddMultipleDomains: true,
   canAddMultipleUserOwners: true,
   canAddMultipleTeamOwner: false,
@@ -328,6 +346,21 @@ describe('TestSuiteDetail', () => {
     expect(screen.getByTestId('pipeline-tab-body')).toBeInTheDocument();
     expect(screen.queryByTestId('data-quality-tab')).not.toBeInTheDocument();
     expect(screen.queryByTestId('description-v1')).not.toBeInTheDocument();
+  });
+
+  it('should keep the Pipelines badge on the total the pipeline tab reports', () => {
+    const handlePipelinesChange = jest.fn();
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      activeTab: 'pipeline',
+      handlePipelinesChange,
+    });
+
+    render(<TestSuiteDetail />);
+
+    fireEvent.click(screen.getByTestId('pipeline-tab-body'));
+
+    expect(handlePipelinesChange).toHaveBeenCalledWith(3);
   });
 
   it('should call setActiveTab when another tab is clicked', () => {

@@ -32,11 +32,36 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div>{children}</div>
   );
   Grid.Item = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
-  const Select = ({ children }: { children?: ReactNode }) => (
-    <div>{children}</div>
+  const { Children, cloneElement, isValidElement } =
+    jest.requireActual('react');
+  // Clicking an item selects it, as choosing it from the open list would.
+  const Select = ({
+    children,
+    onSelectionChange,
+  }: {
+    children?: ReactNode;
+    onSelectionChange?: (key: string) => void;
+  }) => (
+    <div>
+      {Children.map(children, (child: ReactNode) =>
+        isValidElement(child)
+          ? cloneElement(child, { onSelect: onSelectionChange })
+          : child
+      )}
+    </div>
   );
-  Select.Item = ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
+  Select.Item = ({
+    children,
+    id,
+    onSelect,
+  }: {
+    children?: ReactNode;
+    id?: string;
+    onSelect?: (key: string) => void;
+  }) => (
+    <button type="button" onClick={() => id && onSelect?.(id)}>
+      {children}
+    </button>
   );
 
   return {
@@ -71,6 +96,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <button data-testid={dataTestId} onClick={onPress}>
         {children}
       </button>
+    ),
+    ButtonUtility: ({
+      'data-testid': dataTestId,
+      isDisabled,
+      onClick,
+      tooltip,
+    }: {
+      'data-testid'?: string;
+      isDisabled?: boolean;
+      onClick?: () => void;
+      tooltip?: string;
+    }) => (
+      <button
+        aria-label={tooltip}
+        data-testid={dataTestId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
     ),
     Badge: ({
       children,
@@ -217,6 +260,39 @@ function renderWebhookField() {
   return render(<Wrapper />);
 }
 
+const SAVED_WEBHOOK_CONFIG = {
+  endpoint: '*********',
+  headers: [
+    { key: 'Authorization', value: '*********' },
+    { key: 'Content-Type', value: 'application/json' },
+  ],
+};
+
+function renderSavedWebhookField(
+  onConfigExpandedChange: jest.Mock,
+  config: Record<string, unknown> = SAVED_WEBHOOK_CONFIG
+) {
+  function Wrapper() {
+    const methods = useForm({
+      defaultValues: {
+        destinations: [{ config }],
+      },
+    });
+
+    return (
+      <FormProvider {...methods}>
+        <DestinationConfigField
+          fieldName={0}
+          type={SubscriptionType.Webhook}
+          onConfigExpandedChange={onConfigExpandedChange}
+        />
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
+}
+
 function renderMultipleWebhookFields() {
   function Wrapper() {
     const methods = useForm({
@@ -341,6 +417,67 @@ describe('DestinationConfigField', () => {
     expect(
       screen.getByTestId('header-key-input-field-0-1')
     ).toBeInTheDocument();
+  });
+
+  it('asks again for the hidden headers once the URL changes', () => {
+    const onConfigExpandedChange = jest.fn();
+    renderSavedWebhookField(onConfigExpandedChange);
+
+    fireEvent.change(screen.getByTestId('endpoint-input-field-0'), {
+      target: { value: 'https://new.example.com/hook' },
+    });
+
+    expect(screen.getByTestId('header-value-input-field-0-0')).toHaveValue('');
+    expect(screen.getByTestId('header-value-input-field-0-1')).toHaveValue(
+      'application/json'
+    );
+    expect(onConfigExpandedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('asks again for the hidden URL and credentials once the token URL changes', () => {
+    const onConfigExpandedChange = jest.fn();
+    renderSavedWebhookField(onConfigExpandedChange, {
+      endpoint: '*********',
+      authType: {
+        type: 'oauth2',
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: '*********',
+        clientSecret: '*********',
+      },
+    });
+
+    fireEvent.change(screen.getByTestId('token-url-input-field-0'), {
+      target: { value: 'https://auth.example.com/new-token' },
+    });
+
+    expect(screen.getByTestId('endpoint-input-field-0')).toHaveValue('');
+    expect(screen.getByTestId('token-url-input-field-0')).toHaveValue(
+      'https://auth.example.com/new-token'
+    );
+    expect(onConfigExpandedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('asks again for the hidden URL and drops the OAuth2 credentials when switching to bearer', () => {
+    const onConfigExpandedChange = jest.fn();
+    renderSavedWebhookField(onConfigExpandedChange, {
+      endpoint: '*********',
+      authType: {
+        type: 'oauth2',
+        tokenUrl: 'https://auth.example.com/token',
+        clientId: '*********',
+        clientSecret: '*********',
+      },
+    });
+
+    fireEvent.click(screen.getByText('label.bearer-hmac-signature'));
+
+    expect(screen.getByTestId('endpoint-input-field-0')).toHaveValue('');
+    expect(
+      screen.queryByTestId('token-url-input-field-0')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('client-id-input-0')).not.toBeInTheDocument();
+    expect(screen.getByTestId('secret-key-input-0')).toBeInTheDocument();
+    expect(onConfigExpandedChange).toHaveBeenCalledWith(true);
   });
 
   it('namespaces key/value controls by destination', () => {

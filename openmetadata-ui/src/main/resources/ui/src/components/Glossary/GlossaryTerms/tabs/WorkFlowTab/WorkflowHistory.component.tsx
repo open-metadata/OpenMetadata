@@ -74,7 +74,9 @@ const WorkflowHistoryContainer = ({
       {children}
     </Card>
   ) : (
-    <div className={className} data-testid={dataTestId}>
+    <div
+      className={classNames('tw:flex tw:min-h-0 tw:flex-col', className)}
+      data-testid={dataTestId}>
       {children}
     </div>
   );
@@ -287,7 +289,10 @@ const WorkflowHistory = memo(
             </div>
           </AriaButton>
           {!isCollapsed && (
-            <div className="workflow-timeline flex flex-col">
+            <div
+              className={classNames('workflow-timeline flex flex-col', {
+                'tw:min-h-0 tw:overflow-y-auto': !isWidget,
+              })}>
               {workflowHistory.map(renderTimelineItem)}
             </div>
           )}

@@ -34,6 +34,7 @@ import org.openmetadata.service.events.consumer.AlertRows;
 import org.openmetadata.service.events.consumer.ledger.AlertLedger;
 import org.openmetadata.service.events.consumer.ledger.AlertProgress;
 import org.openmetadata.service.events.consumer.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.ledger.PendingCount;
 
 /**
  * What an alert has done and has still to do, as its page and its diagnostics show it: the events
@@ -45,22 +46,25 @@ public final class AlertDiagnostics {
   private AlertDiagnostics() {}
 
   public static EventsRecord eventsRecord(UUID alertId) {
-    AlertProgress progress = AlertProgress.of(AlertRows.read(alertId));
+    EventSubscription alert = AlertRows.read(alertId);
+    AlertProgress progress = AlertProgress.of(alert);
     AlertProgress.Counts counts = progress.counts();
-    long pending = progress.relevantUnreadCount(AlertDiagnostics::matchingRules);
+    PendingCount pending = pendingCount(alert, progress);
     return new EventsRecord()
-        .withTotalEventsCount(counts.handled() + pending)
+        .withTotalEventsCount(counts.handled() + pending.count())
         .withFailedEventsCount(counts.failed())
-        .withPendingEventsCount(pending)
-        .withSuccessfulEventsCount(counts.delivered());
+        .withPendingEventsCount(pending.count())
+        .withSuccessfulEventsCount(counts.delivered())
+        .withCountsAreLowerBound(pending.lowerBound());
   }
 
   public static EventSubscriptionDiagnosticInfo diagnosticInfo(
       UUID alertId, int limit, int paginationOffset, boolean listCountOnly) {
-    AlertProgress progress = AlertProgress.of(AlertRows.read(alertId));
+    EventSubscription alert = AlertRows.read(alertId);
+    AlertProgress progress = AlertProgress.of(alert);
     AlertProgress.Counts counts = progress.counts();
-    List<ChangeEvent> relevant =
-        progress.relevantUnread(limit, paginationOffset, AlertDiagnostics::matchingRules);
+    PendingCount pending = pendingCount(alert, progress);
+    AlertProgress.UnreadPage page = unreadPage(progress, limit, paginationOffset, listCountOnly);
     return new EventSubscriptionDiagnosticInfo()
         .withLatestOffset(progress.latestOffset())
         .withCurrentOffset(progress.currentOffset())
@@ -69,11 +73,26 @@ public final class AlertDiagnostics {
         .withSuccessfulEventsCount(counts.delivered())
         .withFailedEventsCount(counts.failed())
         .withTotalUnprocessedEventsCount(progress.unread())
-        .withRelevantUnprocessedEventsCount(
-            progress.relevantUnreadCount(AlertDiagnostics::matchingRules))
-        .withRelevantUnprocessedEventsList(listCountOnly ? null : relevant)
-        .withTotalUnprocessedEventsList(
-            listCountOnly ? null : progress.allUnread(limit, paginationOffset));
+        .withRelevantUnprocessedEventsCount(pending.count())
+        .withRelevantUnprocessedEventsCountIsLowerBound(pending.lowerBound())
+        .withRelevantUnprocessedEventsList(page.relevant())
+        .withTotalUnprocessedEventsList(page.all());
+  }
+
+  // Shared by every request for the alert at its position, and run at most a few at a time.
+  private static PendingCount pendingCount(EventSubscription alert, AlertProgress progress) {
+    PendingCounts.Key key =
+        new PendingCounts.Key(
+            alert.getId(), alert.getVersion(), progress.currentOffset(), progress.latestOffset());
+    return PendingCounts.shared(
+        key, () -> progress.relevantUnreadCount(AlertDiagnostics::matchingRules));
+  }
+
+  private static AlertProgress.UnreadPage unreadPage(
+      AlertProgress progress, int limit, int paginationOffset, boolean listCountOnly) {
+    return listCountOnly
+        ? AlertProgress.UnreadPage.UNLISTED
+        : progress.unreadPage(limit, paginationOffset, AlertDiagnostics::matchingRules);
   }
 
   public static SubscriptionStatus destinationStatus(UUID alertId, UUID destinationId) {

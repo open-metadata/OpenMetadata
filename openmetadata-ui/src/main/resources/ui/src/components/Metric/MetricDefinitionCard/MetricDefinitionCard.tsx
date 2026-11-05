@@ -25,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Calendar,
-  Edit03,
+  Edit01,
   Percent01,
   Tag01,
   Variable01 as Variable,
@@ -160,7 +160,6 @@ const MetricDefinitionEditDialog = ({
     metric.metricExpression?.language ?? Language.SQL
   );
   const [code, setCode] = useState(metric.metricExpression?.code ?? '');
-  const [codeError, setCodeError] = useState<string>();
   const [customUnitError, setCustomUnitError] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -175,24 +174,19 @@ const MetricDefinitionEditDialog = ({
     setCustomUnit(metric.customUnitOfMeasurement ?? '');
     setLanguage(metric.metricExpression?.language ?? Language.SQL);
     setCode(metric.metricExpression?.code ?? '');
-    setCodeError(undefined);
     setCustomUnitError(undefined);
     setSaveError(false);
   }, [metric, open]);
 
   const handleSave = async () => {
-    const requiredCodeError = code.trim()
-      ? undefined
-      : t('label.field-required', { field: t('label.code') });
     const requiredCustomUnitError =
       unit === UnitOfMeasurement.Other && !customUnit.trim()
         ? t('label.field-required', {
             field: t('label.unit-of-measurement'),
           })
         : undefined;
-    setCodeError(requiredCodeError);
     setCustomUnitError(requiredCustomUnitError);
-    if (requiredCodeError || requiredCustomUnitError) {
+    if (requiredCustomUnitError) {
       return;
     }
 
@@ -206,11 +200,17 @@ const MetricDefinitionEditDialog = ({
         unitOfMeasurement: unit,
         customUnitOfMeasurement:
           unit === UnitOfMeasurement.Other ? customUnit.trim() : undefined,
-        metricExpression: {
-          ...metric.metricExpression,
-          code: code.trim(),
-          language,
-        },
+        // The expression is optional (API, import and ingestion can omit it), so an empty code
+        // must not block editing the type, granularity or unit. An existing expression keeps its
+        // language (ingestion stores `External` with no formula); only the code is cleared.
+        metricExpression:
+          code.trim() || metric.metricExpression
+            ? {
+                ...metric.metricExpression,
+                code: code.trim() || undefined,
+                language,
+              }
+            : undefined,
       });
       onClose();
     } catch {
@@ -354,18 +354,12 @@ const MetricDefinitionEditDialog = ({
                 ))}
               </Select>
               <TextArea
-                isRequired
                 data-testid="metric-definition-code"
-                hint={codeError}
                 isDisabled={isSaving}
-                isInvalid={Boolean(codeError)}
                 label={t('label.code')}
                 rows={8}
                 value={code}
-                onChange={(value) => {
-                  setCode(value);
-                  setCodeError(undefined);
-                }}
+                onChange={setCode}
               />
             </Box>
           </Dialog.Content>
@@ -431,7 +425,7 @@ const MetricDefinitionCard = ({
               className="tw:shadow-none tw:after:outline-dashed"
               color="secondary"
               data-testid="metric-definition-edit"
-              iconLeading={Edit03}
+              iconLeading={Edit01}
               size="xs"
               onPress={() => setIsEditing(true)}>
               {t('label.edit')}
@@ -451,9 +445,15 @@ const MetricDefinitionCard = ({
       />
       <Card.Content>
         <Box direction="col" gap={5}>
-          <MetricExpression isEmbedded metric={metric} />
+          <MetricExpression
+            isEmbedded
+            changeDescription={changeDescription}
+            metric={metric}
+          />
+          {/* Columns follow the card's width, not the viewport's: the card is often narrow (version
+              view, beside a panel), where viewport breakpoints let one-word labels overlap. */}
           <Box
-            className="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-3"
+            className="tw:grid tw:grid-cols-[repeat(auto-fit,minmax(--spacing(40),1fr))] tw:gap-4"
             data-testid="metric-definition-fields">
             <DefinitionField
               label={t('label.metric-type')}

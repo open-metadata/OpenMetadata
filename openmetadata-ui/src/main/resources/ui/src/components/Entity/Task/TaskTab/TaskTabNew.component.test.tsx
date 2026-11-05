@@ -440,14 +440,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn().mockReturnValue(null),
 }));
 
-jest.mock('../../../common/IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button type="button" onClick={onClick} {...props}>
-      EditIconButton
-    </button>
-  )),
-}));
-
 jest.mock(
   '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask',
   () => {
@@ -956,8 +948,8 @@ describe('TaskTabNew Component', () => {
     });
 
     const commentInput = screen.getByTestId('comments-input-field');
-    await act(async () => {
-      fireEvent.click(commentInput);
+    act(() => {
+      commentInput.focus();
     });
 
     expect(screen.getByText('ActivityFeedEditorNew')).toBeInTheDocument();

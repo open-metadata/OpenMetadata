@@ -35,7 +35,7 @@ Everything is idempotent — re-running skips what is already correct. Useful fl
 | Flag | Effect |
 |---|---|
 | `--check` | Diagnose only, change nothing. Returns nonzero when issues are found. **Always start here** on an existing checkout. |
-| `--slim` | Install `ingestion[dev]` instead of `[all-dev-env]`. Minutes instead of tens of minutes; omits most connector deps. Right choice unless the work touches a specific connector. |
+| `--slim` | Synchronize the locked `dev` profile instead of the full `test` profile; omits most connector dependencies. |
 | `-y` | Non-interactive (assumes yes for Homebrew/nvm/Docker prompts). |
 | `--with-build` | Also runs `mvn clean install -DskipTests -T 1C`. |
 | `--with-docker` | Also starts `docker/development/docker-compose.yml`. |
@@ -57,7 +57,7 @@ reports as already present.
 ### Step 2 — Choose the depth
 
 - Backend/UI work only, or a new worktree → `./scripts/dev_setup.sh --slim -y`
-- Connector or ingestion work → `./scripts/dev_setup.sh -y` (full `[all-dev-env]`)
+- Connector or ingestion work → `./scripts/dev_setup.sh -y` (locked `test` profile)
 - Ask the user before running the full install if they are on a metered/slow link — it
   downloads every connector's dependencies.
 
@@ -122,7 +122,7 @@ produces parsers those runtimes reject. Fix:
 `make install_antlr_cli ANTLR_INSTALL_DIR="$HOME/.local/bin"` (checksum-pinned, no sudo).
 
 **`make generate` fails or silently produces nothing**
-It must run inside the venv (`source env/bin/activate`) and only from the **repo root** —
+It bootstraps its locked generation tools and runs only from the **repo root** —
 it is a root-only target and does not exist under `ingestion/`. It wipes and rebuilds
 `ingestion/src/metadata/generated`, so a partial run leaves an unimportable tree; re-run it
 rather than hand-patching.
@@ -165,7 +165,10 @@ install command for their manager; do not attempt privileged installs they did n
 - Never run the script with `sudo`. It escalates only for the specific package-manager
   calls that need it.
 - Do not edit `.dev-env.local.sh` by hand — it is regenerated on every run.
-- Do not `pip install` ingestion dependencies directly; use the `make` targets so the
-  pins (`setuptools<81`, `cx_Oracle` build isolation) are honored.
+- Do not `pip install` ingestion dependencies directly; use the `make` targets or
+  the Nox sessions in `ingestion/noxfile.py` (`make python_tools` bootstraps Nox). Application profiles
+  reuse `env/`; style, generation and coverage tools use separate `.nox` environments.
+  `make generate ARGS=--python-only` skips UI generation; validate freshness with
+  `python3 scripts/check_generated_models.py --check`.
 - If a step fails, surface the real command output. Do not report "environment ready"
   from a run that produced warnings.

@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dropdown,
   Skeleton,
   Table,
@@ -175,6 +176,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     : NoDataPlaceholder;
   const navigate = useNavigate();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
+  // Set on open, never cleared: the modals animate out after selectedTestCase is
+  // cleared, and their titles would otherwise flash an empty "" while closing.
+  const [modalTestCaseName, setModalTestCaseName] = useState('');
   const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [testCaseStatus, setTestCaseStatus] = useState<
     TestCaseResolutionStatus[]
@@ -294,16 +298,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const handleEdit = (record: TestCase) => {
     setSelectedTestCase({ data: record, action: 'UPDATE' });
+    setModalTestCaseName(getEntityName(record));
     setActiveRecordId(null);
   };
 
   const handleDelete = (record: TestCase) => {
     setSelectedTestCase({ data: record, action: 'DELETE' });
+    setModalTestCaseName(getEntityName(record));
     setActiveRecordId(null);
   };
 
   const handleRestore = (record: TestCase) => {
     setSelectedTestCase({ data: record, action: 'RESTORE' });
+    setModalTestCaseName(getEntityName(record));
     setActiveRecordId(null);
   };
 
@@ -767,13 +774,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onOpenChange={(isOpen) =>
             setActiveRecordId(isOpen ? record.id ?? null : null)
           }>
-          <Button
-            className="tw:h-6 tw:w-6 tw:p-0!"
-            color="secondary"
+          <ButtonUtility
+            aria-label={t('label.more-action-plural')}
             data-testid={`action-dropdown-${record.name}`}
-            iconLeading={DotsVertical}
+            icon={DotsVertical}
             isDisabled={!hasAnyPermission}
-            size="sm"
+            size="lg"
           />
           <Dropdown.Popover className="tw:w-max">
             <Dropdown.Menu items={menuItems}>
@@ -1071,7 +1077,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           bodyText={t(
             'message.are-you-sure-you-want-to-remove-child-from-parent',
             {
-              child: getEntityName(selectedTestCase?.data),
+              child: modalTestCaseName,
               parent: getEntityName(removeFromTestSuite.testSuite),
             }
           )}
@@ -1092,7 +1098,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             entityId={selectedTestCase?.data.id ?? ''}
-            entityName={getEntityName(selectedTestCase?.data)}
+            entityName={modalTestCaseName}
             entityType={EntityType.TEST_CASE}
             visible={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}
@@ -1101,10 +1107,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       {!removeFromTestSuite &&
         deletionMode === TEST_CASE_DELETION_MODE.HARD && (
           <DeleteModal
-            entityTitle={getEntityName(selectedTestCase?.data)}
+            entityTitle={modalTestCaseName}
             isDeleting={isDeletingTestCase}
             message={t('message.delete-entity-message', {
-              entity: getEntityName(selectedTestCase?.data),
+              entity: modalTestCaseName,
             })}
             open={selectedTestCase?.action === 'DELETE'}
             onCancel={handleCancel}
@@ -1113,7 +1119,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         )}
       <ConfirmationModal
         bodyText={t('message.are-you-want-to-restore', {
-          entity: getEntityName(selectedTestCase?.data),
+          entity: modalTestCaseName,
         })}
         cancelText={t('label.cancel')}
         confirmText={t('label.restore')}

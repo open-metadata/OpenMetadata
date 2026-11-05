@@ -49,6 +49,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchEngineErrors;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -87,6 +88,7 @@ import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.UpdateRequest;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
+import os.org.opensearch.client.opensearch.tasks.GetTasksResponse;
 
 /**
  * OpenSearch implementation of entity management operations.
@@ -538,12 +540,65 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates)
       throws IOException {
-    if (!isClientAvailable) {
+    updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    String taskId = null;
+    if (isClientAvailable) {
+      taskId =
+          client
+              .updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates))
+              .task();
+      LOG.info(
+          "Successfully submitted child update in OpenSearch for indices: {} (task {})",
+          indexNames,
+          taskId);
+    } else {
       LOG.error("OpenSearch client is not available. Cannot update children for indices.");
-      return;
     }
-    submitChildUpdate(indexNames, fieldAndValue, updates);
-    LOG.info("Successfully submitted child update in OpenSearch for indices: {}", indexNames);
+    return taskId;
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return childUpdateStatusOf(client.tasks().get(g -> g.taskId(taskId)));
+  }
+
+  // A task that ran to the end can still have failed: the engine reports a refused scroll as the
+  // task's error, and per-document failures in its response.
+  static ChildUpdateStatus childUpdateStatusOf(GetTasksResponse task) {
+    ChildUpdateStatus status = ChildUpdateStatus.running();
+    if (task.completed()) {
+      List<String> failures = new ArrayList<>();
+      if (task.error() != null) {
+        failures.add(describe(task.error()));
+      }
+      if (task.response() != null) {
+        task.response().failures().forEach(failure -> failures.add(failure.toString()));
+        if (task.response().timedOut()) {
+          failures.add("timed out");
+        }
+      }
+      status =
+          failures.isEmpty()
+              ? ChildUpdateStatus.succeeded()
+              : new ChildUpdateStatus(true, String.join("; ", failures));
+    }
+    return status;
+  }
+
+  // The engine wraps the reason a task stopped, e.g. too_many_scroll_contexts_exception, inside a
+  // search_phase_execution_exception; report both.
+  private static String describe(ErrorCause error) {
+    String cause =
+        error.causedBy() == null ? "" : " caused by %s".formatted(describe(error.causedBy()));
+    return "%s: %s%s".formatted(error.type(), error.reason(), cause);
   }
 
   private void submitChildUpdate(

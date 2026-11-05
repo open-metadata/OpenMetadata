@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,10 +23,6 @@ import { updateCertificationTag } from '../../../utils/TagsPureUtils';
 import Certification from '../../Certification/Certification.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import CertificationTag from '../CertificationTag/CertificationTag';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 
 const CertificationWidget = () => {
@@ -57,14 +55,16 @@ const CertificationWidget = () => {
   };
 
   const certificationButton = entity.certification ? (
-    <WidgetEditButton
+    <ButtonUtility
       data-testid="edit-certification"
-      title={t('label.edit-entity', { entity: t('label.certification') })}
+      icon={Edit01}
+      tooltip={t('label.edit-entity', { entity: t('label.certification') })}
     />
   ) : (
-    <WidgetPlusButton
+    <ButtonUtility
       data-testid="add-certification"
-      title={t('label.add-entity', { entity: t('label.certification') })}
+      icon={Plus}
+      tooltip={t('label.add-entity', { entity: t('label.certification') })}
     />
   );
 
