@@ -199,6 +199,15 @@ public class TagRepository extends EntityRepository<Tag> {
     EntityReference classification =
         Entity.getEntityReference(entity.getClassification(), NON_DELETED);
     entity.setClassification(classification);
+    // The FQN follows the parent, so a parent from another classification would place the tag
+    // there while the request was authorized against the classification it names.
+    if (parentTerm != null
+        && !FullyQualifiedName.isParent(
+            parentTerm.getFullyQualifiedName(), classification.getFullyQualifiedName())) {
+      throw new IllegalArgumentException(
+          "A tag's parent must belong to the tag's classification "
+              + classification.getFullyQualifiedName());
+    }
 
     // Validate recognizers
     if (entity.getRecognizers() != null) {
@@ -1129,7 +1138,9 @@ public class TagRepository extends EntityRepository<Tag> {
       if (fqnChanged && !renameProcessed) {
         renameProcessed = true;
 
-        if (nameChanged && ProviderType.SYSTEM.equals(original.getProvider())) {
+        // System tags are matched by FQN (PII masking reads PII.Sensitive), so moving one under
+        // another parent or classification renames it as much as a new name does.
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
