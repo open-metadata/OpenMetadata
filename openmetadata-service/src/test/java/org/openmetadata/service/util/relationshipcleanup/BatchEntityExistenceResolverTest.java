@@ -24,9 +24,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ConversationRepository;
-import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs;
 
 class BatchEntityExistenceResolverTest {
 
@@ -65,38 +63,10 @@ class BatchEntityExistenceResolverTest {
   }
 
   @Test
-  void resolvesSuggestionExistenceThroughSuggestionDao() {
-    final UUID existingId = UUID.randomUUID();
-    final UUID missingId = UUID.randomUUID();
-    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    final WorkflowDocStoreDAOs.SuggestionDAO suggestionDAO =
-        mock(WorkflowDocStoreDAOs.SuggestionDAO.class);
+  void treatsSuggestionEndpointsAsOrphaned() {
     final BatchEntityExistenceResolver resolver =
         new BatchEntityExistenceResolver(Map.of(), Map.of());
-    when(collectionDAO.suggestionDAO()).thenReturn(suggestionDAO);
-    when(suggestionDAO.findById(existingId)).thenReturn("{}");
-    when(suggestionDAO.findById(missingId)).thenReturn(null);
 
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-
-      assertTrue(resolver.exists(existingId, Entity.SUGGESTION));
-      assertFalse(resolver.exists(missingId, Entity.SUGGESTION));
-    }
-  }
-
-  @Test
-  void failsOpenWhenSuggestionExistenceCannotBeResolved() {
-    final UUID suggestionId = UUID.randomUUID();
-    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    final BatchEntityExistenceResolver resolver =
-        new BatchEntityExistenceResolver(Map.of(), Map.of());
-    when(collectionDAO.suggestionDAO()).thenThrow(new IllegalStateException("table missing"));
-
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-
-      assertTrue(resolver.exists(suggestionId, Entity.SUGGESTION));
-    }
+    assertFalse(resolver.exists(UUID.randomUUID(), Entity.SUGGESTION));
   }
 }
