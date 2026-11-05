@@ -207,17 +207,6 @@ jest.mock('../../common/EntityPageInfos/ManageButton/ManageButton', () =>
     ))
 );
 
-jest.mock('../../Entity/EntityHeaderTitle/EntityHeaderTitle.component', () =>
-  jest.fn().mockImplementation(({ displayName, name, isDisabled, badge }) => (
-    <div data-testid="entity-header-title">
-      <span data-testid="classification-name">{name}</span>
-      <span data-testid="classification-display-name">{displayName}</span>
-      {isDisabled && <span data-testid="disabled-indicator">Disabled</span>}
-      {badge}
-    </div>
-  ))
-);
-
 jest.mock('../../common/Table/TableV2', () =>
   jest.fn().mockImplementation(({ columns, dataSource, loading, locale }) => (
     <div data-testid="tags-table">
@@ -471,7 +460,7 @@ describe('ClassificationDetails', () => {
       expect(screen.getByTestId('tag-row-Tag1')).toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('classification-name')).toHaveTextContent(
+    expect(screen.getByTestId('entity-header-name')).toHaveTextContent(
       'TestClassification'
     );
     expect(screen.getByTestId('tag-row-Tag2')).toBeInTheDocument();
@@ -679,7 +668,7 @@ describe('ClassificationDetails', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('disabled-indicator')).toBeInTheDocument()
+      expect(screen.getByTestId('disabled')).toBeInTheDocument()
     );
 
     expect(screen.getByTestId('add-new-tag-button')).toBeDisabled();
