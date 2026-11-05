@@ -38,6 +38,8 @@ import org.apache.jena.update.Update;
 import org.apache.jena.update.UpdateFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /**
@@ -66,9 +68,17 @@ final class AssertedGraphTrackingRdfStorage extends ForwardingRdfStorage {
   }
 
   @Override
-  public void storeEntity(final String entityType, final UUID entityId, final Model entityModel) {
-    delegate.storeEntity(entityType, entityId, entityModel);
-    assertedOnlyQueries.graphsWritten(entityGraphs);
+  public RdfEntityWriteResult storeEntity(
+      final String entityType,
+      final UUID entityId,
+      final Model entityModel,
+      final RdfEntityWriteStrategy strategy) {
+    final RdfEntityWriteResult result =
+        delegate.storeEntity(entityType, entityId, entityModel, strategy);
+    if (result.changesGraph()) {
+      assertedOnlyQueries.graphsWritten(entityGraphs);
+    }
+    return result;
   }
 
   @Override

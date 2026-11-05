@@ -75,6 +75,7 @@ const OntologyConceptSearch = ({
     <div className="tw:relative tw:w-full" onKeyDown={handleKeyDown}>
       <Input
         aria-label={t('label.find-concept')}
+        autoComplete="off"
         className="tw:w-full tw:min-w-36 tw:sm:w-54"
         icon={Search}
         inputDataTestId="ontology-graph-search"

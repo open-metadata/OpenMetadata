@@ -254,7 +254,12 @@ def lint(session):
     sources = [str(INGESTION_ROOT), str(ROOT / "openmetadata-airflow-apis")]
     sources.extend(
         str(ROOT / "scripts" / name)
-        for name in ("generate_ingestion_models.py", "check_generated_models.py", "datamodel_generation.py")
+        for name in (
+            "generate_ingestion_models.py",
+            "check_generated_models.py",
+            "datamodel_generation.py",
+            "update_version.py",
+        )
     )
     session.run(
         str(python.parent / "ruff"),

@@ -219,7 +219,10 @@ let formRef: UseFormReturn<FormValues> | undefined;
 
 const renderBody = (
   props: Partial<Parameters<typeof TestCaseFormBody>[0]> = {},
-  defaultValues: Partial<FormValues> = { testLevel: TestLevel.TABLE }
+  defaultValues: Partial<FormValues> = {
+    testLevel: TestLevel.TABLE,
+    createPipeline: true,
+  }
 ) => {
   const Wrapper = () => {
     const form = useForm<FormValues>({
@@ -853,6 +856,26 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('schedule-interval')).toBeInTheDocument();
     expect(await screen.findByTestId('enable-debug-log')).toBeInTheDocument();
     expect(await screen.findByTestId('raise-on-error')).toBeInTheDocument();
+  });
+
+  it('hides the pipeline settings and the pipeline notice when create pipeline is switched off', async () => {
+    await act(async () => {
+      renderBody({ table: SELECTED_TABLE });
+    });
+
+    expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: 'label.create-entity' })
+      );
+    });
+
+    expect(formRef?.getValues('createPipeline')).toBe(false);
+    expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('schedule-interval')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('does not render the scheduler section when a pipeline already exists', async () => {

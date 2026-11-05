@@ -500,7 +500,7 @@ describe('Test EntityTable Component', () => {
       MOCK_TABLE.fullyQualifiedName,
       {
         fields: 'tags,customMetrics,extension',
-        limit: 50,
+        limit: 15,
         offset: 0,
         sortBy: 'name',
         sortOrder: 'asc',
@@ -525,7 +525,7 @@ describe('Test EntityTable Component', () => {
       MOCK_TABLE.fullyQualifiedName,
       {
         fields: 'tags,customMetrics,extension',
-        limit: 50,
+        limit: 15,
         offset: 0,
         sortBy: 'name',
         sortOrder: 'asc',

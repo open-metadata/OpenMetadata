@@ -73,6 +73,7 @@ const LinkModal: FC<LinkModalProps> = ({
               <Input
                 // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the link input when the modal opens
                 autoFocus
+                autoComplete="off"
                 id="href"
                 label="Link"
                 name="href"

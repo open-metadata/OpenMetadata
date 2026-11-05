@@ -50,9 +50,8 @@ import ExploreQueryFilterChips from '../../components/Explore/ExploreQueryFilter
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import {
   entitySortingFields,
@@ -110,12 +109,6 @@ const EntitySummaryPanel = withSuspenseFallback(
 );
 
 const EXPORT_ALL_ASSETS_LIMIT = 200000;
-const EXPLORE_PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
-
 interface ExploreExportScopeModalProps {
   open: boolean;
   exportScope: 'visible' | 'all';
@@ -259,6 +252,7 @@ const ExploreExportScopeModal = ({
                 className="export-scope-option-card tw:flex-1 tw:p-4"
                 data-testid="export-scope-visible-card"
                 isSelected={exportScope === 'visible'}
+                variant="muted"
                 onClick={() => onExportScopeChange('visible')}>
                 <div className="d-flex items-start gap-1">
                   {/* Reproduces antd's 16x22 radio wrapper and its 8px gap. */}
@@ -302,6 +296,7 @@ const ExploreExportScopeModal = ({
                 className="export-scope-option-card tw:flex-1 tw:p-4"
                 data-testid="export-scope-all-card"
                 isSelected={exportScope === 'all'}
+                variant="muted"
                 onClick={() => onExportScopeChange('all')}>
                 <div className="d-flex items-start tw:gap-1">
                   {/* Reproduces antd's 16x22 radio wrapper and its 8px gap. */}
@@ -442,7 +437,7 @@ interface ExploreResultsPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
-  additionalSearchResults?: ExploreProps['additionalSearchResults'];
+  additionalSearchResults: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -467,7 +462,7 @@ interface ExploreResultsListPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
-  additionalSearchResults?: ExploreProps['additionalSearchResults'];
+  additionalSearchResults: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -530,7 +525,7 @@ const ExploreResultsListPanel = ({
         <PaginationCardWithControls
           page={validCurrentPage}
           pageSize={pageSize}
-          pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}
+          pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
           total={totalPages}
           onPageChange={handleExplorePageChange}
           onPageSizeChange={handleExplorePageSizeChange}
