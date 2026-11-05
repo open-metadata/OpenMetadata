@@ -214,7 +214,7 @@ const EntityHeaderTitle = ({
       {icon && <div className="flex-center">{icon}</div>}
       <div
         className={classNames(
-          'd-flex flex-col gap-1 w-min-0 entity-header-container tw:relative tw:max-w-full',
+          'd-flex flex-col w-min-0 entity-header-container tw:relative tw:max-w-full',
           {
             'w-max-full-200': deleted || badge,
           }
