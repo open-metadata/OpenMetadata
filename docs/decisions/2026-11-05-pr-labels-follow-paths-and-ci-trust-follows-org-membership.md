@@ -27,8 +27,8 @@ The `Team Label` job in `.github/workflows/team-labeler.yml` labels a PR in two 
   never get it. The fork-sync step still removes the label on every push to a fork, before the
   author is checked again.
 - Reading private org membership needs `members:read`, which the default `GITHUB_TOKEN` lacks. A
-  GitHub App token minted from `vars.TEAM_READER_APP_CLIENT_ID` and
-  `secrets.TEAM_READER_APP_PRIVATE_KEY` provides it, scoped to that one permission.
+  token minted from the org bot App (`secrets.GH_BOT_ID` / `secrets.GH_BOT_PK`, the same App
+  openmetadata-collate's workflows use) provides it, narrowed to that one permission.
 - `.github/team-config.yml` holds only exceptions: the people the GitHub rosters can't express.
 
 ## Consequences

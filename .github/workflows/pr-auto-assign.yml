@@ -37,13 +37,14 @@ jobs:
     steps:
       # Listing team members needs members:read, which the default GITHUB_TOKEN doesn't have.
       # Without it a team owner contributes no candidates and the PR stays unassigned.
-      - name: Mint org members read token
-        id: org-read-token
+      # Same org bot App as openmetadata-collate's workflows, narrowed to members:read.
+      - name: Generate a token
+        id: generate_token
         continue-on-error: true
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
-          client-id: ${{ vars.TEAM_READER_APP_CLIENT_ID }}
-          private-key: ${{ secrets.TEAM_READER_APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.GH_BOT_ID }}
+          private-key: ${{ secrets.GH_BOT_PK }}
           owner: ${{ github.repository_owner }}
           permission-members: read
 
@@ -64,7 +65,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           TEAM_CONFIG: ${{ steps.team-config.outputs.json }}
-          ORG_READ_TOKEN: ${{ steps.org-read-token.outputs.token }}
+          ORG_READ_TOKEN: ${{ steps.generate_token.outputs.token }}
         with:
           script: |
             const { owner, repo } = context.repo;
