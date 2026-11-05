@@ -543,7 +543,7 @@ const GlossaryTermStatusCell = ({
           <StatusBadge label={status} status={EntityStatusClass[status]} />
         )}
       </AriaButton>
-      <Popover isNonModal placement="top start">
+      <Popover isNonModal className="tw:overflow-y-auto" placement="top start">
         <div
           className="tw:min-w-65 tw:p-3"
           data-testid="workflow-history-popover"
