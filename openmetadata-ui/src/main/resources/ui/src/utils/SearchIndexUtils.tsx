@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { get, isEmpty, uniqueId } from 'lodash';
+import { get, uniqueId } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
@@ -33,6 +33,7 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
+import { getJSONEditorValue } from './SchemaEditor.utils';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -210,11 +211,9 @@ export const getSearchIndexDetailsTabs = ({
       children: (
         <QueryViewer
           isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
-          sqlQuery={
-            isEmpty(searchIndexDetails?.searchIndexSettings)
-              ? ''
-              : JSON.stringify(searchIndexDetails?.searchIndexSettings)
-          }
+          sqlQuery={getJSONEditorValue(
+            searchIndexDetails?.searchIndexSettings
+          )}
         />
       ),
     },

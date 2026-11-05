@@ -929,7 +929,9 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
 
     // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
     await expect(
-      page.getByRole('tabpanel', { name: 'dbt' }).getByTestId('no-data-placeholder')
+      page
+        .getByRole('tabpanel', { name: 'dbt' })
+        .getByTestId('no-data-placeholder')
     ).toBeVisible();
     await expect(page.getByTestId('query-line')).not.toBeVisible();
     await expect(
@@ -983,7 +985,9 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
 
     // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
     await expect(
-      page.getByRole('tabpanel', { name: 'dbt' }).getByTestId('no-data-placeholder')
+      page
+        .getByRole('tabpanel', { name: 'dbt' })
+        .getByTestId('no-data-placeholder')
     ).toBeVisible();
     await expect(page.getByTestId('query-line')).not.toBeVisible();
     await expect(

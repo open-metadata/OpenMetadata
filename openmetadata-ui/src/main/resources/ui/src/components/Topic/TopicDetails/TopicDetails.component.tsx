@@ -15,7 +15,6 @@ import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
 import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import type { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import type { EntityTags } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,6 +50,7 @@ import {
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getJSONEditorValue } from '../../../utils/SchemaEditor.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
@@ -423,11 +423,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       queryViewerTab: (
         <QueryViewer
           isActive={activeTab === EntityTabs.CONFIG}
-          sqlQuery={
-            isEmpty(topicDetails.topicConfig)
-              ? ''
-              : JSON.stringify(topicDetails.topicConfig)
-          }
+          sqlQuery={getJSONEditorValue(topicDetails.topicConfig)}
         />
       ),
       lineageTab: (
