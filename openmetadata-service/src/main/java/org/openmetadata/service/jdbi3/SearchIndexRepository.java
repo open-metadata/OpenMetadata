@@ -385,12 +385,21 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     List<TagLabel> allTags = new ArrayList<>();
     SearchIndex searchIndex = (SearchIndex) entity;
     EntityUtil.mergeTags(allTags, searchIndex.getTags());
-    List<SearchIndexField> schemaFields =
-        searchIndex.getFields() != null ? searchIndex.getFields() : null;
-    for (SearchIndexField schemaField : listOrEmpty(schemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    mergeSearchIndexFieldTags(allTags, searchIndex.getFields());
     return allTags;
+  }
+
+  private static void mergeSearchIndexFieldTags(
+      List<TagLabel> allTags, List<SearchIndexField> fields) {
+    for (SearchIndexField field : listOrEmpty(fields)) {
+      EntityUtil.mergeTags(allTags, field.getTags());
+      mergeSearchIndexFieldTags(allTags, field.getChildren());
+    }
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,fields");
   }
 
   private Map<UUID, List<EntityReference>> batchFetchFollowers(List<SearchIndex> searchIndexes) {

@@ -27,7 +27,7 @@ import {
   ActivityPipelineStatusChanged,
   ActivityTagsUpdated,
   ActivityTestCaseStatusChanged,
-  ActivityTierChanged,
+  AppCacheWarmup,
   Edit01,
   File02,
   Globe01,
@@ -126,7 +126,7 @@ export const ACTIVITY_EVENT_BADGE: Record<ActivityEventType, ActivityBadge> = {
     badgeClassName: 'tw:bg-utility-orange-700',
   },
   [ActivityEventType.TierUpdated]: {
-    icon: ActivityTierChanged,
+    icon: AppCacheWarmup,
     badgeClassName: 'tw:bg-utility-success-700',
   },
   [ActivityEventType.CustomPropertyUpdated]: {

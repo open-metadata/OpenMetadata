@@ -24,7 +24,9 @@ import {
   useNavigate,
   useNavigationType,
 } from 'react-router-dom';
+import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
+import { useSavedPageSize } from './paging/useSavedPageSize';
 
 /**
  * Parsed hash state for the settings modal.
@@ -348,17 +350,58 @@ export const useSettingsHash = () => {
   return { state, setHash, clearHash, updateParams, goTo };
 };
 
+interface HashPaging {
+  page: number;
+  cursorType?: string;
+  cursor?: string;
+  pageSize?: number;
+  isPageSizeRejected: boolean;
+}
+
+function readHashPaging(
+  params: Record<string, string | undefined>,
+  pageSizeOptions: number[]
+): HashPaging {
+  const requestedPageSize = Number(params.pageSize) || undefined;
+  const isPageSizeRejected = Boolean(
+    requestedPageSize && !pageSizeOptions.includes(requestedPageSize)
+  );
+
+  if (isPageSizeRejected) {
+    return { page: 1, isPageSizeRejected };
+  }
+
+  return {
+    page: Number(params.page) || 1,
+    cursorType: params.cursorType || undefined,
+    cursor: params.cursor || undefined,
+    pageSize: requestedPageSize,
+    isPageSizeRejected,
+  };
+}
+
 /**
  * Hook to read/write pagination params from the hash.
  * Drop-in replacement for usePaging when inside the settings modal.
  */
-export const useHashPagingParams = () => {
+export const useHashPagingParams = (
+  pageSizeOptions: number[] = LIST_PAGE_SIZE_OPTIONS
+) => {
   const { state, updateParams } = useSettingsHash();
+  const { page, cursorType, cursor, pageSize, isPageSizeRejected } =
+    readHashPaging(state.params, pageSizeOptions);
+  const { resolvePageSize, savePageSize } = useSavedPageSize(pageSizeOptions);
 
-  const page = Number(state.params.page) || 1;
-  const cursorType = state.params.cursorType || undefined;
-  const cursor = state.params.cursor || undefined;
-  const pageSize = Number(state.params.pageSize) || undefined;
+  useEffect(() => {
+    if (isPageSizeRejected) {
+      updateParams({
+        page: undefined,
+        cursorType: undefined,
+        cursor: undefined,
+        pageSize: undefined,
+      });
+    }
+  }, [isPageSizeRejected, updateParams]);
 
   const setPage = useCallback(
     (
@@ -377,7 +420,15 @@ export const useHashPagingParams = () => {
     [updateParams]
   );
 
-  return { page, cursorType, cursor, pageSize, setPage };
+  return {
+    page,
+    cursorType,
+    cursor,
+    pageSize,
+    resolvedPageSize: resolvePageSize(pageSize),
+    savePageSize,
+    setPage,
+  };
 };
 
 /**

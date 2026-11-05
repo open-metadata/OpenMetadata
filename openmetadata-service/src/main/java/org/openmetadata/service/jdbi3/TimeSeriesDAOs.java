@@ -2170,6 +2170,24 @@ public interface TimeSeriesDAOs {
       deleteIncidents(entityFQNHash);
     }
 
+    @SqlQuery("SELECT stateId FROM test_case_resolution_status_time_series WHERE id = :id")
+    String getStateId(@Bind("id") String id);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_incident WHERE stateId = :stateId AND NOT EXISTS ("
+            + "SELECT 1 FROM test_case_resolution_status_time_series WHERE stateId = :stateId)")
+    void deleteIncidentWithoutRecords(@Bind("stateId") String stateId);
+
+    // An incident row summarizes the records of its stateId, so it goes with the last of them.
+    @Override
+    default void deleteById(UUID id) {
+      String stateId = getStateId(id.toString());
+      deleteById(getTimeSeriesTableName(), id.toString());
+      if (stateId != null) {
+        deleteIncidentWithoutRecords(stateId);
+      }
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, "
@@ -2447,6 +2465,20 @@ public interface TimeSeriesDAOs {
                 + ")",
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_incident "
+            + "WHERE stateId IN ("
+            + "  SELECT stateId FROM ("
+            + "    SELECT tci.stateId FROM test_case_incident tci "
+            + "    WHERE NOT EXISTS ("
+            + "      SELECT 1 FROM test_case_resolution_status_time_series ts "
+            + "      WHERE ts.stateId = tci.stateId"
+            + "    ) "
+            + "    LIMIT :limit"
+            + "  ) sub"
+            + ")")
+    int deleteOrphanedIncidents(@Bind("limit") int limit);
 
     // Statuses an open incident can currently be in, from the most actionable to the least.
     // Resolved is left out throughout: a resolved incident has left the group, so it neither

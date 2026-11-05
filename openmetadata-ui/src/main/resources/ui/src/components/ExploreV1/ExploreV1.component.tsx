@@ -50,9 +50,8 @@ import ExploreQueryFilterChips from '../../components/Explore/ExploreQueryFilter
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import {
   entitySortingFields,
@@ -110,12 +109,6 @@ const EntitySummaryPanel = withSuspenseFallback(
 );
 
 const EXPORT_ALL_ASSETS_LIMIT = 200000;
-const EXPLORE_PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
-
 interface ExploreExportScopeModalProps {
   open: boolean;
   exportScope: 'visible' | 'all';
@@ -442,7 +435,7 @@ interface ExploreResultsPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
-  additionalSearchResults?: ExploreProps['additionalSearchResults'];
+  additionalSearchResults: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -467,7 +460,7 @@ interface ExploreResultsListPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
-  additionalSearchResults?: ExploreProps['additionalSearchResults'];
+  additionalSearchResults: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -530,7 +523,7 @@ const ExploreResultsListPanel = ({
         <PaginationCardWithControls
           page={validCurrentPage}
           pageSize={pageSize}
-          pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}
+          pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
           total={totalPages}
           onPageChange={handleExplorePageChange}
           onPageSizeChange={handleExplorePageSizeChange}
