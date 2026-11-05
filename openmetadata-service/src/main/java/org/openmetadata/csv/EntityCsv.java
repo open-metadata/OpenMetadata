@@ -1829,6 +1829,14 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     pendingEntityFQNs.clear();
   }
 
+  /** Entities of a type that earlier rows of this batch queued but have not written yet. */
+  protected final List<EntityInterface<?>> queuedEntities(String entityType) {
+    return pendingEntityOperations.stream()
+        .filter(op -> entityType.equals(op.entityType))
+        .<EntityInterface<?>>map(op -> op.entity)
+        .toList();
+  }
+
   protected boolean hasPendingEntity(String entityType, String fqn) {
     return pendingEntityOperations.stream()
         .anyMatch(

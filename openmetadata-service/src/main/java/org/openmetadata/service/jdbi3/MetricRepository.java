@@ -727,11 +727,14 @@ public class MetricRepository extends EntityRepository<Metric> {
         return;
       }
       if (stored != null) {
+        Set<UUID> subtree = new HashSet<>();
         for (EntityReference metric : repository.hierarchySubtree(stored.getId())) {
+          subtree.add(metric.getId());
           authorize(
               new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
               new ResourceContext<>(METRIC, metric.getId(), metric.getFullyQualifiedName()));
         }
+        authorizeQueuedDescendants(repository, subtree);
       }
       for (EntityReference destination : hierarchyDestinations(stored, entity)) {
         authorize(
@@ -758,21 +761,46 @@ public class MetricRepository extends EntityRepository<Metric> {
       return getEntityWithDependencyResolution(METRIC, fqn, FIELD_METRIC_GROUP, NON_DELETED);
     }
 
+    // A group change moves the subtree as it stands when written, which includes metrics earlier
+    // rows of this batch queued under it (e.g. a child created a few rows up).
+    private void authorizeQueuedDescendants(MetricRepository repository, Set<UUID> subtree) {
+      List<Metric> queued = queuedEntities(METRIC).stream().map(Metric.class::cast).toList();
+      boolean grew = true;
+      while (grew) {
+        grew = false;
+        for (Metric metric : queued) {
+          if (metric.getParent() != null
+              && subtree.contains(metric.getParent().getId())
+              && subtree.add(metric.getId())) {
+            authorize(
+                new OperationContext(METRIC, MetadataOperation.EDIT_ALL),
+                unsavedContext(repository, metric));
+            grew = true;
+          }
+        }
+      }
+    }
+
     private ResourceContextInterface destinationContext(
         MetricRepository repository, EntityReference destination) {
       if (Boolean.TRUE.equals(importResult.getDryRun())
           && METRIC.equals(destination.getType())
           && getCreatedEntity(destination.getFullyQualifiedName()) instanceof Metric pending) {
-        return new ResourceContext<>(METRIC, pending, repository) {
-          @Override
-          public List<TagLabel> getTags() {
-            // Reloading tags would erase a dry-run parent's policy attributes: it is not stored.
-            return Entity.getEntityTags(METRIC, pending);
-          }
-        };
+        return unsavedContext(repository, pending);
       }
       return new ResourceContext<>(
           destination.getType(), destination.getId(), destination.getFullyQualifiedName());
+    }
+
+    private static ResourceContextInterface unsavedContext(
+        MetricRepository repository, Metric metric) {
+      return new ResourceContext<>(METRIC, metric, repository) {
+        @Override
+        public List<TagLabel> getTags() {
+          // Reloading tags would erase the policy attributes of a metric that is not stored yet.
+          return Entity.getEntityTags(METRIC, metric);
+        }
+      };
     }
 
     @Override

@@ -27,6 +27,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -202,6 +203,33 @@ class MetricCsvAuthorizationIT {
     } else {
       assertNull(stored.getParent());
     }
+  }
+
+  @Test
+  void movingMetricRequiresEditOnChildrenQueuedEarlierInTheImport(TestNamespace ns)
+      throws Exception {
+    Editor editor = editor(ns, "true", "matchAnyTag('" + RESTRICTED_TAG + "')");
+    Metric root = metric(ns, "root");
+    MetricGroup group =
+        ADMIN
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/metricGroups",
+                new CreateMetricGroup().withName(ns.shortPrefix("group")),
+                MetricGroup.class);
+    String child = ns.shortPrefix("queued_child");
+    String csv =
+        csv(
+            root,
+            List.of(
+                Map.of(0, child, 10, RESTRICTED_TAG, 19, root.getFullyQualifiedName(), 21, ""),
+                Map.of(21, group.getFullyQualifiedName())));
+
+    assertRows(importCsv(editor.client(), root, csv, false), 1, 1);
+
+    assertNull(ADMIN.metrics().get(root.getId().toString(), "metricGroup").getMetricGroup());
+    assertNull(ADMIN.metrics().getByName(child, "metricGroup").getMetricGroup());
   }
 
   @ParameterizedTest
