@@ -1,6 +1,7 @@
 -- Backfill test_case_incident from existing history: fold each stateId chain to its
 -- first/last timestamps, pick the latest record (MAX(id) tie-break, matching the read
 -- query this table replaces), and upsert one summary row per incident. Idempotent.
+-- Incidents whose test case was hard-deleted lost their parentOf row (relation 9) and are skipped.
 INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, assignee, severity, createdAt, updatedAt, latestRecordId)
 WITH chain AS (
   SELECT stateId, MIN(timestamp) AS createdAt, MAX(timestamp) AS updatedAt
@@ -19,6 +20,11 @@ SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
 FROM latestRecord l
 INNER JOIN test_case_resolution_status_time_series t ON t.id = l.latestId
 WHERE t.entityFQNHash IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM entity_relationship er
+    WHERE er.toId = t.id AND er.relation = 9
+      AND er.fromEntity = 'testCase' AND er.toEntity = 'testCaseResolutionStatus'
+  )
 ON DUPLICATE KEY UPDATE
   testCaseResolutionStatusType = VALUES(testCaseResolutionStatusType),
   assignee = VALUES(assignee),

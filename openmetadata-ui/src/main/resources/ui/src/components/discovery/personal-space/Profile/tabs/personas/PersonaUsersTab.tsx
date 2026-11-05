@@ -165,10 +165,9 @@ const PersonaUsersTab = ({
             title={t('label.remove-entity', { entity: getEntityName(user) })}
             onConfirm={() => handleRemove(user.id)}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`remove-user-${getEntityName(user)}`}
               icon={Trash01}
-              size="xs"
+              size="lg"
               tooltip={t('label.remove-entity', { entity: t('label.user') })}
               tooltipPlacement="left"
             />
@@ -176,10 +175,9 @@ const PersonaUsersTab = ({
         ) : (
           <ButtonUtility
             isDisabled
-            color="tertiary"
             data-testid={`remove-user-${getEntityName(user)}`}
             icon={Trash01}
-            size="xs"
+            size="lg"
             tooltip={t(NO_PERMISSION_FOR_ACTION)}
             tooltipPlacement="left"
           />

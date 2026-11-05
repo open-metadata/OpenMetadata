@@ -339,9 +339,11 @@
         "*Transaction*IT",
         "*UnitOfWork*IT",
         "*Orphan*IT",
+        "*HardDelete*IT",
         "*Benchmark*IT",
         "*OptimisticLock*IT",
-        "org/openmetadata/it/tests/repositories/**"
+        "org/openmetadata/it/tests/repositories/**",
+        "LifeCycle*IT"
       ]
     },
     {
@@ -480,6 +482,7 @@
       "tests": [
         "org/openmetadata/it/tests/search/**",
         "*Search*IT",
+        "InheritedField*IT",
         "*Index*IT",
         "*Reindex*IT",
         "*Alias*IT",
@@ -595,6 +598,7 @@
         "*Saml*IT",
         "*Identity*IT",
         "*Session*IT",
+        "*Password*IT",
         "*Token*IT",
         "*Credential*IT",
         "*Credential*Test",
@@ -602,6 +606,7 @@
         "*Login*IT",
         "*Privilege*IT",
         "*Isolation*IT",
+        "*ReferenceList*IT",
         "*Security*IT",
         "User*IT",
         "*Sso*IT",
@@ -1153,7 +1158,8 @@
         "*PromptTemplate*IT",
         "*Ai*IT",
         "*Conversation*IT",
-        "*ContextFile*IT"
+        "*ContextFile*IT",
+        "*ContextHistory*IT"
       ]
     },
     {

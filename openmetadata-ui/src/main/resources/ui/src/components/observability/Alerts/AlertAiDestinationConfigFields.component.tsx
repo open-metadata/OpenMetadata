@@ -18,6 +18,7 @@ import {
   AccordionPanel,
   BadgeWithButton,
   Button,
+  ButtonUtility,
   Checkbox,
   Input,
   Label,
@@ -35,8 +36,9 @@ import {
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
+import { debounce, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { DESTINATION_TYPE_BASED_PLACEHOLDERS } from '../../../constants/Alerts.constants';
 import { EMAIL_REG_EX } from '../../../constants/regex.constants';
@@ -47,14 +49,22 @@ import {
   Type,
 } from '../../../generated/events/eventSubscription';
 import {
+  clearMaskedSecrets,
+  withAuthType,
+} from '../../../utils/Alerts/AlertsUtilPure';
+import {
   ALERT_AI_FORM_CLASS_NAMES,
   ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER,
 } from './AlertAiFormFields.constants';
-import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
+import {
+  AlertAiDestinationItemProps,
+  AlertAiFormValue,
+} from './AlertAiFormFields.interface';
 import {
   getStringArrayValue,
   getValidationPath,
   isWebhookDestination,
+  setValueAtPath,
   updateAlertAiValue,
   WebhookDestinationType,
 } from './AlertAiFormFieldsPureUtils';
@@ -535,13 +545,11 @@ const KeyValueList = ({
             : t('label.query-parameter-plural')}
         </Typography>
         {!isViewOnly && (
-          <Button
-            aria-label={t('label.add')}
-            color="secondary"
+          <ButtonUtility
             data-testid={`add-${testIdPrefix}-button-${name}`}
-            iconLeading={Plus}
-            size="xs"
-            onPress={() => onChange([...entries, { key: '', value: '' }])}
+            icon={Plus}
+            tooltip={t('label.add')}
+            onClick={() => onChange([...entries, { key: '', value: '' }])}
           />
         )}
       </div>
@@ -566,13 +574,12 @@ const KeyValueList = ({
             ))}
           </div>
           {!isViewOnly && (
-            <Button
-              aria-label={t('label.remove')}
-              color="secondary"
+            <ButtonUtility
               data-testid={`remove-${testIdPrefix}-button-${name}-${index}`}
-              iconLeading={Trash01}
-              size="xs"
-              onPress={() => onChange(entries.filter((_, i) => i !== index))}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove')}
+              onClick={() => onChange(entries.filter((_, i) => i !== index))}
             />
           )}
         </div>
@@ -635,6 +642,25 @@ const WebhookDestinationFields = ({
 }) => {
   const { t } = useTranslation();
 
+  const advancedConfigId = `advanced-config-${name}`;
+  const [advancedConfigKeys, setAdvancedConfigKeys] = useState<Set<Key>>(
+    () => new Set()
+  );
+
+  // A new URL or token URL sends the secrets somewhere else, so the hidden ones are emptied
+  // and the advanced configuration opens on them, where the form asks for each one again.
+  const changeWhereItSends = (path: string[], nextValue: string) => {
+    const config = destination?.config ?? {};
+    const cleared = clearMaskedSecrets(config) ?? {};
+    updateDestinationConfig(
+      [],
+      setValueAtPath(cleared as AlertAiFormValue, path, nextValue)
+    );
+    if (!isEqual(cleared, config)) {
+      setAdvancedConfigKeys(new Set([advancedConfigId]));
+    }
+  };
+
   return (
     <>
       <div className={ALERT_AI_FORM_CLASS_NAMES.field}>
@@ -647,9 +673,7 @@ const WebhookDestinationFields = ({
           placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[destinationType]}
           size="sm"
           value={destination?.config?.endpoint ?? ''}
-          onChange={(nextValue) =>
-            updateDestinationConfig(['endpoint'], nextValue)
-          }
+          onChange={(nextValue) => changeWhereItSends(['endpoint'], nextValue)}
         />
       </div>
       <div
@@ -657,8 +681,10 @@ const WebhookDestinationFields = ({
           ALERT_AI_FORM_CLASS_NAMES.field,
           ALERT_AI_FORM_CLASS_NAMES.columnSpanFull
         )}>
-        <Accordion>
-          <AccordionItem id={`advanced-config-${name}`}>
+        <Accordion
+          expandedKeys={advancedConfigKeys}
+          onExpandedChange={setAdvancedConfigKeys}>
+          <AccordionItem id={advancedConfigId}>
             <AccordionHeader>
               <Typography
                 as="span"
@@ -680,8 +706,11 @@ const WebhookDestinationFields = ({
                   size="sm"
                   onSelectionChange={(key) =>
                     updateDestinationConfig(
-                      ['authType', 'type'],
-                      key ? String(key) : Type.None
+                      [],
+                      withAuthType(
+                        destination?.config,
+                        (key ? String(key) : Type.None) as Type
+                      ) as AlertAiFormValue
                     )
                   }>
                   {renderSelectItem}
@@ -718,10 +747,7 @@ const WebhookDestinationFields = ({
                       size="sm"
                       value={destination?.config?.authType?.tokenUrl ?? ''}
                       onChange={(nextValue) =>
-                        updateDestinationConfig(
-                          ['authType', 'tokenUrl'],
-                          nextValue
-                        )
+                        changeWhereItSends(['authType', 'tokenUrl'], nextValue)
                       }
                     />
                     <PasswordInput

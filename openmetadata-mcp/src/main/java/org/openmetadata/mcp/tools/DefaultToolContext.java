@@ -211,6 +211,14 @@ public class DefaultToolContext {
         .build();
   }
 
+  /** A call refused before it reaches any tool, answered in the shape of a tool's own 403. */
+  public static CallToolOutcome forbidden(String message) {
+    return new CallToolOutcome(
+        errorResult(errorPayload(message, STATUS_FORBIDDEN)),
+        0L,
+        McpToolCallUsage.ErrorCategory.AUTH);
+  }
+
   private static McpSchema.CallToolResult errorResult(Map<String, Object> error) {
     return McpSchema.CallToolResult.builder()
         .content(List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(error))))

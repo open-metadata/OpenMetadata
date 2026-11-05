@@ -22,10 +22,13 @@ import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import jakarta.json.JsonException;
 import jakarta.json.stream.JsonGenerator;
+import jakarta.ws.rs.BadRequestException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
@@ -40,10 +43,14 @@ final class LineageSceneQuery {
   static Query parseQueryFilter(String queryFilter) {
     Query result = null;
     if (!nullOrEmpty(queryFilter)) {
-      JsonNode filter = JsonUtils.readTree(queryFilter);
-      JsonNode innerQuery = filter.has("query") ? filter.path("query") : filter;
-      if (!nullOrEmpty(innerQuery)) {
-        result = Query.of(clause -> clause.withJson(new StringReader(innerQuery.toString())));
+      try {
+        JsonNode filter = JsonUtils.readTree(queryFilter);
+        JsonNode innerQuery = filter.has("query") ? filter.path("query") : filter;
+        if (!nullOrEmpty(innerQuery)) {
+          result = Query.of(clause -> clause.withJson(new StringReader(innerQuery.toString())));
+        }
+      } catch (JsonParsingException | JsonException e) {
+        throw new BadRequestException("Invalid query_filter: " + e.getMessage(), e);
       }
     }
     return result;

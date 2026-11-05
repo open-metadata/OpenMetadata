@@ -805,7 +805,6 @@ const OntologyGraphView = ({
               : t('label.add-entity', { entity: t('label.concept') })}
           </Typography>
           <ButtonUtility
-            color="tertiary"
             data-testid="ontology-concept-authoring-close"
             icon={XClose}
             size="sm"
