@@ -18,7 +18,7 @@ and manage behavior such as timeouts.
 """
 
 from collections.abc import Callable, Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Table, inspect, text
 from sqlalchemy.orm import Query, Session
@@ -198,17 +198,17 @@ class QueryRunner:
 
     def _resolve_sample_entity(self, entity):
         """Bind unbound metric columns to the sampled dataset's column collection."""
-        dataset_columns = inspect(self._dataset).c
+        dataset_columns = inspect(self._dataset, raiseerr=True).c
         columns_by_name = {column.name: column for column in dataset_columns}
         columns_by_key = {column.key: column for column in dataset_columns}
 
-        def replace(column):
-            if not isinstance(column, ColumnClause) or column.table is not None:
+        def replace(element, **kw: Any):
+            if not isinstance(element, ColumnClause) or element.table is not None:
                 return None
-            resolved_column = columns_by_key.get(column.name)
+            resolved_column = columns_by_key.get(element.name)
             if resolved_column is not None:
                 return resolved_column
-            return columns_by_name.get(column.name)
+            return columns_by_name.get(element.name)
 
         return replacement_traverse(entity, {}, replace)
 

@@ -384,6 +384,7 @@ class SampleTest(TestCase):
 
     def test_partitioned_fetch_sample_data_preserves_logical_column_names(self, sampler_mock):
         sampler = object.__new__(BigQuerySampler)
+        sampler.execution_source = None
         sampler._table = DigitLeadingColumns
         sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
         sampler.partition_details = PartitionProfilerConfig(
@@ -410,6 +411,7 @@ class SampleTest(TestCase):
 
     def test_partitioned_fetch_sample_data_matches_colliding_names_exactly(self, sampler_mock):
         sampler = object.__new__(BigQuerySampler)
+        sampler.execution_source = None
         sampler._table = CollidingDigitLeadingColumns
         sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
         sampler.partition_details = PartitionProfilerConfig(

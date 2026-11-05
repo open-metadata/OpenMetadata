@@ -17,12 +17,12 @@ import hashlib
 from collections.abc import Callable
 from typing import Any, cast
 
-from sqlalchemy import Column, inspect, select, text
+from sqlalchemy import Column, false, inspect, select, text
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
-from sqlalchemy.sql.selectable import TableSample
+from sqlalchemy.sql.selectable import CTE, TableSample
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
@@ -279,7 +279,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             )
             return query.limit(static.profileSample if static else None).cte(f"{self.get_sampler_table_name()}_rnd")
 
-    def get_dataset(self, column=None, **__) -> type | AliasedClass:
+    def get_dataset(self, column=None, **__) -> type | AliasedClass | CTE:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -316,7 +316,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             requested_names = {col.name for col in columns}
             sqa_columns = [
                 col
-                for col in inspect(ds).c
+                for col in inspect(ds, raiseerr=True).c
                 if col.name != RANDOM_LABEL and col.info.get(ORIGINAL_COLUMN_NAME, col.name) in requested_names
             ]
 
@@ -476,11 +476,15 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         Build the CTE using Core select() so it does not require an active Session.
         """
         self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
-        raw_table = self.raw_dataset.__table__
+        raw_dataset = self.raw_dataset
+        assert raw_dataset is not None
+        raw_table = raw_dataset.__table__
         partition_filter = build_partition_predicate(
             self.partition_details,
             raw_table.c,
         )
+        if partition_filter is None:
+            partition_filter = false()
         cte_name = f"{self.get_sampler_table_name()}_partitioned"
 
         column_names = [column.name for column in raw_table.c]
@@ -500,7 +504,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             safe_names.append(safe_name)
 
         if column_names == safe_names:
-            stmt = select(self.raw_dataset).where(partition_filter)
+            stmt = select(raw_dataset).where(partition_filter)
             return stmt.cte(cte_name)
 
         inner_columns = []
