@@ -750,8 +750,8 @@ def test_hex_query_history_never_drops_a_schema_the_query_names(sdk):
     transport.hits = [elsewhere.fullyQualifiedName.root]
     fetcher = HexQueryFetcher(metadata=metadata, lookback_days=7)
 
-    def tables_read(sql):
-        return ids(fetcher._extract_tables_from_query(sql, "my_service", "my_db", "my_schema"))
+    def tables_read(sql, prefix=None):
+        return ids(fetcher._extract_tables_from_query(sql, "my_service", "my_db", "my_schema", prefix))
 
     # The query says which schema: a table of the same name in another one isn't it
     assert tables_read("select * from my_db.my_schema.account") == []
@@ -762,6 +762,8 @@ def test_hex_query_history_never_drops_a_schema_the_query_names(sdk):
     transport.entities.update({item.fullyQualifiedName.root: item for item in same_named})
     transport.hits = [item.fullyQualifiedName.root for item in same_named]
     assert tables_read("select * from orders") == []
+    # ...unless the configured prefix leaves only one of them
+    assert tables_read("select * from orders", "my_service.my_db.raw") == [same_named[0].id]
 
 
 def test_bigquery_usage_counts_each_execution_once_and_preserves_sql(sdk, tmp_path):

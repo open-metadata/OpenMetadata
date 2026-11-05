@@ -410,12 +410,14 @@ class HexQueryFetcher:
                         schema_fallback=not schema_query,
                     )
 
-                    # A bare name matching several tables can't tell which one was read
-                    if table_entities and (schema_query or len(table_entities) == 1):
-                        # Filter based on prefix constraints if needed
-                        for table_entity in table_entities:
-                            if self._matches_prefix_constraints(table_entity, db_service_prefix):
-                                tables.append(table_entity)  # noqa: PERF401
+                    in_prefix = [
+                        table_entity
+                        for table_entity in table_entities or []
+                        if self._matches_prefix_constraints(table_entity, db_service_prefix)
+                    ]
+                    # A bare name matching several in-scope tables can't tell which one was read
+                    if schema_query or len(in_prefix) == 1:
+                        tables.extend(in_prefix)
 
             except Exception as parser_error:
                 hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
