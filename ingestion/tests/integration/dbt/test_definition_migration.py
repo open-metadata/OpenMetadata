@@ -132,3 +132,23 @@ def test_soft_deleted_case_still_prevents_definition_cleanup(metadata, dbt_catal
     migrated = migrate_test_definition(metadata, cases[0], node)
     assert migrated.testDefinition.id == target.id
     assert metadata.get_by_id(TestDefinition, legacy.id) is not None
+
+
+def test_definition_edited_during_migration_is_retained(metadata, dbt_catalog, monkeypatch):
+    node, legacy, target, cases = seed_cases(metadata, dbt_catalog, True)
+    metadata.delete(TestCase, cases[1].id, recursive=False, hard_delete=True)
+    patch = metadata.patch
+
+    def save_customization_before_reassigning(**kwargs):
+        current = metadata.get_by_id(TestDefinition, legacy.id)
+        customized = current.model_copy(deep=True)
+        customized.description = type(current.description)("Saved while ingestion was running")
+        assert patch(entity=TestDefinition, source=current, destination=customized, skip_on_failure=False)
+        return patch(**kwargs)
+
+    monkeypatch.setattr(metadata, "patch", save_customization_before_reassigning)
+    migrated = migrate_test_definition(metadata, cases[0], node)
+    assert migrated.testDefinition.id == target.id
+    retained = metadata.get_by_id(TestDefinition, legacy.id)
+    assert retained is not None
+    assert model_str(retained.description) == "Saved while ingestion was running"
