@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,6 +39,17 @@ public class NativeOntologyPartialImportIT extends BaseOntologyApprovalIT {
       ex:Account a owl:Class ; rdfs:label "Account" .
       ex:Ledger a owl:Class ; rdfs:label "Ledger" .
       ex:Ledger rdfs:subClassOf ex:Account .
+      """;
+
+  private static final String INDIVIDUAL_MODEL =
+      """
+      @prefix owl: <http://www.w3.org/2002/07/owl#> .
+      @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+      @prefix ex: <https://example.org/partial/%s/> .
+      ex:A a owl:Class ; rdfs:label "A" .
+      ex:owns a owl:ObjectProperty ; rdfs:label "owns" .
+      ex:i a owl:Class, owl:NamedIndividual ; rdfs:label "i" .
+      ex:A rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:owns ; owl:hasValue ex:i ] .
       """;
 
   @Test
@@ -92,6 +104,47 @@ public class NativeOntologyPartialImportIT extends BaseOntologyApprovalIT {
             .contains("https://example.org/partial/" + ns.shortPrefix() + "/Account"),
         refusal.getMessage());
     assertEquals(Set.of(), conceptNames(ontology));
+  }
+
+  @Test
+  void aRestrictionWhoseImportedIndividualWasLeftOutIsRefusedUnlessTheIndividualIsKept(
+      TestNamespace ns) {
+    final var client = SdkClients.adminClient();
+    final Ontology ontology = createOntology(ns, "partialIndividual");
+    final String individual = "https://example.org/partial/" + ns.shortPrefix() + "/i";
+    final NativeOntologyImportPreview preview =
+        client
+            .ontologies()
+            .previewImport(
+                ontology.getId(),
+                new PreviewNativeOntologyImport()
+                    .withFormat(NativeOntologyImportFormat.TURTLE)
+                    .withData(INDIVIDUAL_MODEL.formatted(ns.shortPrefix())));
+    final UUID individualConcept = operationOf(preview, "i");
+    final UUID restriction =
+        preview.getSummary().getItems().stream()
+            .filter(item -> item.getDependsOnIris().contains(java.net.URI.create(individual)))
+            .map(NativeOntologyImportItem::getOperationId)
+            .findFirst()
+            .orElseThrow();
+
+    final var everything = List.copyOf(preview.getChangeSet().getOperations());
+    final var withoutIndividual =
+        everything.stream()
+            .filter(operation -> !operation.getId().equals(individualConcept))
+            .toList();
+    final OpenMetadataException refusal =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> apply(ns, ontology, preview, withoutIndividual, "noIndividual"));
+
+    assertEquals(400, refusal.getStatusCode());
+    assertTrue(refusal.getMessage().contains(restriction.toString()), refusal.getMessage());
+    assertTrue(refusal.getMessage().contains(individual), refusal.getMessage());
+    assertEquals(Set.of(), conceptNames(ontology));
+
+    apply(ns, ontology, preview, everything, "withIndividual");
+    assertTrue(conceptNames(ontology).contains("i"), conceptNames(ontology).toString());
   }
 
   @Test

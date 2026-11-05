@@ -235,6 +235,70 @@ class OntologyChangePreflightTest {
         refusal.getMessage());
   }
 
+  private static final URI INDIVIDUAL = URI.create("https://example.org/i");
+
+  private static OntologyChangeOperation hasValueAxiom(final List<URI> requires) {
+    return upsertAxiom(
+            new OntologyAxiom()
+                .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
+                .withSubjectIri(URI.create("http://www.w3.org/2002/07/owl#Thing"))
+                .withExpressions(
+                    List.of(
+                        new OntologyExpression()
+                            .withKind(OntologyExpressionKind.RESTRICTION)
+                            .withPropertyIri(URI.create("https://example.org/owns"))
+                            .withIndividualIri(INDIVIDUAL))))
+        .withRequiresConceptIris(requires);
+  }
+
+  private static OntologyChangeOperation upsertConcept(final URI iri) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.UPSERT_CONCEPT)
+        .withConcept(new OntologyConcept().withId(UUID.randomUUID()).withIri(iri));
+  }
+
+  @Test
+  void refusesAValueRestrictionWhoseDeclaredIndividualIsNotInTheSet() {
+    assertNeedsConcept(hasValueAxiom(List.of(INDIVIDUAL)), INDIVIDUAL.toString());
+  }
+
+  @Test
+  void refusesAClassAssertionWhoseDeclaredIndividualIsNotInTheSet() {
+    final OntologyChangeOperation assertion =
+        upsertAxiom(
+                new OntologyAxiom()
+                    .withAxiomType(OntologyAxiomType.CLASS_ASSERTION)
+                    .withSubjectIri(INDIVIDUAL)
+                    .withExpressions(List.of(namedClass("http://www.w3.org/2002/07/owl#Thing"))))
+            .withRequiresConceptIris(List.of(INDIVIDUAL));
+
+    assertNeedsConcept(assertion, INDIVIDUAL.toString());
+  }
+
+  @Test
+  void acceptsAValueRestrictionWhenTheSetCreatesItsDeclaredIndividual() {
+    assertDoesNotThrow(
+        () ->
+            preflightWithoutConcepts()
+                .validate(
+                    nativeChangeSet(),
+                    List.of(upsertConcept(INDIVIDUAL), hasValueAxiom(List.of(INDIVIDUAL)))));
+  }
+
+  @Test
+  void acceptsAValueRestrictionWhenTheOntologyDeclaresItsIndividual() {
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) -> {
+              throw new AssertionError("New definitions are not loaded");
+            },
+            (id, iris) -> iris);
+
+    assertDoesNotThrow(
+        () -> preflight.validate(nativeChangeSet(), List.of(hasValueAxiom(List.of(INDIVIDUAL)))));
+  }
+
   @Test
   void acceptsASubclassOfASkosClassWithoutAConceptForIt() {
     final OntologyChangeOperation term =
