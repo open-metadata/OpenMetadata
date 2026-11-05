@@ -33,6 +33,7 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
+import { getJSONEditorValue } from './SchemaEditor.utils';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -210,8 +211,7 @@ export const getSearchIndexDetailsTabs = ({
       children: (
         <QueryViewer
           isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
-          sqlQuery={JSON.stringify(searchIndexDetails?.searchIndexSettings)}
-          title={t('label.search-index-setting-plural')}
+          sqlQuery={getJSONEditorValue(searchIndexDetails?.searchIndexSettings)}
         />
       ),
     },
