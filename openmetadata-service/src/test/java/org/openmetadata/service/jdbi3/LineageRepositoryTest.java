@@ -1429,33 +1429,54 @@ class LineageRepositoryTest {
   }
 
   /**
-   * A table on both a long and a short path is expanded from the short one, so what lies behind it
-   * stays within the depth.
+   * A table two hops away is also three hops away on a longer path. Expanded from that longer path,
+   * the tables two hops behind it would fall outside the depth; expanded from the short one, they
+   * do not. Both orders of the two paths are walked, since a walk that settles on whichever path it
+   * reaches first passes with one of them.
    */
   @Test
   void testGetLineage_EntityOnLongAndShortPath_IsExpandedFromTheShortOne() {
+    for (boolean shortPathFirst : new boolean[] {true, false}) {
+      assertExpandedFromTheShortPath(shortPathFirst);
+    }
+  }
+
+  private void assertExpandedFromTheShortPath(boolean shortPathFirst) {
     UUID root = UUID.randomUUID();
+    UUID onShortPath = UUID.randomUUID();
     UUID onLongPath = UUID.randomUUID();
     UUID furtherOnLongPath = UUID.randomUUID();
     UUID shared = UUID.randomUUID();
     UUID behindShared = UUID.randomUUID();
+    UUID furthest = UUID.randomUUID();
     mockTableGraph(
         Map.of(
-            root, List.of(onLongPath, shared),
+            root,
+                shortPathFirst
+                    ? List.of(onShortPath, onLongPath)
+                    : List.of(onLongPath, onShortPath),
+            onShortPath, List.of(shared),
             onLongPath, List.of(furtherOnLongPath),
             furtherOnLongPath, List.of(shared),
-            shared, List.of(behindShared)));
+            shared, List.of(behindShared),
+            behindShared, List.of(furthest)));
 
-    EntityLineage lineage = new LineageRepository().get(Entity.TABLE, root.toString(), 2, 0);
+    EntityLineage lineage = new LineageRepository().get(Entity.TABLE, root.toString(), 4, 0);
 
+    String order = "shortPathFirst=" + shortPathFirst;
+    assertEquals(7, lineage.getUpstreamEdges().size(), order);
     assertEquals(
         Set.of(
+            List.of(onShortPath, root),
             List.of(onLongPath, root),
-            List.of(shared, root),
+            List.of(shared, onShortPath),
             List.of(furtherOnLongPath, onLongPath),
-            List.of(behindShared, shared)),
-        edgeEnds(lineage.getUpstreamEdges()));
-    assertTrue(lineage.getDownstreamEdges().isEmpty());
+            List.of(shared, furtherOnLongPath),
+            List.of(behindShared, shared),
+            List.of(furthest, behindShared)),
+        edgeEnds(lineage.getUpstreamEdges()),
+        order);
+    assertTrue(lineage.getDownstreamEdges().isEmpty(), order);
   }
 
   /** A pipeline is walked through the edges that name it as their pipeline. */
