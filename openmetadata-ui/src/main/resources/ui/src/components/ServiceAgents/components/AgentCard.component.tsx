@@ -451,7 +451,7 @@ const AgentCard: FC<AgentCardProps> = ({
 
   return (
     <Card
-      className={`tw:relative tw:overflow-hidden tw:rounded-2xl tw:border tw:bg-primary tw:px-4.5 tw:py-4 tw:shadow-xs ${
+      className={`tw:relative tw:overflow-hidden tw:rounded-2xl tw:border tw:bg-surface tw:px-4.5 tw:py-4 tw:shadow-xs ${
         isFailed ? 'tw:border-utility-error-200' : 'tw:border-secondary'
       }`}
       data-testid={`agent-card-${agent.fqn}`}

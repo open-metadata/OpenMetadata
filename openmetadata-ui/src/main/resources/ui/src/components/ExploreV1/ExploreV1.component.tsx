@@ -252,6 +252,7 @@ const ExploreExportScopeModal = ({
                 className="export-scope-option-card tw:flex-1 tw:p-4"
                 data-testid="export-scope-visible-card"
                 isSelected={exportScope === 'visible'}
+                variant="muted"
                 onClick={() => onExportScopeChange('visible')}>
                 <div className="d-flex items-start gap-1">
                   {/* Reproduces antd's 16x22 radio wrapper and its 8px gap. */}
@@ -295,6 +296,7 @@ const ExploreExportScopeModal = ({
                 className="export-scope-option-card tw:flex-1 tw:p-4"
                 data-testid="export-scope-all-card"
                 isSelected={exportScope === 'all'}
+                variant="muted"
                 onClick={() => onExportScopeChange('all')}>
                 <div className="d-flex items-start tw:gap-1">
                   {/* Reproduces antd's 16x22 radio wrapper and its 8px gap. */}
