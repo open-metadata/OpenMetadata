@@ -589,6 +589,18 @@ public interface EntityDAO<T extends EntityInterface> {
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
+  /**
+   * Existence proof a writer takes inside its own transaction: the shared lock makes a concurrent
+   * hard delete of these rows wait for the writer's commit, so a reference the writer stores can
+   * never point at a row that is already gone.
+   */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) FOR SHARE")
+  List<String> lockExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
+  /** The delete's side of {@link #lockExistingIds}: an exclusive lock on rows about to go. */
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) ORDER BY id FOR UPDATE")
+  List<String> lockIdsForUpdate(@Define("table") String table, @BindList("ids") List<String> ids);
+
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
   List<EntityIdJsonPair> findByIds(

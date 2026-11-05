@@ -19,6 +19,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v208.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
@@ -68,5 +69,10 @@ public class Migration extends MigrationProcessImpl {
           initializeWorkflowHandler();
           WorkflowRedeployMigration.redeploy();
         });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductDomainContainmentRepair.STEP_NAME,
+        () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
   }
 }

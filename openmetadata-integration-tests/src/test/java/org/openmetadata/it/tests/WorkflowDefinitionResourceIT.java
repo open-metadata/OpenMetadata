@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13210,5 +13211,341 @@ public class WorkflowDefinitionResourceIT {
       tasks = List.of();
     }
     return tasks;
+  }
+
+  // A table no edit has changed has no change description. An update that leaves it that way (an
+  // edit undone within the same session, or a follow) is not a create, and the trigger filter must
+  // not wave it through. A follow on a table with an earlier edit starts no run either: its run
+  // would
+  // judge that edit again and replace its open approval.
+  @Test
+  void test_updateThatLeavesNoChangeDescriptionIsJudgedNotTreatedAsCreate(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table undone = untouchedTable(admin, ns, "undone");
+    Table followed = untouchedTable(admin, ns, "followed");
+    Table changed = untouchedTable(admin, ns, "changed");
+    Table sentinel = untouchedTable(admin, ns, "sentinel");
+    DeployedWorkflow workflow =
+        deployTargetTagWorkflow(admin, List.of(undone, followed, changed, sentinel));
+
+    admin.tables().patch(undone.getId(), MAPPER.readTree(REMOVE_FIRST_TAG));
+    admin.tables().patch(undone.getId(), MAPPER.readTree(tagAddPatch("PII.Sensitive")));
+    follow(admin, followed);
+    // A real change still reaches approval, so the workflow is live while the others are judged.
+    admin.tables().patch(changed.getId(), MAPPER.readTree(tagAddPatch(TARGET_TAG)));
+    awaitWorkflowTask(workflow, changed);
+    UUID openApproval = workflowTasks(workflow, changed).get(0).getId();
+
+    // Events reach workflows in order: once the sentinel's later edit has its approval, both
+    // follows before it have been handled. A follow starts no run, so the followed table has none
+    // and the changed table keeps the approval it had.
+    follow(admin, changed);
+    admin.tables().patch(sentinel.getId(), MAPPER.readTree(tagAddPatch(TARGET_TAG)));
+    awaitWorkflowTask(workflow, sentinel);
+    assertEquals(
+        List.of(openApproval), workflowTasks(workflow, changed).stream().map(Task::getId).toList());
+    assertEquals(List.of(), runStatuses(workflow, followed));
+
+    // A run that opens an approval waits on it; one the filter stops finishes. Each edit starts
+    // one.
+    awaitRunsFinished(workflow, undone, 2);
+    assertTrue(workflowTasks(workflow, undone).isEmpty());
+  }
+
+  // The workflow sets the status to In Review before the approval task exists. The task still shows
+  // the edit that started it, and each later edit joins the same preview.
+  @Test
+  void test_approvalPreviewShowsTheChainOfEditsNotTheWorkflowsStatusWrite(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = untouchedTable(admin, ns, "chain");
+    DeployedWorkflow workflow = deployInReviewThenApproveWorkflow(admin, table);
+
+    admin.tables().patch(table.getId(), MAPPER.readTree(tagAddPatch("PersonalData.Personal")));
+    awaitPreview(workflow, table, Set.of("tags"));
+
+    admin
+        .tables()
+        .patch(
+            table.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"edited description\"}]"));
+    awaitPreview(workflow, table, Set.of("tags", "description"));
+  }
+
+  // Edits taken back within the cycle cancel out of the preview: an added tag removed again leaves
+  // no chip, and only the net change from the start of the cycle remains.
+  @Test
+  void test_approvalPreviewShowsTheNetOfEditsTakenBackWithinTheCycle(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = untouchedTable(admin, ns, "net");
+    DeployedWorkflow workflow = deployInReviewThenApproveWorkflow(admin, table);
+
+    admin.tables().patch(table.getId(), MAPPER.readTree(tagAddPatch("PersonalData.Personal")));
+    awaitTagsPreview(workflow, table, List.of("PersonalData.Personal"), List.of());
+    removeTag(admin, table, "PII.Sensitive");
+    awaitTagsPreview(workflow, table, List.of("PersonalData.Personal"), List.of("PII.Sensitive"));
+    removeTag(admin, table, "PersonalData.Personal");
+    awaitTagsPreview(workflow, table, List.of(), List.of("PII.Sensitive"));
+  }
+
+  private static final String TARGET_TAG = "PersonalData.SpecialCategory";
+  private static final String REMOVE_FIRST_TAG = "[{\"op\":\"remove\",\"path\":\"/tags/0\"}]";
+
+  private record DeployedWorkflow(UUID id, String name) {}
+
+  private static String tagAddPatch(String tagFqn) {
+    return """
+        [{"op":"add","path":"/tags/0","value":{"tagFQN":"%s","source":"Classification",
+          "labelType":"Manual","state":"Confirmed"}}]
+        """
+        .formatted(tagFqn);
+  }
+
+  // A table created with one tag and never edited since, so it carries no change description.
+  private Table untouchedTable(OpenMetadataClient admin, TestNamespace ns, String name)
+      throws Exception {
+    DatabaseService service =
+        admin.databaseServices().create(createDatabaseServiceRequest(ns.prefix(name + "_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(name + "_db")
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(name + "_schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    return admin
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(name + "_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(List.of(admin.users().getByName("admin").getEntityReference()))
+                .withTags(
+                    List.of(
+                        new TagLabel()
+                            .withTagFQN("PII.Sensitive")
+                            .withSource(TagLabel.TagSource.CLASSIFICATION)
+                            .withLabelType(TagLabel.LabelType.MANUAL)
+                            .withState(TagLabel.State.CONFIRMED)))
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+  }
+
+  // The filter leaves every table but these out.
+  private static String onlyTheseTables(List<Table> tables) {
+    String exclusion =
+        tables.stream()
+            .map(
+                table ->
+                    "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}"
+                        .formatted(table.getFullyQualifiedName()))
+            .collect(Collectors.joining(",", "{\"and\":[", "]}"));
+    return JsonUtils.pojoToJson(Map.of("table", exclusion));
+  }
+
+  // Updated tables whose tag change touches TARGET_TAG go to their owners for approval.
+  private DeployedWorkflow deployTargetTagWorkflow(OpenMetadataClient admin, List<Table> tables)
+      throws Exception {
+    String workflowName = "targetTag" + UUID.randomUUID().toString().substring(0, 8);
+    String workflowJson =
+        """
+        {
+          "name": "%s",
+          "displayName": "Target Tag Approval",
+          "description": "Requests approval when a table's tag change involves the target tag",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {"entityTypes": ["table"], "events": ["Updated"], "include": ["tags"],
+                       "exclude": [], "filter": %s},
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "Start"},
+            {"type": "automatedTask", "subType": "checkChangeDescriptionTask", "name": "CheckTag",
+             "config": {"condition": "OR", "rules": {"tags": ["%s"]}},
+             "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "userTask", "subType": "userApprovalTask", "name": "Approve",
+             "config": {"assignees": {"addReviewers": false, "addOwners": true, "candidates": []},
+                        "approvalThreshold": 1, "rejectionThreshold": 1},
+             "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "endEvent", "subType": "endEvent", "name": "NoTargetTagEnd"},
+            {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
+            {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
+          ],
+          "edges": [
+            {"from": "Start", "to": "CheckTag"},
+            {"from": "CheckTag", "to": "NoTargetTagEnd", "condition": "false"},
+            {"from": "CheckTag", "to": "Approve", "condition": "true"},
+            {"from": "Approve", "to": "ApprovedEnd", "condition": "approve"},
+            {"from": "Approve", "to": "RejectedEnd", "condition": "reject"}
+          ]
+        }
+        """
+            .formatted(workflowName, onlyTheseTables(tables), TARGET_TAG);
+    return deployWorkflow(admin, workflowName, workflowJson);
+  }
+
+  // Updated tables whose tags or description change go to their owners for approval, after the
+  // workflow sets their status to In Review.
+  private DeployedWorkflow deployInReviewThenApproveWorkflow(OpenMetadataClient admin, Table table)
+      throws Exception {
+    String workflowName = "inReviewChain" + UUID.randomUUID().toString().substring(0, 8);
+    String workflowJson =
+        """
+        {
+          "name": "%s",
+          "displayName": "In Review Then Approve",
+          "description": "Sets the table In Review, then asks its owners to approve",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {"entityTypes": ["table"], "events": ["Updated"],
+                       "include": ["tags", "description"], "exclude": [], "filter": %s},
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "Start"},
+            {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "SetInReview",
+             "config": {"fieldName": "status", "fieldValue": "In Review"},
+             "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
+            {"type": "userTask", "subType": "userApprovalTask", "name": "Approve",
+             "config": {"assignees": {"addReviewers": false, "addOwners": true, "candidates": []},
+                        "approvalThreshold": 1, "rejectionThreshold": 1},
+             "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
+            {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
+          ],
+          "edges": [
+            {"from": "Start", "to": "SetInReview"},
+            {"from": "SetInReview", "to": "Approve"},
+            {"from": "Approve", "to": "ApprovedEnd", "condition": "approve"},
+            {"from": "Approve", "to": "RejectedEnd", "condition": "reject"}
+          ]
+        }
+        """
+            .formatted(workflowName, onlyTheseTables(List.of(table)));
+    return deployWorkflow(admin, workflowName, workflowJson);
+  }
+
+  private DeployedWorkflow deployWorkflow(
+      OpenMetadataClient admin, String workflowName, String workflowJson) throws Exception {
+    JsonNode created =
+        MAPPER.readTree(
+            admin
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    BASE_PATH,
+                    MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class),
+                    RequestOptions.builder().build()));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(admin, workflowName);
+    return new DeployedWorkflow(UUID.fromString(created.get("id").asText()), workflowName);
+  }
+
+  private void follow(OpenMetadataClient admin, Table table) throws Exception {
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/tables/%s/followers".formatted(table.getId()),
+            admin.users().getByName("admin").getId(),
+            RequestOptions.builder().build());
+  }
+
+  private void removeTag(OpenMetadataClient admin, Table table, String tagFqn) throws Exception {
+    List<TagLabel> labels = admin.tables().get(table.getId().toString(), "tags").getTags();
+    List<String> tags =
+        (labels == null ? List.<TagLabel>of() : labels).stream().map(TagLabel::getTagFQN).toList();
+    admin
+        .tables()
+        .patch(
+            table.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"remove\",\"path\":\"/tags/%d\"}]".formatted(tags.indexOf(tagFqn))));
+  }
+
+  // Only this test's workflow: another workflow may open approvals on the same table.
+  private List<Task> workflowTasks(DeployedWorkflow workflow, Table table) {
+    return openApprovalTasks(table.getFullyQualifiedName()).stream()
+        .filter(task -> workflow.id().equals(task.getWorkflowDefinitionId()))
+        .toList();
+  }
+
+  private void awaitWorkflowTask(DeployedWorkflow workflow, Table table) {
+    await("an approval from " + workflow.name() + " on " + table.getName())
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> !workflowTasks(workflow, table).isEmpty());
+  }
+
+  private void awaitRunsFinished(DeployedWorkflow workflow, Table table, int runs) {
+    await("%d finished runs of %s on %s".formatted(runs, workflow.name(), table.getName()))
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(Collections.nCopies(runs, "FINISHED"), runStatuses(workflow, table)));
+  }
+
+  private List<String> runStatuses(DeployedWorkflow workflow, Table table) throws IOException {
+    String relatedEntity = "<#E::table::%s>".formatted(table.getFullyQualifiedName());
+    List<String> statuses = new ArrayList<>();
+    for (JsonNode instance : workflowInstances(SdkClients.adminClient(), workflow.name())) {
+      if (relatedEntity.equals(instance.path("variables").path("global_relatedEntity").asText())) {
+        statuses.add(instance.path("status").asText());
+      }
+    }
+    return statuses;
+  }
+
+  // On 2.0 the preview also lists the workflow's own status change; the user's edits are what
+  // count.
+  private void awaitPreview(DeployedWorkflow workflow, Table table, Set<String> fields) {
+    await("approval preview of " + table.getName() + " to list " + fields)
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              List<Task> open = workflowTasks(workflow, table);
+              assertEquals(1, open.size());
+              Set<String> previewed = new HashSet<>(previewOf(open.get(0)).keySet());
+              previewed.remove("entityStatus");
+              assertEquals(fields, previewed);
+            });
+  }
+
+  // Each edit is awaited before the next, as a user editing in the UI waits for the page.
+  private void awaitTagsPreview(
+      DeployedWorkflow workflow, Table table, List<String> added, List<String> removed) {
+    await("tags preview of " + table.getName() + " to add " + added + " and remove " + removed)
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              List<Task> open = workflowTasks(workflow, table);
+              assertEquals(1, open.size());
+              Map<String, Object> tags = JsonUtils.getMap(previewOf(open.get(0)).get("tags"));
+              assertEquals(added, tags.get("added"));
+              assertEquals(removed, tags.get("removed"));
+            });
+  }
+
+  private static Map<String, Object> previewOf(Task task) {
+    Object preview =
+        task.getPayload() == null
+            ? null
+            : JsonUtils.getMap(task.getPayload()).get("proposedChanges");
+    return preview == null ? Map.of() : JsonUtils.getMap(preview);
   }
 }

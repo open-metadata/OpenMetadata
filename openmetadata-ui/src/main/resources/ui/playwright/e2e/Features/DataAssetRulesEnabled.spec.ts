@@ -22,6 +22,7 @@ import { DashboardDataModelClass } from '../../support/entity/DashboardDataModel
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
@@ -52,6 +53,7 @@ import { assignDomainWidget } from '../../utils/domain';
 import {
   addOwner,
   assignGlossaryTerm,
+  updateDescription,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
@@ -327,6 +329,10 @@ test.describe(
     const pickerDataProduct = new DataProduct([productDomain]);
     const sameDomainTable = new TableClass();
     const otherDomainTable = new TableClass();
+    // Domain comes only from its schema; carries a Data Product of that domain.
+    // A TableClass creates its own service, so patching the schema's domain
+    // leaves shared fixtures alone.
+    const inheritedDomainTable = new TableClass();
 
     test.beforeAll('Setup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -358,11 +364,41 @@ test.describe(
           },
         ],
       });
+      await inheritedDomainTable.create(apiContext);
+      await apiContext.patch(
+        `/api/v1/databaseSchemas/${inheritedDomainTable.schemaResponseData.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/domains',
+              value: [{ id: assetDomain.responseData.id, type: 'domain' }],
+            },
+          ],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
+      await inheritedDomainTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/dataProducts',
+            value: [
+              {
+                id: sameDomainDataProduct.responseData.id,
+                type: 'dataProduct',
+              },
+            ],
+          },
+        ],
+      });
       await afterAction();
     });
 
     test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await inheritedDomainTable.delete(apiContext);
       await otherDomainTable.delete(apiContext);
       await sameDomainTable.delete(apiContext);
       await pickerDataProduct.delete(apiContext);
@@ -377,6 +413,35 @@ test.describe(
     // With the "Data Product Domain Validation" rule enabled, the Data Product
     // dropdown stays scoped to the asset's domain, so a Data Product from a
     // different domain is not offered.
+    // The table's domain is inherited from its schema, so the rule must count
+    // it instead of treating the table as domain-less and rejecting every edit.
+    test('should allow updates to an asset with an inherited domain and a Data Product', async ({
+      page,
+    }) => {
+      await authenticateAdminPage(page);
+      await inheritedDomainTable.visitEntityPage(page);
+
+      const description = `edited with inherited domain ${Date.now()}`;
+      await updateDescription(
+        page,
+        description,
+        false,
+        undefined,
+        EntityTypeEndpoint.Table
+      );
+
+      await expect(
+        page.getByTestId('asset-description-container').getByText(description)
+      ).toBeVisible();
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId(
+            `data-product-${sameDomainDataProduct.responseData.fullyQualifiedName}`
+          )
+      ).toBeVisible();
+    });
+
     test('should not list Data Products from a different domain', async ({
       page,
     }) => {
