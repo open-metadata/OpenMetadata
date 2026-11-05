@@ -48,9 +48,7 @@ const WidgetSortFilter = ({
         className="widget-header-options"
         color="secondary"
         data-testid="widget-sort-by-dropdown"
-        iconTrailing={
-          isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />
-        }
+        iconTrailing={isOpen ? ChevronUp : ChevronDown}
         size="sm">
         {selectedLabel}
       </Button>

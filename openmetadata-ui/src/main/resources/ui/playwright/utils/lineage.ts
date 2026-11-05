@@ -1484,14 +1484,15 @@ export const connectEdgeBetweenNodesViaAPI = (
   apiContext: APIRequestContext,
   fromEntity: { id: string; type: string },
   toEntity: { id: string; type: string },
-  columnsLineage?: Array<{ fromColumns: string[]; toColumn: string }>
+  columnsLineage?: Array<{ fromColumns: string[]; toColumn: string }>,
+  lineageDetails: Record<string, unknown> = {}
 ) => {
   return apiContext.put('/api/v1/lineage/', {
     data: {
       edge: {
         fromEntity,
         toEntity,
-        lineageDetails: { columnsLineage, description: '' },
+        lineageDetails: { columnsLineage, description: '', ...lineageDetails },
       },
     },
     headers: {

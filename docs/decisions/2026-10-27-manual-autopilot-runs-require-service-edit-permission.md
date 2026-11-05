@@ -1,7 +1,7 @@
 # Manual AutoPilot runs require application Trigger and target-service EditAll
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial)
+- **Revisions:** v1 2026-10-27 (initial) · v2 2026-11-05 (app-owned trigger preparation)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `AppsResourceIT#test_autopilotTriggerRequiresEditAllOnEffectiveService`, `AppsResourceIT#test_autopilotInactiveDoesNotRequireTarget`, `AppsResourceIT#test_autopilotInvalidPayloadDoesNotStartWorkflow`
 - **Related:** [PR #36356](https://github.com/open-metadata/OpenMetadata/pull/36356)
@@ -23,7 +23,7 @@ Use service `EditAll` because AutoPilot manages agents across creation, deployme
 Service `Trigger` or pipeline creation permission alone does not cover that combined operation.
 The check applies whether agents already exist or must be created.
 
-A null `active` is invalid and returns HTTP 400. An active run requires a service entity link;
+After application permission checks, a null `active` is invalid and returns HTTP 400. An active run requires a service entity link;
 missing, null, empty, or malformed links return HTTP 400. An inactive run remains a no-op and
 requires no target, while retaining the application `Trigger` check. Automatic service-event
 workflows retain their existing automation identity and do not use this manual-request check.
@@ -35,3 +35,18 @@ active runs. Clients should distinguish application permission from target-servi
 showing the trigger button based only on application permission can still lead to HTTP 403.
 No new permission operation or schema migration is needed. Revisiting the `EditAll` requirement
 would require a permission that covers the complete agent-management operation.
+
+## Amendment — 2026-11-05
+
+Native applications declare their runtime parameters through `getRuntimeTriggerParameters()` and
+prepare a run through `prepareTrigger()`. The prepared `AppTrigger` carries authorization requests
+and the action that uses the same validated target. The REST resource authorizes these requests
+before running the action. Default implementations keep ordinary native applications compatible.
+AutoPilot subclasses inherit both declarations and validation. Direct AutoPilot triggers share
+that validation, while caller permission checks remain at the REST boundary.
+
+Only `entityLink` is an AutoPilot runtime parameter. Changing another configured value, including
+`active`, requires application `EditAll` as well as `Trigger`. An already-inactive configuration
+still accepts a normal trigger as a no-op; a request that changes `active` first needs the application
+edit permission. The service button requires service edit permission and Trigger on the named
+AutoPilot application.

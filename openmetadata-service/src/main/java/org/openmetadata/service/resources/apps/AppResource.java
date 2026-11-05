@@ -47,6 +47,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -59,7 +61,6 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
-import org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -75,9 +76,10 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AppException;
+import org.openmetadata.service.apps.AppTrigger;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp;
+import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -89,13 +91,13 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -106,6 +108,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -773,7 +776,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
     // Defense-in-depth: version snapshots are already stripped at storage time
-    // (AppRepository.serializeForVersionHistory) and by the 2.0.0 migration, but strip each
+    // (AppRepository.getFieldsHiddenFromHistory) and by the 2.0.0 migration, but strip each
     // returned snapshot too so this path never depends on those guarantees alone.
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -984,10 +987,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
+    // Re-scheduling the app is a side effect beyond the patched field, so a patch that reaches it
+    // needs EditAll, not just permission on the field. A description-only patch leaves the schedule
+    // alone — otherwise it could reinstall or, if the install fails, leave the app unscheduled.
+    boolean reschedules =
+        SCHEDULED_TYPES.contains(app.getScheduleType()) && touchesScheduleOrConfig(patch);
+    if (reschedules) {
+      authorizeAppOperation(securityContext, id, MetadataOperation.EDIT_ALL);
+    }
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+    if (reschedules) {
+      AppScheduler.getInstance().deleteScheduledApplication(app);
       ApplicationHandler.getInstance()
           .installApplication(
               updatedApp,
@@ -998,6 +1009,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
     return response;
+  }
+
+  private static final Set<String> SCHEDULE_OR_CONFIG_FIELDS =
+      Set.of("appSchedule", "appConfiguration");
+
+  /**
+   * Whether a patch changes the schedule or configuration the app is installed with. A whole-document
+   * replace may change either, also when other operations in the same patch name only other fields,
+   * so it must still require EditAll and reschedule.
+   */
+  static boolean touchesScheduleOrConfig(JsonPatch patch) {
+    return JsonPatchUtils.replacesWholeDocument(patch)
+        || JsonUtils.extractPatchedFields(patch).stream()
+            .anyMatch(SCHEDULE_OR_CONFIG_FIELDS::contains);
   }
 
   @PATCH
@@ -1036,10 +1061,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
+    boolean reschedules =
+        SCHEDULED_TYPES.contains(app.getScheduleType()) && touchesScheduleOrConfig(patch);
+    if (reschedules) {
+      authorizeAppOperation(securityContext, fqn, MetadataOperation.EDIT_ALL);
+    }
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+    if (reschedules) {
+      AppScheduler.getInstance().deleteScheduledApplication(app);
       ApplicationHandler.getInstance()
           .installApplication(
               updatedApp,
@@ -1333,6 +1363,17 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
+  static boolean overridesConfiguredValue(
+      App app, Map<String, Object> configPayload, Set<String> runtimeParameters) {
+    if (configPayload == null || configPayload.isEmpty()) {
+      return false;
+    }
+    Map<String, Object> configured = JsonUtils.getMap(app.getAppConfiguration());
+    return configPayload.entrySet().stream()
+        .filter(entry -> !runtimeParameters.contains(entry.getKey()))
+        .anyMatch(entry -> !Objects.equals(configured.get(entry.getKey()), entry.getValue()));
+  }
+
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   @Path("/trigger/{name}")
@@ -1370,12 +1411,21 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     String triggeredBy = securityContext.getUserPrincipal().getName();
     if (app.getAppType().equals(AppType.Internal)) {
-      authorizeAutoPilotTarget(securityContext, app, configPayload);
-      ApplicationHandler.getInstance()
-          .triggerApplicationOnDemand(
-              app, Entity.getCollectionDAO(), searchRepository, configPayload, triggeredBy);
+      NativeApplication application =
+          ApplicationHandler.getInstance()
+              .initializeApplicationForTrigger(
+                  app, Entity.getCollectionDAO(), searchRepository, triggeredBy);
+      authorizeConfigurationOverride(
+          securityContext, app, configPayload, application.getRuntimeTriggerParameters());
+      AppTrigger trigger = application.prepareTrigger(configPayload);
+      if (!trigger.authRequests().isEmpty()) {
+        authorizer.authorizeRequests(
+            securityContext, trigger.authRequests(), AuthorizationLogic.ALL);
+      }
+      trigger.run();
       return Response.status(Response.Status.OK).build();
     } else {
+      authorizeConfigurationOverride(securityContext, app, configPayload, Set.of());
       if (!app.getPipelines().isEmpty()) {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
@@ -1651,30 +1701,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
         getResourceContextByName(name));
   }
 
-  private void authorizeAutoPilotTarget(
-      SecurityContext securityContext, App app, Map<String, Object> configPayload) {
-    if (AutoPilotApp.class.getName().equals(app.getClassName())) {
-      AutoPilotAppConfig runtimeConfig =
-          JsonUtils.readOrConvertValue(
-              AutoPilotApp.getRuntimeConfig(app, configPayload), AutoPilotAppConfig.class);
-      if (runtimeConfig.getActive() == null) {
-        throw new BadRequestException("AutoPilot active must be a boolean");
-      }
-      if (!runtimeConfig.getActive()) {
-        return;
-      }
-      if (nullOrEmpty(runtimeConfig.getEntityLink())) {
-        throw new BadRequestException("AutoPilot requires a service entity link");
-      }
-      EntityLink entityLink = EntityLink.parse(runtimeConfig.getEntityLink());
-      if (!Entity.getServiceEntityTypes().contains(entityLink.getEntityType())) {
-        throw new BadRequestException("AutoPilot requires a service entity link");
-      }
-      ServiceEntityInterface service = Entity.getEntity(entityLink, "", Include.NON_DELETED);
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(entityLink.getEntityType(), MetadataOperation.EDIT_ALL),
-          new ResourceContext<>(entityLink.getEntityType(), service.getId(), null));
+  private void authorizeConfigurationOverride(
+      SecurityContext securityContext,
+      App app,
+      Map<String, Object> configPayload,
+      Set<String> runtimeParameters) {
+    if (overridesConfiguredValue(app, configPayload, runtimeParameters)) {
+      authorizeAppOperation(securityContext, app.getName(), MetadataOperation.EDIT_ALL);
     }
   }
 

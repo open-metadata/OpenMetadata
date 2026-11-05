@@ -32,6 +32,7 @@ import { DatabaseServiceType } from '../../../generated/entity/services/database
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getActiveAnnouncements } from '../../../rest/announcementsAPI';
@@ -41,12 +42,35 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { IconColorModalProps } from '../../Modals/IconColorModal';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: jest.fn(),
+}));
+
+beforeEach(() => {
+  (useEntityPermissions as jest.Mock).mockReturnValue({
+    ...getDerivedPermissionFlags({
+      ...DEFAULT_ENTITY_PERMISSION,
+      Trigger: true,
+    }),
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+  });
+});
 
 const mockProps = {
   dataAsset: {
@@ -429,6 +453,34 @@ describe('DataAssetsHeader component', () => {
       within(screen.getByTestId('breadcrumb')).getByText('orders')
     ).not.toHaveAttribute('href');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
+  });
+
+  it('shows "Deleted" instead of the lifecycle status on a soft-deleted metric', () => {
+    const metric = {
+      id: 'metric-id',
+      name: 'revenue',
+      fullyQualifiedName: 'revenue',
+      entityStatus: 'Approved',
+    };
+    const { rerender } = render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={metric as unknown as Container}
+        entityType={EntityType.METRIC}
+      />
+    );
+
+    expect(screen.getByText('Approved')).toBeInTheDocument();
+
+    rerender(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{ ...metric, deleted: true } as unknown as Container}
+        entityType={EntityType.METRIC}
+      />
+    );
+
+    expect(screen.queryByText('Approved')).not.toBeInTheDocument();
   });
 
   it('should call getContainerAncestors API on Page load for container assets', () => {
@@ -998,6 +1050,44 @@ describe('DataAssetsHeader component', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    { serviceEdit: false, appTrigger: true, visible: false },
+    { serviceEdit: true, appTrigger: false, visible: false },
+    { serviceEdit: true, appTrigger: true, visible: true },
+  ])(
+    'shows AutoPilot for serviceEdit=$serviceEdit and appTrigger=$appTrigger',
+    ({ serviceEdit, appTrigger, visible }) => {
+      (useEntityPermissions as jest.Mock).mockReturnValue({
+        ...getDerivedPermissionFlags({
+          ...DEFAULT_ENTITY_PERMISSION,
+          Trigger: appTrigger,
+        }),
+        isLoading: false,
+        error: null,
+        refresh: jest.fn(),
+      });
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{
+            ...mockProps.dataAsset,
+            serviceType: DatabaseServiceType.BigQuery,
+          }}
+          entityType={EntityType.DATABASE_SERVICE}
+          permissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: serviceEdit,
+            Trigger: true,
+          }}
+        />
+      );
+
+      expect(
+        Boolean(screen.queryByTestId('trigger-auto-pilot-application-button'))
+      ).toBe(visible);
+    }
+  );
+
   it('should trigger the AutoPilot application when the button is clicked', () => {
     render(
       <DataAssetsHeader
@@ -1008,7 +1098,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
       />
     );
 
@@ -1033,7 +1123,7 @@ describe('DataAssetsHeader component', () => {
           serviceType: DatabaseServiceType.BigQuery,
         }}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
       />
     );
 
@@ -1052,7 +1142,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
       />
     );
 
@@ -1073,7 +1163,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButtonMessage={customMessage}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
       />
     );
 
@@ -1093,7 +1183,7 @@ describe('DataAssetsHeader component', () => {
         }}
         disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
-        permissions={{ ...DEFAULT_ENTITY_PERMISSION, Trigger: true }}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
       />
     );
 

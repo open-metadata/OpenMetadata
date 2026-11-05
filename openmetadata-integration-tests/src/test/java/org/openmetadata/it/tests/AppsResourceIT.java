@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,6 +39,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.runtime.ProcessInstance;
@@ -50,7 +52,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -95,13 +97,18 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
@@ -615,6 +622,100 @@ public class AppsResourceIT {
                 httpClient.execute(
                     HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class));
     assertTrue(exception.getMessage().contains("thisShouldFail"));
+  }
+
+  /**
+   * The seeded DataSteward role may trigger any app but edit none. Its holder may pass a declared
+   * runtime parameter, but changing a configuration key, even one the stored config leaves unset,
+   * needs EditAll. Both requests fail before a run starts, so the shared indexing app never
+   * reindexes.
+   */
+  @Test
+  void test_triggerApp_triggerOnlyPrincipalCannotOverrideConfiguration(TestNamespace ns) {
+    String trigger = "/v1/apps/trigger/SearchIndexingApplication";
+    HttpClient dataSteward = dataStewardClient(ns).getHttpClient();
+
+    Map<String, Object> configurationKey = new HashMap<>();
+    configurationKey.put("notAConfiguredKey", true);
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> dataSteward.execute(HttpMethod.POST, trigger, configurationKey, Void.class));
+    assertEquals(403, denied.getStatusCode());
+    assertTrue(denied.getMessage().contains("EditAll"), denied.getMessage());
+
+    // The runtime parameter clears both authorization checks; search indexing then rejects it as an
+    // unknown key during configuration validation, before anything is scheduled.
+    Map<String, Object> runtimeParameter = new HashMap<>();
+    runtimeParameter.put("entityLink", "<#E::table::" + ns.prefix("svc") + ".db.schema.table>");
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> dataSteward.execute(HttpMethod.POST, trigger, runtimeParameter, Void.class));
+    assertNotEquals(403, rejected.getStatusCode(), rejected.getMessage());
+  }
+
+  /**
+   * An app's bot is the account named after the app. When a person already holds that name,
+   * installing the app must refuse rather than turn the person's account into the bot, which would
+   * hand the app's privileges to whoever signs in as that person.
+   */
+  @Test
+  void test_installApp_doesNotAdoptAPersonsAccountAsItsBot(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    String appName = "BotNameTaken" + suffix;
+    String botName = appName + "Bot";
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/apps/marketplace",
+            new CreateAppMarketPlaceDefinitionReq()
+                .withName(appName)
+                .withDisplayName("Bot Name Taken")
+                .withDescription("An app whose bot name a person already holds")
+                .withFeatures("test features")
+                .withDeveloper("Test Developer")
+                .withDeveloperUrl("https://www.example.com")
+                .withPrivacyPolicyUrl("https://www.example.com/privacy")
+                .withSupportEmail("support@example.com")
+                .withClassName("org.openmetadata.service.resources.apps.TestApp")
+                .withAppType(AppType.Internal)
+                .withScheduleType(ScheduleType.Scheduled)
+                .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+                .withAppConfiguration(new HashMap<>())
+                .withPermission(NativeAppPermission.All),
+            AppMarketPlaceDefinition.class);
+    CreateUser createPerson =
+        new CreateUser().withName(botName).withEmail("bot_name_taken_" + suffix + "@test.om.org");
+    User person = ns.trackRoot(Entity.USER, admin.users().create(createPerson));
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> Apps.install().name(appName).execute());
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+
+    User saved = admin.users().get(person.getId().toString());
+    assertNotEquals(Boolean.TRUE, saved.getIsBot());
+    assertEquals(person.getVersion(), saved.getVersion());
+    assertThrows(OpenMetadataException.class, () -> admin.bots().getByName(botName));
+    assertThrows(OpenMetadataException.class, () -> Apps.getByName(appName));
+  }
+
+  /**
+   * A user of its own holding the seeded DataSteward role. The shared data-steward client only mints
+   * a token, so its account exists only if another test happened to create it first.
+   */
+  private static OpenMetadataClient dataStewardClient(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String name = "trigger_steward_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateUser createUser = new CreateUser();
+    createUser.setName(name);
+    createUser.setEmail(name + "@test.om.org");
+    createUser.setRoles(List.of(admin.roles().getByName("DataSteward").getId()));
+    User steward = ns.trackRoot(Entity.USER, admin.users().create(createUser));
+    return SdkClients.createClient(
+        steward.getName(), steward.getEmail(), new String[] {"DataSteward"});
   }
 
   @Test
@@ -1156,12 +1257,13 @@ public class AppsResourceIT {
               "{\"entityLink\":\"\"}",
               "{\"entityLink\":\" \"}",
               "{\"entityLink\":\"invalid-link\"}")) {
+        OpenMetadataClient actor = payload.contains("active") ? SdkClients.adminClient() : client;
         assertEquals(
             400,
             assertThrows(
                     InvalidRequestException.class,
                     () ->
-                        client
+                        actor
                             .getHttpClient()
                             .executeForString(HttpMethod.POST, triggerPath, payload),
                     payload)
@@ -1205,11 +1307,20 @@ public class AppsResourceIT {
               HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", "{\"entityLink\":null}");
 
       setAutoPilotConfig(app, Map.of("active", true));
-      client
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.POST,
+                      "/v1/apps/trigger/AutoPilotApplication",
+                      Map.of("active", false)));
+      SdkClients.adminClient()
           .getHttpClient()
           .executeForString(
               HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", Map.of("active", false));
-      client
+      SdkClients.adminClient()
           .getHttpClient()
           .executeForString(
               HttpMethod.POST,
@@ -1223,10 +1334,10 @@ public class AppsResourceIT {
     }
   }
 
-  @ParameterizedTest(name = "existingAgent={0}")
-  @ValueSource(booleans = {false, true})
+  @ParameterizedTest(name = "existingAgent={0}, derivedApp={1}")
+  @CsvSource({"false,false", "true,false", "false,true", "true,true"})
   void test_autopilotTriggerRequiresEditAllOnEffectiveService(
-      boolean existingAgent, TestNamespace ns) {
+      boolean existingAgent, boolean derivedApp, TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
     User caller = createAutoPilotTriggerCaller(ns);
     DatabaseService ownedService = DatabaseServiceTestFactory.createPostgres(ns);
@@ -1236,9 +1347,9 @@ public class AppsResourceIT {
     OpenMetadataClient client =
         SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
 
-    App app = Apps.getByName("AutoPilotApplication");
+    App app = derivedApp ? installDerivedAutoPilot(ns) : Apps.getByName("AutoPilotApplication");
     Object originalConfig = app.getAppConfiguration();
-    String triggerPath = "/v1/apps/trigger/AutoPilotApplication";
+    String triggerPath = "/v1/apps/trigger/" + app.getName();
     String ownedLink = "<#E::databaseService::" + ownedService.getFullyQualifiedName() + ">";
     String otherLink = "<#E::databaseService::" + otherService.getFullyQualifiedName() + ">";
     AsyncExecutor executor =
@@ -1316,12 +1427,58 @@ public class AppsResourceIT {
                 .deleteProcessInstance(process.getId(), "test cleanup");
           }
         }
-        setAutoPilotConfig(app, originalConfig);
+        if (derivedApp) {
+          Apps.uninstall(app.getName(), true);
+        } else {
+          setAutoPilotConfig(app, originalConfig);
+        }
       } finally {
         if (executorWasActive) {
           executor.start();
         }
       }
+    }
+  }
+
+  private App installDerivedAutoPilot(TestNamespace ns) {
+    String name = ns.shortPrefix("derivedApp");
+    CreateAppMarketPlaceDefinitionReq request =
+        new CreateAppMarketPlaceDefinitionReq()
+            .withName(name)
+            .withDisplayName("Derived AutoPilot")
+            .withDescription("Local application fixture")
+            .withFeatures("Service agents")
+            .withDeveloper("Test Developer")
+            .withDeveloperUrl("https://example.com")
+            .withPrivacyPolicyUrl("https://example.com/privacy")
+            .withSupportEmail("support@example.com")
+            .withClassName(DerivedAutoPilotApp.class.getName())
+            .withAppType(AppType.Internal)
+            .withScheduleType(ScheduleType.NoSchedule)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+            .withAppConfiguration(Map.of("active", true))
+            .withPermission(NativeAppPermission.All);
+    ns.trackRoot(
+        Entity.APP_MARKET_PLACE_DEF,
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT, "/v1/apps/marketplace", request, AppMarketPlaceDefinition.class));
+    return Apps.install().name(name).execute();
+  }
+
+  /** Shares the suite's installed AutoPilot workflow. */
+  public static class DerivedAutoPilotApp extends AutoPilotApp {
+    public DerivedAutoPilotApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+      super(collectionDAO, searchRepository);
+    }
+
+    @Override
+    public void install(String installedBy) {}
+
+    @Override
+    public void uninstall() {
+      ApplicationContext.getInstance().unregisterApp(this);
     }
   }
 

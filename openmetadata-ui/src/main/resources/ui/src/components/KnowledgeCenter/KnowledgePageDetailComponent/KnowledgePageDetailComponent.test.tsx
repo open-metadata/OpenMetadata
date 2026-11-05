@@ -15,6 +15,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import {
   getKnowledgePageByFqn,
@@ -22,6 +23,7 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import BlockEditor from '../../BlockEditor/BlockEditor';
 import KnowledgePageDetailComponent from './KnowledgePageDetailComponent';
 
 // KnowledgePageDetailComponent.tsx had ZERO existing test coverage before this conversion
@@ -420,5 +422,40 @@ describe('KnowledgePageDetailComponent custom properties', () => {
         }),
       })
     );
+  });
+});
+
+describe('KnowledgePageDetailComponent drafts', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
+      ...ENTITY_PERMISSIONS,
+      ViewBasic: true,
+      EditAll: true,
+    });
+  });
+
+  it('stashes a pending draft on pagehide, which a reload never unmounts', async () => {
+    renderComponent();
+    await screen.findByTestId('title');
+
+    const { onChange } = (BlockEditor as unknown as jest.Mock).mock.calls[
+      (BlockEditor as unknown as jest.Mock).mock.calls.length - 1
+    ][0];
+    act(() => onChange('<p>edited</p>'));
+
+    const { setDraft } = useArticleDraftStore();
+
+    expect(setDraft).not.toHaveBeenCalled();
+
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+
+    expect(setDraft).toHaveBeenCalledWith('kp-id-1', {
+      description: '<p>edited</p>',
+      fqn: 'test.page.fqn',
+      version: 0.1,
+    });
   });
 });

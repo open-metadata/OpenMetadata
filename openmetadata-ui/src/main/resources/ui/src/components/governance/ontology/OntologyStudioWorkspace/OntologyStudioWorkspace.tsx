@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyMemoryReviewPanel from '../../../OntologyExplorer/OntologyMemoryReviewPanel';
 import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace';
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';
@@ -26,9 +28,10 @@ import OntologyGraphView, {
 } from '../OntologyGraphView/OntologyGraphView';
 
 interface OntologyStudioWorkspaceProps {
-  ontology?: Ontology;
-  canCreate: boolean;
+  ontology: Ontology;
   createConceptRequestKey?: number;
+  onRequestCreateConcept?: () => void;
+  onAuthoringLockChange?: (locked: boolean) => void;
   initialDraftId?: string;
   mode: 'view' | 'edit' | 'definitions' | 'review';
   viewSurface: 'graph' | 'tree';
@@ -36,19 +39,29 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: () => void;
+  onRequestGraphSurface: () => void;
   onStatsChange?: (stats: OntologyModelStats) => void;
   onWorkingChange?: () => void;
 }
 
-const getWorkspaceClassName = (mode: OntologyStudioWorkspaceProps['mode']) =>
-  mode === 'view' || mode === 'edit'
-    ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden'
+const getWorkspaceClassName = (
+  mode: OntologyStudioWorkspaceProps['mode'],
+  isAiMode: boolean
+) => {
+  if (mode === 'view' || mode === 'edit') {
+    return 'tw:min-h-0 tw:flex-1 tw:overflow-hidden';
+  }
+
+  return isAiMode
+    ? 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-8 tw:pt-6 tw:pb-10'
     : 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6';
+};
 
 const OntologyStudioWorkspace = ({
   ontology,
-  canCreate,
   createConceptRequestKey,
+  onRequestCreateConcept,
+  onAuthoringLockChange,
   initialDraftId,
   mode,
   viewSurface,
@@ -56,35 +69,50 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  onRequestGraphSurface,
   onStatsChange,
   onWorkingChange,
 }: OntologyStudioWorkspaceProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const isAiMode = useIsAiMode();
+  const guard = useOntologyDraftGuard();
+  const [definitionTab, setDefinitionTab] = useState<string | number>(
+    'concept'
+  );
   const [revision, setRevision] = useState(0);
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
-    { id: ontology?.id ?? '' },
-    { enabled: Boolean(ontology), deleted: ontology?.deleted }
+    { id: ontology.id },
+    { deleted: ontology.deleted }
   );
-
-  if (!ontology) {
-    return (
-      <Box className="tw:overflow-auto tw:p-6" direction="col">
-        <OntologyCreateForm
-          canCreate={canCreate}
-          currentUserId={currentUser?.id}
-          onSaved={onSaved}
-        />
-      </Box>
-    );
-  }
 
   const renderContent = () => {
     switch (mode) {
       case 'definitions':
         return (
-          <Tabs defaultSelectedKey="concept">
+          <Tabs
+            className={isAiMode ? 'tw:gap-5' : undefined}
+            selectedKey={definitionTab}
+            onSelectionChange={(key) => guard(() => setDefinitionTab(key))}>
+            {isAiMode ? (
+              <Box direction="col" gap={1}>
+                <Typography
+                  as="h2"
+                  className="not-prose tw:m-0"
+                  size="text-lg"
+                  weight="semibold">
+                  {getEntityName(ontology)}
+                </Typography>
+                {ontology.description ? (
+                  <Typography
+                    color="secondary"
+                    ellipsis={{ rows: 2 }}
+                    size="text-sm">
+                    {ontology.description}
+                  </Typography>
+                ) : null}
+              </Box>
+            ) : null}
             <Tabs.List aria-label={t('label.definition')} type="underline">
               <Tabs.Item id="concept">{t('label.concept-plural')}</Tabs.Item>
               <Tabs.Item id="property">{t('label.property-plural')}</Tabs.Item>
@@ -112,7 +140,7 @@ const OntologyStudioWorkspace = ({
             </Tabs.Panel>
             <Tabs.Panel id="settings">
               <OntologyCreateForm
-                canCreate={canEditAll}
+                canEdit={canEditAll}
                 ontology={ontology}
                 onSaved={(saved) => {
                   onSaved(saved);
@@ -132,7 +160,10 @@ const OntologyStudioWorkspace = ({
             ontology={ontology}
             selectedConceptId={selectedConceptId}
             surface={viewSurface}
+            onAuthoringLockChange={onAuthoringLockChange}
+            onRequestCreateConcept={onRequestCreateConcept}
             onRequestEdit={onRequestEdit}
+            onRequestGraphSurface={onRequestGraphSurface}
             onSelectedConceptChange={onSelectedConceptChange}
             onStatsChange={onStatsChange}
             onWorkingChange={onWorkingChange}
@@ -158,7 +189,10 @@ const OntologyStudioWorkspace = ({
   };
 
   return (
-    <Box className={getWorkspaceClassName(mode)} direction="col" gap={4}>
+    <Box
+      className={getWorkspaceClassName(mode, isAiMode)}
+      direction="col"
+      gap={4}>
       {renderContent()}
     </Box>
   );
