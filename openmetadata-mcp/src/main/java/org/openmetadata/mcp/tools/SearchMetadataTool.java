@@ -1,6 +1,8 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -51,6 +53,11 @@ public class SearchMetadataTool implements McpTool {
   private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
   private static final String TEST_CASE_ENTITY = "testCase";
   private static final String NEVER_RUN_KEY = "neverRun";
+
+  /** AI governance types the dataAsset alias leaves out; the default search adds them back. */
+  private static final List<String> AI_GOVERNANCE_TYPES =
+      List.of(Entity.LLM_MODEL, Entity.MCP_SERVER, Entity.AI_APPLICATION);
+
   private final PersonaSearchScope.Provider personaSearchScopeProvider;
 
   public SearchMetadataTool() {
@@ -276,6 +283,9 @@ public class SearchMetadataTool implements McpTool {
     // deleted
     // filter, ranked scoring, and the search preference.
     String effectiveQueryFilter = nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter;
+    if (GLOBAL_SEARCH_ALIAS.equals(index)) {
+      effectiveQueryFilter = withDefaultScope(effectiveQueryFilter);
+    }
     Optional<PersonaSearchScope> personaScope = personaSearchScope(securityContext, params);
     if (personaScope.isPresent()) {
       effectiveQueryFilter = personaScope.orElseThrow().applyTo(effectiveQueryFilter);
@@ -811,17 +821,43 @@ public class SearchMetadataTool implements McpTool {
    * instead of a hand-maintained switch. A registered entity type resolves to its own single-type
    * index, so results are correctly scoped (fixing #27796, where unlisted types fell back to the
    * broad dataAsset alias and leaked other types). Null, unregistered, wildcard, or comma-separated
-   * input is not a registry key and falls back to dataAsset, preserving the prior graceful default
-   * rather than erroring or widening the search.
+   * input is not a registry key and falls back to the default scope ({@link #withDefaultScope}),
+   * preserving the prior graceful default rather than erroring or widening the search.
    */
   @VisibleForTesting
   static String resolveIndex(String entityType) {
-    String index = "dataAsset";
+    String index = GLOBAL_SEARCH_ALIAS;
     if (!nullOrEmpty(entityType)
         && Entity.getSearchRepository().getIndexMapping(entityType) != null) {
       index = entityType;
     }
     return index;
+  }
+
+  /**
+   * Narrows a search of the {@code all} alias to the default scope: the dataAsset types plus the AI
+   * governance types. The dataAsset alias stays unchanged because Explore reads it. The search goes
+   * through {@code all} and not an index list because ranking is picked by index name: only {@code
+   * all} and {@code dataAsset} get the data asset ranking, and a list falls back to generic ranking.
+   * ADR:2026-11-05-search-metadata-default-scope-includes-ai-governance-assets
+   */
+  @VisibleForTesting
+  static String withDefaultScope(String filter) {
+    List<String> types =
+        new ArrayList<>(
+            Entity.getSearchRepository().getEntityTypesForIndex(DATA_ASSET_SEARCH_ALIAS));
+    types.addAll(AI_GOVERNANCE_TYPES);
+    ObjectNode root =
+        nullOrEmpty(filter)
+            ? JsonUtils.getObjectMapper().createObjectNode()
+            : (ObjectNode) JsonUtils.readTree(filter);
+    ArrayNode clauses = JsonUtils.getObjectMapper().createArrayNode();
+    if (root.has(QUERY_KEY)) {
+      clauses.add(root.get(QUERY_KEY));
+    }
+    clauses.addObject().putObject("terms").set("entityType", JsonUtils.valueToTree(types));
+    root.putObject(QUERY_KEY).putObject("bool").set("filter", clauses);
+    return JsonUtils.pojoToJson(root);
   }
 
   /**

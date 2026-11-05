@@ -18,14 +18,19 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.LLMModelTestFactory;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -39,6 +44,7 @@ import org.openmetadata.service.Entity;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Execution(ExecutionMode.SAME_THREAD)
+@ExtendWith(TestNamespaceExtension.class)
 public class McpToolsValidationIT extends McpTestBase {
 
   private static Table testTable;
@@ -162,6 +168,34 @@ public class McpToolsValidationIT extends McpTestBase {
                   McpTestUtils.createSearchMetadataToolCall("mcp_val_table", 5, Entity.TABLE);
               JsonNode result = executeToolCall(toolCall);
               validateSearchMetadataResponse(result, "mcp_val_table");
+            });
+  }
+
+  /** LLM models are outside the dataAsset alias but are part of the default search scope. */
+  @Test
+  @Order(23)
+  void testSearchMetadataWithoutEntityTypeFindsLlmModels(TestNamespace ns) throws Exception {
+    LLMModel model = LLMModelTestFactory.createGPT(ns);
+    String fqn = model.getFullyQualifiedName().toLowerCase();
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("queryFilter", Map.of("term", Map.of("fullyQualifiedName", fqn)));
+    arguments.put("size", 5);
+    Awaitility.await("MCP search without entityType should find the new LLM model")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              JsonNode result =
+                  executeToolCall(McpTestUtils.createToolCallRequest("search_metadata", arguments));
+              JsonNode response =
+                  OBJECT_MAPPER.readTree(result.get("content").get(0).get("text").asText());
+              JsonNode match = findResultByName(response, model.getName());
+              assertThat(match)
+                  .withFailMessage(
+                      "Expected LLM model '%s' in default search results: %s",
+                      model.getName(), response.get("results"))
+                  .isNotNull();
+              assertThat(match.get("entityType").asText()).isEqualTo(Entity.LLM_MODEL);
             });
   }
 
