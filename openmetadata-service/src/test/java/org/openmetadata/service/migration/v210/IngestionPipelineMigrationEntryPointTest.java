@@ -37,7 +37,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -132,7 +132,7 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
-      // 2.1.0 databases skip 2.0.9's data migration, so 2.1.0 repairs containment too.
+      // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
