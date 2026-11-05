@@ -8813,6 +8813,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
+        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
         "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
@@ -14944,6 +14945,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/IngestionListTableUtils.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
