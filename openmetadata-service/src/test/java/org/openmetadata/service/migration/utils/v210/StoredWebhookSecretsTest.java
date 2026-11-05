@@ -145,6 +145,8 @@ class StoredWebhookSecretsTest {
             "successful_sent_change_events",
             "consumers_dlq",
             "entity_relationship",
+            "agent_execution_entity",
+            "mcp_execution_entity",
             "entity_extension_time_series",
             "workflow_instance_state_time_series")
         .forEach(table -> assertFalse(StoredCiphertextCopies.isRead(table), table));

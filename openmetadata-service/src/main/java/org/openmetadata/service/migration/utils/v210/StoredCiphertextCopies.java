@@ -14,7 +14,6 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,8 +46,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 final class StoredCiphertextCopies {
   private static final String ALERTS = "event_subscription_entity";
   private static final String VERSIONS = "entity_extension";
-  // The large tables of release 2.1 that cannot hold a secret: data assets, event logs,
-  // relationships and stored documents. Every time series table is left out too.
+  // The large tables of release 2.1 that cannot hold a secret: data assets, event and execution
+  // logs, relationships and stored documents. Every time series table is left out too.
   private static final List<String> SKIPPED =
       List.of(
           "table_entity",
@@ -85,6 +84,10 @@ final class StoredCiphertextCopies {
           "successful_sent_change_events",
           "consumers_dlq",
           "change_event_consumers",
+          "change_lifecycle_event",
+          "change_revision",
+          "agent_execution_entity",
+          "mcp_execution_entity",
           "activity_stream",
           "thread_entity",
           "thread_entity_archived",
@@ -159,9 +162,13 @@ final class StoredCiphertextCopies {
         .filter(table -> withIds.contains(table) && isVersioned(table.toLowerCase(Locale.ROOT)))
         .forEach(versioned::add);
     for (String table : versioned) {
-      List<String> ids = handle.createQuery("SELECT id FROM " + table).mapTo(String.class).list();
-      for (List<String> batch : Lists.partition(ids, ID_BATCH)) {
-        readRows(handle, VERSIONS + " WHERE id IN (<ids>) AND ", "id", VERSIONS, batch);
+      List<String> ids = WebhookSecretsMigration.idPage(handle, table, "", ID_BATCH);
+      while (!ids.isEmpty()) {
+        readRows(handle, VERSIONS + " WHERE id IN (<ids>) AND ", "id", VERSIONS, ids);
+        ids =
+            ids.size() < ID_BATCH
+                ? List.of()
+                : WebhookSecretsMigration.idPage(handle, table, ids.getLast(), ID_BATCH);
       }
     }
   }

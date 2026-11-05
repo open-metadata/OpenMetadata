@@ -43,8 +43,8 @@ so they can have keys of their own and open only there.
     other table with a `json` column, or a version of an entity of those tables). Fernet
     encryption is randomized, so a value the server wrote for one field is stored at that field
     only, and in the versions of the alert that holds it. Only a frozen list of large tables that
-    cannot hold a secret is left out: data assets, event logs, relationships, stored documents and
-    time series. A table the list does not name, such as one a distribution adds, is read, so a
+    cannot hold a secret is left out: data assets, event and execution logs, relationships, stored
+    documents and time series. A table the list does not name, such as one a distribution adds, is read, so a
     store nobody listed is never missed. Versions are found by their entity's id, through the
     primary key of the versions table, so the cost does not follow the number of data assets or
     events;

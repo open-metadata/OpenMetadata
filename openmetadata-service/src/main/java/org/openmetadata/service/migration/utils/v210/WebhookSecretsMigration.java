@@ -14,7 +14,6 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -119,13 +118,13 @@ public final class WebhookSecretsMigration {
    */
   private static void rewriteVersions(
       Handle handle, Sql sql, String table, String entityType, Predicate<JsonNode> transform) {
-    List<String> ids = handle.createQuery("SELECT id FROM " + table).mapTo(String.class).list();
     int rewritten = 0;
-    for (List<String> batch : Lists.partition(ids, PAGE_SIZE)) {
+    List<String> ids = idPage(handle, table, "", PAGE_SIZE);
+    while (!ids.isEmpty()) {
       List<Map<String, Object>> rows =
           handle
               .createQuery(sql.selectVersions())
-              .bindList("ids", batch)
+              .bindList("ids", ids)
               .bind("prefix", entityType + ".version.%")
               .mapToMap()
               .list();
@@ -139,8 +138,19 @@ public final class WebhookSecretsMigration {
         }
       }
       rewritten += execute(update);
+      ids = ids.size() < PAGE_SIZE ? List.of() : idPage(handle, table, ids.getLast(), PAGE_SIZE);
     }
     LOG.info("Masked the webhook secrets of {} versions of {}", rewritten, entityType);
+  }
+
+  /** The next {@code size} ids of {@code table} after {@code after}, so no table is held whole. */
+  static List<String> idPage(Handle handle, String table, String after, int size) {
+    return handle
+        .createQuery("SELECT id FROM " + table + " WHERE id > :after ORDER BY id LIMIT :size")
+        .bind("after", after)
+        .bind("size", size)
+        .mapTo(String.class)
+        .list();
   }
 
   // A change event carries the entity as written and its change description; nothing sends from an
