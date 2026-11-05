@@ -44,5 +44,5 @@ export interface ExploreSearchCardProps {
    * Core Card surface; `muted` when the card sits inside a surface panel
    * (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel).
    */
-  variant?: CardProps['variant'];
+  variant?: NonNullable<CardProps['variant']>;
 }

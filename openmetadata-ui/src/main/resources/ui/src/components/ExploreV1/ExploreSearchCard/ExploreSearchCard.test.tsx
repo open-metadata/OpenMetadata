@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import '@testing-library/jest-dom';
 import { Card } from '@openmetadata/ui-core-components';
+import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
