@@ -197,7 +197,12 @@ const openInstalledPack = async () => {
 const chooseExisting = async () => {
   const user = userEvent.setup();
   await user.click(screen.getByRole('button', { name: /label.install-to/ }));
-  await user.click(await screen.findByRole('option', { name: 'Sales' }));
+  const option = await screen.findByRole('option', { name: 'Sales' });
+  // The pack review starts from the click's re-render and resolves after user-event
+  // returns; only a click held inside act() delivers that result to the tree.
+  await act(async () => {
+    await user.click(option);
+  });
 };
 const creates = () => post.mock.calls.filter(([url]) => url === '/ontologies');
 const drafts = () =>
