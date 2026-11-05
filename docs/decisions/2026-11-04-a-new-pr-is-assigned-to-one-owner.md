@@ -1,10 +1,10 @@
 # A new PR is assigned to one owner: its author, or a write-capable member of its heaviest code owner
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-04 (initial)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-05 (team owners resolve through the GitHub API minus `assign-exclude`)
 - **Deciders:** Chirag Madlani
 - **Guard:** reviewer
-- **Related:** #37048
+- **Related:** #37048, ADR:2026-11-05-pr-labels-follow-paths-and-ci-trust-follows-org-membership
 
 ## Context
 
@@ -31,3 +31,15 @@ already has an assignee.
 `@open-metadata/mergers`) silently contributes no candidates, and a stale member list skews who
 gets external PRs. Reading team membership from the GitHub API instead would need an org-scoped
 token, which the default `GITHUB_TOKEN` can't provide.
+
+## Amendment — 2026-11-05: team owners resolve through the GitHub API
+
+`.github/teams.yml` is removed. A team owner `@open-metadata/<slug>` now expands to the members of
+the GitHub team `<slug>` (child teams included), read with the members:read App token described in
+ADR:2026-11-05-pr-labels-follow-paths-and-ci-trust-follows-org-membership. Logins listed under
+`assign-exclude` in `.github/team-config.yml` are then dropped. Rotation by PR number and the
+write-access check are unchanged.
+
+This removes the `teams.yml`↔`CODEOWNERS` contract: every CODEOWNERS team, `@open-metadata/mergers`
+included, now contributes its real members. Without the token a team owner contributes no
+candidates and the PR stays unassigned; an individual owner still resolves as before.

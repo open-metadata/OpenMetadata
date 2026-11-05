@@ -35,9 +35,81 @@ jobs:
             echo "safe to test label already absent"
           fi
 
-      - uses: JulienKode/team-labeler-action@v3.0.0
+      # Area labels follow the changed files (.github/labeler.yml). The labeler reads its config at
+      # the base commit and lists changed files through the API; it never checks out PR code.
+      - name: Label areas from changed paths
+        uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
         with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # `safe to test` follows org membership (ADR:2026-11-05-pr-labels-follow-paths-and-ci-trust-follows-org-membership).
+      # The default GITHUB_TOKEN can't see private org members, so a GitHub App token with
+      # members:read answers the membership check. Runs triggered by Dependabot get no Actions
+      # secrets, so a missing token is tolerated and only the allow list can trust the author.
+      - name: Mint org members read token
+        id: org-read-token
+        continue-on-error: true
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.TEAM_READER_APP_CLIENT_ID }}
+          private-key: ${{ secrets.TEAM_READER_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-members: read
+
+      - name: Read team config from the base commit
+        id: team-config
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          # github.sha is the base-branch commit this workflow was loaded from.
+          BASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          json=$(gh api "repos/${REPO}/contents/.github/team-config.yml?ref=${BASE_SHA}" --jq .content \
+            | base64 -d | yq -o=json -I=0 '.')
+          echo "json=${json}" >> "$GITHUB_OUTPUT"
+
+      - name: Label trusted authors safe to test
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          TEAM_CONFIG: ${{ steps.team-config.outputs.json }}
+          ORG_READ_TOKEN: ${{ steps.org-read-token.outputs.token }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            const { allow = [], deny = [] } = JSON.parse(process.env.TEAM_CONFIG)['safe-to-test'] ?? {};
+            const listed = (logins) => logins.some((login) => login.toLowerCase() === author.toLowerCase());
+
+            async function isOrgMember() {
+              if (!process.env.ORG_READ_TOKEN) {
+                core.warning('No members:read token; only the allow list can mark this PR safe to test.');
+                return false;
+              }
+              try {
+                await getOctokit(process.env.ORG_READ_TOKEN).rest.orgs.checkMembershipForUser({
+                  org: owner,
+                  username: author,
+                });
+                return true;
+              } catch (error) {
+                // Fail closed without failing the job: six CI workflows wait on `Team Label`.
+                if (error.status !== 404) {
+                  core.warning(`Org membership check for ${author} failed: ${error.message}`);
+                }
+                return false;
+              }
+            }
+
+            if (listed(deny)) {
+              return core.info(`${author} is on the safe-to-test deny list.`);
+            }
+            if (listed(allow) || (await isOrgMember())) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: ['safe to test'] });
+              return core.info(`Marked #${pr.number} safe to test for ${author}.`);
+            }
+            core.info(`${author} is not an org member or allow-listed; a maintainer must add safe to test.`);
 
       - name: Verify PR labels
         id: verify

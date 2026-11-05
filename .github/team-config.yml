@@ -1,0 +1,19 @@
+# Exceptions to the GitHub teams and org membership that drive PR automation
+# (ADR:2026-11-05-pr-labels-follow-paths-and-ci-trust-follows-org-membership). Team rosters live
+# on GitHub (org → Teams); list here only the people the rosters can't express. Logins, no `@`.
+
+# `safe to test` is added for PR authors who are active members of the org.
+safe-to-test:
+  # Trusted authors who can't be org members: bots and service accounts.
+  allow:
+    - dependabot[bot]
+    - github-actions[bot]
+    - snyk-bot
+  # Org members whose PRs must still be approved by a maintainer before CI runs.
+  deny: []
+
+# Never auto-assigned an external PR when a CODEOWNERS team they belong to is the heaviest owner
+# (.github/workflows/pr-auto-assign.yml, ADR:2026-11-04-a-new-pr-is-assigned-to-one-owner).
+assign-exclude:
+  - shahsank3t
+  - sureshms
