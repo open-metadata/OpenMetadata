@@ -11,23 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-} from '@openmetadata/ui-core-components/icons';
+import { Button, Dropdown, Tooltip } from '@openmetadata/ui-core-components';
+import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
-
-// The design's toolbar triggers: 16px icons and 10/8px padding, so the
-// sub-tabs and all three filters share one row.
-export const ACTIVITY_TRIGGER_CLASS_NAME =
-  'tw:gap-1.5 tw:py-2 tw:pr-2 tw:pl-2.5 tw:whitespace-nowrap tw:*:data-icon:size-4';
 
 export interface ActivityToolbarMenuOption {
   value: string;
   label: string;
-  icon: FC<{ className?: string }>;
+  icon?: FC<{ className?: string }>;
+  // Shown at the row's end, e.g. how many items the option holds.
+  count?: string;
 }
 
 export interface ActivityToolbarMenuProps {
@@ -35,40 +28,59 @@ export interface ActivityToolbarMenuProps {
   title: string;
   // Trigger text; the selected option's label when omitted.
   triggerLabel?: string;
+  // Shows only the icon, with the trigger text as its tooltip and name.
+  iconOnly?: boolean;
   triggerIcon: FC<{ className?: string }>;
   options: ActivityToolbarMenuOption[];
   value: string;
   onChange: (value: string) => void;
+  // A quiet trigger for a control inside a list's header rather than a toolbar.
+  color?: 'secondary' | 'tertiary';
+  size?: 'sm' | 'md';
   'data-testid'?: string;
 }
 
-/**
- * A single-choice toolbar menu as the design draws it: a heading, an icon per
- * option and a check on the chosen one, rather than a tinted row.
- */
+/** A single-choice toolbar menu: a heading over one row per option. */
 const ActivityToolbarMenu = ({
   title,
   triggerLabel,
+  iconOnly,
   triggerIcon,
   options,
   value,
   onChange,
+  color = 'secondary',
+  // The size FilterSelect gives its bordered trigger, so the Type filter
+  // beside these menus stands as tall as they do.
+  size = 'md',
   'data-testid': testId,
 }: ActivityToolbarMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const selected = options.find((option) => option.value === value);
+  const label =
+    triggerLabel ?? options.find((option) => option.value === value)?.label;
 
   return (
     <Dropdown.Root onOpenChange={setIsOpen}>
-      <Button
-        className={ACTIVITY_TRIGGER_CLASS_NAME}
-        color="secondary"
-        data-testid={testId}
-        iconLeading={triggerIcon}
-        iconTrailing={isOpen ? ChevronUp : ChevronDown}
-        size="sm">
-        {triggerLabel ?? selected?.label}
-      </Button>
+      {iconOnly ? (
+        <Tooltip title={label}>
+          <Button
+            aria-label={label}
+            color={color}
+            data-testid={testId}
+            iconLeading={triggerIcon}
+            size={size}
+          />
+        </Tooltip>
+      ) : (
+        <Button
+          color={color}
+          data-testid={testId}
+          iconLeading={triggerIcon}
+          iconTrailing={isOpen ? ChevronUp : ChevronDown}
+          size={size}>
+          {label}
+        </Button>
+      )}
       <Dropdown.Popover className="tw:w-56" placement="bottom end">
         <Dropdown.Menu
           aria-label={title}
@@ -81,21 +93,12 @@ const ActivityToolbarMenu = ({
             </Dropdown.SectionHeader>
             {options.map((option) => (
               <Dropdown.Item
-                // The check marks the choice, so the row keeps no tint.
-                className="tw:[&>div]:bg-transparent! tw:hover:[&>div]:bg-primary_hover!"
+                addon={option.count}
                 icon={option.icon}
                 id={option.value}
                 key={option.value}
-                textValue={option.label}>
-                {({ isSelected }) => (
-                  <span className="tw:flex tw:items-center tw:justify-between tw:gap-2">
-                    {option.label}
-                    {isSelected && (
-                      <Check className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary" />
-                    )}
-                  </span>
-                )}
-              </Dropdown.Item>
+                label={option.label}
+              />
             ))}
           </Dropdown.Section>
         </Dropdown.Menu>

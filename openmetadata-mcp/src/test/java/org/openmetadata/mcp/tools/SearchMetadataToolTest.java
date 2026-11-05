@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -27,19 +28,25 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -84,6 +91,73 @@ class SearchMetadataToolTest {
   @Test
   void testDefaultConstructorCreatesTool() {
     assertNotNull(new SearchMetadataTool());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false, false", "true, false", "false, true", "true, true"})
+  void testCaseSearchUsesTheLinkedColumnResponsePolicy(boolean authorized, boolean objectResponse)
+      throws Exception {
+    String tableFqn = "service.db.schema.table";
+    Map<String, Object> body =
+        Map.of(
+            "hits",
+            Map.of(
+                "total",
+                Map.of("value", 1),
+                "hits",
+                List.of(
+                    Map.of(
+                        "_index",
+                        "test_case_search_index",
+                        "_id",
+                        UUID.randomUUID().toString(),
+                        "_source",
+                        Map.of(
+                            "name",
+                            "check",
+                            "entityType",
+                            Entity.TEST_CASE,
+                            "fullyQualifiedName",
+                            tableFqn + ".SSN.check",
+                            "description",
+                            "Column details",
+                            "entityLink",
+                            "<#E::table::" + tableFqn + "::columns::SSN>")))));
+    Table table =
+        new Table()
+            .withOwners(List.of())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("ssn")
+                        .withTags(
+                            List.of(new TagLabel().withTagFQN(PIIMasker.SENSITIVE_PII_TAG)))));
+    when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+    when(searchRepository.getIndexOrAliasName(Entity.TEST_CASE))
+        .thenReturn("test_case_search_index");
+    when(searchRepository.getIndexOrAliasName(Entity.TEST_CASE_RESULT))
+        .thenReturn("test_case_result_search_index");
+    when(searchRepository.search(any(), any(SubjectContext.class)))
+        .thenReturn(Response.ok(objectResponse ? body : JsonUtils.pojoToJson(body)).build());
+    doReturn(false).when(authorizer).authorizePII(securityContext, null);
+    doReturn(authorized).when(authorizer).authorizePII(securityContext, List.of());
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+      JsonNode result =
+          JsonUtils.valueToTree(
+              searchMetadataTool.execute(authorizer, securityContext, Map.of("query", "*")));
+      assertEquals(
+          authorized ? "Column details" : "", result.at("/results/0/description").asText());
+      assertEquals(authorized ? "check" : "check [MASKED]", result.at("/results/0/name").asText());
+    }
   }
 
   @Test

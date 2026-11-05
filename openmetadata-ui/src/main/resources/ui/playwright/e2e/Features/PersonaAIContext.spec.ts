@@ -1454,7 +1454,15 @@ test.describe.serial('Persona AI Context', () => {
     await descriptionCheckbox.waitFor({ state: 'visible' });
     await expect(descriptionCheckbox).toBeChecked();
     await expect(descriptionCheckbox).toBeEnabled();
-    await descriptionCheckbox.uncheck();
+    // The section card is a react-aria Checkbox: its native input is visually
+    // hidden, so click the visible card (the input's <label>) like a user would.
+    await drawer
+      .locator('label')
+      .filter({
+        has: adminPage.getByRole('checkbox', { name: 'Description' }),
+      })
+      .click();
+    await expect(descriptionCheckbox).not.toBeChecked();
 
     const createRuleRequest = adminPage.waitForRequest(
       (request) =>

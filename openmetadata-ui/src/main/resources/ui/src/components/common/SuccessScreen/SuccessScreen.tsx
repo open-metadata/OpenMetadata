@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -115,11 +119,15 @@ const SuccessScreen = ({
             <Typography as="p" className="m-b-0" data-testid="success-line">
               {isUndefined(successMessage) ? (
                 <span>
-                  <span className="m-r-xss font-semibold">
+                  <Typography className="m-r-xss" weight="semibold">
                     {`"${name || 'demo_mysql'}"`}
-                  </span>
-                  {suffix && <span className="m-r-xss">{suffix}</span>}
-                  <span>{t('message.has-been-created-successfully')}</span>
+                  </Typography>
+                  {suffix && (
+                    <Typography className="m-r-xss">{suffix}</Typography>
+                  )}
+                  <Typography>
+                    {t('message.has-been-created-successfully')}
+                  </Typography>
                 </span>
               ) : (
                 successMessage
@@ -147,37 +155,34 @@ const SuccessScreen = ({
 
       <div className="mt-7 text-center">
         <Button
-          ghost
+          color="secondary-brand"
           data-testid="view-service-button"
-          type="primary"
           onClick={handleViewServiceClick}>
-          <span>
+          <Typography>
             {viewServiceText ??
               t('label.view-entity', { entity: t('label.service') })}
-          </span>
+          </Typography>
         </Button>
 
         {showIngestionButton && (
           <Button
-            className="m-l-3.5"
+            color="primary"
             data-testid="add-ingestion-button"
-            disabled={!isAirflowAvailable}
-            type="primary"
+            isDisabled={!isAirflowAvailable}
             onClick={handleIngestionClick}>
-            <span>
+            <Typography>
               {t('label.add-entity', { entity: t('label.ingestion') })}
-            </span>
+            </Typography>
           </Button>
         )}
 
         {showDeployButton && (
           <Button
-            className="m-l-3.5"
+            color="primary"
             data-testid="deploy-ingestion-button"
-            disabled={!isAirflowAvailable}
-            type="primary"
+            isDisabled={!isAirflowAvailable}
             onClick={handleDeployClick}>
-            <span>{t('label.deploy')}</span>
+            <Typography>{t('label.deploy')}</Typography>
           </Button>
         )}
       </div>

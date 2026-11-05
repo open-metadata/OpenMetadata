@@ -5,10 +5,10 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
-import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource.COLLECTION_PATH;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
+import static org.openmetadata.service.util.DateStrings.getDateStringEpochMilli;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
@@ -95,6 +95,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.config.source.ConfigSources;
 import org.openmetadata.service.config.source.ConfigTemplateKind;
@@ -147,6 +148,8 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.session.JdbcSessionStore;
+import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.dbtune.AutoTuner;
 import org.openmetadata.service.util.dbtune.DbTuneDiagnosis;
@@ -1186,12 +1189,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
       String inputPwd = new String(password);
       updateUserWithHashedPwd(updatedUser, inputPwd);
       UserUtil.addOrUpdateUser(updatedUser);
+      userRepository.endSignIns(updatedUser, databaseSessionService());
       LOG.info("Password updated successfully.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reset user password.", e);
       return 1;
     }
+  }
+
+  /** Sessions kept in Redis are out of this command's reach; the server's own sweep ends them. */
+  private SessionService databaseSessionService() {
+    CacheConfig cacheConfig = config.getCacheConfig();
+    if (cacheConfig != null && cacheConfig.provider == CacheConfig.Provider.redis) {
+      LOG.warn("Sessions are stored in Redis, so the user's live sessions end when they expire.");
+      return null;
+    }
+    return new SessionService(
+        SecurityConfigurationManager.getCurrentAuthConfig(), new JdbcSessionStore());
   }
 
   @Command(

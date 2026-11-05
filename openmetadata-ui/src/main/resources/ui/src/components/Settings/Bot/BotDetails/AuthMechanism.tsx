@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Input } from 'antd';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Divider,
+  PasswordInput,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/copy-right-squared.svg';
 import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { Bot } from '../../../../generated/entity/bot';
@@ -85,15 +90,14 @@ const AuthMechanism: FC<Props> = ({
     if (!JWTTokenExpiresAt) {
       return (
         <>
-          <Icon
-            alt="warning"
-            className="align-middle"
-            component={IconError}
-            style={{ fontSize: '16px' }}
+          <IconError
+            aria-label="warning"
+            className="tw:align-middle tw:size-4 tw:shrink-0"
+            role="img"
           />
-          <span className="align-middle">
+          <Typography className="align-middle">
             {t('message.token-has-no-expiry')}
-          </span>
+          </Typography>
         </>
       );
     }
@@ -110,13 +114,14 @@ const AuthMechanism: FC<Props> = ({
           inline
           align="center"
           className={`layout-space layout-space-horizontal ${classNames(
-            'w-full justify-between ant-space-authMechanism',
+            'w-full justify-between auth-mechanism-space',
             isSCIMBot && 'm-t-xs'
           )}`}
           gap={2}
           itemClassName="layout-space-item">
-          <Input.Password
-            readOnly
+          <PasswordInput
+            isReadOnly
+            aria-label={t('label.token')}
             autoComplete="off"
             data-testid="token"
             placeholder="Generate new token..."
@@ -125,8 +130,10 @@ const AuthMechanism: FC<Props> = ({
           {!isSCIMBot ? (
             <CopyToClipboardButton copyText={JWTToken} />
           ) : (
-            <CopyIcon
-              className="m-t-xs cursor-pointer"
+            <ButtonUtility
+              className="tw:mt-2"
+              icon={Copy01}
+              tooltip={t('message.copy-to-clipboard')}
               onClick={() => navigator.clipboard.writeText(JWTToken)}
             />
           )}
@@ -208,21 +215,19 @@ const AuthMechanism: FC<Props> = ({
           itemClassName="layout-space-item">
           {JWTToken ? (
             <Button
-              danger
+              color="secondary-destructive"
               data-testid="revoke-button"
-              disabled={!hasPermission}
-              size="small"
-              type="default"
+              isDisabled={!hasPermission}
+              size="xs"
               onClick={onTokenRevoke}>
               {t('label.revoke-token')}
             </Button>
           ) : (
             <Button
-              className="text-sm"
+              color="primary"
               data-testid="auth-mechanism"
-              disabled={!hasPermission}
-              size="small"
-              type="primary"
+              isDisabled={!hasPermission}
+              size="xs"
               onClick={onEdit}>
               {t('label.generate-new-token')}
             </Button>

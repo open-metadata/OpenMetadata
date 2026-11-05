@@ -45,7 +45,7 @@ const HealthCheckSettings = ({
         data-testid="refresh-health-check"
         iconLeading={RefreshCw01}
         isLoading={isLoading}
-        size="sm"
+        size="xs"
         onPress={reload}>
         {t('label.refresh')}
       </Button>

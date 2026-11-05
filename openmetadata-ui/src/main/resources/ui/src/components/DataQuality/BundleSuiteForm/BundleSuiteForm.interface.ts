@@ -32,8 +32,6 @@ export interface BundleSuiteFormDrawerProps {
   onClose: () => void;
   onSuccess?: (testSuite: TestSuite) => void;
   initialValues?: BundleSuiteFormProps['initialValues'];
-  /** 'drawer' renders the slideout drawer; 'modal' renders the centered modal. */
-  variant?: 'drawer' | 'modal';
   title?: ReactNode;
   headerActions?: ReactNode;
   width?: number | string;

@@ -10,13 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button } from 'antd';
 import classNames from 'classnames';
-import { capitalize, isUndefined, omit, omitBy } from 'lodash';
+import { capitalize, cloneDeep, isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
   lazy,
@@ -30,6 +29,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA,
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
@@ -46,7 +46,11 @@ import {
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
-import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import {
+  getSchemaByWorkflowType,
+  validateOwnerConfigMaps,
+} from '../../../../../utils/IngestionWorkflowUtils';
+import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
@@ -191,11 +195,19 @@ const IngestionWorkflowForm = forwardRef<
     useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
 
-  const schema = useMemo(
-    () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
+  const schema = useMemo(() => {
+    const workflowSchema = getSchemaByWorkflowType(
+      pipeLineType,
+      serviceCategory
+    );
 
-    [pipeLineType, serviceCategory]
-  );
+    return serviceData?.serviceType === 'BigQuery'
+      ? workflowSchema
+      : {
+          ...workflowSchema,
+          properties: omit(workflowSchema.properties, ['shardedTables']),
+        };
+  }, [pipeLineType, serviceCategory, serviceData?.serviceType]);
 
   const validator = useMemo(
     () => customizeValidator<IngestionWorkflowData>(),
@@ -209,6 +221,9 @@ const IngestionWorkflowForm = forwardRef<
 
   const isIncrementalExtractionSupported =
     serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
+
+  const isAutoPartitionDetectionSupported =
+    serviceData?.connection?.config?.supportsAutoPartitionDetection;
 
   const uiSchema = useMemo(() => {
     let commonSchema: UiSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
@@ -232,6 +247,8 @@ const IngestionWorkflowForm = forwardRef<
         profileSampleConfig: {
           'ui:field': 'ProfileSampleConfigField',
         },
+        ...(!isAutoPartitionDetectionSupported &&
+          EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA),
       };
     }
 
@@ -257,6 +274,7 @@ const IngestionWorkflowForm = forwardRef<
     return commonSchema;
   }, [
     hideFooter,
+    isAutoPartitionDetectionSupported,
     isElasticSearchPipeline,
     isIncrementalExtractionSupported,
     pipeLineType,
@@ -360,7 +378,7 @@ const IngestionWorkflowForm = forwardRef<
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
-      let formData = { ...e.formData };
+      let formData = formatAdditionalProperties(cloneDeep(e.formData));
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [
@@ -400,6 +418,7 @@ const IngestionWorkflowForm = forwardRef<
         focusOnFirstError
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
+        customValidate={validateOwnerConfigMaps}
         fields={customFields}
         formContext={{ handleFocus: handleFieldFocus }}
         formData={internalData}
@@ -431,11 +450,11 @@ const IngestionWorkflowForm = forwardRef<
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <Button type="link" onClick={onCancel}>
+              <Button color="secondary" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 
-              <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              <Button color="primary" data-testid="submit-btn" type="submit">
                 {okText ?? t('label.save')}
               </Button>
             </Box>

@@ -114,6 +114,52 @@ public class CsvAsyncJobResourceIT {
   }
 
   @Test
+  void test_importResultIsFetchableAndNotInTheJobRow(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "import-result");
+    String csv = exportMetricCsv(metric);
+
+    String jobId =
+        startJob(
+            "PUT",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/importAsync?dryRun=true",
+            csv,
+            adminToken());
+    awaitJobStatus(jobId, "COMPLETED");
+
+    // The completion frame is thin and the jobs list omits the result, so it never travels
+    // through the websocket relay; it is fetched on demand through /import-result.
+    JsonNode listedJob = findJobInList(jobId);
+    assertNotNull(listedJob, "The creator's job listing must include the import job");
+    assertTrue(
+        listedJob.path("result").isNull() || listedJob.path("result").isMissingNode(),
+        "The jobs list must not carry the import result; it is fetched via /import-result");
+
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/import-result", null, adminToken());
+    assertEquals(200, result.statusCode(), result.body());
+    JsonNode importResult = MAPPER.readTree(result.body());
+    assertTrue(
+        importResult.path("importResultsCsv").asText().contains(metric.getName()),
+        "The fetched import result must contain the imported metric: " + result.body());
+  }
+
+  @Test
+  void test_importResultEndpointRejectsExportJobs(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "export-not-import");
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/exportAsync",
+            null,
+            adminToken());
+    awaitJobStatus(jobId, "COMPLETED");
+
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/import-result", null, adminToken());
+    assertEquals(400, result.statusCode(), "Export jobs have no import result: " + result.body());
+  }
+
+  @Test
   void test_importPayloadOverRowCapIsRejected(TestNamespace ns) throws Exception {
     Metric metric = createMetric(ns, "capped");
     String oversized = "name\n" + "row\n".repeat(100_001);

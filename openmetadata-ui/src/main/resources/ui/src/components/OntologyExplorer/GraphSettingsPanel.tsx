@@ -12,14 +12,13 @@
  */
 
 import {
-  Button,
   ButtonUtility,
   Dropdown,
   Select,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Settings01, X } from '@openmetadata/ui-core-components/icons';
+import { Settings01, XClose } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LayoutType } from './OntologyExplorer.constants';
@@ -66,10 +65,9 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
           {t('label.graph-settings')}
         </Typography>
         <ButtonUtility
-          color="tertiary"
           data-testid="graph-settings-close"
-          icon={X}
-          size="xs"
+          icon={XClose}
+          size="lg"
           tooltip={t('label.close')}
           onClick={() => setOpen(false)}
         />
@@ -114,11 +112,11 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
 
   return (
     <Dropdown.Root isOpen={open} onOpenChange={setOpen}>
-      <Button
-        color="secondary"
+      <ButtonUtility
         data-testid="ontology-graph-settings"
-        iconLeading={<Settings01 height={20} width={20} />}
-        size="sm"
+        icon={Settings01}
+        size="lg"
+        tooltip={t('label.graph-settings')}
       />
       <Dropdown.Popover aria-label={t('label.graph-settings')} placement="top">
         {popoverContent}

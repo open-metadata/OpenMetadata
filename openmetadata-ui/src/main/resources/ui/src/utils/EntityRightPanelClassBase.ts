@@ -13,17 +13,19 @@
 import { lazy, type FC } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 
-const KnowledgePages = withSuspenseFallback(
+interface KnowledgeArticlesProps {
+  entityId: string;
+  entityType: string;
+}
+
+const KnowledgePages = withSuspenseFallback<KnowledgeArticlesProps>(
   lazy(
     () => import('../components/KnowledgeCenter/KnowledgePages/KnowledgePages')
   )
 );
 
 class EntityRightPanelClassBase {
-  public getKnowLedgeArticlesWidget(): FC<{
-    entityId: string;
-    entityType: string;
-  }> | null {
+  public getKnowLedgeArticlesWidget(): FC<KnowledgeArticlesProps> | null {
     return KnowledgePages;
   }
 }

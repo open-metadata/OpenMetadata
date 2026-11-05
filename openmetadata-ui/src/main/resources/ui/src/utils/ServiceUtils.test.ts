@@ -10,12 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render, screen } from '@testing-library/react';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import {
+  MlmodelService,
+  MlModelServiceType,
+} from '../generated/entity/services/mlmodelService';
 import {
   getActiveFieldNameForAppDocs,
   getSearchIndexFromService,
 } from './ServicePureUtils';
+import { getOptionalFields } from './ServiceUtils';
 
 describe('getSearchIndexFromService', () => {
   it.each([
@@ -58,4 +64,29 @@ describe('Service Utils', () => {
       );
     });
   });
+});
+
+describe('MLflow service card fields', () => {
+  it.each(['*********', 'http://localhost:5001', undefined])(
+    'shows tracking without displaying the registry value %s',
+    (registryUri) => {
+      const service: MlmodelService = {
+        id: 'mlflow-service',
+        name: 'demo_mlflow',
+        serviceType: MlModelServiceType.Mlflow,
+        connection: {
+          config: { trackingUri: 'http://localhost:5000', registryUri },
+        },
+      };
+
+      render(getOptionalFields(service, ServiceCategory.ML_MODEL_SERVICES));
+
+      expect(screen.getByText('http://localhost:5000')).toBeInTheDocument();
+      expect(screen.getAllByTestId('additional-field')).toHaveLength(1);
+
+      if (registryUri) {
+        expect(screen.queryByText(registryUri)).not.toBeInTheDocument();
+      }
+    }
+  );
 });

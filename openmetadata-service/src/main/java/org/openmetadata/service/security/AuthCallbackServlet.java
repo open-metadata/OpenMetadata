@@ -58,6 +58,15 @@ public class AuthCallbackServlet extends HttpServlet {
 
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+    // A Test Login posts back here with its marker as RelayState. Route it before any live login
+    // handling, so a test can never provision a user, mint a token, or start a session.
+    Optional<String> testSessionId =
+        TestLoginSessions.sessionIdFromMarker(req.getParameter("RelayState"));
+    if (testSessionId.isPresent()) {
+      TestLoginRoundTrip.getInstance().completeSamlCallback(testSessionId.get(), req, resp);
+      TestLoginCallbackPage.render(resp);
+      return;
+    }
     // SAML uses POST for callback with SAMLResponse
     AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler(req.getServletContext());
     handler.handleCallback(req, resp);

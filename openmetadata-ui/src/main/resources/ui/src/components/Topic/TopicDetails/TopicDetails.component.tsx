@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import type { AxiosError } from 'axios';
 import type { EntityTags } from 'Models';
-import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import type { Tag } from '../../../generated/entity/classification/tag';
@@ -67,7 +66,7 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
-import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import type { GenericProviderProps } from '../../Customization/GenericProvider/GenericProvider.interface';
 import type { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -98,10 +97,6 @@ const CustomPropertyTable = withSuspenseFallback(
     )
   )
 ) as CustomPropertyTableComponent;
-
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
-);
 
 const GenericProvider = withSuspenseFallback(
   lazy(() =>
@@ -138,14 +133,6 @@ const EntityLineageTab = withSuspenseFallback(
 const QueryViewer = withSuspenseFallback(
   lazy(() => import('../../common/QueryViewer/QueryViewer.component'))
 );
-
-const AlignRightIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.AlignRightIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
@@ -416,14 +403,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       sampleDataTab: !viewSampleDataPermission ? (
-        <div className="border-default border-radius-sm p-y-lg">
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.sample-data'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
+        <div className="border-default border-radius-sm p-y-lg tw:relative tw:min-h-60 tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={t('label.view-entity', {
+                entity: t('label.sample-data'),
+              })}
+            />
+          </div>
         </div>
       ) : (
         <SampleDataWithMessages
@@ -518,7 +506,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={entityName}>
+    <PageLayoutV1 fillEntityTabs pageTitle={entityName}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader
@@ -556,9 +544,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <Tabs.List
                 actions={
                   isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
+                    <ButtonUtility
+                      data-testid="tab-expand-button"
+                      icon={isTabExpanded ? Collapse : Expand}
+                      size="lg"
+                      tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')
                       }
                       onClick={toggleTabExpanded}

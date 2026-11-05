@@ -99,6 +99,40 @@ describe('TreeSelect', () => {
     expect(fetchData).not.toHaveBeenCalled();
   });
 
+  it('focuses the search box and keeps its keys from the host when opened', async () => {
+    const onHostKeyDown = vi.fn();
+    render(
+      <div onKeyDown={onHostKeyDown}>
+        <TreeSelect
+          isOpen
+          searchable
+          data-testid="picker"
+          fetchData={fetchNodes()}
+          renderTrigger={() => <span>trigger</span>}
+        />
+      </div>
+    );
+
+    const search = await screen.findByTestId('picker-search');
+    await waitFor(() => expect(search).toHaveFocus());
+
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+
+    expect(onHostKeyDown).not.toHaveBeenCalled();
+  });
+
+  it('shows the empty state when nothing matches', async () => {
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={vi.fn().mockResolvedValue({ nodes: [] })}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    expect(await screen.findByTestId('tree-select-empty')).toBeInTheDocument();
+  });
+
   it('fetches the root when the picker first opens', async () => {
     const fetchData = fetchNodes();
     const { rerender } = renderCustomTrigger(fetchData, false);
@@ -138,6 +172,49 @@ describe('TreeSelect', () => {
 
     expect(await screen.findByText('Node A')).toBeInTheDocument();
     expect(fetchData).toHaveBeenCalledTimes(1);
+  });
+
+  it('reopens on the controlled value after an immediate pick the parent never echoed', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        { id: 'a', label: 'Node A', value: 'a', isLeaf: true },
+        { id: 'b', label: 'Node B', value: 'b', isLeaf: true },
+      ],
+    });
+    const value: TreeSelectNode = { id: 'a', label: 'Node A', value: 'a' };
+    // A parent whose save failed: it gets the pick but keeps passing `a`.
+    const renderPicker = (isOpen: boolean) => (
+      <TreeSelect
+        fetchData={fetchData}
+        isOpen={isOpen}
+        renderTrigger={() => <span>trigger</span>}
+        value={value}
+        onChange={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPicker(true));
+
+    fireEvent.click(await screen.findByText('Node B'));
+
+    expect(screen.getByTestId('tree-node-b')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+
+    rerender(renderPicker(false));
+    rerender(renderPicker(true));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tree-node-a')).toHaveAttribute(
+        'data-selected',
+        'true'
+      )
+    );
+
+    expect(screen.getByTestId('tree-node-b')).toHaveAttribute(
+      'data-selected',
+      'false'
+    );
   });
 
   it('opens the dropdown below the trigger by default', async () => {
@@ -199,6 +276,89 @@ describe('TreeSelect', () => {
     );
 
     expect(await screen.findByText('Node C')).toBeInTheDocument();
+  });
+
+  it.each([
+    [false, '2'],
+    [true, '1'],
+  ])(
+    'counts a selected root in the badge only outside cascade mode (cascade=%s)',
+    async (cascadeSelection, expected) => {
+      const root = (id: string): TreeSelectNode => ({
+        id,
+        label: id,
+        value: id,
+        isLeaf: false,
+      });
+      const child: TreeSelectNode = {
+        id: 'Banking.Retail',
+        label: 'Retail',
+        value: 'Banking.Retail',
+        isLeaf: true,
+        parentId: 'Banking',
+      };
+      const fetchData = vi.fn().mockResolvedValue({
+        nodes: [root('Banking'), root('Clinical')],
+      });
+
+      render(
+        <TreeSelect
+          multiple
+          cascadeSelection={cascadeSelection}
+          fetchData={fetchData}
+          label="Domain"
+          triggerVariant="button"
+          value={
+            cascadeSelection
+              ? [root('Banking'), child]
+              : [root('Banking'), root('Clinical')]
+          }
+        />
+      );
+
+      await waitFor(() => expect(fetchData).toHaveBeenCalled());
+
+      expect(await screen.findByTestId('filter-count-badge')).toHaveTextContent(
+        expected
+      );
+    }
+  );
+
+  it('counts only the selected terms under unselectable glossary roots', async () => {
+    const term = (id: string): TreeSelectNode => ({
+      id,
+      label: id,
+      value: id,
+      isLeaf: true,
+      parentId: 'Glossary',
+    });
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Glossary',
+          label: 'Glossary',
+          value: 'Glossary',
+          isLeaf: false,
+          allowSelection: false,
+        },
+      ],
+    });
+
+    render(
+      <TreeSelect
+        multiple
+        fetchData={fetchData}
+        label="Glossary"
+        triggerVariant="button"
+        value={[term('Glossary.A'), term('Glossary.B')]}
+      />
+    );
+
+    await waitFor(() => expect(fetchData).toHaveBeenCalled());
+
+    expect(await screen.findByTestId('filter-count-badge')).toHaveTextContent(
+      '2'
+    );
   });
 
   it('fetches on mount for the button variant, whose badge needs the roots', async () => {

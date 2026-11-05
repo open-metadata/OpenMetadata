@@ -11,30 +11,32 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   ButtonUtility,
   Card,
   Dropdown,
   Grid,
+  SimpleModal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Button, Modal } from 'antd';
+import {
+  DotsVertical,
+  Edit01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -277,10 +279,9 @@ const PoliciesDetailPage = () => {
       return (
         <Dropdown.Root>
           <ButtonUtility
-            color="tertiary"
             data-testid={`manage-button-${rule.name}`}
             icon={DotsVertical}
-            size="xs"
+            size="lg"
             tooltip={t('label.manage-entity', {
               entity: t('label.rule'),
             })}
@@ -300,16 +301,20 @@ const PoliciesDetailPage = () => {
                 }
               }}>
               <Dropdown.Item
-                icon={EditIcon}
+                icon={Edit01}
                 id="edit-button"
                 textValue={t('label.edit')}>
-                <span data-testid="edit-rule">{t('label.edit')}</span>
+                <Typography data-testid="edit-rule">
+                  {t('label.edit')}
+                </Typography>
               </Dropdown.Item>
               <Dropdown.Item
-                icon={IconDelete}
+                icon={Trash01}
                 id="delete-button"
                 textValue={t('label.delete')}>
-                <span data-testid="delete-rule">{t('label.delete')}</span>
+                <Typography data-testid="delete-rule">
+                  {t('label.delete')}
+                </Typography>
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>
@@ -324,13 +329,15 @@ const PoliciesDetailPage = () => {
       <Card>
         <Card.Content>
           {isEmpty(policy.rules) ? (
-            <ErrorPlaceHolder className="border-none" />
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoDataPlaceholder data-testid="no-data-placeholder" />
+            </div>
           ) : (
             <>
               <div className="flex justify-end m-b-md">
                 <Button
+                  color="primary"
                   data-testid="add-rule"
-                  type="primary"
                   onClick={() => navigate(getAddPolicyRulePath(fqn))}>
                   {t('label.add-entity', {
                     entity: t('label.rule'),
@@ -519,22 +526,23 @@ const PoliciesDetailPage = () => {
 
         <>
           {isEmpty(policy) ? (
-            <ErrorPlaceHolder className="border-none h-min-80">
-              <div className="text-center">
-                <p className="m-y-sm">
-                  {t('message.no-entity-found-for-name', {
-                    entity: t('label.policy-lowercase'),
-                    name: fqn,
-                  })}
-                </p>
-                <Button
-                  size="small"
-                  type="primary"
-                  onClick={() => navigate(policiesPath)}>
-                  {t('label.go-back')}
-                </Button>
-              </div>
-            </ErrorPlaceHolder>
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoDataPlaceholder
+                data-testid="no-data-placeholder"
+                footer={
+                  <Button
+                    color="primary"
+                    size="xs"
+                    onClick={() => navigate(policiesPath)}>
+                    {t('label.go-back')}
+                  </Button>
+                }
+                title={t('message.no-entity-found-for-name', {
+                  entity: t('label.policy-lowercase'),
+                  name: fqn,
+                })}
+              />
+            </div>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
               <Box justify="between">
@@ -543,11 +551,7 @@ const PoliciesDetailPage = () => {
                     className="w-max-full"
                     displayName={policy.displayName}
                     icon={
-                      <Icon
-                        className="align-middle p-y-xss"
-                        component={PolicyIcon}
-                        style={{ fontSize: '50px' }}
-                      />
+                      <PolicyIcon className="tw:align-middle tw:py-1 tw:size-[50px] tw:shrink-0" />
                     }
                     name={policy?.name ?? ''}
                     serviceName="policy"
@@ -601,13 +605,11 @@ const PoliciesDetailPage = () => {
         </>
 
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isloadingOnSave}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isloadingOnSave}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity.record),
             })} ${t('label.from-lowercase')} ${policyName}`}
@@ -625,7 +627,7 @@ const PoliciesDetailPage = () => {
                 parent: policyName,
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         )}
       </div>
     </PageLayoutV1>

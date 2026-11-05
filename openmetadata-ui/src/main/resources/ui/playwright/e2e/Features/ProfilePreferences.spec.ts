@@ -14,7 +14,11 @@
 import { expect, Page } from '@playwright/test';
 import { test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
-import { enableAiAppMode } from '../Utils/appMode';
+import {
+  disableAiAppMode,
+  enableAiAppMode,
+  switchToAiModeViaProfileToggle,
+} from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -72,6 +76,27 @@ test.describe(
       await page.emulateMedia({ colorScheme: 'dark' });
       await page.reload();
       await expect(root(page)).toHaveClass(/dark-mode/);
+    });
+
+    test('theme: classic mode is always light and keeps the stored dark choice for AI mode', async ({
+      page,
+    }) => {
+      await disableAiAppMode(page);
+      await page.addInitScript(() => localStorage.setItem('ui-theme', 'dark'));
+      await redirectToHomePage(page, false);
+      await expect(root(page)).not.toHaveClass(/dark-mode/);
+
+      await page.getByTestId('dropdown-profile').click();
+      await expect(page.getByRole('switch', { name: 'Dark mode' })).toHaveCount(
+        0
+      );
+      await page.keyboard.press('Escape');
+
+      await switchToAiModeViaProfileToggle(page);
+      await expect(root(page)).toHaveClass(/dark-mode/);
+      expect(await page.evaluate(() => localStorage.getItem('ui-theme'))).toBe(
+        'dark'
+      );
     });
 
     test('compact sidebar: the toggle collapses the open sidebar to the icon rail', async ({

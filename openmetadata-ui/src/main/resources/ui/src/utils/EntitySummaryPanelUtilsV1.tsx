@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 import {
+  Button,
   ButtonGroup,
   ButtonGroupItem,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Table } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
+import PanelEmptyPlaceholder from '../components/common/EmptyPlaceholder/PanelEmptyPlaceholder';
 import FieldCard from '../components/common/FieldCard/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
+import Table from '../components/common/Table/TableV2';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
@@ -127,10 +129,10 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               </span>
             )}
             <Button
-              className="d-flex p-0 h-auto m-b-xs"
+              className="tw:mb-2"
+              color="link-color"
               data-testid="expand-icon"
-              size="small"
-              type="link"
+              size="xs"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {getExpandToggleLabel(isExpanded, childrenCount)}
@@ -206,10 +208,10 @@ const NestedSchemaFieldCard: React.FC<{
               </span>
             )}
             <Button
-              className="d-flex p-0 h-auto m-b-xs"
+              className="tw:mb-2"
+              color="link-color"
               data-testid="expand-icon"
-              size="small"
-              type="link"
+              size="xs"
               onClick={() => onToggleExpand(rowKey)}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
@@ -363,9 +365,10 @@ const SchemaFieldCardsV1: React.FC<{
 
     return (
       <Button
-        block
-        loading={isLoading && currentPage > 1}
-        type="link"
+        boxed
+        className="tw:w-full"
+        color="link-color"
+        isLoading={isLoading && currentPage > 1}
         onClick={handleLoadMore}>
         {t('label.show-more')}
       </Button>
@@ -394,26 +397,12 @@ const SchemaFieldCardsV1: React.FC<{
     );
   }
 
-  if (isEmpty(columns) && searchText) {
-    return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-entity-found-for-name', {
-            entity: t('label.column-plural'),
-            name: searchText,
-          })}
-        </Typography>
-      </div>
-    );
-  }
-
   if (isEmpty(columns)) {
     return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -474,11 +463,10 @@ const TopicFieldCardsV1: React.FC<{
 
   if (isEmpty(filteredFields)) {
     return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -581,11 +569,10 @@ const ContainerFieldCardsV1: React.FC<{
 
   if (isEmpty(filteredColumns)) {
     return (
-      <div className="no-data-container text-grey-muted m-t-md d-flex justify-center align-items-center">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -629,11 +616,10 @@ const PipelineTasksV1: React.FC<{
 
   if (isEmpty(filteredTasks)) {
     return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -649,7 +635,6 @@ const PipelineTasksV1: React.FC<{
                 dataType={task.taskType || t('label.task')}
                 description={task.description}
                 fieldName={getEntityName(task)}
-                glossaryTerms={task.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={task.tags}
               />
@@ -740,11 +725,10 @@ const APICollectionEndpointsV1: React.FC<{
 
   if (isEmpty(filteredEndpoints) && hasInitialized) {
     return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -760,7 +744,7 @@ const APICollectionEndpointsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Grid className="layout-row layout-grid">
-        {filteredEndpoints.map((endpoint: EntityReference) => {
+        {filteredEndpoints.map((endpoint) => {
           const isHighlighted = highlights?.apiEndpoints?.includes(
             endpoint.name
           );
@@ -850,11 +834,10 @@ const DatabaseSchemaTablesV1: React.FC<{
 
   if (isEmpty(filteredTables) && hasInitialized) {
     return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -915,11 +898,10 @@ const DashboardChartsV1: React.FC<{
 
   if (isEmpty(filteredCharts)) {
     return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -927,7 +909,8 @@ const DashboardChartsV1: React.FC<{
     <div className="schema-field-cards-container">
       <Grid className="layout-row layout-grid">
         {filteredCharts.map((chart: EntityReference) => {
-          const isHighlighted = highlights?.chart?.includes(chart.name);
+          const isHighlighted =
+            chart.name !== undefined && highlights?.chart?.includes(chart.name);
 
           return (
             <Grid.Item className="layout-column" key={chart.id} span={24}>
@@ -936,7 +919,6 @@ const DashboardChartsV1: React.FC<{
                 description={chart.description}
                 fieldName={getEntityName(chart)}
                 isHighlighted={isHighlighted}
-                tags={chart.tags}
               />
             </Grid.Item>
           );
@@ -1050,7 +1032,9 @@ const APIEndpointSchemaV1: React.FC<{
       width: 200,
       render: (name: string, record: Field) => (
         <div className="d-inline-flex" style={{ maxWidth: '68%' }}>
-          <span className="break-word">{record.displayName || name}</span>
+          <Typography className="break-word">
+            {record.displayName || name}
+          </Typography>
         </div>
       ),
     },
@@ -1072,7 +1056,9 @@ const APIEndpointSchemaV1: React.FC<{
       render: (description: string) => (
         <div className="break-word">
           {description || (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
+            <Typography color="secondary">
+              {t('label.no-description')}
+            </Typography>
           )}
         </div>
       ),
@@ -1101,14 +1087,9 @@ const APIEndpointSchemaV1: React.FC<{
     );
   }
 
+  // The endpoint has no schema at all, so a search cannot be what emptied it.
   if (isEmpty(requestSchemaFields) && isEmpty(responseSchemaFields)) {
-    return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
-    );
+    return <PanelEmptyPlaceholder title={t('message.no-data-available')} />;
   }
 
   return (
@@ -1135,7 +1116,7 @@ const APIEndpointSchemaV1: React.FC<{
             </ButtonGroupItem>
           ))}
         </ButtonGroup>
-        <Button size="small" type="link" onClick={handleToggleExpandAll}>
+        <Button color="link-color" size="xs" onClick={handleToggleExpandAll}>
           {expandedRowKeys.length < allRowKeys.length
             ? t('label.expand-all')
             : t('label.collapse-all')}
@@ -1143,11 +1124,10 @@ const APIEndpointSchemaV1: React.FC<{
       </div>
 
       {isEmpty(activeSchemaFields) ? (
-        <div className="no-data-container m-x-md">
-          <Typography className="no-data-text">
-            {t('message.no-data-available')}
-          </Typography>
-        </div>
+        <PanelEmptyPlaceholder
+          searchText={searchText}
+          title={t('message.no-data-available')}
+        />
       ) : (
         <div className="m-l-md">
           <Table
@@ -1194,11 +1174,10 @@ const DatabaseSchemasV1: React.FC<{
 
   if (isEmpty(filteredSchemas)) {
     return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -1212,7 +1191,6 @@ const DatabaseSchemasV1: React.FC<{
                 dataType={schema.type || 'Database Schema'}
                 description={schema.description || ''}
                 fieldName={getEntityName(schema)}
-                tags={schema.tags || []}
               />
             </Grid.Item>
           );
@@ -1256,11 +1234,10 @@ const SearchIndexFieldCardsV1: React.FC<{
 
   if (isEmpty(filteredFields)) {
     return (
-      <div className="no-data-container">
-        <Typography className="no-data-text">
-          {t('message.no-data-available')}
-        </Typography>
-      </div>
+      <PanelEmptyPlaceholder
+        searchText={searchText}
+        title={t('message.no-data-available')}
+      />
     );
   }
 
@@ -1386,7 +1363,7 @@ const ENTITY_CHILD_DETAILS_RENDERERS: Partial<
   ),
   [EntityType.DATABASE]: ({ entityInfo, highlights, loading, searchText }) => (
     <DatabaseSchemasV1
-      entityInfo={entityInfo}
+      entityInfo={entityInfo as Database}
       highlights={highlights}
       loading={loading}
       searchText={searchText}

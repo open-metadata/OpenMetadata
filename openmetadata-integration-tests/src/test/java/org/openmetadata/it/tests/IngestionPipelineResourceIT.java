@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -9,6 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.util.Config;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -30,16 +35,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
+import org.openmetadata.it.factories.StorageServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -49,6 +60,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.Progress;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressProperty;
 import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
@@ -57,23 +69,33 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.OpenMetadataWorkflowConfig;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
+import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails;
+import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.clients.pipeline.config.YAMLUtils;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +120,7 @@ public class IngestionPipelineResourceIT
 
   private static final Logger LOG = LoggerFactory.getLogger(IngestionPipelineResourceIT.class);
   private static final Date START_DATE = new DateTime("2022-06-10T15:06:47+00:00").toDate();
+  private static final String INGESTION_PIPELINES_PATH = "/v1/services/ingestionPipelines";
 
   // IngestionPipeline only supports owners,followers fields - no tags, no domain
   {
@@ -225,6 +248,108 @@ public class IngestionPipelineResourceIT
     assertTrue(response.body().contains("sourceConfig.config.type is required"));
     assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");
   }
+
+  @ParameterizedTest(name = "PATCH by name: {0}")
+  @ValueSource(booleans = {false, true})
+  void patchRedeployKeepsOriginalService(boolean byName, TestNamespace ns) throws Exception {
+    final ServiceBindingScenario scenario = serviceBindingScenario(ns);
+    final IngestionPipeline pipeline = scenario.pipeline();
+    deployPipeline(scenario.client(), pipeline);
+    assertEquals(
+        pipeline.getService().getName(), deployedWorkflow(pipeline).getSource().getServiceName());
+
+    final IngestionPipeline updated = patchServiceAndRedeploy(scenario, byName);
+
+    final OpenMetadataWorkflowConfig deployed = deployedWorkflow(pipeline);
+    assertEquals(LogLevels.DEBUG, deployed.getWorkflowConfig().getLoggerLevel());
+    assertEquals(pipeline.getService().getName(), deployed.getSource().getServiceName());
+    assertEquals(pipeline.getService().getId(), updated.getService().getId());
+    assertEquals(
+        pipeline.getService().getId(), getEntity(pipeline.getId().toString()).getService().getId());
+  }
+
+  private IngestionPipeline patchServiceAndRedeploy(
+      ServiceBindingScenario scenario, boolean byName) {
+    final IngestionPipeline pipeline = scenario.pipeline();
+    final String target =
+        byName ? "name/" + pipeline.getFullyQualifiedName() : pipeline.getId().toString();
+    return scenario
+        .client()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PATCH,
+            IngestionPipelineResource.COLLECTION_PATH + target,
+            serviceRebindingPatch(scenario.foreignService()),
+            IngestionPipeline.class);
+  }
+
+  private ArrayNode serviceRebindingPatch(EntityReference foreignService) {
+    final ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/service")
+        .set("value", JsonUtils.getObjectMapper().valueToTree(foreignService));
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/loggerLevel")
+        .put("value", LogLevels.DEBUG.value());
+    return patch;
+  }
+
+  private ServiceBindingScenario serviceBindingScenario(TestNamespace ns) {
+    final User owner = UserTestFactory.createUser(ns, "pipelineOwner");
+    final OpenMetadataClient client =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    final DatabaseService originalService = ownedDatabaseService(ns, owner);
+    final DatabaseService foreignService =
+        ownedDatabaseService(ns, UserTestFactory.createUser(ns, "foreignOwner"));
+    final CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.uniqueShortId())
+            .withPipelineType(PipelineType.METADATA)
+            .withService(originalService.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(new DatabaseServiceMetadataPipeline()))
+            .withAirflowConfig(
+                new AirflowConfig().withStartDate(START_DATE).withScheduleInterval("0 0 1 1 *"));
+    final IngestionPipeline pipeline = client.ingestionPipelines().create(request);
+    request.withName(ns.uniqueShortId()).withService(foreignService.getEntityReference());
+    assertThrows(ForbiddenException.class, () -> client.ingestionPipelines().create(request));
+    return new ServiceBindingScenario(client, pipeline, foreignService.getEntityReference());
+  }
+
+  private DatabaseService ownedDatabaseService(TestNamespace ns, User owner) {
+    final DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    service.setOwners(List.of(owner.getEntityReference()));
+    return SdkClients.adminClient().databaseServices().update(service.getId().toString(), service);
+  }
+
+  private void deployPipeline(OpenMetadataClient client, IngestionPipeline pipeline) {
+    final PipelineServiceClientResponse response =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                IngestionPipelineResource.COLLECTION_PATH + "deploy/" + pipeline.getId(),
+                null,
+                PipelineServiceClientResponse.class);
+    assertEquals(200, response.getCode());
+  }
+
+  private OpenMetadataWorkflowConfig deployedWorkflow(IngestionPipeline pipeline) throws Exception {
+    final var apiClient =
+        Config.fromConfig(new StringReader(TestSuiteBootstrap.getKubeConfigYaml()));
+    apiClient.setReadTimeout(30000);
+    final var configMap =
+        new CoreV1Api(apiClient)
+            .readNamespacedConfigMap("om-config-" + pipeline.getName(), "openmetadata-pipelines")
+            .execute();
+    return YAMLUtils.readValue(configMap.getData().get("config"), OpenMetadataWorkflowConfig.class);
+  }
+
+  private record ServiceBindingScenario(
+      OpenMetadataClient client, IngestionPipeline pipeline, EntityReference foreignService) {}
 
   @Test
   void migrationRepairsLegacySourceConfigTypeBeforeDeployment(TestNamespace ns) {
@@ -1565,6 +1690,346 @@ public class IngestionPipelineResourceIT
     assertEquals(
         awsCredentials.getAwsSecretAccessKey(),
         patchedDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
+  }
+
+  /** A storage manifest's store credentials are masked for readers, as a dbt source's are. */
+  @Test
+  void test_storageManifestCredentialsAreMaskedForReaders(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    String secret = "manifest-secret-" + ns.uniqueShortId();
+    StorageServiceMetadataPipeline storageMetadata =
+        new StorageServiceMetadataPipeline()
+            .withStorageMetadataConfigSource(
+                new StorageMetadataS3Config()
+                    .withSecurityConfig(
+                        new AWSCredentials()
+                            .withAwsAccessKeyId("manifest-key")
+                            .withAwsSecretAccessKey(secret)
+                            .withAwsRegion("us-east-1"))
+                    .withPrefixConfig(
+                        new StorageMetadataBucketDetails()
+                            .withContainerName("manifests")
+                            .withObjectPrefix("openmetadata")));
+    IngestionPipeline pipeline =
+        createEntity(
+            new CreateIngestionPipeline()
+                .withName(ns.prefix("storage_manifest"))
+                .withPipelineType(PipelineType.METADATA)
+                .withService(service.getEntityReference())
+                .withSourceConfig(new SourceConfig().withConfig(storageMetadata))
+                .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE)));
+    String path = getResourcePath() + pipeline.getId();
+
+    String asAdmin =
+        SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
+    String asBot =
+        SdkClients.ingestionBotClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, path, null);
+
+    assertFalse(asAdmin.contains(secret), asAdmin);
+    assertTrue(asAdmin.contains(PasswordEntityMasker.PASSWORD_MASK), asAdmin);
+    assertTrue(
+        asBot.contains(secret), "the ingestion bot runs the pipeline with the stored secret");
+  }
+
+  /**
+   * A manifest source that matches none of the source schemas cannot be typed, so neither the masker
+   * nor the secrets manager would reach the credentials in it: it is refused instead of stored.
+   */
+  @Test
+  void test_storageManifestMatchingNoSourceSchemaIsRefused(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Map<String, Object> source =
+        Map.of(
+            "securityConfig",
+            Map.of(
+                "awsAccessKeyId",
+                "manifest-key",
+                "awsSecretAccessKey",
+                "manifest-secret-" + ns.uniqueShortId(),
+                "awsRegion",
+                "us-east-1"),
+            "prefixConfig",
+            Map.of("containerName", "manifests", "objectPrefix", "openmetadata"),
+            "notInAnySourceSchema",
+            "x");
+    CreateIngestionPipeline create =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("storage_malformed"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        Map.of("type", "StorageMetadata", "storageMetadataConfigSource", source)))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.POST, getResourcePath(), create, IngestionPipeline.class));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  /**
+   * An owner who sees the dbt Cloud token masked may change the pipeline's other settings, but
+   * pointing the source at another host means entering the token again: restoring the stored one
+   * would send it there.
+   */
+  @Test
+  void test_dbtTokenMustBeReenteredWhenTheSourceMoves(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    String ownerName = "dbtowner" + ns.shortPrefix();
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(ownerName).withEmail(ownerName + "@test.com"));
+    OpenMetadataClient asOwner =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    String token = "dbt-token-" + ns.uniqueShortId();
+    IngestionPipeline pipeline =
+        createEntity(
+            new CreateIngestionPipeline()
+                .withName(ns.prefix("dbt_cloud"))
+                .withPipelineType(PipelineType.DBT)
+                .withService(service.getEntityReference())
+                .withOwners(List.of(owner.getEntityReference()))
+                .withSourceConfig(
+                    new SourceConfig()
+                        .withConfig(
+                            new DbtPipeline()
+                                .withDbtConfigSource(
+                                    new DbtCloudConfig()
+                                        .withDbtCloudAuthToken(token)
+                                        .withDbtCloudAccountId("1")
+                                        .withDbtCloudUrl(URI.create("https://cloud.getdbt.com")))))
+                .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE)));
+
+    OpenMetadataException patchElsewhere =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                asOwner
+                    .ingestionPipelines()
+                    .patch(
+                        pipeline.getId(),
+                        replace(
+                            "/sourceConfig/config/dbtConfigSource/dbtCloudUrl",
+                            "https://elsewhere.example")));
+    assertEquals(400, patchElsewhere.getStatusCode(), patchElsewhere.getMessage());
+
+    IngestionPipeline masked = asOwner.ingestionPipelines().get(pipeline.getId().toString());
+    DbtPipeline maskedDbt =
+        JsonUtils.convertValue(masked.getSourceConfig().getConfig(), DbtPipeline.class);
+    DbtCloudConfig maskedCloud =
+        JsonUtils.convertValue(maskedDbt.getDbtConfigSource(), DbtCloudConfig.class);
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, maskedCloud.getDbtCloudAuthToken());
+    maskedDbt.setDbtConfigSource(
+        maskedCloud.withDbtCloudUrl(URI.create("https://elsewhere.example")));
+    OpenMetadataException putElsewhere =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                asOwner
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        INGESTION_PIPELINES_PATH,
+                        new CreateIngestionPipeline()
+                            .withName(pipeline.getName())
+                            .withPipelineType(PipelineType.DBT)
+                            .withService(service.getEntityReference())
+                            .withSourceConfig(new SourceConfig().withConfig(maskedDbt))
+                            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE)),
+                        IngestionPipeline.class));
+    assertEquals(400, putElsewhere.getStatusCode(), putElsewhere.getMessage());
+
+    asOwner
+        .ingestionPipelines()
+        .patch(pipeline.getId(), replace("/sourceConfig/config/dbtUpdateDescriptions", true));
+    asOwner
+        .ingestionPipelines()
+        .patch(
+            pipeline.getId(),
+            JsonUtils.getObjectMapper()
+                .createArrayNode()
+                .add(
+                    replaceOp(
+                        "/sourceConfig/config/dbtConfigSource/dbtCloudUrl",
+                        "https://elsewhere.example"))
+                .add(
+                    replaceOp(
+                        "/sourceConfig/config/dbtConfigSource/dbtCloudAuthToken",
+                        "entered-again")));
+  }
+
+  private static ArrayNode replace(String path, Object value) {
+    return JsonUtils.getObjectMapper().createArrayNode().add(replaceOp(path, value));
+  }
+
+  private static ObjectNode replaceOp(String path, Object value) {
+    ObjectNode op = JsonUtils.getObjectMapper().createObjectNode();
+    op.put("op", "replace").put("path", path);
+    op.set("value", JsonUtils.valueToTree(value));
+    return op;
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"*", "W/\"0.1\""})
+  void patchWithIfMatch_dbtCredentialsStayEncrypted(String ifMatch, TestNamespace ns) {
+    String secret = "dbt-conditional-secret-" + UUID.randomUUID();
+    IngestionPipeline pipeline = createDbtPipelineWithSecret(ns, secret);
+    OpenMetadataClient user = SdkClients.testUserClient();
+
+    IngestionPipeline patched =
+        user.ingestionPipelines()
+            .patch(pipeline.getId(), descriptionPatch("Updated by a regular user"), ifMatch);
+
+    assertEquals("Updated by a regular user", patched.getDescription());
+    assertNotEquals(pipeline.getVersion(), patched.getVersion());
+    assertAll(
+        () -> assertDbtSecretEncrypted(storedPipelineJson(pipeline.getId()), secret),
+        () ->
+            assertDbtSecretEncrypted(
+                storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()), secret));
+    assertDbtSecretMasked(JsonUtils.pojoToJson(patched), secret);
+    assertPipelineReadsMaskSecrets(user, pipeline, patched, secret);
+    assertFollowerResponsesMaskSecrets(user, pipeline.getId(), secret);
+    assertEquals(
+        secret,
+        dbtSecret(
+            JsonUtils.pojoToJson(
+                SdkClients.ingestionBotClient().ingestionPipelines().get(pipeline.getId()))));
+
+    IngestionPipeline reverted =
+        user.ingestionPipelines()
+            .patch(pipeline.getId(), descriptionPatch(pipeline.getDescription()));
+    assertEquals(pipeline.getVersion(), reverted.getVersion());
+    assertEquals(pipeline.getDescription(), reverted.getDescription());
+    assertDbtSecretEncrypted(storedPipelineJson(pipeline.getId()), secret);
+  }
+
+  @Test
+  void patchWithStaleIfMatch_doesNotRewriteDbtCredentials(TestNamespace ns) {
+    IngestionPipeline pipeline =
+        createDbtPipelineWithSecret(ns, "dbt-stale-secret-" + UUID.randomUUID());
+    OpenMetadataClient user = SdkClients.testUserClient();
+    user.ingestionPipelines().patch(pipeline.getId(), descriptionPatch("Accepted edit"), "*");
+    String stored = storedPipelineJson(pipeline.getId());
+    String history = storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion());
+
+    OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                user.ingestionPipelines()
+                    .patch(
+                        pipeline.getId(),
+                        descriptionPatch("Rejected edit"),
+                        "W/\"" + pipeline.getVersion() + "\""));
+
+    assertEquals(412, failure.getStatusCode());
+    assertEquals(stored, storedPipelineJson(pipeline.getId()));
+    assertEquals(history, storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()));
+  }
+
+  private IngestionPipeline createDbtPipelineWithSecret(TestNamespace ns, String secret) {
+    assertTrue(Fernet.getInstance().isKeyDefined(), "The test server must encrypt secrets at rest");
+    AWSCredentials credentials =
+        new AWSCredentials()
+            .withAwsAccessKeyId("dbt-conditional-access-key")
+            .withAwsSecretAccessKey(secret)
+            .withAwsRegion("us-east-1");
+    DbtPipeline dbt =
+        new DbtPipeline().withDbtConfigSource(new DbtS3Config().withDbtSecurityConfig(credentials));
+    return createEntity(
+        createMinimalRequest(ns)
+            .withName(ns.prefix("dbt_conditional_credentials"))
+            .withPipelineType(PipelineType.DBT)
+            .withSourceConfig(new SourceConfig().withConfig(dbt)));
+  }
+
+  private static ArrayNode descriptionPatch(String description) {
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch.addObject().put("op", "replace").put("path", "/description").put("value", description);
+    return patch;
+  }
+
+  private static String storedPipelineJson(UUID id) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT json FROM ingestion_pipeline_entity WHERE id = :id")
+                    .bind("id", id.toString())
+                    .mapTo(String.class)
+                    .one());
+  }
+
+  private static String storedPipelineVersionJson(UUID id, Double version) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
+                    .bind("id", id.toString())
+                    .bind(
+                        "extension",
+                        EntityUtil.getVersionExtension(Entity.INGESTION_PIPELINE, version))
+                    .mapTo(String.class)
+                    .one());
+  }
+
+  private static String dbtSecret(String json) {
+    return JsonUtils.readTree(json)
+        .at("/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/awsSecretAccessKey")
+        .asText();
+  }
+
+  private static void assertDbtSecretEncrypted(String json, String secret) {
+    assertFalse(json.contains(secret), "Persisted pipeline must not contain plaintext credentials");
+    String storedSecret = dbtSecret(json);
+    assertTrue(Fernet.isTokenized(storedSecret), "Stored dbt credential must be Fernet ciphertext");
+    assertEquals(secret, Fernet.getInstance().decrypt(storedSecret));
+  }
+
+  private static void assertDbtSecretMasked(String json, String secret) {
+    assertFalse(json.contains(secret), "API response must not contain plaintext credentials");
+    assertFalse(json.contains(Fernet.FERNET_PREFIX), "API response must not contain ciphertext");
+    assertTrue(
+        json.contains(PasswordEntityMasker.PASSWORD_MASK), "API response must mask the credential");
+  }
+
+  private static void assertPipelineReadsMaskSecrets(
+      OpenMetadataClient user,
+      IngestionPipeline original,
+      IngestionPipeline patched,
+      String secret) {
+    UUID id = original.getId();
+    EntityHistory versions = user.ingestionPipelines().getVersionList(id);
+    assertEquals(2, versions.getVersions().size());
+    assertDbtSecretMasked(JsonUtils.pojoToJson(versions), secret);
+    assertDbtSecretMasked(JsonUtils.pojoToJson(user.ingestionPipelines().get(id)), secret);
+    for (Double version : List.of(original.getVersion(), patched.getVersion())) {
+      assertDbtSecretMasked(
+          JsonUtils.pojoToJson(user.ingestionPipelines().getVersion(id, version)), secret);
+    }
+  }
+
+  private static void assertFollowerResponsesMaskSecrets(
+      OpenMetadataClient user, UUID pipelineId, String secret) {
+    UUID userId = user.users().getByName("test").getId();
+    String path = "/v1/services/ingestionPipelines/" + pipelineId + "/followers";
+    assertDbtSecretMasked(
+        user.getHttpClient().executeForString(HttpMethod.PUT, path, userId), secret);
+    assertDbtSecretMasked(
+        user.getHttpClient().executeForString(HttpMethod.DELETE, path + "/" + userId, null),
+        secret);
   }
 
   @Test

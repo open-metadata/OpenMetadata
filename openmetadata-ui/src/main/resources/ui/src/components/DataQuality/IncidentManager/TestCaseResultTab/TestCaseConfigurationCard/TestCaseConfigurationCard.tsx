@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
-import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import {
   ConfigurationParameterRow,
   TestCaseConfigurationCardProps,
@@ -22,6 +27,7 @@ import {
 import {
   getCategoryTranslation,
   getConfigurationShapes,
+  getConfiguredThresholdSentence,
   getDefinitionDisplayName,
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
@@ -165,6 +171,30 @@ function DynamicAssertionCallout() {
   );
 }
 
+/** What the test fails on, in the words the form's preview used. */
+function ThresholdSentence({
+  testCaseData,
+  testDefinition,
+}: Readonly<
+  Pick<TestCaseConfigurationCardProps, 'testCaseData' | 'testDefinition'>
+>) {
+  const { t } = useTranslation();
+  const sentence = getConfiguredThresholdSentence(
+    testCaseData,
+    testDefinition,
+    t
+  );
+
+  return sentence ? (
+    <Typography
+      as="p"
+      className="tw:text-xs tw:text-secondary"
+      data-testid="configuration-threshold-sentence">
+      {sentence}
+    </Typography>
+  ) : null;
+}
+
 const TestCaseConfigurationCard = ({
   testCaseData,
   testDefinition,
@@ -222,9 +252,10 @@ const TestCaseConfigurationCard = ({
           {t('label.configuration')}
         </Typography>
         {showEditButton && (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-parameter-icon"
-            title={t('label.edit-entity', { entity: t('label.parameter') })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', { entity: t('label.parameter') })}
             onClick={onEditParameter}
           />
         )}
@@ -255,6 +286,13 @@ const TestCaseConfigurationCard = ({
         <div className="tw:flex tw:flex-col tw:gap-2.5">
           {/* The callout says how the test is checked; the rows below it are settings. */}
           {isDynamicAssertion && <DynamicAssertionCallout />}
+          {/* The version page shows the parameters' diff, not the configuration as it stands. */}
+          {!isVersionPage && (
+            <ThresholdSentence
+              testCaseData={testCaseData}
+              testDefinition={testDefinition}
+            />
+          )}
           {hasParameterRows && <ParameterRows rows={parameterRows} />}
           {hasVersionDiff && (
             <div data-testid="configuration-version-diff">

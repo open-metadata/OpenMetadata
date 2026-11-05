@@ -191,14 +191,14 @@ class SecurityUtilTest {
         new CatalogSecurityContext(
             () -> "alice@example.com", "https", "openid", Set.of(), false, "admin");
 
-    assertEquals("alice", SecurityUtil.getUserName(impersonatedContext));
-    assertEquals("alice", SecurityUtil.getImpersonatedByUser(impersonatedContext));
+    assertEquals("alice@example.com", SecurityUtil.getUserName(impersonatedContext));
+    assertEquals("alice@example.com", SecurityUtil.getImpersonatedByUser(impersonatedContext));
 
     CatalogSecurityContext directContext =
         new CatalogSecurityContext(
             () -> "service-account/openmetadata", "https", "openid", Set.of());
 
-    assertEquals("service-account", SecurityUtil.getUserName(directContext));
+    assertEquals("service-account/openmetadata", SecurityUtil.getUserName(directContext));
     assertNull(SecurityUtil.getImpersonatedByUser(directContext));
 
     SecurityContext anonymous = mock(SecurityContext.class);
@@ -206,6 +206,15 @@ class SecurityUtilTest {
 
     assertNull(SecurityUtil.getUserName(anonymous));
     assertNull(SecurityUtil.getImpersonatedByUser(anonymous));
+  }
+
+  @Test
+  void testGetUserNameIsTheWholePrincipalName() {
+    for (String name : List.of("admin/mallory", "ingestion-bot/mallory", "admin@corp")) {
+      CatalogSecurityContext context =
+          new CatalogSecurityContext(() -> name, "https", "openid", Set.of());
+      assertEquals(name, SecurityUtil.getUserName(context));
+    }
   }
 
   @Test
@@ -1332,5 +1341,56 @@ class SecurityUtilTest {
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {
     String token = JWT.create().withPayload(values).sign(Algorithm.none());
     return JWT.decode(token).getClaims();
+  }
+
+  @Test
+  void testConfiguredEmailDomainsFollowsLoginPrecedence() {
+    // allowedEmailDomains wins over every deprecated setting
+    assertEquals(
+        List.of("a.io"),
+        SecurityUtil.configuredEmailDomains(List.of("a.io"), "p.io", Set.of("b.io"), true));
+    // without it, nothing restricts unless the deprecated enforcePrincipalDomain is on
+    assertTrue(
+        SecurityUtil.configuredEmailDomains(List.of(), "p.io", Set.of("b.io"), false).isEmpty());
+    assertTrue(SecurityUtil.configuredEmailDomains(null, "p.io", Set.of("b.io"), null).isEmpty());
+    // under enforcement allowedDomains replaces principalDomain, which falls back to the default
+    assertEquals(
+        List.of("b.io"), SecurityUtil.configuredEmailDomains(null, "p.io", Set.of("b.io"), true));
+    assertEquals(
+        List.of("p.io"), SecurityUtil.configuredEmailDomains(null, "p.io", Set.of(), true));
+    assertEquals(
+        List.of(SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN),
+        SecurityUtil.configuredEmailDomains(null, "", null, true));
+  }
+
+  @Test
+  void sameIdentifierIgnoresCaseTheWayStoredNamesAreNormalized() {
+    assertTrue(SecurityUtil.sameIdentifier("John.Doe", "john.doe"));
+    assertTrue(SecurityUtil.sameIdentifier("ADMIN", "admin"));
+    assertTrue(SecurityUtil.sameIdentifier("Example.COM", "example.com"));
+  }
+
+  @Test
+  void sameIdentifierKeepsNamesApartThatOnlyUpperCaseFoldingWouldJoin() {
+    // String.equalsIgnoreCase treats each pair as equal: both characters upper-case to I and S
+    assertTrue("admın".equalsIgnoreCase("admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admın", "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("ſam", "sam"));
+    assertFalse(SecurityUtil.sameIdentifier("fıntech.com", "fintech.com"));
+  }
+
+  @Test
+  void sameIdentifierNeverMatchesAMissingValue() {
+    assertFalse(SecurityUtil.sameIdentifier(null, "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admin", null));
+    assertFalse(SecurityUtil.sameIdentifier(null, null));
+  }
+
+  @Test
+  void registrationDomainCheckRejectsADomainThatOnlyFoldsOntoAnAllowedOne() {
+    assertTrue(
+        SecurityUtil.isEmailRegistrationDomainAllowed("a@Fintech.com", Set.of("fintech.com")));
+    assertFalse(
+        SecurityUtil.isEmailRegistrationDomainAllowed("a@fıntech.com", Set.of("fintech.com")));
   }
 }

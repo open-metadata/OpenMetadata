@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ToggleExpandButtonProps } from './ToggleExpandButton.interface';
 
 function ToggleExpandButton({
@@ -34,33 +32,18 @@ function ToggleExpandButton({
 
   return (
     <Button
-      className="text-primary rounded-4"
+      color="tertiary"
       data-testid="toggle-expand-button"
-      size="small"
-      type="text"
-      onClick={toggleExpandAll}>
-      <Box
-        inline
-        align="center"
-        className="layout-space layout-space-horizontal"
-        gap={1}
-        itemClassName="layout-space-item">
-        {showCollapseAllText ? (
-          <DownUpArrowIcon
-            color={DE_ACTIVE_COLOR}
-            data-testid="collapse-icon"
-            height="14px"
-          />
+      iconLeading={
+        showCollapseAllText ? (
+          <DownUpArrowIcon data-icon data-testid="collapse-icon" />
         ) : (
-          <UpDownArrowIcon
-            color={DE_ACTIVE_COLOR}
-            data-testid="expand-icon"
-            height="14px"
-          />
-        )}
-
-        {showCollapseAllText ? t('label.collapse-all') : t('label.expand-all')}
-      </Box>
+          <UpDownArrowIcon data-icon data-testid="expand-icon" />
+        )
+      }
+      size="xs"
+      onClick={toggleExpandAll}>
+      {showCollapseAllText ? t('label.collapse-all') : t('label.expand-all')}
     </Button>
   );
 }

@@ -8,6 +8,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.dashboard.DomoDashboardConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
@@ -22,6 +23,7 @@ import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
 import org.openmetadata.schema.services.connections.mcp.McpConnection;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
@@ -40,6 +42,28 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   @Override
   protected String getMaskedPassword() {
     return PasswordEntityMasker.PASSWORD_MASK;
+  }
+
+  @Test
+  void testOpenMetadataServerJwtTokenIsMaskedAndRestored() {
+    // OpenMetadataJWTClientConfig#jwtToken (the token embedded in a server connection) is a
+    // @PasswordField: it must be masked for non-bot readers and restored on write.
+    final OpenMetadataConnection original =
+        new OpenMetadataConnection()
+            .withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken(TOKEN));
+
+    final OpenMetadataConnection masked =
+        (OpenMetadataConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(original, "OpenMetadata", ServiceType.METADATA);
+    assertEquals(getMaskedPassword(), masked.getSecurityConfig().getJwtToken());
+
+    final OpenMetadataConnection restored =
+        (OpenMetadataConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(
+                    masked, original, "OpenMetadata", ServiceType.METADATA);
+    assertEquals(TOKEN, restored.getSecurityConfig().getJwtToken());
   }
 
   @Test

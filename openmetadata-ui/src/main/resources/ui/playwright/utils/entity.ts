@@ -727,7 +727,10 @@ export const searchCertification = async (page: Page, name: string) => {
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
     .fill(name);
-  expect((await searchResponse).status()).toBe(200);
+  const response = await searchResponse;
+  expect(response.status()).toBe(200);
+
+  return response;
 };
 
 export const assignCertification = async (
@@ -747,7 +750,20 @@ export const assignCertification = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
-  await searchCertification(page, certification.responseData.name);
+  const searchResponse = await searchCertification(
+    page,
+    certification.responseData.name
+  );
+  const hits: { _source: { fullyQualifiedName: string } }[] = (
+    await searchResponse.json()
+  ).hits.hits;
+  // The picker only lists tags of an enabled Certification classification; an
+  // empty result means a concurrent spec disabled it, so fail here instead of
+  // timing out on a click that can never land.
+  expect(
+    hits.map((hit) => hit._source.fullyQualifiedName),
+    'Certification tag missing from search — Certification classification disabled by a concurrent spec?'
+  ).toContain(certification.responseData.fullyQualifiedName);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -945,7 +961,8 @@ export const updateDescriptionForChildren = async (
 // popover before the search input shows, so the open is retried.
 export const openClassificationTagPicker = async (
   page: Page,
-  trigger: Locator
+  trigger: Locator,
+  timeout?: number
 ) => {
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
@@ -953,7 +970,7 @@ export const openClassificationTagPicker = async (
   await clickUntilVisible(
     trigger,
     page.getByTestId('classification-tag-picker-search'),
-    { force: 'onRetry' }
+    { force: 'onRetry', timeout }
   );
 };
 
@@ -1063,6 +1080,7 @@ export const assignTagToChildren = async ({
   action = 'Add',
   rowSelector = 'data-row-key',
   entityEndpoint,
+  pickerTimeout,
 }: {
   page: Page;
   tag: string;
@@ -1070,13 +1088,14 @@ export const assignTagToChildren = async ({
   action?: 'Add' | 'Edit';
   rowSelector?: string;
   entityEndpoint: string;
+  pickerTimeout?: number;
 }) => {
   const trigger = page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
 
-  await openClassificationTagPicker(page, trigger);
+  await openClassificationTagPicker(page, trigger, pickerTimeout);
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
@@ -1169,12 +1188,14 @@ export const removeTagsFromChildren = async ({
   tags,
   rowSelector = 'data-row-key',
   entityEndpoint,
+  pickerTimeout,
 }: {
   page: Page;
   tags: string[];
   rowId: string;
   rowSelector?: string;
   entityEndpoint: string;
+  pickerTimeout?: number;
 }) => {
   for (const tag of tags) {
     const trigger = page
@@ -1183,7 +1204,7 @@ export const removeTagsFromChildren = async ({
       .getByTestId('edit-button')
       .first();
 
-    await openClassificationTagPicker(page, trigger);
+    await openClassificationTagPicker(page, trigger, pickerTimeout);
 
     const searchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
@@ -1542,17 +1563,31 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
   }
 };
 
-const LANDING_PAGE_SCROLL_CONTAINER =
-  '.page-layout-v1-center.page-layout-v1-vertical-scroll';
-const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.Following';
+// The landing page scrolls inside the core PageLayout's content region now;
+// PageLayoutV1's `.page-layout-v1-*` scroll container only wraps the welcome
+// screen. The nudge below resolves the scroller from this root at call time.
+const LANDING_PAGE_SCROLL_CONTAINER = '[data-testid="home-landing-page"]';
+// The standalone Following widget was folded into "Yours and followed", which
+// shows either the owned or the followed assets, picked by a pill above the list.
+const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.YoursAndFollowed';
+const FOLLOWING_WIDGET_BODY_SKELETON = 'topic-body-skeleton-yoursAndFollowed';
+const FOLLOWED_ASSET_LIST = 'followed-assets';
+const FOLLOWING_WIDGET_CARD = 'topic-card-yoursAndFollowed';
+const FOLLOWING_FILTER_PILL = 'yours-and-followed-filter-following';
 
 const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
+  // The grid cell is laid out (so "visible") even below the fold, but its
+  // DeferredWidget mounts the card only once scrolled into view. Gate on the
+  // card, or the skeleton check below passes vacuously on an unmounted widget.
+  const followingWidgetCard = followingWidgetPanel.getByTestId(
+    FOLLOWING_WIDGET_CARD
+  );
 
   await expect
     .poll(
       async () => {
-        if (await followingWidgetPanel.isVisible().catch(() => false)) {
+        if (await followingWidgetCard.isVisible().catch(() => false)) {
           return true;
         }
 
@@ -1563,12 +1598,13 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
         }
 
         await page.evaluate((scrollContainerSelector) => {
-          document
-            .querySelector(scrollContainerSelector)
-            ?.scrollBy({ top: 700, behavior: 'instant' });
+          const root = document.querySelector(scrollContainerSelector);
+          const scroller =
+            root?.querySelector('[class*="overflow-y-auto"]') ?? root;
+          scroller?.scrollBy({ top: 700, behavior: 'instant' });
         }, LANDING_PAGE_SCROLL_CONTAINER);
 
-        return followingWidgetPanel.isVisible().catch(() => false);
+        return followingWidgetCard.isVisible().catch(() => false);
       },
       {
         timeout: 60_000,
@@ -1580,19 +1616,30 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   return followingWidgetPanel;
 };
 
+// Returns the followed-assets list, not the whole card, so callers resolve the
+// asset in the followed list specifically.
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
 
-  const followingWidget = followingWidgetPanel.getByTestId('following-widget');
-  await expect(followingWidget).toBeVisible({ timeout: 60_000 });
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
-    () => undefined
-  );
+  // The list itself is absent when nothing is followed, so gate on the card's
+  // own loading state instead — otherwise the unfollow case would wait out a
+  // list that is correctly missing.
+  await expect(
+    followingWidgetPanel.getByTestId(FOLLOWING_WIDGET_BODY_SKELETON)
+  ).toBeHidden({ timeout: 60_000 });
 
-  return followingWidget;
+  // The pills are absent on the empty state (nothing owned or followed), which
+  // is a valid answer for the unfollow case; once the skeleton is gone the body
+  // has settled, so checking presence here does not race the render.
+  const followingPill = followingWidgetPanel.getByTestId(FOLLOWING_FILTER_PILL);
+  if (await followingPill.isVisible()) {
+    await followingPill.click();
+  }
+
+  return followingWidgetPanel.getByTestId(FOLLOWED_ASSET_LIST);
 };
 
 export const validateFollowedEntityToWidget = async (
@@ -1606,14 +1653,14 @@ export const validateFollowedEntityToWidget = async (
     return followingWidget;
   }
 
+  const followedEntity = followingWidget.getByTestId(
+    `${FOLLOWED_ASSET_LIST}-${entity}`
+  );
+
   if (isFollowing) {
-    await followingWidget.isVisible();
-    await followingWidget.getByTestId(`following-${entity}`).isVisible();
+    await expect(followedEntity).toBeVisible();
   } else {
-    await followingWidget.isVisible();
-    await expect(
-      followingWidget.getByTestId(`following-${entity}`)
-    ).not.toBeVisible();
+    await expect(followedEntity).not.toBeVisible();
   }
 
   return followingWidget;
@@ -1714,7 +1761,9 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.reload();
+  // `load` waits on every asset and long-lived request, and on a loaded runner
+  // can outlast the 60s navigation timeout; the loaders are the real signal.
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
@@ -1725,75 +1774,6 @@ export const createAnnouncement = async (
   await expect(page.getByTestId(announcementContainerTestId)).toContainText(
     data.description
   );
-};
-
-export const replyAnnouncement = async (page: Page) => {
-  await page
-    .locator('[data-testid="entity-header-announcements"]')
-    .getByTestId('announcement-title-btn')
-    .click();
-
-  await page.hover(
-    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
-  );
-
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  await expect(page.getByTestId('add-reply')).toBeVisible();
-
-  await page.getByTestId('add-reply').click();
-
-  await expect(page.locator('.ql-editor')).toBeVisible();
-
-  await expect(page.locator('[data-testid="send-button"]')).toBeDisabled();
-
-  await page.fill('[data-testid="editor-wrapper"] .ql-editor', 'Reply message');
-  await page.click('[data-testid="send-button"]');
-
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message');
-  await expect(page.locator('[data-testid="show-reply-thread"]')).toHaveText(
-    '1 replies'
-  );
-
-  await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-  await page.click('[data-testid="edit-message"]');
-
-  // With the edit box open there are two Quill editors on the page: the reply's
-  // edit box and the drawer's reply composer. A page-level
-  // `[data-testid="editor-wrapper"] .ql-editor` binds to whichever mounted
-  // first, so the text can land in the composer instead. The edit box then
-  // saves unchanged content, the client sends no PATCH at all, and the final
-  // assertion times out on stale text. `.is_edit_post` is set only on the edit
-  // box (FeedCardBody passes it as `editorClass`), so scope to it — and no
-  // `.first()`, so strict mode fails loudly if it ever stops being unique.
-  const replyEditor = page.locator(
-    '[data-testid="editor-wrapper"] .is_edit_post .ql-editor'
-  );
-
-  // Pre-populated with the current reply, which proves the editor is mounted
-  // and that we are addressing the edit box rather than the empty composer.
-  await expect(replyEditor).toHaveText('Reply message');
-
-  await replyEditor.fill('Reply message edited');
-  await expect(replyEditor).toHaveText('Reply message edited');
-
-  const updatedPostResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed/') &&
-      response.request().method() === 'PATCH'
-  );
-
-  await page.click('[data-testid="save-button"]');
-  await updatedPostResponse;
-
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message edited');
-
-  await page.reload();
 };
 
 export const deleteAnnouncement = async (page: Page) => {
@@ -1833,7 +1813,8 @@ export const deleteAnnouncement = async (page: Page) => {
   await deleteConfirm.getByTestId('save-button').click();
   await deleteAnnouncementResponse;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
@@ -2130,33 +2111,20 @@ export const checkForEditActions = async ({
 };
 
 export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
-  // Click the lineage tab
-  const lineageApi = page.waitForResponse('**/api/v1/lineage/scene?*');
+  const lineageApi = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
-
-  // Ensure the response has been received and check the status code
   await lineageApi;
 
   await waitForAllLoadersToDisappear(page);
 
-  const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
-  const hasSeenOnboarding = (await page.context().cookies()).some(
-    ({ name, value }) =>
-      name === 'lineageMapsOnboardingSeen' && value === 'true'
-  );
-  if (!hasSeenOnboarding) {
-    await expect(onboardingDialog).toBeVisible();
-    await onboardingDialog.getByRole('button').click();
-    await expect(onboardingDialog).not.toBeVisible();
-  }
-
-  // Check the presence or absence of the edit-lineage element based on the deleted flag
+  // Lineage is edited from each node's ⋮ menu, which a deleted entity hides.
+  const nodeMenus = page
+    .getByTestId('lineage-details')
+    .getByTestId('lineage-node-menu');
   if (deleted) {
-    await expect(
-      page.locator('[data-testid="edit-lineage"]')
-    ).not.toBeVisible();
+    await expect(nodeMenus).toHaveCount(0);
   } else {
-    await expect(page.locator('[data-testid="edit-lineage"]')).toBeVisible();
+    await expect(nodeMenus).not.toHaveCount(0);
   }
 };
 
@@ -2322,7 +2290,7 @@ export const softDeleteEntity = async (
   page: Page,
   entityName: string,
   endPoint: EntityTypeEndpoint,
-  displayName: string
+  _displayName: string
 ) => {
   await deletedEntityCommonChecks({
     page,
@@ -2416,7 +2384,7 @@ export const softDeleteEntity = async (
 
 export const hardDeleteEntity = async (
   page: Page,
-  entityName: string,
+  _entityName: string,
   endPoint: EntityTypeEndpoint
 ) => {
   await clickOutside(page);
@@ -2438,37 +2406,6 @@ export const hardDeleteEntity = async (
     /(deleted successfully!|Delete operation initiated)/,
     BIG_ENTITY_DELETE_TIMEOUT
   );
-};
-
-export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
-  await clickOutside(page);
-  const quickFilterResponse = page.waitForResponse(
-    `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
-  );
-
-  await page
-    .locator(`[data-testid="data-asset-service-${serviceType}"]`)
-    .click();
-
-  await quickFilterResponse;
-
-  // Click on filter dropdown
-  await page.getByTestId('search-dropdown-Service Type').click();
-  // assert on dropdown item visibility
-  await page.getByRole('menuitemcheckbox', { name: serviceType }).waitFor();
-  // assert on selection state
-  await expect(page.getByTestId(serviceType)).toHaveAttribute(
-    'aria-checked',
-    'true'
-  );
-
-  await expect(
-    page
-      .getByTestId('explore-tree')
-      .getByRole('row')
-      .filter({ hasText: serviceType })
-      .first()
-  ).toHaveAttribute('aria-selected', 'true');
 };
 
 export const escapeESReservedCharacters = (text?: string) => {

@@ -170,7 +170,7 @@ test.describe('Glossary persona customization', () => {
 
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
     await adminPage.getByText('Governance').click();
-    await adminPage.getByText('Glossary', { exact: true }).click();
+    await adminPage.getByTestId('Glossary').click();
 
     await waitForAllLoadersToDisappear(adminPage);
 

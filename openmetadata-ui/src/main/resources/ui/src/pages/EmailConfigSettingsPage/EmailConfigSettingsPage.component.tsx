@@ -11,21 +11,20 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import ButtonSkeleton from '../../components/common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -39,7 +38,6 @@ import {
   NOT_INCLUDE_EMAIL_CONFIG_VALUE,
 } from '../../constants/EmailConfig.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
@@ -156,14 +154,17 @@ function EmailConfigSettingsPage() {
   const configValuesContainer = useMemo(() => {
     if (isUndefined(emailConfigValues) && !loading) {
       return (
-        <ErrorPlaceHolder
-          className="mt-24"
-          heading={t('label.email-configuration-lowercase')}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.email-configuration'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <CreatePlaceholder
+            data-testid={`create-error-placeholder-${t(
+              'label.email-configuration-lowercase'
+            )}`}
+            heading={t('label.email-configuration-lowercase')}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.email-configuration'),
+            })}
+          />
+        </div>
       );
     }
 
@@ -210,7 +211,7 @@ function EmailConfigSettingsPage() {
             </Box>
             <Box className="layout-column d-flex">
               {isAdminUser && emailConfigValues?.senderMail && (
-                <Button type="primary" onClick={handleTestEmailModal}>
+                <Button color="primary" onClick={handleTestEmailModal}>
                   {t('label.test-email')}
                 </Button>
               )}
@@ -220,12 +221,11 @@ function EmailConfigSettingsPage() {
               ) : (
                 !isManagedByDeployment && (
                   <Button
-                    className="m-l-md"
+                    className="tw:ml-4"
+                    color="secondary"
                     data-testid="edit-email-configuration"
-                    icon={
-                      !isUndefined(emailConfigValues) && (
-                        <Icon component={IconEdit} size={12} />
-                      )
+                    iconLeading={
+                      isUndefined(emailConfigValues) ? undefined : Edit01
                     }
                     onClick={handleEditClick}>
                     {isUndefined(emailConfigValues)

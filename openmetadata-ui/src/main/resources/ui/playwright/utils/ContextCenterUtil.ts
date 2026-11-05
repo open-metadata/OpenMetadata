@@ -16,6 +16,7 @@ import {
   expect,
   Locator,
   Page,
+  Request,
   Response,
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
@@ -52,15 +53,6 @@ export interface BulkIdsRequest {
   ids?: string[];
 }
 
-interface UploadMultipart {
-  file: {
-    name: string;
-    mimeType: string;
-    buffer: Buffer;
-  };
-  folder?: string;
-}
-
 interface CapturedDownload {
   download: string;
   href: string;
@@ -81,17 +73,14 @@ export const uploadDocument = async (
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const multipart: UploadMultipart = {
+  const multipart = {
     file: {
       name,
       mimeType: 'text/plain',
       buffer,
     },
+    ...(folderFqn ? { folder: folderFqn } : {}),
   };
-
-  if (folderFqn) {
-    multipart.folder = folderFqn;
-  }
 
   const response = await apiContext.post(
     '/api/v1/contextCenter/drive/files/upload',
@@ -137,7 +126,7 @@ export const responseMatchesRequestPath = (
   response: Response,
   expectedPath: string
 ): boolean => {
-  let request = response.request();
+  let request: Request | null = response.request();
 
   while (request) {
     if (request.url().includes(expectedPath)) {
@@ -284,6 +273,11 @@ export const waitForRecentlyViewed = async (
     .toBe(true);
 };
 
+// `data-testid="loader"` is the shared Loader component, so a page-wide count
+// of it waits on every unrelated widget on the page (sidebar, right panel,
+// recently-viewed) rather than on the content under test. Those widgets load
+// independently and one of them being mid-fetch is not a reason to keep
+// waiting, so each helper scopes the wait to its own page container.
 export const navigateToArticles = async (page: Page) => {
   const hierarchyLoaded = page
     .waitForResponse(
@@ -295,28 +289,25 @@ export const navigateToArticles = async (page: Page) => {
     )
     .catch(() => null);
   await page.goto(ARTICLES_URL, PAGE_GOTO_OPTIONS);
-  await page
-    .getByTestId('context-center-articles-page')
-    .waitFor({ state: 'visible' });
+  const articlesPage = page.getByTestId('context-center-articles-page');
+  await articlesPage.waitFor({ state: 'visible' });
   await hierarchyLoaded;
-  await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(articlesPage);
   await waitForAllLoadersToDisappear(page, 'knowledge-page-skeleton');
 };
 
 export const navigateToDocuments = async (page: Page) => {
   await page.goto(DOCUMENTS_URL, PAGE_GOTO_OPTIONS);
-  await page
-    .getByTestId('context-center-documents-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
+  const documentsPage = page.getByTestId('context-center-documents-page');
+  await documentsPage.waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(documentsPage);
 };
 
 export const navigateToMemories = async (page: Page) => {
   await page.goto(MEMORIES_URL, PAGE_GOTO_OPTIONS);
-  await page
-    .getByTestId('context-center-memories-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
+  const memoriesPage = page.getByTestId('context-center-memories-page');
+  await memoriesPage.waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(memoriesPage);
 };
 
 export const navigateToArchive = async (page: Page) => {
@@ -331,6 +322,8 @@ export const navigateToArchive = async (page: Page) => {
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
   page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    // Exact: an expanded empty folder renders a child row "<name> is empty".
+    exact: true,
     name: folderName,
   });
 
@@ -887,8 +880,13 @@ export const scrollHierarchyToNode = async (
     const countBefore = await nodes.count();
 
     // Hoist listener before the scroll so no response is missed
+    // Root pages only: `domains/hierarchy` (every navigation) and child
+    // expands (`parent=`) carry their own paging.total.
     const responsePromise = page.waitForResponse(
-      (res) => res.url().includes('/hierarchy'),
+      (res) =>
+        res.url().includes('/contextCenter/pages/search/hierarchy') &&
+        !res.url().includes('parent=') &&
+        res.request().method() === 'GET',
       { timeout: 15000 }
     );
 
@@ -964,7 +962,17 @@ export const waitForArticleSearchResponse = (page: Page, displayName: string) =>
     );
   });
 
-export const verifyArticleSearch = async (page: Page, displayName: string) => {
+/**
+ * The listing keeps its "Last updated" sort while searching, and the search is
+ * fuzzy, so a multi-word title also matches every newer article whose name
+ * shares a word — on a shared server that pushes the target off the first
+ * page. Pass the article's unique suffix as `searchTerm` to keep it there.
+ */
+export const verifyArticleSearch = async (
+  page: Page,
+  displayName: string,
+  searchTerm = displayName
+) => {
   const header = page.getByTestId('context-center-header');
   const searchInput = header
     .getByTestId('search-input')
@@ -989,8 +997,8 @@ export const verifyArticleSearch = async (page: Page, displayName: string) => {
       await clearResPromise;
     }
 
-    const searchResPromise = waitForArticleSearchResponse(page, displayName);
-    await searchInput.fill(displayName);
+    const searchResPromise = waitForArticleSearchResponse(page, searchTerm);
+    await searchInput.fill(searchTerm);
     const searchRes = await searchResPromise;
     expect(searchRes.status()).toBe(200);
     await expect(card).toBeVisible({ timeout: 3000 });
@@ -999,8 +1007,51 @@ export const verifyArticleSearch = async (page: Page, displayName: string) => {
   return searchInput;
 };
 
+/**
+ * The memory view/edit modal (one component serves both).
+ *
+ * Addressed by its own testid rather than `getByRole('dialog')`: the asset
+ * picker renders a second `role="dialog"`, so the bare role resolves to two
+ * elements the moment a picker is open and every assertion fails with a
+ * strict-mode violation — including `not.toBeVisible()` after a save, where
+ * the modal really has closed.
+ */
+export const getMemoryDialog = (page: Page) => page.getByTestId('memory-modal');
+
 export const assertArticleEditorSaved = async (page: Page) => {
   await expect(page.getByTestId('content-change-state')).toHaveText('Saved');
+};
+
+/**
+ * Waits for a locally-stored draft to be applied to the editor after a reload
+ * or a navigation back to the article.
+ *
+ * The editor mounts with the *server's* description and the stored draft is
+ * applied a tick later, so asserting straight after
+ * `waitForAllLoadersToDisappear` reads the pre-sync content and fails with the
+ * original description. The sync also flips `content-change-state` back to
+ * `Saved`, so both are asserted — each via a retrying `expect`, since they
+ * settle independently.
+ */
+export const waitForDraftSyncedIntoEditor = async (
+  page: Page,
+  expectedText: string
+) => {
+  // `.om-block-editor` is the article's own BlockEditor root (the class the
+  // draft tests already type into), so this resolves to the single editable
+  // ProseMirror node without a positional `.first()`.
+  const editor = page.locator(
+    '.om-block-editor.ProseMirror[contenteditable="true"]'
+  );
+
+  await expect(editor).toBeVisible();
+  // Both conditions, and both retried: the draft text and the `Saved` badge
+  // settle independently, so waiting for one then checking the other can
+  // sample the moment before the second lands.
+  await expect(editor).toContainText(expectedText);
+  await expect(page.getByTestId('content-change-state')).toHaveText('Saved');
+
+  return editor;
 };
 
 export const scrollListingToCard = async (page: Page, displayName: string) => {
@@ -1195,6 +1246,23 @@ export const patchMemory = async (
   return res.json();
 };
 
+/**
+ * Sets a memory's outcome counters through the admin-only outcome write, the only write that
+ * changes them: a PATCH keeps the stored counts.
+ */
+export const recordMemoryOutcomes = async (
+  apiContext: APIRequestContext,
+  id: string,
+  outcomes: { appliedCount: number; lastAppliedAt?: number }
+) => {
+  const res = await apiContext.put(`${MEMORIES_API}/${id}/outcomes`, {
+    data: { ...outcomes, countedAt: Date.now() },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
 export interface LoggedInUser {
   id: string;
   name: string;
@@ -1288,6 +1356,52 @@ export const readDraftStore = async (
  * risks racing the autosave itself and observing the draft after it has
  * already been removed rather than confirming it landed in time.
  */
+const SETTLED_ARTICLE_STATUSES = new Set(['Approved', 'Rejected']);
+const ARTICLE_SETTLE_WINDOW_MS = 3_000;
+
+/**
+ * Waits until a freshly created article stops changing server-side.
+ *
+ * When the approval workflow is active it moves entityStatus In Review ->
+ * Approved asynchronously, bumping the version. A draft stamped with the
+ * pre-approval version is then treated as stale (draft.version !== server
+ * version) and dropped on the next load. Deployments without the workflow never
+ * reach Approved, so a settled status is not required: an unchanged version for
+ * the settle window counts as settled too.
+ */
+export const waitForArticleSettled = async (
+  apiContext: APIRequestContext,
+  articleId: string
+) => {
+  let lastVersion: number | undefined;
+  let stableSince = Date.now();
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/contextCenter/pages/${articleId}`
+        );
+        if (!response.ok()) {
+          return false;
+        }
+        const { entityStatus, version } = await response.json();
+
+        if (SETTLED_ARTICLE_STATUSES.has(entityStatus)) {
+          return true;
+        }
+        if (version !== lastVersion) {
+          lastVersion = version;
+          stableSince = Date.now();
+        }
+
+        return Date.now() - stableSince >= ARTICLE_SETTLE_WINDOW_MS;
+      },
+      { timeout: 30_000, intervals: [500, 1_000] }
+    )
+    .toBe(true);
+};
+
 export const waitForDraftPersisted = async (
   page: Page,
   articleId: string,

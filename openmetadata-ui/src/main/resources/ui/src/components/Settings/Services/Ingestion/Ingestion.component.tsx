@@ -66,11 +66,6 @@ const Ingestion: React.FC<IngestionProps> = ({
   }>();
   const { permissions } = usePermissionProvider();
 
-  const isDBService = useMemo(
-    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
-    [serviceCategory]
-  );
-
   const { CollateAIAgentsWidget } = useMemo(
     () => ({
       ...getDefaultAgentsTabWidgets(),
@@ -86,9 +81,11 @@ const Ingestion: React.FC<IngestionProps> = ({
     Record<string, unknown>
   >;
 
+  // AutoPilot creates AI Automations for services of every type, so the Collate AI sub-tab is
+  // not limited to database services.
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
-    [CollateAIAgentsWidget, isDBService]
+    () => !isUndefined(CollateAIAgentsWidget),
+    [CollateAIAgentsWidget]
   );
 
   const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;

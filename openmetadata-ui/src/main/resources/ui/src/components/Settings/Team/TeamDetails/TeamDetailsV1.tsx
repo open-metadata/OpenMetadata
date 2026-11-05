@@ -12,28 +12,36 @@
  */
 
 import {
+  Avatar,
   Box,
-  Button as CoreButton,
+  Button,
   Grid,
+  SimpleModal,
   Tabs,
   ToggleBase,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Avatar, Button, Modal } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Download01,
+  Plus,
+  Restore,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
-import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
-import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
@@ -87,9 +95,11 @@ import {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ManageMenuItem as ItemType } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -102,6 +112,7 @@ import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.compon
 import { useApplicationsProvider } from '../../Applications/ApplicationsProvider/ApplicationsProvider';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
+import { TEAM_TAB_EMPTY_STATE_CLASS } from './TeamDetailsV1.constants';
 import {
   AddAttribute,
   PlaceholderProps,
@@ -303,25 +314,28 @@ const TeamDetailsV1 = ({
       children,
       type = ERROR_PLACEHOLDER_TYPE.CREATE,
     }: PlaceholderProps) => (
-      <ErrorPlaceHolder
-        button={button}
-        className="mt-0-important border-none p-lg"
-        doc={doc}
-        heading={heading}
-        permission={permission}
-        permissionValue={
-          type === ERROR_PLACEHOLDER_TYPE.CREATE
-            ? t('label.create-entity', {
-                entity: heading,
-              })
-            : t('label.edit-entity', {
-                entity: heading,
-              })
-        }
-        type={type}
-        onClick={onClick}>
-        {children}
-      </ErrorPlaceHolder>
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
+        <CreatePlaceholder
+          data-testid={`${
+            type === ERROR_PLACEHOLDER_TYPE.CREATE ? 'create' : 'assign'
+          }-error-placeholder-${heading}`}
+          description={children}
+          doc={doc}
+          footer={button}
+          heading={heading}
+          permission={permission}
+          permissionValue={
+            type === ERROR_PLACEHOLDER_TYPE.CREATE
+              ? t('label.create-entity', {
+                  entity: heading,
+                })
+              : t('label.edit-entity', {
+                  entity: heading,
+                })
+          }
+          onCreate={onClick}
+        />
+      </div>
     ),
     []
   );
@@ -593,7 +607,7 @@ const TeamDetailsV1 = ({
             description={t('message.export-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ExportIcon}
+            icon={Download01}
             id="export"
             name={t('label.export')}
           />
@@ -611,7 +625,7 @@ const TeamDetailsV1 = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ImportIcon}
+            icon={Upload01}
             id="import-button"
             name={t('label.import')}
           />
@@ -633,7 +647,7 @@ const TeamDetailsV1 = ({
               label: (
                 <ManageButtonItemLabel
                   description={t('message.restore-deleted-team')}
-                  icon={IconRestore}
+                  icon={Restore}
                   id="restore-team-dropdown"
                   name={t('label.restore-entity', {
                     entity: t('label.team'),
@@ -717,43 +731,48 @@ const TeamDetailsV1 = ({
       !isTeamBasicDataLoading;
 
     return showEmptyTeamPlaceholder ? (
-      <ErrorPlaceHolder
-        className="border-none"
-        icon={<AddPlaceHolderIcon className="h-32 w-32" />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p" style={{ marginBottom: '0' }}>
-          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.team'),
-          })}
-        </Typography>
-        <Typography as="p">
-          <Transi18next
-            i18nKey="message.refer-to-our-doc"
-            renderElement={
-              <a
-                aria-label={t('label.doc-plural-lowercase')}
-                href={GLOSSARIES_DOCS}
-                rel="noreferrer"
-                target="_blank"
-              />
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={t(
+            'message.adding-new-entity-is-easy-just-give-it-a-spin',
+            {
+              entity: t('label.team'),
             }
-            values={{
-              doc: t('label.doc-plural-lowercase'),
-            }}
-          />
-        </Typography>
-        <Tooltip arrow placement="top" title={addTeamButtonTitle}>
-          <CoreButton
-            color="secondary"
-            data-testid="add-placeholder-button"
-            iconLeading={Plus}
-            isDisabled={!entityPermissions.Create || isTeamDeleted}
-            size="sm"
-            onPress={handleAddTeamButtonClick}>
-            {t('label.add')}
-          </CoreButton>
-        </Tooltip>
-      </ErrorPlaceHolder>
+          )}
+          footer={
+            <>
+              <Typography as="p">
+                <Transi18next
+                  i18nKey="message.refer-to-our-doc"
+                  renderElement={
+                    <a
+                      aria-label={t('label.doc-plural-lowercase')}
+                      href={GLOSSARIES_DOCS}
+                      rel="noreferrer"
+                      target="_blank"
+                    />
+                  }
+                  values={{
+                    doc: t('label.doc-plural-lowercase'),
+                  }}
+                />
+              </Typography>
+              <Tooltip arrow placement="top" title={addTeamButtonTitle}>
+                <Button
+                  color="primary"
+                  data-testid="add-placeholder-button"
+                  iconLeading={Plus}
+                  isDisabled={!entityPermissions.Create || isTeamDeleted}
+                  size="sm"
+                  onPress={handleAddTeamButtonClick}>
+                  {t('label.add')}
+                </Button>
+              </Tooltip>
+            </>
+          }
+        />
+      </div>
     ) : (
       <TeamHierarchy
         createTeamPermission={entityPermissions.Create}
@@ -859,8 +878,8 @@ const TeamDetailsV1 = ({
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.role') })
               }>
-              <CoreButton
-                color="secondary"
+              <Button
+                color="primary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
                 isDisabled={isTeamDeleted}
@@ -872,7 +891,7 @@ const TeamDetailsV1 = ({
                   })
                 }>
                 {t('label.add')}
-              </CoreButton>
+              </Button>
             </Tooltip>
           ),
         })
@@ -883,8 +902,8 @@ const TeamDetailsV1 = ({
           {canEditAll && (
             <Grid.Item className="layout-column d-flex justify-end" span={24}>
               <Button
+                color="primary"
                 data-testid="add-role"
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.ROLE,
@@ -931,8 +950,8 @@ const TeamDetailsV1 = ({
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.policy') })
               }>
-              <CoreButton
-                color="secondary"
+              <Button
+                color="primary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
                 isDisabled={isTeamDeleted}
@@ -944,7 +963,7 @@ const TeamDetailsV1 = ({
                   })
                 }>
                 {t('label.add')}
-              </CoreButton>
+              </Button>
             </Tooltip>
           ),
         })
@@ -955,11 +974,11 @@ const TeamDetailsV1 = ({
           {canEditAll && (
             <Grid.Item className="layout-column d-flex justify-end" span={24}>
               <Button
+                color="primary"
                 data-testid="add-policy"
                 title={
                   canEditAll ? addPolicy : t('message.no-permission-for-action')
                 }
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
@@ -990,7 +1009,7 @@ const TeamDetailsV1 = ({
     const canManageTeamMembership =
       !isOrganization && !isUndefined(currentUser) && isGroupType;
     const joinTeamButton = (Boolean(currentTeam.isJoinable) || isAdminUser) && (
-      <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
+      <Button color="primary" data-testid="join-teams" onClick={joinTeam}>
         {t('label.join-team')}
       </Button>
     );
@@ -999,10 +1018,9 @@ const TeamDetailsV1 = ({
       canManageTeamMembership &&
       (isAlreadyJoinedTeam ? (
         <Button
-          ghost
+          color="secondary-brand"
           data-testid="leave-team-button"
-          type="primary"
-          onClick={(e) => {
+          onClick={(e: MouseEvent) => {
             // Used to stop click propagation event to the header collapsible panel
             e.stopPropagation();
             deleteUserHandler(currentUser.id, true);
@@ -1035,9 +1053,16 @@ const TeamDetailsV1 = ({
           {!isOrganization && <TitleBreadcrumb titleLinks={slashedTeamName} />}
           <div className="d-flex items-center justify-between p-t-xs">
             <div className="d-flex items-center gap-2 flex-1 w-min-0">
-              <Avatar className="teams-profile" size={40}>
-                <IconTeams className="text-primary" width={20} />
-              </Avatar>
+              <Avatar
+                className="teams-profile"
+                contrastBorder={false}
+                placeholder={
+                  <>
+                    <IconTeams className="text-primary" width={20} />
+                  </>
+                }
+                size="md"
+              />
 
               <TeamsHeadingLabel
                 currentTeam={currentTeam}
@@ -1348,10 +1373,11 @@ const TeamDetailsV1 = ({
           ))}
         </Tabs>
 
-        <Modal
+        <SimpleModal
           cancelText={t('label.cancel')}
+          data-testid="remove-team-user-modal"
+          isOpen={deletingUser.state}
           okText={t('label.confirm')}
-          open={deletingUser.state}
           title={
             deletingUser.leave
               ? t('label.leave-team')
@@ -1360,7 +1386,7 @@ const TeamDetailsV1 = ({
           onCancel={() => setDeletingUser(DELETE_USER_INITIAL_STATE)}
           onOk={handleRemoveUser}>
           {removeUserBodyText(deletingUser.leave)}
-        </Modal>
+        </SimpleModal>
         {addAttribute && (
           <AddAttributeModal
             isModalLoading={isModalLoading}
@@ -1373,13 +1399,11 @@ const TeamDetailsV1 = ({
           />
         )}
         {selectedEntity && (
-          <Modal
-            centered
-            closable={false}
-            confirmLoading={isModalLoading}
-            maskClosable={false}
+          <SimpleModal
+            isDismissable={false}
+            isOkLoading={isModalLoading}
+            isOpen={!isUndefined(selectedEntity.record)}
             okText={t('label.confirm')}
-            open={!isUndefined(selectedEntity.record)}
             title={`${t('label.remove-entity', {
               entity: getEntityName(selectedEntity?.record),
             })} ${t('label.from-lowercase')} ${getEntityName(currentTeam)}`}
@@ -1397,7 +1421,7 @@ const TeamDetailsV1 = ({
                 parent: getEntityName(currentTeam),
               })}
             </Typography>
-          </Modal>
+          </SimpleModal>
         )}
       </Box>
     </div>

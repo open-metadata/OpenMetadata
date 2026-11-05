@@ -17,6 +17,12 @@ import localUtilClassBase from '../../../../../../utils/i18next/LocalUtilClassBa
 import { readCompactSidebarPreference } from '../../../../../platform/ai-shell/Sidebar/sidebarPreference.utils';
 import PreferencesPanel from './PreferencesPanel';
 
+// Dark mode applies only in AI mode; classic is light-only.
+jest.mock('../../../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../../../hooks/useAppMode'),
+  useIsAiMode: () => true,
+}));
+
 const mockNavigate = jest.fn();
 const mockChangeLanguage = jest.fn().mockResolvedValue(undefined);
 

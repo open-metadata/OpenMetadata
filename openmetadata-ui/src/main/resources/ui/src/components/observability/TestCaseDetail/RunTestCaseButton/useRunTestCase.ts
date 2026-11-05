@@ -130,10 +130,12 @@ export const useRunTestCase = (testCase: TestCase) => {
     }
   };
 
+  const isReadOnly = isVersionPage || Boolean(testCase.deleted);
+
   return {
     activeRunState,
     // Known only once pipelines and permission have loaded, so a control never flashes in and then vanishes.
-    canRun: !isVersionPage && !isLoading && !isPermissionLoading && canTrigger,
+    canRun: !isReadOnly && !isLoading && !isPermissionLoading && canTrigger,
     disabledReasonKey: getRunDisabledReasonKey(pipelines, isLoadingError),
     isTriggering,
     run,

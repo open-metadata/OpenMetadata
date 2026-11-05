@@ -20,6 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 
 import { AxiosError } from 'axios';
@@ -27,13 +28,11 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Bot, ProviderType } from '../../../../generated/entity/bot';
@@ -57,8 +56,8 @@ import { getBotsPath } from '../../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
@@ -185,7 +184,8 @@ const BotListV1 = ({
               'name.keyword',
               'displayName.keyword',
               'fullyQualifiedName.keyword',
-              'email.keyword',
+              // Search refuses queries on email fields from anyone but admins.
+              ...(isAdminUser ? ['email.keyword'] : []),
             ].map((field) => ({
               wildcard: {
                 [field]: { value: wildcardPattern, case_insensitive: true },
@@ -331,16 +331,15 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Tooltip arrow placement="top right" title={title}>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`bot-delete-${record.name}`}
-                icon={IconDelete}
-                isDisabled={isDisabled}
-                size="sm"
-                onClick={() => setSelectedUser(record)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              data-testid={`bot-delete-${record.name}`}
+              icon={Trash01}
+              isDisabled={isDisabled}
+              size="lg"
+              tooltip={title}
+              tooltipPlacement="top right"
+              onClick={() => setSelectedUser(record)}
+            />
           );
         },
       },
@@ -448,17 +447,18 @@ const BotListV1 = ({
         />
       </Box>
       <Box className="layout-column tw:block w-full">
-        <ErrorPlaceHolder
-          className="mt-24"
-          doc={BOTS_DOCS}
-          heading={t('label.bot')}
-          permission={isAdminUser}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.bot'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={handleAddBotClick}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <CreatePlaceholder
+            data-testid={`create-error-placeholder-${t('label.bot')}`}
+            doc={BOTS_DOCS}
+            heading={t('label.bot')}
+            permission={isAdminUser}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.bot'),
+            })}
+            onCreate={handleAddBotClick}
+          />
+        </div>
       </Box>
     </Box>
   ) : (
@@ -541,7 +541,11 @@ const BotListV1 = ({
           dataSource={searchedData}
           loading={loading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowKey="name"

@@ -27,50 +27,38 @@ describe('patchAppConfiguration', () => {
     jest.clearAllMocks();
   });
 
-  it('keeps the keys it is not changing, since the PUT replaces the whole document', async () => {
-    mockClient.get.mockResolvedValue({
-      data: { config_value: { defaultAppMode: DefaultAppMode.AI } },
-    });
-    mockClient.put.mockImplementation(async (_url, body) => ({ data: body }));
-
-    const saved = await patchAppConfiguration({
-      defaultColumnOrder: DefaultColumnOrder.SourceOrder,
-    });
-
-    expect(mockClient.put).toHaveBeenCalledWith('/system/settings', {
-      config_type: SettingType.AppConfiguration,
-      config_value: {
-        defaultAppMode: DefaultAppMode.AI,
-        defaultColumnOrder: DefaultColumnOrder.SourceOrder,
-      },
-    });
-    expect(saved).toEqual({
-      defaultAppMode: DefaultAppMode.AI,
-      defaultColumnOrder: DefaultColumnOrder.SourceOrder,
-    });
-  });
-
-  it('clears a key explicitly set to null', async () => {
-    mockClient.get.mockResolvedValue({
-      data: {
-        config_value: {
-          defaultAppMode: DefaultAppMode.AI,
-          defaultColumnOrder: DefaultColumnOrder.SourceOrder,
-        },
-      },
-    });
-    mockClient.put.mockImplementation(async (_url, body) => ({ data: body }));
+  it('sends a JSON patch touching only the given keys', async () => {
+    mockClient.patch.mockResolvedValue({ data: {} });
 
     await patchAppConfiguration({ defaultAppMode: null });
 
-    expect(mockClient.put).toHaveBeenCalledWith(
-      '/system/settings',
-      expect.objectContaining({
-        config_value: {
-          defaultAppMode: null,
-          defaultColumnOrder: DefaultColumnOrder.SourceOrder,
+    expect(mockClient.put).not.toHaveBeenCalled();
+    expect(mockClient.patch).toHaveBeenCalledWith(
+      `/system/settings/${SettingType.AppConfiguration}`,
+      [{ op: 'add', path: '/defaultAppMode', value: null }],
+      { headers: { 'Content-Type': 'application/json-patch+json' } }
+    );
+  });
+
+  it('sends a JSON patch for multiple keys', async () => {
+    mockClient.patch.mockResolvedValue({ data: {} });
+
+    await patchAppConfiguration({
+      defaultAppMode: DefaultAppMode.AI,
+      defaultColumnOrder: DefaultColumnOrder.SourceOrder,
+    });
+
+    expect(mockClient.patch).toHaveBeenCalledWith(
+      `/system/settings/${SettingType.AppConfiguration}`,
+      [
+        { op: 'add', path: '/defaultAppMode', value: DefaultAppMode.AI },
+        {
+          op: 'add',
+          path: '/defaultColumnOrder',
+          value: DefaultColumnOrder.SourceOrder,
         },
-      })
+      ],
+      { headers: { 'Content-Type': 'application/json-patch+json' } }
     );
   });
 });

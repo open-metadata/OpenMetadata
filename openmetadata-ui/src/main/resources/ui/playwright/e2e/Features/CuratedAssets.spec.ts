@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -75,6 +75,37 @@ const test = base.extend<{ page: Page }>({
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
+// Picks a rule's field or operator and leaves its menu closed. A press that lands
+// while the menu is already closing still selects, and the ComboBox then reopens
+// with the new value and stays open — aria-hiding the rest of the dialog, so the
+// next role lookup waits out the test timeout. selectOption's blur fallback cannot
+// close it here: the modal's focus containment re-focuses the input, which reopens
+// it. The ComboBox's own chevron toggles it shut without moving focus. When the
+// menu closes before the press instead, the press selects nothing, so the whole
+// pick is retried until the value has landed.
+const selectRuleControl = async (
+  page: Page,
+  control: Locator,
+  optionTitle: string,
+  isSearchable = false
+) => {
+  const input = control.locator('input[role="combobox"]');
+
+  await expect(async () => {
+    await selectOption(page, control, optionTitle, isSearchable);
+
+    if ((await input.getAttribute('aria-expanded')) === 'true') {
+      await control
+        .locator('button[aria-haspopup="listbox"]')
+        .click({ timeout: 2000 });
+    }
+    await expect(input).toHaveAttribute('aria-expanded', 'false', {
+      timeout: 2000,
+    });
+    await expect(input).toHaveValue(optionTitle, { timeout: 2000 });
+  }).toPass({ timeout: 60000 });
+};
+
 test.beforeAll(
   'Setup pre-requests',
   async ({ browser, isolatedUserSession }) => {
@@ -128,7 +159,9 @@ test.describe('Curated Assets Widget', () => {
         CURATED_ASSETS_WIDGET_KEY
       );
 
-      await curatedAssetsWidget.getByText('Create').click();
+      await curatedAssetsWidget
+        .getByRole('button', { name: 'Create', exact: true })
+        .click();
 
       // Update widget name
       await page.locator('[data-testid="title-input"]').clear();
@@ -142,14 +175,14 @@ test.describe('Curated Assets Widget', () => {
       // Apply Display Name filter with the actual entity's display name
       const ruleLocator = page.getByTestId('query-builder-rule-0');
 
-      await selectOption(
+      await selectRuleControl(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
 
-      await selectOption(
+      await selectRuleControl(
         page,
         ruleLocator.getByTestId('advanced-search-operator-select'),
         'Contains'
@@ -196,9 +229,7 @@ test.describe('Curated Assets Widget', () => {
       );
 
       await expect(
-        curatedAssetsWidget
-          .locator('.entity-list-item-title')
-          .filter({ hasText: entityDisplayName })
+        curatedAssetsWidget.getByTestId(`curated-asset-${entityDisplayName}`)
       ).toBeVisible();
 
       await redirectToHomePage(page);
@@ -224,9 +255,7 @@ test.describe('Curated Assets Widget', () => {
       );
 
       await expect(
-        curatedAssetsWidget
-          .locator('.entity-list-item-title')
-          .filter({ hasText: entityDisplayName })
+        curatedAssetsWidget.getByTestId(`curated-asset-${entityDisplayName}`)
       ).toBeVisible();
 
       await navigateToCustomizeLandingPage(page, {
@@ -255,7 +284,9 @@ test.describe('Curated Assets Widget', () => {
       CURATED_ASSETS_WIDGET_KEY
     );
 
-    await curatedAssetsWidget.getByText('Create').click();
+    await curatedAssetsWidget
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     await expect(
       page.getByTestId('curated-assets-modal-container')
@@ -272,14 +303,14 @@ test.describe('Curated Assets Widget', () => {
 
     // Add a simple filter condition
     const ruleLocator = page.getByTestId('query-builder-rule-0');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
 
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator.getByTestId('advanced-search-operator-select'),
       'Is'
@@ -296,7 +327,10 @@ test.describe('Curated Assets Widget', () => {
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=all') &&
-        response.url().includes('true')
+        // The saved rule's clause, not an incidental `=true` parameter: the
+        // old widget always sent `fetch_source=true`, the card that replaced
+        // it sends no boolean parameter at all.
+        response.url().includes('%22deleted%22')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -336,7 +370,9 @@ test.describe('Curated Assets Widget', () => {
       CURATED_ASSETS_WIDGET_KEY
     );
 
-    await curatedAssetsWidget.getByText('Create').click();
+    await curatedAssetsWidget
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -349,13 +385,13 @@ test.describe('Curated Assets Widget', () => {
 
     // Add OR conditions
     const ruleLocator1 = page.getByTestId('query-builder-rule-0');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-field-select'),
       'Owners',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Is Set'
@@ -370,13 +406,13 @@ test.describe('Curated Assets Widget', () => {
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Is'
@@ -415,7 +451,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -442,7 +480,9 @@ test.describe('Curated Assets Widget', () => {
       CURATED_ASSETS_WIDGET_KEY
     );
 
-    await curatedAssetsWidget.getByText('Create').click();
+    await curatedAssetsWidget
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -455,13 +495,13 @@ test.describe('Curated Assets Widget', () => {
 
     // Configure conditions
     const ruleLocator1 = page.getByTestId('query-builder-rule-0');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Is'
@@ -478,13 +518,13 @@ test.describe('Curated Assets Widget', () => {
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-field-select'),
       'Display Name',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Contains'
@@ -524,7 +564,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
@@ -540,7 +582,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -567,7 +611,9 @@ test.describe('Curated Assets Widget', () => {
       CURATED_ASSETS_WIDGET_KEY
     );
 
-    await curatedAssetsWidget.getByText('Create').click();
+    await curatedAssetsWidget
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     // Configure widget name
     await page.locator('[data-testid="title-input"]').clear();
@@ -580,13 +626,13 @@ test.describe('Curated Assets Widget', () => {
 
     // Create first group with OR conditions
     const ruleLocator1 = page.getByTestId('query-builder-rule-0');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-field-select'),
       'Owners',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Any in'
@@ -611,13 +657,13 @@ test.describe('Curated Assets Widget', () => {
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-field-select'),
       'Description Status',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Is'
@@ -632,13 +678,13 @@ test.describe('Curated Assets Widget', () => {
     await page.getByRole('button', { name: 'Add New Field' }).click();
 
     const ruleLocator3 = page.getByTestId('query-builder-rule-2');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator3.getByTestId('advanced-search-field-select'),
       'Tier',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator3.getByTestId('advanced-search-operator-select'),
       'Is Not'
@@ -672,7 +718,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
@@ -688,7 +736,9 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title')
+      curatedAssetsWidget
+        .getByTestId('curated-assets-rows')
+        .getByRole('listitem')
     ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
@@ -701,7 +751,13 @@ test.describe('Curated Assets Widget', () => {
     await saveCustomizeLayoutPage(page);
   });
 
-  test('Placeholder validation - widget not visible without configuration', async ({
+  // An unconfigured widget used to be dropped from the live page, because the
+  // old widget had nothing at all to render without a saved filter. The card
+  // that replaced it falls back to the built-in certified/Tier-1 rule, so an
+  // unconfigured widget is now a meaningful one -- it is in the default layout
+  // for exactly that reason. What must not leak to a reader is the editor-only
+  // "Create" prompt.
+  test('Unconfigured widget falls back to the built-in rule on the live page', async ({
     page,
   }) => {
     test.slow(true);
@@ -711,16 +767,35 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    // Save without creating any widget configuration
+    // Save without creating any widget configuration. Wait for the layout to
+    // persist before leaving: navigating away mid-request drops the save, and
+    // the live page then renders whatever layout the previous test left.
     await expect(page.locator('[data-testid="save-button"]')).toBeEnabled();
-
-    await page.locator('[data-testid="save-button"]').click();
+    await saveCustomizeLayoutPage(page);
 
     await redirectToHomePage(page);
 
-    // Verify placeholder is not visible when no widget is configured
+    const curatedAssetsWidget = await waitForLandingPageWidget(
+      page,
+      CURATED_ASSETS_WIDGET_KEY
+    );
+
     await expect(
-      page.locator('[data-testid="KnowledgePanel.CuratedAssets"]')
-    ).not.toBeVisible();
+      curatedAssetsWidget.getByTestId('widget-empty-state')
+    ).toBeHidden();
+    // Exact: the empty state below it reads "No assets match this rule yet".
+    await expect(
+      curatedAssetsWidget.getByText('Rule', { exact: true })
+    ).toBeVisible();
+
+    await navigateToCustomizeLandingPage(page, {
+      personaName: persona.responseData.name,
+    });
+
+    await removeAndCheckWidget(page, {
+      widgetKey: CURATED_ASSETS_WIDGET_KEY,
+    });
+
+    await saveCustomizeLayoutPage(page);
   });
 });

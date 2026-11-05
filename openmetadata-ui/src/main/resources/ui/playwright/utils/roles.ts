@@ -21,7 +21,7 @@ export const removePolicyFromRole = async (
   // Clicking on remove action for added policy
   await page.locator(`[data-testid="remove-action-${policyName}"]`).click();
 
-  await expect(page.locator('.ant-modal-body')).toHaveText(
+  await expect(page.getByRole('dialog')).toContainText(
     `Are you sure you want to remove the ${policyName} from ${roleName}?`
   );
 

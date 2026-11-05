@@ -58,7 +58,7 @@ const ScheduleSelectionCards: FC<ScheduleSelectionCardsProps> = ({
                 className={classNames(
                   'tw:flex tw:size-10 tw:items-center tw:justify-center tw:rounded-lg tw:[&_svg]:size-5',
                   isSelected
-                    ? 'tw:bg-utility-brand-50 tw:text-brand-secondary'
+                    ? 'tw:bg-utility-brand-100 tw:text-brand-secondary'
                     : 'tw:bg-secondary tw:text-fg-quaternary'
                 )}>
                 {option.icon}

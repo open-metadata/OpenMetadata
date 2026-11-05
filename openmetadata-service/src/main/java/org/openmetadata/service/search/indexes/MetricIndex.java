@@ -48,6 +48,11 @@ public class MetricIndex implements TaggableIndex, LineageIndex {
   }
 
   @Override
+  public Set<String> getFieldsLoadedOnWrite() {
+    return Set.of(FIELD_CHILDREN_COUNT);
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return EXCLUDED_FIELDS;
   }

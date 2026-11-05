@@ -1,13 +1,13 @@
 ---
 name: pr-checklist
-description: Use when opening or finalizing a GitHub PR for OpenMetadata. Walks through the repo PR template — linked issue, high-level design (for big PRs), unit/integration/Playwright tests + coverage, UI screen recording, and manual test steps — then drafts a fully-filled PR body and (optionally) creates the PR.
+description: Use when opening or finalizing a GitHub PR for OpenMetadata. Walks through the repo PR template — self-review against REVIEW.md, linked issue, high-level design (for big PRs), unit/integration/Playwright tests + coverage, UI screen recording, and manual test steps — then drafts a fully-filled PR body and (optionally) creates the PR.
 user-invocable: true
 argument-hint: "[branch name or PR number — defaults to current branch]"
 ---
 
 # PR Checklist for OpenMetadata
 
-Walks through `.github/pull_request_template.md` section by section, gathers evidence, and produces a fully-filled PR description before creating the PR.
+Self-reviews the branch against `REVIEW.md`, walks through `.github/pull_request_template.md` section by section, gathers evidence, and produces a fully-filled PR description before creating the PR.
 
 ## When to Use
 
@@ -53,6 +53,35 @@ Use the diff to classify the PR:
 - **>5 files changed, or new feature / refactor / breaking change** → high-level design required.
 - **Single-file fix with obvious scope** → small change, design section can be `N/A`.
 
+### Step 1b — Self-review against `REVIEW.md`
+
+Every PR is reviewed against `REVIEW.md`. Hold the branch to it first, before Step 3, so the tests
+run on the code you will ship. It is not optional, including for small diffs
+(ADR:2026-10-16-prs-self-review-against-shared-review-bar).
+
+Before each pass, commit all intended changes, including fixes from the previous pass, so the
+branch diff includes them. Pin the reviewed commit with `git rev-parse HEAD`; leave unrelated work
+outside the commit.
+
+1. **Review with fresh eyes.** If your harness can start a subagent, start one that has none of your
+   session's context, and give it this prompt:
+
+   > Review commit `<reviewed SHA>` in `<absolute path of this checkout>`
+   > (`git diff origin/main...<reviewed SHA>`)
+   > against `REVIEW.md` at the repository root, as the reviewer that file describes. Follow its
+   > "How to review" section. Return the test map (one line per changed source file:
+   > `file → test`, or `file → none`), then the findings in its format, 🔴 first. Do not edit files.
+
+   With no subagent, run the same pass yourself: read `REVIEW.md`, then read the diff file by file
+   as if someone else had written it.
+2. **Act on every 🔴 and every `→ none` on changed behavior.** Fix the code and add the test that
+   fails without the fix, or write one line on why the finding does not apply. Nits are optional.
+3. **Commit fixes and repeat after any change**, until the committed diff returns no unanswered 🔴.
+   Any change to the intended files requires a new commit and pass; the final recorded SHA must
+   match the content reviewed.
+4. **Record it** for Step 6: the SHA you reviewed, what you fixed, and what you answered instead and
+   why.
+
 ### Step 2 — Confirm the linked issue
 
 Ask the user for the issue number if not obvious from the branch name or commit messages. Verify it exists:
@@ -78,11 +107,12 @@ integration tests run **only in the merge queue**, and JavaUIIT/search-it run ni
 tests the diff impacts locally with the `java-affected-tests` skill:
 ```bash
 make java_affected                          # impacted unit tests + ITs, by bucket, with the commands
-make java_affected_run                      # run them; writes target/java-tests/local-pr-results.md
-make java_affected_run ARGS="--update-pr"   # once the PR exists: upsert the block in the PR body
+make java_affected_run                      # run them; writes the summary and details to target/java-tests/
+make java_affected_run ARGS="--update-pr"   # once the PR exists: summary in the PR body, details in a comment
 ```
 Before the PR exists, paste `target/java-tests/local-pr-results.md` between the
-`local-java-test-results` markers under "Backend integration tests". Resolve every impact-map gap
+`local-java-test-results` markers under "Backend integration tests"; once it exists, post the
+details with `gh pr comment --body-file target/java-tests/local-pr-results-details.md`. Resolve every impact-map gap
 and every "no unit test references" class the planner lists (the skill says how). Code and ITs
 the branch adds must be owned in the impact map before the PR: `git push` and `gh pr create` are
 blocked until `python3 .github/scripts/plan_local_java_tests.py --check-branch` passes. Coverage on
@@ -182,13 +212,16 @@ For a verified local recording, include its evidence and a reference on its own 
 ```
 
 - **List every test run locally.** CI on the PR no longer runs the integration tests or Playwright,
-  so the description is the only record of what ran before review. The Java block names each class
-  it ran with its counts, and gives a module run in full as counts. Under the other Tests sections, list everything else you ran — pytest
+  so the PR is the only record of what ran before review. The Java block in the description is a
+  summary; its details comment names each class it ran with its counts, and gives a module run in
+  full as counts. Under the other Tests sections, list everything else you ran — pytest
   files, Jest specs, Playwright specs, manual checks — with pass/fail counts, and say what you did
   not run and why.
 - **Link the counterpart PR.** When the change needs an openmetadata-collate (or
   openmetadata-nightly) PR too, link each PR from the other's description; each lists the tests run
   in its own repo.
+- **Record the self-review.** Check the template's self-review box, and under it write the SHA from
+  Step 1b and each 🔴 you answered instead of fixing, one line each with the reason.
 
 ### Step 7 — Create or update the PR
 
@@ -240,13 +273,14 @@ Verify the saved description and return the PR URL when done.
 Check these before publication. Refuse to open the PR if a required item is missing, except where
 the gate explicitly allows a draft with its remaining work stated:
 
+- [ ] The Step 1b self-review ran on the current HEAD, and every 🔴 it found is fixed or answered in the body
 - [ ] Linked issue exists and is referenced as `Fixes #N`, or the PR is a test fix labelled `skip-pr-checks`
 - [ ] PR title matches `Fixes <issue-number>: <short explanation>` (a test fix gets a descriptive title instead)
 - [ ] At least one "Type of change" box is checked
 - [ ] Large PR has a high-level design section filled in (not `N/A`)
 - [ ] Tests section lists actual files and coverage numbers (not placeholders)
-- [ ] The description lists every test run locally (the Java block's classes plus every other suite
-      run), and links the counterpart Collate PR when there is one
+- [ ] The PR records every test run locally (the Java details comment's classes, and every other
+      suite run in the description), and links the counterpart Collate PR when there is one
 - [ ] When creating a PR for a UI feature or feature task: Docker build/health evidence, sample-data setup and a verified local recording are ready for Step 7; verify the GitHub-hosted video after upload and before marking ready. Incomplete evidence means draft. Other changes may explain N/A.
 - [ ] Java / schema / migration / pom changes: the `local-java-test-results` block reads PASSED (or
       NOT NEEDED) for the current commit — a FAILED block or no block means draft, not ready
@@ -256,6 +290,8 @@ the gate explicitly allows a draft with its remaining work stated:
 - [ ] A PR that makes a durable decision — a contract another component or repo must agree with, a new default or limit, an ordering that must hold, a rule stated only in the description — adds its record under `docs/decisions/` (see `docs/decisions/README.md`), and the template's Decision check box reflects it
 
 ## Common Gaps to Watch For
+
+- Self-review skipped because "the diff is small", or run before the last code change
 
 - Schema change without `make generate` → models out of sync
 - Backend API change without integration test in `openmetadata-integration-tests/`

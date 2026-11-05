@@ -81,28 +81,24 @@ test.describe(
         await expect(page.getByTestId('announcements-widget-v2')).toBeVisible();
       });
 
-      await test.step('Verify announcement items are displayed', async () => {
-        await page
-          .getByTestId(/^announcement-item-/)
-          .first()
-          .waitFor();
+      await test.step('Verify both announcements are reachable in the carousel', async () => {
+        const widget = page.getByTestId('announcements-widget-v2');
+        const banner = widget.getByTestId('announcement-banner');
+        const nextBtn = widget.getByTestId('announcement-next-btn');
+        const seenTitles: string[] = [];
 
-        const viewAll = page.getByTestId('view-all-btn');
-        if (await viewAll.isVisible()) {
-          await viewAll.click();
+        await expect(banner).toBeVisible();
+        seenTitles.push((await banner.getAttribute('aria-label')) ?? '');
+
+        while ((await nextBtn.isVisible()) && (await nextBtn.isEnabled())) {
+          const previous = seenTitles[seenTitles.length - 1];
+          await nextBtn.click();
+          await expect(banner).not.toHaveAttribute('aria-label', previous);
+          seenTitles.push((await banner.getAttribute('aria-label')) ?? '');
         }
 
-        const domainItem = page.getByTestId(
-          `announcement-item-${domainAnnouncementId}`
-        );
-        await domainItem.scrollIntoViewIfNeeded();
-        await expect(domainItem).toBeVisible();
-
-        const dpItem = page.getByTestId(
-          `announcement-item-${dpAnnouncementId}`
-        );
-        await dpItem.scrollIntoViewIfNeeded();
-        await expect(dpItem).toBeVisible();
+        expect(seenTitles.join('|')).toContain('Domain Announcement');
+        expect(seenTitles.join('|')).toContain('Data Product Announcement');
       });
     });
   }

@@ -10,17 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { FC, Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 
-export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
-  props: ObjectFieldTemplateProps
+export const ProfilerObjectFieldTemplate = <T,>(
+  props: ObjectFieldTemplateProps<T>
 ) => {
   const { t } = useTranslation();
 
@@ -43,12 +46,12 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         </span>
 
         {schema.additionalProperties && (
-          <Button
+          <ButtonUtility
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            tooltip={t('label.add-entity', { entity: title })}
             onClick={() => {
               onAddClick(schema)();
             }}

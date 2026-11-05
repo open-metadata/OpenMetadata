@@ -107,7 +107,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
 
   return (
     <Link
-      className="no-underline text-primary text-sm"
+      className="tw:no-underline tw:text-link tw:text-sm"
       data-testid={`${testIdPrefix}-${
         knowledgePage.displayName || knowledgePage.fullyQualifiedName
       }`}

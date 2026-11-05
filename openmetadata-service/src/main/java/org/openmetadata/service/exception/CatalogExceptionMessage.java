@@ -14,6 +14,7 @@
 package org.openmetadata.service.exception;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -85,6 +86,9 @@ public final class CatalogExceptionMessage {
       "Self Signup can only create user for self. Only Admin can create other users.";
   public static final String SELF_SIGNUP_DISABLED_MESSAGE =
       "Self Signup is not enabled. Please contact your Administrator for assistance with account creation";
+  public static final String SELF_SIGNUP_DOMAIN_NOT_ALLOWED = "SELF_SIGNUP_DOMAIN_NOT_ALLOWED";
+  public static final String SELF_SIGNUP_DOMAIN_NOT_ALLOWED_MESSAGE =
+      "Self Signup is not allowed for this email domain. Please contact your Administrator for assistance with account creation";
 
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 
@@ -146,9 +150,18 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
-  public static String entityRepositoryNotFound(String entityType) {
-    return String.format(
-        "Entity repository for %s not found. Is the ENTITY_TYPE_MAP initialized?", entityType);
+  /**
+   * Entity types are case-sensitive and mix conventions ({@code glossaryTerm}, {@code
+   * eventsubscription}), so a wrong-case spelling is the usual miss; name the type that was meant.
+   */
+  public static String entityRepositoryNotFound(String entityType, Collection<String> knownTypes) {
+    String suggestion =
+        knownTypes.stream()
+            .filter(entityType::equalsIgnoreCase)
+            .findFirst()
+            .map(known -> String.format(" Did you mean '%s'?", known))
+            .orElse("");
+    return String.format("Unknown entity type '%s'.%s", entityType, suggestion);
   }
 
   public static String entityRelationshipNotFound(
@@ -172,6 +185,10 @@ public final class CatalogExceptionMessage {
 
   public static String userAlreadyPartOfTeam(String userName, String teamName) {
     return String.format("User '%s' is already part of the team '%s'", userName, teamName);
+  }
+
+  public static String invalidFQN(final String fqn) {
+    return String.format("Invalid fully qualified name %s", fqn);
   }
 
   public static String invalidColumnFQN(String fqn) {
@@ -200,6 +217,12 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Invalid queryParameters - glossary term `parent` %s is not in the `glossary` %s",
         parentId, glossaryId);
+  }
+
+  public static String invalidEmailDomain(String emailDomain, Collection<String> allowedDomains) {
+    return String.format(
+        "Email domain '%s' is not allowed. Allowed email domains: %s",
+        emailDomain, String.join(", ", allowedDomains));
   }
 
   public static String notAdmin(String name) {
@@ -233,7 +256,9 @@ public final class CatalogExceptionMessage {
   }
 
   public static String notTaskAssignee(String name) {
-    return String.format("User '%s' is not an assignee of the pending approval task", name);
+    return String.format(
+        "User '%s' is not an assignee of this approval, so they cannot approve or reject it.",
+        name);
   }
 
   public static String pendingApprovalTaskExists(String entityFqn) {
@@ -275,8 +300,25 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Principal: CatalogPrincipal{name='%s'} does not belong to domains [%s] to perform the %s operations.",
         user,
-        domains.stream().map(EntityReference::getName).collect(Collectors.joining(", ")),
+        domains.stream()
+            .map(CatalogExceptionMessage::domainLabel)
+            .collect(Collectors.joining(", ")),
         operations);
+  }
+
+  /**
+   * A domain reference reaching this message may come straight from a JSON Patch, which carries only
+   * the id and type — so name alone renders as "null" exactly when the caller most needs to know
+   * which domain was refused.
+   */
+  private static String domainLabel(EntityReference domain) {
+    if (domain.getFullyQualifiedName() != null) {
+      return domain.getFullyQualifiedName();
+    }
+    if (domain.getName() != null) {
+      return domain.getName();
+    }
+    return String.valueOf(domain.getId());
   }
 
   public static String taskOperationNotAllowed(String user, String operations) {

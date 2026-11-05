@@ -16,17 +16,24 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.ws.rs.core.SecurityContext;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +46,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -50,6 +58,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class ActivityStreamRepositoryTest {
 
@@ -140,6 +150,31 @@ class ActivityStreamRepositoryTest {
   }
 
   @Test
+  void createFieldEventsFromChangeEventRecordsStatusChanges() {
+    ActivityStreamRepository repository =
+        new ActivityStreamRepository(mock(CollectionDAO.ActivityStreamDAO.class));
+    ChangeEvent changeEvent =
+        changeEventWith(null)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("entityStatus")
+                                .withOldValue("In Review")
+                                .withNewValue("Approved"))));
+
+    ActivityEvent event =
+        repository.createFieldEventsFromChangeEvent(changeEvent, tableEntity()).getFirst();
+
+    assertEquals(ActivityEventType.ENTITY_UPDATED, event.getEventType());
+    assertEquals("entityStatus", event.getFieldName());
+    assertEquals("Approved", event.getNewValue());
+    assertTrue(event.getSummary().endsWith("changed to Approved"), event.getSummary());
+  }
+
+  @Test
   void listCountAndRetentionDoNotQueryConversationStorage() {
     CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);
@@ -159,6 +194,55 @@ class ActivityStreamRepositoryTest {
     }
   }
 
+  // startTs, not now - days, is the DAO lower bound when supplied, so a window
+  // starting at the start of the day 30 days ago is fetched in full.
+  @Test
+  void listActivityEventsUsesStartTsAsLowerBoundWhenProvided() {
+    long startTs =
+        Instant.now().minus(30, ChronoUnit.DAYS).minus(2, ChronoUnit.HOURS).toEpochMilli();
+
+    assertEquals(startTs, listActivityLowerBound(startTs));
+  }
+
+  @Test
+  void listActivityEventsFallsBackToDaysWhenStartTsAbsent() {
+    assertNear(daysAgo(30), listActivityLowerBound(null));
+  }
+
+  @Test
+  void listActivityEventsFloorsStartTsAtThirtyOneDays() {
+    assertNear(daysAgo(31), listActivityLowerBound(0L));
+  }
+
+  private static long listActivityLowerBound(Long startTs) {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(dao.list(anyLong(), eq(200))).thenReturn(List.of());
+
+    try (MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
+      SubjectContext subject = mock(SubjectContext.class);
+      when(subject.isAdmin()).thenReturn(true);
+      authMock.when(() -> getSubjectContext(securityContext)).thenReturn(subject);
+
+      repository.listActivityEvents(
+          securityContext, null, null, null, null, null, 30, startTs, 200);
+    }
+
+    ArgumentCaptor<Long> after = ArgumentCaptor.forClass(Long.class);
+    verify(dao).list(after.capture(), eq(200));
+    return after.getValue();
+  }
+
+  private static long daysAgo(int days) {
+    return Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
+  }
+
+  // Bounds computed from Instant.now() drift by test runtime; a few seconds is plenty.
+  private static void assertNear(long expected, long actual) {
+    assertTrue(Math.abs(actual - expected) < 5_000, "expected ~" + expected + ", got " + actual);
+  }
+
   private static ChangeEvent changeEventWith(String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
@@ -167,6 +251,41 @@ class ActivityStreamRepositoryTest {
         .withEntityId(UUID.randomUUID())
         .withTimestamp(System.currentTimeMillis())
         .withUserName(userName);
+  }
+
+  @Test
+  void contractActivityTakesItsAssetDomainsSoDomainScopedFeedsKeepIt() {
+    ActivityStreamRepository repository =
+        new ActivityStreamRepository(mock(CollectionDAO.ActivityStreamDAO.class));
+    EntityReference domain =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN).withName("sales");
+    Table asset =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withFullyQualifiedName("svc.db.schema.table")
+            .withDomains(List.of(domain));
+    EntityReference assetRef = new EntityReference().withId(asset.getId()).withType(Entity.TABLE);
+    DataContract contract =
+        new DataContract()
+            .withId(UUID.randomUUID())
+            .withName("contract")
+            .withFullyQualifiedName("svc.db.schema.table.dataContract_contract")
+            .withEntity(assetRef);
+    ChangeEvent changeEvent =
+        changeEventWith(null)
+            .withEventType(EventType.ENTITY_CREATED)
+            .withEntityType("dataContract");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntity(assetRef, Entity.FIELD_DOMAINS, Include.ALL))
+          .thenReturn(asset);
+
+      ActivityEvent event =
+          repository.createFieldEventsFromChangeEvent(changeEvent, contract).getFirst();
+
+      assertEquals(List.of(domain), event.getDomains());
+    }
   }
 
   private static EntityInterface<?> tableEntity() {

@@ -78,7 +78,10 @@ const MatchingFieldCard = ({
   );
 
   return (
-    <Card data-testid={`field-configuration-panel-${field.field}`} size="sm">
+    <Card
+      data-testid={`field-configuration-panel-${field.field}`}
+      size="sm"
+      variant="muted">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box align="center" direction="row" gap={2} justify="between">
@@ -110,18 +113,16 @@ const MatchingFieldCard = ({
               </Badge>
               <ButtonUtility
                 aria-expanded={isOpen}
-                color="tertiary"
                 data-testid="field-configuration-toggle"
                 icon={isOpen ? ChevronUp : ChevronDown}
-                size="xs"
+                size="lg"
                 tooltip={t('label.edit')}
                 onPress={() => setIsOpen((open) => !open)}
               />
               <ButtonUtility
-                color="tertiary"
                 data-testid="delete-search-field"
                 icon={Trash01}
-                size="xs"
+                size="lg"
                 tooltip={t('label.delete')}
                 onPress={onDelete}
               />

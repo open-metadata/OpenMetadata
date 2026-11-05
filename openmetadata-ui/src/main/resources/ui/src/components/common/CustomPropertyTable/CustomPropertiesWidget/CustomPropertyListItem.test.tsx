@@ -57,19 +57,53 @@ describe('CustomPropertyListItem', () => {
     expect(screen.getByTestId('property-value')).toHaveTextContent(
       'label.count-line-plural'
     );
-    expect(screen.getByText('label.sql-uppercase')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.sql-uppercase' })
+    ).toBeInTheDocument();
   });
 
   it('shows "not set" for an empty value', () => {
     renderItem({ value: undefined });
 
     expect(screen.getByTestId('property-value')).toHaveTextContent(
-      'label.not-set'
+      'label.no-value-yet'
     );
     expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
   });
 
-  it('renders the extra actions after the type badge', () => {
+  it('renders a one-bound timeInterval value as plain text without crashing', () => {
+    renderItem({
+      hasEditPermissions: false,
+      property: createProperty('timeInterval'),
+      value: { start: 100 },
+    });
+
+    expect(
+      screen.getByTestId('custom-property-ownerTeam-row')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('property-value')).toHaveTextContent('100');
+    expect(screen.getByTestId('property-value')).not.toHaveTextContent(
+      /0 minutes/i
+    );
+  });
+
+  it('renders a null-bound timeInterval value as plain text without "0 minutes"', () => {
+    renderItem({
+      hasEditPermissions: false,
+      property: createProperty('timeInterval'),
+      value: { start: 100, end: null },
+    });
+
+    expect(
+      screen.getByTestId('custom-property-ownerTeam-row')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('property-value')).toHaveTextContent('100');
+    expect(screen.getByTestId('property-value')).not.toHaveTextContent(
+      /0 minutes/i
+    );
+  });
+
+  it('renders the extra actions after the edit button', () => {
     renderItem({
       actions: (
         <button aria-label="layout-action" data-testid="layout-action" />

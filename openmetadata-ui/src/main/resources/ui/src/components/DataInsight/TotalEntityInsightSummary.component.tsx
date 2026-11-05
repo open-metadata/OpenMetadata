@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid } from '@openmetadata/ui-core-components';
+import { Button, Grid } from '@openmetadata/ui-core-components';
 import { useChartPalette } from '@openmetadata/ui-core-components/charts';
-import { Button } from 'antd';
-import { Gutter } from 'antd/lib/grid/row';
 import classNames from 'classnames';
 import { includes, startCase, toLower } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -31,7 +29,6 @@ type TotalEntityInsightSummaryProps = {
   selectedDays: number;
   entities: string[];
   latestData: Record<string, number>;
-  gutter?: Gutter | [Gutter, Gutter];
   onActiveKeysUpdate?: (entity: string[]) => void;
   onActiveKeyMouseHover?: (entity: string) => void;
   activeKeys?: string[];
@@ -140,7 +137,7 @@ const TotalEntityInsightSummary = ({
 
       {activeKeys && activeKeys.length > 0 && allowFilter && (
         <Grid.Item className="layout-column flex justify-end" span={24}>
-          <Button type="link" onClick={() => onActiveKeysUpdate?.([])}>
+          <Button color="link-color" onClick={() => onActiveKeysUpdate?.([])}>
             {t('label.clear')}
           </Button>
         </Grid.Item>

@@ -14,10 +14,15 @@
 import {
   Badge,
   Dropdown,
+  RadioButtonBase,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Radio } from 'antd';
+import {
+  ActivityOwnerChanged,
+  Role as PersonaIcon,
+} from '@openmetadata/ui-core-components/icons';
+
 import { isEmpty, orderBy } from 'lodash';
 import {
   FC,
@@ -32,8 +37,6 @@ import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
-import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
-import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
 import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
 import { TERM_ADMIN } from '../../../../constants/constants';
@@ -53,7 +56,6 @@ import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtil
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
 
 const LIST_ITEM_CLASS = 'tw:pl-6';
@@ -185,7 +187,7 @@ export const UserProfileIcon = () => {
 
           {defaultPersona?.id === item.id && (
             <Badge
-              className="tw:mr-2 tw:ml-1 tw:font-medium tw:shadow-xs"
+              className="tw:mr-2 tw:ml-1 tw:font-medium"
               color="brand"
               data-testid="default-persona-tag"
               size="sm"
@@ -195,7 +197,12 @@ export const UserProfileIcon = () => {
           )}
         </div>
 
-        <Radio checked={selectedPersona?.id === item.id} />
+        {selectedPersona?.id === item.id && (
+          <span className="tw:sr-only">{t('label.selected')}</span>
+        )}
+        <span aria-hidden="true">
+          <RadioButtonBase isSelected={selectedPersona?.id === item.id} />
+        </span>
       </div>
     ),
     [selectedPersona, defaultPersona, t]
@@ -332,7 +339,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'roles',
-            icon: RoleIcon,
+            icon: ActivityOwnerChanged,
             title: t('label.role-plural'),
             listItems: roles ?? [],
             labelRenderer: getEntityName,
@@ -368,7 +375,6 @@ export const UserProfileIcon = () => {
         <div className="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
           <InterfaceModeMenuItem />
           {navbarUtilClassBase.getUserProfileExtraItems()}
-          <ThemeModeSwitcher className="tw:w-full" />
         </div>
       </Dropdown.Popover>
     </Dropdown.Root>

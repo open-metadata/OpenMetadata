@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,8 +23,10 @@ import { useNavigate } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
+import { useDataInsightProvider } from '../../../components/DataInsight/DataInsightProvider/DataInsightProvider';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
 import KPIChart from '../../../components/DataInsight/KPIChart';
+import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -33,7 +39,6 @@ import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import dataInsightClassBase from '../DataInsightClassBase';
-import { useDataInsightProvider } from '../DataInsightProvider';
 import { DataInsightHeaderProps } from './DataInsightHeader.interface';
 const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   const {
@@ -48,6 +53,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { showModal } = useEntityExportModalProvider();
 
   const { showDataInsightSummary, showKpiChart } =
     getOptionalDataInsightTabFlag(tab);
@@ -63,8 +69,8 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   );
 
   const extraDropdownContent = useMemo(
-    () => dataInsightClassBase.getManageExtraOptions(),
-    []
+    () => dataInsightClassBase.getManageExtraOptions(showModal),
+    [showModal]
   );
 
   const handleAddKPI = () => {
@@ -98,8 +104,8 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
           <div className="d-flex gap-2">
             {createKPIPermission && (
               <Button
+                color="primary"
                 data-testid="add-kpi-btn"
-                type="primary"
                 onClick={handleAddKPI}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),

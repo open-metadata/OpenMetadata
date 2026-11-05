@@ -112,10 +112,6 @@ export const setPersonaAsDefault = async (page: Page) => {
   await setAsDefaultButton.waitFor({ state: 'visible' });
   await setAsDefaultButton.click();
 
-  // The `default-persona-confirmation-modal` testid is on the antd
-  // `.ant-modal-root` wrapper (0x0), so `toBeVisible` on it always reports
-  // hidden. Wait for the actual "Yes" button inside the modal instead — its
-  // visibility is the real signal that the modal is rendered and interactive.
   const setAsDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
@@ -194,10 +190,6 @@ export const removePersonaDefault = async (
   await removeDefaultButton.waitFor({ state: 'visible' });
   await removeDefaultButton.click();
 
-  // The `default-persona-confirmation-modal` testid is on the antd
-  // `.ant-modal-root` wrapper (0x0), so `toBeVisible` on it always reports
-  // hidden. Wait for the actual "Yes" button inside the modal instead — its
-  // visibility is the real signal that the modal is rendered and interactive.
   const removeDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );

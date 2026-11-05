@@ -15,6 +15,7 @@
       "type": "object",
       "description": "User/Bot Authentication Mechanism.",
       "javaType": "org.openmetadata.schema.entity.teams.AuthenticationMechanism",
+      "mask": true,
       "properties": {
         "config": {
           "oneOf": [
@@ -136,6 +137,10 @@
       "description": "Default Persona for the user from list of personas.",
       "$ref": "../../type/entityReference.json"
     },
+    "defaultDomain": {
+      "description": "The domain the user selects in the navbar to scope list views. Persisted so the global (navbar) domain filter is applied from the start of the session; it narrows lists only and never restricts access.",
+      "$ref": "../../type/entityReference.json"
+    },
     "personas": {
       "description": "Personas that the user assigned to.",
       "$ref": "../../type/entityReferenceList.json"
@@ -188,6 +193,11 @@
     "lastActivityTime": {
       "description": "Last time the user was active in the system.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "isFirstTimeUser": {
+      "description": "When true indicates the user is accessing the product for the first time. Turns false once the user first reaches the home page.",
+      "type": "boolean",
+      "default": true
     },
      "personaPreferences": {
       "description": "User's personal preferences for each persona. Users can customize certain UI elements per persona while inheriting base persona configuration.",

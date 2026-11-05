@@ -201,6 +201,32 @@ describe('FormBuilderV1', () => {
     });
   });
 
+  it('routes custom-field focus to the form-level onFocus', () => {
+    const onFocus = jest.fn();
+    render(<FormBuilderV1 schema={schema} onFocus={onFocus} />);
+
+    mockForm.mock.calls.at(-1)?.[0].formContext.handleFocus('root/autoTune');
+
+    expect(onFocus).toHaveBeenCalledWith('root/autoTune', undefined);
+  });
+
+  it('keeps a consumer-provided formContext.handleFocus', () => {
+    const onFocus = jest.fn();
+    const handleFocus = jest.fn();
+    render(
+      <FormBuilderV1
+        formContext={{ handleFocus }}
+        schema={schema}
+        onFocus={onFocus}
+      />
+    );
+
+    mockForm.mock.calls.at(-1)?.[0].formContext.handleFocus('root/name');
+
+    expect(handleFocus).toHaveBeenCalledWith('root/name');
+    expect(onFocus).not.toHaveBeenCalled();
+  });
+
   it('supports custom labels and submit button states', () => {
     const { rerender } = render(
       <FormBuilderV1

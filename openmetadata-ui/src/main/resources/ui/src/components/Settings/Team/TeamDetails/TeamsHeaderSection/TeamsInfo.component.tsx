@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 import {
-  CheckOutlined,
-  CloseOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
-import {
   Box,
   ButtonUtility,
   Divider,
+  FormField,
+  HookForm,
+  Input,
   Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input } from 'antd';
+import {
+  Check,
+  Edit01,
+  InfoCircle,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
@@ -66,6 +66,9 @@ const TeamsInfo = ({
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
+  const emailForm = useForm<{ email: string }>({
+    defaultValues: { email: '' },
+  });
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -81,11 +84,18 @@ const TeamsInfo = ({
   // Task 8 rule 2). hasEditPermission (bare EditAll-only) and hasEditOwnerPermission (already
   // used the prioritized helper directly, just not through the shared derivation) are both
   // identical mappings onto canEditAll/canEditOwners.
-  const { canEditAll, canEditOwners } = useMemo(
+  const { canEditAll, canEditOwners, canEditDomains } = useMemo(
     () => getDerivedPermissionFlags(entityPermissions, isTeamDeleted),
     [entityPermissions, isTeamDeleted]
   );
   const hasEditPermission = canEditAll;
+  // Members inherit the default persona, so only admins set it, even when the
+  // owner may edit the rest of the team (ADR:2026-11-03-only-admins-assign-personas).
+  const hasEditPersonaPermission =
+    hasEditPermission && Boolean(currentUser?.isAdmin);
+  // Reassigning a team's domain is EditDomains on the server (EditAll still
+  // subsumes it), so gate the domain control on that, not bare EditAll.
+  const hasEditDomainPermission = canEditDomains;
   const hasEditOwnerPermission = canEditOwners;
 
   const isUserPartOfCurrentTeam = useMemo<boolean>(() => {
@@ -191,85 +201,77 @@ const TeamsInfo = ({
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
-            <Tooltip
-              arrow
-              title={t('label.edit-entity', {
+            <ButtonUtility
+              data-testid="edit-email"
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.email'),
-              })}>
-              <ButtonUtility
-                color="secondary"
-                data-testid="edit-email"
-                icon={EditIcon}
-                size="xs"
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                  e.stopPropagation();
-                  setIsEmailEdit(true);
-                }}
-              />
-            </Tooltip>
+              })}
+              onClick={(e: MouseEvent) => {
+                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                e.stopPropagation();
+                emailForm.reset({ email: email ?? '' });
+                setIsEmailEdit(true);
+              }}
+            />
           )}
         </div>
         {isEmailEdit ? (
-          <Form
-            initialValues={{ email }}
-            //  Used onClick stop click propagation event anywhere in the form to parent
-            //  TeamsDetailV1 collapsible panel
-            onClick={(e) => e.stopPropagation()}
-            onFinish={onEmailSave}>
-            <Box
-              inline
-              align="baseline"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
-              <Form.Item
-                className="m-b-0"
-                name="email"
-                rules={[
-                  {
-                    pattern: EMAIL_REG_EX,
-                    type: 'email',
-                    message: t('message.field-text-is-invalid', {
-                      fieldText: t('label.email'),
-                    }),
-                  },
-                ]}>
-                <Input
-                  className="w-48"
-                  data-testid="email-input"
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.email-lowercase'),
-                  })}
-                />
-              </Form.Item>
-              <Box
-                inline
-                align="center"
-                className="layout-space layout-space-horizontal"
-                gap={1}
-                itemClassName="layout-space-item">
-                <Button
-                  className="h-8 p-x-xss"
-                  data-testid="cancel-edit-email"
-                  disabled={isLoading}
-                  size="small"
-                  type="primary"
-                  onClick={() => setIsEmailEdit(false)}>
-                  <CloseOutlined />
-                </Button>
-                <Button
-                  className="h-8 p-x-xss"
-                  data-testid="save-edit-email"
-                  htmlType="submit"
-                  loading={isLoading}
-                  size="small"
-                  type="primary">
-                  <CheckOutlined />
-                </Button>
+          // Stops clicks reaching the parent TeamsDetailV1 collapsible panel.
+          <div role="presentation" onClick={(e) => e.stopPropagation()}>
+            <HookForm
+              form={emailForm}
+              onSubmit={emailForm.handleSubmit(onEmailSave)}>
+              <Box align="start" gap={2}>
+                <FormField
+                  control={emailForm.control}
+                  name="email"
+                  rules={{
+                    pattern: {
+                      value: EMAIL_REG_EX,
+                      message: t('message.field-text-is-invalid', {
+                        fieldText: t('label.email'),
+                      }),
+                    },
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Input
+                      aria-label={t('label.email')}
+                      className="tw:w-48"
+                      hint={fieldState.error?.message}
+                      inputDataTestId="email-input"
+                      isInvalid={fieldState.invalid}
+                      placeholder={t('label.enter-entity', {
+                        entity: t('label.email-lowercase'),
+                      })}
+                      size="sm"
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
+                  )}
+                </FormField>
+                <Box align="center" gap={1}>
+                  <ButtonUtility
+                    color="primary"
+                    data-testid="cancel-edit-email"
+                    icon={XClose}
+                    isDisabled={isLoading}
+                    tooltip={t('label.cancel')}
+                    onClick={() => setIsEmailEdit(false)}
+                  />
+                  <ButtonUtility
+                    color="primary"
+                    data-testid="save-edit-email"
+                    icon={Check}
+                    isLoading={isLoading}
+                    tooltip={t('label.save')}
+                    type="submit"
+                  />
+                </Box>
               </Box>
-            </Box>
-          </Form>
+            </HookForm>
+          </div>
         ) : (
           <Box
             inline
@@ -287,7 +289,15 @@ const TeamsInfo = ({
         )}
       </Box>
     ),
-    [email, isEmailEdit, hasEditPermission, isLoading]
+    [
+      email,
+      isEmailEdit,
+      hasEditPermission,
+      isLoading,
+      emailForm,
+      onEmailSave,
+      t,
+    ]
   );
 
   const teamTypeElement = useMemo(() => {
@@ -308,23 +318,18 @@ const TeamsInfo = ({
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
-              <Tooltip
-                arrow
-                title={t('label.edit-entity', {
+              <ButtonUtility
+                data-testid="edit-team-type-icon"
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.team-type'),
-                })}>
-                <ButtonUtility
-                  color="secondary"
-                  data-testid="edit-team-type-icon"
-                  icon={EditIcon}
-                  size="xs"
-                  onClick={(e: MouseEvent) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setShowTypeSelector(true);
-                  }}
-                />
-              </Tooltip>
+                })}
+                onClick={(e: MouseEvent) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setShowTypeSelector(true);
+                }}
+              />
             )}
           </div>
 
@@ -379,7 +384,7 @@ const TeamsInfo = ({
             </Typography>
             <PersonaSelectableList
               isDefaultPersona
-              hasPermission={hasEditPermission}
+              hasPermission={hasEditPersonaPermission}
               multiSelect={false}
               selectedPersonas={
                 currentTeam.defaultPersona ? [currentTeam.defaultPersona] : []
@@ -409,7 +414,7 @@ const TeamsInfo = ({
   }, [
     isGroupType,
     currentTeam.defaultPersona,
-    hasEditPermission,
+    hasEditPersonaPermission,
     handleDefaultPersonaUpdate,
     t,
   ]);
@@ -428,14 +433,21 @@ const TeamsInfo = ({
         entityFqn={fullyQualifiedName ?? ''}
         entityId={id ?? ''}
         entityType={EntityType.TEAM}
-        hasPermission={hasEditPermission}
+        hasPermission={hasEditDomainPermission}
+        labelClassName="text-primary"
       />
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
-      <Owner
-        hasPermission={hasEditOwnerPermission}
-        isCompactView={false}
-        owners={owners ?? []}
-        selectorContent={
+      {/* The label is drawn here, not by Owner, so it takes this header's
+          label colour like Email, Type and Persona beside it. */}
+      <Box
+        align="start"
+        className="layout-space layout-space-horizontal d-flex flex-col"
+        gap={2}
+        itemClassName="layout-space-item">
+        <div className="d-flex gap-2">
+          <Typography className="text-primary" weight="medium">
+            {t('label.owner-plural')}
+          </Typography>
           <UserTeamSelectableList
             hasPermission={Boolean(hasEditOwnerPermission)}
             multiple={{
@@ -445,8 +457,14 @@ const TeamsInfo = ({
             owner={owners}
             onUpdate={updateOwner}
           />
-        }
-      />
+        </div>
+        <Owner
+          isCompactView={false}
+          labelVariant="header"
+          owners={owners ?? []}
+          showLabel={false}
+        />
+      </Box>
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
       {emailRender}
 
@@ -476,10 +494,10 @@ const TeamsInfo = ({
             excludeTriggerFromTabOrder
             title={t('message.team-distinct-user-description')}
             triggerClassName="tw:inline-flex">
-            <InfoCircleOutlined
-              className="m-x-xss"
+            <InfoCircle
+              className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
-              style={{ color: GRAYED_OUT_COLOR }}
+              size={14}
             />
           </Tooltip>
         </Typography>

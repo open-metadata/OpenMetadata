@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Button,
   FeaturedIcon,
   Grid,
+  SimpleModal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { User03 } from '@openmetadata/ui-core-components/icons';
-import { Button, Modal } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -27,9 +27,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
+import { ManageMenuItem as ItemType } from '../../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -39,7 +40,6 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { SIZE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
@@ -123,7 +123,7 @@ export const PersonaDetailsPage = () => {
 
       if (category) {
         breadcrumbList.push({
-          name: category.label,
+          name: category.label ?? '',
           url: '',
         });
       }
@@ -339,7 +339,11 @@ export const PersonaDetailsPage = () => {
   }
 
   if (isUndefined(personaDetails)) {
-    return <NoDataPlaceholder size={SIZE.LARGE} />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (
@@ -411,9 +415,9 @@ export const PersonaDetailsPage = () => {
                       await handlePersonaUpdate({ users }, true);
                     }}>
                     <Button
+                      color="primary"
                       data-testid="add-persona-button"
-                      size="small"
-                      type="primary">
+                      size="xs">
                       {t('label.add-entity', { entity: t('label.user') })}
                     </Button>
                   </UserSelectableList>
@@ -426,14 +430,11 @@ export const PersonaDetailsPage = () => {
       </Grid>
 
       {/* Set Default Persona Confirmation Modal */}
-      <Modal
+      <SimpleModal
         data-testid="default-persona-confirmation-modal"
-        okButtonProps={{
-          loading: isConfirmModalLoading,
-        }}
+        isOkLoading={isConfirmModalLoading}
+        isOpen={isConfirmModalVisible}
         okText={t('label.yes')}
-        okType="primary"
-        open={isConfirmModalVisible}
         title={
           personaDetails?.default
             ? t('label.remove-default')
@@ -450,7 +451,7 @@ export const PersonaDetailsPage = () => {
                 persona: getEntityName(personaDetails),
               })}
         </Typography>
-      </Modal>
+      </SimpleModal>
     </PageLayoutV1>
   );
 };

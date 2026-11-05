@@ -13,11 +13,12 @@
 
 import {
   Box,
+  Button,
+  SimpleModal,
   Skeleton,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -35,7 +36,7 @@ import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import {
   ColumnsType,
   ExpandableConfig,
@@ -342,8 +343,8 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
               {createTeamPermission && !isTeamDeleted && (
                 <Button
+                  color="primary"
                   data-testid="add-team"
-                  type="primary"
                   onClick={handleAddTeamButtonClick}>
                   {t('label.add-entity', { entity: t('label.team') })}
                 </Button>
@@ -352,7 +353,11 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           }
           loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowKey="name"
@@ -361,28 +366,27 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         />
       </DropZone>
 
-      <Modal
-        centered
-        destroyOnClose
-        closable={false}
-        confirmLoading={isTableLoading}
+      <SimpleModal
         data-testid="confirmation-modal"
-        maskClosable={false}
+        isDismissable={false}
+        isOkLoading={isTableLoading}
+        isOpen={isModalOpen}
         okText={t('label.confirm')}
-        open={isModalOpen}
         title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={onDragConfirmationModalClose}
         onOk={handleChangeTeam}>
-        <Transi18next
-          i18nKey="message.entity-transfer-message"
-          renderElement={<strong />}
-          values={{
-            from: movedTeam?.from.name,
-            to: movedTeam?.to?.name ?? getEntityName(currentTeam),
-            entity: t('label.team-lowercase'),
-          }}
-        />
-      </Modal>
+        <p>
+          <Transi18next
+            i18nKey="message.entity-transfer-message"
+            renderElement={<strong />}
+            values={{
+              from: movedTeam?.from.name,
+              to: movedTeam?.to?.name ?? getEntityName(currentTeam),
+              entity: t('label.team-lowercase'),
+            }}
+          />
+        </p>
+      </SimpleModal>
     </div>
   );
 };

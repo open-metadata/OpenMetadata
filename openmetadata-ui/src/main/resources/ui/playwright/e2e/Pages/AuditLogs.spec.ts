@@ -16,11 +16,11 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
 import {
   navigateToAuditLogsPage,
+  selectTodayExportRange,
   verifyAuditEntryHasValidUUIDs,
   waitForAuditLogEntry,
 } from '../../utils/auditLogs';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { customFormatDateTime } from '../../utils/dateTime';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -116,7 +116,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Verify Time filter is active
       const timeFilterTag = page.getByTestId('filter-chip-time');
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
       await expect(timeFilterTag).toBeVisible();
     });
 
@@ -371,7 +371,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await removeUserButton.click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
 
       await expect(userFilterTag).not.toBeVisible();
 
@@ -394,7 +394,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
     });
 
     await test.step('Verify Clear button appears after search', async () => {
@@ -409,7 +409,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const clearButton = page.getByTestId('clear-filters');
       await clearButton.click();
       await auditLogResponse;
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
 
       const searchInput = page.getByPlaceholder('Search audit logs');
       await expect(searchInput).toHaveValue('');
@@ -430,7 +430,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
 
       // Clear search
       const clearButton = page.getByTestId('clear-filters');
@@ -443,7 +443,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
 
       // Search with uppercase term - should return similar results
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
       await searchInput.fill('ADMIN');
 
       const auditLogResponse2 = page.waitForResponse(
@@ -455,7 +455,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response2 = await auditLogResponse2;
       expect(response2.status()).toBe(200);
-      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+      await expect(page.getByTestId('audit-log-list')).toBeVisible();
     });
   });
 
@@ -666,7 +666,7 @@ test.describe(
         await searchInput.press('Enter');
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
-        await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+        await expect(page.getByTestId('audit-log-list')).toBeVisible();
         const responseData = await response.json();
 
         // Verify response has expected structure
@@ -706,7 +706,7 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
       });
@@ -718,31 +718,13 @@ test.describe(
       });
 
       await test.step('Select date range', async () => {
-        const dateRangePicker = page.getByTestId('export-date-range-picker');
-        await dateRangePicker.click();
-
-        await page.locator('.ant-picker-dropdown').waitFor({
-          state: 'visible',
-        });
-
-        // RangePicker draws two month panels and each grid also renders the
-        // neighbouring month's days, all carrying a title. Near month end the
-        // next-month panel repeats today, so match only the cell that is
-        // in view for its own panel.
-        const todayCell = page.locator(
-          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
-            Date.now(),
-            'yyyy-MM-dd'
-          )}"]`
-        );
-        await todayCell.click();
-        await todayCell.click();
+        await selectTodayExportRange(page);
       });
 
       await test.step('Verify Export button is enabled after date selection', async () => {
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await expect(exportOkButton).toBeEnabled();
       });
 
@@ -751,9 +733,9 @@ test.describe(
           response.url().includes('/api/v1/audit/logs/export')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         const response = await exportApiCall;
@@ -805,38 +787,20 @@ test.describe(
         );
         await searchInput.press('Enter');
         await auditResponse;
-        await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+        await expect(page.getByTestId('audit-log-list')).toBeVisible();
       });
 
       await test.step('Open Export modal', async () => {
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
       });
 
       await test.step('Select date range and verify export includes search term', async () => {
-        const dateRangePicker = page.getByTestId('export-date-range-picker');
-        await dateRangePicker.click();
-
-        await page.locator('.ant-picker-dropdown').waitFor({
-          state: 'visible',
-        });
-
-        // RangePicker draws two month panels and each grid also renders the
-        // neighbouring month's days, all carrying a title. Near month end the
-        // next-month panel repeats today, so match only the cell that is
-        // in view for its own panel.
-        const todayCell = page.locator(
-          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
-            Date.now(),
-            'yyyy-MM-dd'
-          )}"]`
-        );
-        await todayCell.click();
-        await todayCell.click();
+        await selectTodayExportRange(page);
 
         const exportApiCall = page.waitForRequest(
           (request) =>
@@ -844,9 +808,9 @@ test.describe(
             request.url().includes('q=admin')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         await exportApiCall;
@@ -865,29 +829,11 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
 
-        const dateRangePicker = page.getByTestId('export-date-range-picker');
-        await dateRangePicker.click();
-
-        await page.locator('.ant-picker-dropdown').waitFor({
-          state: 'visible',
-        });
-
-        // RangePicker draws two month panels and each grid also renders the
-        // neighbouring month's days, all carrying a title. Near month end the
-        // next-month panel repeats today, so match only the cell that is
-        // in view for its own panel.
-        const todayCell = page.locator(
-          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
-            Date.now(),
-            'yyyy-MM-dd'
-          )}"]`
-        );
-        await todayCell.click();
-        await todayCell.click();
+        await selectTodayExportRange(page);
       });
 
       await test.step('Trigger export and validate response', async () => {
@@ -895,9 +841,9 @@ test.describe(
           response.url().includes('/api/v1/audit/logs/export')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         const response = await exportApiCall;
@@ -1554,7 +1500,7 @@ test.describe(
           await searchInput.press('Enter');
           const response = await searchResponse;
           expect(response.status()).toBe(200);
-          await expect(page.locator('.ant-skeleton')).toHaveCount(0);
+          await expect(page.getByTestId('audit-log-list')).toBeVisible();
           const responseData = await response.json();
 
           // Should find at least one entry

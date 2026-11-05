@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Card } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../../generated/entity/teams/user';
+import { useProfileCopy } from '../../../../../../hooks/discovery/personal-space/useUserProfile';
 import ChipBadgeList from '../../components/ChipBadgeList';
 import FieldRow from '../../components/FieldRow';
 import RolesRow from '../../components/RolesRow';
@@ -22,7 +23,8 @@ import TeamsRow from '../../components/TeamsRow';
 
 export interface MembershipSectionProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
+  canEditTeams?: boolean;
 }
 
 /**
@@ -33,19 +35,28 @@ export interface MembershipSectionProps {
 const MembershipSection: React.FC<MembershipSectionProps> = ({
   userData,
   updateUserDetails,
+  canEditTeams,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
 
   return (
-    <Box
-      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+    <Card
+      className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
       data-testid="membership-section"
-      direction="col">
-      <TeamsRow updateUserDetails={updateUserDetails} userData={userData} />
+      variant="muted">
+      <TeamsRow
+        canEdit={canEditTeams}
+        updateUserDetails={updateUserDetails}
+        userData={userData}
+      />
       <RolesRow updateUserDetails={updateUserDetails} userData={userData} />
       <div className="tw:px-5 tw:py-4">
         <FieldRow
-          description={t('message.inherited-role-description')}
+          description={copy(
+            'message.inherited-role-description',
+            'message.inherited-role-description-of-user'
+          )}
           title={t('label.inherited-role-plural')}>
           <ChipBadgeList
             color="gray"
@@ -54,7 +65,7 @@ const MembershipSection: React.FC<MembershipSectionProps> = ({
           />
         </FieldRow>
       </div>
-    </Box>
+    </Card>
   );
 };
 

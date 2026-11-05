@@ -14,32 +14,42 @@
 import {
   Box,
   ButtonUtility,
-  Tooltip,
+  FormField,
+  HookForm,
+  Input,
+  Select,
+  SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Select } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
+import { MASKED_PASSWORD_VALUE } from '../../../../../constants/Secrets.constants';
 import {
   SUBSCRIPTION_WEBHOOK,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../constants/Teams.constants';
-import { Webhook } from '../../../../../generated/type/profile';
+import { isValidUrl } from '../../../../../utils/SSOUtils';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
+
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 import './teams-subscription.less';
+
+// react-aria keys cannot be empty, so the "None" option gets a sentinel id.
+const NO_WEBHOOK = 'none';
 
 const TeamsSubscription = ({
   subscription,
   hasEditPermission,
   updateTeamSubscription,
 }: TeamsSubscriptionProps) => {
-  const [form] = useForm();
   const { t } = useTranslation();
+  const form = useForm<SubscriptionWebhook>({
+    defaultValues: { webhook: NO_WEBHOOK, endpoint: '' },
+  });
   const [editSubscription, setEditSubscription] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -56,15 +66,18 @@ const TeamsSubscription = ({
     );
   }, []);
 
-  // Watchers
-  const isWebhookEmpty = isEmpty(Form.useWatch('webhook', form));
+  const isWebhookEmpty = form.watch('webhook') === NO_WEBHOOK;
+  // A masked endpoint stands for the one stored for this webhook, and only for it.
+  const storedWebhook = Object.keys(subscription ?? {})[0];
+  const keepsStoredEndpoint = (value: string) =>
+    value === MASKED_PASSWORD_VALUE &&
+    form.getValues('webhook') === storedWebhook;
 
+  // The endpoint is a secret the server masks, so the subscription shows only its webhook.
   const cellItem = useCallback(
-    (key: string, value: Webhook) => (
+    (key: string) => (
       <Typography>
-        <a href={value.endpoint} rel="noopener noreferrer" target="_blank">
-          {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
-        </a>
+        {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
       </Typography>
     ),
     [getWebhookIconByKey]
@@ -95,7 +108,7 @@ const TeamsSubscription = ({
       );
     }
 
-    return cellItem(webhook[0], webhook[1]);
+    return cellItem(webhook[0]);
   }, [subscription, hasEditPermission, cellItem, t]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
@@ -113,24 +126,23 @@ const TeamsSubscription = ({
 
   useEffect(() => {
     if (isWebhookEmpty) {
-      form.setFieldValue('endpoint', '');
+      form.setValue('endpoint', '');
+      form.clearErrors('endpoint');
     }
   }, [isWebhookEmpty, form]);
 
   useEffect(() => {
-    if (subscription) {
-      const data = Object.entries(subscription)[0];
-      form.setFieldsValue({
-        webhook: data[0],
-        endpoint: data[1].endpoint,
-      });
-    }
+    const [webhook, value] = Object.entries(subscription ?? {})[0] ?? [];
+    form.reset({
+      webhook: webhook ?? NO_WEBHOOK,
+      endpoint: value?.endpoint ?? '',
+    });
   }, [subscription, editSubscription, form]);
 
-  const subscriptionWebhookTranslated = useMemo(
+  const webhookItems = useMemo(
     () =>
       SUBSCRIPTION_WEBHOOK_OPTIONS.map((option) => ({
-        ...option,
+        id: option.value || NO_WEBHOOK,
         label: t(option.label),
       })),
     [t]
@@ -144,111 +156,120 @@ const TeamsSubscription = ({
       gap={2}
       itemClassName="layout-space-item">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
-        <Typography className="right-panel-label text-sm font-medium subscription-label">
+        <Typography className="text-primary" weight="medium">
           {`${t('label.subscription')}`}
         </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
-          <Tooltip
-            arrow
-            title={t('label.edit-entity', {
+          <ButtonUtility
+            data-testid="edit-team-subscription"
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
               entity: t('label.subscription'),
-            })}>
-            <ButtonUtility
-              color="secondary"
-              data-testid="edit-team-subscription"
-              icon={EditIcon}
-              size="xs"
-              onClick={(e) => {
-                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                e.stopPropagation();
-                setEditSubscription(true);
-              }}
-            />
-          </Tooltip>
+            })}
+            onClick={(e: MouseEvent) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+              e.stopPropagation();
+              setEditSubscription(true);
+            }}
+          />
         )}
         {isEmpty(subscription) && hasEditPermission && (
-          <Tooltip
-            arrow
-            title={t('label.edit-entity', {
+          <ButtonUtility
+            data-testid="edit-team-subscription"
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
               entity: t('label.subscription'),
-            })}>
-            <ButtonUtility
-              color="secondary"
-              data-testid="edit-team-subscription"
-              icon={EditIcon}
-              size="xs"
-              onClick={(e) => {
-                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                e.stopPropagation();
-                setEditSubscription(true);
-              }}
-            />
-          </Tooltip>
+            })}
+            onClick={(e: MouseEvent) => {
+              // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+              e.stopPropagation();
+              setEditSubscription(true);
+            }}
+          />
         )}
       </div>
 
       {subscriptionRenderElement}
 
       {editSubscription && (
-        // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
-          <Modal
-            centered
-            open
-            closable={false}
-            confirmLoading={isLoading}
-            maskClosable={false}
-            okButtonProps={{
-              form: 'subscription-form',
-              type: 'primary',
-              htmlType: 'submit',
-            }}
+        // Stops clicks in the form reaching the parent TeamDetailV1 collapsible panel
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <SimpleModal
+            isOpen
+            isDismissable={false}
+            isOkLoading={isLoading}
             okText={t('label.confirm')}
             title={t('label.add-entity', {
               entity: t('label.subscription'),
             })}
-            onCancel={() => setEditSubscription(false)}>
-            <Form
+            onCancel={() => setEditSubscription(false)}
+            onOk={form.handleSubmit(handleSave)}>
+            <HookForm
+              className="tw:flex tw:flex-col tw:gap-4"
               data-testid="subscription-modal"
               form={form}
               id="subscription-form"
-              layout="vertical"
-              onFinish={handleSave}>
-              <Form.Item label={t('label.webhook')} name="webhook">
-                <Select
-                  options={subscriptionWebhookTranslated}
-                  placeholder={t('label.select-field', {
-                    field: t('label.condition'),
-                  })}
-                />
-              </Form.Item>
-              <Form.Item
-                label={t('label.endpoint')}
+              onSubmit={form.handleSubmit(handleSave)}>
+              <FormField control={form.control} name="webhook">
+                {({ field }) => (
+                  <Select
+                    data-testid="webhook-select"
+                    items={webhookItems}
+                    label={t('label.webhook')}
+                    placeholder={t('label.select-field', {
+                      field: t('label.condition'),
+                    })}
+                    selectedKey={field.value}
+                    onSelectionChange={(key) => {
+                      if (key === null) {
+                        return;
+                      }
+                      field.onChange(String(key));
+                      if (
+                        String(key) !== storedWebhook &&
+                        form.getValues('endpoint') === MASKED_PASSWORD_VALUE
+                      ) {
+                        form.setValue('endpoint', '');
+                      }
+                    }}>
+                    {(item) => <Select.Item id={item.id} label={item.label} />}
+                  </Select>
+                )}
+              </FormField>
+              <FormField
+                control={form.control}
                 name="endpoint"
-                rules={[
-                  {
-                    required: !isWebhookEmpty,
-                    message: t('label.field-required-plural', {
+                rules={{
+                  required:
+                    !isWebhookEmpty &&
+                    t('label.field-required-plural', {
                       field: t('label.endpoint'),
                     }),
-                  },
-                  {
-                    type: 'url',
-                    message: t('message.endpoint-should-be-valid'),
-                  },
-                ]}>
-                <Input
-                  disabled={isWebhookEmpty}
-                  placeholder={t('label.enter-entity-value', {
-                    entity: t('label.endpoint'),
-                  })}
-                />
-              </Form.Item>
-            </Form>
-          </Modal>
-        </Button>
+                  validate: (value) =>
+                    isWebhookEmpty ||
+                    isValidUrl(value) ||
+                    keepsStoredEndpoint(value) ||
+                    t('message.endpoint-should-be-valid'),
+                }}>
+                {({ field, fieldState }) => (
+                  <Input
+                    hint={fieldState.error?.message}
+                    id="endpoint"
+                    isDisabled={isWebhookEmpty}
+                    isInvalid={fieldState.invalid}
+                    label={t('label.endpoint')}
+                    placeholder={t('label.enter-entity-value', {
+                      entity: t('label.endpoint'),
+                    })}
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
+                  />
+                )}
+              </FormField>
+            </HookForm>
+          </SimpleModal>
+        </div>
       )}
     </Box>
   );

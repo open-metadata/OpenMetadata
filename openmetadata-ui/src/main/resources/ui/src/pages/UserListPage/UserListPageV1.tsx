@@ -13,22 +13,22 @@
 
 import {
   Box,
+  Button,
   ButtonUtility,
   Grid,
+  SimpleModal,
   Toggle,
-  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Restore, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
@@ -46,7 +46,6 @@ import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -335,51 +334,43 @@ const UserListPageV1 = () => {
             gap={2}
             itemClassName="layout-space-item">
             {showRestore && (
-              <Tooltip
-                arrow
-                placement={isAdminUser ? 'bottom' : 'left'}
-                title={
+              <ButtonUtility
+                data-testid={`restore-user-btn-${record.name}`}
+                icon={Restore}
+                isDisabled={!isAdminUser}
+                size="lg"
+                tooltip={
                   isAdminUser
                     ? t('label.restore-entity', {
                         entity: t('label.user'),
                       })
                     : t(ADMIN_ONLY_ACTION)
-                }>
-                <ButtonUtility
-                  color="tertiary"
-                  data-testid={`restore-user-btn-${record.name}`}
-                  icon={IconRestore}
-                  isDisabled={!isAdminUser}
-                  size="sm"
-                  onClick={() => {
-                    setSelectedUser(record);
-                    setShowReactiveModal(true);
-                  }}
-                />
-              </Tooltip>
+                }
+                tooltipPlacement={isAdminUser ? 'bottom' : 'left'}
+                onClick={() => {
+                  setSelectedUser(record);
+                  setShowReactiveModal(true);
+                }}
+              />
             )}
-            <Tooltip
-              arrow
-              placement={isAdminUser ? 'bottom' : 'left'}
-              title={
+            <ButtonUtility
+              data-testid={`delete-user-btn-${record.name}`}
+              icon={Trash01}
+              isDisabled={!isAdminUser}
+              size="lg"
+              tooltip={
                 isAdminUser
                   ? t('label.delete-entity', {
                       entity: t('label.user'),
                     })
                   : t(ADMIN_ONLY_ACTION)
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`delete-user-btn-${record.name}`}
-                icon={IconDelete}
-                isDisabled={!isAdminUser}
-                size="xs"
-                onClick={() => {
-                  setSelectedUser(record);
-                  setShowDeleteModal(true);
-                }}
-              />
-            </Tooltip>
+              }
+              tooltipPlacement={isAdminUser ? 'bottom' : 'left'}
+              onClick={() => {
+                setSelectedUser(record);
+                setShowDeleteModal(true);
+              }}
+            />
           </Box>
         ),
       },
@@ -388,16 +379,17 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <ErrorPlaceHolder
-        className="border-none m-y-md"
-        heading={t('label.user')}
-        permission={isAdminUser}
-        permissionValue={t('label.create-entity', {
-          entity: t('label.user'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={handleAddNewUser}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <CreatePlaceholder
+          data-testid={`create-error-placeholder-${t('label.user')}`}
+          heading={t('label.user')}
+          permission={isAdminUser}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.user'),
+          })}
+          onCreate={handleAddNewUser}
+        />
+      </div>
     ),
     [isAdminUser]
   );
@@ -456,7 +448,12 @@ const UserListPageV1 = () => {
     return shouldShowErrorPlaceHolder ? (
       errorPlaceHolder
     ) : (
-      <FilterTablePlaceHolder placeholderText={emptyPlaceHolderText} />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoSearchResultsPlaceholder
+          data-testid="search-error-placeholder"
+          description={emptyPlaceHolderText}
+        />
+      </div>
     );
   }, [
     userList,
@@ -522,8 +519,8 @@ const UserListPageV1 = () => {
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
+                  color="primary"
                   data-testid="add-user"
-                  type="primary"
                   onClick={handleAddNewUser}>
                   {t('label.add-entity', {
                     entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),
@@ -557,7 +554,7 @@ const UserListPageV1 = () => {
                   isSelected={isDeleted}
                   onChange={handleShowDeletedUserChange}
                 />
-                <span className="m-l-xs">{t('label.deleted')}</span>
+                <Typography className="m-l-xs">{t('label.deleted')}</Typography>
               </span>
             }
             loading={isDataLoading}
@@ -571,16 +568,12 @@ const UserListPageV1 = () => {
           />
         </Grid.Item>
 
-        <Modal
-          cancelButtonProps={{
-            type: 'link',
-          }}
-          className="reactive-modal"
-          closable={false}
-          confirmLoading={isLoading}
-          maskClosable={false}
+        <SimpleModal
+          data-testid="restore-user-modal"
+          isDismissable={false}
+          isOkLoading={isLoading}
+          isOpen={showReactiveModal}
           okText={t('label.restore')}
-          open={showReactiveModal}
           title={t('label.restore-entity', {
             entity: t('label.user'),
           })}
@@ -594,7 +587,7 @@ const UserListPageV1 = () => {
               entity: getEntityName(selectedUser),
             })}
           </p>
-        </Modal>
+        </SimpleModal>
 
         <DeleteEntityModal
           afterDeleteAction={async () => {

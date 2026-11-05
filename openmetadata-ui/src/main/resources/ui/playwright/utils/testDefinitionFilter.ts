@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, Page, Response } from '@playwright/test';
-import { redirectToHomePage } from './common';
+import { expect, Locator, Page, Response } from '@playwright/test';
+import {
+  redirectToHomePage,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
+} from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
 export const navigateToTestLibrary = async (page: Page) => {
@@ -27,8 +31,20 @@ export const navigateToTestLibrary = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
+// The label test id sits on the trigger's text span; aria-expanded is on the
+// button around it.
+const filterTrigger = (page: Page, filterLabel: string): Locator =>
+  page
+    .getByRole('button')
+    .filter({ has: page.getByTestId(`search-dropdown-${filterLabel}`) });
+
+// After paging, the list can leave the page scrolled below the filters. The
+// click's own scroll then reaches react-aria a frame after the menu opened, and
+// it closes the non-modal popover on that ancestor scroll.
 export const openFilterDropdown = async (page: Page, filterLabel: string) => {
-  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  const trigger = filterTrigger(page, filterLabel);
+  await scrollIntoViewAndSettle(trigger);
+  await trigger.click();
   await expect(page.getByTestId('drop-down-menu')).toBeVisible();
 };
 
@@ -42,11 +58,10 @@ export const toggleFilter = async (
   filterLabel: string,
   optionKey: string
 ): Promise<Response> => {
-  await openFilterDropdown(page, filterLabel);
-
-  const option = page.getByTestId(optionKey);
-  await expect(option).toBeVisible();
-  await option.click();
+  await selectOptionWithRetry(
+    filterTrigger(page, filterLabel),
+    page.getByTestId('drop-down-menu').getByTestId(optionKey)
+  );
 
   const updateResponse = page.waitForResponse((response) =>
     response.url().includes('/api/v1/dataQuality/testDefinitions')

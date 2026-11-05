@@ -16,7 +16,7 @@ import type { ReactNode } from 'react';
 
 export const SearchSectionTitle = ({ children }: { children: ReactNode }) => (
   <Typography
-    className="tw:px-1 tw:text-primary-900 tw:uppercase"
+    className="tw:px-1 tw:text-primary tw:uppercase"
     size="text-xs"
     weight="medium">
     {children}

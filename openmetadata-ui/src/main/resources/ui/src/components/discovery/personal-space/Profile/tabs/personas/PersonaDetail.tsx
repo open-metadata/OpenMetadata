@@ -48,13 +48,12 @@ import {
   getPersonaByName,
   updatePersona,
 } from '../../../../../../rest/PersonaAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -62,6 +61,7 @@ import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/Rich
 import SubCategoryGrid from './customize/SubCategoryGrid';
 import PersonaCustomizeGrid from './PersonaCustomizeGrid';
 import type { PersonaDetailTab } from './Personas.types';
+import { viewToSubPath } from './Personas.utils';
 import PersonaUsersTab from './PersonaUsersTab';
 
 interface PersonaDetailProps {
@@ -103,9 +103,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingDefault, setIsTogglingDefault] = useState(false);
+
+  const fetchRequestIdRef = useRef(0);
 
   // Personas are not soft-deletable here (ManageButton legacy passed deleted=false),
   // so the permission lookup is deliberately ungated.
@@ -117,25 +117,51 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
   // Deep link that reopens this persona in the personal-space modal.
   const { onCopyToClipBoard, hasCopied } = useClipboard(
-    `${globalThis.location.origin}${globalThis.location.pathname}#personas/${fqn}`
+    `${globalThis.location.origin}${
+      globalThis.location.pathname
+    }#personas/${viewToSubPath({ type: 'detail', fqn, name: fqn })}`
   );
 
   const fetchPersona = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
     try {
       const data = await getPersonaByName(fqn);
+      // Drop the response when a later fqn change has superseded this request,
+      // so persona A's data can never land after the prop has moved to persona B.
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       setPersona(data);
       onRename(getEntityName(data));
     } catch (error) {
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       showErrorToast(error as AxiosError);
+      // Clear the previously loaded persona so its body/actions cannot keep
+      // rendering under the new fqn's header when the refetch fails.
+      setPersona(undefined);
     } finally {
-      setIsLoading(false);
+      if (fetchRequestIdRef.current === requestId) {
+        setIsLoading(false);
+      }
     }
   }, [fqn, onRename]);
 
   useEffect(() => {
     void fetchPersona();
   }, [fetchPersona]);
+
+  // Discard persona-specific editing state when the persona changes. The
+  // parent re-mounts this component per fqn (key={fqn}); this guard also makes
+  // a no-key re-render safe, so an open rename/edit session for persona A can
+  // never be submitted against persona B after an fqn-only prop change.
+  useEffect(() => {
+    setIsEditingDesc(false);
+    setIsRenameOpen(false);
+    setRenameValue('');
+  }, [fqn]);
 
   const patchPersona = useCallback(
     async (data: Partial<Persona>) => {
@@ -202,27 +228,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     }
   }, [persona, patchPersona, t]);
 
-  const handleDelete = useCallback(async () => {
-    if (!persona) {
-      return;
-    }
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(persona),
-      persona.id ?? '',
-      EntityType.PERSONA
-    );
-    setIsDeleting(false);
-    setIsDeleteOpen(false);
-    if (isSuccess) {
-      onDeleted();
-    }
-  }, [persona, onDeleted]);
-
   const handleUpdateUsers = useCallback(
-    (users: EntityReference[]) => {
-      void patchPersona({ users });
-    },
+    (users: EntityReference[]) => patchPersona({ users }),
     [patchPersona]
   );
 
@@ -274,10 +281,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     return (
       <Box align="center" direction="row" gap={1}>
         <ButtonUtility
-          color="tertiary"
           data-testid="copy-persona-link"
           icon={Copy01}
-          size="xs"
           tooltip={String(
             hasCopied
               ? t('message.link-copy-to-clipboard')
@@ -287,11 +292,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           onPress={() => onCopyToClipBoard()}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-persona-btn"
           icon={Edit}
           isDisabled={!canEditDescription}
-          size="xs"
           tooltip={String(
             canEditDescription ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -324,7 +327,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         <Button
           color="secondary"
           data-testid="set-default-persona-btn"
-          iconLeading={<CheckCircle />}
+          iconLeading={CheckCircle}
           isDisabled={!canEditAll}
           isLoading={isTogglingDefault}
           size="sm"
@@ -333,18 +336,24 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
             ? t('label.remove-default')
             : t('label.set-as-default')}
         </Button>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="delete-persona-btn"
-          icon={Delete}
-          isDisabled={!canDeletePersona}
-          size="sm"
-          tooltip={String(
-            canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-          )}
-          tooltipPlacement="left"
-          onPress={() => setIsDeleteOpen(true)}
-        />
+        <DeleteEntityPopover
+          afterDeleteAction={onDeleted}
+          allowSoftDelete={false}
+          data-testid="delete-persona-popover"
+          entityId={persona.id}
+          entityName={getEntityName(persona)}
+          entityType={EntityType.PERSONA}>
+          <ButtonUtility
+            data-testid="delete-persona-btn"
+            icon={Delete}
+            isDisabled={!canDeletePersona}
+            size="lg"
+            tooltip={String(
+              canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+            )}
+            tooltipPlacement="left"
+          />
+        </DeleteEntityPopover>
       </Box>
     );
   }, [
@@ -353,6 +362,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     canEditAll,
     hasDeletePermission,
     isTogglingDefault,
+    onDeleted,
     handleToggleDefault,
     t,
   ]);
@@ -375,6 +385,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       return (
         <PersonaUsersTab
           canEdit={canEditAll}
+          personaName={persona ? getEntityName(persona) : ''}
           users={persona?.users ?? []}
           onUsersChange={handleUpdateUsers}
         />
@@ -424,52 +435,52 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       data-testid="persona-detail-container"
       direction="col"
       gap={4}>
-      <Card className="tw:flex tw:flex-col tw:gap-2 tw:mb-2 tw:p-3">
-        <Box align="center" direction="row" gap={2}>
-          <Typography className="tw:text-primary" weight="medium">
-            {t('label.description')}
-          </Typography>
-          {canEditDescription && !isEditingDesc && (
-            <ButtonUtility
-              color="tertiary"
-              data-testid="edit-persona-description-btn"
-              icon={Edit}
-              size="xs"
-              tooltip={String(
-                t('label.edit-entity', { entity: t('label.description') })
-              )}
-              tooltipPlacement="right"
-              onPress={() => setIsEditingDesc(true)}
-            />
-          )}
-        </Box>
-        {isEditingDesc ? (
-          <Box direction="col" gap={2}>
-            <RichTextEditor
-              className="new-form-style"
-              initialValue={persona.description ?? ''}
-              ref={descEditorRef}
-            />
-            <Box direction="row" gap={2} justify="end">
-              <Button
-                color="tertiary"
-                isDisabled={isSavingDesc}
-                size="sm"
-                onPress={() => setIsEditingDesc(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isLoading={isSavingDesc}
-                size="sm"
-                onPress={handleSaveDescription}>
-                {t('label.save')}
-              </Button>
-            </Box>
+      <Card className="tw:mb-2" size="sm" variant="muted">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-2">
+          <Box align="center" direction="row" gap={2}>
+            <Typography className="tw:text-primary" weight="medium">
+              {t('label.description')}
+            </Typography>
+            {canEditDescription && !isEditingDesc && (
+              <ButtonUtility
+                data-testid="edit-persona-description-btn"
+                icon={Edit}
+                tooltip={String(
+                  t('label.edit-entity', { entity: t('label.description') })
+                )}
+                tooltipPlacement="right"
+                onPress={() => setIsEditingDesc(true)}
+              />
+            )}
           </Box>
-        ) : (
-          descriptionPreview
-        )}
+          {isEditingDesc ? (
+            <Box direction="col" gap={2}>
+              <RichTextEditor
+                className="new-form-style"
+                initialValue={persona.description ?? ''}
+                ref={descEditorRef}
+              />
+              <Box direction="row" gap={2} justify="end">
+                <Button
+                  color="tertiary"
+                  isDisabled={isSavingDesc}
+                  size="sm"
+                  onPress={() => setIsEditingDesc(false)}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  isLoading={isSavingDesc}
+                  size="sm"
+                  onPress={handleSaveDescription}>
+                  {t('label.save')}
+                </Button>
+              </Box>
+            </Box>
+          ) : (
+            descriptionPreview
+          )}
+        </Card.Content>
       </Card>
 
       <Tabs
@@ -484,17 +495,6 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       </Tabs>
 
       <Box className="tw:flex-1 tw:min-h-0 tw:p-1">{tabContent}</Box>
-
-      <DeleteModal
-        entityTitle={getEntityName(persona)}
-        isDeleting={isDeleting}
-        message={t('message.permanently-delete-common-message', {
-          entity: getEntityName(persona).toLowerCase(),
-        })}
-        open={isDeleteOpen}
-        onCancel={() => setIsDeleteOpen(false)}
-        onDelete={handleDelete}
-      />
     </Box>
   );
 };

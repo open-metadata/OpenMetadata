@@ -13,9 +13,8 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Divider,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -43,11 +42,6 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
-import {
-  WidgetCommentButton,
-  WidgetEditButton,
-  WidgetRequestButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
 
@@ -156,22 +150,13 @@ const Description = ({
         ? handleUpdateDescription
         : handleRequestDescription;
 
-      button = isWidgetHeader ? (
-        <WidgetRequestButton
+      button = (
+        <ButtonUtility
           data-testid="request-description"
-          title={requestLabel}
+          icon={MessagePlusSquare}
+          tooltip={requestLabel}
           onClick={handleRequest}
         />
-      ) : (
-        <Tooltip title={requestLabel}>
-          <Button
-            color="secondary"
-            data-testid="request-description"
-            iconLeading={MessagePlusSquare}
-            size="xxs"
-            onPress={handleRequest}
-          />
-        </Tooltip>
       );
     }
 
@@ -181,7 +166,6 @@ const Description = ({
     entityType,
     handleUpdateDescription,
     handleRequestDescription,
-    isWidgetHeader,
   ]);
 
   const editDescriptionLabel = t('label.edit-entity', {
@@ -194,40 +178,21 @@ const Description = ({
       entity: t('label.conversation'),
     });
     const openThread = () => onThreadLinkSelect?.(entityLink);
-    const editButton = isWidgetHeader ? (
-      <WidgetEditButton
+    const editButton = (
+      <ButtonUtility
         data-testid="edit-description"
-        title={editDescriptionLabel}
+        icon={Edit01}
+        tooltip={editDescriptionLabel}
         onClick={handleEditDescription}
       />
-    ) : (
-      <Tooltip title={editDescriptionLabel}>
-        <Button
-          aria-label={editDescriptionLabel}
-          color="secondary"
-          data-testid="edit-description"
-          iconLeading={Edit01}
-          size="xxs"
-          onPress={handleEditDescription}
-        />
-      </Tooltip>
     );
-    const commentButton = isWidgetHeader ? (
-      <WidgetCommentButton
+    const commentButton = (
+      <ButtonUtility
         data-testid="description-thread"
-        title={threadLabel}
+        icon={MessageChatSquare}
+        tooltip={threadLabel}
         onClick={openThread}
       />
-    ) : (
-      <Tooltip title={threadLabel}>
-        <Button
-          color="secondary"
-          data-testid="description-thread"
-          iconLeading={MessageChatSquare}
-          size="xxs"
-          onPress={openThread}
-        />
-      </Tooltip>
     );
 
     return (
@@ -239,7 +204,6 @@ const Description = ({
     );
   }, [
     editDescriptionLabel,
-    isWidgetHeader,
     isReadOnly,
     isVersionView,
     hasEditAccess,

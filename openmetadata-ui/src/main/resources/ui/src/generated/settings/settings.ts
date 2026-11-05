@@ -346,7 +346,8 @@ export interface PipelineServiceClientConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection?: boolean;
     /**
@@ -710,6 +711,12 @@ export interface PipelineServiceClientConfiguration {
      */
     path?: string;
     /**
+     * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
+     * user including admins. Turning it on blocks write tools right away; they leave tools/list
+     * after a restart, and turning it off applies after a restart.
+     */
+    readOnly?: boolean;
+    /**
      * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
      * (30 seconds)
      */
@@ -739,6 +746,10 @@ export interface PipelineServiceClientConfiguration {
      * is configured, and columns are ordered alphabetically.
      */
     defaultColumnOrder?: DefaultColumnOrder | null;
+    /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -1653,12 +1664,9 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
-     * End the OpenMetadata session when the identity provider ends its own. OpenMetadata then
-     * renews the provider's tokens on the provider's schedule while the user is active, and
-     * signs the user out once the provider rejects its refresh token: after the provider's idle
-     * or maximum session lifetime, or a sign-out on providers that revoke refresh tokens with
-     * the session (Keycloak does; Microsoft Entra ID does not). When off, a session lasts the
-     * configured session expiry whatever the provider does. Applies to confidential clients.
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
      */
     endSessionWithProvider?: boolean;
     /**
@@ -1711,7 +1719,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**
@@ -1931,7 +1941,8 @@ export interface AuthorizerConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection: boolean;
     /**
@@ -1980,6 +1991,14 @@ export enum DefaultAppMode {
 export enum DefaultColumnOrder {
     Alphabetical = "alphabetical",
     SourceOrder = "sourceOrder",
+}
+
+/**
+ * Tenant-wide default time format for UI display.
+ */
+export enum DefaultTimeFormat {
+    The12H = "12h",
+    The24H = "24h",
 }
 
 /**
@@ -2540,8 +2559,8 @@ export interface NaturalLanguageSearch {
     keywordWeight?: number;
     /**
      * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
-     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
-     * cost of latency. Defaults to 2.
+     * search. num_candidates = max(k * multiplier, 100), clamped to Elasticsearch's engine
+     * maximum of 10,000. Higher values improve recall at the cost of latency. Defaults to 2.
      */
     knnNumCandidatesMultiplier?: number;
     /**
@@ -3019,6 +3038,7 @@ export interface SampleDataIngestionConfig {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }

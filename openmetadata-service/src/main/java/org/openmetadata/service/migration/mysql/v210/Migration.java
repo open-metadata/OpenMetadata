@@ -15,33 +15,51 @@ package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
+import static org.openmetadata.service.migration.utils.v207.MigrationUtil.MCP_CONSENT_COLUMNS_STEP;
+import static org.openmetadata.service.migration.utils.v207.MigrationUtil.addMcpConsentColumnsOnMySql;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
+import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration.retireDeltaLakeServices;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration.alignFlowableTableCharsets;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
+import static org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addDenyBotUsersRuleToBotNonAdminImpersonationPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill.backfillMlFeatureTags;
+import static org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration.copyConceptBindingsToRows;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
+import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
+import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
+import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
+import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -50,14 +68,19 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    // First, so no later step loads an entity still typed DeltaLake:
+    // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
+    retireDeltaLakeServices(handle, MYSQL, getPipelineServiceClient());
     alignFlowableTableCharsets(handle);
     ConversationMigration.migrate(handle, MYSQL);
     ConversationReferenceMigration.migrate(handle, MYSQL);
     refreshConversationNotificationTemplates();
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
+    addDenyBotUsersRuleToBotNonAdminImpersonationPolicy(collectionDAO);
     alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, MYSQL);
+    copyConceptBindingsToRows(handle, MYSQL);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
     // packaged JSON default; existing installs only through this migration.
@@ -81,6 +104,9 @@ public class Migration extends MigrationProcessImpl {
     // Data contracts stored their entity reference as sent, usually without a name or FQN.
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
+    // entityReference / entityReferenceList values move to custom_property_reference, their only
+    // home from 2.1 on, so a hard delete can remove references to the deleted entity. Restartable.
+    CustomPropertyReferenceMigration.migrate(handle, collectionDAO, MYSQL);
     // MlModelRepository now indexes feature tags into tag_usage like every other type with inline
     // children. That fires only on write, so features tagged before this upgrade would read back
     // as untagged from any FQN-prefix query. Idempotent. DB-agnostic, so it runs on both engines.
@@ -102,6 +128,20 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, MYSQL));
+    // Lineage edges written before pipelines were type-restricted can name any entity — a database
+    // service among them — which the edge copied into the downstream search document
+    // (ANT-2026-RL0ZDKB8). Clear those references from the stored edges; each one is logged for
+    // credential rotation. DB-agnostic, so it also runs on Postgres.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        LineageEdgePipelineCleanupMigration.STEP_NAME,
+        () -> clearNonPipelineEdgePipelines(collectionDAO));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        FirstTimeUserMigration.STEP_NAME,
+        () -> FirstTimeUserMigration.backfillFirstTimeUser(handle, MYSQL));
     // Alerts the previous release stopped sending, because it could not build one of their
     // destinations, send again from this release; they start from the upgrade, not their backlog.
     runOnce(
@@ -109,5 +149,58 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         AlertBacklogMigration.STEP_NAME,
         () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
+    // Alerts name their consumer by its registered id, no longer by its Java class.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ConsumerIdMigration.STEP_NAME,
+        () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
+    // A destination's id names one destination: shared and missing ids become its own.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DestinationIdMigration.STEP_NAME,
+        () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
+    // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
+    // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
+    // harmless.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ACTIVITY_FEED_ALERT_STEP,
+        () -> addContractAndStatusToActivityFeedAlert(handle));
+    // Same for the 2.0.7 MCP consent columns. The step adds only missing columns, so running it
+    // after 2.0.7 already did is harmless.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MCP_CONSENT_COLUMNS_STEP,
+        () -> addMcpConsentColumnsOnMySql(handle));
+    // Same for the 2.0.9 MCP user-name indexes, on a database that recorded 2.0.9 before they were
+    // added to it.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        McpGrantUserNameIndexes.STEP_NAME,
+        () -> McpGrantUserNameIndexes.addOnMySql(handle));
+    // Same for the 2.0.8 data product domain containment repair. The repair only rewrites links
+    // that disagree, so running it after 2.0.8 already did changes nothing.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductDomainContainmentRepair.STEP_NAME,
+        () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        GlossaryAutomationReviewMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
+        });
+    // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
+    AppCreatedAlerts.logForReviewOnMySql(handle);
+    UnsupportedNotificationTemplates.review(handle);
   }
 }

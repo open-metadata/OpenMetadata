@@ -24,7 +24,6 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
-import openMetadataAntd from './eslint-rules/openmetadata-antd.mjs';
 import openMetadataI18n from './eslint-rules/openmetadata-i18n.mjs';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
@@ -32,23 +31,6 @@ import openMetadataPermissions from './eslint-rules/openmetadata-permissions.mjs
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
 import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 import omPlaywright from './playwright/eslint-rules/index.mjs';
-
-// antd components with no remaining imports anywhere in src. Add a component
-// here in the PR that removes its last import (open-metadata/openmetadata-collate#6884).
-const MIGRATED_ANTD_COMPONENTS = [
-  'Card',
-  'Col',
-  'Divider',
-  'Dropdown',
-  'Popover',
-  'Row',
-  'Skeleton',
-  'Space',
-  'Switch',
-  'Tag',
-  'Tooltip',
-  'Typography',
-];
 
 export default [
   // Base recommended configs
@@ -365,6 +347,10 @@ export default [
       // per-area, then promote to 'error' (and re-add a shade-restricted
       // fixer). See docs/colors.md + the dark-mode guidelines.
       'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
+      // The error baseline preserves existing consumers; its counts only shrink.
+      // Keep warnings visible while new references exceed the baseline and fail.
+      'openmetadata-ui-patterns/deprecated-om-tokens': 'warn',
+      'openmetadata-ui-patterns/no-new-om-tokens': 'error',
       // A Typography ellipsis tooltip inside a link/button renders a nested
       // <button> (#30779). Report-only, so `eslint --fix` never edits it.
       'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',
@@ -485,22 +471,6 @@ export default [
     },
   },
   {
-    // Existing antd usage is frozen in eslint-suppressions.json; see
-    // eslint-rules/openmetadata-antd.mjs for how the ratchet works.
-    files: ['src/**/*.{js,jsx,ts,tsx}'],
-    plugins: { 'openmetadata-antd': openMetadataAntd },
-    rules: {
-      'openmetadata-antd/no-antd-import': [
-        'error',
-        { components: MIGRATED_ANTD_COMPONENTS },
-      ],
-      'openmetadata-antd/no-migrated-antd-import': [
-        'error',
-        { components: MIGRATED_ANTD_COMPONENTS },
-      ],
-    },
-  },
-  {
     files: [
       'src/components/Metric/**/*.{js,jsx,ts,tsx}',
       'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
@@ -557,6 +527,60 @@ export default [
               allowTypeImports: true,
               message:
                 'Metric workflows use icons from @openmetadata/ui-core-components/icons.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // The Applications settings in the profile modal are core-ui only.
+  {
+    files: [
+      'src/components/discovery/personal-space/Profile/tabs/applications/**/*.{ts,tsx}',
+    ],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'antd',
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components.',
+            },
+            {
+              name: '@ant-design/icons',
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components/icons.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['antd/*', '@ant-design/icons/*'],
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components.',
+            },
+            // Flat config replaces a rule's options wholesale, so the repo-wide
+            // chart ban (recharts/echarts) is re-stated here; otherwise it would
+            // be dropped for these files, unlike the Metric block which is chart-free.
+            {
+              group: ['recharts', 'recharts/*'],
+              message:
+                'Use @openmetadata/ui-core-components/charts; recharts was removed.',
+            },
+            {
+              group: [
+                'echarts',
+                'echarts/*',
+                'echarts-for-react',
+                'echarts-for-react/*',
+              ],
+              message:
+                'Import charts and chart types from @openmetadata/ui-core-components/charts.',
             },
           ],
         },
@@ -877,7 +901,6 @@ export default [
       'src/**/*.mock.{ts,tsx}',
       'src/**/mocks/**/*.{ts,tsx}',
       'src/**/__mocks__/**/*.{ts,tsx}',
-      'src/constants/mockTourData.constants.ts',
     ],
     rules: {
       'openmetadata-i18n/no-duplicate-string': 'off',
@@ -902,17 +925,14 @@ export default [
   // production code paths. Test fixtures and mock data legitimately embed
   // sample http:// self-links (mirroring backend responses), localhost IPs, and
   // dummy credentials — exempt them, matching how SonarQube excludes test
-  // sources from security scanning. mockTourData is a 100%-mock guided-tour
-  // fixture whose sample links point at the local dev server (http://localhost),
-  // so it is exempt too; production constants files are NOT — their sample URLs
-  // were fixed to https and the rules stay enforced there.
+  // sources from security scanning. Production constants files are NOT exempt —
+  // their sample URLs were fixed to https and the rules stay enforced there.
   {
     files: [
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.mock.{ts,tsx}',
       'src/**/mocks/**/*.{ts,tsx}',
       'src/**/__mocks__/**/*.{ts,tsx}',
-      'src/constants/mockTourData.constants.ts',
     ],
     rules: {
       'sonarjs/no-clear-text-protocols': 'off',

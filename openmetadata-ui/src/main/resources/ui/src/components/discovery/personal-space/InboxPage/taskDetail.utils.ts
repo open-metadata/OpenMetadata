@@ -11,16 +11,26 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
-import { TIER_CATEGORY } from '../../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  TIER_CATEGORY,
+} from '../../../../constants/constants';
+import { EntityField } from '../../../../constants/Feeds.constants';
 import {
   EntityReference,
   Task,
   TaskCategory,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { DescriptionUpdatePayload } from '../../../../generated/type/descriptionUpdatePayload';
 import { DomainUpdatePayload } from '../../../../generated/type/domainUpdatePayload';
+import {
+  GlossaryApprovalPayload,
+  ProviderType,
+} from '../../../../generated/type/glossaryApprovalPayload';
 import { OwnershipUpdatePayload } from '../../../../generated/type/ownershipUpdatePayload';
 import { SuggestionPayload } from '../../../../generated/type/suggestionPayload';
 import { TagLabel } from '../../../../generated/type/tagLabel';
@@ -28,7 +38,17 @@ import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { ENTITY_LINK_SEPARATOR } from '../../../../utils/EntityPureUtils';
+import { getFeedChangeFieldLabel } from '../../../../utils/FeedUtilsPure';
+import Fqn from '../../../../utils/Fqn';
+import {
+  getMetadataCompletionInstruction,
+  getMetadataCompletionPayload,
+  getRequiredFieldLabel,
+  isRevisionRequest,
+} from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
+import type { ActivityChange } from './inbox.utils';
 import {
   TaskAboutEntity,
   TaskDetailCallout,
@@ -178,6 +198,16 @@ const TASK_TYPE_BADGE: Record<
     color: 'indigo',
     icon: 'approval',
   },
+  [TaskType.MemoryConflictReview]: {
+    labelKey: 'label.memory-conflict',
+    color: 'orange',
+    icon: 'approval',
+  },
+  [TaskType.MetadataCompletion]: {
+    labelKey: 'label.missing-metadata',
+    color: 'warning',
+    icon: 'description',
+  },
   [TaskType.RecognizerFeedbackApproval]: {
     labelKey: 'label.recognizer-feedback',
     color: 'purple',
@@ -191,19 +221,36 @@ const DEFAULT_TYPE_BADGE = {
   icon: 'approval' as TaskTypeBadge['icon'],
 };
 
-const getTypeBadgeConfig = (task: Pick<Task, 'type' | 'category'>) =>
-  TASK_TYPE_BADGE[task.type] ??
-  (task.category === TaskCategory.Incident
-    ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
-    : DEFAULT_TYPE_BADGE);
+// A Metadata Completion task that carries a rejection asks for a revision, not for fields.
+const REVISION_BADGE: (typeof TASK_TYPE_BADGE)[string] = {
+  labelKey: 'label.revise-and-resubmit',
+  color: 'warning',
+  icon: 'approval',
+};
+
+const getTypeBadgeConfig = (
+  task: Pick<Task, 'type' | 'category'> & Partial<Pick<Task, 'payload'>>
+) => {
+  if (isRevisionRequest(task)) {
+    return REVISION_BADGE;
+  }
+
+  return (
+    TASK_TYPE_BADGE[task.type] ??
+    (task.category === TaskCategory.Incident
+      ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
+      : DEFAULT_TYPE_BADGE)
+  );
+};
 
 /**
  * What a task reads as, as a stable key: two types that share a label (a test
  * case incident and an incident) are one kind to a reviewer, so the list
  * groups them under one header and the filter offers them as one option.
  */
-export const getTaskTypeKey = (task: Pick<Task, 'type' | 'category'>) =>
-  getTypeBadgeConfig(task).labelKey;
+export const getTaskTypeKey = (
+  task: Pick<Task, 'type' | 'category'> & Partial<Pick<Task, 'payload'>>
+) => getTypeBadgeConfig(task).labelKey;
 
 /**
  * The type chip shown in the detail header and on each list row. Falls back to
@@ -245,6 +292,31 @@ const textRow = (
 ): TaskDetailRow[] =>
   text ? [{ key, icon, label, value: { kind: 'text', text } }] : [];
 
+const getEntityFieldLabel = (field: string) =>
+  getFeedChangeFieldLabel(field as EntityField) || field;
+
+const splitFieldPath = (fieldPath: string) =>
+  (fieldPath.includes(ENTITY_LINK_SEPARATOR)
+    ? fieldPath.split(ENTITY_LINK_SEPARATOR)
+    : Fqn.split(fieldPath)
+  )
+    .filter(Boolean)
+    .map((name) => Fqn.unquoteName(name));
+
+export const getFieldPathLabel = (fieldPath?: string): string | undefined => {
+  const [container, ...rest] = fieldPath ? splitFieldPath(fieldPath) : [];
+  if (!container) {
+    return undefined;
+  }
+  const field = rest.length > 1 ? rest.pop() : undefined;
+
+  return [
+    getEntityFieldLabel(container),
+    ...rest,
+    ...(field ? [getEntityFieldLabel(field)] : []),
+  ].join(' › ');
+};
+
 const dateRow = (
   key: string,
   label: string,
@@ -258,10 +330,11 @@ const usersRow = (
   key: string,
   icon: TaskDetailRow['icon'],
   label: string,
-  refs?: EntityReference[]
+  refs?: EntityReference[],
+  title?: string
 ): TaskDetailRow[] =>
   refs && refs.length > 0
-    ? [{ key, icon, label, value: { kind: 'users', refs } }]
+    ? [{ key, icon, label, value: { kind: 'users', refs, title } }]
     : [];
 
 const tagsRow = (
@@ -303,19 +376,48 @@ const TAG_SOURCE_OVERRIDES: Record<string, string> = {
   Agent: 'label.auto-classifier',
 };
 
+/**
+ * The AI agent that proposed what the task decides, when an automation did: its name, or a
+ * generic one when it recorded none. A person reads it instead of the bot the agent writes as.
+ */
+export const getProposingAgent = (task: Task, t: Translate) => {
+  const { proposal } = getPayload<GlossaryApprovalPayload>(task);
+
+  return proposal?.provider === ProviderType.Automation
+    ? proposal.agent ?? t('label.ai-agent')
+    : undefined;
+};
+
+const createdByRow = (task: Task, t: Translate): TaskDetailRow[] => {
+  const agent = getProposingAgent(task, t);
+  const creators = task.createdBy ? [task.createdBy] : [];
+
+  return agent
+    ? [
+        {
+          key: 'createdBy',
+          icon: 'owner',
+          label: t('label.created-by'),
+          value: { kind: 'agent', name: agent },
+        },
+      ]
+    : usersRow('createdBy', 'owner', t('label.created-by'), creators);
+};
+
 /** Assignee / requester / opened-on, which every task type shows. */
 const getCommonRows = (
   task: Task,
   t: Translate,
   dateLabelKey = 'label.opened-on'
 ): TaskDetailRow[] => [
-  ...usersRow('assignees', 'user', t('label.assignee'), task.assignees),
   ...usersRow(
-    'createdBy',
-    'owner',
-    t('label.created-by'),
-    task.createdBy ? [task.createdBy] : []
+    'assignees',
+    'user',
+    t('label.assignee'),
+    task.assignees,
+    t('label.assignee-plural')
   ),
+  ...createdByRow(task, t),
   ...dateRow('createdAt', t(dateLabelKey), task.createdAt),
 ];
 
@@ -365,6 +467,21 @@ const describeIncident = (
   };
 };
 
+const tagNames = (tags?: TagLabel[]) =>
+  (tags ?? []).map(({ tagFQN }) => tagFQN);
+
+// The tags a request removes and adds, as an activity card shows a tags change.
+const getTagChange = (
+  payload: TagUpdatePayload
+): ActivityChange | undefined => {
+  const before = tagNames(payload.tagsToRemove);
+  const after = tagNames(payload.tagsToAdd);
+
+  return before.length || after.length
+    ? { labelKey: 'label.tag-plural', before, after, isText: false }
+    : undefined;
+};
+
 const describeTagUpdate = (
   task: Task,
   t: Translate
@@ -377,17 +494,6 @@ const describeTagUpdate = (
       approve: t('label.approve-entity', { entity: t('label.tag') }),
     },
     rows: [
-      // Approving applies both lists, so the approver sees both.
-      ...tagsRow(
-        'tags',
-        t('label.add-entity', { entity: t('label.tag-plural') }),
-        payload.tagsToAdd
-      ),
-      ...tagsRow(
-        'tagsToRemove',
-        t('label.remove-entity', { entity: t('label.tag-plural') }),
-        payload.tagsToRemove
-      ),
       ...textRow(
         'source',
         'source',
@@ -402,6 +508,8 @@ const describeTagUpdate = (
       ),
       ...dateRow('requestedOn', t('label.requested-on'), task.createdAt),
     ],
+    // Approving applies both lists, so the approver sees both.
+    change: getTagChange(payload),
     callout: descriptionCallout(task, t('label.justification')),
   };
 };
@@ -416,7 +524,12 @@ const describeDescriptionUpdate = (
     subtitleKey: 'message.task-requested',
     rows: [
       ...getCommonRows(task, t, 'label.requested-on'),
-      ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
+      ...textRow(
+        'fieldPath',
+        'type',
+        t('label.field'),
+        getFieldPathLabel(payload.fieldPath)
+      ),
       ...textRow(
         'source',
         'source',
@@ -424,10 +537,16 @@ const describeDescriptionUpdate = (
         getSourceLabel(t, payload.source)
       ),
     ],
-    callout: payload.newDescription
+    change: payload.newDescription
       ? {
-          label: t('label.suggested-description'),
-          text: payload.newDescription,
+          labelKey: 'label.description',
+          // Filled from the entity when the payload carries no snapshot
+          // (withExistingValues).
+          before: payload.currentDescription
+            ? [payload.currentDescription]
+            : [],
+          after: [payload.newDescription],
+          isText: true,
         }
       : undefined,
   };
@@ -443,7 +562,12 @@ const describeSuggestion = (
     subtitleKey: 'message.task-requested',
     rows: [
       ...getCommonRows(task, t, 'label.requested-on'),
-      ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
+      ...textRow(
+        'fieldPath',
+        'type',
+        t('label.field'),
+        getFieldPathLabel(payload.fieldPath)
+      ),
       ...textRow(
         'source',
         'source',
@@ -482,13 +606,17 @@ const describeOwnershipUpdate = (
             key: 'owner',
             icon: 'owner',
             label: t('label.owner'),
-            value: { kind: 'users', refs: currentOwners },
+            value: {
+              kind: 'users',
+              refs: currentOwners,
+              title: t('label.owner-plural'),
+            },
           }
         : {
             key: 'owner',
             icon: 'owner',
             label: t('label.owner'),
-            value: { kind: 'text', text: t('label.no-owner') },
+            value: { kind: 'text', text: NO_DATA_PLACEHOLDER },
           },
       // Approving replaces the current owners with these, so the reviewer sees
       // both sides of the change before deciding.
@@ -556,6 +684,68 @@ const describeDomainUpdate = (
   };
 };
 
+// The fields still missing and whether the stage's conditions hold, which the server rewrites as
+// they change; the fixed instruction sits where other types put their requester's context.
+const describeMetadataCompletion = (
+  task: Task,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  const payload = getMetadataCompletionPayload(task);
+  // A closed task keeps the payload it had when it closed, which no longer describes the asset.
+  const isOpen = task.status === TaskStatus.Open;
+  const missingFields = isOpen ? payload.missingFields ?? [] : [];
+
+  return {
+    rows: [
+      ...(missingFields.length > 0
+        ? [
+            {
+              key: 'missingFields',
+              icon: 'columns' as const,
+              label: t('label.missing-field-plural'),
+              value: {
+                kind: 'list' as const,
+                items: missingFields.map((field) => ({
+                  label: getRequiredFieldLabel(field, t),
+                })),
+                title: t('label.missing-field-plural'),
+              },
+            },
+          ]
+        : []),
+      ...textRow(
+        'revisionComment',
+        'type',
+        t('label.comment'),
+        payload.revision
+          ? payload.revision.comment ??
+              t('message.metadata-completion-revision-no-comment')
+          : undefined
+      ),
+      ...textRow(
+        'revisionRequestedBy',
+        'user',
+        t('label.requested-by'),
+        payload.revision?.requestedBy
+      ),
+      // An unmet condition is reported, not spelled out: the stage's rule may be any JSON Logic.
+      ...textRow(
+        'conditions',
+        'shield',
+        t('label.condition-plural'),
+        isOpen && payload.conditionsMet === false
+          ? t('message.lifecycle-conditions-not-met')
+          : undefined
+      ),
+      ...getCommonRows(task, t),
+    ],
+    callout: {
+      label: t('label.context'),
+      text: getMetadataCompletionInstruction(payload, t),
+    },
+  };
+};
+
 type Describer = (task: Task, t: Translate) => Partial<TaskDetailDescriptor>;
 
 const DESCRIBERS: Record<string, Describer> = {
@@ -567,6 +757,7 @@ const DESCRIBERS: Record<string, Describer> = {
   [TaskType.OwnershipUpdate]: describeOwnershipUpdate,
   [TaskType.TierUpdate]: describeTierUpdate,
   [TaskType.DomainUpdate]: describeDomainUpdate,
+  [TaskType.MetadataCompletion]: describeMetadataCompletion,
 };
 
 /**
@@ -636,4 +827,132 @@ export const deriveTaskAboutEntity = (
     ownerCount: typed.owners?.length,
     updatedAt: typed.updatedAt,
   };
+};
+
+type DescribedField = {
+  name?: string;
+  description?: string;
+  tags?: TagLabel[];
+  children?: DescribedField[];
+};
+type DescribedEntity = {
+  description?: string;
+  tags?: TagLabel[];
+  columns?: DescribedField[];
+};
+
+const COLUMN_DESCRIPTION_PATH = /^columns\.(.+)\.description$/;
+const COLUMN_TAGS_PATH = /^columns\.(.+?)(?:\.tags)?$/;
+
+// The paths that name the entity itself; any other path names one of its
+// fields, and one this cannot resolve (a topic's schema field, a container's
+// data-model column) shows nothing rather than the entity's values.
+const ENTITY_LEVEL_PATHS = new Set(['', 'description', 'tags', 'entity']);
+
+// Follows a column path's names down through nested columns.
+const findColumnByPath = (
+  columns: DescribedField[] | undefined,
+  names: string[]
+): DescribedField | undefined =>
+  names.reduce<{ found?: DescribedField; level?: DescribedField[] }>(
+    ({ level }, name) => {
+      const found = level?.find((column) => column.name === name);
+
+      return { found, level: found?.children };
+    },
+    { level: columns }
+  ).found;
+
+// A nested column named on its own, without its parents.
+const findColumnByName = (
+  columns: DescribedField[] | undefined,
+  name: string
+): DescribedField | undefined =>
+  columns?.reduce<DescribedField | undefined>(
+    (found, column) =>
+      found ??
+      (column.name === name ? column : findColumnByName(column.children, name)),
+    undefined
+  );
+
+// What a field path names on its entity: the entity itself, or a column by its
+// path (`address.city`, `"a.b"` with its quotes dropped).
+const getField = (
+  entity: EntityUnion | undefined,
+  fieldPath: string | undefined,
+  columnPath: RegExp
+): DescribedField | DescribedEntity | undefined => {
+  const typed = entity as DescribedEntity | undefined;
+  const path = fieldPath ?? '';
+  if (ENTITY_LEVEL_PATHS.has(path)) {
+    return typed;
+  }
+  const column = columnPath.exec(path)?.[1];
+  const names = column
+    ? Fqn.split(column).map((name) => Fqn.unquoteName(name))
+    : [];
+  const byPath = findColumnByPath(typed?.columns, names);
+
+  return (
+    byPath ??
+    (names.length === 1
+      ? findColumnByName(typed?.columns, names[0])
+      : undefined)
+  );
+};
+
+// The description's Existing side: the payload's snapshot when it has one,
+// else the field's description as it is now.
+const withExistingDescription = (
+  change: ActivityChange,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange => {
+  const { fieldPath } = getPayload<DescriptionUpdatePayload>(task);
+  const existing = getField(
+    entity,
+    fieldPath,
+    COLUMN_DESCRIPTION_PATH
+  )?.description?.trim();
+
+  return change.before.length || !existing
+    ? change
+    : { ...change, before: [existing] };
+};
+
+// The tags a tag task keeps: the field's current tags (the payload's snapshot,
+// else the asset as it is now) less those it removes or adds.
+const withKeptTags = (
+  change: ActivityChange,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange => {
+  const payload = getPayload<TagUpdatePayload>(task);
+  // Tasks often carry an empty currentTags by default rather than a
+  // snapshot, so only a non-empty one stands in for the asset.
+  const current = isEmpty(payload.currentTags)
+    ? getField(entity, payload.fieldPath, COLUMN_TAGS_PATH)?.tags
+    : payload.currentTags;
+  const changed = new Set([...change.before, ...change.after]);
+  const unchanged = tagNames(current).filter((name) => !changed.has(name));
+
+  return { ...change, unchanged };
+};
+
+/**
+ * A task's change with what the asset holds now: a description's Existing
+ * text, or the tags a tag request keeps.
+ */
+export const withExistingValues = (
+  change: ActivityChange | undefined,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange | undefined => {
+  if (!change) {
+    return undefined;
+  }
+
+  return change.isText
+    ? withExistingDescription(change, task, entity)
+    : withKeptTags(change, task, entity);
 };

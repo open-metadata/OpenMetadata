@@ -39,7 +39,10 @@ class OntologyPackVerifierTest {
 
   @Test
   void verifyRejectsNullModules() {
-    final OntologyPackManifest manifest = new OntologyPackManifest().withBundled(false);
+    final OntologyPackManifest manifest =
+        new OntologyPackManifest()
+            .withIndustry(OntologyPackManifest.Industry.FINANCE)
+            .withBundled(false);
     manifest.setModules(null);
 
     final IllegalArgumentException exception =
@@ -237,6 +240,7 @@ class OntologyPackVerifierTest {
   private static OntologyPackManifest manifest(
       final boolean bundled, final OntologyPackModule... modules) {
     return new OntologyPackManifest()
+        .withIndustry(OntologyPackManifest.Industry.FINANCE)
         .withBundled(bundled)
         .withModules(new ArrayList<>(List.of(modules)));
   }

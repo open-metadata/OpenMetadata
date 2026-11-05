@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Divider,
@@ -19,9 +18,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  FailedTests,
   MinusCircle,
   SuccessfulTests,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
@@ -189,7 +188,14 @@ const ContractSLA: React.FC<{
   const renderOutcomeIcon = (key: string): ReactNode => {
     const outcomeOf = SLA_CHECK_OUTCOME[key];
     if (!slaValidation || !outcomeOf) {
-      return <Icon className="sla-icon" component={DefaultIcon} />;
+      return (
+        <DefaultIcon
+          className="sla-icon"
+          fill="currentColor"
+          height="1em"
+          width="1em"
+        />
+      );
     }
     const met = outcomeOf(slaValidation);
     if (met === true) {
@@ -206,7 +212,7 @@ const ContractSLA: React.FC<{
     }
 
     return met === false ? (
-      <FailedTests
+      <XCircle
         aria-hidden={false}
         aria-label={t('label.failed')}
         className="sla-icon tw:text-fg-error-primary"
@@ -238,7 +244,7 @@ const ContractSLA: React.FC<{
         entity: t('label.service-level-agreement'),
       })}
       triggerClassName="tw:inline-flex">
-      <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+      <InheritIcon className="inherit-icon tw:cursor-pointer" width={14} />
     </Tooltip>
   ) : null;
 

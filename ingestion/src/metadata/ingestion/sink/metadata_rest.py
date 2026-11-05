@@ -135,7 +135,7 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
 )
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
-from metadata.sampler.models import SamplerResponse
+from metadata.sampler.models import SamplerResponse, limit_stored_rows
 from metadata.utils.fqn import get_query_checksum
 from metadata.utils.logger import get_log_name, ingestion_logger
 
@@ -1063,7 +1063,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         if record.sample_data and record.sample_data.store:
             try:
-                success = self._ingest_entity_sample_data(entity, sample_data=record.sample_data.data)
+                success = self._ingest_entity_sample_data(
+                    entity, sample_data=limit_stored_rows(record.sample_data.data)
+                )
                 if not success:
                     self.status.failed(
                         StackTraceError(

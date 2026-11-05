@@ -44,6 +44,7 @@ export interface UrlStateHook {
   setPageSize: (pageSize: number) => void;
   resetFilters: () => void;
   resetAll: () => void;
+  resetPaging: () => void;
 }
 
 export interface DataFetchingConfig<T> {
@@ -149,11 +150,14 @@ export interface ListingData<T> {
   actionHandlers: ActionHandlers<T>;
   filterOptions?: FilterOptions;
   aggregations?: Aggregations | null;
+  /** The listing's fixed scope (e.g. one parent's sub-domains), as an ES query JSON. */
+  baseFilter?: string;
   handleSearchChange: (query: string) => void;
   handleFilterChange: (filters: ExploreQuickFilterField[]) => void;
   handleClearAll: () => void;
   handlePageChange: (page: number) => void;
   handlePageSizeChange?: (pageSize: number) => void;
+  resetPaging?: () => void;
   refetch: (options?: { silent?: boolean }) => void | Promise<void>;
 }
 

@@ -14,10 +14,11 @@
 import {
   Box,
   Button,
+  Select,
+  SlideoutMenu,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Drawer, Select } from 'antd';
 import { AxiosError } from 'axios';
 import {
   useCallback,
@@ -29,6 +30,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDF_INDEX_APP_NAME } from '../../../../constants/Applications.constant';
+import { useSavedPageSize } from '../../../../hooks/paging/useSavedPageSize';
 import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
 import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
@@ -41,7 +43,7 @@ import {
   ReindexFailuresProps,
 } from './ReindexFailures.interface';
 
-const PAGE_SIZE = 20;
+const ALL_ENTITY_TYPES_KEY = '__all__';
 
 const ErrorMessage = ({ text }: { text: string }) => {
   const { t } = useTranslation();
@@ -57,8 +59,8 @@ const ErrorMessage = ({ text }: { text: string }) => {
   }, [text, isExpanded]);
 
   return (
-    <div className="tw:flex tw:items-start tw:gap-1">
-      <div className="tw:min-w-0 tw:flex-1" ref={textRef}>
+    <Box align="start" direction="row" gap={1}>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" ref={textRef}>
         <Typography as="p" ellipsis={isExpanded ? false : { rows: 2 }}>
           {text}
         </Typography>
@@ -72,9 +74,9 @@ const ErrorMessage = ({ text }: { text: string }) => {
             {t(isExpanded ? 'label.less-lowercase' : 'label.more-lowercase')}
           </Button>
         )}
-      </div>
+      </Box>
       <CopyToClipboardButton copyText={text} />
-    </div>
+    </Box>
   );
 };
 
@@ -88,6 +90,7 @@ const ReindexFailures = ({
   const [data, setData] = useState<ReindexFailureRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const { savedPageSize: pageSize } = useSavedPageSize();
   const [entityTypeFilter, setEntityTypeFilter] = useState<string | undefined>(
     undefined
   );
@@ -107,8 +110,8 @@ const ReindexFailures = ({
             ? getRdfReindexFailures
             : getReindexFailures;
         const response = await fetcher({
-          offset: (page - 1) * PAGE_SIZE,
-          limit: PAGE_SIZE,
+          offset: (page - 1) * pageSize,
+          limit: pageSize,
           entityType,
         });
         if (requestId !== requestSequence.current) {
@@ -131,7 +134,7 @@ const ReindexFailures = ({
         }
       }
     },
-    [appName]
+    [appName, pageSize]
   );
 
   useEffect(() => {
@@ -184,10 +187,10 @@ const ReindexFailures = ({
         width: 150,
         ellipsis: true,
         render: (text: string) => (
-          <span className="tw:inline-flex tw:items-center tw:gap-1">
+          <Box inline align="center" direction="row" gap={1}>
             <Typography className="tw:text-primary">{text || '-'}</Typography>
             {text && <CopyToClipboardButton copyText={text} />}
-          </span>
+          </Box>
         ),
       },
       {
@@ -229,67 +232,80 @@ const ReindexFailures = ({
     [t]
   );
 
-  return (
-    <Drawer
-      destroyOnClose
-      open={visible}
-      placement="right"
-      title={t('label.reindex-failure-plural')}
-      width={900}
-      onClose={onClose}>
-      <Box
-        inline
-        align="stretch"
-        className="layout-space w-full m-b-md"
-        direction="col"
-        gap={2}
-        itemClassName="layout-space-item">
-        <Box
-          inline
-          align="center"
-          className="layout-space layout-space-horizontal"
-          gap={2}
-          itemClassName="layout-space-item">
-          <Typography>{t('label.filter-by-entity-type')}:</Typography>
-          <Select
-            allowClear
-            placeholder={t('label.all')}
-            style={{ width: 200 }}
-            value={entityTypeFilter}
-            onChange={handleEntityTypeChange}>
-            {entityTypes.map((type) => (
-              <Select.Option key={type} value={type}>
-                {type}
-              </Select.Option>
-            ))}
-          </Select>
-        </Box>
-        {total > 0 && (
-          <Typography color="secondary">
-            {t('label.showing-total-failure-plural', { total })}
-          </Typography>
-        )}
-      </Box>
+  const entityTypeItems = useMemo(
+    () => [
+      { id: ALL_ENTITY_TYPES_KEY, label: t('label.all') },
+      ...entityTypes.map((type) => ({ id: type, label: type })),
+    ],
+    [entityTypes, t]
+  );
 
-      <Table
-        columns={columns}
-        dataSource={data}
-        loading={loading}
-        pagination={{
-          current: currentPage,
-          pageSize: PAGE_SIZE,
-          showSizeChanger: false,
-          total,
-        }}
-        rowKey="id"
-        // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
-        // than the 900px drawer. Set the horizontal extent so TableV2 scrolls
-        // rather than collapsing the columns into the drawer width.
-        scroll={{ x: 950, y: 'calc(100vh - 280px)' }}
-        size="small"
-        onChange={({ current }) => handlePageChange(current ?? 1)}
-      />
-    </Drawer>
+  return (
+    <SlideoutMenu
+      isDismissable
+      data-testid="reindex-failures-drawer"
+      isOpen={visible}
+      width={900}
+      onOpenChange={(isOpen) => !isOpen && onClose()}>
+      {({ close }) => (
+        <>
+          <SlideoutMenu.Header onClose={close}>
+            <Typography size="text-lg" weight="semibold">
+              {t('label.reindex-failure-plural')}
+            </Typography>
+          </SlideoutMenu.Header>
+          <SlideoutMenu.Content>
+            <Box className="tw:mb-4" direction="col" gap={2}>
+              <Box align="center" direction="row" gap={2}>
+                <Typography>{t('label.filter-by-entity-type')}:</Typography>
+                <Select
+                  aria-label={t('label.filter-by-entity-type')}
+                  className="tw:w-50"
+                  items={entityTypeItems}
+                  value={entityTypeFilter ?? ALL_ENTITY_TYPES_KEY}
+                  onChange={(key) =>
+                    handleEntityTypeChange(
+                      key && key !== ALL_ENTITY_TYPES_KEY
+                        ? String(key)
+                        : undefined
+                    )
+                  }>
+                  {(item) => (
+                    <Select.Item id={item.id} key={item.id}>
+                      {item.label}
+                    </Select.Item>
+                  )}
+                </Select>
+              </Box>
+              {total > 0 && (
+                <Typography className="tw:text-tertiary">
+                  {t('label.showing-total-failure-plural', { total })}
+                </Typography>
+              )}
+            </Box>
+
+            <Table
+              columns={columns}
+              dataSource={data}
+              loading={loading}
+              pagination={{
+                current: currentPage,
+                pageSize,
+                showSizeChanger: false,
+                total,
+              }}
+              rowKey="id"
+              // Columns are fixed widths summing 950px (120+150+100+400+180) — wider
+              // than the 900px drawer, so the table scrolls sideways.
+              scroll={{ x: 950 }}
+              size="small"
+              variant="muted"
+              onChange={({ current }) => handlePageChange(current ?? 1)}
+            />
+          </SlideoutMenu.Content>
+        </>
+      )}
+    </SlideoutMenu>
   );
 };
 

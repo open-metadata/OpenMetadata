@@ -57,6 +57,7 @@ export enum GlobalSettingOptions {
   EMAIL = 'email',
   NOTIFICATIONS = 'notifications',
   ALERTS = 'alerts',
+  ANNOUNCEMENTS = 'announcements',
   OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
   ADD_NOTIFICATION = 'add-notification',
@@ -98,6 +99,7 @@ export enum GlobalSettingOptions {
   FILES = 'files',
   SPREADSHEETS = 'spreadsheets',
   WORKSHEETS = 'worksheets',
+  ARTICLES = 'articles',
   COLUMN_BULK_OPERATIONS = 'columnBulkOperations',
   AUDIT_LOGS = 'audit-logs',
   GLOSSARY_TERM_RELATIONS = 'glossary-term-relations',
@@ -108,4 +110,5 @@ export enum GlobalSettingOptions {
   COLUMN = 'column',
   APP_MODE = 'appMode',
   GLOSSARY = 'glossary',
+  TIME_FORMAT = 'timeFormat',
 }
