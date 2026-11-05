@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,9 +51,15 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             setIsActive((prev) => !prev)
           )}>
           {isActive ? (
-            <DownOutlined className="text-xs text-primary cursor-pointer" />
+            <ChevronDown
+              className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
+              size={14}
+            />
           ) : (
-            <RightOutlined className="text-xs text-primary cursor-pointer" />
+            <ChevronRight
+              className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
+              size={14}
+            />
           )}
         </span>
         <Typography className="font-medium m-y-0">

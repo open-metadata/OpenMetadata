@@ -205,6 +205,50 @@
       },
       "required": ["memory", "reason"],
       "additionalProperties": false
+    },
+    "memoryOutcomes": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryOutcomes",
+      "description": "What happened to the answers this memory was applied to, recounted from their outcomes by the service that records them. Server telemetry: only the outcome write sets it, metadata writes preserve it, and it never changes the version.",
+      "type": "object",
+      "properties": {
+        "appliedCount": {
+          "description": "Saved answers this memory was applied to.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "positiveCount": {
+          "description": "Answers it was applied to whose voters' latest vote is helpful, one per voter and answer.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "negativeCount": {
+          "description": "Answers it was applied to whose voters' latest vote is unhelpful, one per voter and answer.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "correctedCount": {
+          "description": "Memories captured from answers it was applied to that correct it.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "lastAppliedAt": {
+          "description": "When it was last applied to a saved answer.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "lastCorrectedAt": {
+          "description": "When a captured memory last corrected it.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "countedAt": {
+          "description": "When these counts were computed.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -263,7 +307,7 @@
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "lastContentUpdatedAt": {
-      "description": "Server-owned timestamp of the latest change to memory content or its subject. Review, lifecycle, pin, tag, share and usage writes preserve it. Legacy memories fall back to updatedAt until their next write. Used for knowledge recency independently of the audit timestamp.",
+      "description": "Server-owned timestamp of the latest change to memory content or its subject. Review, lifecycle, pin, tag, share, usage and outcome writes preserve it. Legacy memories fall back to updatedAt until their next write. Used for knowledge recency independently of the audit timestamp.",
       "$ref": "../../type/basic.json#/definitions/timestamp",
       "readOnly": true
     },
@@ -348,6 +392,11 @@
     "lastUsedAt": {
       "description": "Last time the memory was used by AI-assisted retrieval.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "outcomes": {
+      "description": "Outcome counters of the answers this memory was applied to. Only the outcome write sets them; metadata writes keep the stored values.",
+      "$ref": "#/definitions/memoryOutcomes",
+      "readOnly": true
     },
     "owners": {
       "description": "Owners of this memory.",

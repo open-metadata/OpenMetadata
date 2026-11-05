@@ -14,17 +14,13 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/react';
 import { MathEquationComponent } from './MathEquationComponent';
 
-jest.mock('react-latex-next', () =>
-  jest.fn().mockImplementation(({ children }) => <span>{children}</span>)
-);
-
 const updateAttributes = jest.fn();
 
-const renderComponent = (isEditing: boolean) =>
+const renderComponent = (isEditing: boolean, equation = 'x^2') =>
   render(
     <MathEquationComponent
       {...({
-        node: { attrs: { math_equation: 'x^2', isEditing } },
+        node: { attrs: { math_equation: equation, isEditing } },
         updateAttributes,
         editor: { isEditable: true },
       } as unknown as NodeViewProps)}
@@ -67,5 +63,28 @@ describe('MathEquationComponent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.edit-entity' }));
 
     expect(screen.getByRole('textbox')).toHaveValue('x^2');
+  });
+
+  it('renders delimited math with KaTeX', () => {
+    const { container } = renderComponent(false, '$x^2$');
+
+    expect(container.querySelector('.katex')).toBeInTheDocument();
+  });
+
+  it('renders text outside the delimiters as text, not HTML', () => {
+    const { container } = renderComponent(
+      false,
+      '$x^2$ <img src="x" onerror="alert(1)">'
+    );
+
+    expect(container.querySelector('img')).not.toBeInTheDocument();
+    expect(container).toHaveTextContent('<img src="x" onerror="alert(1)">');
+  });
+
+  it('keeps malformed math as its source text', () => {
+    const { container } = renderComponent(false, '$\\frac{1}$');
+
+    expect(container.querySelector('.katex')).not.toBeInTheDocument();
+    expect(container).toHaveTextContent('$\\frac{1}$');
   });
 });

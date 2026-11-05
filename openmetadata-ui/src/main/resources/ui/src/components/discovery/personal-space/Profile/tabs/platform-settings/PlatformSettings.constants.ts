@@ -16,6 +16,7 @@ import {
   Customize,
   Dataflow02,
   DataQuality,
+  DefaultTime,
   FileCheck02,
   GlossaryTerm,
   HeartRounded,
@@ -29,8 +30,12 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
+import { DefaultTimeFormat } from '../../../../../../generated/api/configuration/appConfiguration';
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- profiler extension point lives there
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
+import { parseFieldValueBoostItemId } from './search/SearchSettings.utils';
 
 export const PLATFORM_SETTINGS_HASH_TAB = 'platform-settings';
 
@@ -76,6 +81,11 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     descriptionKey: 'message.page-sub-header-for-profiler-configuration',
     hasEditView: true,
     hasFieldHints: false,
+    // An item id is a downstream sub-page, titled by its owner.
+    getEditTitle: (t, itemId) =>
+      (itemId &&
+        profilerConfigurationClassBase.getSettingsItemFormTitle(t, itemId)) ||
+      t('label.edit-entity', { entity: t('label.profiler-configuration') }),
   },
   {
     id: 'data-quality',
@@ -103,6 +113,16 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     hasItemViews: true,
     getItemTitle: (_t, itemId) =>
       startCase(ENTITY_PATH[itemId as keyof typeof ENTITY_PATH] ?? itemId),
+    // The edit view is the field value boost form, global or per entity.
+    hasEditView: true,
+    hasFieldHints: false,
+    getEditTitle: (t, itemId) =>
+      t(
+        parseFieldValueBoostItemId(itemId).field
+          ? 'label.edit-entity'
+          : 'label.add-entity',
+        { entity: t('label.field-value-boost') }
+      ),
   },
   {
     id: 'brand-url',
@@ -125,6 +145,8 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     descriptionKey: 'message.learning-resources-management-description',
     hasEditView: true,
     hasFieldHints: false,
+    hasItemViews: true,
+    getItemTitle: (t) => t('label.preview'),
     getEditTitle: (t, itemId) =>
       t(itemId ? 'label.edit-resource' : 'label.add-resource'),
   },
@@ -144,9 +166,22 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     hasEditView: true,
     hasFieldHints: false,
   },
+  {
+    id: 'time-format',
+    icon: DefaultTime,
+    titleKey: 'label.default-time-format',
+    descriptionKey: 'message.default-time-format-description',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
 ];
 
 /** The fields of each deployment-backed setting that its page shows. */
 export const BRAND_URL_FIELDS = ['openMetadataUrl'] as const;
 
 export const APP_MODE_FIELDS = ['defaultAppMode'] as const;
+
+export const TIME_FORMAT_OPTIONS = [
+  { value: DefaultTimeFormat.The12H, labelKey: 'label.12-hour-format' },
+  { value: DefaultTimeFormat.The24H, labelKey: 'label.24-hour-format' },
+];

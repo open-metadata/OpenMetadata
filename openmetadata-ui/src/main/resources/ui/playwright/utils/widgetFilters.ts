@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 import { expect, type Locator, type Page } from '@playwright/test';
-import { selectOptionWithRetry } from './common';
+import { chooseSelectOption } from './common';
 import { waitForLandingPageWidget } from './customizeLandingPage';
 
 /**
- * Picks an option from a topic card's FilterSelect filter.
- *
- * Unlike the antd dropdown this replaced, FilterSelect commits immediately and
- * keeps itself open — its pointerdown handler returns early for anything inside
- * the trigger, so pressing the trigger again cannot close it. Escape is what it
- * listens for.
+ * Picks an option from a topic card's filter, a core `Select`: options carry
+ * their value as a test id, and choosing one closes the list on its own.
  */
 export const selectTopicCardFilterOption = async (
   page: Page,
@@ -28,14 +24,10 @@ export const selectTopicCardFilterOption = async (
   filterTestId: string,
   optionValue: string
 ) => {
-  const trigger = widget.getByTestId(filterTestId);
-  const option = page.getByTestId('drop-down-menu').getByTestId(optionValue);
-
-  // The popover is non-modal: the scroll a click performs to reach the option
-  // closes it and the option detaches mid-click. This settles the trigger in
-  // view before opening, and reopens if it closed anyway.
-  await selectOptionWithRetry(trigger, option);
-  await page.keyboard.press('Escape');
+  await chooseSelectOption(
+    widget.getByTestId(filterTestId),
+    page.getByRole('listbox').getByTestId(optionValue)
+  );
 };
 
 /**

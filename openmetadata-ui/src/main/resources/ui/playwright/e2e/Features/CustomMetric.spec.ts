@@ -17,6 +17,8 @@ import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
   createCustomMetric,
   deleteCustomMetric,
+  editCustomMetric,
+  openCustomMetricDrawer,
 } from '../../utils/customMetric';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
@@ -56,6 +58,16 @@ test('Table custom metric', async ({ page }) => {
     await createCustomMetric({
       page,
       metric: TABLE_CUSTOM_METRIC,
+    });
+  });
+
+  await test.step('Edit', async () => {
+    await editCustomMetric({
+      page,
+      metric: {
+        ...TABLE_CUSTOM_METRIC,
+        expression: `SELECT COUNT(*) FROM ${table.entity.name}`,
+      },
     });
   });
 
@@ -99,6 +111,17 @@ test('Column custom metric', async ({ page }) => {
     });
   });
 
+  await test.step('Edit', async () => {
+    await editCustomMetric({
+      page,
+      isColumnMetric: true,
+      metric: {
+        ...COLUMN_CUSTOM_METRIC,
+        expression: `SELECT COUNT(*) FROM ${table.entity.name}`,
+      },
+    });
+  });
+
   await test.step('Delete', async () => {
     await deleteCustomMetric({
       page,
@@ -125,9 +148,13 @@ test('Large column Select preserves keyboard navigation and fully reveals the fo
 
   try {
     await table.create(apiContext);
-    await page.goto(
-      `/add-custom-metric/column/${table.entityResponseData.fullyQualifiedName}`
+    const profilerResponse = page.waitForResponse(
+      `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest?includeColumnProfile=false`
     );
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="profiler"]');
+    await profilerResponse;
+    await openCustomMetricDrawer(page, true);
     const trigger = page
       .getByTestId('custom-metric-column')
       .getByRole('button');

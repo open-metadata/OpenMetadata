@@ -17,6 +17,7 @@ import { Box } from '@openmetadata/ui-core-components';
 import { FormEvent, lazy, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../../enums/codemirror.enum';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import {
   CustomPropertyRenderer,
@@ -46,7 +47,12 @@ const SqlPropertyView = ({ value }: PropertyViewProps) => (
   </div>
 );
 
-const SqlPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
+const SqlPropertyEdit = ({
+  value,
+  onSave,
+  formId,
+  onDirtyChange,
+}: PropertyEditProps) => {
   const { t } = useTranslation();
   const formRef = useRef<HTMLFormElement>(null);
   const [query, setQuery] = useState(typeof value === 'string' ? value : '');
@@ -71,6 +77,8 @@ const SqlPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
     ],
     []
   );
+
+  useReportDirty(query.trim(), onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -10,6 +10,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -26,8 +27,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.events.consumer.ConsumerJob;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 
 /** What one tick records, for the cases today's code could not reach. */
 @Isolated
@@ -35,6 +38,7 @@ import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 class AlertTickOutcomesIT {
 
   private static final int EVERY_ROW = 100;
+  private static final int SET_ASIDE_AFTER_TICKS = 7;
 
   @Test
   void twoFailingDestinationsAreBothNamed(TestNamespace ns) throws Exception {
@@ -78,8 +82,7 @@ class AlertTickOutcomesIT {
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
       DirectTick.run(alert);
 
-      EventsRecord record =
-          EventSubscriptionScheduler.getInstance().getEventSubscriptionEventsRecord(alert.getId());
+      EventsRecord record = AlertDiagnostics.eventsRecord(alert.getId());
       assertEquals(1, record.getSuccessfulEventsCount());
       assertEquals(1, record.getFailedEventsCount());
       assertEquals(1, record.getTotalEventsCount() - record.getPendingEventsCount());
@@ -103,12 +106,79 @@ class AlertTickOutcomesIT {
     }
   }
 
+  // A tick that dies of an Error, as an out-of-memory would, is an interrupted tick: the event it
+  // was on is set aside after the same number of attempts as one whose tick never came back.
+  @Test
+  void anEventWhoseTickDiesOfAnErrorIsSetAsideAndTheNextIsSent(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          webhookAlert(ns, "dies_of_error", ErrorThrowingConsumer.ID, receiver);
+      QuietAlert.settle(alert);
+      List<String> events = FixtureEvents.tableEvents().subList(0, 2);
+      ErrorThrowingConsumer.poison(alert.getId(), idOf(events.getFirst()));
+      try {
+        FixtureEvents.insert(events);
+
+        int errors = 0;
+        for (int tick = 0; tick < SET_ASIDE_AFTER_TICKS; tick++) {
+          errors += tickCountingErrors(alert);
+        }
+
+        assertEquals(SET_ASIDE_AFTER_TICKS - 1, errors, "the last tick sets the event aside");
+        assertEquals(1, receiver.received().size(), "the event after it is sent");
+        List<FailedEventResponse> failures = failuresOf(alert);
+        assertEquals(1, failures.size());
+        assertTrue(failures.getFirst().getReason().contains("Interrupted repeatedly"));
+      } finally {
+        ErrorThrowingConsumer.cure(alert.getId());
+      }
+    }
+  }
+
+  // The reader points the alert past the batch before parsing it; an Error while it is read must
+  // not leave the position there, or every event in the batch would be skipped unsent.
+  @Test
+  void aTickThatDiesOfAnErrorWhileReadingSkipsNoEvent(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          webhookAlert(ns, "dies_while_reading", ErrorThrowingConsumer.ID, receiver);
+      QuietAlert.settle(alert);
+      List<String> events = FixtureEvents.tableEvents().subList(0, 2);
+      ErrorThrowingConsumer.failReads(alert.getId(), 1);
+      try {
+        FixtureEvents.insert(events);
+
+        assertEquals(1, tickCountingErrors(alert), "the first read dies of an Error");
+        DirectTick.run(alert);
+
+        assertEquals(events.size(), receiver.received().size(), "no event was skipped");
+        assertTrue(failuresOf(alert).isEmpty());
+      } finally {
+        ErrorThrowingConsumer.cure(alert.getId());
+      }
+    }
+  }
+
+  private static int tickCountingErrors(EventSubscription alert) {
+    int errors = 0;
+    try {
+      DirectTick.run(alert);
+    } catch (OutOfMemoryError simulated) {
+      errors = 1;
+    }
+    return errors;
+  }
+
+  private static UUID idOf(String event) {
+    return UUID.fromString(JsonUtils.readTree(event).get("id").asText());
+  }
+
   // A tick whose commit fails came back all the same: only one that never does was interrupted.
   @Test
   void aTickWhoseCommitFailsIsNotInterrupted(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "commit_fails", FailingCommitConsumer.class.getName(), receiver);
+          webhookAlert(ns, "commit_fails", FailingCommitConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
 
@@ -124,7 +194,7 @@ class AlertTickOutcomesIT {
   void failedCommitsNeverSetAnEventAside(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.class.getName(), receiver);
+          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.ID, receiver);
       QuietAlert.settle(alert);
       noteInterruptedTicks(alert, 5);
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
@@ -139,8 +209,7 @@ class AlertTickOutcomesIT {
   @Test
   void interruptedTicksCommitAfterEveryEvent(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
-          webhookAlert(ns, "commit_each", LatchedConsumer.class.getName(), receiver);
+      EventSubscription alert = webhookAlert(ns, "commit_each", LatchedConsumer.ID, receiver);
       QuietAlert.settle(alert);
       long openedAt = positionOf(alert);
       noteInterruptedTicks(alert, 3);
@@ -180,7 +249,7 @@ class AlertTickOutcomesIT {
 
       JsonNode answer = JsonUtils.readTree(body);
       assertEquals("NORMAL", answer.get("triggerState").asText());
-      assertTrue(answer.get("jobClass").asText().endsWith("AlertPublisher"));
+      assertEquals(ConsumerJob.class.getName(), answer.get("jobClass").asText());
       assertTrue(answer.get("lag").asLong() >= 3);
     }
   }
@@ -190,31 +259,31 @@ class AlertTickOutcomesIT {
   @Test
   void selfDrivenAlertReportsWhatItDeliveredAndNoBacklog(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
-          webhookAlert(ns, "self_driven", ReportingConsumer.class.getName(), receiver);
+      EventSubscription alert = webhookAlert(ns, "self_driven", ReportingConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents());
       ReportingConsumer.reportOnNextTick(alert.getId(), 2, 1);
       DirectTick.run(alert);
 
-      EventSubscriptionScheduler scheduler = EventSubscriptionScheduler.getInstance();
-      EventsRecord record = scheduler.getEventSubscriptionEventsRecord(alert.getId());
+      EventsRecord record = AlertDiagnostics.eventsRecord(alert.getId());
       assertEquals(List.of(3L, 2L, 1L, 0L), countsOf(record));
       EventSubscriptionDiagnosticInfo diagnostics =
-          scheduler.getEventSubscriptionDiagnosticInfo(alert.getId(), EVERY_ROW, 0, false);
+          AlertDiagnostics.diagnosticInfo(alert.getId(), EVERY_ROW, 0, false);
       assertEquals(2L, diagnostics.getSuccessfulEventsCount());
       assertEquals(1L, diagnostics.getFailedEventsCount());
       assertEquals(0L, diagnostics.getTotalUnprocessedEventsCount());
       assertEquals(0L, diagnostics.getRelevantUnprocessedEventsCount());
       assertTrue(diagnostics.getHasProcessedAllEvents());
       assertTrue(diagnostics.getTotalUnprocessedEventsList().isEmpty());
-      assertTrue(scheduler.checkIfPublisherPublishedAllEvents(alert.getId()));
+      assertTrue(
+          EventSubscriptionScheduler.getInstance()
+              .checkIfPublisherPublishedAllEvents(alert.getId()));
     }
   }
 
   // The count of relevant unprocessed events is the exact backlog, not the size of one
   // limit-bounded page. The sibling EventsRecord counts the same way; see
-  // getEventSubscriptionEventsRecord. Covers the scheduler call and the public REST contract.
+  // AlertDiagnostics.eventsRecord. Covers the AlertDiagnostics call and the public REST contract.
   @Test
   void diagnosticInfoCountsAllRelevantUnprocessedBeyondThePage(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
@@ -224,8 +293,7 @@ class AlertTickOutcomesIT {
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 2)); // two table events
 
       EventSubscriptionDiagnosticInfo diagnostics =
-          EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(alert.getId(), limit, 0, false);
+          AlertDiagnostics.diagnosticInfo(alert.getId(), limit, 0, false);
 
       assertEquals(
           2L,
@@ -277,7 +345,7 @@ class AlertTickOutcomesIT {
   void schedulingOfASelfDrivenAlertShowsNoLag(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.class.getName(), receiver);
+          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents());
 

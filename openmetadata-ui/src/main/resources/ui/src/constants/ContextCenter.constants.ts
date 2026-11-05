@@ -73,7 +73,6 @@ export const ARTICLE_SORT_OPTIONS: ArticleSortOption[] = [
 
 export const DEFAULT_ARTICLE_SORT_OPTION = ARTICLE_SORT_OPTIONS[0];
 
-export const ARCHIVE_PAGE_SIZE = 15;
 export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
 export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
 export const RECENT_DASHBOARD_MEMORIES_LIMIT = 3;
@@ -133,13 +132,18 @@ export const VISIBILITY_OPTIONS = [
   },
 ];
 
-export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
   'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
 
 export const DEFAULT_MEMORY_STATUSES = [
   ContextMemoryStatus.Approved,
   ContextMemoryStatus.Unprocessed,
+];
+
+// Draft holds a memory for a person: one whose supporting query was deleted has no review task.
+export const DEFAULT_MEMORY_LIST_STATUSES = [
+  ...DEFAULT_MEMORY_STATUSES,
+  ContextMemoryStatus.Draft,
 ];
 
 export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
@@ -152,12 +156,6 @@ export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
   [ContextMemoryStatus.Superseded]: 'label.superseded',
   [ContextMemoryStatus.Invalidated]: 'label.invalidated',
 };
-
-export const FILTER_TABS = [
-  { id: 'all', label: 'label.all' },
-  { id: 'created-by-me', label: 'label.created-by-me' },
-  { id: 'needs-review', label: 'label.needs-review' },
-] as const;
 
 // utility-gray-blue-50 resolves to gray-blue-950 in dark, which reads as a
 // black hole on a gray-800 card, so dark swaps to the translucent active fill.

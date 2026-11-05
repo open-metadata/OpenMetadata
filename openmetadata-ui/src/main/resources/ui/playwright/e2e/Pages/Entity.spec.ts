@@ -1306,12 +1306,7 @@ pickEntityMatrix(
           await waitForAllLoadersToDisappear(page);
 
           const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
-          // Match both engines without a positional pick: AntD rows live in
-          // a <table> nested inside .ant-table (excluded here, the wrapper
-          // matches instead); TableV2 renders one plain <table>.
-          const childTable = page
-            .locator('.ant-table, table:not(.ant-table table)')
-            .filter({ has: taggedRow });
+          const childTable = page.locator('table').filter({ has: taggedRow });
           const rows = childTable.locator(`[${rowSelector}]`);
 
           await test.step('Tag a child row', async () => {
@@ -1764,20 +1759,20 @@ pickEntityMatrix(
             const testCase1 = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_dq_success_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 1 },
-                { name: 'maxLength', value: 10 },
+                { name: 'minValue', value: 1 },
+                { name: 'maxValue', value: 10 },
               ],
             });
 
             const testCase2 = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_dq_failed_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 100 },
-                { name: 'maxLength', value: 200 },
+                { name: 'minValue', value: 100 },
+                { name: 'maxValue', value: 200 },
               ],
             });
 
@@ -1903,10 +1898,10 @@ pickEntityMatrix(
             const testCase = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_incident_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 100 },
-                { name: 'maxLength', value: 200 },
+                { name: 'minValue', value: 100 },
+                { name: 'maxValue', value: 200 },
               ],
             });
 

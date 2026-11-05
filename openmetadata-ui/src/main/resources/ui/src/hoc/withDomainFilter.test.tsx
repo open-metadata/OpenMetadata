@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { InternalAxiosRequestConfig } from 'axios';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  SKIP_DOMAIN_FILTER_HEADER,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import { useProductTourStore } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 import { withDomainFilter } from './withDomainFilter';
@@ -45,7 +49,66 @@ describe('withDomainFilter', () => {
       headers: {},
     } as InternalAxiosRequestConfig);
 
+  describe('data quality report batch', () => {
+    const batchConfig = (requests: Record<string, unknown>[]) =>
+      ({
+        method: 'post',
+        url: '/dataQuality/testSuites/dataQualityReport/batch',
+        data: { requests },
+        headers: {},
+      } as unknown as InternalAxiosRequestConfig);
+
+    beforeEach(() => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue(
+        '/data-quality'
+      );
+    });
+
+    it('should scope each item to the navbar domain unless it names one', () => {
+      mockGetState.mockReturnValue({ activeDomain: 'Finance' });
+
+      const result = withDomainFilter(
+        batchConfig([
+          { key: '0', index: 'table' },
+          { key: '1', index: 'table', domain: 'Marketing' },
+        ])
+      );
+
+      expect(result.data.requests).toEqual([
+        { key: '0', index: 'table', domain: 'Finance' },
+        { key: '1', index: 'table', domain: 'Marketing' },
+      ]);
+    });
+
+    it('should leave the batch unscoped under All Domains', () => {
+      mockGetState.mockReturnValue({ activeDomain: DEFAULT_DOMAIN_VALUE });
+
+      const result = withDomainFilter(
+        batchConfig([{ key: '0', index: 'table' }])
+      );
+
+      expect(result.data.requests).toEqual([{ key: '0', index: 'table' }]);
+    });
+  });
+
   describe('should not intercept requests', () => {
+    it('should leave every request unfiltered while a product tour runs', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/explore'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
+      useProductTourStore.setState({ isActive: true });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.TABLE,
+      });
+      const result = withDomainFilter(config);
+      useProductTourStore.setState({ isActive: false });
+
+      expect(result).toBe(config);
+      expect(result.params).toEqual({ index: SearchIndex.TABLE });
+    });
+
     it('should return config unchanged when path starts with /domain', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockImplementationOnce(
         () => '/domain/test'
@@ -145,6 +208,21 @@ describe('withDomainFilter', () => {
         domain: 'engineering',
       });
     });
+
+    it('should leave task lists unfiltered and keep a domain their caller set', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue('/explore');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const assigned = withDomainFilter(
+        createMockConfig('get', '/tasks/assigned', { limit: 10 })
+      );
+      const domainPage = withDomainFilter(
+        createMockConfig('get', '/tasks/count', { domain: 'sales' })
+      );
+
+      expect(assigned.params).toEqual({ limit: 10 });
+      expect(domainPage.params).toEqual({ domain: 'sales' });
+    });
   });
 
   describe('search query requests', () => {
@@ -189,6 +267,26 @@ describe('withDomainFilter', () => {
       });
     });
 
+    it('should keep articles with no domain in an article search', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/context-center/articles'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const result = withDomainFilter(
+        createMockConfig('get', '/search/query', {
+          index: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+        })
+      );
+      const filter = JSON.parse(result.params?.query_filter as string);
+
+      expect(filter.query.bool.must[0].bool.should).toContainEqual({
+        bool: {
+          must_not: { exists: { field: 'domains.fullyQualifiedName' } },
+        },
+      });
+    });
+
     it('should return config unchanged for TAG index searches', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
         '/api/search'
@@ -202,6 +300,70 @@ describe('withDomainFilter', () => {
 
       expect(result).toBe(config);
       expect(result.params?.query_filter).toBeUndefined();
+    });
+
+    it.each([SearchIndex.USER, SearchIndex.TEAM])(
+      'should return config unchanged for %s index searches (owner and member pickers)',
+      (index) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+          '/api/search'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const config = createMockConfig('get', '/search/query', { index });
+        const result = withDomainFilter(config);
+
+        expect(result).toBe(config);
+        expect(result.params?.query_filter).toBeUndefined();
+      }
+    );
+
+    it.each([['team,user'], [['team', 'user']], ['user,team,tag']])(
+      'should return config unchanged for combined people searches (%s)',
+      (index) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+          '/api/search'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const config = createMockConfig('get', '/search/query', { index });
+        const result = withDomainFilter(config);
+
+        expect(result).toBe(config);
+        expect(result.params?.query_filter).toBeUndefined();
+      }
+    );
+
+    it('should still filter a combined search that includes a data index', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: 'table,user',
+      });
+      const result = withDomainFilter(config);
+
+      expect(result.params?.query_filter).toBeDefined();
+    });
+
+    it('should leave a request marked to skip the domain filter unfiltered, and drop the marker', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/api/search'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.GLOSSARY_TERM,
+      });
+      config.headers = {
+        [SKIP_DOMAIN_FILTER_HEADER]: 'true',
+      } as unknown as InternalAxiosRequestConfig['headers'];
+      const result = withDomainFilter(config);
+
+      expect(result.params?.query_filter).toBeUndefined();
+      expect(result.headers?.[SKIP_DOMAIN_FILTER_HEADER]).toBeUndefined();
     });
 
     it('should use fullyQualifiedName field for DOMAIN index searches', () => {

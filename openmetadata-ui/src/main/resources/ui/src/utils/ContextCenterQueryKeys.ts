@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { QueryClient } from '@tanstack/react-query';
+
 /**
  * Per-entity React Query keys for Context Center sidebar badge counts. Each
  * entity's create/delete/restore call sites invalidate only their own key so
@@ -40,3 +42,35 @@ export const CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY = [
 export const CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY = [
   'context-center-memory-detail',
 ];
+
+/**
+ * Converge a badge-count query after an async (`202`) delete: poll `hasLanded`
+ * until the deleted row is gone, then refetch once and keep the server's
+ * figure. Polling the row's absence rather than a precomputed count is what
+ * keeps a concurrent restore or soft-delete from skewing the badge.
+ *
+ * ponytail: bounded poll — the backend emits a completion event on
+ * `DELETE_ENTITY_CHANNEL`; switch to it if a second surface needs this.
+ * ADR:2026-10-14-context-center-badge-counts-reconcile-by-bounded-poll
+ */
+export const reconcileCountAfterAsyncDelete = async (
+  queryClient: QueryClient,
+  queryKey: readonly unknown[],
+  hasLanded: () => Promise<boolean>,
+  {
+    attempts = 5,
+    intervalMs = 1_000,
+  }: { attempts?: number; intervalMs?: number } = {}
+): Promise<void> => {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    if (await hasLanded()) {
+      break;
+    }
+  }
+
+  // `refetchQueries`, not `invalidateQueries`: invalidation only marks an
+  // *inactive* query stale without fetching, so this would silently no-op
+  // whenever the sidebar observing the key is unmounted.
+  await queryClient.refetchQueries({ queryKey });
+};

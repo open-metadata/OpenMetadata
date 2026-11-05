@@ -16,7 +16,7 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
 } from '../constant/common';
-import { clickCodeEditor } from './codeEditor';
+import { clickCodeEditor, fillCodeEditor } from './codeEditor';
 import { toastNotification } from './common';
 import {
   ObservabilityFeature,
@@ -78,46 +78,54 @@ const validateForm = async (page: Page, isColumnMetric = false) => {
   await page.getByTestId('custom-metric-name').clear();
 };
 
-export const createCustomMetric = async ({
-  page,
-  isColumnMetric = false,
-  metric,
-}: CustomMetricDetails) => {
+export const openCustomMetricDrawer = async (
+  page: Page,
+  isColumnMetric = false
+) => {
   await page
     .getByRole('tab', {
       name: isColumnMetric ? 'Column Profile' : 'Table Profile',
     })
     .click();
-  await page.locator('[data-testid="profiler-add-table-test-btn"]').click();
+  await page.getByTestId('profiler-add-table-test-btn').click();
   await selectAddObservabilityFeature(page, ObservabilityFeature.CUSTOM_METRIC);
 
-  const customMetricResponse = page.waitForResponse(
-    '/api/v1/tables/name/*?fields=customMetrics%2Ccolumns&include=all*'
-  );
+  const drawer = page.getByTestId('custom-metric-form-drawer');
 
-  // validate redirection and cancel button
-  await expect(page.locator('[data-testid="heading"]')).toBeVisible();
+  await expect(drawer).toBeVisible();
+
+  return drawer;
+};
+
+export const createCustomMetric = async ({
+  page,
+  isColumnMetric = false,
+  metric,
+}: CustomMetricDetails) => {
+  const drawer = await openCustomMetricDrawer(page, isColumnMetric);
+
+  // the drawer keeps the profile preview beside the form
   await expect(
-    page
-      .locator(
-        `[data-testid="${
-          isColumnMetric
-            ? 'profiler-tab-container'
-            : 'table-profiler-chart-container'
-        }"]`
-      )
-      .filter({ visible: true })
-  ).not.toHaveCount(0);
+    drawer.getByText(
+      isColumnMetric ? 'Add Column metric' : 'Add Table metric',
+      { exact: true }
+    )
+  ).toBeVisible();
+  await expect(
+    drawer.getByTestId(
+      isColumnMetric
+        ? 'profiler-tab-container'
+        : 'table-profiler-chart-container'
+    )
+  ).toBeVisible();
 
-  await page.locator('[data-testid="cancel-button"]').click();
-  await customMetricResponse;
+  await drawer.getByTestId('cancel-button').click();
 
+  await expect(drawer).toBeHidden();
   await expect(page).toHaveURL(/profiler/);
 
-  // Click on create custom metric button
-  await page.click('[data-testid="profiler-add-table-test-btn"]');
-  await page.getByRole('menuitemradio', { name: 'Custom metric' }).click();
-  await page.click('[data-testid="submit-button"]');
+  await openCustomMetricDrawer(page, isColumnMetric);
+  await drawer.getByTestId('submit-button').click();
 
   await validateForm(page, isColumnMetric);
 
@@ -136,7 +144,7 @@ export const createCustomMetric = async ({
   const createMetricResponse = page.waitForResponse(
     '/api/v1/tables/*/customMetric'
   );
-  await page.click('[data-testid="submit-button"]');
+  await drawer.getByTestId('submit-button').click();
   await createMetricResponse;
 
   await toastNotification(
@@ -144,10 +152,51 @@ export const createCustomMetric = async ({
     new RegExp(`${metric.name} created successfully.`)
   );
 
-  // verify the created custom metric
-  await expect(page).toHaveURL(/profiler/);
-
+  await expect(drawer).toBeHidden();
   await expect(page.getByTestId(`${metric.name}-title`)).toBeVisible();
+};
+
+export const editCustomMetric = async ({
+  page,
+  metric,
+}: CustomMetricDetails) => {
+  await page.getByTestId(`${metric.name}-title`).scrollIntoViewIfNeeded();
+  await page.getByTestId(`${metric.name}-custom-metrics-menu`).click();
+  await page.getByRole('menuitemradio', { name: 'Edit' }).click();
+
+  const drawer = page.getByTestId('custom-metric-form-drawer');
+
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByTestId('custom-metric-name')).toHaveValue(
+    metric.name
+  );
+  await expect(drawer.getByTestId('custom-metric-name')).toBeDisabled();
+
+  await fillCodeEditor(page, drawer, metric.expression);
+
+  const updateMetricResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/customMetric') &&
+      response.request().method() === 'PUT'
+  );
+  await drawer.getByTestId('submit-button').click();
+  const response = await updateMetricResponse;
+  const { customMetrics = [], columns = [] } = await response.json();
+  const savedMetric = [
+    ...customMetrics,
+    ...columns.flatMap(
+      (column: { customMetrics?: unknown[] }) => column.customMetrics ?? []
+    ),
+  ].find((saved: { name: string }) => saved.name === metric.name);
+
+  expect(savedMetric.expression).toBe(metric.expression);
+
+  await toastNotification(
+    page,
+    new RegExp(`${metric.name} updated successfully.`)
+  );
+
+  await expect(drawer).toBeHidden();
 };
 
 export const deleteCustomMetric = async ({

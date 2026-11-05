@@ -25,6 +25,7 @@ import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -69,6 +70,7 @@ const LineageConfigPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeField, setActiveField] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [storedConfig, setStoredConfig] = useState<LineageSettings>();
   const form = useForm<LineageConfigFormValues>({
     defaultValues: toFormValues(),
   });
@@ -87,8 +89,11 @@ const LineageConfigPage = () => {
     try {
       setIsLoading(true);
 
-      const config = await getSettingsByType(SettingType.LineageSettings);
-      form.reset(toFormValues(config as LineageSettings));
+      const config = (await getSettingsByType(
+        SettingType.LineageSettings
+      )) as LineageSettings;
+      setStoredConfig(config);
+      form.reset(toFormValues(config));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -104,9 +109,12 @@ const LineageConfigPage = () => {
     try {
       setIsUpdating(true);
 
+      // The settings PUT replaces the whole value, so send back the fields
+      // this form does not edit (graphPerformanceConfig) or the save drops them.
       const configData = {
         config_type: SettingType.LineageSettings,
         config_value: {
+          ...storedConfig,
           upstreamDepth: Number(values.upstreamDepth),
           downstreamDepth: Number(values.downstreamDepth),
           lineageLayer: values.lineageLayer,
@@ -122,6 +130,7 @@ const LineageConfigPage = () => {
       );
 
       const lineageConfig = data.config_value as LineageSettings;
+      setStoredConfig(lineageConfig);
       form.reset(toFormValues(lineageConfig));
 
       // Update lineage config in store
@@ -193,6 +202,16 @@ const LineageConfigPage = () => {
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  // The settings PUT replaces the whole value, so saving a form that never
+  // loaded the stored settings would wipe the ones it does not edit.
+  if (!storedConfig) {
+    return (
+      <Box className="tw:relative tw:min-h-80">
+        <SomethingWentWrongPlaceholder onReload={fetchSearchConfig} />
+      </Box>
+    );
   }
 
   return (

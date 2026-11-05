@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
 import {
   Button,
+  ButtonUtility,
   getField,
   HookForm,
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { Fragment, useEffect, useId, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -89,7 +90,13 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       <Typography className="drawer-title">
         {resource ? t('label.edit-resource') : t('label.add-resource')}
       </Typography>
-      <CloseOutlined className="drawer-close" onClick={onClose} />
+      <ButtonUtility
+        data-testid="drawer-close-icon"
+        icon={XClose}
+        size="lg"
+        tooltip={t('label.close')}
+        onClick={onClose}
+      />
     </div>
   );
 

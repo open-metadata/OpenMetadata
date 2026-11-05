@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormSelectItem } from '@openmetadata/ui-core-components';
+import {
+  FieldDocPopoverVariant,
+  FormSelectItem,
+} from '@openmetadata/ui-core-components';
 import { CustomProperty } from '../../../../generated/type/customProperty';
 import { CustomPropertyChanges } from '../../../../rest/metadataTypeAPI';
 
@@ -26,5 +29,6 @@ export interface CustomPropertyEditFormProps {
   property: CustomProperty;
   formId: string;
   showHint?: boolean;
+  fieldDocVariant?: FieldDocPopoverVariant;
   onSubmit: (changes: CustomPropertyChanges) => Promise<void> | void;
 }

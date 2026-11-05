@@ -30,6 +30,13 @@ export interface OracleConnection {
      */
     hostPort?: string;
     /**
+     * Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data
+     * dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped.
+     * When enabled, GTTs are ingested with TableType=Local so they can be distinguished from
+     * regular tables.
+     */
+    includeTemporaryTables?: boolean;
+    /**
      * This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if
      * you need to enable thick connection mode. By default, we bring instant client 19 and
      * point to /instantclient.

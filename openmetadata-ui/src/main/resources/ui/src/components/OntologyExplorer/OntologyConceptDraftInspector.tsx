@@ -19,6 +19,7 @@ import {
   Input,
   Select,
   SelectItemType,
+  SlideoutMenu,
   TextArea,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
@@ -27,10 +28,9 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { OntologyAttribute } from '../../generated/type/ontologyAttribute';
 import { addGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
+import { ONTOLOGY_DRAWER_WIDTH } from './OntologyExplorer.constants';
 import { OntologyNode } from './OntologyExplorer.interface';
 
 type DraftNodeUpdate = Partial<
@@ -78,7 +78,6 @@ const OntologyConceptDraftInspector = ({
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [iri, setIri] = useState('');
-  const [attributes, setAttributes] = useState<OntologyAttribute[]>([]);
   const [iriError, setIriError] = useState<string>();
   const [isCreating, setIsCreating] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -136,7 +135,6 @@ const OntologyConceptDraftInspector = ({
     setIsCreating(true);
     try {
       const concept = await addGlossaryTerm({
-        ...(attributes.length ? { attributes } : {}),
         description: description.trim(),
         displayName: displayName.trim() || undefined,
         glossary: selectedGlossary.fullyQualifiedName ?? selectedGlossary.name,
@@ -162,11 +160,20 @@ const OntologyConceptDraftInspector = ({
   };
 
   return (
-    <aside
-      className="tw:absolute tw:inset-y-0 tw:right-0 tw:z-20 tw:w-[max(420px,40vw)] tw:max-w-full tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-overlay-surface tw:shadow-2xl"
-      data-testid="ontology-concept-draft-inspector">
+    <SlideoutMenu
+      isDismissable
+      isOpen
+      aria-label={t('label.new-entity', { entity: t('label.concept') })}
+      dialogClassName="tw:gap-0 tw:items-stretch"
+      width={ONTOLOGY_DRAWER_WIDTH}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onCancel();
+        }
+      }}>
       <form
-        className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+        className="tw:flex tw:size-full tw:min-h-0 tw:flex-col"
+        data-testid="ontology-concept-draft-inspector"
         onSubmit={handleFormSubmit}>
         <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:pt-5 tw:pb-8">
           <div className="tw:flex tw:items-center tw:gap-1.5">
@@ -181,7 +188,7 @@ const OntologyConceptDraftInspector = ({
               color="tertiary"
               data-testid="ontology-draft-close"
               icon={XClose}
-              size="sm"
+              size="lg"
               tooltip={t('label.close')}
               onClick={onCancel}
             />
@@ -272,14 +279,6 @@ const OntologyConceptDraftInspector = ({
               }}
             />
           </section>
-
-          <div className="tw:my-[18px] tw:h-px tw:bg-secondary" />
-          <OntologyConceptAttributes
-            isEditMode
-            attributes={attributes}
-            variant="inspector"
-            onAttributesChange={setAttributes}
-          />
         </div>
 
         <div className="tw:flex tw:shrink-0 tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:p-4">
@@ -301,7 +300,7 @@ const OntologyConceptDraftInspector = ({
           </Button>
         </div>
       </form>
-    </aside>
+    </SlideoutMenu>
   );
 };
 

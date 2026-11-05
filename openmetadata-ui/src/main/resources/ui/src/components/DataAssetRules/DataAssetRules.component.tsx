@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -25,6 +24,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Registry } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
@@ -438,7 +438,7 @@ export const useSemanticsRuleList = ({
           <Button
             color="secondary-brand"
             data-testid="add-widget-button"
-            iconLeading={<PlusOutlined />}
+            iconLeading={Plus}
             onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>

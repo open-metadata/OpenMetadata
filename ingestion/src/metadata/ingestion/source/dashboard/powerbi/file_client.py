@@ -45,7 +45,10 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
 )
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.readers.file.local import LocalReader
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.logger import utils_logger
 from metadata.utils.s3_utils import list_s3_objects
 
@@ -271,7 +274,7 @@ def _(config: GCSConfig):
 
         set_google_credentials(gcp_credentials=config.securityConfig)
 
-        client = storage.Client()
+        client = storage.Client(credentials=get_gcp_impersonate_credentials_or_none(config.securityConfig))
         if not bucket_name:
             buckets = client.list_buckets()
         else:

@@ -11,62 +11,111 @@
  *  limitations under the License.
  */
 import {
-  Autocomplete,
-  type SelectItemType,
+  Box,
+  Select,
+  SelectItemType,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import React, { useCallback, useMemo, useState } from 'react';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
+import { debounce } from 'lodash';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Collection, Key, ListBoxLoadMoreItem } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { useShallow } from 'zustand/react/shallow';
-import { ZOOM_TRANSITION_DURATION } from '../../../../constants/Lineage.constants';
+import {
+  DEBOUNCE_TIMEOUT,
+  INITIAL_NODE_ITEMS_LENGTH,
+  NODE_ITEMS_PAGE_SIZE,
+  ZOOM_TRANSITION_DURATION,
+} from '../../../../constants/Lineage.constants';
 import { LineagePlatformView } from '../../../../hooks/lineage/types';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
+import { getVisibleOptions } from './LineageSearchSelect.utils';
+
+type LineageSearchOption = SelectItemType & {
+  label: string;
+  content: ReactNode;
+};
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
   const { onNodeClick } = useLineageHandlers();
-  const { nodes, reactFlowInstance } = useLineageStore(
+  // `nodes` itself is read when needed, not subscribed to: it changes every
+  // drag frame. The id key changes only when nodes are added or removed.
+  const nodeIdsKey = useLineageStore((s) =>
+    s.nodes.map((node) => node.id).join('|')
+  );
+  const {
+    reactFlowInstance,
+    zoomValue,
+    isPlatformLineage,
+    platformView,
+    setSelectedColumn,
+  } = useLineageStore(
     useShallow((s) => ({
-      nodes: s.nodes,
       reactFlowInstance: s.reactFlowInstance,
+      zoomValue: s.zoomValue,
+      isPlatformLineage: s.isPlatformLineage,
+      platformView: s.platformView,
+      setSelectedColumn: s.setSelectedColumn,
     }))
   );
-  const { zoomValue, isPlatformLineage, platformView, setSelectedColumn } =
-    useLineageStore();
-  // Options are built on first focus: a large graph has thousands of columns.
-  const [isActivated, setIsActivated] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<SelectItemType[]>([]);
+  const [allOptions, setAllOptions] = useState<LineageSearchOption[]>([]);
+  const [renderedOptions, setRenderedOptions] = useState<LineageSearchOption[]>(
+    []
+  );
+  const [searchValue, setSearchValue] = useState<string>('');
+  const searchValueRef = useRef(searchValue);
+  searchValueRef.current = searchValue;
+  const isOpenRef = useRef(false);
+  const [inputValue, setInputValue] = useState<string>('');
+  const [selectedOption, setSelectedOption] =
+    useState<LineageSearchOption | null>(null);
 
-  const options = useMemo(() => {
-    if (!isActivated) {
-      return [];
-    }
-    const optionsMap = new Map<string, SelectItemType>();
+  const generateNodeOptions = useCallback(() => {
+    const optionsMap: Map<string, LineageSearchOption> = new Map();
 
-    nodes.forEach((nodeObj) => {
+    useLineageStore.getState().nodes.forEach((nodeObj) => {
       const { node } = nodeObj.data;
-      if (!node?.fullyQualifiedName) {
+      if (!node) {
         return;
       }
 
-      const icon = (
-        <img
-          alt={node.serviceType}
-          height="16px"
-          src={serviceUtilClassBase.getServiceTypeLogo(node)}
-          width="16px"
-        />
-      );
-      const nodeName = getEntityName(node);
-      optionsMap.set(node.fullyQualifiedName, {
+      const nodeOption: LineageSearchOption = {
         id: node.fullyQualifiedName,
-        label: nodeName,
-        icon,
-      });
+        label: getEntityName(node),
+        content: (
+          <Box
+            align="center"
+            data-testid={`option-${node.fullyQualifiedName}`}
+            gap={1}>
+            <img
+              alt={node.serviceType}
+              height="16px"
+              src={serviceUtilClassBase.getServiceTypeLogo(node)}
+              width="16px"
+            />
+            <Typography ellipsis size="text-sm">
+              {getEntityName(node)}
+            </Typography>
+          </Box>
+        ),
+      };
+      optionsMap.set(nodeOption.id, nodeOption);
 
       const { children: childrenFlatten } = getEntityChildrenAndLabel(node);
 
@@ -75,30 +124,115 @@ const LineageSearchSelect = () => {
         // node itself. Both options key on FQN, so without this the child would
         // overwrite the node option added above and render the node with the
         // column-style label.
-        if (
-          !column.fullyQualifiedName ||
-          column.fullyQualifiedName === node.fullyQualifiedName
-        ) {
+        if (column.fullyQualifiedName === node.fullyQualifiedName) {
           return;
         }
 
-        optionsMap.set(column.fullyQualifiedName, {
-          id: column.fullyQualifiedName,
+        const columnOption: LineageSearchOption = {
+          id: column.fullyQualifiedName ?? '',
           label: getEntityName(column),
-          supportingText: nodeName,
-          icon,
-        });
+          content: (
+            <Box
+              align="center"
+              data-testid={`option-${column.fullyQualifiedName}`}
+              gap={1}>
+              <Box align="center" gap={1}>
+                <img
+                  alt={node.serviceType}
+                  height="16px"
+                  src={serviceUtilClassBase.getServiceTypeLogo(node)}
+                  width="16px"
+                />
+                <Typography className="tw:text-tertiary" size="text-xs">
+                  {getEntityName(node)}
+                </Typography>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="tw:size-3 tw:text-fg-quaternary"
+                />
+              </Box>
+              <Box align="center" gap={1}>
+                {searchClassBase.getEntityIconWithBg(
+                  node.entityType ?? '',
+                  EntityIconSize.Size14
+                )}
+                <Typography ellipsis size="text-sm">
+                  {getEntityName(column)}
+                </Typography>
+              </Box>
+            </Box>
+          ),
+        };
+        optionsMap.set(columnOption.id, columnOption);
       });
     });
 
     return Array.from(optionsMap.values());
-  }, [isActivated, nodes]);
+  }, []);
+
+  const filterOptions = useCallback(
+    (value: string) => setRenderedOptions(getVisibleOptions(allOptions, value)),
+    [allOptions]
+  );
+
+  const debouncedFilterOptions = useMemo(
+    () => debounce(filterOptions, DEBOUNCE_TIMEOUT),
+    [filterOptions]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedFilterOptions.cancel();
+    };
+  }, [debouncedFilterOptions]);
+
+  const loadMoreData = () => {
+    if (searchValue || renderedOptions.length >= allOptions.length) {
+      return;
+    }
+    setRenderedOptions(
+      allOptions.slice(0, renderedOptions.length + NODE_ITEMS_PAGE_SIZE)
+    );
+  };
+
+  // Rebuilding replaces `allOptions`, which cancels a queued filter (typing
+  // into the focused input reopens the menu after queueing one), so the
+  // current text is applied here.
+  const refreshOptions = useCallback(() => {
+    const options = generateNodeOptions();
+    setAllOptions(options);
+    setRenderedOptions(getVisibleOptions(options, searchValueRef.current));
+  }, [generateNodeOptions]);
+
+  // While open, follow nodes being added or removed, but not drag updates.
+  useEffect(() => {
+    if (isOpenRef.current) {
+      refreshOptions();
+    }
+  }, [nodeIdsKey, refreshOptions]);
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      isOpenRef.current = open;
+      if (open) {
+        refreshOptions();
+
+        return;
+      }
+      setSearchValue('');
+      setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
+      debouncedFilterOptions.cancel();
+    },
+    [allOptions, debouncedFilterOptions, refreshOptions]
+  );
 
   const onOptionSelect = useCallback(
     (value?: string) => {
-      const selectedNode = nodes.find(
-        (node: Node) => node.data.node.fullyQualifiedName === value
-      );
+      const selectedNode = useLineageStore
+        .getState()
+        .nodes.find(
+          (node: Node) => node.data.node.fullyQualifiedName === value
+        );
       if (selectedNode) {
         onNodeClick(selectedNode);
 
@@ -126,55 +260,69 @@ const LineageSearchSelect = () => {
         setSelectedColumn(value ?? '');
       }
     },
-    [onNodeClick, reactFlowInstance, setSelectedColumn, nodes, zoomValue]
+    [onNodeClick, reactFlowInstance, setSelectedColumn, zoomValue]
   );
 
-  const handleItemInserted = useCallback(
-    (key: React.Key) => {
-      const item = options.find((option) => option.id === key);
-      setSelectedItems(item ? [item] : []);
-      onOptionSelect(String(key));
-    },
-    [options, onOptionSelect]
-  );
+  // Both inputValue and value are controlled, so react-aria never
+  // rewrites the input itself: it re-emits the current key on blur/close to
+  // ask for the text to be synced back, and leaves clearing to us.
+  const handleSelectionChange = (key: Key | null) => {
+    const id = key === null ? null : String(key);
+    if (id === (selectedOption?.id ?? null)) {
+      setInputValue(selectedOption?.label ?? '');
 
-  const handleItemCleared = useCallback(() => {
-    setSelectedItems([]);
-    onOptionSelect(undefined);
-  }, [onOptionSelect]);
+      return;
+    }
+    const option = allOptions.find((opt) => opt.id === id) ?? null;
+    setSelectedOption(option);
+    setInputValue(option?.label ?? '');
+    onOptionSelect(id ?? undefined);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    setSearchValue(value);
+    debouncedFilterOptions(value);
+    if (!value && selectedOption) {
+      setSelectedOption(null);
+      onOptionSelect();
+    }
+  };
 
   if (isPlatformLineage || platformView !== LineagePlatformView.None) {
     return null;
   }
 
-  const placeholder = t('label.search-entity', {
-    entity: t('label.lineage'),
-  });
-
   return (
-    <div className="tw:w-80">
-      <Autocomplete
-        aria-label={placeholder}
-        data-testid="lineage-search"
-        items={options}
-        multiple={false}
-        placeholder={placeholder}
-        selectedItems={selectedItems}
-        onFocus={() => setIsActivated(true)}
-        onItemCleared={handleItemCleared}
-        onItemInserted={handleItemInserted}>
-        {(item) => (
-          <Autocomplete.Item
-            data-testid={`option-${item.id}`}
-            icon={item.icon}
-            id={item.id}
-            key={item.id}
-            label={item.label}
-            supportingText={item.supportingText}
-          />
+    <Select.ComboBox
+      allowsEmptyCollection
+      aria-label={t('label.search-entity', {
+        entity: t('label.lineage'),
+      })}
+      className="tw:w-80"
+      data-testid="lineage-search"
+      emptyState={t('label.no-data-found')}
+      fontSize="sm"
+      inputValue={inputValue}
+      items={renderedOptions}
+      placeholder={t('label.search-entity', {
+        entity: t('label.lineage'),
+      })}
+      shortcut={false}
+      size="md"
+      value={selectedOption?.id ?? null}
+      onChange={handleSelectionChange}
+      onInputChange={handleInputChange}
+      onOpenChange={handleOpenChange}>
+      <Collection items={renderedOptions}>
+        {(option) => (
+          <Select.Item id={option.id} textValue={option.label}>
+            {option.content}
+          </Select.Item>
         )}
-      </Autocomplete>
-    </div>
+      </Collection>
+      <ListBoxLoadMoreItem onLoadMore={loadMoreData} />
+    </Select.ComboBox>
   );
 };
 

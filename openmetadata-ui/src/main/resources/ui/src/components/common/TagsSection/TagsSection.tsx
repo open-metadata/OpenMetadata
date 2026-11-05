@@ -12,17 +12,19 @@
  */
 import {
   Button,
+  ButtonUtility,
   ClassificationTag,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import ClassificationTagPicker from '../ClassificationTagPicker/ClassificationTagPicker';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagsSectionProps } from './TagsSection.interface';
 import './TagsSection.less';
@@ -138,12 +140,10 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
           data-testid="classification-tag-picker"
           isOpen={isEditing}
           renderTrigger={({ toggle }) => (
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-icon-tags"
-              disabled={false}
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.tag-plural'),
               })}
               onClick={toggle}
@@ -174,11 +174,11 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
 
     if (!nonTierTags.length) {
       return (
-        <span className="no-data-placeholder">
+        <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
           {t('label.no-entity-assigned', {
             entity: t('label.tag-plural'),
           })}
-        </span>
+        </Typography>
       );
     }
 
@@ -222,7 +222,9 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
   return (
     <div className="tags-section">
       <div className="tags-header">
-        <Typography className="tags-title">{t('label.tag-plural')}</Typography>
+        <Typography size="text-xs" weight="semibold">
+          {t('label.tag-plural')}
+        </Typography>
         {editButton}
       </div>
       <div className="tags-content">{tagsContent}</div>

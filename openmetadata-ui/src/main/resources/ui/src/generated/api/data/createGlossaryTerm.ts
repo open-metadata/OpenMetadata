@@ -15,10 +15,6 @@
  */
 export interface CreateGlossaryTerm {
     /**
-     * Typed properties governed by this ontology concept.
-     */
-    attributes?: OntologyAttribute[];
-    /**
      * Optional mappings to external concepts (e.g., SKOS alignments).
      */
     conceptMappings?: ConceptMapping[];
@@ -68,10 +64,6 @@ export interface CreateGlossaryTerm {
     parent?:   string;
     provider?: ProviderType;
     /**
-     * Data assets that physically realize this concept.
-     */
-    realizedIn?: AssetRealization[];
-    /**
      * Link to a reference from an external glossary.
      */
     references?: TermReference[];
@@ -95,74 +87,42 @@ export interface CreateGlossaryTerm {
 }
 
 /**
- * A typed attribute governed by an ontology concept.
+ * Mapping from an ontology term to an external concept.
  */
-export interface OntologyAttribute {
-    dataType: DataType;
+export interface ConceptMapping {
     /**
-     * Exact RDF datatype IRI preserved for ontology round trips.
+     * External concept IRI to map this ontology term to.
      */
-    datatypeIri?: string;
+    conceptIri: string;
     /**
-     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+     * Type of mapping used for the external concept alignment.
      */
-    declaringTerm?: EntityReference;
+    mappingType: ConceptMappingType;
     /**
-     * Human-readable meaning of the attribute.
+     * Optional external concept scheme IRI for the mapped concept.
      */
-    description?: string;
+    schemeIri?: string;
     /**
-     * Allowed values when dataType is ENUM.
+     * Optional source label or catalog for the external concept.
      */
-    enumValues?: string[];
-    /**
-     * Stable identifier used by drafts and version diffs.
-     */
-    id: string;
-    /**
-     * True when the attribute is contributed by an ancestor concept rather than declared on the
-     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
-     * concept's own `attributes`.
-     */
-    inherited?: boolean;
-    /**
-     * Canonical IRI of the OWL datatype property.
-     */
-    iri?: string;
-    /**
-     * Whether the attribute identifies instances of the concept.
-     */
-    isIdentifier: boolean;
-    /**
-     * Name of the attribute within its concept.
-     */
-    name: string;
-    /**
-     * Optional unit IRI or display symbol.
-     */
-    unit?: string;
+    source?: string;
 }
 
 /**
- * Supported value type for an ontology attribute.
+ * Type of mapping used for the external concept alignment.
+ *
+ * Type of mapping used to align this term with an external concept.
  */
-export enum DataType {
-    Boolean = "BOOLEAN",
-    Date = "DATE",
-    Decimal = "DECIMAL",
-    Enum = "ENUM",
-    Integer = "INTEGER",
-    String = "STRING",
+export enum ConceptMappingType {
+    BroadMatch = "BROAD_MATCH",
+    CloseMatch = "CLOSE_MATCH",
+    ExactMatch = "EXACT_MATCH",
+    NarrowMatch = "NARROW_MATCH",
+    RelatedMatch = "RELATED_MATCH",
+    SameAs = "SAME_AS",
 }
 
 /**
- * Ancestor concept that declares this attribute. Only set when `inherited` is true.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
  * Owners of this glossary term.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
@@ -170,7 +130,10 @@ export enum DataType {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Data asset realizing the concept.
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
     /**
@@ -216,42 +179,6 @@ export interface EntityReference {
 }
 
 /**
- * Mapping from an ontology term to an external concept.
- */
-export interface ConceptMapping {
-    /**
-     * External concept IRI to map this ontology term to.
-     */
-    conceptIri: string;
-    /**
-     * Type of mapping used for the external concept alignment.
-     */
-    mappingType: ConceptMappingType;
-    /**
-     * Optional external concept scheme IRI for the mapped concept.
-     */
-    schemeIri?: string;
-    /**
-     * Optional source label or catalog for the external concept.
-     */
-    source?: string;
-}
-
-/**
- * Type of mapping used for the external concept alignment.
- *
- * Type of mapping used to align this term with an external concept.
- */
-export enum ConceptMappingType {
-    BroadMatch = "BROAD_MATCH",
-    CloseMatch = "CLOSE_MATCH",
-    ExactMatch = "EXACT_MATCH",
-    NarrowMatch = "NARROW_MATCH",
-    RelatedMatch = "RELATED_MATCH",
-    SameAs = "SAME_AS",
-}
-
-/**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
  * deleted and can only be disabled. Some apps such as AutoPilot create entities with
@@ -261,53 +188,6 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
-}
-
-/**
- * A data asset that physically realizes an ontology concept. Unlike a tag label, which
- * records that an asset merely references a concept, a realization records that the asset
- * stores the instances of the concept.
- */
-export interface AssetRealization {
-    /**
-     * Data asset realizing the concept.
-     */
-    asset: EntityReference;
-    /**
-     * Human-readable note about how the asset realizes the concept.
-     */
-    description?: string;
-    /**
-     * Stable identifier used by drafts and version diffs.
-     */
-    id?: string;
-    /**
-     * How this realization edge originated. Defaults to 'Manual'.
-     */
-    provenance?: Provenance;
-    role?:       RealizationRole;
-}
-
-/**
- * How this realization edge originated. Defaults to 'Manual'.
- *
- * How this relation edge originated.
- */
-export enum Provenance {
-    AISuggested = "AiSuggested",
-    Imported = "Imported",
-    Inferred = "Inferred",
-    Manual = "Manual",
-}
-
-/**
- * Role the asset plays in realizing the concept. At most one asset may be the primary store
- * of a concept.
- */
-export enum RealizationRole {
-    Derived = "DERIVED",
-    PrimaryStore = "PRIMARY_STORE",
-    Replica = "REPLICA",
 }
 
 export interface TermReference {

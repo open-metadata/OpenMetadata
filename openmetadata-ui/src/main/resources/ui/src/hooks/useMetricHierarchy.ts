@@ -19,7 +19,11 @@ import { Kind } from '../generated/api/data/metricHierarchyItem';
 import type { MetricGroup } from '../generated/entity/data/metricGroup';
 import type { Paging } from '../generated/type/paging';
 import { getMetricGroupMetrics } from '../rest/metricGroupsAPI';
-import { getMetricHierarchy, getMetrics } from '../rest/metricsAPI';
+import {
+  getMetricHierarchy,
+  getMetrics,
+  getMetricSearchPaths,
+} from '../rest/metricsAPI';
 import {
   createGroupLoadMoreRow,
   createGroupRow,
@@ -43,6 +47,8 @@ interface ChildPage {
   after?: string;
   total: number;
   parentFqn: string;
+  /** Request generation that loaded this page; pages from a previous query are stale. */
+  generation: number;
 }
 
 interface GroupPage {
@@ -140,7 +146,17 @@ export const useMetricHierarchy = ({
     enabled,
   });
 
+  // While searching, children are cut down to the branches that lead to a match, and those
+  // branches open on their own; otherwise the match sits unfiltered several levels down.
+  const { data: searchPaths } = useQuery({
+    queryKey: ['metric-search-paths', normalizedQuery],
+    queryFn: () => getMetricSearchPaths(normalizedQuery ?? ''),
+    enabled: enabled && Boolean(normalizedQuery),
+  });
+  const autoExpandedIds = useRef(new Set<string>());
+
   useEffect(() => {
+    autoExpandedIds.current = new Set();
     requestGeneration.current += 1;
     setExpandedRowKeys([]);
     setExpandedGroupRowIds([]);
@@ -179,6 +195,7 @@ export const useMetricHierarchy = ({
               after: response.paging?.after,
               total: response.paging?.total ?? response.data.length,
               parentFqn,
+              generation,
             },
           };
         });
@@ -352,12 +369,33 @@ export const useMetricHierarchy = ({
 
   const withChildren = useCallback(
     (metric: MetricTreeNode): MetricTableRow => {
-      const hydrateNode = (node: MetricTreeNode): MetricTableRow => {
+      // Below a matched metric every child shows: the match itself is what was searched for.
+      const hydrateNode = (
+        node: MetricTreeNode,
+        isBelowMatch = false
+      ): MetricTableRow => {
         const childPage = childrenByParentId[node.id];
         if (!childPage || !expandedRowKeys.includes(node.id)) {
           return { ...node, children: undefined };
         }
-        const childRows: MetricTableRow[] = childPage.rows.map(hydrateNode);
+        const isMatchOrBelow =
+          isBelowMatch || Boolean(searchPaths?.matchIds.has(node.id));
+        const pathChildren =
+          searchPaths?.complete && !isMatchOrBelow
+            ? childPage.rows.filter(
+                ({ id }) =>
+                  searchPaths.matchIds.has(id) ||
+                  searchPaths.ancestorIds.has(id)
+              )
+            : childPage.rows;
+        // The search index can lag the hierarchy endpoint (a just-renamed metric); never leave
+        // an expanded parent empty because of that.
+        const visibleChildren = pathChildren.length
+          ? pathChildren
+          : childPage.rows;
+        const childRows: MetricTableRow[] = visibleChildren.map((child) =>
+          hydrateNode(child, isMatchOrBelow)
+        );
         if (childPage.after) {
           childRows.push(
             createLoadMoreRow({
@@ -374,7 +412,7 @@ export const useMetricHierarchy = ({
 
       return hydrateNode(metric);
     },
-    [childrenByParentId, expandedRowKeys]
+    [childrenByParentId, expandedRowKeys, searchPaths]
   );
 
   const topLevelNodes = useMemo(
@@ -395,6 +433,42 @@ export const useMetricHierarchy = ({
       }),
     [groupPageOverrides, initialNodes]
   );
+
+  useEffect(() => {
+    if (!searchPaths?.ancestorIds.size) {
+      return;
+    }
+    const loadedMetrics = [
+      ...topLevelNodes.flatMap(({ row, groupId, members }) =>
+        groupId ? members ?? [] : [row as MetricTreeNode]
+      ),
+      ...Object.values(childrenByParentId).flatMap(({ rows }) => rows),
+    ];
+    loadedMetrics
+      // A metric that is itself a match is already in view; opening it would bury it under its
+      // children, so it stays collapsed until the user expands it.
+      .filter(
+        ({ id }) =>
+          searchPaths.ancestorIds.has(id) &&
+          !searchPaths.matchIds.has(id) &&
+          !autoExpandedIds.current.has(id)
+      )
+      .forEach((metric) => {
+        autoExpandedIds.current.add(metric.id);
+        setExpandedRowKeys((keys) =>
+          keys.includes(metric.id) ? keys : [...keys, metric.id]
+        );
+        // Fetched directly, not via toggleExpand: right after a query change its closure still
+        // holds the previous query's children. A page from this query is kept, so a "Load more"
+        // the user already clicked is not reset.
+        if (
+          childrenByParentId[metric.id]?.generation !==
+          requestGeneration.current
+        ) {
+          fetchChildren(metric).catch(() => undefined);
+        }
+      });
+  }, [childrenByParentId, fetchChildren, searchPaths, topLevelNodes]);
 
   const buildRows = useCallback(
     (nodes: MetricHierarchyNode[]): MetricTableRow[] => {

@@ -13,7 +13,6 @@
 Validator for column values to be between test case
 """
 
-import math
 from datetime import datetime
 from typing import cast
 
@@ -22,6 +21,9 @@ from sqlalchemy import Column
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
+)
+from metadata.data_quality.validations.checkers.between_bounds_checker import (
+    is_unbounded,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeBetween import (
     BaseColumnValuesToBeBetweenValidator,
@@ -145,20 +147,13 @@ class ColumnValuesToBeBetweenValidator(
             NotImplementedError:
         """
         row_count = self._compute_row_count(self.runner, column)
-        filters = []
-        if not isinstance(min_bound, (int, float)) or min_bound > -math.inf:
-            filters.append((column, "lt", min_bound))
-        if not isinstance(max_bound, (int, float)) or max_bound < math.inf:
-            filters.append((column, "gt", max_bound))
-        failed_rows = self._compute_row_count_between(
-            self.runner,
+        failed_rows = self._count_rows_outside(
+            cast(QueryRunner, self.runner),  # noqa: TC006
             column,
-            {
-                "filters": filters,
-                "or_filter": True,
-            },
+            column,
+            min_bound,
+            max_bound,
         )
-
         return row_count, failed_rows
 
     def filter(self):
@@ -186,9 +181,9 @@ class ColumnValuesToBeBetweenValidator(
             max_bound = self.get_max_bound(self.MAX_BOUND)
 
         filters = []
-        if min_bound is not None:
+        if not is_unbounded(min_bound):
             filters.append((column, "lt", min_bound))
-        if max_bound is not None:
+        if not is_unbounded(max_bound):
             filters.append((column, "gt", max_bound))
         return {
             "filters": filters,

@@ -14,7 +14,6 @@
 import {
   Box,
   Card,
-  EmptyPlaceholder,
   Grid,
   Tree,
   Typography,
@@ -32,6 +31,7 @@ import { TreeNode } from '../../../../interface/tree.interface';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../../utils/executionUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import './tree-view-tab.less';
 
 interface TreeViewProps {
@@ -90,7 +90,7 @@ const TreeViewTab = ({
           style={{ ...getLayoutGutter(16) }}
           wrap="wrap">
           <Box className="layout-column tw:block">
-            <ArrowSvg className="cursor-pointer" />
+            <ArrowSvg className="cursor-pointer" height={11} width={7} />
           </Box>
           <Box className="layout-column tw:block">
             <Typography className="p-b-0 m-b-0 font-medium">
@@ -100,15 +100,19 @@ const TreeViewTab = ({
             </Typography>
           </Box>
           <Box className="layout-column tw:block">
-            <ArrowSvg className=" cursor-pointer transform-180" />
+            <ArrowSvg
+              className=" cursor-pointer transform-180"
+              height={11}
+              width={7}
+            />
           </Box>
         </Box>
 
         {isEmpty(viewData) ? (
           <Box className="tw:relative tw:my-4 tw:min-h-40">
-            <EmptyPlaceholder
-              icon={<ClockRewind className="tw:text-secondary" />}
-              title={t('message.no-execution-runs-found')}
+            <NoDataPlaceholder
+              description={t('message.no-execution-runs-found')}
+              icon={<ClockRewind />}
             />
           </Box>
         ) : (

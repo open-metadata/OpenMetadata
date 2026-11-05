@@ -37,7 +37,12 @@ const ChipBadgeList: React.FC<ChipBadgeListProps> = ({
   ) : (
     <Box align="center" className="tw:flex-wrap tw:justify-end tw:gap-2">
       {values.map((value) => (
-        <Badge color={color} key={value.id} size="sm" type="pill-color">
+        <Badge
+          color={color}
+          key={value.id}
+          size="sm"
+          tooltip={getEntityName(value)}
+          type="pill-color">
           {getEntityName(value)}
         </Badge>
       ))}

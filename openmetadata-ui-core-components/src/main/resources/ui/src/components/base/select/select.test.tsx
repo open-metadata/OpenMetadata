@@ -411,3 +411,40 @@ describe('Select with a large collection', () => {
     });
   });
 });
+
+describe('Select borderless', () => {
+  it('drops the trigger border until keyboard focus', () => {
+    render(
+      <Select borderless aria-label="Index">
+        <Select.Item id="all" label="All" />
+      </Select>
+    );
+
+    expect(screen.getByRole('button', { name: /Index/ })).toHaveClass(
+      'tw:outline-0',
+      'tw:bg-transparent'
+    );
+  });
+});
+
+describe('Select xs', () => {
+  it('compacts the trigger but keeps the menu at the small size', async () => {
+    render(
+      <Select aria-label="Range" size="xs">
+        <Select.Item id="week" label="Last 7 days" />
+      </Select>
+    );
+
+    const trigger = screen.getByRole('button', { name: /Range/ });
+
+    expect(trigger).toHaveClass('tw:rounded-md');
+    expect(trigger.firstElementChild).toHaveClass('tw:py-1.25', 'tw:px-2');
+
+    await userEvent.click(trigger);
+
+    expect(
+      (await screen.findByRole('option', { name: 'Last 7 days' }))
+        .firstElementChild
+    ).toHaveClass('tw:p-2');
+  });
+});

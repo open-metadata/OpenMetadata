@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Rule } from 'antd/lib/form';
-
+import type { EntityNameValidationRule } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import i18n from '../utils/i18next/LocalUtil';
 import { ENTITY_NAME_REGEX } from './regex.constants';
 
@@ -34,19 +33,10 @@ const NAME_SIZE_MESSAGE = sizeMessage('label.name');
 const NAME_PATTERN_MESSAGE = String(i18n.t('message.entity-name-validation'));
 const DISPLAY_NAME_SIZE_MESSAGE = sizeMessage('label.display-name');
 
-// TODO(open-metadata/openmetadata-collate#6893): drop the antd `Rule[]` shapes
-// once the last antd forms (alerts, custom metrics) move to react-hook-form.
-export const NAME_FIELD_RULES: Rule[] = [
-  { required: true, message: NAME_REQUIRED_MESSAGE },
-  { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },
-  { pattern: ENTITY_NAME_REGEX, message: NAME_PATTERN_MESSAGE },
-];
-
-export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
+export const DISPLAY_NAME_FIELD_RULES: EntityNameValidationRule[] = [
   { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: DISPLAY_NAME_SIZE_MESSAGE },
 ];
 
-/** react-hook-form counterpart of NAME_FIELD_RULES. */
 export const NAME_FIELD_REGISTER_RULES = {
   required: NAME_REQUIRED_MESSAGE,
   maxLength: { value: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },

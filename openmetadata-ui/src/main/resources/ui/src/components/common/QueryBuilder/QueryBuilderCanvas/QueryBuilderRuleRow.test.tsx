@@ -183,6 +183,18 @@ describe('QueryBuilderRuleRow', () => {
     expect(actions.setOperator).toHaveBeenCalledWith(['root', 'r1'], 'picked');
   });
 
+  it('should keep the operator column wide enough to read its label', () => {
+    renderRow({ properties: { field: 'name' } });
+
+    const operatorColumn = screen
+      .getByText('label.operator')
+      .closest('.tw\\:min-w-\\[140px\\]');
+
+    expect(operatorColumn).toContainElement(
+      screen.getByTestId('advanced-search-operator-select')
+    );
+  });
+
   it('should leave the value column empty until a field and operator are set', () => {
     renderRow({ properties: { field: 'name' } });
 
@@ -320,7 +332,8 @@ describe('QueryBuilderRuleRow', () => {
     ).toBeInTheDocument();
   });
 
-  it('should render no widget for an operator that declares no value slot', () => {
+  it('should say no value is needed for an operator that declares no value slot', () => {
+    // "Is set" takes no value, so the column says so instead of showing an empty, disabled box.
     renderRow(
       { properties: { field: 'name', operator: '==' } },
       {
@@ -332,6 +345,9 @@ describe('QueryBuilderRuleRow', () => {
     );
 
     expect(screen.queryByTestId('value-widget')).not.toBeInTheDocument();
+    expect(screen.getByTestId('advanced-search-value')).toHaveTextContent(
+      'label.no-value-needed'
+    );
   });
 
   it('should render no widget when the named one is not registered', () => {

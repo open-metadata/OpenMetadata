@@ -3,6 +3,7 @@ import type { IconComponentType } from '@/components/base/badges/badge-types';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { Popover } from '@/components/base/select/popover';
+import { forgetFocusedOptionOnTab } from '@/components/base/select/forget-focused-option';
 import { type SelectItemType, sizes } from '@/components/base/select/select';
 import { TagCloseX } from '@/components/base/tags/base-components/tag-close-x';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
@@ -56,12 +57,14 @@ interface ComboBoxValueProps extends AriaGroupProps {
 
 const ComboboxContext = createContext<{
   size: 'sm' | 'md';
+  showTagAvatars: boolean;
   selectedKeys: Key[];
   selectedItems: ListData<SelectItemType>;
   onRemove: (keys: Set<Key>) => void;
   onInputChange: (value: string) => void;
 }>({
   size: 'sm',
+  showTagAvatars: true,
   selectedKeys: [],
   selectedItems: {} as ListData<SelectItemType>,
   onRemove: () => {},
@@ -82,6 +85,8 @@ interface MultiSelectProps
   shortcutClassName?: string;
   selectedItems: ListData<SelectItemType>;
   icon?: IconComponentType | null;
+  /** Chips show each item's avatar; off for items that are not people or teams. */
+  showTagAvatars?: boolean;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemCleared?: (key: Key) => void;
   onItemInserted?: (key: Key) => void;
@@ -177,7 +182,9 @@ const InnerMultiSelect = ({
           <span
             className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
             key={value.id}>
-            <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
+            {comboBoxContext.showTagAvatars && (
+              <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
+            )}
 
             <p className="tw:ml-1.25 tw:truncate tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-secondary tw:select-none">
               {value?.label}
@@ -199,7 +206,10 @@ const InnerMultiSelect = ({
           'tw:relative tw:flex tw:min-w-[20%] tw:flex-1 tw:flex-row tw:items-center',
           !isSelectionEmpty && 'tw:ml-0.5',
           shortcut && 'tw:min-w-[30%]'
-        )}>
+        )}
+        onKeyDownCapture={(event) =>
+          forgetFocusedOptionOnTab(comboBoxStateContext, event)
+        }>
         <AriaInput
           className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
@@ -283,6 +293,7 @@ export const MultiSelectBase = ({
   onItemInserted,
   shortcut,
   placeholder = 'Search',
+  showTagAvatars = true,
   onInputChange: onInputChangeProp,
   // Omit these props to avoid conflicts with the `Select` component
   name: _name,
@@ -326,27 +337,8 @@ export const MultiSelectBase = ({
     [selectedItems, onItemCleared]
   );
 
-  // react-aria commits the focused option on blur/Tab, and the listbox focuses
-  // whatever the pointer last passed over — so leaving the field inserted an
-  // option the user never picked. Only a press or Enter adds a value.
-  const isLeavingRef = useRef(false);
-  const suppressCommit = useCallback(() => {
-    isLeavingRef.current = true;
-    queueMicrotask(() => {
-      isLeavingRef.current = false;
-    });
-  }, []);
-  const onKeyDownCapture = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === 'Tab') {
-        suppressCommit();
-      }
-    },
-    [suppressCommit]
-  );
-
   const onSelectionChange = (id: Key | null) => {
-    if (!id || isLeavingRef.current) {
+    if (!id) {
       return;
     }
 
@@ -394,8 +386,15 @@ export const MultiSelectBase = ({
   });
 
   const contextValues = useMemo(
-    () => ({ size, selectedKeys, selectedItems, onInputChange, onRemove }),
-    [size, selectedKeys, selectedItems, onInputChange, onRemove]
+    () => ({
+      size,
+      showTagAvatars,
+      selectedKeys,
+      selectedItems,
+      onInputChange,
+      onRemove,
+    }),
+    [size, showTagAvatars, selectedKeys, selectedItems, onInputChange, onRemove]
   );
 
   return (
@@ -411,10 +410,7 @@ export const MultiSelectBase = ({
         onInputChange={onInputChange}
         onSelectionChange={onSelectionChange}>
         {(state) => (
-          <div
-            className="tw:flex tw:flex-col tw:gap-1.5"
-            onBlurCapture={suppressCommit}
-            onKeyDownCapture={onKeyDownCapture}>
+          <div className="tw:flex tw:flex-col tw:gap-1.5">
             {props.label && (
               <Label isRequired={state.isRequired} tooltip={props.tooltip}>
                 {props.label}

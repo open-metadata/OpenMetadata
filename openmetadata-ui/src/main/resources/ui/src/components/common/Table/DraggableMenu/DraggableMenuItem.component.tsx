@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EyeInvisibleFilled, EyeOutlined } from '@ant-design/icons';
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Eye,
+  EyeInvisibleFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
@@ -67,7 +70,7 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
         drag(drop(node));
       }}>
       <ColumnDragIcon
-        className="text-grey-muted"
+        className="tw:text-quaternary"
         data-testid="draggable-menu-item-drag-icon"
         height={16}
         width={16}
@@ -76,12 +79,20 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
       <Button
         className="tw:w-full"
         color="tertiary"
+        iconTrailing={
+          isItemSelected ? (
+            <Eye data-icon="trailing" data-testid="eye-icon" />
+          ) : (
+            <EyeInvisibleFilled
+              data-icon="trailing"
+              data-testid="eye-invisible-icon"
+            />
+          )
+        }
         onClick={() => onSelect(value, !isItemSelected)}>
         <Typography className="draggable-menu-item-button-label">
           {label}
         </Typography>
-
-        {isItemSelected ? <EyeOutlined /> : <EyeInvisibleFilled />}
       </Button>
     </div>
   );

@@ -17,10 +17,6 @@ import AddTeamForm from './AddTeamForm';
 const mockCancel = jest.fn();
 const mockSave = jest.fn();
 
-jest.mock('../../constants/constants', () => ({
-  VALIDATION_MESSAGES: [],
-}));
-
 jest.mock('../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn(),
 }));

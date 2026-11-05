@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Accordion,
   AccordionHeader,
@@ -23,11 +22,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -136,7 +135,7 @@ const SearchBoostsSection = ({
                 <Button
                   color="primary"
                   data-testid="term-boost-add-btn"
-                  iconLeading={<Icon component={PlusOutlined} />}
+                  iconLeading={Plus}
                   isDisabled={isUpdating || showNewTermBoost}
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
@@ -181,9 +180,7 @@ const SearchBoostsSection = ({
                 <Button
                   color="secondary"
                   data-testid="add-field-value-boost-btn"
-                  iconLeading={
-                    <Icon className="text-sm" component={PlusOutlined} />
-                  }
+                  iconLeading={Plus}
                   isDisabled={isUpdating || showFieldValueBoostModal}
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}

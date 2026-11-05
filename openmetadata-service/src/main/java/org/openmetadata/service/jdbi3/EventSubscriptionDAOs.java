@@ -338,8 +338,20 @@ public interface EventSubscriptionDAOs {
         connectionType = POSTGRES)
     int deleteConsumersDlqInBatches(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
 
-    @SqlQuery(
-        "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    // Answers each delivered event without the entity it carries, which can be as large as the
+    // asset that changed; the alert pages read only the event's own fields.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.entity') AS json FROM successful_sent_change_events "
+                + "WHERE event_subscription_id = :eventSubscriptionId "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json - 'entity' AS json FROM successful_sent_change_events "
+                + "WHERE event_subscription_id = :eventSubscriptionId "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     List<String> getSuccessfulChangeEventBySubscriptionId(
         @Bind("eventSubscriptionId") String eventSubscriptionId,
         @Bind("limit") int limit,

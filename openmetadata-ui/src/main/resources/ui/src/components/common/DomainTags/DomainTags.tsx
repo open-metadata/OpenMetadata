@@ -14,6 +14,7 @@ import { Button, DomainTag } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDomainStyles } from '../../../hooks/governance/domain/useDomainStyles';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { DomainTagsProps } from './DomainTags.types';
@@ -41,6 +42,8 @@ const DomainTags: FC<DomainTagsProps> = ({
     [domains, showAll, maxVisible]
   );
 
+  const domainStyles = useDomainStyles();
+
   const hiddenCount = (domains?.length ?? 0) - visibleDomains.length;
 
   if (isEmpty(domains)) {
@@ -61,12 +64,14 @@ const DomainTags: FC<DomainTagsProps> = ({
         {visibleDomains.map((domain, index) => (
           <DomainTag
             closeButtonTestId={`remove-domain-${domain.fullyQualifiedName}`}
+            color={domainStyles.get(domain.id)?.color}
             data-testid={`domain-tag-${domain.fullyQualifiedName}`}
             href={
               onRemove || !domain.fullyQualifiedName
                 ? undefined
                 : getDomainPath(domain.fullyQualifiedName)
             }
+            icon={domainStyles.get(domain.id)?.iconURL}
             inherited={showInheritedIcon && domain.inherited}
             inheritedLabel={inheritedLabel}
             key={domain.id ?? domain.fullyQualifiedName}

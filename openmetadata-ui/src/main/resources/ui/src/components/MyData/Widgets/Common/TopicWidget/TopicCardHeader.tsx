@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  FeaturedIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
@@ -59,16 +63,27 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
 
   const content = (
     <>
-      <div
-        aria-hidden
-        className={classNames(
-          'tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
-          tone.tile
-        )}>
-        <ToneIcon size={20} />
-      </div>
+      {'color' in tone ? (
+        <FeaturedIcon
+          aria-hidden
+          color={tone.color}
+          icon={ToneIcon}
+          radius="lg"
+          shape="square"
+          size="md"
+        />
+      ) : (
+        <div
+          aria-hidden
+          className={classNames(
+            'tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+            tone.tile
+          )}>
+          <ToneIcon size={20} />
+        </div>
+      )}
 
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-0.5">
         <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
           {/* `!` on the colour: Typography renders `.prose`, whose unlayered
             `color` rule is emitted after the Tailwind utilities and would
@@ -76,28 +91,44 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
           <Typography
             className="tw:min-w-0 tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
-            size="text-md"
+            size="text-sm"
             weight="semibold">
             {title}
           </Typography>
-          {status && !isLoading && (
-            <Badge
-              className="tw:shrink-0"
-              color={status.color}
-              data-testid={`topic-status-${topicKey}`}
-              size="sm"
-              type="pill-color">
-              {status.label}
-            </Badge>
-          )}
         </div>
         {summarySlot}
       </div>
     </>
   );
 
+  // The status sits on the right, beside the chevron, so every card's title
+  // starts on the same line regardless of how long its badge is. It takes at
+  // most half the strip and truncates past that, with the full text on hover,
+  // so a long status never squeezes the title and summary into a sliver.
+  const trailing = (chevron?: React.ReactNode) => (
+    <div className="tw:mt-1 tw:flex tw:min-w-0 tw:max-w-1/2 tw:items-center tw:gap-3">
+      {status && !isLoading && (
+        <Badge
+          className="tw:min-w-0 tw:max-w-full tw:font-medium"
+          color={status.color}
+          data-testid={`topic-status-${topicKey}`}
+          size="sm"
+          title={status.label}
+          type="pill-color">
+          <span className="tw:truncate">{status.label}</span>
+        </Badge>
+      )}
+      {chevron}
+    </div>
+  );
+
   if (!onToggle) {
-    return <div className={LAYOUT_CLASSES}>{content}</div>;
+    return (
+      <div className={LAYOUT_CLASSES}>
+        {content}
+        {trailing()}
+      </div>
+    );
   }
 
   return (
@@ -108,10 +139,12 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
       type="button"
       onClick={onToggle}>
       {content}
-      <Chevron
-        aria-hidden
-        className="tw:mt-2.5 tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
-      />
+      {trailing(
+        <Chevron
+          aria-hidden
+          className="tw:size-4 tw:shrink-0 tw:text-fg-tertiary"
+        />
+      )}
     </button>
   );
 };

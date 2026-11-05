@@ -39,6 +39,7 @@ import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -129,7 +130,9 @@ public class CsvImportExportJobHandler implements JobHandler {
 
     createBulkImportVersion(args, result, job.getCreatedBy());
     jobManager.completeImportJob(jobId, result, "Import completed.");
-    sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "COMPLETED", result, null));
+    // Result is persisted on the job row above; the completion frame stays thin (id + status) so a
+    // large import result is fetched once over REST, not relayed through the websocket table.
+    sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "COMPLETED", null, null));
   }
 
   private void runExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
@@ -236,19 +239,27 @@ public class CsvImportExportJobHandler implements JobHandler {
     String jobId = String.valueOf(job.getId());
     SubjectContext subjectContext = SubjectContext.getSubjectContext(job.getCreatedBy());
     LineageRepository lineageRepository = Entity.getLineageRepository();
-    String csvData =
-        Boolean.TRUE.equals(args.getByEntityCount())
-            ? exportLineageByEntityCount(lineageRepository, args, subjectContext)
-            : lineageRepository.exportCsvAsync(
-                args.getFqn(),
-                args.getUpstreamDepth(),
-                args.getDownstreamDepth(),
-                args.getQueryFilter(),
-                args.getEntityType(),
-                Boolean.TRUE.equals(args.getDeleted()),
-                args.getStartTime(),
-                args.getEndTime(),
-                subjectContext);
+    // Policies read the bot a request is made on behalf of from the request's context, which this
+    // worker thread does not have, so the export restores it while it decides what to include.
+    ImpersonationContext.setImpersonatedBy(args.getImpersonatedBy());
+    String csvData;
+    try {
+      csvData =
+          Boolean.TRUE.equals(args.getByEntityCount())
+              ? exportLineageByEntityCount(lineageRepository, args, subjectContext)
+              : lineageRepository.exportCsvAsync(
+                  args.getFqn(),
+                  args.getUpstreamDepth(),
+                  args.getDownstreamDepth(),
+                  args.getQueryFilter(),
+                  args.getEntityType(),
+                  Boolean.TRUE.equals(args.getDeleted()),
+                  args.getStartTime(),
+                  args.getEndTime(),
+                  subjectContext);
+    } finally {
+      ImpersonationContext.clear();
+    }
     int rows = countRows(csvData);
     jobManager.completeExportJob(jobId, job.getCreatedBy(), csvData, rows, rows);
     sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
@@ -295,6 +306,7 @@ public class CsvImportExportJobHandler implements JobHandler {
               args.getEndTs(),
               args.getSearchTerm(),
               args.getLimit(),
+              Boolean.TRUE.equals(args.getReadsUserEmails()),
               (fetched, total, message) -> {
                 jobManager.updateProgress(jobId, fetched, total, message);
                 sendExportMessage(

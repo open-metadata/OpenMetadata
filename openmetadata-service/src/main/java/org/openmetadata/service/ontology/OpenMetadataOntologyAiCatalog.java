@@ -38,8 +38,7 @@ public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
 
   @Override
   public Glossary glossary(final String fullyQualifiedName) {
-    return glossaryRepository.getByName(
-        null, fullyQualifiedName, glossaryRepository.getFields("ontologyConfiguration"));
+    return glossaryRepository.getByName(null, fullyQualifiedName, glossaryRepository.getFields(""));
   }
 
   @Override

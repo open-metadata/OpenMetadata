@@ -46,7 +46,7 @@ import {
   navigateToExploreAndSelectTable,
 } from './entityPanel';
 import { sidebarClick } from './sidebar';
-import { waitForAntOverlayToOpen } from './waitHelpers';
+import { waitForOverlayToOpen } from './waitHelpers';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -883,18 +883,23 @@ export const recordCustomPropertySaves = (page: Page) => {
   };
 };
 
+const REMOVE_PROPERTY_ATTEMPTS = 10;
+
 /**
  * Removes one custom property by name without touching the others. Replacing
  * the whole list from an earlier read would drop properties that concurrently
  * running specs added in between, so this removes by index guarded by a `test`
- * on the name, rebuilt from a fresh read if the list shifted.
+ * on the name, rebuilt from a fresh read if the list shifted. Parallel workers
+ * add and remove properties on the same type, so the index can move several
+ * times in a row; each attempt re-reads it.
  */
 export const removeCustomPropertyViaApi = async (
   apiContext: APIRequestContext,
   typeFqn: string,
   propertyName: string
 ) => {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < REMOVE_PROPERTY_ATTEMPTS; attempt++) {
     const typeRes = await apiContext.get(
       `/api/v1/metadata/types/name/${typeFqn}?fields=customProperties`
     );
@@ -925,9 +930,12 @@ export const removeCustomPropertyViaApi = async (
     if (res.ok()) {
       return;
     }
+    lastStatus = res.status();
   }
 
-  throw new Error(`Could not remove custom property ${propertyName}`);
+  throw new Error(
+    `Could not remove custom property ${propertyName} (last status ${lastStatus})`
+  );
 };
 
 export const editCreatedProperty = async (
@@ -1045,8 +1053,12 @@ export const deleteCreatedProperty = async (
 
   const dialog = page.getByRole('dialog', { name: 'Delete Property' });
 
-  await waitForAntOverlayToOpen(dialog);
-  await expect(dialog.getByTestId('body-text')).toContainText(propertyName);
+  await waitForOverlayToOpen(dialog);
+  // The dialog names the property by its display name, which
+  // editCreatedProperty sets to the upper-cased name.
+  await expect(dialog.getByTestId('body-text')).toContainText(propertyName, {
+    ignoreCase: true,
+  });
 
   const saves = recordCustomPropertySaves(page);
 
@@ -1188,7 +1200,7 @@ const validateCustomPropertyPanelRow = async (
   const summary = row.getByTestId('property-value');
   const expected = getExpectedRowSummary(propertyType, value);
 
-  await expect(summary).not.toHaveText('Not set');
+  await expect(summary).not.toHaveText('No value yet');
   if (expected) {
     await expect(summary).toContainText(expected);
   }
@@ -1315,7 +1327,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
       entityFQN
     );
     await waitForAllLoadersToDisappear(page);
-    await navigateToEntityPanelTab(page, 'custom property');
+    await navigateToEntityPanelTab(page, 'custom properties');
     await waitForAllLoadersToDisappear(page);
   }
 

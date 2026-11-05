@@ -28,7 +28,6 @@ import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBoxReadOnly,
   fillDescriptionBox,
   getAuthContext,
   redirectToHomePage,
@@ -41,6 +40,7 @@ import { clickUpdateButtonIfVisible } from './explore';
 import { getCellByName } from './scopedLocators';
 import { waitForAggregation } from './searchAggregation';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const visitUserListPage = async (page: Page) => {
   const fetchUsers = page.waitForResponse('/api/v1/users?*');
@@ -164,7 +164,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
 export const softDeleteUserProfilePage = async (
   page: Page,
   userName: string,
-  displayName: string
+  _displayName: string
 ) => {
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=*&from=0&size=*'
@@ -225,7 +225,7 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
 
 export const hardDeleteUserProfilePage = async (
   page: Page,
-  displayName: string
+  _displayName: string
 ) => {
   await page.getByTestId('user-profile-manage-btn').click();
   await page.getByText('Delete Profile').click();
@@ -264,47 +264,6 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   const userName = await page.textContent('[data-testid="user-display-name"]');
 
   expect(userName).toContain(editedUserName);
-};
-
-export const editTeams = async (page: Page, teamName: string) => {
-  await page.click('[data-testid="edit-teams-button"]');
-  await page.click('.ant-select-selection-item-remove > .anticon');
-
-  await page.click('[data-testid="team-select"]');
-  await page.getByTestId('team-select').fill(teamName);
-
-  // Click the team from the dropdown
-  await page.click('.filter-node > .ant-select-tree-node-content-wrapper');
-
-  const updateTeamResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="inline-save-btn"]');
-  await updateTeamResponse;
-
-  // Verify the new team link is visible
-  await expect(page.locator(`[data-testid="${teamName}-link"]`)).toBeVisible();
-};
-
-export const editDescription = async (
-  page: Page,
-  updatedDescription: string
-) => {
-  await page.click('[data-testid="edit-description"]');
-
-  // Clear and type the new description
-  await fillDescriptionBox(page, updatedDescription);
-
-  const updateDescription = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="save"]');
-  await updateDescription;
-
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-
-  // Verify the updated description
-  const description = page.locator(
-    `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
-  );
-
-  await expect(description).toContainText(updatedDescription);
 };
 
 export const handleAdminUpdateDetails = async (
@@ -597,7 +556,8 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
+  await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 };
 
 export const checkStewardServicesPermissions = async (page: Page) => {
@@ -693,8 +653,8 @@ export const checkStewardPermissions = async (page: Page) => {
   await page.click('[data-testid="lineage"]');
   await waitForAllLoadersToDisappear(page);
 
-  // Check if edit lineage option is available
-  await expect(page.getByTestId('edit-lineage')).toBeVisible();
+  // Editors get the lineage node menu instead of an edit-mode toggle
+  await expect(page.getByTestId('lineage-node-menu')).not.toHaveCount(0);
 };
 
 export const addUser = async (
@@ -754,10 +714,18 @@ export const addUser = async (
   }
 
   const saveResponse = page.waitForResponse('/api/v1/users');
+  const userListResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/v1/users',
+    200
+  );
   await page.click('[data-testid="save-user"]');
-  await saveResponse;
 
   expect((await saveResponse).status()).toBe(201);
+  await userListResponse;
+  await expect(page.getByTestId('add-user')).toBeVisible();
 };
 
 export const checkForUserExistError = async (

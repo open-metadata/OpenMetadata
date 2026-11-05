@@ -9,7 +9,7 @@ Shared UI component library for OpenMetadata, built on UntitledUI design system 
 - **Build tool**: Vite (library mode) with `vite-plugin-dts` for type declarations
 - **Styling**: Tailwind CSS v4 with `tw:` prefix to avoid conflicts with the main app's Less/Ant Design styles
 - **Component foundation**: `react-aria-components` (NOT Ant Design)
-- **Icons**: `@untitledui/icons`
+- **Icons**: `@openmetadata/ui-core-components/icons` (generated first-party set; see [ICONS.md](src/main/resources/ui/ICONS.md))
 
 ## Development Commands
 
@@ -17,10 +17,15 @@ Shared UI component library for OpenMetadata, built on UntitledUI design system 
 cd openmetadata-ui-core-components/src/main/resources/ui
 yarn build              # Production build to dist/
 yarn dev                # Watch mode build
-yarn type-check         # TypeScript type checking (tsc --noEmit)
+yarn type-check         # Native TypeScript 7 type checking (no emit)
+yarn type-check:tsrs    # Optional experimental Rust type checker (no emit)
 yarn storybook          # Launch Storybook on port 6006
 yarn clean              # Remove dist/
 ```
+
+`type-check:tsrs` is an optional development check on Apple Silicon and Linux.
+Builds and `type-check` continue to use Microsoft's native TypeScript compiler.
+See ADR:2026-10-25-native-typescript-ui-checking for the compiler split.
 
 ## Architecture
 
@@ -195,7 +200,6 @@ Dark mode uses a custom variant: `@custom-variant dark (&:where(.dark-mode, .dar
 These are externalized in the build and must be provided by the consuming app:
 
 - `react`, `react-dom`, `react/jsx-runtime`
-- `@untitledui/icons`
 - `react-aria`, `react-aria-components`, `react-stately`
 - `react-hook-form`
 - `tailwind-merge`

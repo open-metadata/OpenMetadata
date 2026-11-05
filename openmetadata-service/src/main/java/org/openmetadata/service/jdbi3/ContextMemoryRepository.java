@@ -37,12 +37,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
 import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
+import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
-import org.openmetadata.service.ontology.OntologyAiAvailability;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
@@ -69,6 +69,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   public static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
+  private static final Set<String> DERIVED_ENTITY_TYPES =
+      Set.of(
+          Entity.GLOSSARY_TERM,
+          Entity.ONTOLOGY_CONCEPT,
+          Entity.ONTOLOGY_PROPERTY,
+          Entity.ONTOLOGY_AXIOM);
   public static final String FIELD_SOURCE_FILE = "sourceFile";
   public static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   public static final String FIELD_ROOT_MEMORY = "rootMemory";
@@ -170,7 +176,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   protected void postCreate(ContextMemory memory) {
     super.postCreate(memory);
-    ontologyQueue().enqueue(memory, memory.getUpdatedBy());
+    glossaryDerivationQueue().enqueue(memory, memory.getUpdatedBy());
     MemoryConflictReviewTasks.afterWrite(null, memory);
   }
 
@@ -180,7 +186,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (nullOrEmpty(memories)) {
       return;
     }
-    OntologyMemoryDerivationQueue queue = ontologyQueue();
+    MemoryGlossaryDerivationQueue queue = glossaryDerivationQueue();
     memories.forEach(memory -> queue.enqueue(memory, memory.getUpdatedBy()));
     memories.forEach(memory -> MemoryConflictReviewTasks.afterWrite(null, memory));
   }
@@ -188,10 +194,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   protected void postUpdate(ContextMemory previous, ContextMemory updated) {
     super.postUpdate(previous, updated);
-    if (OntologyMemoryDerivationQueue.hasNewPublishedContent(previous, updated)
-        && OntologyAiAvailability.isMemoryDerivationEnabled()
-        && getDerivedEntities(updated).isEmpty()) {
-      ontologyQueue().enqueue(updated, updated.getUpdatedBy());
+    if (MemoryGlossaryDerivationQueue.hasNewPublishedContent(previous, updated)
+        && MemoryGlossaryDerivationQueue.isAvailable()
+        && !MemoryGlossaryDerivationQueue.hasDerivedGlossaryTerm(getDerivedEntities(updated))) {
+      glossaryDerivationQueue().enqueue(updated, updated.getUpdatedBy());
     }
     MemoryConflictReviewTasks.afterWrite(previous, updated);
   }
@@ -214,9 +220,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return dao.exists(dao.getTableName(), memoryId);
   }
 
-  private OntologyMemoryDerivationQueue ontologyQueue() {
-    return new OntologyMemoryDerivationQueue(
-        Entity.getJobDAO(), OntologyAiAvailability::isMemoryDerivationEnabled);
+  private MemoryGlossaryDerivationQueue glossaryDerivationQueue() {
+    return new MemoryGlossaryDerivationQueue(Entity.getJobDAO());
   }
 
   @Override
@@ -424,8 +429,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   private List<EntityReference> getDerivedEntities(ContextMemory entity) {
-    return findFrom(
-        entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+    return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, null).stream()
+        .filter(reference -> DERIVED_ENTITY_TYPES.contains(reference.getType()))
+        .toList();
   }
 
   private void fetchAndSetDerivedEntities(List<ContextMemory> entities, Fields fields) {
@@ -442,7 +448,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     Map<String, EntityReference> refById = resolveReferencesByType(records);
     Map<UUID, List<EntityReference>> derivedById = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
-      if (!Entity.GLOSSARY_TERM.equals(record.getFromEntity())) {
+      if (!DERIVED_ENTITY_TYPES.contains(record.getFromEntity())) {
         continue;
       }
       EntityReference ref = refById.get(record.getFromId());
@@ -543,7 +549,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       entity.setSourceEntity(
           Entity.getEntityReference(entity.getSourceEntity(), Include.NON_DELETED));
     }
-    entity.setRelatedEntities(EntityUtil.populateEntityReferences(entity.getRelatedEntities()));
+    List<EntityReference> cited = entity.getRelatedEntities();
+    entity.setRelatedEntities(EntityUtil.populateEntityReferences(cited));
+    MemoryEvidenceHolds.holdIfCitingRetired(entity, cited);
 
     if (entity.getRootMemory() != null) {
       ContextMemory rootMemory = Entity.getEntity(entity.getRootMemory(), "", Include.NON_DELETED);
@@ -811,6 +819,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
         updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
       }
+      keepStoredTelemetry(original, updated);
+    }
+
+    /**
+     * The row keeps its stored usage and outcome counters whatever a write sends, so the entity
+     * this write returns and indexes carries them too, never a value the request supplied.
+     */
+    private static void keepStoredTelemetry(ContextMemory original, ContextMemory updated) {
+      updated.setUsageCount(original.getUsageCount());
+      updated.setLastUsedAt(original.getLastUsedAt());
+      updated.setOutcomes(original.getOutcomes());
     }
 
     @Override
@@ -901,8 +920,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       updateSourceEntityRelationship();
       updateContentClock();
 
-      // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
-      // version history so routine retrieval does not churn the entity version.
+      // usageCount, lastUsedAt and outcomes are AI-retrieval telemetry, intentionally excluded
+      // from version history so routine retrieval does not churn the entity version.
     }
 
     private void updateContentClock() {
@@ -1103,6 +1122,23 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     EntityReference anchor = getPrimaryEntity(memory);
     return anchor == null
         || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+  }
+
+  /**
+   * Whether a memory's anchor lets its content become glossary vocabulary everyone can read: no
+   * anchor, a Context Center article, which has no sharing of its own, or a file shared with the
+   * whole organization. An asset, or a file shared with only some people, limits who may read the
+   * memory, so what it defines stays out of the glossary.
+   */
+  public boolean isAnchoredForPublication(ContextMemory memory) {
+    EntityReference anchor = getPrimaryEntity(memory);
+    return anchor == null
+        || (Entity.PAGE.equals(anchor.getType()) && isLive(anchor))
+        || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+  }
+
+  private static boolean isLive(EntityReference anchor) {
+    return Entity.getEntityOrNull(anchor, "", Include.NON_DELETED) != null;
   }
 
   private static boolean isOrgWideFile(EntityReference file) {

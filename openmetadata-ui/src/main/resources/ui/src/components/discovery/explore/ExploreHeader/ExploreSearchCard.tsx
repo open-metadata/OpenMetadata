@@ -24,6 +24,7 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import { getExplorePath } from '../../../../utils/RouterUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import { DomainFilterChip } from '../../../common/DomainFilterChip/DomainFilterChip.component';
 import { ExploreQuickFilters } from './ExploreQuickFilters';
 import type { QuickFilter } from './ExploreQuickFilters.interface';
 import { ExploreSearchCardInfo } from './ExploreSearchCardInfo';
@@ -237,6 +238,7 @@ export const ExploreSearchCard = () => {
       <div className="tw:w-full">
         <ExploreQuickFilters onFilterClick={handleQuickFilterClick} />
       </div>
+      <DomainFilterChip />
     </Box>
   );
 
@@ -256,6 +258,7 @@ export const ExploreSearchCard = () => {
     <PageLayout.PageHeader
       className="tw:min-h-[108px] tw:w-full tw:overflow-hidden tw:rounded-xl"
       data-testid="explore-search-card"
+      data-tour-step="explore-search"
       title={headerLayout}
       variant="gradient"
     />

@@ -15,7 +15,6 @@ import { isEmpty, omit } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Column, Table } from '../../../generated/entity/data/table';
@@ -126,16 +125,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   }, [selectedColumn]);
 
   const { entityRules, isRulesLoaded } = useEntityRules(type);
-  const { isTourPage } = useTourProvider();
-  // Version views and the tour's mock entity have no change history to fetch.
-  const skipChangeSummary = isVersionView || isTourPage;
-
   // limit=1000 is the backend max. Entities with more tracked field changes
   // will have entries beyond this limit silently omitted. Use fieldPrefix
   // filtering when targeting a specific section (e.g., 'columns.').
   const { changeSummary } = useChangeSummary(
-    skipChangeSummary ? '' : type,
-    skipChangeSummary ? '' : data.id ?? '',
+    // Version views have no change history to fetch.
+    isVersionView ? '' : type,
+    isVersionView ? '' : data.id ?? '',
     { limit: 1000 }
   );
 

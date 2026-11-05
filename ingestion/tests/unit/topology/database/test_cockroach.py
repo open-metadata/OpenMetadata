@@ -30,7 +30,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.cockroach.metadata import CockroachSource
 from metadata.ingestion.source.database.cockroach.queries import (
     COCKROACH_GET_PARTITION_DETAILS,
+    COCKROACH_GET_VIEW_NAMES,
 )
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
@@ -278,6 +280,43 @@ def _make_inspector(column_names):
     inspector = MagicMock()
     inspector.get_columns.return_value = [{"name": name} for name in column_names]
     return inspector
+
+
+# ── set_schema_description_map: shared mock rows ──────────────────────────────
+# Each SimpleNamespace mirrors the SELECT list of COCKROACH_SCHEMA_COMMENTS:
+#   (database_name, schema_name, comment)
+# The query is a LEFT JOIN with the classoid/objsubid predicates in ON, so the
+# rows a *fixed* execution returns are exactly the namespace descriptions:
+# one row per schema, with ``comment=None`` when no namespace comment exists.
+#
+# ``database_name`` uses ``"default"`` to match the ``MOCK_DATABASE.name.root``
+# value the ``cockroachUnitTest.__init__`` wires into ``context.database``, so
+# ``get_schema_description`` lookups resolve against the live context without
+# needing to reassign it.
+SCHEMA_COMMENT_ROWS = [
+    # default.public: a real namespace comment was set
+    types.SimpleNamespace(database_name="default", schema_name="public", comment="my real schema comment"),
+    # default.pg_catalog: no namespace comment -> LEFT JOIN yields description NULL
+    types.SimpleNamespace(database_name="default", schema_name="pg_catalog", comment=None),
+]
+
+
+def _make_schema_comments_engine(rows):
+    """Build a mock engine/conn whose ``conn.execute(...).all()`` returns the
+    given row namespaces, simulating the rows the fixed
+    ``COCKROACH_SCHEMA_COMMENTS`` query would return against CockroachDB.
+
+    Rows are objects exposing ``.database_name``, ``.schema_name`` and
+    ``.comment`` attributes, typed to match what
+    ``set_schema_description_map`` reads off each result row.
+    """
+    conn = MagicMock()
+    result = MagicMock()
+    result.all.return_value = rows
+    conn.execute.return_value = result
+    engine = MagicMock()
+    engine.connect.return_value.__enter__.return_value = conn
+    return engine, conn
 
 
 class cockroachUnitTest(TestCase):  # noqa: N801
@@ -695,3 +734,233 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         self.assertFalse(is_partitioned)
         self.assertIsNone(partition)
+
+    # ── set_schema_description_map ─────────────────────────────────────────────
+
+    def test_set_schema_description_map_keeps_real_comment_not_function_comment(self):
+        """The map must hold the real namespace comment, not a bogus
+        ``pg_proc`` doc-comment from an OID collision.
+
+        With the fix the executed query filters on ``classoid =
+        'pg_namespace'``, so CockroachDB returns exactly one row for a schema
+        that has a real comment — the ``pg_proc`` collision is excluded. The
+        simulated result set here mirrors that post-fix output: only the
+        namespace comment row survives, never the function comment.
+        """
+        rows = [
+            # Only the namespace comment row is returned by the fixed query;
+            # the colliding pg_proc row (regr_intercept) is filtered out.
+            types.SimpleNamespace(
+                database_name="default",
+                schema_name="public",
+                comment="my real schema comment",
+            ),
+        ]
+        engine, _ = _make_schema_comments_engine(rows)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        self.assertEqual(
+            self.cockroach_source.schema_desc_map[("default", "public")],
+            "my real schema comment",
+        )
+        # The fabricated function comment must never be published
+        self.assertNotIn(
+            "Calculates y-intercept of the least-squares-fit",
+            str(self.cockroach_source.schema_desc_map.values()),
+        )
+
+    def test_set_schema_description_map_uncommented_schema_yields_none(self):
+        """A schema with no namespace comment must map to ``None`` (the LEFT
+        JOIN returns a row with a NULL description), not a fabricated comment.
+
+        This locks the LEFT JOIN semantics restored by moving the
+        ``objsubid``/``classoid`` predicates into ``ON``: un-commented schemas
+        are still returned with a NULL description instead of being dropped or
+        filled with a colliding object's comment.
+        """
+        rows = [r for r in SCHEMA_COMMENT_ROWS if r.schema_name == "pg_catalog"]
+        engine, _ = _make_schema_comments_engine(rows)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        self.assertIsNone(self.cockroach_source.schema_desc_map[("default", "pg_catalog")])
+        # No fabricated function doc-comment should be present
+        self.assertNotIn(
+            "Calculates the average of the dependent variable",
+            str(self.cockroach_source.schema_desc_map.values()),
+        )
+
+    def test_set_schema_description_map_get_schema_description_reads_map(self):
+        """``get_schema_description`` must return the mapped comment for the
+        current database/schema context, and ``None`` when none exists.
+
+        This exercises the consumption path
+        (``common_db_source.py`` -> ``get_schema_description``) that
+        previously had no coverage, guarding the end-to-end contract the
+        fixed query feeds. The context database is ``"default"`` as wired by
+        ``cockroachUnitTest.__init__`` from ``MOCK_DATABASE.name.root``.
+        """
+        engine, _ = _make_schema_comments_engine(SCHEMA_COMMENT_ROWS)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        # context.database is "default" (set in __init__ from MOCK_DATABASE)
+        self.assertEqual(
+            self.cockroach_source.get_schema_description("public"),
+            "my real schema comment",
+        )
+        # A schema with no namespace comment (NULL description) resolves to None
+        self.assertIsNone(self.cockroach_source.get_schema_description("pg_catalog"))
+        # A schema that never appeared in the result set resolves to None
+        self.assertIsNone(self.cockroach_source.get_schema_description("missing_schema"))
+
+    def test_set_schema_description_map_executes_the_fixed_query(self):
+        """The map must be built by executing ``COCKROACH_SCHEMA_COMMENTS``
+        via ``text(...)``, so the fix in the constant is the query that
+        populates the map."""
+        engine, conn = _make_schema_comments_engine(SCHEMA_COMMENT_ROWS)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        self.assertEqual(conn.execute.call_count, 1)
+        executed_stmt = conn.execute.call_args.args[0]
+        # text(...) wraps the SQL; assert the fixed predicates are present in
+        # whatever SQLAlchemy renders to text.
+        rendered = str(executed_stmt)
+        self.assertIn("d.classoid = 'pg_namespace'::regclass", rendered)
+        self.assertIn("d.objsubid = 0", rendered)
+        self.assertNotIn("WHERE", rendered.upper())
+
+    # ── materialized view (relkind 'm') ingestion ──────────────────────────────
+
+    def test_query_view_names_and_types_includes_materialized_views(self):
+        """``query_view_names_and_types`` must emit materialized views as
+        ``MaterializedView`` alongside regular views.
+
+        Regression for the bug where ``COCKROACH_GET_VIEW_NAMES`` filtered on
+        ``relkind IN ('v')`` only, so CockroachDB materialized views (relkind
+        ``'m'``) matched neither the view query nor the table query and were
+        silently excluded from the catalog.
+
+        The consumer maps each row's ``relkind`` through the shared
+        ``RELKIND_MAP``, which already contains ``"m": MaterializedView``;
+        this test verifies the mapping is reachable now that the SQL filter
+        includes ``'m'``.
+        """
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [
+            ("plain_view", "v"),
+            ("my_matview", "m"),
+        ]
+
+        with patch.object(CockroachSource, "connection", mock_connection):
+            results = list(self.cockroach_source.query_view_names_and_types("public"))
+
+        self.assertEqual(
+            {r.name: r.type_ for r in results},
+            {
+                "plain_view": TableType.View,
+                "my_matview": TableType.MaterializedView,
+            },
+        )
+
+    def test_query_view_names_and_types_executes_view_names_query_with_schema(self):
+        """``query_view_names_and_types`` must execute ``COCKROACH_GET_VIEW_NAMES``
+        (the fixed query) and bind the ``:schema`` parameter, so the matview
+        rows come from the correct schema only."""
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [("my_matview", "m")]
+
+        with patch.object(CockroachSource, "connection", mock_connection):
+            list(self.cockroach_source.query_view_names_and_types("public"))
+
+        self.assertEqual(mock_connection.execute.call_count, 1)
+        executed_stmt = mock_connection.execute.call_args.args[0]
+        self.assertIn(COCKROACH_GET_VIEW_NAMES, str(executed_stmt))
+        params = mock_connection.execute.call_args.args[1]
+        self.assertEqual(params, {"schema": "public"})
+
+    def test_query_table_names_and_types_still_returns_regular_tables(self):
+        """The table-listing path must keep working for regular tables after
+        the view-query fix — no regression in ``query_table_names_and_types``
+        which remains scoped to ``relkind IN ('r', 'p', 'f')``."""
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [
+            ("base_table", "r"),
+            ("part_table", "p"),
+        ]
+
+        with patch.object(CockroachSource, "connection", mock_connection):
+            results = list(self.cockroach_source.query_table_names_and_types("public"))
+
+        self.assertEqual(
+            {r.name: r.type_ for r in results},
+            {
+                "base_table": TableType.Regular,
+                "part_table": TableType.Partitioned,
+            },
+        )
+
+    def test_view_path_is_skipped_when_include_views_false(self):
+        """``includeViews=False`` must not consult the view path at all, so
+        materialized views are not ingested when the user disables views.
+
+        This confirms the fix routes matviews through ``includeViews`` (not
+        ``includeTables``): a user who sets ``includeViews: False`` must not
+        see materialized views, even though they are now returned by the
+        view-listing query.
+        """
+        self.cockroach_source.source_config.includeTables = True
+        self.cockroach_source.source_config.includeViews = False
+
+        with (
+            patch.object(CockroachSource, "query_view_names_and_types") as mock_view_query,
+            patch.object(
+                CockroachSource,
+                "query_table_names_and_types",
+                return_value=[TableNameAndType(name="base_table", type_=TableType.Regular)],
+            ),
+        ):
+            emitted = [name for name, _ in self.cockroach_source.get_tables_name_and_type()]
+
+        self.assertEqual(emitted, ["base_table"])
+        mock_view_query.assert_not_called()
+
+    def test_materialized_views_ingested_when_include_tables_false(self):
+        """Materialized views must be ingested via the view path even when
+        ``includeTables=False``, because they are views (relkind ``'m``),
+        not tables.
+
+        This is the positive counterpart to
+        ``test_view_path_is_skipped_when_include_views_false``: it confirms
+        matviews are governed by ``includeViews`` alone, so a user who
+        ingests only views (``includeTables: False, includeViews: True``)
+        still gets their materialized views.
+
+        ``search_table_from_es`` is patched to return ``None`` — the same
+        "no ElasticSearch match, build FQN from names" path that runs in
+        production — because the unit-test ``self.metadata`` is a bare
+        ``OpenMetadataConnection`` without the ``es_search_from_fqn`` method
+        the live ``OpenMetadata`` client provides.
+        """
+        self.cockroach_source.source_config.includeTables = False
+        self.cockroach_source.source_config.includeViews = True
+
+        mock_connection = MagicMock()
+        mock_connection.execute.return_value = [("plain_view", "v"), ("my_matview", "m")]
+
+        with (
+            patch.object(CockroachSource, "connection", mock_connection),
+            patch("metadata.utils.fqn.search_table_from_es", return_value=None),
+        ):
+            emitted = dict(self.cockroach_source.get_tables_name_and_type())
+
+        self.assertIn("my_matview", emitted)
+        self.assertEqual(emitted["my_matview"], TableType.MaterializedView)
+        self.assertIn("plain_view", emitted)
+        self.assertEqual(emitted["plain_view"], TableType.View)

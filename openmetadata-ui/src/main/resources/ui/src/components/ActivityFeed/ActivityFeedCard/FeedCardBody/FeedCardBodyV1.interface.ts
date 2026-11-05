@@ -26,4 +26,6 @@ export interface FeedCardBodyV1Props {
   showThread?: boolean;
   isForFeedTab?: boolean;
   isFeedWidget?: boolean;
+  /** In the activity thread panel, a message is edited in the comment edit form. */
+  isThreadPanel?: boolean;
 }

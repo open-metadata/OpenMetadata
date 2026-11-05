@@ -356,6 +356,16 @@ If the option is disabled, the search will be limited to the tables within the s
 $$
 
 $$section
+### Catalog Mapping $(id="catalogMapping")
+
+Use this when the engine dbt runs on names a database differently from how it was ingested in OpenMetadata. For example, dbt-trino writes the Trino catalog name (`bq_catalog`) into the dbt manifest, while the BigQuery connector ingests the same tables under the GCP project id (`my-gcp-project`).
+
+Add one entry per catalog: the key is the database name in the dbt manifest and the value is the database name in OpenMetadata, e.g. `bq_catalog` → `my-gcp-project`. Keys are matched ignoring case.
+
+Tables of a mapped catalog are looked up under the mapped database in every database service, whether or not `Search Tables Across Databases Services` is enabled. If no table is found there, the database from the manifest is used as before.
+$$
+
+$$section
 ### Update Descriptions $(id="dbtUpdateDescriptions")
 
 This options updates the table and column descriptions in OpenMetadata with descriptions from dbt.

@@ -58,3 +58,14 @@ TABLE_TYPE_MAPPER = {TableType.View: "VIEW", TableType.Regular: "TABLE"}
 # Value is used for pagination by setting a upper limit on the total records to be fetched
 # since the alation apis do not give us total count of the records
 TOTAL_RECORDS = 100000000
+
+# Alation answers a schema, table or column write with a background job. Writes go out in batches of
+# the size Alation's own SDK (Allie-SDK) uses, and each job is polled until it finishes, backing off
+# up to the max interval, and counts as failed if it is still running at the timeout. A poll's own
+# read timeout bounds how far past the timeout a wait can run.
+# ADR:2026-10-23-alation-sink-writes-in-batches-and-waits-for-each-job
+WRITE_BATCH_SIZE = 1000
+JOB_POLL_INITIAL_INTERVAL_SECONDS = 0.5
+JOB_POLL_MAX_INTERVAL_SECONDS = 5
+JOB_TIMEOUT_SECONDS = 600
+JOB_POLL_REQUEST_TIMEOUT_SECONDS = 30

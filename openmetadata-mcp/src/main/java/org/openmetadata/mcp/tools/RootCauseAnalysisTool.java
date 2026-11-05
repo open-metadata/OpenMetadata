@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -74,10 +75,12 @@ public class RootCauseAnalysisTool implements McpTool {
       throw new IllegalArgumentException("Parameter 'fqn' is required and cannot be empty");
     }
 
+    // Resolve the entity by its FQN rather than a generic context, so a deny rule scoped by the
+    // entity's domain or tags is evaluated against the real entity and can refuse the analysis.
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
-        new ResourceContext<>(entityType));
+        new ResourceContext<>(entityType, null, fqn.trim()));
 
     RcaRequest request =
         new RcaRequest(
@@ -88,7 +91,9 @@ public class RootCauseAnalysisTool implements McpTool {
             queryFilter,
             includeDeleted,
             includeColumns,
-            getSubjectContext(securityContext));
+            getSubjectContext(securityContext),
+            securityContext,
+            new LineagePermissionFilter(authorizer));
     try {
       return analyze(request);
     } catch (IOException e) {
@@ -116,7 +121,9 @@ public class RootCauseAnalysisTool implements McpTool {
       String queryFilter,
       boolean includeDeleted,
       boolean includeColumns,
-      SubjectContext subject) {}
+      SubjectContext subject,
+      CatalogSecurityContext securityContext,
+      LineagePermissionFilter lineagePermissionFilter) {}
 
   private Map<String, Object> analyze(RcaRequest request) throws IOException {
     Map<String, Object> result = new HashMap<>();
@@ -236,6 +243,12 @@ public class RootCauseAnalysisTool implements McpTool {
                   request.upstreamDepth(),
                   0,
                   request.subject());
+      // The domain filter the lineage read applies prunes by directly-assigned domains only, so a
+      // node whose domain is inherited reads as domainless and survives. Run the same view filter
+      // the REST lineage endpoints use, which authorizes each node and drops the unviewable ones.
+      request
+          .lineagePermissionFilter()
+          .filter(request.securityContext(), request.subject(), lineage);
       List<Map<String, Object>> producers = new ArrayList<>();
       if (lineage != null && !nullOrEmpty(lineage.getNodes())) {
         lineage.getNodes().forEach(node -> producers.add(producerOf(node)));

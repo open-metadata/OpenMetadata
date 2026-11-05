@@ -11,6 +11,7 @@
 
 """Exercise DAG lifecycle operations against the shared test Airflow database."""
 
+import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -101,20 +102,45 @@ def test_delete_dag_with_versioned_task_history(stored_dag):
             assert session.query(model).filter_by(dag_id=name).count() == 0
 
 
-def test_running_dag_keeps_its_files_when_deletion_is_rejected(stored_dag):
-    name, dag_file, config_file, _ = stored_dag
+@pytest.mark.parametrize("run_state", [DagRunState.RUNNING, DagRunState.SUCCESS])
+def test_delete_stops_a_running_dag_and_removes_it(stored_dag, run_state):
+    name, dag_file, config_file, version_model = stored_dag
     with settings.Session() as session:
+        session.query(DagRun).filter_by(dag_id=name).update({"state": run_state})
         session.query(TaskInstance).filter_by(dag_id=name).update({"state": TaskInstanceState.RUNNING})
         session.commit()
 
-    with (
-        Flask(__name__).app_context(),
-        pytest.raises(AirflowException, match="TaskInstances still running"),
-    ):
+    with Flask(__name__).app_context():
+        response = delete.delete_dag_id(name)
+
+    assert response.status_code == 200
+    assert not dag_file.exists()
+    assert not config_file.exists()
+    with settings.Session() as session:
+        for model in (TaskInstance, DagRun, version_model, DagModel):
+            assert session.query(model).filter_by(dag_id=name).count() == 0
+
+
+@pytest.mark.parametrize("ti_state", [TaskInstanceState.QUEUED, TaskInstanceState.RUNNING])
+def test_failed_delete_leaves_active_runs_untouched(stored_dag, monkeypatch, ti_state):
+    name, dag_file, config_file, _ = stored_dag
+    with settings.Session() as session:
+        session.query(DagRun).filter_by(dag_id=name).update({"state": DagRunState.RUNNING})
+        session.query(TaskInstance).filter_by(dag_id=name).update({"state": ti_state})
+        session.commit()
+
+    def refuse(dag_id, session=None):
+        raise AirflowException("refused")
+
+    monkeypatch.setattr(delete, "airflow_delete_dag", refuse)
+    with Flask(__name__).app_context(), pytest.raises(AirflowException, match="refused"):
         delete.delete_dag_id(name)
 
     assert dag_file.exists()
     assert config_file.exists()
+    with settings.Session() as session:
+        assert session.query(DagRun).filter_by(dag_id=name).one().state == DagRunState.RUNNING
+        assert session.query(TaskInstance).filter_by(dag_id=name).one().state == ti_state
 
 
 def test_invalid_dag_does_not_report_success(tmp_path, monkeypatch):
@@ -131,7 +157,7 @@ def test_invalid_dag_does_not_report_success(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("invalid_second", [False, True])
-def test_concurrent_deployments_report_each_dag_result(invalid_second):
+def test_concurrent_deployments_report_each_dag_result(invalid_second, caplog):
     dag_folder = Path(settings.DAGS_FOLDER)
     dag_folder.mkdir(parents=True, exist_ok=True)
     names = [f"bulk_{uuid4().hex}" for _ in range(2)]
@@ -149,9 +175,11 @@ def test_concurrent_deployments_report_each_dag_result(invalid_second):
             return response.status_code, response.get_json()
 
     try:
-        with ThreadPoolExecutor(max_workers=2) as pool:
+        with caplog.at_level(logging.WARNING), ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(refresh, names))
 
+        # Issue #35460: the SIGALRM import timeout cannot be set off the main thread
+        assert not [record for record in caplog.records if "timeout can't be used" in record.getMessage()]
         assert [status for status, _ in results] == [
             200,
             500 if invalid_second else 200,

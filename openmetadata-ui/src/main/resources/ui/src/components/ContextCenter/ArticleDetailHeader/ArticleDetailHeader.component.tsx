@@ -27,13 +27,18 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { UploadCloud01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  Edit01,
+  Trash01,
+  UploadCloud01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
 import { ReactComponent as FollowActiveIcon } from '../../../assets/svg/action-icons/follow-active.svg';
 import { ReactComponent as FollowIcon } from '../../../assets/svg/action-icons/follow.svg';
@@ -42,19 +47,17 @@ import { ReactComponent as ThumbsDownActiveIcon } from '../../../assets/svg/acti
 import { ReactComponent as ThumbsDownIcon } from '../../../assets/svg/action-icons/thumbs-down.svg';
 import { ReactComponent as ThumbsUpActiveIcon } from '../../../assets/svg/action-icons/thumbs-up-active.svg';
 import { ReactComponent as ThumbsUpIcon } from '../../../assets/svg/action-icons/thumbs-up.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as EditorIcon } from '../../../assets/svg/common/editor.svg';
 import { ReactComponent as GlobeIcon } from '../../../assets/svg/common/globe.svg';
 import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { EditIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { isKnowledgePageFullWidthTab } from '../../../constants/KnowledgeCenter.constant';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -80,6 +83,7 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { HeaderVersionButton } from '../../common/HeaderVersionButton/HeaderVersionButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
@@ -191,7 +195,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     }
     setIsDeleting(true);
     try {
-      await deleteKnowledgePage(knowledgePage.id);
+      await deleteKnowledgePage(knowledgePage.id, true, true);
       queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
       });
@@ -358,11 +362,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             multiple={entityRules.canAddMultipleDomains}
             selectedDomain={knowledgePage?.domains ?? []}
             onUpdate={handleDomainSave}>
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-domain-btn"
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              size="sm"
+              tooltip={t('label.edit-entity', {
                 entity: t('label.domain'),
               })}
             />
@@ -395,23 +399,15 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             </TooltipTrigger>
           </Tooltip>
 
-          {owners.length > 0 ? (
-            <div className="article-detail-owner-label">
-              <Owner
-                hasPermission={false}
-                isCompactView={false}
-                owners={owners}
-                showLabel={false}
-              />
-            </div>
-          ) : (
-            <Typography
-              className="tw:text-quaternary"
-              size="text-sm"
-              weight="regular">
-              {t('label.no-entity', { entity: t('label.owner') })}
-            </Typography>
-          )}
+          <div className="article-detail-owner-label">
+            <Owner
+              hasPermission={false}
+              isCompactView={false}
+              labelVariant="cell"
+              owners={owners}
+              showLabel={false}
+            />
+          </div>
           {canEditOwners && (
             <UserTeamSelectableList
               hasPermission={canEditOwners}
@@ -421,11 +417,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               }}
               owner={knowledgePage?.owners}
               onUpdate={handleOwnerSave}>
-              <EditIconButton
-                newLook
+              <ButtonUtility
                 data-testid="edit-owner-btn"
-                size="small"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                size="sm"
+                tooltip={t('label.edit-entity', {
                   entity: t('label.owner-plural'),
                 })}
               />
@@ -478,64 +474,46 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           {contentChangeIcon}
         </Box>
 
-        <Tooltip title={t('label.version-plural')}>
-          <TooltipTrigger>
-            <Button
-              className="tw:p-1.5"
-              color="secondary"
-              data-testid="version-btn"
-              iconLeading={<VersionIcon height={16} width={16} />}
-              size="sm"
-              onClick={handleVersionClick}>
-              {version}
-            </Button>
-          </TooltipTrigger>
-        </Tooltip>
+        <HeaderVersionButton version={version} onClick={handleVersionClick} />
 
         <ButtonUtility
-          className={
-            voteStatus === QueryVoteType.votedUp
-              ? 'tw:text-fg-brand-primary'
-              : undefined
-          }
-          color="tertiary"
+          className={classNames({
+            'tw:*:data-icon:text-utility-brand-600':
+              voteStatus === QueryVoteType.votedUp,
+          })}
           data-testid="upvote-btn"
-          disabled={knowledgePage?.deleted || voteLoading !== null}
           icon={
-            voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpActiveIcon height={20} width={20} />
-            ) : (
-              <ThumbsUpIcon height={20} width={20} />
-            )
+            voteStatus === QueryVoteType.votedUp
+              ? ThumbsUpActiveIcon
+              : ThumbsUpIcon
           }
+          isDisabled={knowledgePage?.deleted || voteLoading !== null}
+          size="lg"
           tooltip={t('label.up-vote')}
           onClick={() => handleVoteChange(QueryVoteType.votedUp)}
         />
 
         <ButtonUtility
-          className={
-            voteStatus === QueryVoteType.votedDown
-              ? 'tw:text-fg-brand-primary'
-              : undefined
-          }
-          color="tertiary"
+          className={classNames({
+            'tw:*:data-icon:text-fg-warning-primary':
+              voteStatus === QueryVoteType.votedDown,
+          })}
           data-testid="downvote-btn"
-          disabled={knowledgePage?.deleted || voteLoading !== null}
           icon={
-            voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsDownActiveIcon height={20} width={20} />
-            ) : (
-              <ThumbsDownIcon height={20} width={20} />
-            )
+            voteStatus === QueryVoteType.votedDown
+              ? ThumbsDownActiveIcon
+              : ThumbsDownIcon
           }
+          isDisabled={knowledgePage?.deleted || voteLoading !== null}
+          size="lg"
           tooltip={t('label.down-vote')}
           onClick={() => handleVoteChange(QueryVoteType.votedDown)}
         />
 
         <ButtonUtility
-          color="tertiary"
           data-testid="conversation"
-          icon={<ChatIcon height={20} width={20} />}
+          icon={ChatIcon}
+          size="lg"
           tooltip={t('label.conversation')}
           onClick={handleOpenConversation}
         />
@@ -558,34 +536,26 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     () => (
       <>
         <ButtonUtility
-          color="tertiary"
+          className={classNames({
+            'tw:*:data-icon:text-utility-brand-600': isFollowing,
+          })}
           data-testid="follow-btn"
-          disabled={isFollowLoading || knowledgePage?.deleted}
-          icon={
-            isFollowing ? (
-              <FollowActiveIcon height={20} width={20} />
-            ) : (
-              <FollowIcon height={20} width={20} />
-            )
-          }
+          icon={isFollowing ? FollowActiveIcon : FollowIcon}
+          isDisabled={isFollowLoading || knowledgePage?.deleted}
+          size="lg"
           tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
           onClick={handleFollowClick}
         />
-        <CopyLinkButton
-          className="tw:w-8 tw:h-8"
-          color="tertiary"
-          testId="copy-btn"
-          url={window.location.href}>
-          <CopyIcon height={20} width={20} />
+        <CopyLinkButton testId="copy-btn" url={window.location.href}>
+          <Copy01 data-icon />
         </CopyLinkButton>
 
         {permissions?.Delete && (
           <Dropdown.Root>
             <ButtonUtility
-              color="tertiary"
               data-testid="manage-button"
-              icon={<DotsVerticalIcon height={20} width={20} />}
-              size="sm"
+              icon={DotsVerticalIcon}
+              size="lg"
               tooltip={t('label.manage-entity', {
                 entity: t('label.article'),
               })}
@@ -599,11 +569,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 }}>
                 <Dropdown.Item data-testid="delete-btn" id="delete">
                   <Box align="center" gap={2}>
-                    <TrashIcon
+                    <Trash01
                       aria-hidden="true"
-                      className="ttw:shrink-0 tw:text-error-primary"
-                      height={20}
-                      width={20}
+                      className="tw:shrink-0 tw:text-error-primary"
+                      size={20}
                     />
                     <Typography
                       ellipsis
@@ -665,16 +634,15 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           </Tabs.List>
         </Tabs>
 
-        {activeTab !== EntityTabs.ACTIVITY_FEED && (
+        {!isKnowledgePageFullWidthTab(activeTab) && (
           <Button
             className="tw:relative tw:bottom-2.5"
             color="tertiary"
             data-testid="right-panel-toggle-btn"
             iconLeading={
               <SidebarCollapsible
+                data-icon
                 className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
-                height={20}
-                width={20}
               />
             }
             size="sm"

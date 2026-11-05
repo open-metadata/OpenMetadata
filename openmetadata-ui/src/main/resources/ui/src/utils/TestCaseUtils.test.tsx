@@ -16,6 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
+import { TestCaseType } from '../enums/TestSuite.enum';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { exportTestCasesInCSV } from '../rest/testAPI';
 import { ExtraTestCaseDropdownOptions } from './TestCaseUtils';
 
@@ -190,8 +192,39 @@ describe('TestCaseUtils', () => {
 
       expect(mockShowModal).toHaveBeenCalledWith({
         name: fqn,
-        onExport: exportTestCasesInCSV,
+        onExport: expect.any(Function),
         exportTypes: [ExportTypes.CSV],
+      });
+
+      mockShowModal.mock.calls.at(-1)[0].onExport(fqn, { recursive: true });
+
+      expect(exportTestCasesInCSV).toHaveBeenLastCalledWith(fqn, {
+        recursive: true,
+      });
+    });
+
+    it('should export only the test cases matching the list filters', () => {
+      const permission = { ViewAll: true, EditAll: true };
+      const result = ExtraTestCaseDropdownOptions(
+        fqn,
+        permission,
+        false,
+        mockNavigate,
+        mockShowModal,
+        EntityType.TABLE,
+        {
+          testCaseStatus: TestCaseStatus.Aborted,
+          testCaseType: TestCaseType.all,
+        }
+      );
+
+      (result[1] as { onClick?: () => void }).onClick?.();
+      mockShowModal.mock.calls.at(-1)[0].onExport(fqn, { recursive: true });
+
+      expect(exportTestCasesInCSV).toHaveBeenLastCalledWith(fqn, {
+        recursive: true,
+        testCaseStatus: TestCaseStatus.Aborted,
+        testCaseType: TestCaseType.all,
       });
     });
 
@@ -245,6 +278,29 @@ describe('TestCaseUtils', () => {
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/bulk-edit/testCase/${fqn}?sourceEntityType=testSuite`
+      );
+    });
+
+    it('should carry the list filters into the bulk edit URL', () => {
+      const permission = { ViewAll: true, EditAll: true };
+      const result = ExtraTestCaseDropdownOptions(
+        fqn,
+        permission,
+        false,
+        mockNavigate,
+        mockShowModal,
+        EntityType.TABLE,
+        {
+          testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+          testCaseType: TestCaseType.column,
+          q: '',
+        }
+      );
+
+      (result[2] as { onClick?: () => void }).onClick?.();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/bulk-edit/testCase/${fqn}?sourceEntityType=table&testCaseStatus=Failed,Aborted&testCaseType=column`
       );
     });
 

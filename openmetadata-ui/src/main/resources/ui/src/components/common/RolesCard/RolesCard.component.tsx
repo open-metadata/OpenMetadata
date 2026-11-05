@@ -11,20 +11,19 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Autocomplete,
   Box,
-  Button,
+  ButtonUtility,
   Card,
 } from '@openmetadata/ui-core-components';
+import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
 import { isArray, toLower } from 'lodash';
 import { Key, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
 
@@ -95,11 +94,10 @@ const RolesCard = ({
         <Card.Header
           extra={
             !isRolesEdit && (
-              <EditIconButton
-                newLook
+              <ButtonUtility
                 data-testid="edit-roles"
-                size="small"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.role-plural'),
                 })}
                 onClick={() => setIsRolesEdit(true)}
@@ -133,21 +131,21 @@ const RolesCard = ({
                   )}
                 </Autocomplete>
                 <div className="flex justify-end" data-testid="buttons">
-                  <Button
-                    aria-label={t('label.cancel')}
+                  <ButtonUtility
                     className="tw:mr-1"
                     color="primary"
                     data-testid="cancel-roles"
-                    iconLeading={<CloseOutlined />}
-                    size="xs"
+                    icon={XClose}
+                    size="sm"
+                    tooltip={t('label.cancel')}
                     onMouseDown={() => setIsRolesEdit(false)}
                   />
-                  <Button
-                    aria-label={t('label.save')}
+                  <ButtonUtility
                     color="primary"
                     data-testid="save-roles"
-                    iconLeading={<CheckOutlined />}
-                    size="xs"
+                    icon={Check}
+                    size="sm"
+                    tooltip={t('label.save')}
                     onClick={handleRolesChange}
                   />
                 </div>

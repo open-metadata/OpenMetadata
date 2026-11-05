@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Box,
   ButtonUtility,
   Table,
@@ -19,15 +20,20 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldValueBoost } from '../../../../../../../generated/configuration/searchSettings';
+import { NUMERIC_COLUMNS } from './FieldValueBoostTable.constants';
+import { SearchSectionTitle } from './SearchSection';
 
 interface FieldValueBoostTableProps {
   boosts: FieldValueBoost[];
   /** The entity page shows field and factor only, as the classic page does. */
   isCompact?: boolean;
   testId: string;
+  /** Actions shown at the right of the table's header row, e.g. "Add". */
+  headerActions?: ReactNode;
   onEdit: (boost: FieldValueBoost) => void;
   onDelete: (field: string) => void;
 }
@@ -41,10 +47,19 @@ const RANGE_COLUMNS: { id: RangeKey; labelKey: string }[] = [
   { id: 'lte', labelKey: 'label.less-than-or-equal-to' },
 ];
 
+const getColumnClassName = (columnId: string, numericClassName: string) => {
+  if (NUMERIC_COLUMNS.has(columnId)) {
+    return numericClassName;
+  }
+
+  return columnId === 'actions' ? 'tw:w-20' : undefined;
+};
+
 const FieldValueBoostTable = ({
   boosts,
   isCompact = false,
   testId,
+  headerActions,
   onEdit,
   onDelete,
 }: FieldValueBoostTableProps) => {
@@ -73,7 +88,7 @@ const FieldValueBoostTable = ({
     switch (columnId) {
       case 'field':
         return (
-          <Typography className="tw:font-mono" size="text-sm">
+          <Typography className="tw:font-body" size="text-sm" weight="medium">
             {boost.field}
           </Typography>
         );
@@ -87,18 +102,16 @@ const FieldValueBoostTable = ({
         return (
           <Box direction="row" gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid="edit-field-value-boost-btn"
               icon={Edit01}
-              size="xs"
+              size="lg"
               tooltip={t('label.edit')}
               onPress={() => onEdit(boost)}
             />
             <ButtonUtility
-              color="tertiary"
               data-testid="delete-field-value-boost-btn"
               icon={Trash01}
-              size="xs"
+              size="lg"
               tooltip={t('label.delete')}
               onPress={() => onDelete(boost.field)}
             />
@@ -110,45 +123,71 @@ const FieldValueBoostTable = ({
   };
 
   return (
-    <TableCard.Root size="compact">
-      <Table
-        aria-label={t('label.field-value-boost')}
-        data-testid={testId}
-        size="compact">
-        <Table.Header columns={columns}>
-          {(column) => (
-            <Table.Head
-              id={column.id}
-              isRowHeader={column.id === 'field'}
-              key={column.id}
-              label={column.label}
-            />
-          )}
-        </Table.Header>
-        <Table.Body
-          items={boosts.map((boost) => ({ ...boost, id: boost.field }))}
-          renderEmptyState={() => (
-            <Typography
-              className="tw:block tw:py-6 tw:text-center tw:text-tertiary"
-              size="text-sm">
-              {t('label.no-entity', { entity: t('label.field-value-boost') })}
-            </Typography>
-          )}>
-          {(boost) => (
-            <Table.Row
-              columns={columns}
-              data-testid={`field-value-boost-${boost.field}`}
-              id={boost.field}
-              key={boost.field}>
-              {(column) => (
-                <Table.Cell key={column.id}>
-                  {renderCell(boost, column.id)}
-                </Table.Cell>
-              )}
-            </Table.Row>
-          )}
-        </Table.Body>
-      </Table>
+    <TableCard.Root size="compact" variant="muted">
+      <Box
+        align="center"
+        className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
+        direction="row"
+        justify="between">
+        <Box align="center" direction="row" gap={2}>
+          <SearchSectionTitle>
+            {t('label.field-value-boost')}
+          </SearchSectionTitle>
+          <Badge color="brand" size="sm" type="pill-color">
+            {boosts.length}
+          </Badge>
+        </Box>
+        {headerActions}
+      </Box>
+      <div className="tw:overflow-x-auto">
+        <Table
+          aria-label={t('label.field-value-boost')}
+          data-testid={testId}
+          size="compact">
+          <Table.Header columns={columns}>
+            {(column) => (
+              <Table.Head
+                className={getColumnClassName(
+                  column.id,
+                  'tw:[&>div]:justify-end'
+                )}
+                id={column.id}
+                isRowHeader={column.id === 'field'}
+                key={column.id}
+                label={column.label}
+              />
+            )}
+          </Table.Header>
+          <Table.Body
+            items={boosts.map((boost) => ({ ...boost, id: boost.field }))}
+            renderEmptyState={() => (
+              <Typography
+                className="tw:block tw:py-6 tw:text-center tw:text-tertiary"
+                size="text-sm">
+                {t('label.no-entity', { entity: t('label.field-value-boost') })}
+              </Typography>
+            )}>
+            {(boost) => (
+              <Table.Row
+                columns={columns}
+                data-testid={`field-value-boost-${boost.field}`}
+                id={boost.field}
+                key={boost.field}>
+                {(column) => (
+                  <Table.Cell
+                    className={getColumnClassName(
+                      column.id,
+                      'tw:text-right tw:tabular-nums'
+                    )}
+                    key={column.id}>
+                    {renderCell(boost, column.id)}
+                  </Table.Cell>
+                )}
+              </Table.Row>
+            )}
+          </Table.Body>
+        </Table>
+      </div>
     </TableCard.Root>
   );
 };

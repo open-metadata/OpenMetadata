@@ -90,8 +90,8 @@ test.describe('Ontology Studio', () => {
     const statsBefore = await stats.innerText();
     const zoomBefore = await readGraphZoom(page);
     await expect(
-      page.getByTestId('ontology-glossary-menu-trigger')
-    ).toHaveAttribute('data-selected-glossary-id', '');
+      page.getByTestId('ontology-scope-menu-trigger')
+    ).toHaveAttribute('data-scope-key', 'glossary:all');
 
     // Once loaded, mode changes must work even when the catalog cannot be fetched again.
     await page.route('**/api/v1/glossaries?*', (route) =>
@@ -137,7 +137,7 @@ test.describe('Ontology Studio', () => {
   });
 
   test('scopes the Studio graph and stats to a glossary', async ({ page }) => {
-    await page.getByTestId('ontology-glossary-menu-trigger').click();
+    await page.getByTestId('ontology-scope-menu-trigger').click();
     await expect(
       page.getByTestId(PageData.glossary.responseData.id)
     ).toBeVisible();
@@ -231,13 +231,14 @@ test.describe('Ontology Studio', () => {
       await expect(
         page.getByTestId('ontology-authoring-inspector')
       ).toContainText(conceptName);
-
-      await page.getByTestId('submode-tab-model').click();
+      // The concept drawer is modal, like the Domain and Data Product drawers.
+      await page.getByTestId('ontology-concept-inspector-close').click();
       await expect(
-        page.getByTestId('ontology-modeling-workbench')
-      ).toBeVisible();
+        page.getByTestId('ontology-authoring-inspector')
+      ).not.toBeVisible();
 
-      await page.getByTestId('submode-tab-graph').click();
+      await expect(page.getByTestId('ontology-explorer')).toBeVisible();
+      await expect(page.getByTestId('submode-tab-model')).toHaveCount(0);
       await waitForGraphLoaded(page);
       await clickGraphNode(page, PageData.term1.responseData.id);
       await expect(
@@ -264,10 +265,10 @@ test.describe('Ontology Studio', () => {
     await page.getByTestId('mode-tab-view').click();
     await expect(searchInput).toHaveValue(PageData.term1.data.name);
     await expect(
-      page.getByTestId('ontology-glossary-menu-trigger')
+      page.getByTestId('ontology-scope-menu-trigger')
     ).toHaveAttribute(
-      'data-selected-glossary-id',
-      PageData.glossary.responseData.id
+      'data-scope-key',
+      `glossary:${PageData.glossary.responseData.id}`
     );
     expect(await readGraphEdges(page)).toEqual(edgesBefore);
 

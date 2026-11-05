@@ -13,6 +13,7 @@
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
 import { Globe01 as Domain } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -29,6 +30,16 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../../utils/RouterUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
+import TopicRowOwners from '../Common/TopicWidget/TopicRowOwners';
+import {
+  TOPIC_BLUE_TILE_CLASSES,
+  TOPIC_FILTERED_BODY_CLASSES,
+  TOPIC_FILTERED_LIST_CLASSES,
+  TOPIC_ROW_CLASSES,
+  TOPIC_ROW_DIVIDER_CLASSES,
+  TOPIC_ROW_STRETCHED_LINK_CLASSES,
+  TOPIC_ROW_TILE_CLASSES,
+} from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -38,7 +49,7 @@ const DOMAINS_LABEL_KEY = 'label.domain-plural';
 
 const TONE = {
   icon: Domain,
-  tile: 'tw:bg-utility-blue-50 tw:text-utility-blue-600',
+  tile: TOPIC_BLUE_TILE_CLASSES,
 };
 
 export type DomainsOverviewWidgetProps = WidgetCommonProps;
@@ -98,6 +109,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
         label: t('label.view-all-entity', { entity: t(DOMAINS_LABEL_KEY) }),
         onPress: () => navigate(ROUTES.DOMAIN),
       }}
+      bodyClassName={TOPIC_FILTERED_BODY_CLASSES}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
@@ -156,19 +168,33 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
           />
 
           <ul
-            className="tw:mt-3 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+            className={classNames(
+              'tw:flex tw:flex-col',
+              TOPIC_FILTERED_LIST_CLASSES
+            )}
             data-testid="domain-rows">
             {domains.map((domain) => (
-              <li data-testid={`domain-card-${domain.id}`} key={domain.id}>
-                <Link
-                  className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3"
-                  to={getDomainPath(domain.fullyQualifiedName)}>
-                  <div
-                    aria-hidden
-                    className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-600">
-                    <Domain size={16} />
-                  </div>
-                  <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+              <li
+                className={classNames(
+                  'tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
+                  TOPIC_ROW_CLASSES,
+                  TOPIC_ROW_DIVIDER_CLASSES
+                )}
+                data-testid={`domain-card-${domain.id}`}
+                key={domain.id}>
+                <div
+                  aria-hidden
+                  className={classNames(
+                    'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+                    TOPIC_BLUE_TILE_CLASSES,
+                    TOPIC_ROW_TILE_CLASSES
+                  )}>
+                  <Domain size={16} />
+                </div>
+                <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:items-start tw:gap-1">
+                  <Link
+                    className={TOPIC_ROW_STRETCHED_LINK_CLASSES}
+                    to={getDomainPath(domain.fullyQualifiedName)}>
                     <Typography
                       className="tw:min-w-0 tw:text-text-primary!"
                       data-testid="domain-name"
@@ -177,26 +203,20 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
                       weight="medium">
                       {domain.name}
                     </Typography>
-                    <Typography
-                      className={
-                        domain.ownerName
-                          ? 'tw:min-w-0 tw:text-text-tertiary!'
-                          : 'tw:min-w-0 tw:text-utility-warning-700!'
-                      }
-                      ellipsis={{ rows: 1 }}
-                      size="text-sm">
-                      {domain.ownerName ?? t('label.no-owner')}
-                    </Typography>
-                  </div>
-                  <Badge
-                    className="tw:shrink-0"
-                    color="gray"
-                    data-testid="domain-asset-count"
-                    size="sm"
-                    type="pill-color">
-                    {t('label.count-asset', { count: domain.assetCount })}
-                  </Badge>
-                </Link>
+                  </Link>
+                  <TopicRowOwners
+                    dataTestId="domain-owners"
+                    owners={domain.owners}
+                  />
+                </div>
+                <Badge
+                  className="tw:shrink-0"
+                  color="gray"
+                  data-testid="domain-asset-count"
+                  size="sm"
+                  type="pill-color">
+                  {t('label.count-asset', { count: domain.assetCount })}
+                </Badge>
               </li>
             ))}
           </ul>

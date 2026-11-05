@@ -125,14 +125,6 @@ jest.mock('../../Database/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
-    ))
-);
-
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
   jest.fn().mockImplementation(() => {
     throw new Promise(() => undefined);
