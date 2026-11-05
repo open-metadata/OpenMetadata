@@ -633,7 +633,6 @@ const GlossaryHeader = ({
             <EntityStyleIcon
               fallback={<GlossaryTermIcon size={20} />}
               iconValue={selectedData.style?.iconURL}
-              imageClassName="tw:object-contain"
               size={20}
             />
           )

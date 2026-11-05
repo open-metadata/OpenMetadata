@@ -20,6 +20,7 @@ import {
   Collapse,
   Expand,
   RefreshCcw01,
+  TestCase as TestCaseIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
@@ -27,7 +28,6 @@ import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -383,9 +383,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
                   <FeaturedIcon
                     color="brand"
-                    icon={
-                      <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
-                    }
+                    icon={TestCaseIcon}
                     size="md"
                     theme="surface"
                   />

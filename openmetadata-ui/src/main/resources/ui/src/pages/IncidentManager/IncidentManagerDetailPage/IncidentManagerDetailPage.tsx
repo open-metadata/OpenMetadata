@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  RefreshCcw01,
+  TestCase as TestCaseIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -344,9 +346,7 @@ const IncidentManagerDetailPage = ({
             <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
               <FeaturedIcon
                 color="brand"
-                icon={
-                  <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
-                }
+                icon={TestCaseIcon}
                 size="md"
                 theme="surface"
               />
