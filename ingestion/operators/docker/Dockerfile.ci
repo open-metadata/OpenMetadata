@@ -132,8 +132,8 @@ WORKDIR /ingestion
 
 # For the dev build, we copy all files
 COPY ingestion/ .
-COPY openmetadata-spec /openmetadata-spec
-COPY scripts/datamodel_generation.py /scripts/datamodel_generation.py
+COPY --chown=1000:1000 openmetadata-spec /openmetadata-spec
+COPY scripts/datamodel_generation.py scripts/prepare_model_schemas.py /scripts/
 
 # Create a non-root user with a writable home directory.
 # When the container runs with securityContext runAsUser: 1000 but no

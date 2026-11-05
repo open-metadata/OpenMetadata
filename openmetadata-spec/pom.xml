@@ -126,7 +126,7 @@
                 <version>3.6.3</version>
                 <executions>
                     <execution>
-                        <id>prepare-odcs-export-schemas</id>
+                        <id>prepare-model-schemas</id>
                         <phase>initialize</phase>
                         <goals>
                             <goal>exec</goal>
@@ -134,7 +134,9 @@
                         <configuration>
                             <executable>python3</executable>
                             <arguments>
-                                <argument>${project.basedir}/../scripts/generate_odcs_export_models.py</argument>
+                                <argument>${project.basedir}/../scripts/prepare_model_schemas.py</argument>
+                                <argument>--output-dir</argument>
+                                <argument>${project.build.directory}/model-schemas</argument>
                             </arguments>
                         </configuration>
                     </execution>
@@ -145,7 +147,7 @@
                 <artifactId>jsonschema2pojo-maven-plugin</artifactId>
                 <version>${jsonschema2pojo.version}</version>
                 <configuration>
-                    <sourceDirectory>${basedir}/src/main/resources/json/schema</sourceDirectory>
+                    <sourceDirectory>${project.build.directory}/model-schemas</sourceDirectory>
                     <targetPackage>org.openmetadata.schema</targetPackage>
                     <includeJsr303Annotations>true</includeJsr303Annotations>
                     <generateBuilders>true</generateBuilders>

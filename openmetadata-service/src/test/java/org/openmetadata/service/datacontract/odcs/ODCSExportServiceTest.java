@@ -19,9 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -61,23 +58,6 @@ class ODCSExportServiceTest {
     assertEquals("uniqueValues", result.document().at("/schema/0/quality/0/metric").asText());
     assertEquals("uniqueValues", contract.getOdcsQualityRules().getFirst().getMetric().value());
     assertThrows(IllegalArgumentException.class, result::requireValid);
-  }
-
-  @Test
-  void generationProjectionMatchesThePinnedRuntimeSchema() throws Exception {
-    try (var upstream = getClass().getResourceAsStream("/odcs/v3.1.0/schema.json");
-        var model =
-            getClass()
-                .getResourceAsStream(
-                    "/json/schema/type/datacontract/odcs/v310/odcsContract.json")) {
-      byte[] bytes = upstream.readAllBytes();
-      JsonNode generated = new ObjectMapper().readTree(model);
-      String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-      assertEquals(digest, generated.path("x-odcs-upstream-sha256").asText());
-      assertEquals("v3.1.0", generated.path("x-odcs-version").asText());
-      assertFalse(generated.at("/definitions/SchemaObject/properties").has("primaryKey"));
-      assertTrue(generated.at("/definitions/SchemaProperty/properties").has("primaryKey"));
-    }
   }
 
   @Test

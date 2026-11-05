@@ -42,7 +42,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    run([sys.executable, "scripts/generate_odcs_export_models.py"])
     pins = re.findall(
         r"^ANTLR_VERSION\s*:?=\s*(\S+)\s*$",
         (ROOT / "Makefile").read_text(),

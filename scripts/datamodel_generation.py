@@ -27,6 +27,7 @@ from datamodel_code_generator.imports import Import
 # `model.pydantic` held the Pydantic v1 models and was removed in datamodel-code-generator 0.60+.
 # We generate with `--output-model-type pydantic_v2.BaseModel`, so patch the v2 type map.
 from datamodel_code_generator.model import pydantic_v2 as pydantic_model
+from prepare_model_schemas import MODEL_SCHEMAS, prepare
 
 pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
     "metadata.ingestion.models.custom_pydantic.CustomSecretStr"
@@ -34,7 +35,6 @@ pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
 
 current_directory = str(Path.cwd())
 ingestion_path = "./" if current_directory.endswith("/ingestion") else "ingestion/"
-directory_root = "../" if current_directory.endswith("/ingestion") else "./"
 
 UTF_8 = "UTF-8"
 UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
@@ -69,11 +69,12 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
-schema_root = Path(f"{directory_root}openmetadata-spec/src/main/resources/json/schema").resolve()
+prepare()
+schema_root = MODEL_SCHEMAS
 output_root = Path(f"{ingestion_path}src/metadata/generated/schema").resolve()
 # The directory reader sorts only basenames; duplicate names need a stable path tie-breaker.
 schema_files = sorted(
-    (path for path in schema_root.rglob("*") if path.is_file()),
+    (path for path in schema_root.rglob("*.json") if path.is_file()),
     key=lambda path: (path.name, path.relative_to(schema_root).as_posix()),
 )
 os.chdir(schema_root)

@@ -144,6 +144,7 @@ DISTRIBUTION_PREFIXES = (
     "openmetadata-ui-core-components/src/main/",
     "openmetadata-dist/pom.xml",
     "openmetadata-dist/src/",
+    "scripts/prepare_model_schemas.py",
     ".github/scripts/playwright_cache_fingerprint.py",
     ".github/scripts/playwright_distribution_cache.sh",
 )
@@ -155,6 +156,7 @@ INGESTION_PREFIXES = (
     "openmetadata-spec/",
     "openmetadata-airflow-apis/",
     "scripts/datamodel_generation.py",
+    "scripts/prepare_model_schemas.py",
     "docker/development/Dockerfile",
     "docker/development/docker-compose-postgres.yml",
     "docker/run_local_docker.sh",

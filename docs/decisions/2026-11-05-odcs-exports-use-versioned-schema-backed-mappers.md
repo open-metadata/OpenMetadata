@@ -1,9 +1,9 @@
 # ODCS exports use versioned schema-backed mappers
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-05 (centralized schema provenance and attribution) · v3 2026-11-05 (published historical export profiles)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-05 (centralized schema provenance and attribution) · v3 2026-11-05 (published historical export profiles) · v4 2026-11-05 (shared build-time model schemas)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** ODCSNativeExportTest, ODCSNativeCustomPropertiesTest, ODCSExportServiceTest, scripts/tests/test_generate_odcs_export_models.py
+- **Guard:** ODCSNativeExportTest, ODCSNativeCustomPropertiesTest, ODCSExportServiceTest, scripts/tests/test_generate_odcs_export_models.py, scripts/tests/test_prepare_model_schemas.py
 - **Related:** [PR #36877](https://github.com/open-metadata/OpenMetadata/pull/36877), ADR:2026-11-04-odcs-native-exports-follow-published-schema, ADR:2026-11-04-odcs-preserves-unmapped-fields-as-generic-json
 
 ## Context
@@ -105,3 +105,19 @@ Published schemas pinned for these additional profiles:
 | `v3.0.0` | [Tagged schema](https://github.com/bitol-io/open-data-contract-standard/blob/v3.0.0/schema/odcs-json-schema-v3.0.0.json) | `421d1bbcead745784d91c3f198f45aaea536fbadbceb83f3bbfa5b4ad1305922` |
 | `v2.2.2` | [Tagged schema](https://github.com/bitol-io/open-data-contract-standard/blob/v2.2.2/schema/odcs-json-schema.json) | `a17f0d2ffa06deac2f3d1becd9828a0bb3e006a4bf9a189195dcef6786ad85d4` |
 | `v2.2.1` | [Tagged schema](https://github.com/bitol-io/open-data-contract-standard/blob/v2.2.1/schema/odcs-json-schema.json) | `c44695489e24d9c33b367e904916b14418443f81e5c5e290ac5f945d2544cc82` |
+
+## Amendment — shared build-time model schemas (v4)
+
+Only the unchanged upstream ODCS schemas are checked in. `scripts/prepare_model_schemas.py`
+copies the OpenMetadata schema tree and derives the ODCS model inputs under
+`openmetadata-spec/target/model-schemas/`, preserving their relative paths and model names.
+Java, Python, and both TypeScript generation entry points prepare and consume this tree independently;
+Python and TypeScript do not require a preceding Maven build. The adaptation remains necessary for
+the current generators' handling of composed fields and annotation defaults, but its output is a
+build artifact rather than a second committed schema set.
+
+Preparation preserves unchanged file timestamps, replaces changed files atomically, and removes
+obsolete schema inputs so subsequent generators do not read deleted definitions or export profiles.
+`--check` verifies the prepared tree without writing it. Model freshness hashes the checked-in sources
+and preparation script rather than the disposable tree. Runtime export validation continues to load
+the unchanged upstream schemas from `odcs/<version>/schema.json`.

@@ -258,6 +258,7 @@ def lint(session):
             "generate_ingestion_models.py",
             "check_generated_models.py",
             "datamodel_generation.py",
+            "prepare_model_schemas.py",
             "update_version.py",
         )
     )

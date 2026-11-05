@@ -13,16 +13,11 @@
 
 import importlib.util
 import json
-import os
-import tempfile
-from unittest.mock import patch
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location(
-    "odcs_models", ROOT / "scripts/generate_odcs_export_models.py"
-)
+SPEC = importlib.util.spec_from_file_location("odcs_models", ROOT / "scripts/prepare_model_schemas.py")
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
@@ -30,43 +25,14 @@ SPEC.loader.exec_module(MODULE)
 class OdcsExportModelProjectionTest(unittest.TestCase):
     def setUp(self):
         self.source = json.loads(
-            (
-                ROOT
-                / "openmetadata-service/src/test/resources/odcs/odcs-json-schema-v3.1.0.json"
-            ).read_text()
+            (ROOT / "openmetadata-service/src/test/resources/odcs/odcs-json-schema-v3.1.0.json").read_text()
         )
-
-    def test_repeated_generation_does_not_touch_unchanged_inputs(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            vendor = root / "vendor"
-            source = vendor / "v3.1.0/schema.json"
-            source.parent.mkdir(parents=True)
-            source.write_text(json.dumps(self.source))
-            models = root / "models"
-            with (
-                patch.object(MODULE, "ROOT", root),
-                patch.object(MODULE, "VENDOR", vendor),
-                patch.object(MODULE, "MODELS", models),
-            ):
-                self.assertTrue(MODULE.generate(False))
-                target = models / "v310/odcsContract.json"
-                os.utime(target, ns=(1_000_000_000, 1_000_000_000))
-                self.assertTrue(MODULE.generate(False))
-                self.assertEqual(1_000_000_000, target.stat().st_mtime_ns)
-                self.assertTrue(MODULE.generate(True))
 
     def test_open_legacy_objects_keep_their_upstream_extension_policy(self):
-        source = json.loads(
-            (
-                ROOT / "openmetadata-spec/src/main/resources/odcs/v2.2.2/schema.json"
-            ).read_text()
-        )
+        source = json.loads((ROOT / "openmetadata-spec/src/main/resources/odcs/v2.2.2/schema.json").read_text())
         model = MODULE.project_model(source, "v2.2.2")
         self.assertNotEqual(False, model.get("additionalProperties"))
-        self.assertNotEqual(
-            False, model["definitions"]["Column"].get("additionalProperties")
-        )
+        self.assertNotEqual(False, model["definitions"]["Column"].get("additionalProperties"))
 
     def test_export_model_declares_only_its_exact_profile_version(self):
         model = MODULE.project_model(self.source, "v3.1.0")
@@ -89,9 +55,7 @@ class OdcsExportModelProjectionTest(unittest.TestCase):
         self.assertIn("integer", column["logicalType"]["enum"])
 
     def test_conditional_quality_fields_are_available_to_the_mapper(self):
-        quality = MODULE.project_model(self.source, "v3.1.0")["definitions"][
-            "DataQuality"
-        ]["properties"]
+        quality = MODULE.project_model(self.source, "v3.1.0")["definitions"]["DataQuality"]["properties"]
         for field in [
             "metric",
             "mustBe",
@@ -107,23 +71,15 @@ class OdcsExportModelProjectionTest(unittest.TestCase):
         model = MODULE.project_model(self.source, "v3.1.0")
         self.assertIsNone(model["properties"]["schema"]["default"])
         self.assertIsNone(model["properties"]["tags"]["default"])
-        self.assertIsNone(
-            model["definitions"]["SchemaProperty"]["properties"]["quality"]["default"]
-        )
+        self.assertIsNone(model["definitions"]["SchemaProperty"]["properties"]["quality"]["default"])
 
     def test_wire_timestamps_remain_strings_in_generated_models(self):
         model = MODULE.project_model(self.source, "v3.1.0")
-        self.assertEqual(
-            "java.lang.String", model["properties"]["contractCreatedTs"]["javaType"]
-        )
+        self.assertEqual("java.lang.String", model["properties"]["contractCreatedTs"]["javaType"])
 
     def test_schema_additions_appear_without_adding_projection_rules(self):
-        self.source["$defs"]["SchemaElement"]["properties"]["futureAttribute"] = {
-            "type": "string"
-        }
-        table = MODULE.project_model(self.source, "v3.1.0")["definitions"][
-            "SchemaObject"
-        ]
+        self.source["$defs"]["SchemaElement"]["properties"]["futureAttribute"] = {"type": "string"}
+        table = MODULE.project_model(self.source, "v3.1.0")["definitions"]["SchemaObject"]
         self.assertEqual({"type": "string"}, table["properties"]["futureAttribute"])
 
     def test_annotation_defaults_are_not_materialized_but_default_named_fields_survive(
@@ -137,9 +93,7 @@ class OdcsExportModelProjectionTest(unittest.TestCase):
         table = model["definitions"]["SchemaObject"]["properties"]
         self.assertEqual({"type": "string"}, table["default"])
         self.assertNotIn("default", model["properties"]["apiVersion"])
-        self.assertNotIn(
-            "default", model["definitions"]["SchemaProperty"]["properties"]["required"]
-        )
+        self.assertNotIn("default", model["definitions"]["SchemaProperty"]["properties"]["required"])
         self.assertIn("default", self.source["properties"]["apiVersion"])
 
 

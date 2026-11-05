@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Derive generation-only ODCS model schemas from pinned upstream schemas.
+"""Prepare the shared schema inputs for Java, Python, and TypeScript generation.
 
 The upstream document remains the runtime validation authority. This projection exposes
 composed fields to jsonschema2pojo and prevents annotation defaults becoming native data.
@@ -22,20 +22,19 @@ import copy
 import hashlib
 import json
 import re
+import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / "openmetadata-spec/src/main/resources/odcs"
-MODELS = (
-    ROOT / "openmetadata-spec/src/main/resources/json/schema/type/datacontract/odcs"
-)
+SOURCE_SCHEMAS = ROOT / "openmetadata-spec/src/main/resources/json/schema"
+MODEL_SCHEMAS = ROOT / "openmetadata-spec/target/model-schemas"
 
 
 def _reference(root: dict, reference: str) -> dict:
     if not reference.startswith("#/"):
-        raise ValueError(
-            f"ODCS model generation requires a pinned local reference: {reference}"
-        )
+        raise ValueError(f"ODCS model generation requires a pinned local reference: {reference}")
     result = root
     for part in reference[2:].split("/"):
         result = result[part.replace("~1", "/").replace("~0", "~")]
@@ -71,19 +70,13 @@ def _compose(node: dict, root: dict, seen: frozenset[str] = frozenset()) -> dict
         result = _merge_schema(result, _compose(branch, root, seen))
     for keyword in ("then", "else"):
         if isinstance(node.get(keyword), dict):
-            result = _merge_schema(
-                result, _compose(node[keyword], root, seen), conditional=True
-            )
+            result = _merge_schema(result, _compose(node[keyword], root, seen), conditional=True)
     for keyword in ("anyOf", "oneOf"):
         for branch in node.get(keyword, []):
             composed = _compose(branch, root, seen)
             if composed.get("properties"):
                 result = _merge_schema(result, composed, conditional=True)
-    own = {
-        key: value
-        for key, value in node.items()
-        if key not in ("$ref", "allOf", "if", "then", "else")
-    }
+    own = {key: value for key, value in node.items() if key not in ("$ref", "allOf", "if", "then", "else")}
     return _merge_schema(result, own)
 
 
@@ -106,9 +99,7 @@ def _project_node(node, root: dict, *, definition: bool = False):
             continue
         if key in ("properties", "patternProperties", "$defs", "definitions"):
             result["definitions" if key == "$defs" else key] = {
-                name: _project_node(
-                    schema, root, definition=key in ("$defs", "definitions")
-                )
+                name: _project_node(schema, root, definition=key in ("$defs", "definitions"))
                 for name, schema in value.items()
             }
         elif key in ("items", "additionalProperties", "contains", "propertyNames"):
@@ -139,19 +130,14 @@ def project_model(source: dict, version: str, digest: str | None = None) -> dict
     package = f"org.openmetadata.schema.type.datacontract.odcs.{slug}"
     model = _project_node(source, source, definition=True)
     model["$schema"] = "https://json-schema.org/draft/2020-12/schema"
-    model["$id"] = (
-        f"https://open-metadata.org/schema/type/datacontract/odcs/{slug}/odcsContract.json"
-    )
+    model["$id"] = f"https://open-metadata.org/schema/type/datacontract/odcs/{slug}/odcsContract.json"
     model["title"] = "odcsContract"
     model["javaType"] = f"{package}.OdcsContract"
     model["properties"]["apiVersion"]["enum"] = [version]
     model["properties"]["apiVersion"]["description"] = f"ODCS export profile {version}."
     model["x-odcs-version"] = version
     model["x-odcs-upstream-sha256"] = (
-        digest
-        or hashlib.sha256(
-            json.dumps(source, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
+        digest or hashlib.sha256(json.dumps(source, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     )
     for name, definition in model.get("definitions", {}).items():
         if isinstance(definition, dict) and definition.get("properties"):
@@ -159,33 +145,76 @@ def project_model(source: dict, version: str, digest: str | None = None) -> dict
     return model
 
 
-def generate(check: bool) -> bool:
-    current = True
-    for source in sorted(VENDOR.glob("v*/schema.json")):
+def _schema_inputs(source_directory: Path, vendor_directory: Path):
+    for source in sorted(source_directory.rglob("*.json")):
+        yield source.relative_to(source_directory), source.read_bytes()
+    for source in sorted(vendor_directory.glob("v*/schema.json")):
         version = source.parent.name
         content = source.read_bytes()
-        model = project_model(
-            json.loads(content), version, hashlib.sha256(content).hexdigest()
+        model = project_model(json.loads(content), version, hashlib.sha256(content).hexdigest())
+        target = Path("type/datacontract/odcs") / version.replace(".", "") / "odcsContract.json"
+        yield (
+            target,
+            (json.dumps(model, indent=2, ensure_ascii=False) + "\n").encode("utf-8"),
         )
-        target = MODELS / version.replace(".", "") / "odcsContract.json"
-        rendered = json.dumps(model, indent=2, ensure_ascii=False) + "\n"
+
+
+def _write_schema(target: Path, content: bytes) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # Separate generation entry points can prepare the same tree concurrently.
+    with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as temporary:
+        temporary.write(content)
+        path = Path(temporary.name)
+    try:
+        path.replace(target)
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def prepare(
+    output_directory: Path = MODEL_SCHEMAS,
+    *,
+    source_directory: Path = SOURCE_SCHEMAS,
+    vendor_directory: Path = VENDOR,
+    check: bool = False,
+) -> bool:
+    output_directory = output_directory.resolve()
+    for directory in (source_directory.resolve(), vendor_directory.resolve()):
+        if output_directory.is_relative_to(directory) or directory.is_relative_to(output_directory):
+            raise ValueError("Prepared schema output must not overlap its source inputs")
+        if not directory.is_dir():
+            raise ValueError(f"Schema input directory does not exist: {directory}")
+    current = True
+    expected = set()
+    for relative, content in _schema_inputs(source_directory, vendor_directory):
+        target = output_directory / relative
+        expected.add(target)
+        if target.exists() and target.read_bytes() == content:
+            continue
         if check:
-            if not target.exists() or target.read_text() != rendered:
-                print(f"Stale ODCS export model input: {target.relative_to(ROOT)}")
-                current = False
+            sys.stderr.write(f"Stale model schema input: {target}\n")
+            current = False
         else:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if not target.exists() or target.read_text() != rendered:
-                target.write_text(rendered)
-                print(f"Generated {target.relative_to(ROOT)}")
+            _write_schema(target, content)
+    for obsolete in sorted(set(output_directory.rglob("*.json")) - expected):
+        if check:
+            sys.stderr.write(f"Obsolete model schema input: {obsolete}\n")
+            current = False
+        else:
+            obsolete.unlink(missing_ok=True)
     return current
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--output-dir", type=Path, default=MODEL_SCHEMAS)
     args = parser.parse_args()
-    return 0 if generate(args.check) else 1
+    if not prepare(args.output_dir, check=args.check):
+        return 1
+    if not args.check:
+        sys.stdout.write(f"{args.output_dir.resolve()}\n")
+    return 0
 
 
 if __name__ == "__main__":

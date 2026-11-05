@@ -13,7 +13,6 @@
 #
 
 # Script configuration
-readonly SCHEMA_DIRECTORY='openmetadata-spec/src/main/resources/json/schema/'
 readonly UI_OUTPUT_DIRECTORY='openmetadata-ui/src/main/resources/ui/src/generated'
 readonly MAX_PARALLEL_JOBS=35
 readonly TEMP_DIR=$(mktemp -d)
@@ -97,7 +96,7 @@ process_schema_files() {
         local temp_dir="$TEMP_DIR/$(dirname "$file_path")"
         mkdir -p "$temp_dir"
         local temp_schema_file="${temp_dir}/$(basename -- "$file_path")"
-        generate_temp_schema "$PWD/$SCHEMA_DIRECTORY$file_path" "$temp_schema_file"
+        generate_temp_schema "$SCHEMA_DIRECTORY$file_path" "$temp_schema_file"
     done
 
     # Second pass: Generate TypeScript files
@@ -127,7 +126,7 @@ cd "$(dirname "$0")/../../../../.." || {
     exit 1
 }
 
-python3 scripts/generate_odcs_export_models.py || exit 1
+SCHEMA_DIRECTORY="$(python3 scripts/prepare_model_schemas.py)/" || exit 1
 
 # quicktype is fetched on demand at an exact pin (ADR:2026-10-19-ts-codegen-runs-quicktype-via-npx-at-one-exact-pin);
 # keep the version identical to json2ts.sh. Resolved once so the parallel jobs skip npx.
