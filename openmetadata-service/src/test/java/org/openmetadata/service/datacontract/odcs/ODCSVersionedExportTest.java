@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -366,6 +367,16 @@ class ODCSVersionedExportTest {
     JsonNode doc =
         exporter.export(contract().withOdcsQualityRules(List.of(rule)), version).requireValid();
     assertEquals("text", doc.at("/schema/0/quality/0/type").asText());
+  }
+
+  @Test
+  void malformedRequiredSchemaRetainsItsResourcePathAndOriginalCause() {
+    IllegalArgumentException error =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ODCSExportModelWriter.requiredSchema("/odcs/malformed-schema.txt"));
+    assertTrue(error.getMessage().contains("/odcs/malformed-schema.txt"));
+    assertTrue(error.getCause() instanceof IOException);
   }
 
   @Test

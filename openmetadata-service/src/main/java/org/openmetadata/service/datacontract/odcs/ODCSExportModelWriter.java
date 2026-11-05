@@ -49,7 +49,10 @@ final class ODCSExportModelWriter {
   }
 
   static JsonNode schema(String version) {
-    String path = "/odcs/" + version + "/schema.json";
+    return requiredSchema("/odcs/" + version + "/schema.json");
+  }
+
+  static JsonNode requiredSchema(String path) {
     try (var stream = ODCSExportModelWriter.class.getResourceAsStream(path)) {
       if (stream == null) throw new IllegalArgumentException("Missing ODCS export schema: " + path);
       return JSON.readTree(stream);
