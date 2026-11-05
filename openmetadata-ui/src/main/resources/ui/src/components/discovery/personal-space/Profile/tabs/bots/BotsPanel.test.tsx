@@ -21,6 +21,15 @@ const mockUpdateParams = jest.fn();
 let mockHashState = { tab: 'bots', subPath: '', params: {} };
 
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useHashPagingParams: () => ({
+    page: 1,
+    pageSize: undefined,
+    resolvedPageSize: 15,
+    savePageSize: jest.fn(),
+    cursor: undefined,
+    cursorType: undefined,
+    setPage: jest.fn(),
+  }),
   useSettingsHash: () => ({
     state: mockHashState,
     setHash: mockSetHash,

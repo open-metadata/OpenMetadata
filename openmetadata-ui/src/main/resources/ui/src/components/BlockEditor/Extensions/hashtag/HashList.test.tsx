@@ -67,6 +67,16 @@ const mockProps: SuggestionProps<
   text: '',
   clientRect: null,
   decorationNode: null,
+  placement: 'bottom-start',
+  offset: { mainAxis: 0, crossAxis: 0 },
+  flip: true,
+  floatingUi: {
+    placement: 'bottom-start',
+    strategy: 'absolute',
+    middleware: [],
+  },
+  mount: jest.fn(),
+  loading: false,
 };
 
 describe('HashList', () => {
