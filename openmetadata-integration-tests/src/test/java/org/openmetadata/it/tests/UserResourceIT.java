@@ -70,6 +70,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
@@ -576,6 +577,99 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   private static CreateUser selfLoginUserRequest() {
     String userName = "navuser" + UUID.randomUUID().toString().substring(0, 8);
     return new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org");
+  }
+
+  /** The delete resolves a quoted name to the account it names, so the self check does too. */
+  @Test
+  void test_selfDeleteByName_forbiddenForNonAdmin(TestNamespace ns) {
+    String plainName = selfLoginUserRequest().getName();
+    for (String name : List.of(plainName + ".doe", plainName)) {
+      User user =
+          ns.trackRoot(
+              Entity.USER,
+              createEntity(
+                  new CreateUser().withName(name).withEmail(name + "@test.openmetadata.org")));
+      String quotedName = URLEncoder.encode("\"" + user.getName() + "\"", StandardCharsets.UTF_8);
+
+      OpenMetadataException refused =
+          assertThrows(
+              OpenMetadataException.class,
+              () ->
+                  clientFor(user)
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.DELETE,
+                          "/v1/users/name/" + quotedName + "?hardDelete=true",
+                          null));
+      assertEquals(403, refused.getStatusCode(), name + " -> " + refused.getMessage());
+      assertFalse(Boolean.TRUE.equals(getEntity(user.getId().toString()).getDeleted()));
+    }
+  }
+
+  /** Joining a closed team needs an admin whatever shape the PATCH operation takes. */
+  @Test
+  void test_patchUser_cannotJoinClosedTeamThroughAnyOperation(TestNamespace ns) {
+    User user = ns.trackRoot(Entity.USER, createEntity(selfLoginUserRequest()));
+    Team closed = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("closedjoin"), false));
+    Team open = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("openjoin"), true));
+    OpenMetadataClient self = clientFor(user);
+
+    assertPatchForbidden(self, user, teamsPatch("/teams/0", teamReference(closed)));
+    assertPatchForbidden(
+        self,
+        user,
+        teamsPatch("/teams", PATCH_MAPPER.createArrayNode().add(teamReference(closed))));
+    assertPatchForbidden(
+        self, user, teamsPatch("/teams/0/id", PATCH_MAPPER.valueToTree(closed.getId().toString())));
+    assertFalse(storedTeamIds(user).contains(closed.getId()));
+
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + user.getId(),
+            teamsPatch("/teams", PATCH_MAPPER.createArrayNode().add(teamReference(open))));
+    assertTrue(storedTeamIds(user).contains(open.getId()), "joining an open team stays allowed");
+  }
+
+  /** Leaving a closed team sheds its roles and policies, so it needs an admin too. */
+  @Test
+  void test_nonAdmin_cannotLeaveClosedTeam(TestNamespace ns) {
+    Team closed = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("closedleave"), false));
+    User user =
+        ns.trackRoot(
+            Entity.USER, createEntity(selfLoginUserRequest().withTeams(List.of(closed.getId()))));
+    OpenMetadataClient self = clientFor(user);
+
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(user.getName())
+                .withEmail(user.getEmail())
+                .withDescription("put without teams"));
+    assertTrue(
+        storedTeamIds(user).contains(closed.getId()), "a self PUT that omits teams keeps them");
+
+    ArrayNode remove = PATCH_MAPPER.createArrayNode();
+    remove.addObject().put("op", "remove").put("path", "/teams/0");
+    assertPatchForbidden(self, user, remove);
+    assertTrue(storedTeamIds(user).contains(closed.getId()));
+  }
+
+  private static ArrayNode teamsPatch(String path, JsonNode value) {
+    ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    ops.addObject().put("op", "replace").put("path", path).set("value", value);
+    return ops;
+  }
+
+  private static ObjectNode teamReference(Team team) {
+    return PATCH_MAPPER.createObjectNode().put("id", team.getId().toString()).put("type", "team");
+  }
+
+  private static List<UUID> storedTeamIds(User user) {
+    List<EntityReference> teams = Users.get(user.getId().toString(), "teams").getTeams();
+    return teams == null ? List.of() : teams.stream().map(EntityReference::getId).toList();
   }
 
   @Test
@@ -2150,7 +2244,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_userNamedLikeTheAdminWithASlash_cannotMakeItselfAdmin(TestNamespace ns) {
+  void test_aUserIsAuthorizedAsItsWholeName_notAsTheAdmin(TestNamespace ns) {
     String userName = "admin/" + ns.uniqueShortId();
     User user =
         createEntity(
@@ -2376,6 +2470,16 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 .users()
                 .generateToken(regularUser.getId(), JWTTokenExpiry.Seven),
         "Admin should not be able to generate token for regular user");
+  }
+
+  private static Team createGroupTeam(String name, boolean isJoinable) {
+    return SdkClients.adminClient()
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(name)
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withIsJoinable(isJoinable));
   }
 
   // ===================================================================
