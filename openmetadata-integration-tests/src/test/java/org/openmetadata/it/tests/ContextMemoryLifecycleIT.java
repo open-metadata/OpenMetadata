@@ -99,11 +99,7 @@ public class ContextMemoryLifecycleIT {
         changedFields(superseded)
             .containsAll(Set.of("entityStatus", "supersededBy", "statusReason")));
 
-    assertThrows(
-        ForbiddenException.class,
-        () -> user1().patch(idOf(duplicate), status(ContextMemoryStatus.APPROVED)),
-        "an owner cannot approve their own memory");
-    ContextMemory restored = admin().patch(idOf(duplicate), status(ContextMemoryStatus.APPROVED));
+    ContextMemory restored = user1().patch(idOf(duplicate), status(ContextMemoryStatus.APPROVED));
 
     assertEquals(ContextMemoryStatus.APPROVED, restored.getEntityStatus());
     assertNull(restored.getSupersededBy(), "leaving a superseded stage clears supersededBy");
@@ -181,11 +177,7 @@ public class ContextMemoryLifecycleIT {
             .formatted(retirementStage.value());
 
     ContextMemory invalidated = admin().patch(idOf(memory), JsonUtils.readTree(invalidate));
-    assertThrows(
-        ForbiddenException.class,
-        () -> user1().patch(idOf(memory), status(ContextMemoryStatus.APPROVED)),
-        "an owner cannot approve their own memory");
-    ContextMemory restored = admin().patch(idOf(memory), status(ContextMemoryStatus.APPROVED));
+    ContextMemory restored = user1().patch(idOf(memory), status(ContextMemoryStatus.APPROVED));
 
     assertEquals(retirementStage, invalidated.getEntityStatus());
     assertEquals("Anchor table sales.orders was deleted", invalidated.getStatusReason());
@@ -222,10 +214,10 @@ public class ContextMemoryLifecycleIT {
   }
 
   @Test
-  void creatingWithoutStatus_defaultsToUnprocessed(TestNamespace ns) {
-    ContextMemory memory = admin().create(memory(ns, "default-unprocessed").withEntityStatus(null));
+  void creatingWithoutStatus_defaultsToApproved(TestNamespace ns) {
+    ContextMemory memory = user1().create(memory(ns, "default-approved").withEntityStatus(null));
 
-    assertEquals(ContextMemoryStatus.UNPROCESSED, memory.getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus());
   }
 
   @Test

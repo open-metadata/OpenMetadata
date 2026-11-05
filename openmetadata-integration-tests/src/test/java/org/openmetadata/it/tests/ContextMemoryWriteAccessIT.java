@@ -72,16 +72,12 @@ public class ContextMemoryWriteAccessIT {
     User ownerUser = createUser(ns, null);
     ContextMemoryService owner = memoriesAs(ownerUser);
     ContextMemoryService reader = memoriesAs(createUser(ns, null));
-    // An admin writes it Approved: the user's own create would start Unprocessed, which no reader
-    // lists whatever its anchor, and this asks about the anchor rule.
     ContextMemory memory =
-        adminMemories()
-            .create(
-                entityMemory(ns, "deleted-anchor-list")
-                    .withPrimaryEntity(tableRef(anchor))
-                    .withOwners(List.of(userRef(ownerUser)))
-                    .withShareConfig(
-                        new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY)));
+        owner.create(
+            entityMemory(ns, "deleted-anchor-list")
+                .withPrimaryEntity(tableRef(anchor))
+                .withOwners(List.of(userRef(ownerUser)))
+                .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY)));
     assertEquals(memory.getId(), reader.get(memory.getId().toString()).getId());
     SdkClients.adminClient()
         .tables()

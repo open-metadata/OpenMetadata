@@ -163,7 +163,14 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               ContextMemoryStatus.ARCHIVED,
                   Set.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.UNPROCESSED)));
 
+  private final boolean reviewRequired;
+
   public ContextMemoryRepository() {
+    this(false);
+  }
+
+  /** A distribution with a reviewer opts into pending creation and privileged approval. */
+  protected ContextMemoryRepository(boolean reviewRequired) {
     super(
         ContextMemoryResource.COLLECTION_PATH,
         Entity.CONTEXT_MEMORY,
@@ -173,7 +180,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         UPDATE_FIELDS);
     supportsSearch = true;
     entityLifecycle = LIFECYCLE;
-    defaultEntityStatus = ContextMemoryStatus.UNPROCESSED;
+    this.reviewRequired = reviewRequired;
+    defaultEntityStatus =
+        reviewRequired ? ContextMemoryStatus.UNPROCESSED : ContextMemoryStatus.APPROVED;
   }
 
   @Override
@@ -544,7 +553,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     requireWritableByWriter(entity, update);
     if (!update) {
       requireDisputesOpenedByAutomation(null, entity, impersonatorOf(entity));
-      startPendingUnlessPrivileged(entity);
+      if (reviewRequired) {
+        startPendingUnlessPrivileged(entity);
+      }
     }
     if (entity.getPrimaryEntity() != null) {
       entity.setPrimaryEntity(resolvePrimaryEntity(entity, update));
@@ -578,8 +589,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   /**
-   * A memory created by anyone but an admin or a bot starts Unprocessed, whatever stage it asked
-   * for, so reconciliation decides it before anyone else grounds on it. It runs before the server
+   * When review is required, a memory created by anyone but an admin or a bot starts Unprocessed,
+   * whatever stage it asked for. It runs before the server
    * holds a memory for retired evidence, so a real hold still starts it in Draft and a requested
    * one does not (ADR:2026-10-09-data-consumers-create-context-memories).
    */
@@ -612,14 +623,14 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   /**
-   * Only an admin, a bot, or a conflict review decision moves a memory into Approved. A review's
-   * resolver writes through governance-bot, which no caller can claim without its token
-   * (ADR:2026-10-09-data-consumers-create-context-memories).
+   * When review is required, only an admin, a bot, or a conflict review decision approves a
+   * memory. OSS has no reconciliation app and permits an authorized owner to approve directly
+   * (ADR:2026-11-05-oss-memories-are-approved-without-reconciliation).
    */
   @Override
   protected void checkStageDecision(
       ContextMemory current, ContextMemory change, String from, String to) {
-    if (isSelfApproval(current, change)) {
+    if (reviewRequired && isSelfApproval(current, change)) {
       throw new AuthorizationException(ContextMemoryWriteAccess.APPROVAL_NEEDS_REVIEW);
     }
   }
@@ -900,7 +911,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       }
       // A PUT carries the stage of the create request it re-sends; a self-approval in it keeps the
       // stored stage, as the create did, so the PUT stays repeatable. A PATCH is refused instead.
-      if (operation == Operation.PUT && isSelfApproval(original, updated)) {
+      if (reviewRequired && operation == Operation.PUT && isSelfApproval(original, updated)) {
         updated.setEntityStatus(original.getEntityStatus());
       }
       super.updateEntityStatus(consolidatingChanges);

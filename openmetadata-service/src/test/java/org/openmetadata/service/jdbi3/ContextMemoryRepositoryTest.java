@@ -83,7 +83,7 @@ class ContextMemoryRepositoryTest {
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
     Entity.setCollectionDAO(daoCollection);
     Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(daoCollection));
-    repository = new ContextMemoryRepository();
+    repository = new ContextMemoryRepository(true);
   }
 
   @AfterEach
@@ -99,6 +99,66 @@ class ContextMemoryRepositoryTest {
     assertThrows(
         AuthorizationException.class,
         () -> repository.prepare(new ContextMemory().withName("unstamped"), true));
+  }
+
+  @Test
+  void ossMemoriesAreApprovedWhenNoStageIsRequested() {
+    repository = new ContextMemoryRepository();
+    withWriters(
+        () -> {
+          ContextMemory memory = byWriter("alice", null);
+
+          repository.prepare(memory, false);
+          repository.assignInitialEntityStatus(memory);
+
+          assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "DRAFT", "UNPROCESSED"})
+  void ossPreservesAnExplicitlyRequestedStage(ContextMemoryStatus stage) {
+    repository = new ContextMemoryRepository();
+    withWriters(
+        () -> {
+          ContextMemory memory = byWriter("alice", stage);
+
+          repository.prepare(memory, false);
+          repository.assignInitialEntityStatus(memory);
+
+          assertEquals(stage, memory.getEntityStatus());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = EntityRepository.Operation.class,
+      names = {"PATCH", "PUT"})
+  void ossOwnersMayApproveTheirPendingMemories(EntityRepository.Operation operation) {
+    repository = new ContextMemoryRepository();
+    withWriters(
+        () ->
+            assertEquals(
+                ContextMemoryStatus.APPROVED,
+                stageMove("alice", ContextMemoryStatus.APPROVED, null, operation)));
+  }
+
+  @Test
+  void aReviewingDistributionDefaultsToUnprocessedForEveryWriter() {
+    withWriters(
+        () -> {
+          for (String writer : List.of("alice", Entity.ADMIN_USER_NAME, "ai-bot")) {
+            ContextMemory memory = byWriter(writer, null);
+
+            repository.prepare(memory, false);
+            repository.assignInitialEntityStatus(memory);
+
+            assertEquals(ContextMemoryStatus.UNPROCESSED, memory.getEntityStatus(), writer);
+            assertNull(memory.getLastReviewedAt());
+          }
+        });
   }
 
   /**
@@ -368,6 +428,15 @@ class ContextMemoryRepositoryTest {
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(
               new EntityReference().withId(alice.getId()).withName("alice").withType(Entity.USER));
+      for (String writer : List.of(Entity.ADMIN_USER_NAME, "ai-bot")) {
+        entities
+            .when(() -> Entity.getEntityReferenceByName(Entity.USER, writer, Include.NON_DELETED))
+            .thenReturn(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withName(writer)
+                    .withType(Entity.USER));
+      }
       assertions.run();
     }
   }

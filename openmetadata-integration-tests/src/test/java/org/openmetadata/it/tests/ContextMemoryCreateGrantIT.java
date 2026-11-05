@@ -77,24 +77,24 @@ public class ContextMemoryCreateGrantIT {
     assertEquals(List.of(author.getId()), ownerIds(posted));
     assertEquals(List.of(author.getId()), ownerIds(put));
     assertEquals("orders.amount_eur, in euros.", edited.getAnswer());
-    assertEquals(ContextMemoryStatus.UNPROCESSED, posted.getEntityStatus());
-    assertEquals(ContextMemoryStatus.UNPROCESSED, put.getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, posted.getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, put.getEntityStatus());
     assertEquals(
-        ContextMemoryStatus.UNPROCESSED, memories.get(posted.getId().toString()).getEntityStatus());
+        ContextMemoryStatus.APPROVED, memories.get(posted.getId().toString()).getEntityStatus());
     assertEquals(
-        ContextMemoryStatus.UNPROCESSED, memories.get(put.getId().toString()).getEntityStatus());
+        ContextMemoryStatus.APPROVED, memories.get(put.getId().toString()).getEntityStatus());
 
     ContextMemory putAgain =
         memories.put(
-            anchoredMemory(ns, "put", anchor).withAnswer("Updated, still awaiting review."));
-    assertEquals(ContextMemoryStatus.UNPROCESSED, putAgain.getEntityStatus());
+            anchoredMemory(ns, "put", anchor).withAnswer("Updated and immediately usable."));
+    assertEquals(ContextMemoryStatus.APPROVED, putAgain.getEntityStatus());
     assertEquals(
-        ContextMemoryStatus.UNPROCESSED, memories.get(put.getId().toString()).getEntityStatus());
-    assertThrows(
-        ForbiddenException.class,
-        () -> memories.patch(posted.getId(), replace("/entityStatus", "Approved")));
+        ContextMemoryStatus.APPROVED, memories.get(put.getId().toString()).getEntityStatus());
+    memories.patch(posted.getId(), replace("/entityStatus", "Unprocessed"));
+    ContextMemory approved = memories.patch(posted.getId(), replace("/entityStatus", "Approved"));
+    assertEquals(ContextMemoryStatus.APPROVED, approved.getEntityStatus());
     assertEquals(
-        ContextMemoryStatus.UNPROCESSED, memories.get(posted.getId().toString()).getEntityStatus());
+        ContextMemoryStatus.APPROVED, memories.get(posted.getId().toString()).getEntityStatus());
   }
 
   @Test

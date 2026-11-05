@@ -137,7 +137,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
 
   @Override
   protected ContextMemoryStatus expectedInitialEntityStatus() {
-    return ContextMemoryStatus.UNPROCESSED;
+    return ContextMemoryStatus.APPROVED;
   }
 
   // Ordinary search returns trusted memories. Keep search fixtures explicitly approved while

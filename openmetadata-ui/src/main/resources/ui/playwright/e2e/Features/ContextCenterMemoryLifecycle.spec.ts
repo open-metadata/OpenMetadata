@@ -42,7 +42,7 @@ test.describe(
       try {
         const createMemory = async (
           kind: string,
-          entityStatus?: 'Approved'
+          entityStatus?: 'Approved' | 'Unprocessed'
         ) => {
           const name = `cc_lifecycle_${kind}_${uuid()}`;
 
@@ -56,7 +56,7 @@ test.describe(
           });
         };
 
-        unprocessed = await createMemory('unprocessed');
+        unprocessed = await createMemory('unprocessed', 'Unprocessed');
         successor = await createMemory('successor', 'Approved');
         superseded = await createMemory('superseded', 'Approved');
         invalidated = await createMemory('invalidated', 'Approved');

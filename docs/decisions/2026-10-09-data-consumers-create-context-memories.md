@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (extraction provenance and write-response visibility);
-  v3 2026-11-03 (a non-admin's memory starts Unprocessed and only a review approves it)
+  v3 2026-11-03 (a non-admin's memory starts Unprocessed and only a review approves it);
+  v4 2026-11-05 (review rules apply to distributions with reconciliation)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `DataConsumerPolicyGrantSqlMigrationTest` (the upgrade statement),
   `ContextMemoryCreateGrantIT` (the grant and the opt-out), `ContextMemoryWriteAccessTest` and
@@ -115,3 +116,12 @@ Approved or Public memory through the API, skipping review.
     patch the stage or disputes;
   - changed: an owner can no longer restore their own retired memory to `Approved`. They send it
     back to review (`Unprocessed`), or an admin restores it.
+
+## Amendment — 2026-11-05: OSS publishes immediately and Collate requires review
+
+ADR:2026-11-05-oss-memories-are-approved-without-reconciliation limits the November 3 creation and
+approval rules to distributions that require review. OSS defaults new memories to Approved and
+allows authorized owners to approve or restore their memories. Collate opts into the pending
+creation and privileged approval rules through its repository extension, independently of app
+availability. Ownership, reference visibility, extraction provenance, and dispute restrictions
+remain common to both distributions.
