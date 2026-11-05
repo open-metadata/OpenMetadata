@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
@@ -43,6 +44,21 @@ public class CompiledRule extends Rule {
       Set.of(MetadataOperation.EXECUTE_SPARQL_QUERY);
 
   @JsonIgnore private Expression expression;
+
+  /**
+   * The rules a policy enforces. A disabled policy grants and denies nothing
+   * (ADR:2026-11-03-a-disabled-policy-has-no-rules).
+   */
+  static List<CompiledRule> enforcedRules(Policy policy) {
+    List<CompiledRule> rules = new ArrayList<>();
+    if (Boolean.FALSE.equals(policy.getEnabled()) || policy.getRules() == null) {
+      return rules;
+    }
+    for (Rule rule : policy.getRules()) {
+      rules.add(new CompiledRule(rule));
+    }
+    return rules;
+  }
 
   public CompiledRule(Rule rule) {
     super();

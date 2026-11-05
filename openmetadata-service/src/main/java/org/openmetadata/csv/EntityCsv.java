@@ -798,11 +798,25 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
                 fieldNumber,
                 entityRefTypeAndValue.get(0),
                 entityRefTypeAndValue.get(1));
-        Optional.ofNullable(entityRef).ifPresent(entityReferences::add);
+        Optional.ofNullable(entityRef)
+            .map(EntityCsv::storedReference)
+            .ifPresent(entityReferences::add);
       }
     }
 
     return isList ? entityReferences : entityReferences.isEmpty() ? null : entityReferences.get(0);
+  }
+
+  /**
+   * The import resolves each reference on the server, so a value keeps only what identifies the
+   * target; the target's own fields (e.g. its description) are not copied into the holder.
+   */
+  private static EntityReference storedReference(EntityReference resolved) {
+    return new EntityReference()
+        .withId(resolved.getId())
+        .withType(resolved.getType())
+        .withName(resolved.getName())
+        .withFullyQualifiedName(resolved.getFullyQualifiedName());
   }
 
   protected String parseFormattedDateTimeField(

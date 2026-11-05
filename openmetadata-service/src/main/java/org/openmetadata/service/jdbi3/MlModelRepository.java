@@ -520,6 +520,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,mlFeatures");
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     MlModel mlModel = (MlModel) entity;

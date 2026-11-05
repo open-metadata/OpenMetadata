@@ -28,7 +28,6 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -121,8 +120,7 @@ public final class OntologyImpactResource {
       final List<GlossaryTerm> terms =
           repository.get(
               null, termIds.get(), ResourceContext.authorizationFields(repository), Include.ALL);
-      final BulkFieldHydrator hydrator =
-          new BulkFieldHydrator(Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(terms)));
+      final BulkFieldHydrator hydrator = BulkFieldHydrator.forTags(repository, terms);
       for (final GlossaryTerm term : terms) {
         authorizer.authorize(
             securityContext,
