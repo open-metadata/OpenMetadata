@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -34,8 +35,6 @@ import java.util.function.BiConsumer;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
@@ -47,7 +46,10 @@ import org.openmetadata.service.rdf.translator.JsonLdTranslator;
  * image's storage extension, and it compacts the dataset between scenarios. Run each strategy
  * against a fresh dataset; scripts/rdf-live-update-benchmark.sh does.
  *
- * <p>Usage: {@code RdfLiveUpdateDiskHarness <endpoint> <DIFFERENCE|REPLACE> <tables> <columns>
+ * <p>2.0 does not project a table's columns, so a table here is wide in custom properties: each
+ * one projects an extension property resource with its key, value and type.
+ *
+ * <p>Usage: {@code RdfLiveUpdateDiskHarness <endpoint> <DIFFERENCE|REPLACE> <tables> <properties>
  * <rounds>}, credentials from {@code -Dusername} and {@code -Dpassword}, and {@code
  * -DdiskUsageCommand}: a shell command whose output starts with the dataset directory's size in KB.
  */
@@ -90,7 +92,7 @@ public final class RdfLiveUpdateDiskHarness {
     final RdfEntityWriteStrategy strategy =
         RdfEntityWriteStrategy.valueOf(args.length > 1 ? args[1] : "DIFFERENCE");
     final int tableCount = args.length > 2 ? Integer.parseInt(args[2]) : 200;
-    final int columnCount = args.length > 3 ? Integer.parseInt(args[3]) : 300;
+    final int propertyCount = args.length > 3 ? Integer.parseInt(args[3]) : 300;
     final int rounds = args.length > 4 ? Integer.parseInt(args[4]) : 5;
     final String[] credentials = {
       System.getProperty("username", "admin"), System.getProperty("password", "admin")
@@ -100,26 +102,27 @@ public final class RdfLiveUpdateDiskHarness {
     final RdfLiveUpdateDiskHarness harness =
         new RdfLiveUpdateDiskHarness(endpoint, strategy, credentials);
     try {
-      harness.run(tableCount, columnCount, rounds);
+      harness.run(tableCount, propertyCount, rounds);
     } finally {
       harness.storage.close();
     }
   }
 
-  private void run(final int tableCount, final int columnCount, final int rounds)
+  private void run(final int tableCount, final int propertyCount, final int rounds)
       throws IOException, InterruptedException {
     final List<Table> tables = new ArrayList<>();
     for (int index = 0; index < tableCount; index++) {
-      tables.add(wideTable(index, columnCount));
+      tables.add(wideTable(index, propertyCount));
     }
     storage.clearGraph(GRAPH);
     tables.forEach(this::write);
     System.out.printf(
-        "strategy=%s tables=%d columns=%d rounds=%d%n", strategy, tableCount, columnCount, rounds);
+        "strategy=%s tables=%d customProperties=%d rounds=%d%n",
+        strategy, tableCount, propertyCount, rounds);
     System.out.println(
         "scenario | writes | disk growth MB | KB per write | update requests | payload MB | outcomes");
     measure("unchanged", tables, rounds, (table, round) -> {});
-    measure("one tag", tables, rounds, RdfLiveUpdateDiskHarness::moveOneTag);
+    measure("one property", tables, rounds, RdfLiveUpdateDiskHarness::changeOneProperty);
     measure(
         "description",
         tables,
@@ -218,24 +221,17 @@ public final class RdfLiveUpdateDiskHarness {
     return delta;
   }
 
-  private static void moveOneTag(final Table table, final int round) {
-    final List<Column> columns = table.getColumns();
-    columns.get(round % columns.size()).setTags(List.of());
-    columns.get((round + 1) % columns.size()).setTags(List.of(tag("PII.Sensitive")));
+  @SuppressWarnings("unchecked")
+  private static void changeOneProperty(final Table table, final int round) {
+    final Map<String, Object> extension = (Map<String, Object>) table.getExtension();
+    extension.put("property_" + (round % extension.size()), "Revision " + round);
   }
 
-  private static Table wideTable(final int index, final int columnCount) {
+  private static Table wideTable(final int index, final int propertyCount) {
     final String fqn = "bench.db.schema.wide_" + index;
-    final List<Column> columns = new ArrayList<>();
-    for (int column = 0; column < columnCount; column++) {
-      columns.add(
-          new Column()
-              .withName("column_" + column)
-              .withFullyQualifiedName(fqn + ".column_" + column)
-              .withDataType(ColumnDataType.VARCHAR)
-              .withOrdinalPosition(column)
-              .withDescription("Column " + column + " of table " + index)
-              .withTags(column % 10 == 0 ? List.of(tag("PII.Sensitive")) : List.of()));
+    final Map<String, Object> extension = new LinkedHashMap<>();
+    for (int property = 0; property < propertyCount; property++) {
+      extension.put("property_" + property, "Value " + property + " of table " + index);
     }
     final Table table =
         new Table()
@@ -245,7 +241,7 @@ public final class RdfLiveUpdateDiskHarness {
             .withDescription("Wide table " + index)
             .withUpdatedAt(1_700_000_000_120L)
             .withTags(List.of(tag("Tier.Tier2")))
-            .withColumns(columns);
+            .withExtension(extension);
     table.setVersion(0.1);
     return table;
   }

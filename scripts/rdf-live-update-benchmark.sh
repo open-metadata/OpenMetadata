@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2026 Collate. Licensed under the Apache License, Version 2.0.
-# Compares what live updates of wide tables cost Fuseki when each write replaces the projection
+# Compares what live updates of wide tables (wide in custom properties: 2.0 does not project
+# columns) cost Fuseki when each write replaces the projection
 # whole (every write before ADR:2026-11-03-live-rdf-entity-writes-send-only-the-changed-triples)
 # and when it sends only the difference: volume growth, update requests, payload and outcomes.
 # Point it at an idle openmetadata/fuseki dataset: it clears the knowledge graph and compacts.
@@ -23,5 +24,5 @@ for strategy in ${STRATEGIES:-REPLACE DIFFERENCE}; do
     "-DdiskUsageCommand=${DISK_USAGE_COMMAND:-docker exec ${FUSEKI_CONTAINER:-om-fuseki-bench} du -sk /fuseki/databases/${FUSEKI_DATASET:-openmetadata}}" \
     org.openmetadata.service.rdf.storage.RdfLiveUpdateDiskHarness \
     "${FUSEKI_ENDPOINT:-http://localhost:3030/openmetadata}" \
-    "$strategy" "${TABLES:-200}" "${COLUMNS:-300}" "${ROUNDS:-5}"
+    "$strategy" "${TABLES:-200}" "${PROPERTIES:-300}" "${ROUNDS:-5}"
 done

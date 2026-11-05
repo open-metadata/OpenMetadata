@@ -47,7 +47,11 @@ rewrite also left the previous list's cells behind.
 ## Consequences
 
 - On 2.0 this is a backport of #37069. 2.0 has no live inference invalidation and does not project
-  a table's columns, so the column part of the entity scope matches nothing there.
+  a table's columns, so the column part of the entity scope matches nothing there. The benchmark on
+  2.0 uses tables wide in custom properties instead (200 tables of 300, 1,000 writes per scenario):
+  growth per write fell from about 10.9 MB to 0 for unchanged updates, 235 KB for one changed
+  property and 188 KB for a new description, and the payload from 227 MB to under 0.5 MB per
+  scenario. Both strategies left the same 243,207 triples.
 - An unchanged update sends no write: it reads the entity's scope, plus one existence read per
   1,000 triples it emits outside that scope (tag labels, referenced entities). A changed update
   sends one small write and reads the projection back the same way; reads do not grow TDB2's files.
