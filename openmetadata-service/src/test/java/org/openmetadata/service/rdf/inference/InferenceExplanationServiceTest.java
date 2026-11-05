@@ -251,7 +251,7 @@ class InferenceExplanationServiceTest {
         .withGraphUri(URI.create(INFERRED_GRAPH))
         .withDirty(false)
         .withSystemRule(true)
-        .withTripleCount(12);
+        .withTripleCount(12L);
   }
 
   private static OntologyInferenceExplanationRequest request(final RdfStatement statement) {

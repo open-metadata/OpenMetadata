@@ -1,4 +1,4 @@
-import { Plus } from '@untitledui/icons';
+import { Plus } from '../../../../icons';
 import type { ButtonProps as AriaButtonProps } from 'react-aria-components';
 import { Button as AriaButton } from 'react-aria-components';
 import { Tooltip } from '@/components/base/tooltip/tooltip';

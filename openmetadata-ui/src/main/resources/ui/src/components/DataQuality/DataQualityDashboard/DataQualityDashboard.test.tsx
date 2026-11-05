@@ -13,17 +13,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
-import {
-  ABORTED_CHART_COLOR_SCHEME,
-  FAILED_CHART_COLOR_SCHEME,
-  SUCCESS_CHART_COLOR_SCHEME,
-} from '../../../constants/Chart.constants';
+import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
-import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import DataQualityDashboard from './DataQualityDashboard.component';
 
 const mockSearchQuery = jest.fn().mockResolvedValue({
@@ -408,37 +403,31 @@ describe('DataQualityDashboard', () => {
       jest.clearAllMocks();
     });
 
-    it('should pass correct color schemes to TestCaseStatusAreaChartWidget components', async () => {
+    it('should pass status, name and title to each TestCaseStatusAreaChartWidget', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
       await waitFor(() => {
         expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalled();
       });
 
-      // Verify success widget gets success color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: SUCCESS_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Success,
           name: 'success',
           title: 'label.success',
         })
       );
 
-      // Verify aborted widget gets aborted color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: ABORTED_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Aborted,
           name: 'aborted',
           title: 'label.aborted',
         })
       );
 
-      // Verify failed widget gets failed color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: FAILED_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Failed,
           name: 'failed',
           title: 'label.failed',

@@ -159,7 +159,7 @@ describeTagTaskWorkflowsInParallel(
       page,
       browser,
     }) => {
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -177,7 +177,7 @@ describeTagTaskWorkflowsInParallel(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await table.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -214,7 +214,7 @@ describeTagTaskWorkflowsInParallel(
     }) => {
       const columnPath = table.entityLinkColumnsName[0];
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -236,7 +236,7 @@ describeTagTaskWorkflowsInParallel(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await table.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -281,7 +281,7 @@ describeTagTaskWorkflowsInParallel(
         'first_name',
       ].join('.');
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -301,7 +301,7 @@ describeTagTaskWorkflowsInParallel(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await topic.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -342,7 +342,7 @@ describeTagTaskWorkflowsInParallel(
     }) => {
       const requestFieldPath = 'default.name.last_name';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -362,7 +362,7 @@ describeTagTaskWorkflowsInParallel(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await apiEndpoint.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -403,7 +403,7 @@ describeTagTaskWorkflowsInParallel(
     }) => {
       const responseFieldPath = 'default.name.first_name';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -425,7 +425,7 @@ describeTagTaskWorkflowsInParallel(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await apiEndpoint.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -466,7 +466,7 @@ describeTagTaskWorkflowsInParallel(
     }) => {
       const requestFieldPath = 'default.club_name';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -486,7 +486,7 @@ describeTagTaskWorkflowsInParallel(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await apiEndpoint.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);
@@ -539,7 +539,7 @@ describeTagTaskWorkflowsInParallel(
       const containerColumnName =
         container.entityResponseData.dataModel?.columns?.[0].name ?? '';
 
-      await requesterUser.login(page);
+      await requesterUser.signIn(page);
       await openTaskForm(
         page,
         buildTaskRoute({
@@ -561,7 +561,7 @@ describeTagTaskWorkflowsInParallel(
 
       const reviewerPage = await browser.newPage();
       try {
-        await reviewerUser.login(reviewerPage);
+        await reviewerUser.signIn(reviewerPage);
         await container.visitEntityPage(reviewerPage);
         await openEntityTasksTab(reviewerPage);
         await openTaskDetails(reviewerPage, task);

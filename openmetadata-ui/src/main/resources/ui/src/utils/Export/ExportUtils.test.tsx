@@ -16,6 +16,7 @@ import { ExportTypes } from '../../constants/Export.constants';
 import { showErrorToast } from '../ToastUtils';
 import {
   downloadBlob,
+  downloadCsv,
   downloadFile,
   exportPNGImageFromElement,
   shouldIncludeInExport,
@@ -106,6 +107,36 @@ describe('ExportUtils', () => {
       expect(MockBlob).toHaveBeenCalledWith(['content'], {
         type: 'text/csv;charset=utf-8;',
       });
+    });
+  });
+
+  describe('downloadCsv', () => {
+    const BOM = '\uFEFF';
+    let MockBlob: jest.Mock;
+    let originalBlob: typeof Blob;
+
+    beforeEach(() => {
+      originalBlob = global.Blob;
+      MockBlob = jest.fn().mockReturnValue({});
+      global.Blob = MockBlob as unknown as typeof Blob;
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:mock-url');
+      global.URL.revokeObjectURL = jest.fn();
+      jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn());
+      jest.spyOn(document.body, 'removeChild').mockImplementation(jest.fn());
+    });
+
+    afterEach(() => {
+      global.Blob = originalBlob;
+      jest.restoreAllMocks();
+    });
+
+    it('starts the file with a UTF-8 BOM so Excel keeps non-Latin text readable', () => {
+      downloadCsv('name,description\n订单,Заказы', 'export.csv');
+
+      expect(MockBlob).toHaveBeenCalledWith(
+        [`${BOM}name,description\n订单,Заказы`],
+        { type: 'text/csv;charset=utf-8' }
+      );
     });
   });
 
@@ -200,10 +231,7 @@ describe('ExportUtils', () => {
       onExport: jest.fn(),
     };
 
-    const mockElement = {
-      scrollWidth: 1200,
-      scrollHeight: 900,
-    };
+    const mockElement = document.createElement('div');
 
     let mockNodesCanvas: HTMLCanvasElement;
     let mockNodesBlob: Blob;
@@ -212,6 +240,10 @@ describe('ExportUtils', () => {
     let mockCompositeCanvas: HTMLCanvasElement;
 
     beforeEach(() => {
+      Object.defineProperties(mockElement, {
+        scrollWidth: { value: 1200, configurable: true },
+        scrollHeight: { value: 900, configurable: true },
+      });
       mockNodesBlob = new Blob(['nodes'], { type: 'image/png' });
       mockNodesCanvas = {
         width: 0,
@@ -313,9 +345,9 @@ describe('ExportUtils', () => {
       // A 10000x8000 logical graph at pixelRatio=2 would be 20000x16000 —
       // over Chrome's 16K per-side cap. Adaptive cap must drop pixelRatio
       // below 2.
-      document.querySelector = jest.fn().mockReturnValue({
-        scrollWidth: 10000,
-        scrollHeight: 8000,
+      Object.defineProperties(mockElement, {
+        scrollWidth: { value: 10000, configurable: true },
+        scrollHeight: { value: 8000, configurable: true },
       });
 
       await exportPNGImageFromElement(mockExportData);
@@ -342,9 +374,9 @@ describe('ExportUtils', () => {
       // A 20000x800 logical graph is over the 16384 dim cap on width alone.
       // The safe ratio must go below 1 so the physical canvas stays inside
       // the cap; a floor of 1 would silently overshoot.
-      document.querySelector = jest.fn().mockReturnValue({
-        scrollWidth: 20000,
-        scrollHeight: 800,
+      Object.defineProperties(mockElement, {
+        scrollWidth: { value: 20000, configurable: true },
+        scrollHeight: { value: 800, configurable: true },
       });
 
       await exportPNGImageFromElement(mockExportData);
@@ -367,12 +399,73 @@ describe('ExportUtils', () => {
       );
     });
 
+    it('captures only after beforeCapture resolves, then runs afterCapture', async () => {
+      const steps: string[] = [];
+      (toCanvas as jest.Mock).mockImplementation(async () => {
+        steps.push('capture');
+
+        return mockNodesCanvas;
+      });
+
+      await exportPNGImageFromElement({
+        ...mockExportData,
+        beforeCapture: async () => {
+          steps.push('before');
+        },
+        afterCapture: () => {
+          steps.push('after');
+        },
+      });
+
+      expect(steps).toEqual(['before', 'capture', 'after']);
+    });
+
+    it('runs afterCapture when the capture fails', async () => {
+      document.querySelector = jest.fn().mockReturnValue(null);
+      const afterCapture = jest.fn();
+
+      await expect(
+        exportPNGImageFromElement({
+          ...mockExportData,
+          beforeCapture: () => Promise.resolve(),
+          afterCapture,
+        })
+      ).rejects.toThrow('message.error-generating-export-type');
+      expect(afterCapture).toHaveBeenCalledTimes(1);
+    });
+
     it('passes a filter callback to toCanvas', async () => {
       await exportPNGImageFromElement(mockExportData);
 
       expect(toCanvas).toHaveBeenCalledWith(
         mockElement,
         expect.objectContaining({ filter: expect.any(Function) })
+      );
+    });
+
+    it('frames the capture with the size measured after beforeCapture', async () => {
+      const getViewport = jest.fn().mockReturnValue({ x: 4, y: 8, zoom: 0.9 });
+
+      await exportPNGImageFromElement({
+        ...mockExportData,
+        getViewport,
+        // Mounting the off-screen nodes grows the element the capture measures.
+        beforeCapture: async () => {
+          Object.defineProperties(mockElement, {
+            scrollWidth: { value: 6000, configurable: true },
+            scrollHeight: { value: 4000, configurable: true },
+          });
+        },
+      });
+
+      expect(getViewport).toHaveBeenCalledWith(6000, 4000);
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({
+          style: expect.objectContaining({
+            transform: 'translate(4px, 8px) scale(0.9)',
+          }),
+        })
       );
     });
 
@@ -393,6 +486,23 @@ describe('ExportUtils', () => {
         expect.objectContaining({
           style: expect.objectContaining({
             transform: 'translate(100px, 200px) scale(1.5)',
+          }),
+        })
+      );
+    });
+
+    it('prefers getViewport over a preset viewport', async () => {
+      await exportPNGImageFromElement({
+        ...mockExportData,
+        viewport: { x: 100, y: 200, zoom: 1.5 },
+        getViewport: () => ({ x: 4, y: 8, zoom: 0.9 }),
+      });
+
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({
+          style: expect.objectContaining({
+            transform: 'translate(4px, 8px) scale(0.9)',
           }),
         })
       );
@@ -458,7 +568,25 @@ describe('ExportUtils', () => {
           1200, // imageWidth
           900, // imageHeight
           20, // padding
-          2 // pixelRatio — small graph so no cap, uses DESIRED_PIXEL_RATIO
+          2, // pixelRatio — small graph so no cap, uses DESIRED_PIXEL_RATIO
+          undefined // no viewport, so no frame
+        );
+      });
+
+      it('draws the edges in the same frame as the nodes', async () => {
+        const viewport = { x: 4, y: 8, zoom: 0.9 };
+
+        await exportPNGImageFromElement({
+          ...exportDataWithEdges,
+          getViewport: () => viewport,
+        });
+
+        expect(exportDataWithEdges.renderEdgesOverlay).toHaveBeenLastCalledWith(
+          1200,
+          900,
+          20,
+          2,
+          viewport
         );
       });
 

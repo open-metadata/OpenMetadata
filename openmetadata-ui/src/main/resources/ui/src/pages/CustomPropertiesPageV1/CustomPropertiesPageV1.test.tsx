@@ -15,8 +15,8 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ENTITY_PATH } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import CustomEntityDetailV1 from './CustomPropertiesPageV1';
 
 const mockNavigate = jest.fn();
@@ -35,6 +35,8 @@ jest.mock('../../utils/useRequiredParams', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: jest.requireActual('@openmetadata/ui-core-components').Box,
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
   Button: jest
     .fn()
@@ -59,10 +61,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )),
 }));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
 
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',

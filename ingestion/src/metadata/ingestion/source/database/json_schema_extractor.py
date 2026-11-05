@@ -19,6 +19,13 @@ from typing import Any
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import (
+    NO_LIMITS,
+    InferenceLimit,
+    InferenceLimits,
+    InferenceReport,
+    InferredStruct,
+)
 
 logger = ingestion_logger()
 
@@ -50,12 +57,19 @@ _PYTHON_TYPE_TO_JSON_SCHEMA = {
 
 def infer_json_schema_from_sample(
     json_values: list[Any],
+    limits: InferenceLimits = NO_LIMITS,
+    report: InferenceReport | None = None,
+    path: str = "",
 ) -> tuple[str | None, list[Column] | None]:
     """
     Infer JSON schema from a list of JSON values (sampled from a column).
 
     Args:
         json_values: List of JSON values (can be dicts, strings that parse to JSON, or None)
+        limits: Bounds applied while the values are merged. The JSON schema and the
+            children are both built from the bounded merge.
+        report: Collects the columns whose inferred children the limits cut
+        path: Name of the sampled column, used to report it
 
     Returns:
         Tuple of (json_schema_string, list_of_child_columns)
@@ -69,13 +83,13 @@ def infer_json_schema_from_sample(
         if not parsed_values:
             return None, None
 
-        merged_structure = _merge_json_structures(parsed_values)
+        merged_structure = _merge_json_structures(parsed_values, limits)
 
         json_schema = _build_json_schema(merged_structure)
-        children = _build_column_children(merged_structure)
+        children = _build_column_children(merged_structure, report, path)
 
         json_schema_str = json.dumps(json_schema) if json_schema else None
-        return json_schema_str, children if children else None  # noqa: TRY300
+        return json_schema_str, children  # noqa: TRY300
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -113,7 +127,7 @@ def _parse_json_values(json_values: list[Any]) -> list[dict]:
     return parsed
 
 
-def _merge_json_structures(dicts: list[dict]) -> dict:
+def _merge_json_structures(dicts: list[dict], limits: InferenceLimits = NO_LIMITS) -> InferredStruct:
     """
     Merge multiple JSON objects to create a unified structure
     that captures all unique keys and their types.
@@ -122,17 +136,35 @@ def _merge_json_structures(dicts: list[dict]) -> dict:
     - If we see both dict and non-dict, dict takes precedence
     - Arrays capture the merged structure of their items
     """
-    result = {}
+    result = InferredStruct()
 
     for dict_ in dicts:
-        _merge_single_dict(result, dict_)
+        _merge_single_dict(result, dict_, limits)
 
     return result
 
 
-def _merge_single_dict(result: dict, source: dict) -> None:
-    """Merge a single dict into the result structure."""
+def _merge_single_dict(
+    result: InferredStruct,
+    source: dict,
+    limits: InferenceLimits = NO_LIMITS,
+    depth: int = 0,
+) -> None:
+    """Merge a single dict into the result structure.
+
+    `depth` counts the levels between `result` and the sampled column, so the limits
+    stop the merge before a dropped key or level is explored.
+    """
+    result.cut_by = result.cut_by or getattr(source, "cut_by", None)
+    if not limits.allows_children(depth):
+        if source:
+            result.cut_by = InferenceLimit.DEPTH
+        return
+
     for key, value in source.items():
+        if not limits.admit(result, key):
+            continue
+
         if value is None:
             if key not in result:
                 result[key] = None
@@ -140,36 +172,43 @@ def _merge_single_dict(result: dict, source: dict) -> None:
 
         if isinstance(value, dict):
             existing = result.get(key)
-            if isinstance(existing, dict):
-                _merge_single_dict(existing, value)
+            if isinstance(existing, InferredStruct):
+                _merge_single_dict(existing, value, limits, depth + 1)
             else:
-                result[key] = {}
-                _merge_single_dict(result[key], value)
+                result[key] = InferredStruct()
+                _merge_single_dict(result[key], value, limits, depth + 1)
 
         elif isinstance(value, list):
             existing = result.get(key)
             if isinstance(existing, list):
-                result[key] = _merge_array_items(existing, value)
+                result[key] = _merge_array_items(existing, value, limits, depth + 1)
             else:
-                result[key] = _merge_array_items([], value)
+                result[key] = _merge_array_items([], value, limits, depth + 1)
 
         else:  # noqa: PLR5501
             if key not in result or not isinstance(result.get(key), dict):
                 result[key] = value
 
 
-def _merge_array_items(existing_items: list, new_items: list) -> list:
+def _merge_array_items(
+    existing_items: list,
+    new_items: list,
+    limits: InferenceLimits = NO_LIMITS,
+    depth: int = 0,
+) -> list:
     """
     Merge array items to capture the unified structure of array elements.
     Returns a list with a single representative item that captures all seen types.
+    `depth` is the array's own depth: the fields of its object items are its children,
+    as they would be for an object value.
     """
     all_items = existing_items + new_items
 
     dict_items = [item for item in all_items if isinstance(item, dict)]
     if dict_items:
-        merged_dict = {}
+        merged_dict = InferredStruct()
         for item in dict_items:
-            _merge_single_dict(merged_dict, item)
+            _merge_single_dict(merged_dict, item, limits, depth)
         return [merged_dict]
 
     for item in all_items:
@@ -208,24 +247,42 @@ def _build_json_schema(structure: dict | Any) -> dict:
         return {"type": json_type}
 
 
-def _build_column_children(structure: dict, parent_name: str | None = None) -> list[Column] | None:
+def _build_column_children(
+    structure: dict,
+    report: InferenceReport | None = None,
+    path: str = "",
+) -> list[Column] | None:
     """
     Build Column children from the merged JSON structure.
     This creates a hierarchical representation suitable for the UI.
+    `path` is the dotted name of the column holding `structure`, used to report it.
+
+    Returns an empty list when the limits cut every child, rather than None, so the server
+    records the removal of children that an earlier unbounded run stored.
     """
     if not isinstance(structure, dict):
         return None
 
+    if report is not None:
+        report.record(structure, path)
+
     children = []
     for key, value in structure.items():
-        child = _create_child_column(key, value)
+        child = _create_child_column(key, value, report, f"{path}.{key}" if path else str(key))
         if child:
             children.append(child)
 
-    return children if children else None
+    if children or getattr(structure, "cut_by", None) is not None:
+        return children
+    return None
 
 
-def _create_child_column(key: str, value: Any) -> Column | None:
+def _create_child_column(
+    key: str,
+    value: Any,
+    report: InferenceReport | None = None,
+    path: str = "",
+) -> Column | None:
     """Create a Column object for a JSON field."""
     try:
         type_name = type(value).__name__
@@ -241,8 +298,8 @@ def _create_child_column(key: str, value: Any) -> Column | None:
         if isinstance(value, dict):
             column_dict["dataType"] = DataType.JSON
             column_dict["dataTypeDisplay"] = "json"
-            nested_children = _build_column_children(value)
-            if nested_children:
+            nested_children = _build_column_children(value, report, path)
+            if nested_children is not None:
                 column_dict["children"] = nested_children
 
         elif isinstance(value, list):
@@ -256,8 +313,8 @@ def _create_child_column(key: str, value: Any) -> Column | None:
 
                 if isinstance(first_item, dict):
                     column_dict["arrayDataType"] = DataType.JSON
-                    nested_children = _build_column_children(first_item)
-                    if nested_children:
+                    nested_children = _build_column_children(first_item, report, path)
+                    if nested_children is not None:
                         column_dict["children"] = nested_children
 
         return Column(**column_dict)

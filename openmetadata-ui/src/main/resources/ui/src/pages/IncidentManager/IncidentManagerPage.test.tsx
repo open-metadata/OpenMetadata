@@ -15,6 +15,7 @@ import incidentManagerClassBase from './IncidentManagerClassBase';
 import IncidentManagerPage from './IncidentManagerPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Popover: jest
     .fn()
@@ -39,7 +40,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
   Typography: jest
     .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
+    .mockImplementation(({ children, 'data-testid': testId }) => (
+      <span data-testid={testId}>{children}</span>
+    )),
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
 

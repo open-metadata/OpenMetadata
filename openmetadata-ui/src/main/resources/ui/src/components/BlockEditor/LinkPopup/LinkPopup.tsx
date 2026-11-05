@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space } from 'antd';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as UnlinkIcon } from '../../../assets/svg/ic-format-unlink.svg';
-
-import { FC } from 'react';
 
 interface LinkPopupProps {
   href: string;
@@ -23,39 +23,40 @@ interface LinkPopupProps {
   handleUnlink: () => void;
 }
 
-const iconSize = 14;
-
 const LinkPopup: FC<LinkPopupProps> = ({
   href,
   handleLinkToggle,
   handleUnlink,
 }) => {
+  const { t } = useTranslation();
+  const linkLabel = t('label.link');
+
   return (
-    <Space className="link-popup">
-      <Button
-        className="p-0"
+    <Box inline className="link-popup" gap={2}>
+      <ButtonUtility
+        aria-label={t('label.edit-entity', { entity: linkLabel })}
         data-testid="link-popup-edit"
-        icon={<EditIcon width={iconSize} />}
-        type="text"
+        icon={Edit01}
+        size="lg"
         onClick={handleLinkToggle}
       />
-      <Button
-        className="p-0"
+      <ButtonUtility
+        aria-label={t('label.open-in-new-tab')}
         data-testid="link-popup-open"
         href={href}
-        icon={<ExternalLinkIcon width={iconSize + 2} />}
+        icon={ExternalLinkIcon}
         rel="noopener noreferrer"
+        size="lg"
         target="_blank"
-        type="link"
       />
-      <Button
-        className="p-0"
+      <ButtonUtility
+        aria-label={t('label.remove-entity', { entity: linkLabel })}
         data-testid="link-popup-unlink"
-        icon={<UnlinkIcon width={iconSize} />}
-        type="text"
+        icon={UnlinkIcon}
+        size="lg"
         onClick={handleUnlink}
       />
-    </Space>
+    </Box>
   );
 };
 

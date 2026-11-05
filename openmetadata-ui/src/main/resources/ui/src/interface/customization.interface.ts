@@ -31,8 +31,15 @@ export interface WidgetCommonProps {
   selectedGridSize?: number;
   isEditView?: boolean;
   widgetKey: string;
+  widgetConfig?: WidgetConfig;
   dragHandle?: ReactNode;
   handleRemoveWidget?: (widgetKey: string) => void;
+  /** `width` resizes the widget on the grid; containers without columns ignore it. */
+  handleWidgetConfigChange?: (
+    widgetKey: string,
+    config: WidgetConfig['config'],
+    width?: number
+  ) => void;
   handleLayoutUpdate?: (layout: Layout[]) => void;
   handleSaveLayout?: (layout: WidgetConfig[]) => Promise<void>;
   currentLayout?: Array<WidgetConfig>;

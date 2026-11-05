@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Owner } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../components/common/WidgetActionButton/WidgetActionButton';
+import { useGenericDomainLabel } from '../../components/common/DomainLabel/useGenericDomainLabel';
 import WidgetCard from '../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
@@ -36,10 +34,10 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const DomainLabelV2 = withSuspenseFallback(
+const DomainLabel = withSuspenseFallback(
   lazy(() =>
-    import('../../components/DataAssets/DomainLabelV2/DomainLabelV2').then(
-      (module) => ({ default: module.DomainLabelV2 })
+    import('../../components/common/DomainLabel/DomainLabel.component').then(
+      (module) => ({ default: module.DomainLabel })
     )
   )
 );
@@ -120,16 +118,18 @@ const GlossaryTermOwnerWidget = () => {
             owner={data.owners}
             onUpdate={handleUpdatedOwner}>
             {isEmpty(data.owners) ? (
-              <WidgetPlusButton
+              <ButtonUtility
                 data-testid="add-owner"
-                title={t('label.add-entity', {
+                icon={Plus}
+                tooltip={t('label.add-entity', {
                   entity: t('label.owner-plural'),
                 })}
               />
             ) : (
-              <WidgetEditButton
+              <ButtonUtility
                 data-testid="edit-owner"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.owner-plural'),
                 })}
               />
@@ -161,11 +161,14 @@ const GlossaryTermOwnerWidget = () => {
 
 const GlossaryTermDomainWidget = () => {
   const { entityRules } = useGenericContext();
+  const domainProps = useGenericDomainLabel();
 
   return (
-    <DomainLabelV2
+    <DomainLabel
+      {...domainProps}
       showDomainHeading
       multiple={entityRules?.canAddMultipleDomains ?? true}
+      variant="widget"
     />
   );
 };

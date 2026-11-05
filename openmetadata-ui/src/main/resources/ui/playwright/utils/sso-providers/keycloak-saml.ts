@@ -191,6 +191,7 @@ export const keycloakSamlProviderFixture: SsoProviderFixture = {
   hasBackendIssuedRefreshCookie: true,
   usesPkce: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   signInButtonPattern: /(sign in|log in) with SAML SSO/i,
 
@@ -211,7 +212,7 @@ export const keycloakSamlProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: this.signInButtonPattern }).click();
     await performProviderLogin(page, {
       username: KEYCLOAK_SEEDED_CREDS.username,

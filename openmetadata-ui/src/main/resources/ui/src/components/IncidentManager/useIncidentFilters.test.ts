@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
+import { isString, omit, parseInt } from 'lodash';
+import QueryString, { ParsedQs } from 'qs';
 import { act } from 'react';
-import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
+import { TestCaseIncidentStatusParams } from '../../rest/incidentManagerAPI';
 import {
   useIncidentFilters,
   UseIncidentFiltersProps,
 } from './useIncidentFilters';
 
 const mockNavigate = jest.fn();
-const mockFetchTestCaseFilterOptions = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -31,20 +32,35 @@ const renderFiltersHook = (overrides: Partial<UseIncidentFiltersProps> = {}) =>
     useIncidentFilters({
       filters: {},
       allParams: {},
-      testCaseListData: { data: [], isLoading: false },
-      testCaseFilterOptions: [],
-      isTestCaseOptionsLoading: false,
-      fetchTestCaseFilterOptions: mockFetchTestCaseFilterOptions,
       ...overrides,
     })
   );
 
-const findDescriptor = (
-  descriptors: ReturnType<
-    typeof renderFiltersHook
-  >['result']['current']['filterDescriptors'],
-  key: string
-) => descriptors.find((descriptor) => descriptor.key === key);
+// Models the production wiring in `useIncidentManagerListPage`: `filters` is
+// derived from `omit(allParams, ['key', 'title'])`, so it carries `currentPage`
+// /`pageSize`/cursor params verbatim (with `startTs`/`endTs` coerced to numbers).
+// Tests that inject `filters` and `allParams` independently mask the stale-page
+// bug; this helper keeps them in sync to exercise the real relationship.
+const deriveProductionFilters = (
+  allParams: ParsedQs
+): TestCaseIncidentStatusParams => {
+  const base = omit(allParams, ['key', 'title']) as Record<string, unknown>;
+
+  if (isString(base.startTs)) {
+    base.startTs = parseInt(base.startTs, 10);
+  }
+  if (isString(base.endTs)) {
+    base.endTs = parseInt(base.endTs, 10);
+  }
+
+  return base as unknown as TestCaseIncidentStatusParams;
+};
+
+const renderWithUrl = (allParams: ParsedQs) =>
+  renderFiltersHook({
+    filters: deriveProductionFilters(allParams),
+    allParams,
+  });
 
 describe('useIncidentFilters', () => {
   it('should expose the default filter state and helpers', () => {
@@ -62,7 +78,6 @@ describe('useIncidentFilters', () => {
       value: 'timestamp',
     });
     expect(result.current.dateRangeKey).toBeUndefined();
-    expect(result.current.hasActiveFilters).toBe(false);
   });
 
   it('should reflect the injected dateField in selectedDateFilterKey/Option', () => {
@@ -124,27 +139,6 @@ describe('useIncidentFilters', () => {
 
     expect(firstCallArg.search).toContain('startTs=1');
     expect(firstCallArg.search).toContain('key=k');
-    expect(firstCallArg.search).not.toContain('existing=y');
-  });
-
-  it('should keep groupBy when date-range params are supplied', () => {
-    const { result } = renderFiltersHook({
-      allParams: { existing: 'y', groupBy: 'owner' },
-    });
-
-    act(() => {
-      result.current.handleDateRangeChange({
-        startTs: 5,
-        endTs: 6,
-        key: 'k',
-        title: 't',
-      });
-    });
-
-    const [firstCallArg] = mockNavigate.mock.calls[0];
-
-    expect(firstCallArg.search).toContain('groupBy=owner');
-    expect(firstCallArg.search).toContain('startTs=5');
     expect(firstCallArg.search).not.toContain('existing=y');
   });
 
@@ -236,239 +230,172 @@ describe('useIncidentFilters', () => {
     );
   });
 
-  it('should report hasActiveFilters true for each individual active filter', () => {
-    expect(
-      renderFiltersHook({ filters: { testCaseFQN: 'x' } }).result.current
-        .hasActiveFilters
-    ).toBe(true);
-    expect(
-      renderFiltersHook({ filters: { assignee: 'ua' } }).result.current
-        .hasActiveFilters
-    ).toBe(true);
-    expect(
-      renderFiltersHook({ filters: { startTs: 1 } }).result.current
-        .hasActiveFilters
-    ).toBe(true);
-  });
-
-  it('should clear every filter param through clearAllFilters', () => {
-    const { result } = renderFiltersHook({
-      allParams: { testCaseFQN: 'x' },
-      filters: { testCaseFQN: 'x' },
+  it('should reset currentPage to the first page when a filter value changes while paginated', () => {
+    const { result } = renderWithUrl({
+      currentPage: '5',
+      pageSize: '15',
+      assignee: 'bob',
     });
 
     act(() => {
-      result.current.clearAllFilters();
+      result.current.updateFilters({ assignee: 'alice' });
     });
 
-    expect(mockNavigate).toHaveBeenCalled();
+    const [arg] = mockNavigate.mock.calls[0];
 
-    const [firstCallArg] = mockNavigate.mock.calls[0];
-
-    expect(firstCallArg.search).not.toContain('testCaseFQN');
+    expect(QueryString.parse(arg.search)).toEqual({
+      currentPage: '1',
+      pageSize: '15',
+      assignee: 'alice',
+    });
   });
 
-  it('should build 5 descriptors in the expected key/controlType order', () => {
-    const { result } = renderFiltersHook();
+  it('should keep the current page when the filter value is unchanged', () => {
+    const { result } = renderWithUrl({
+      currentPage: '3',
+      pageSize: '15',
+      assignee: 'alice',
+    });
 
-    const { filterDescriptors } = result.current;
+    act(() => {
+      result.current.updateFilters({ assignee: 'alice' });
+    });
 
-    expect(filterDescriptors).toHaveLength(5);
-    expect(filterDescriptors.map((descriptor) => descriptor.key)).toEqual([
-      'testCaseFQN',
-      'assignee',
-      'testCaseResolutionStatusType',
-      'dateField',
-      'dateRange',
-    ]);
-    expect(
-      filterDescriptors.map((descriptor) => descriptor.controlType)
-    ).toEqual(['select', 'user', 'select', 'select', 'date']);
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
+
+    expect(parsed.currentPage).toBe('3');
+    expect(parsed.assignee).toBe('alice');
   });
 
-  it('should wire the test-case descriptor to the injected option cluster', () => {
-    const { result } = renderFiltersHook({
-      testCaseFilterOptions: [{ label: 'L', value: 'V' }],
-      isTestCaseOptionsLoading: true,
+  it('should drop stale cursor params from the URL when a filter value changes', () => {
+    const { result } = renderWithUrl({
+      currentPage: '5',
+      cursorType: 'after',
+      cursorValue: 'foo',
+      assignee: 'bob',
     });
-
-    const descriptor = findDescriptor(
-      result.current.filterDescriptors,
-      'testCaseFQN'
-    );
-
-    expect(descriptor?.options).toEqual([{ label: 'L', value: 'V' }]);
-    expect(descriptor?.isLoading).toBe(true);
 
     act(() => {
-      descriptor?.onGetInitialOptions();
+      result.current.updateFilters({ assignee: 'alice' });
     });
 
-    expect(mockFetchTestCaseFilterOptions).toHaveBeenLastCalledWith();
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
 
-    act(() => {
-      descriptor?.onSearch?.('needle');
-    });
-
-    expect(mockFetchTestCaseFilterOptions).toHaveBeenLastCalledWith('needle');
-
-    act(() => {
-      descriptor?.onChange('svc.db.tc');
-    });
-
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        search: expect.stringContaining('testCaseFQN=svc.db.tc'),
-      }),
-      { replace: true }
-    );
+    expect(parsed.currentPage).toBe('1');
+    expect(parsed.cursorType).toBeUndefined();
+    expect(parsed.cursorValue).toBeUndefined();
+    expect(parsed.assignee).toBe('alice');
   });
 
-  it('should build status descriptor options from the resolution-status enum labels', () => {
-    const { result } = renderFiltersHook();
-
-    const descriptor = findDescriptor(
-      result.current.filterDescriptors,
-      'testCaseResolutionStatusType'
-    );
-
-    expect(descriptor?.options).toEqual([
-      { value: 'Ack', label: 'label.ack' },
-      { value: 'Assigned', label: 'label.assigned' },
-      { value: 'New', label: 'label.new' },
-      { value: 'Resolved', label: 'label.resolved' },
-    ]);
+  it('should reset currentPage when the assignee changes while paginated', () => {
+    const { result } = renderWithUrl({ currentPage: '5', pageSize: '15' });
 
     act(() => {
-      descriptor?.onChange('Resolved');
+      result.current.handleAssigneeChange([
+        { label: 'UA', value: 'ua', name: 'ua', type: 'user' },
+      ]);
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        search: expect.stringContaining(
-          'testCaseResolutionStatusType=Resolved'
-        ),
-      }),
-      { replace: true }
-    );
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
+
+    expect(parsed.currentPage).toBe('1');
+    expect(parsed.assignee).toBe('ua');
   });
 
-  it('should map the date-field descriptor options and navigate on change', () => {
-    const { result } = renderFiltersHook();
-
-    const descriptor = findDescriptor(
-      result.current.filterDescriptors,
-      'dateField'
-    );
-
-    expect(descriptor?.value).toBe('timestamp');
-    expect(descriptor?.options).toEqual([
-      { label: 'label.created-at', value: 'timestamp' },
-      { label: 'label.updated-at', value: 'updatedAt' },
-    ]);
+  it('should keep the current page when clearing an assignee that is not set', () => {
+    const { result } = renderWithUrl({ currentPage: '3', pageSize: '15' });
 
     act(() => {
-      descriptor?.onChange('updatedAt');
+      result.current.handleAssigneeChange(undefined);
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        search: expect.stringContaining('dateField=updatedAt'),
-      }),
-      { replace: true }
-    );
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
+
+    expect(parsed.currentPage).toBe('3');
+    expect(parsed.assignee).toBeUndefined();
   });
 
-  it('should carry numeric bounds on the date-range descriptor and navigate on change', () => {
-    const { result } = renderFiltersHook({
-      filters: { startTs: 9, endTs: 10 },
+  it('should reset currentPage when the date field changes while paginated', () => {
+    const { result } = renderWithUrl({
+      currentPage: '5',
+      pageSize: '15',
+      dateField: 'timestamp',
     });
-
-    const descriptor = findDescriptor(
-      result.current.filterDescriptors,
-      'dateRange'
-    );
-
-    expect(descriptor?.value).toEqual({ startTs: 9, endTs: 10 });
 
     act(() => {
-      descriptor?.onChange({ startTs: 7, endTs: 8 });
+      result.current.handleDateFieldChange('updatedAt');
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        search: expect.stringContaining('startTs=7'),
-      }),
-      { replace: true }
-    );
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
+
+    expect(parsed.currentPage).toBe('1');
+    expect(parsed.dateField).toBe('updatedAt');
   });
 
-  it('should derive the assignee descriptor selectedOwners from the loaded rows', () => {
-    const assignee = { id: 'id1', name: 'ua', type: 'user', displayName: 'UA' };
-    const { result } = renderFiltersHook({
-      filters: { assignee: 'ua' },
-      testCaseListData: {
-        data: [
-          { testCaseResolutionStatusDetails: { assignee } },
-        ] as unknown as TestCaseResolutionStatus[],
-        isLoading: false,
-      },
+  it('should reset currentPage on the date-range branch and keep other params while paginated', () => {
+    const { result } = renderWithUrl({
+      currentPage: '4',
+      pageSize: '15',
+      assignee: 'bob',
+      startTs: '1',
+      endTs: '2',
+      key: 'k',
+      title: 't',
     });
-
-    const descriptor = findDescriptor(
-      result.current.filterDescriptors,
-      'assignee'
-    );
-
-    expect(descriptor?.selectedOwners).toEqual([assignee]);
-  });
-
-  it('should prefer the picker ref when it matches the active assignee filter', () => {
-    const { result } = renderFiltersHook({ filters: { assignee: 'other' } });
-
-    const descriptor = findDescriptor(
-      result.current.filterDescriptors,
-      'assignee'
-    );
 
     act(() => {
-      descriptor?.onOwnerChange?.([{ id: 'o1', name: 'other', type: 'user' }]);
+      result.current.handleDateRangeChange({
+        startTs: 5,
+        endTs: 6,
+        key: 'k2',
+        title: 't2',
+      });
     });
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        search: expect.stringContaining('assignee=other'),
-      }),
-      { replace: true }
-    );
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
 
-    const updated = findDescriptor(
-      result.current.filterDescriptors,
-      'assignee'
-    );
-
-    expect(updated?.selectedOwners).toEqual([
-      { id: 'o1', name: 'other', type: 'user' },
-    ]);
+    expect(parsed.currentPage).toBe('1');
+    expect(parsed.startTs).toBe('5');
+    expect(parsed.endTs).toBe('6');
+    expect(parsed.key).toBe('k2');
+    expect(parsed.title).toBe('t2');
+    expect(parsed.assignee).toBe('bob');
+    expect(parsed.pageSize).toBe('15');
   });
 
-  it('should drop a stale picker ref that no longer matches the assignee filter', () => {
-    const { result } = renderFiltersHook({ filters: { assignee: 'ua' } });
-
-    const descriptor = findDescriptor(
-      result.current.filterDescriptors,
-      'assignee'
-    );
-
-    act(() => {
-      descriptor?.onOwnerChange?.([{ id: 'o1', name: 'other', type: 'user' }]);
+  it('should drop the page and cursor params via handleDateRangeClear', () => {
+    const { result } = renderWithUrl({
+      startTs: '1',
+      endTs: '2',
+      key: 'k',
+      title: 't',
+      dateField: 'updatedAt',
+      currentPage: '5',
+      cursorType: 'after',
+      cursorValue: 'foo',
+      other: 'z',
+      pageSize: '15',
     });
 
-    const updated = findDescriptor(
-      result.current.filterDescriptors,
-      'assignee'
-    );
+    act(() => {
+      result.current.handleDateRangeClear();
+    });
 
-    expect(updated?.selectedOwners).toEqual([]);
+    const [arg] = mockNavigate.mock.calls[0];
+    const parsed = QueryString.parse(arg.search);
+
+    expect(parsed.other).toBe('z');
+    expect(parsed.pageSize).toBe('15');
+    expect(parsed.currentPage).toBeUndefined();
+    expect(parsed.cursorType).toBeUndefined();
+    expect(parsed.cursorValue).toBeUndefined();
+    expect(parsed.startTs).toBeUndefined();
+    expect(parsed.dateField).toBeUndefined();
   });
 });

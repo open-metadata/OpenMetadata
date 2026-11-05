@@ -115,7 +115,8 @@ test.describe(
       test.slow();
       await test.step('Load page with URL parameters', async () => {
         await page.goto(
-          '/test-library?entityType=TABLE&testPlatforms=OpenMetadata'
+          '/test-library?entityType=TABLE&testPlatforms=OpenMetadata',
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(page);
 
@@ -144,13 +145,13 @@ test.describe(
       });
 
       await test.step('Verify persistence through browser navigation', async () => {
-        await page.goBack();
+        await page.goBack({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         expect(page.url()).not.toContain('entityType');
         expect(page.url()).not.toContain('testPlatforms');
 
-        await page.goForward();
+        await page.goForward({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         expect(page.url()).toContain('entityType=TABLE');
@@ -322,10 +323,18 @@ test.describe(
 
         const nextButton = page.getByTestId('next');
         await expect(nextButton).toBeEnabled();
+
+        const nextPageResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'GET'
+        );
         await nextButton.click();
+        await nextPageResponse;
         await waitForAllLoadersToDisappear(page);
 
-        expect(page.url()).toMatch(/currentPage=2/);
+        // The URL updates asynchronously; a one-off page.url() read races it.
+        await expect(page).toHaveURL(/currentPage=2/);
 
         await toggleFilter(
           page,
@@ -333,8 +342,8 @@ test.describe(
           ENTITY_TYPE_OPTIONS.TABLE
         );
 
-        expect(page.url()).not.toContain('currentPage=2');
-        expect(page.url()).toContain('entityType=TABLE');
+        await expect(page).not.toHaveURL(/currentPage=2/);
+        await expect(page).toHaveURL(/entityType=TABLE/);
       });
     });
 
@@ -368,7 +377,7 @@ test.describe(
       });
 
       await test.step('Verify the new filter persists after page reload', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         expect(page.url()).toContain('testPlatforms=OpenMetadata');

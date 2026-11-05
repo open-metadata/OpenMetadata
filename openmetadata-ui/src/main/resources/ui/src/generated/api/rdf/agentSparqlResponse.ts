@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Typed SPARQL SELECT result for agent tools, with completeness relative to the submitted
- * query. Results come from the server-configured RDF dataset and default graph, without
- * persona filtering or asset-level authorization.
+ * Typed SPARQL 1.2 SELECT result for agent tools, with completeness relative to the
+ * submitted query. Results come from the server-configured RDF dataset and default graph,
+ * without persona filtering or asset-level authorization.
  */
 export interface AgentSparqlResponse {
     head:     Head;
@@ -83,24 +83,51 @@ export interface Results {
 }
 
 /**
- * An RDF term bound to a result variable. A variable that is unbound in a row is absent
- * from that row.
+ * Value of an RDF 1.2 triple term. Components use the SPARQL Results JSON RDF-term
+ * representation recursively.
+ */
+export interface AgentSparqlTripleTerm {
+    object:    RDFTerm;
+    predicate: RDFTerm;
+    subject:   RDFTerm;
+}
+
+/**
+ * An RDF term bound to a result variable using the SPARQL 1.2 Query Results JSON
+ * representation. A variable that is unbound in a row is absent from that row.
  */
 export interface RDFTerm {
     /**
      * Datatype IRI of a typed literal.
      */
     datatype?: string;
-    type:      Type;
-    value:     string;
+    /**
+     * Base direction of an RDF 1.2 directional language-tagged literal.
+     */
+    "its:dir"?: RDFDirection;
+    type:       Type;
+    /**
+     * Lexical string for an IRI, literal, or blank node; recursive subject-predicate-object
+     * value for a triple term.
+     */
+    value: AgentSparqlTripleTerm | string;
     /**
      * Language tag of a language-tagged literal.
      */
     "xml:lang"?: string;
 }
 
+/**
+ * Base direction of an RDF 1.2 directional language-tagged literal.
+ */
+export enum RDFDirection {
+    LTR = "ltr",
+    RTL = "rtl",
+}
+
 export enum Type {
     Bnode = "bnode",
     Literal = "literal",
+    Triple = "triple",
     URI = "uri",
 }

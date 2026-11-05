@@ -64,15 +64,34 @@ public final class IngestionPipelineSecrets {
     }
   }
 
+  /**
+   * The deploy/run preparation of {@link #decryptOrNullify}, for server-side callers with no request
+   * to authorize (e.g. background jobs). Storage never keeps the bot connection, so a pipeline read
+   * back from it needs this before it goes to the pipeline service client.
+   */
+  public static void prepareForPipelineService(
+      OpenMetadataApplicationConfig config, IngestionPipeline ingestionPipeline) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    secretsManager.decryptIngestionPipeline(ingestionPipeline);
+    attachOpenMetadataServerConnection(config, ingestionPipeline, secretsManager);
+  }
+
   private static void setOpenMetadataServerConnection(
       OpenMetadataApplicationConfig config,
       IngestionPipeline ingestionPipeline,
       boolean forceNotMask,
       SecretsManager secretsManager) {
-    if (!forceNotMask) {
+    if (forceNotMask) {
+      attachOpenMetadataServerConnection(config, ingestionPipeline, secretsManager);
+    } else {
       ingestionPipeline.setOpenMetadataServerConnection(null);
-      return;
     }
+  }
+
+  private static void attachOpenMetadataServerConnection(
+      OpenMetadataApplicationConfig config,
+      IngestionPipeline ingestionPipeline,
+      SecretsManager secretsManager) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(config, ingestionPipeline).build();
     ingestionPipeline.setOpenMetadataServerConnection(

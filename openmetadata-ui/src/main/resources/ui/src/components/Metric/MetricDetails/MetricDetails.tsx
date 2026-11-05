@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,6 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
@@ -28,6 +35,7 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
+import { useMetricLinkedAssets } from '../../../hooks/useMetricLinkedAssets';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
 import {
@@ -43,6 +51,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
+import { getMetricAssetSelectionQueryFilter } from '../../../utils/MetricEntityUtils/MetricPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
@@ -52,9 +61,9 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -87,6 +96,12 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   );
   const { customizedPage, isLoading } = useCustomPages(PageType.Metric);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
+  const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
+  const {
+    assetIds,
+    isPending: isAssetsLoading,
+    refresh: refreshAssets,
+  } = useMetricLinkedAssets(metricDetails.id);
 
   const {
     owners,
@@ -212,9 +227,12 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     }
   }, [decodedMetricFqn]);
 
+  // A soft-deleted metric stays on this page, so it is shown as deleted as soon as the delete
+  // job is accepted. If the job then fails, fetchMetricDetails restores the server's state.
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
-    []
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? onToggleDelete(version) : navigate(ROUTES.METRICS),
+    [onToggleDelete]
   );
 
   // Named-flag derivation (Task 8 Batch 9), collapsing the 6-field block below into one
@@ -238,6 +256,38 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   } = flags;
   const viewSampleDataPermission = flags.canViewSampleData && !deleted;
 
+  // Linking and unlinking assets are both EditAll on the metric, so AssetsTabs' Create
+  // (add + select) and EditAll (remove) gates collapse onto the same deleted-aware flag.
+  const assetPermissions = useMemo(
+    () => ({
+      ...metricPermissions,
+      Create: editAllPermission,
+      EditAll: editAllPermission,
+    }),
+    [metricPermissions, editAllPermission]
+  );
+
+  const openAssetModal = useCallback(() => setIsAssetModalOpen(true), []);
+
+  const assetSelectionQueryFilter = useMemo(
+    () => getMetricAssetSelectionQueryFilter(assetIds ?? []),
+    [assetIds]
+  );
+
+  const handleAssetSave = useCallback(() => {
+    refreshAssets();
+    if (activeTab !== EntityTabs.ASSETS) {
+      navigate(
+        getEntityDetailsPath(
+          EntityType.METRIC,
+          decodedMetricFqn,
+          EntityTabs.ASSETS
+        ),
+        { replace: true }
+      );
+    }
+  }, [refreshAssets, activeTab, decodedMetricFqn]);
+
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
@@ -257,6 +307,11 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       viewCustomPropertiesPermission,
       getEntityFeedCount,
       labelMap: tabLabelMap,
+      metricPermissions: assetPermissions,
+      assetIds,
+      isAssetsLoading,
+      onAddAsset: openAssetModal,
+      onAssetsUpdate: refreshAssets,
     });
 
     return getDetailsTabWithNewLabel(
@@ -278,6 +333,11 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     viewSampleDataPermission,
     viewAllPermission,
     viewCustomPropertiesPermission,
+    assetPermissions,
+    assetIds,
+    isAssetsLoading,
+    openAssetModal,
+    refreshAssets,
   ]);
 
   const toggleTabExpanded = () => {
@@ -306,9 +366,35 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             afterDomainUpdateAction={onUpdateMetricDetails}
             dataAsset={metricDetails}
             entityType={EntityType.METRIC}
+            hardDeleteMessagePostFix={` ${t(
+              'message.delete-metric-children-message',
+              {
+                metricName: getEntityName(metricDetails),
+                deleteType: t('label.permanently-lowercase'),
+              }
+            )}`}
+            headerActions={
+              editAllPermission && (
+                <Button
+                  color="primary"
+                  data-testid="metric-add-assets-button"
+                  size="sm"
+                  onPress={openAssetModal}>
+                  {t('label.add-entity', { entity: t('label.asset') })}
+                </Button>
+              )
+            }
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
+            softDeleteMessagePostFix={` ${t(
+              'message.delete-metric-children-message',
+              {
+                metricName: getEntityName(metricDetails),
+                deleteType: t('label.soft-lowercase'),
+              }
+            )}`}
             onCertificationUpdate={onCertificationUpdate}
+            onDeleteFailure={fetchMetricDetails}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMetric}
             onMetricUpdate={onMetricUpdate}
@@ -326,42 +412,52 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <div className="metric-page-tabs">
-            <Tabs
-              className="tw:gap-3"
-              data-testid="tabs"
-              selectedKey={getRenderedActiveTab(tabs, activeTab)}
-              onSelectionChange={(key) => handleTabChange(String(key))}>
-              <Tabs.List
-                actions={
-                  isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
-                        isTabExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={toggleTabExpanded}
-                    />
-                  )
-                }
-                size="sm"
-                type="underline"
-                variant="card">
-                {tabs.map(({ key, label }) => (
-                  <Tabs.Item id={key} key={key}>
-                    {label}
-                  </Tabs.Item>
-                ))}
-              </Tabs.List>
-              {tabs.map(({ key, children }) => (
-                <Tabs.Panel id={key} key={key}>
-                  {children}
-                </Tabs.Panel>
+          <Tabs
+            className="tw:gap-3"
+            data-testid="tabs"
+            selectedKey={getRenderedActiveTab(tabs, activeTab)}
+            onSelectionChange={(key) => handleTabChange(String(key))}>
+            <Tabs.List
+              actions={
+                isExpandViewSupported && (
+                  <ButtonUtility
+                    data-testid="tab-expand-button"
+                    icon={isTabExpanded ? Collapse : Expand}
+                    size="lg"
+                    tooltip={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
+              size="sm"
+              type="underline"
+              variant="card">
+              {tabs.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
               ))}
-            </Tabs>
-          </div>
+            </Tabs.List>
+            {tabs.map(({ key, children }) => (
+              <Tabs.Panel id={key} key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
         </GenericProvider>
       </Box>
+      {isAssetModalOpen && (
+        <AssetSelectionModal
+          open
+          entityFqn={decodedMetricFqn}
+          queryFilter={assetSelectionQueryFilter}
+          type={AssetsOfEntity.METRIC}
+          onCancel={() => setIsAssetModalOpen(false)}
+          onSave={handleAssetSave}
+        />
+      )}
       <LimitWrapper resource="metric">
         <></>
       </LimitWrapper>

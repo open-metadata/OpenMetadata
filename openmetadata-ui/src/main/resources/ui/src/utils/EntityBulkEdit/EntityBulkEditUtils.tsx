@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
-import { Edit } from '@openmetadata/ui-core-components/icons';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { ProfilerTabPath } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
@@ -28,7 +28,8 @@ import {
 import { exportMetricDetailsInCSVSync } from '../../rest/metricsAPI';
 import { exportDatabaseServiceDetailsInCSV } from '../../rest/serviceAPI';
 import { exportTableDetailsInCSV } from '../../rest/tableAPI';
-import { exportTestCasesInCSV } from '../../rest/testAPI';
+import { TestCaseExportFilters } from '../../rest/testAPI';
+import { withTestCaseExportFilters } from '../DataQuality/TestCaseExport.utils';
 import entityUtilClassBase from '../EntityUtilClassBase';
 import { t } from '../i18next/LocalUtil';
 import { getDataQualityPagePath } from '../RouterUtils';
@@ -37,7 +38,10 @@ export const isBulkEditRoute = (pathname: string) => {
   return pathname.includes(ROUTES.BULK_EDIT_ENTITY);
 };
 
-export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
+export const getBulkEditCSVExportEntityApi = (
+  entityType: EntityType,
+  testCaseExportFilters?: TestCaseExportFilters
+) => {
   switch (entityType) {
     case EntityType.DATABASE_SERVICE:
       return exportDatabaseServiceDetailsInCSV;
@@ -63,7 +67,7 @@ export const getBulkEditCSVExportEntityApi = (entityType: EntityType) => {
       return exportMetricDetailsInCSVSync;
 
     case EntityType.TEST_CASE:
-      return exportTestCasesInCSV;
+      return withTestCaseExportFilters(testCaseExportFilters);
 
     default:
       return exportTableDetailsInCSV;
@@ -76,10 +80,9 @@ export const getBulkEditButton = (
 ) => {
   return hasPermission ? (
     <Button
-      className="tw:*:data-icon:size-4"
       color="link-color"
       data-testid="bulk-edit-table"
-      iconLeading={Edit}
+      iconLeading={Edit01}
       size="sm"
       onPress={onClickHandler}>
       {t('label.edit')}

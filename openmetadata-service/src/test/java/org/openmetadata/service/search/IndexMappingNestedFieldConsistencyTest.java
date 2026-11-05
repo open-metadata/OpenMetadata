@@ -22,7 +22,7 @@ import org.openmetadata.search.IndexMappingLoader;
 
 class IndexMappingNestedFieldConsistencyTest {
 
-  private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
+  private static final List<String> LANGUAGES = List.of("en", "jp", "ko", "ru", "zh");
   private static final String TESTS_SCHEMA_DIR = "json/schema/tests/";
   private static final String RESOLUTION_STATUS_ENTITY = "testCaseResolutionStatus";
   private static final String RESOLUTION_DETAILS_FIELD = "testCaseResolutionStatusDetails";

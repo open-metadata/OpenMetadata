@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.ExceptionMapper;
+import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +41,6 @@ import org.openmetadata.service.resources.rdf.AgentSparqlTransport;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.AuthorizationException;
-import org.postgresql.util.PSQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +57,12 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     if (AgentSparqlTransport.isAgentSparqlRequest(uriInfo)) {
       return AgentSparqlTransport.errorResponse(ex);
     }
-    if (ex instanceof RuleValidationException) {
+    if (ex instanceof OntologyValidationException validation) {
+      return Response.status(BAD_REQUEST)
+          .type(APPLICATION_JSON_TYPE)
+          .entity(validation.getError())
+          .build();
+    } else if (ex instanceof RuleValidationException) {
       return getRuleViolationResponse(ex);
     } else if (ex instanceof BadRequestException || ex instanceof IllegalArgumentException) {
       return getResponse(BAD_REQUEST, ex.getMessage());
@@ -66,17 +71,17 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     } else if (ex instanceof ProcessingException) {
       return getResponse(BAD_REQUEST, "Invalid request parameter");
     } else if (ex instanceof UnableToExecuteStatementException) {
-      if (ex.getCause() instanceof SQLIntegrityConstraintViolationException
-          || ex.getCause() instanceof PSQLException
-              && ex.getCause().getMessage().contains("duplicate")) {
+      Throwable cause = ex.getCause();
+      if (isDuplicateKeyException(cause)) {
         return getResponse(CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
+      }
+      if (isIntegrityConstraintViolation(cause)) {
+        return getResponse(BAD_REQUEST, "Request violates a database constraint");
       }
     } else if (ex instanceof EntityNotFoundException) {
       return getResponse(NOT_FOUND, ex.getLocalizedMessage());
     } else if (ex instanceof PreconditionFailedException) {
       return getResponse(Response.Status.PRECONDITION_FAILED, ex.getLocalizedMessage());
-    } else if (ex instanceof IngestionPipelineDeploymentException) {
-      return getResponse(BAD_REQUEST, ex.getLocalizedMessage());
     } else if (ex instanceof AuthenticationException) {
       return getResponse(UNAUTHORIZED, ex.getLocalizedMessage());
     } else if (ex instanceof AuthorizationException) {
@@ -126,6 +131,24 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       builder.header("WWW-Authenticate", "om-auth");
     }
     return builder.build();
+  }
+
+  private static boolean isDuplicateKeyException(Throwable cause) {
+    if (cause instanceof SQLException sqlEx) {
+      // MySQL: error code 1062 = ER_DUP_ENTRY; PostgreSQL: SQL state "23505" = unique_violation
+      return sqlEx.getErrorCode() == 1062 || "23505".equals(sqlEx.getSQLState());
+    }
+    return false;
+  }
+
+  private static boolean isIntegrityConstraintViolation(Throwable cause) {
+    if (cause instanceof SQLException sqlEx) {
+      String sqlState = sqlEx.getSQLState();
+      // SQLState class 23 = integrity_constraint_violation (FK 23503, NOT NULL 23502, check 23514)
+      return cause instanceof SQLIntegrityConstraintViolationException
+          || (sqlState != null && sqlState.startsWith("23"));
+    }
+    return false;
   }
 
   private Response getRuleViolationResponse(Throwable ex) {

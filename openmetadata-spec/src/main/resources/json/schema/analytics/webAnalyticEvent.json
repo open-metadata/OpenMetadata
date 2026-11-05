@@ -5,7 +5,7 @@
   "description": "Web Analytic Event",
   "type": "object",
   "javaType": "org.openmetadata.schema.analytics.WebAnalyticEvent",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "properties": {
     "id": {
       "description": "Unique identifier of the report.",

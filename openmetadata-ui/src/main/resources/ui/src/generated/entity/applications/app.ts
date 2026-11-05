@@ -301,8 +301,6 @@ export interface CollateAIAppConfig {
     bulkIndexSettings?: BulkIndexOverrides;
     /**
      * Number of threads to use for reindexing
-     *
-     * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
     /**
@@ -345,9 +343,6 @@ export interface CollateAIAppConfig {
     /**
      * Number of entities per partition for distributed indexing. Smaller values create more
      * partitions for better distribution across servers. Range: 1000-50000.
-     *
-     * Number of entities per partition for distributed RDF indexing. Smaller values create more
-     * partitions for better distribution across servers.
      */
     partitionSize?: number;
     /**
@@ -357,13 +352,12 @@ export interface CollateAIAppConfig {
     /**
      * Number of threads to use for reindexing
      *
-     * Number of producer threads to use for non-distributed RDF reindexing
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
-     *
-     * Queue size to use internally for non-distributed RDF reindexing.
      */
     queueSize?: number;
     /**
@@ -390,7 +384,7 @@ export interface CollateAIAppConfig {
     /**
      * Force cache warmup even if another instance is detected (use with caution).
      *
-     * Materialize every enabled rule even when its durable dirty flag is clear.
+     * Recompute every rule even when no rule is dirty.
      */
     force?: boolean;
     /**
@@ -428,12 +422,8 @@ export interface CollateAIAppConfig {
      */
     relationshipIsolationMaxFailures?: number;
     /**
-     * Enable distributed RDF indexing across multiple servers with partition coordination and
-     * recovery.
-     */
-    useDistributedIndexing?: boolean;
-    /**
-     * Optional rule name for an on-demand single-rule run.
+     * Optional rule that must exist. The run still computes every rule, because rules read each
+     * other's conclusions.
      */
     ruleName?: string;
     /**
@@ -471,6 +461,12 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for the run history of governance workflows. A
+     * finished run older than this is deleted with its stages, but the latest run of each
+     * workflow for every entity is always kept. Use 0 to retain the history forever.
+     */
+    workflowInstanceRetentionPeriod?: number;
     /**
      * Enter the retention period in days for automation Workflows: the short-lived records left
      * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
@@ -1429,6 +1425,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }

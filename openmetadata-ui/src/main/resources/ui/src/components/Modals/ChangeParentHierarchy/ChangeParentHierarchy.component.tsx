@@ -31,6 +31,7 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
+import { MoveGlossaryTermWebsocketResponse } from '../../../interface/governance/glossary.interface';
 import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
@@ -40,10 +41,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
-import {
-  ChangeParentHierarchyProps,
-  MoveGlossaryTermWebsocketResponse,
-} from './ChangeParentHierarchy.interface';
+import { ChangeParentHierarchyProps } from './ChangeParentHierarchy.interface';
 
 const MAX_BUFFERED_EVENTS = 100;
 
@@ -138,8 +136,17 @@ const ChangeParentHierarchy = ({
         fullyQualifiedName: parent.fullyQualifiedName,
       });
 
-      submittedJobId.current = response.jobId;
       awaitingResponse.current = false;
+      // An approval workflow holds the move: no job runs, and the pending-change
+      // interceptor has already told the user the move awaits approval.
+      if (!response.jobId) {
+        bufferedEvents.current.clear();
+        setLoadingState((prev) => ({ ...prev, isSaving: false }));
+        onCancel();
+
+        return;
+      }
+      submittedJobId.current = response.jobId;
 
       const early = bufferedEvents.current.get(response.jobId);
       bufferedEvents.current.clear();

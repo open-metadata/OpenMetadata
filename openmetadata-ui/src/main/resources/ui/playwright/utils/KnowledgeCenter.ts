@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page, Response } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   SHORTCUTS,
   SLASH_COMMANDS,
@@ -24,6 +25,7 @@ import {
   waitForAllLoadersToDisappear,
 } from './entity';
 import { sidebarClick } from './sidebar';
+import { clickUntilVisible } from './waitHelpers';
 
 const ARTICLE_PATH_PREFIX = '/context-center/articles/';
 const FQN_PLACEHOLDER = ':fqn';
@@ -42,7 +44,7 @@ export const deletePage = async (
   await expect(page.getByTestId('confirm-button')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
-    `/api/v1/contextCenter/pages/*?recursive=${!isQuickLink}&hardDelete=${isQuickLink}`
+    `/api/v1/contextCenter/pages/*?recursive=${!isQuickLink}&hardDelete=true`
   );
 
   // Register before clicking so we don't miss the response the app fires
@@ -136,44 +138,6 @@ export const updateTags = async (
   expect(response.status()).toBe(200);
 };
 
-export const updateDataAsset = async (
-  page: Page,
-  dataAsset: TopicClass,
-  title: string
-) => {
-  const updateKnowledgePage = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/contextCenter/pages/') &&
-      response.request().method() === 'PATCH'
-  );
-  await page.getByTestId('add-data-assets-container').click();
-
-  await page.waitForSelector(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    { state: 'visible' }
-  );
-  await page.fill(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    dataAsset.entity.name
-  );
-  await page
-    .locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
-    .click();
-  await page.locator('[data-testid="saveDataAssets"]').click();
-
-  const response = await updateKnowledgePage;
-  expect(response.status()).toBe(200);
-
-  await page.waitForSelector(`[data-testid="${dataAsset.entity.name}"]`, {
-    state: 'visible',
-  });
-  await page.click(`[data-testid="${dataAsset.entity.name}"]`);
-
-  await page.getByRole('link', { name: title }).click();
-};
-
 export const updateVotes = async (page: Page) => {
   await page.click('[data-testid="up-vote-btn"]');
 
@@ -183,14 +147,6 @@ export const updateVotes = async (page: Page) => {
 
   await expect(page.locator('[data-testid="up-vote-count"]')).toHaveText('0');
   await expect(page.locator('[data-testid="down-vote-count"]')).toHaveText('1');
-};
-
-export const updateFollowers = async (page: Page) => {
-  await page.click('[data-testid="entity-follow-button"]');
-
-  await expect(
-    page.locator('[data-testid="entity-follow-button"] > .ant-typography')
-  ).toHaveText('1');
 };
 
 export const readArticleData = async (
@@ -348,19 +304,18 @@ export const updateQuickLink = async (
   await descriptionTextarea.press('ControlOrMeta+a');
   await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
 
-  const tagsTrigger = modal.getByTestId('tags-container');
-  await tagsTrigger.click();
-
-  const searchInput = page
-    .getByTestId('drop-down-menu')
-    .getByTestId('search-input');
-  await searchInput.waitFor({ state: 'visible' });
-  await searchInput.fill(knowledgePageQuickLink.tag);
-
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId(knowledgePageQuickLink.tagFqn)
-    .click();
+  const tagPicker = page.getByTestId('drop-down-menu');
+  const searchInput = tagPicker.getByTestId('search-input');
+  const tagOption = tagPicker.getByTestId(knowledgePageQuickLink.tagFqn);
+  // The tag picker is a non-modal react-aria popover, which closes on any
+  // scroll of the window or the trigger's ancestors. While the articles page
+  // behind the modal is still settling, that can shut it right after it opens
+  // or after the search is typed, so open, search and pick are retried as one.
+  await expect(async () => {
+    await clickUntilVisible(modal.getByTestId('tags-container'), searchInput);
+    await searchInput.fill(knowledgePageQuickLink.tag, { timeout: 5_000 });
+    await tagOption.click({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000, intervals: [500, 1_000] });
 
   await page.keyboard.press('Escape');
   await modal.getByRole('button', { name: 'Save' }).click();
@@ -403,7 +358,7 @@ export const readArticleInHierarchy = async (
       },
       {
         message: `article "${articleTitle}" never appeared in the hierarchy while scrolling`,
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       }
     )
     .toBe(true);
@@ -753,11 +708,15 @@ export const verifyTextFormatting = async (
     code: 'code',
   }[format];
 
-  await expect(editor.locator(formatTag).filter({ hasText: text })).toBeVisible(
-    {
-      timeout: 15_000,
-    }
-  );
+  // Assert the WHOLE text carries the format — a last-word fallback would let a half-applied
+  // format (e.g. only "text" of "Italic text" italic) pass. Escape regex metacharacters in `text`.
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  await expect(
+    editor.locator(formatTag).filter({ hasText: new RegExp(`^${escaped}$`) })
+  ).toBeVisible({
+    timeout: 15_000,
+  });
 };
 
 export const undo = async (page: Page): Promise<void> => {
@@ -820,7 +779,9 @@ export const verifyContentPersistence = async (
 ): Promise<void> => {
   await waitForAutoSave(page);
 
-  await page.reload();
+  // `load` waits on every in-flight XHR, which can outlast the test timeout on a
+  // slow runner; the editor and text waits below are the readiness signal.
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const editor = await getEditor(page, true);

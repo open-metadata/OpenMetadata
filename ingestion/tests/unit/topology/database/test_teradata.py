@@ -13,14 +13,22 @@
 Test Teradata using the topology
 """
 
+from copy import deepcopy
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
+
+import pytest
+import sqlglot
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.source.database.teradata.lineage import TeradataLineageSource
 from metadata.ingestion.source.database.teradata.metadata import TeradataSource
+from metadata.ingestion.source.database.teradata.usage import TeradataUsageSource
 
 mock_teradata_config = {
     "source": {
@@ -192,3 +200,88 @@ class TestTeradataColumnComments:
         result = get_columns(MagicMock(), MagicMock(), "test_table", schema="test_schema")
 
         assert result[0]["comment"] == "Lowercase comment"
+
+
+class TestTeradataQueryLineage:
+    @pytest.fixture
+    def lineage_source(self):
+        config = deepcopy(mock_teradata_config)
+        config["source"]["type"] = "teradata-lineage"
+        config["source"]["sourceConfig"]["config"] = {"type": "DatabaseLineage", "resultLimit": 500}
+        with patch("metadata.ingestion.source.database.query_parser_source.QueryParserSource.test_connection"):
+            return TeradataLineageSource.create(config["source"], MagicMock())
+
+    def test_query_history_statement_is_valid_teradata_sql(self, lineage_source):
+        sql = lineage_source.get_sql_statement(start_time=datetime(2026, 10, 5), end_time=datetime(2026, 10, 7))
+
+        parsed = sqlglot.parse_one(sql, read="teradata")
+
+        assert parsed.args["limit"].expression.this == "500"
+        assert "TIMESTAMP '2026-10-05 00:00:00'" in sql
+        assert "TIMESTAMP '2026-10-07 00:00:00'" in sql
+        assert "LIKE ANY ('INSERT%', 'UPDATE%', 'MERGE%', 'CREATE TABLE%')" in sql
+        assert 'COALESCE(s.SqlTextInfo, q.QueryText) NOT LIKE \'/* {"app": "OpenMetadata", %\'' in sql
+
+    def test_dbql_rows_become_teradata_table_queries(self, lineage_source):
+        row = MagicMock()
+        row._asdict.return_value = {
+            "user_name": "ETL_USER",
+            "schema_name": "edw",
+            "query_text": "INS INTO edw.sales_fact SEL id, amt FROM stg.sales",
+            "start_time": datetime(2026, 10, 6),
+            "end_time": datetime(2026, 10, 6),
+        }
+        conn = MagicMock()
+        conn.execute.return_value = [row]
+        lineage_source.engine = MagicMock()
+        lineage_source.engine.connect.return_value.__enter__.return_value = conn
+
+        queries = list(lineage_source.yield_table_query())
+
+        assert len(queries) == 1
+        assert queries[0].query == "INS INTO edw.sales_fact SEL id, amt FROM stg.sales"
+        assert queries[0].databaseSchema == "edw"
+        assert queries[0].databaseName is None
+        assert queries[0].dialect == Dialect.TERADATA.value
+
+    def test_query_lineage_is_no_longer_skipped(self, lineage_source):
+        assert hasattr(lineage_source.service_connection, "supportsLineageExtraction")
+
+
+class TestTeradataQueryUsage:
+    @pytest.fixture
+    def usage_source(self):
+        config = deepcopy(mock_teradata_config)
+        config["source"]["type"] = "teradata-usage"
+        config["source"]["sourceConfig"]["config"] = {"type": "DatabaseUsage", "resultLimit": 500}
+        with patch("metadata.ingestion.source.database.query_parser_source.QueryParserSource.test_connection"):
+            return TeradataUsageSource.create(config["source"], MagicMock())
+
+    def test_usage_statement_reads_selects_but_not_load_rows(self, usage_source):
+        sql = usage_source.get_sql_statement(start_time=datetime(2026, 10, 5), end_time=datetime(2026, 10, 7))
+
+        sqlglot.parse_one(sql, read="teradata")
+        assert "LIKE ANY ('SELECT%', 'UPDATE%', 'MERGE%', 'DELETE%')" in sql
+        assert "LIKE ANY ('INSERT%', 'CREATE TABLE%')" in sql
+        assert "LIKE '%SEL%'" in sql
+
+    def test_dbql_select_becomes_usage_table_query(self, usage_source):
+        row = MagicMock()
+        row._asdict.return_value = {
+            "user_name": "ANALYST",
+            "schema_name": "edw",
+            "query_text": "SEL id, amt FROM edw.sales_fact",
+            "start_time": datetime(2026, 10, 6),
+            "end_time": datetime(2026, 10, 6),
+        }
+        conn = MagicMock()
+        conn.execute.return_value = [row]
+        usage_source.engine = MagicMock()
+        usage_source.engine.connect.return_value.__enter__.return_value = conn
+
+        query = next(usage_source.yield_table_queries()).queries[0]
+
+        assert query.query == "SEL id, amt FROM edw.sales_fact"
+        assert query.userName == "ANALYST"
+        assert query.databaseSchema == "edw"
+        assert query.dialect == Dialect.TERADATA.value

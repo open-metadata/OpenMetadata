@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
@@ -929,6 +930,33 @@ class RdfPropertyMapperTest {
     }
 
     @Test
+    @DisplayName("Stored credentials never reach the graph, mapped or not")
+    void testCredentialFieldsAreNeverEmitted() {
+      Map<String, Object> contextCache = new HashMap<>();
+      contextCache.put("dataAsset-complete", Map.of());
+      propertyMapper = new RdfPropertyMapper(BASE_URI, objectMapper, contextCache);
+      TestRdfEntity entity = new TestRdfEntity();
+      entity.setId(UUID.randomUUID());
+      entity.setName("warehouse");
+      entity.setFullyQualifiedName("warehouse");
+      entity.setConnection(Map.of("config", Map.of("password", "fernet:stored-secret")));
+
+      propertyMapper.mapEntityToRdf(entity, entityResource, model);
+
+      assertFalse(model.contains(entityResource, model.createProperty(OM_NS, "connection")));
+      assertFalse(model.listObjects().toList().toString().contains("stored-secret"));
+      for (String field :
+          List.of(
+              "connection",
+              "sourceConfig",
+              "openMetadataServerConnection",
+              "authenticationMechanism")) {
+        assertFalse(RdfPropertyMapper.isIndexableEntityField(field), field);
+        assertTrue(RdfPropertyMapper.isIgnoredEntityField(field), field);
+      }
+    }
+
+    @Test
     @DisplayName("mapEntityToRdf should surface mapping failures")
     void testMapEntityToRdfSurfacesMappingFailures() {
       propertyMapper =
@@ -1629,7 +1657,7 @@ class RdfPropertyMapperTest {
     return entityReference;
   }
 
-  private static class TestRdfEntity implements EntityInterface {
+  private static class TestRdfEntity implements EntityInterface<EntityStatus> {
     private UUID id;
     private String description;
     private String displayName;
@@ -1647,6 +1675,7 @@ class RdfPropertyMapperTest {
     private boolean active;
     private Map<String, Object> metadata;
     private List<String> aliases;
+    private Map<String, Object> connection;
 
     @Override
     public UUID getId() {
@@ -1784,7 +1813,7 @@ class RdfPropertyMapperTest {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends EntityInterface> T withHref(URI href) {
+    public <T extends EntityInterface<?>> T withHref(URI href) {
       this.href = href;
       return (T) this;
     }
@@ -1811,6 +1840,14 @@ class RdfPropertyMapperTest {
 
     public void setAliases(List<String> aliases) {
       this.aliases = aliases;
+    }
+
+    public Map<String, Object> getConnection() {
+      return connection;
+    }
+
+    public void setConnection(Map<String, Object> connection) {
+      this.connection = connection;
     }
   }
 

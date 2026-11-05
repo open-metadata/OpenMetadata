@@ -11,44 +11,22 @@
  *  limitations under the License.
  */
 
-import { Badge, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Autocomplete,
+  Badge,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Typography } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
-import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import { useCallback, useMemo } from 'react';
+import { Key, KeyboardEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../constants/Services.constant';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { splitCSV } from '../../../utils/CSV/CSVPureUtils';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import './sso-configuration-form-array-field-template.less';
-
-const SsoCustomTagRenderer = (props: CustomTagProps) => {
-  const { label, closable, onClose } = props;
-  const labelStr = (label as string) ?? '';
-
-  const labelNode = labelStr ? (
-    <Tooltip title={labelStr}>
-      <span className="ant-select-selection-item-content">{label}</span>
-    </Tooltip>
-  ) : (
-    <span className="ant-select-selection-item-content">{label}</span>
-  );
-
-  return (
-    <span className="ant-select-selection-item">
-      {labelNode}
-      {closable && (
-        <button className="ant-select-selection-item-remove" onClick={onClose}>
-          <CloseIcon width={8} />
-        </button>
-      )}
-    </span>
-  );
-};
 
 const getArrayFieldValue = (
   formData: FieldProps['formData'],
@@ -108,8 +86,8 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
       isArray(props.schema.items.enum)
     ) {
       return (props.schema.items.enum as string[]).map((option) => ({
+        id: option,
         label: option,
-        value: option,
       }));
     }
 
@@ -232,9 +210,13 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   );
 
   return (
-    <Row className={classNames('field-error', { 'has-error': hasError })}>
-      <Col span={24}>
+    <Grid
+      className={`layout-row layout-grid ${classNames('field-error', {
+        'has-error': hasError,
+      })}`}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography
+          as="article"
           className={classNames('array-field-label', {
             'required-field': props.required,
             'sso-deprecated-field-label': isDeprecated,
@@ -246,47 +228,41 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
             </Badge>
           )}
         </Typography>
-      </Col>
-      <Col className="sso-select-container" span={24}>
-        <Select
-          className={classNames('m-t-xss w-full', {
-            'ant-select-status-error': hasError,
-          })}
+      </Grid.Item>
+      <Grid.Item className="layout-column tw:mt-1" span={24}>
+        <Autocomplete
+          multiple
+          allowsCreation={!options}
+          aria-label={startCase(props.name)}
           data-testid={`sso-configuration-form-array-field-template-${props.name}`}
-          disabled={props.disabled}
+          hideDropdown={!options}
+          hint={hasInvalidUrls ? t('message.valid-urls-required') : undefined}
           id={id}
-          mode={options ? 'multiple' : 'tags'}
-          open={options ? undefined : false}
-          options={options}
+          isDisabled={props.disabled}
+          isInvalid={hasError}
+          items={options ?? []}
           placeholder={getPlaceholderText()}
-          status={hasError ? 'error' : undefined}
-          tagRender={SsoCustomTagRenderer}
-          value={value}
+          selectedItems={value.map((item) => ({ id: item, label: item }))}
           onBlur={handleBlur}
-          onChange={handleChange}
           onFocus={handleFocus}
-          onKeyDown={(e) => {
+          onItemCleared={(key: Key) =>
+            handleChange(value.filter((item) => item !== key))
+          }
+          onItemInserted={(key: Key) =>
+            options
+              ? handleChange([...value, String(key)])
+              : handleInputSplit(String(key))
+          }
+          onKeyDown={(e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !options) {
               e.preventDefault();
               handlePaste();
             }
-            if (!options && e.key === 'Enter') {
-              // If there are no options(mode is tags), we need to split the input value by comma
-              e.preventDefault();
-              const inputValue = (e.target as HTMLInputElement).value;
-              if (inputValue) {
-                handleInputSplit(inputValue);
-              }
-            }
-          }}
-        />
-        {hasInvalidUrls && (
-          <div className="ant-form-item-explain-error m-t-xss">
-            {t('message.valid-urls-required')}
-          </div>
-        )}
-      </Col>
-    </Row>
+          }}>
+          {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
+        </Autocomplete>
+      </Grid.Item>
+    </Grid>
   );
 };
 

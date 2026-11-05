@@ -11,17 +11,6 @@
  *  limitations under the License.
  */
 
-import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
-import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import {
-  EdgeDetails,
-  EntityLineageResponse,
-  LineageData,
-} from '../components/Lineage/Lineage.interface';
-import {
-  LineageNodeData,
-  LineagePagingInfo,
-} from '../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { HydrateLineageRequest } from '../generated/api/lineage/hydrateLineageRequest';
@@ -33,6 +22,15 @@ import {
 } from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import { LineageDetails } from '../generated/type/entityLineage';
+import { CSVExportResponse } from '../interface/entity/csv.interface';
+import {
+  EdgeDetails,
+  EntityLineageResponse,
+  LineageConfig,
+  LineageData,
+  LineageNodeData,
+  LineagePagingInfo,
+} from '../interface/lineage.interface';
 import APIClient from './axiosClient';
 
 export const updateLineageEdge = async (edge: AddLineage) => {

@@ -2,9 +2,6 @@ package org.openmetadata.it.tests.search.scale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,6 +12,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bench.BenchmarkMetrics;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.SeedData;
@@ -128,10 +126,6 @@ class ReindexBenchmarkIT {
   }
 
   static void writeMetrics(final Object metrics, final String filename) throws Exception {
-    final Path dir = Path.of("target", "benchmark");
-    Files.createDirectories(dir);
-    new ObjectMapper()
-        .writerWithDefaultPrettyPrinter()
-        .writeValue(dir.resolve(filename).toFile(), metrics);
+    BenchmarkMetrics.write(metrics, filename);
   }
 }

@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
-import { Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import type { Column, RenderCellProps } from 'react-data-grid';
 import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
@@ -316,6 +315,11 @@ const METRIC_CSV_VALUE_BY_COLUMN = new Map<
   ],
   ['entityStatus', (metric: Metric) => metric.entityStatus],
   ['extension', (metric: Metric) => formatMetricExtension(metric.extension)],
+  // Bulk edit posts every column back, so a column missing here is sent empty and the import
+  // clears it — that is how a description-only edit detached metrics from parent and group.
+  ['parent', (metric: Metric) => metric.parent?.fullyQualifiedName],
+  ['experts', (metric: Metric) => joinEntityReferences(metric.experts)],
+  ['metricGroup', (metric: Metric) => metric.metricGroup?.fullyQualifiedName],
 ]);
 
 const getMetricCsvValue = (metric: Metric, columnName: string) => {
@@ -519,7 +523,7 @@ export const renderColumnDataEditor = (
     case 'status':
       return statusRenderer(value as Status);
     case 'glossaryStatus':
-      return <Typography.Text>{glossaryStatus}</Typography.Text>;
+      return <Typography>{glossaryStatus}</Typography>;
     case 'expressionCode':
       return renderExpressionCodeCell(value, row);
     case 'description':
@@ -675,7 +679,8 @@ export const getMetricColumnsAndDataSourceFromMetrics = (
     team: boolean;
   },
   cellEditable: boolean,
-  isBulkEdit: boolean
+  isBulkEdit: boolean,
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
 ) => ({
   columns: headers.map((header) =>
     getColumnConfig(
@@ -683,7 +688,9 @@ export const getMetricColumnsAndDataSourceFromMetrics = (
       EntityType.METRIC,
       multipleOwner,
       cellEditable,
-      isBulkEdit
+      isBulkEdit,
+      isBulkEdit,
+      onEditCellHeightChange
     )
   ),
   dataSource: getMetricCsvRowsFromMetrics(metrics, headers),

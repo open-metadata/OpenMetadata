@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  chartColor,
+  LIGHT_CHART_PALETTE,
+} from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import TestSummaryStatusKey from './TestSummaryStatusKey';
@@ -76,12 +80,29 @@ describe('TestSummaryStatusKey', () => {
     ).firstElementChild;
 
     expect(aborted).toHaveStyle(
-      'border: 2px solid var(--om-color-warning-500)'
+      `border: 2px solid ${chartColor(LIGHT_CHART_PALETTE, 0, 'warning')}`
     );
     expect(success).toHaveStyle(
-      'background-color: var(--om-color-visualization-green-3)'
+      `background-color: ${chartColor(LIGHT_CHART_PALETTE, 0, 'success')}`
     );
   });
+
+  it.each([
+    [TestCaseStatus.Success, 'success'],
+    [TestCaseStatus.Failed, 'failed'],
+    [TestCaseStatus.Queued, 'info'],
+  ] as const)(
+    'should colour the %s key from the chart palette',
+    (status, chartStatus) => {
+      render(<TestSummaryStatusKey statuses={[status]} />);
+
+      expect(
+        screen.getByTestId(`status-key-${status}`).firstElementChild
+      ).toHaveStyle(
+        `background-color: ${chartColor(LIGHT_CHART_PALETTE, 0, chartStatus)}`
+      );
+    }
+  );
 
   it('should render nothing when there are no runs', () => {
     const { container } = render(<TestSummaryStatusKey statuses={[]} />);

@@ -33,8 +33,8 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
-          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
           AND p.objtype != 'Prepared'
           {filters}
       ORDER BY s.last_execution_time DESC
@@ -64,8 +64,8 @@ MSSQL_SQL_STATEMENT_CURRENT_DB = textwrap.dedent(
         ON db.database_id = t.dbid
       WHERE s.last_execution_time between '{start_time}' and '{end_time}'
           AND t.dbid = DB_ID()
-          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
           AND p.objtype != 'Prepared'
           {filters}
       ORDER BY s.last_execution_time DESC
@@ -110,8 +110,8 @@ MSSQL_SQL_STATEMENT_FROM_QUERY_STORE = textwrap.dedent(
           AND rs.last_execution_time BETWEEN '{start_time}' AND '{end_time}'
         GROUP BY q.query_id, qt.query_sql_text
       ) AS t
-      WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-        AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      WHERE t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+        AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
         {filters}
       ORDER BY t.start_time DESC
 """
@@ -349,10 +349,10 @@ SELECT
 FROM INFORMATION_SCHEMA.ROUTINES r
 JOIN sys.procedures p ON p.name = r.ROUTINE_NAME
 JOIN sys.schemas sch ON p.schema_id = sch.schema_id AND sch.name = r.ROUTINE_SCHEMA
-JOIN sys.sql_modules l on l.object_id = p.object_id
+LEFT JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
-   AND ROUTINE_CATALOG = '{database_name}'
-   AND ROUTINE_SCHEMA = '{schema_name}'
+   AND ROUTINE_CATALOG = :database_name
+   AND ROUTINE_SCHEMA = :schema_name
     """  # noqa: W291
 )
 
@@ -401,8 +401,8 @@ Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type,
   CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
   INNER JOIN sys.databases db
     ON db.database_id = t.dbid
-  WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-    AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+  WHERE t.text NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+    AND t.text NOT LIKE '%%/* {{"app": "dbt", %%}} */%%'
     AND p.objtype NOT IN ('Prepared', 'Proc')
     AND t.dbid = DB_ID()
     AND s.last_execution_time > '{start_date}'
@@ -486,6 +486,31 @@ SELECT
     last_execution_time                                          AS PROCEDURE_END_TIME
 FROM proc_statements
 WHERE OBJECT_NAME(object_id) IS NOT NULL
+ORDER BY PROCEDURE_START_TIME DESC
+"""
+)
+
+# SQL Server records no statement for DDL, so a procedure's ALTER TABLE ... SWITCH is in
+# neither Query Store nor the plan cache: read it from the definition of a procedure that ran.
+MSSQL_GET_STORED_PROCEDURE_SWITCH_DEFINITIONS = textwrap.dedent(
+    """
+SELECT
+    'ALTER_TABLE_SWITCH'                                            AS QUERY_TYPE,
+    DB_NAME()                                                       AS QUERY_DATABASE_NAME,
+    OBJECT_SCHEMA_NAME(s.object_id)                                 AS QUERY_SCHEMA_NAME,
+    d.definition                                                    AS QUERY_TEXT,
+    NULL                                                            AS QUERY_USER_NAME,
+    s.last_execution_time                                           AS QUERY_START_TIME,
+    s.last_elapsed_time / 1000000.0                                 AS QUERY_DURATION,
+    OBJECT_NAME(s.object_id)                                        AS PROCEDURE_NAME,
+    d.definition                                                    AS PROCEDURE_TEXT,
+    s.last_execution_time                                           AS PROCEDURE_START_TIME,
+    DATEADD(s, s.last_elapsed_time/1000000, s.last_execution_time)  AS PROCEDURE_END_TIME
+FROM sys.dm_exec_procedure_stats AS s
+CROSS APPLY (SELECT OBJECT_DEFINITION(s.object_id) AS definition) AS d
+WHERE s.database_id = DB_ID()
+  AND s.last_execution_time > '{start_date}'
+  AND UPPER(d.definition) LIKE '%%SWITCH%%'
 ORDER BY PROCEDURE_START_TIME DESC
 """
 )

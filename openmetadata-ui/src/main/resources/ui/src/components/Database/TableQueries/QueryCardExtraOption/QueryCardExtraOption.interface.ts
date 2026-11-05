@@ -12,7 +12,7 @@
  */
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Query } from '../../../../generated/entity/data/query';
-import { QueryVote } from '../TableQueries.interface';
+import { QueryVote } from '../../../../interface/entity/vote.interface';
 
 export interface QueryCardExtraOptionProps {
   permission: OperationPermission;

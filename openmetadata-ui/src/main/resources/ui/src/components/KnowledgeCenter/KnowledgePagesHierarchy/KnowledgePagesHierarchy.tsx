@@ -17,16 +17,18 @@ import {
   ButtonUtility,
   Card,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Articles } from '@openmetadata/ui-core-components/icons';
+import {
+  File06 as Articles,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
 import {
@@ -51,6 +53,7 @@ import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
+import { PANEL_ICON_BOX_CLASS } from '../../../constants/ContextCenter.constants';
 import {
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
   KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
@@ -99,6 +102,7 @@ import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageU
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
@@ -751,11 +755,10 @@ const KnowledgePagesHierarchy = forwardRef<
 
         const deleteButton = canDelete ? (
           <ButtonUtility
-            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
-            color="tertiary"
+            className="tw:opacity-0 group-hover-opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
-            size="xs"
+            size="lg"
             tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
@@ -869,9 +872,8 @@ const KnowledgePagesHierarchy = forwardRef<
     const renderExpandCollapseButton = () =>
       isUserExpandedAll ? (
         <ButtonUtility
-          color="tertiary"
-          icon={<CollapseAllIcon className="tw:size-6" />}
-          size="sm"
+          icon={CollapseAllIcon}
+          size="lg"
           tooltip={t('label.collapse-all')}
           onClick={() => {
             setExpandedKeys([]);
@@ -880,10 +882,9 @@ const KnowledgePagesHierarchy = forwardRef<
         />
       ) : (
         <ButtonUtility
-          color="tertiary"
-          icon={<ExpandAllIcon className="tw:size-6" />}
+          icon={ExpandAllIcon}
           isDisabled={isExpandingAll}
-          size="sm"
+          size="lg"
           tooltip={t('label.expand-all')}
           onClick={handleExpandAll}
         />
@@ -905,9 +906,9 @@ const KnowledgePagesHierarchy = forwardRef<
 
         {isHierarchyEmpty && (
           <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               description={t('message.no-articles-listed')}
-              icon={<Articles className="tw:text-secondary" />}
+              icon={<Articles />}
               title={t('label.no-entity', {
                 entity: t('label.article-plural'),
               })}
@@ -1007,9 +1008,9 @@ const KnowledgePagesHierarchy = forwardRef<
             className="tw:pb-5 tw:shrink-0 tw:px-5"
             justify="between">
             <Box align="center" gap={3}>
-              <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
+              <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
                 <FileIcon
-                  className="tw:text-quaternary"
+                  className="tw:text-fg-quaternary"
                   height={20}
                   width={20}
                 />
@@ -1055,7 +1056,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 if (deletePage.pageType === PageType.QUICK_LINK) {
                   await deleteKnowledgePage(deletePage.id, false, true);
                 } else {
-                  await deleteKnowledgePage(deletePage.id);
+                  await deleteKnowledgePage(deletePage.id, true, true);
                 }
                 queryClient.invalidateQueries({
                   queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,

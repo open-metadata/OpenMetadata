@@ -235,6 +235,28 @@ class OrphanedIndexCleanerTest {
   }
 
   @Test
+  void detachesAPromotedRebuildOfARemovedEntityType() {
+    // A 1.12 cluster that ever reindexed serves aiAgent from ai_agent_search_index_rebuild_<millis>
+    // under a cluster alias. That name never ends in _search_index, so it used to slip past the
+    // sweep and keep 500-ing zero-hit non-admin searches through `all` after the upgrade.
+    SearchRepository repository = aiApplicationOnlyRepository();
+    when(repository.getClusterAlias()).thenReturn("prod");
+    String live = "prod_ai_application_search_index_rebuild_1792390274099";
+    String orphan = "prod_ai_agent_search_index_rebuild_1792283401518";
+    Map<String, Set<String>> aliases =
+        stubAliasTable(
+            Map.of(
+                "prod_all", Set.of(live, orphan),
+                "prod_aiApplication", Set.of(live),
+                "prod_dataAssetEmbeddings", Set.of(live)));
+
+    assertEquals(1, cleaner.detachOrphanedIndexesFromAliases(repository));
+
+    assertEquals(Set.of(live), aliases.get("prod_all"));
+    assertEquals(Set.of(live), aliases.get("prod_aiApplication"));
+  }
+
+  @Test
   void doesNotCountADetachThatTheClusterSilentlyRejected() {
     // Both index managers log and swallow an unavailable client, a rejected request and an
     // unacknowledged response, so a normal return proves nothing about the alias.

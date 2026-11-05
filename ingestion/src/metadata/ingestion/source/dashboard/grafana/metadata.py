@@ -45,6 +45,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.grafana.client import (
@@ -63,7 +64,6 @@ from metadata.utils.filters import filter_by_chart
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_tag_labels
 
 logger = ingestion_logger()
 
@@ -88,7 +88,6 @@ class GrafanaSource(DashboardServiceSource):
         self.folders: list[GrafanaFolder] = []
         self.datasources: dict[str, GrafanaDatasource] = {}
         self.dashboards: list[GrafanaSearchResult] = []
-        self.tags: set[str] = set()
 
     @classmethod
     def create(
@@ -141,6 +140,15 @@ class GrafanaSource(DashboardServiceSource):
             logger.debug("Could not fetch owner data: %s", err)
         return None
 
+    def yield_tags(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Publish native dashboard tag definitions."""
+        yield from self.yield_tag_definitions(
+            tags=dashboard_details.dashboard.tags or [],
+            classification_name=GRAFANA_TAG_CATEGORY,
+            classification_description="Tags associated with Grafana dashboards",
+            tag_description="Grafana Tag",
+        )
+
     def yield_dashboard(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
@@ -170,11 +178,12 @@ class GrafanaSource(DashboardServiceSource):
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_url),
-                tags=get_tag_labels(
-                    metadata=self.metadata,
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(
+                        vars(self.context.get())["dashboard_service"], dashboard_details.dashboard.uid
+                    ),
                     tags=dashboard_details.dashboard.tags,
                     classification_name=GRAFANA_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
                 ),
                 owners=self.get_owner_ref(dashboard_details),
             )

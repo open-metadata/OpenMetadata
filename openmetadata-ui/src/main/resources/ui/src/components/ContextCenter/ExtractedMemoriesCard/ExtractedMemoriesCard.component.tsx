@@ -49,7 +49,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
         setIsLoading(true);
         const response = await getListContextMemories({
           sourceEntityId: sourceId,
-          fields: 'owners,sourceEntity',
+          fields: 'owners,sourceEntity,derivedEntities',
           limit: 50,
         });
         if (!isCancelled?.()) {
@@ -100,7 +100,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
       <Box direction="col">
         {memories.map((memory) => (
           <Box
-            className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-secondary"
+            className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer tw:hover:bg-primary_hover"
             data-testid={`extracted-memory-${memory.id}`}
             direction="col"
             key={memory.id}

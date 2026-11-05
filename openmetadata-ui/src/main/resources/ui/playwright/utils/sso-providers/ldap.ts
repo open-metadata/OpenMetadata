@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   applyProviderConfig,
   fetchSecurityConfig,
@@ -74,17 +75,6 @@ const buildValidConfig = () => ({
   },
 });
 
-const buildBrokenConfig = () => {
-  const cfg = buildValidConfig();
-  // Drop ldapConfiguration.host — validateAuthFields should surface this
-  // before any bind is attempted. Scenario 9 asserts on /host/ in the log.
-  delete (
-    cfg.authenticationConfiguration.ldapConfiguration as Record<string, unknown>
-  ).host;
-
-  return cfg;
-};
-
 /**
  * LDAP (OpenLDAP) fixture. Backed by the openldap service in
  * docker/local-sso/openldap/docker-compose.yml —
@@ -118,6 +108,7 @@ export const ldapProviderFixture: SsoProviderFixture = {
   hasBackendIssuedRefreshCookie: true,
   usesPkce: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   // The compose service is expected up when this profile runs; when it is
   // not, the container is unreachable and the configureBackend PUT will
@@ -138,12 +129,12 @@ export const ldapProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByLabel(/email/i).fill(LDAP_USER_EMAIL);
     await page.getByLabel(/password/i).fill(LDAP_USER_PASSWORD);
     await page.getByRole('button', { name: /^(sign in|log in)$/i }).click();
     await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   },
 

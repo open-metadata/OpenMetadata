@@ -5,8 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.jena.rdf.model.Model;
@@ -18,9 +22,27 @@ import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.rdf.sql2sparql.SqlMappingContext;
 
 class RdfOntologyContractTest {
   private static final String OM = "https://open-metadata.org/ontology/";
+
+  // Pre-existing SQL mappings to predicates the projection never writes, tracked in
+  // https://github.com/open-metadata/OpenMetadata/issues/34307. Exact equality makes a new
+  // gap fail and forces an entry to be removed once its mapping is fixed.
+  private static final Set<String> KNOWN_UNPROJECTED_SQL_COLUMNS =
+      Set.of(
+          "columns.datatype -> om:dataType",
+          "columns.id -> om:id",
+          "columns.tableid -> om:table",
+          "databases.id -> om:id",
+          "lineage.downstream -> prov:wasInfluencedBy",
+          "pipelines.id -> om:id",
+          "tables.database -> om:database",
+          "tables.id -> om:id",
+          "teams.id -> om:id",
+          "users.email -> om:email",
+          "users.id -> om:id");
   private static Model projection;
   private static Model ontology;
 
@@ -66,6 +88,105 @@ class RdfOntologyContractTest {
               .toList(),
           uri);
     }
+  }
+
+  @Test
+  void jsonLdContextOnlyAdvertisesStoredProjectedPredicates() throws IOException {
+    try (InputStream stream =
+        Objects.requireNonNull(getClass().getResourceAsStream("/rdf/contexts/base.jsonld"))) {
+      JsonNode context = new ObjectMapper().readTree(stream).path("@context");
+      context
+          .fields()
+          .forEachRemaining(
+              entry -> {
+                if (!entry.getKey().isEmpty() && Character.isUpperCase(entry.getKey().charAt(0))) {
+                  return;
+                }
+                String candidate = jsonLdPredicate(entry.getValue());
+                if (candidate != null && !isClass(candidate)) {
+                  assertStoredProjection(candidate, "JSON-LD term " + entry.getKey());
+                }
+              });
+    }
+  }
+
+  private static String jsonLdPredicate(JsonNode value) {
+    if (value.isTextual() && value.asText().startsWith("om:")) {
+      return value.asText();
+    }
+    JsonNode predicate = value.path("@id");
+    if (predicate.isTextual() && predicate.asText().startsWith("om:")) {
+      return predicate.asText();
+    }
+    return null;
+  }
+
+  private static boolean isClass(String qualifiedPredicate) {
+    Resource resource = ontology.createResource(qualifiedPredicate.replaceFirst("^om:", OM));
+    return ontology.contains(resource, RDF.type, OWL.Class)
+        || ontology.contains(resource, RDF.type, RDFS.Class);
+  }
+
+  @Test
+  void nestedSqlMappingsOnlyAdvertiseStoredProjectedPredicates() {
+    SqlMappingContext.createDefault()
+        .getTableMappings()
+        .forEach(
+            (table, mapping) ->
+                mapping
+                    .getNestedMappings()
+                    .forEach(
+                        (field, nested) -> {
+                          assertStoredProjection(nested.getParentProperty(), table + "." + field);
+                          nested
+                              .getFields()
+                              .forEach(
+                                  (subfield, column) ->
+                                      assertStoredProjection(
+                                          column.getRdfProperty(),
+                                          table + "." + field + "." + subfield));
+                        }));
+  }
+
+  @Test
+  void flatSqlMappingsOnlyAdvertiseProjectedPredicates() {
+    SqlMappingContext context = SqlMappingContext.createDefault();
+    Set<String> written = predicates(projection);
+    Set<String> unprojected = new TreeSet<>();
+    context
+        .getTableMappings()
+        .forEach(
+            (table, mapping) ->
+                mapping
+                    .getColumnMappings()
+                    .forEach(
+                        (column, mapped) -> {
+                          if (!written.contains(expand(context, mapped.getRdfProperty()))) {
+                            unprojected.add(
+                                table + "." + column + " -> " + mapped.getRdfProperty());
+                          }
+                        }));
+    assertEquals(KNOWN_UNPROJECTED_SQL_COLUMNS, unprojected);
+  }
+
+  private static String expand(SqlMappingContext context, String qualifiedPredicate) {
+    int colon = qualifiedPredicate.indexOf(':');
+    String namespace = context.getPrefixes().get(qualifiedPredicate.substring(0, colon));
+    return namespace == null
+        ? qualifiedPredicate
+        : namespace + qualifiedPredicate.substring(colon + 1);
+  }
+
+  private static void assertStoredProjection(String qualifiedPredicate, String source) {
+    String uri = qualifiedPredicate.replaceFirst("^om:", OM);
+    Resource property = ontology.createResource(uri);
+    assertTrue(predicates(projection).contains(uri), source + " is not projected: " + uri);
+    assertTrue(
+        ontology.contains(
+            property,
+            ontology.createProperty(OM + "projectionStatus"),
+            ontology.createResource(OM + "Stored")),
+        source + " is not marked om:Stored: " + uri);
   }
 
   @Test

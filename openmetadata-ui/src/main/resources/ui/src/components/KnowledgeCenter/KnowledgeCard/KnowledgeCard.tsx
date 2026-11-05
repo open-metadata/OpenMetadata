@@ -20,16 +20,16 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { OwnerType } from '../../../enums/user.enum';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import type { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   KnowledgePage,
   PageType,
@@ -44,14 +44,15 @@ import {
   addToKnowledgeCenterRecentViewed,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
-import { stripMarkdown } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
-import { Trash01 } from '@untitledui/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
@@ -97,7 +98,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
           displayName={getEntityName(owners?.[0])}
           profileWidth={20}
           type={owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-          userName={owners?.[0].name || owners?.[0].displayName}
+          userName={owners[0].name ?? owners[0].displayName ?? ''}
         />
       ) : (
         <Typography
@@ -105,7 +106,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
           data-testid="owner-name"
           size="text-xs"
           weight="medium">
-          {t('label.no-entity', { entity: t('label.owner') })}
+          {NO_DATA_PLACEHOLDER}
         </Typography>
       )}
 
@@ -182,7 +183,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
 
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
   const path = isQuickLink
-    ? (knowledgePage.page as QuickLink).url
+    ? getSafeHttpUrl((knowledgePage.page as QuickLink).url) ?? '#'
     : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
 
   // Single useEntityPermissions call, `enabled: isQuickLink` — only quick-link cards render
@@ -277,9 +278,10 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       <Box align="center" gap={1}>
         {editPermission && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-quick-link-btn"
-            icon={<EditIcon height={16} width={16} />}
+            icon={Edit01}
+            size="lg"
+            tooltip={t('label.edit')}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();
@@ -289,9 +291,10 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         )}
         {canDelete && (
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-quick-link-btn"
-            icon={<Trash01 height={16} width={16} />}
+            icon={Trash01}
+            size="lg"
+            tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               e.preventDefault();

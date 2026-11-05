@@ -3,12 +3,12 @@ package org.openmetadata.sdk.resources;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -152,7 +152,7 @@ public abstract class BaseResource<T> {
         pruneFieldsNotPresentInUpdated(originalNode, updatedNode);
       }
 
-      JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
+      JsonNode patch = JsonDiff.of(originalNode, updatedNode);
 
       // Build request options with ETag if provided
       RequestOptions options = null;

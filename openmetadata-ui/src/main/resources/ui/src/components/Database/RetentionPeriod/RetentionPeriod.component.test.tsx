@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import RetentionPeriod from './RetentionPeriod.component';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
@@ -137,6 +143,25 @@ describe('Test Retention Period Component', () => {
     });
 
     expect(mockOnUpdate).toHaveBeenCalledWith('69 days and 16 hours');
+  });
+
+  it('Should close Modal without calling onUpdate on cancel', async () => {
+    mockOnUpdate.mockClear();
+    render(<RetentionPeriod {...mockRetentionPeriodProps} />);
+
+    fireEvent.click(screen.getByTestId('edit-retention-period-button'));
+
+    expect(screen.getByTestId('retention-period-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('cancel-button'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('retention-period-modal')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(mockOnUpdate).not.toHaveBeenCalled();
   });
 
   it('Should render correctly with ISO 8601 duration P0Y0M4D', () => {

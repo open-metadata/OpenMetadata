@@ -153,6 +153,44 @@ describe('transformTestCaseFormData', () => {
     expect(result.topDimensions).toBe(5);
   });
 
+  it.each([
+    [TestLevel.COLUMN_DIMENSION, ['threshold', 'dimensionFailurePolicy']],
+    [TestLevel.COLUMN, ['threshold']],
+    [TestLevel.TABLE, ['threshold']],
+  ])(
+    'keeps dimensionFailurePolicy only on a dimension-level test (%s)',
+    (testLevel, expectedParams) => {
+      const result = transformTestCaseFormData(
+        {
+          testLevel,
+          testTypeId: 'columnValuesToBeNotNull',
+          dimensionColumns: ['region'],
+          params: {
+            threshold: '5',
+            dimensionFailurePolicy: {
+              id: 'ANY_DIMENSION',
+              label: 'ANY_DIMENSION',
+            },
+          },
+        },
+        {
+          selectedTestLevel:
+            testLevel === TestLevel.TABLE ? TestLevel.TABLE : TestLevel.COLUMN,
+          selectedColumn: 'c',
+          selectedTableData: makeTable('t'),
+          selectedDefinition: makeDefinition([
+            { name: 'threshold' },
+            { name: 'dimensionFailurePolicy' },
+          ]),
+        }
+      );
+
+      expect(result.parameterValues?.map(({ name }) => name)).toEqual(
+        expectedParams
+      );
+    }
+  );
+
   it('unwraps a FormSelectItem testTypeId into a plain testDefinition FQN string', () => {
     const result = transformTestCaseFormData(
       {

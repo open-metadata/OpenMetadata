@@ -185,7 +185,10 @@ jobs:
 
       - name: Summarise the diff
         id: summarise
-        if: steps.git-check.outcome != 'success'
+        # `git-check` is skipped on forks, and a skipped step's outcome is
+        # 'skipped' (!= 'success'), so without the fork guard this ran `git show`
+        # in a workspace that was never checked out and failed the job.
+        if: steps.check-fork.outputs.is_fork != 'true' && steps.git-check.outcome != 'success'
         run: |
           # Cap the summary at what fits comfortably in a PR comment. The full
           # file is a single JSON line — a raw diff would be unreadable — so

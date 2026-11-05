@@ -19,20 +19,20 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const userClassification = new ClassificationClass();
 const systemClassification = new ClassificationClass({
+  name: 'PII',
+  displayName: 'PII',
   provider: 'system',
 });
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await userClassification.create(apiContext);
-  await systemClassification.create(apiContext);
   await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await userClassification.delete(apiContext);
-  await systemClassification.delete(apiContext);
   await afterAction();
 });
 

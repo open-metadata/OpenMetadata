@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Tabs } from '@openmetadata/ui-core-components';
-import { Lock } from '@openmetadata/ui-core-components/icons';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Lock01 } from '@openmetadata/ui-core-components/icons';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -38,8 +39,8 @@ import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { ServicesType } from '../../interface/service.interface';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
@@ -155,17 +156,22 @@ function ServiceVersionPage() {
   const isLoading =
     isPermissionsLoading || (viewVersionPermission && isVersionsListLoading);
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          currentVersionData.changeDescription as ChangeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [currentVersionData.changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        currentVersionData.changeDescription as ChangeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [currentVersionData.changeDescription, owners, tier, domains]
+  );
 
   const fetchVersionsList = useCallback(async () => {
     try {
@@ -329,7 +335,8 @@ function ServiceVersionPage() {
   );
 
   const getOtherDetails = useCallback(
-    async (paging?: PagingWithoutTotal) => {
+    async (cursor?: PagingWithoutTotal) => {
+      const paging = { ...cursor, limit: pageSize };
       try {
         setIsOtherDataLoading(true);
         switch (serviceCategory) {
@@ -389,6 +396,7 @@ function ServiceVersionPage() {
     },
     [
       serviceCategory,
+      pageSize,
       fetchDatabases,
       fetchTopics,
       fetchDashboards,
@@ -458,7 +466,7 @@ function ServiceVersionPage() {
         );
       }
     },
-    [paging, getOtherDetails, handlePageChange]
+    [paging, pageSize, getOtherDetails, handlePageChange]
   );
 
   const tabs: DetailsTabItem[] = useMemo(() => {
@@ -477,6 +485,7 @@ function ServiceVersionPage() {
                   data={data}
                   entityType={entityType}
                   isServiceLoading={isOtherDataLoading}
+                  pageSize={pageSize}
                   paging={paging}
                   pagingHandler={pagingHandler}
                   serviceDetails={currentVersionData}
@@ -495,6 +504,7 @@ function ServiceVersionPage() {
     currentVersionData,
     serviceCategory,
     paging,
+    pageSize,
     data,
     isOtherDataLoading,
     getOtherDetails,
@@ -516,7 +526,7 @@ function ServiceVersionPage() {
     if (!viewVersionPermission) {
       return (
         <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
-          <EmptyPlaceholder
+          <PermissionPlaceholder
             description={
               <Transi18next
                 i18nKey="message.no-access-placeholder"
@@ -530,7 +540,7 @@ function ServiceVersionPage() {
                 }}
               />
             }
-            icon={<Lock className="tw:text-secondary" />}
+            icon={<Lock01 />}
             title={t('label.access-denied')}
           />
         </div>
@@ -551,6 +561,7 @@ function ServiceVersionPage() {
                   deleted={deleted}
                   displayName={displayName}
                   domainDisplayName={domainDisplayName}
+                  domains={domainRef}
                   entityType={entityType}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}

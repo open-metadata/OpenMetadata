@@ -16,3 +16,13 @@ import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 export const EXTERNAL_DESTINATION_TYPES = EXTERNAL_CATEGORY_OPTIONS.map(
   ({ value }) => value
 );
+
+// RHF stores non-field-scoped errors under the `root.*` namespace so they are
+// not wiped by field-array (`destinations.*`) mutations such as add/remove
+// row. The bridges set the manual "minimum destinations required" error here
+// instead of on the `destinations` field path, so a row add/remove only clears
+// this sentinel (via `clearErrors`) and never the nested per-destination
+// validation errors (e.g. `destinations.0.config.receivers`) surfaced by
+// `trigger('destinations')`.
+export const DESTINATIONS_MIN_COUNT_ERROR_PATH =
+  'root.destinations-required' as const;

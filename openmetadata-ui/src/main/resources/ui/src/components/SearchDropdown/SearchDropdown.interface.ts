@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+import type { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 
 export interface SearchDropdownProps {
   triggerButtonSize?: 'large' | 'middle' | 'small';

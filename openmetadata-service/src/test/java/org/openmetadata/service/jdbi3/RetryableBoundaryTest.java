@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.EntityRepository.exitRetryableBoundary;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +35,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.jdbi.OMSqlLogger;
 
 /**
  * Which transaction boundary owns the {@link DeadlockRetry}, exercised through the production entry
@@ -237,6 +240,66 @@ class RetryableBoundaryTest {
 
     assertEquals(List.of(), failures, "the worker thread failed for an unexpected reason");
     assertEquals(MAX_ATTEMPTS, attemptsOnWorker.get(), "another thread keeps its own retry");
+  }
+
+  @Test
+  void aFlushThatSwallowsADeadlockIsReplayedWholeInsteadOfCommittedInPart() throws SQLException {
+    AtomicInteger attempts = new AtomicInteger();
+
+    repo.runFlush(
+        () -> {
+          if (attempts.incrementAndGet() == 1) {
+            loseDeadlockAndCarryOn();
+          }
+        });
+
+    assertEquals(2, attempts.get(), "the unit is replayed after its transaction was rolled back");
+    verify(connection, times(1)).commit();
+  }
+
+  @Test
+  void aNestedFlushThatSwallowsADeadlockReplaysTheOwningUnit() {
+    AtomicInteger outerAttempts = new AtomicInteger();
+
+    repo.runFlush(
+        () -> {
+          boolean firstAttempt = outerAttempts.incrementAndGet() == 1;
+          repo.runFlush(
+              () -> {
+                if (firstAttempt) {
+                  loseDeadlockAndCarryOn();
+                }
+              });
+        });
+
+    assertEquals(2, outerAttempts.get(), "the whole unit is replayed, not only the nested flush");
+  }
+
+  @Test
+  void aFlushThatSwallowsALockWaitTimeoutCommitsWithoutReplay() throws SQLException {
+    AtomicInteger attempts = new AtomicInteger();
+
+    repo.runFlush(
+        () -> {
+          attempts.incrementAndGet();
+          failStatementAndCarryOn(
+              new SQLException(
+                  "Lock wait timeout exceeded; try restarting transaction", "40001", 1205));
+        });
+
+    assertEquals(1, attempts.get(), "a lock wait timeout rolls back only its statement");
+    verify(connection, times(1)).commit();
+  }
+
+  /** What the SQL logger sees when a statement loses a deadlock that its caller then catches. */
+  private static void loseDeadlockAndCarryOn() {
+    failStatementAndCarryOn((SQLException) deadlock().getCause());
+  }
+
+  private static void failStatementAndCarryOn(SQLException failure) {
+    StatementContext statement = mock(StatementContext.class);
+    when(statement.getRenderedSql()).thenReturn("/* EntityRelationshipDAO.insert */ INSERT");
+    new OMSqlLogger().logException(statement, failure);
   }
 
   private static void joinQuietly(Thread thread) {

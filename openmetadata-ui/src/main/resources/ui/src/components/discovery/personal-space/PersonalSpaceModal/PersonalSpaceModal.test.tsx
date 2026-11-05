@@ -29,17 +29,27 @@ jest.mock('../../../../hooks/usePersonalSpaceStore', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // Mirrors react-aria: Escape dismisses the overlay unless keyboard dismiss is disabled.
   ModalOverlay: ({
     isOpen,
+    isKeyboardDismissDisabled,
     onOpenChange,
     children,
   }: {
     isOpen?: boolean;
+    isKeyboardDismissDisabled?: boolean;
     onOpenChange: (...args: unknown[]) => void;
     children?: ReactNode;
   }) =>
     isOpen ? (
-      <div data-testid="overlay">
+      <div
+        data-testid="overlay"
+        role="presentation"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && !isKeyboardDismissDisabled) {
+            onOpenChange(false);
+          }
+        }}>
         <button
           aria-label="overlay-dismiss"
           data-testid="overlay-dismiss"
@@ -50,7 +60,29 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     ) : null,
   Modal: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Dialog: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Dialog: ({
+    children,
+    title,
+    'aria-label': ariaLabel,
+  }: {
+    children?: ReactNode;
+    title?: string;
+    'aria-label'?: string;
+  }) => (
+    <div aria-label={ariaLabel} role="dialog">
+      {title && <h2 data-testid="dialog-title">{title}</h2>}
+      {children}
+    </div>
+  ),
+}));
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('../MyData/MyData', () => ({
+  __esModule: true,
+  default: () => <div data-testid="my-data-page" />,
 }));
 
 jest.mock('../PersonalSpaceGate/PersonalSpaceGate', () => ({
@@ -105,11 +137,41 @@ describe('PersonalSpaceModal', () => {
     expect(screen.getByTestId('profile-page')).toBeInTheDocument();
   });
 
+  // Profile draws its own header, so the dialog adds none.
+  it('gives the Profile panel no dialog title', () => {
+    mockActivePanel = 'profile';
+    renderInRouter();
+
+    expect(screen.queryByTestId('dialog-title')).not.toBeInTheDocument();
+  });
+
+  // My Data draws its own My Data | Following tab header instead of a title.
+  it('renders My Data untitled, named for assistive tech', async () => {
+    mockActivePanel = 'my-data';
+    renderInRouter();
+
+    expect(await screen.findByTestId('my-data-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('dialog-title')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'label.my-data-and-following' })
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('profile-page')).not.toBeInTheDocument();
+  });
+
   it('closes when the overlay is dismissed', () => {
     mockActivePanel = 'profile';
     renderInRouter();
 
     fireEvent.click(screen.getByTestId('overlay-dismiss'));
+
+    expect(mockClose).toHaveBeenCalled();
+  });
+
+  it('closes when Escape is pressed', () => {
+    mockActivePanel = 'profile';
+    renderInRouter();
+
+    fireEvent.keyDown(screen.getByTestId('profile-page'), { key: 'Escape' });
 
     expect(mockClose).toHaveBeenCalled();
   });

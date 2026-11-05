@@ -13,6 +13,7 @@ Models required for dbt
 """
 
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -44,6 +45,7 @@ class DbtMetaOpenmetadata(BaseModel):
     glossary: list[str] | None = None
     customProperties: dict[str, Any] | None = None  # noqa: N815
     tags: list[str] | None = None
+    unit: str | None = None
 
 
 class DbtMeta(BaseModel):
@@ -67,3 +69,4 @@ class UpstreamNode(BaseModel):
     name: str
     qualified_name: str | None = None
     fqn: str
+    table_id: UUID | None = None

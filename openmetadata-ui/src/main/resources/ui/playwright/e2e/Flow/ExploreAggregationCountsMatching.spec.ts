@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { Locator, Page, Response } from '@playwright/test';
+import { APIRequestContext, Locator, Page, Response } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
-import { redirectToHomePage } from '../../utils/common';
+import { okJson } from '../../utils/apiResponse';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // Maps entityType keys from the API aggregation to the explore left-panel tab testid labels.
 // The testid format is `${lowerCase(tabDetail.label)}-tab` (see ExploreUtils.tsx generateTabItems).
@@ -43,12 +45,9 @@ const ENTITY_TYPE_TO_TAB_TESTID: Record<string, string> = {
   worksheet: 'worksheets-tab',
 };
 
-const SEARCH_URL_FRAGMENT = '/api/v1/search/query';
+const SEARCH_QUERY_PATH = '/api/v1/search/query';
+const ENTITY_TYPE_COUNTS_PATH = '/api/v1/search/entityTypeCounts';
 const SEARCH_QUERY = 'customers';
-const AGGREGATION_INDEX = 'dataAsset';
-// The left-panel count query asks for a single hit (`pageSize: 1`) and only the
-// entityType source field — see `runCountSearch` in ExploreUtils.tsx.
-const AGGREGATION_RESULT_SIZE = '1';
 // The tab results query is the only one that asks for trackTotalHits; the search-box
 // suggestion dropdown fires an index=dataAsset query with the same size/from, so the
 // predicate must not rely on size/from alone.
@@ -57,27 +56,19 @@ const TAB_RESULT_SIZE = '15';
 const getSearchParams = (response: Response) =>
   new URL(response.url()).searchParams;
 
-const isSearchQuery = (response: Response) =>
-  response.url().includes(SEARCH_URL_FRAGMENT) &&
+const isSearchResponse = (response: Response, path: string) =>
+  new URL(response.url()).pathname === path &&
   response.request().method() === 'GET' &&
   getSearchParams(response).get('q') === SEARCH_QUERY;
 
-const isAggregationCountResponse = (response: Response) => {
-  const searchParams = getSearchParams(response);
-
-  return (
-    isSearchQuery(response) &&
-    searchParams.get('index') === AGGREGATION_INDEX &&
-    searchParams.get('size') === AGGREGATION_RESULT_SIZE &&
-    searchParams.get('fetch_source') === 'true'
-  );
-};
+const isAggregationCountResponse = (response: Response) =>
+  isSearchResponse(response, ENTITY_TYPE_COUNTS_PATH);
 
 const isTabResultsResponse = (response: Response, index?: string) => {
   const searchParams = getSearchParams(response);
 
   return (
-    isSearchQuery(response) &&
+    isSearchResponse(response, SEARCH_QUERY_PATH) &&
     (index === undefined || searchParams.get('index') === index) &&
     searchParams.get('track_total_hits') === 'true' &&
     searchParams.get('size') === TAB_RESULT_SIZE &&
@@ -86,19 +77,66 @@ const isTabResultsResponse = (response: Response, index?: string) => {
 };
 
 const getSelectedTab = (page: Page, tabTestId: string): Locator =>
-  page.locator('.ant-menu-item-selected').getByTestId(tabTestId);
+  page.getByRole('tab', { selected: true }).and(page.getByTestId(tabTestId));
 
 type TabSearchBody = {
-  hits: {
-    total: { value: number };
-    hits: Array<{ _source: { entityType: string } }>;
-  };
+  hits: { total: { value: number } };
+};
+
+type EntityTypeBucket = { key: string; doc_count: number };
+
+type EntityTypeCountsBody = {
+  aggregations?: Record<string, { buckets?: EntityTypeBucket[] }>;
+};
+
+const getEntityTypeBuckets = (body: EntityTypeCountsBody) =>
+  (
+    body.aggregations?.['entityType'] ??
+    body.aggregations?.['sterms#entityType']
+  )?.buckets ?? [];
+
+// Replays the UI's own count and tab requests together on each attempt. The
+// query also matches assets other workers are indexing, so the aggregation
+// captured on search and a tab's results fetched several clicks later can
+// differ by an asset neither endpoint got wrong.
+const expectTabTotalToMatchAggregation = async (
+  apiContext: APIRequestContext,
+  countUrl: string,
+  tabUrl: string,
+  entityType: string
+) => {
+  await expect(async () => {
+    const [countsBody, tabBody] = await Promise.all([
+      apiContext
+        .get(countUrl)
+        .then((res) =>
+          okJson<EntityTypeCountsBody>(res, 'search/entityTypeCounts')
+        ),
+      apiContext
+        .get(tabUrl)
+        .then((res) => okJson<TabSearchBody>(res, `${entityType} tab search`)),
+    ]);
+    const aggregationCount = getEntityTypeBuckets(countsBody).find(
+      (bucket) => bucket.key === entityType
+    )?.doc_count;
+
+    expect(
+      tabBody.hits.total.value,
+      `Tab "${entityType}" search total hits should match the aggregation count`
+    ).toBe(aggregationCount);
+  }).toPass({ timeout: 30_000 });
 };
 
 async function runSearchValidation(page: Page): Promise<void> {
-  const apiCountResPromise = page.waitForResponse(isAggregationCountResponse);
-  const initialTabSearchResPromise = page.waitForResponse((response) =>
-    isTabResultsResponse(response)
+  const apiCountResPromise = waitForResponseWithStatus(
+    page,
+    isAggregationCountResponse,
+    200
+  );
+  const initialTabSearchResPromise = waitForResponseWithStatus(
+    page,
+    (response) => isTabResultsResponse(response),
+    200
   );
 
   await page.getByTestId('searchBox').fill(SEARCH_QUERY);
@@ -109,39 +147,25 @@ async function runSearchValidation(page: Page): Promise<void> {
     initialTabSearchResPromise,
   ]);
 
-  expect(apiCountRes.status()).toBe(200);
-  expect(initialTabSearchRes.status()).toBe(200);
-
-  const countResponseBody = await apiCountRes.json();
-  const initialTabSearchBody: TabSearchBody = await initialTabSearchRes.json();
   const initialTabSearchIndex =
     getSearchParams(initialTabSearchRes).get('index');
 
   await expect(page.getByTestId('explore-left-panel')).toBeVisible();
 
-  const aggregations = countResponseBody?.aggregations ?? {};
-  const entityTypeBuckets: Array<{ key: string; doc_count: number }> =
-    (aggregations['entityType'] ?? aggregations['sterms#entityType'])
-      ?.buckets ?? [];
+  // Every mapped entity type has an Explore tab, and a tab is listed whenever
+  // its count is non-zero, so no bucket here may be skipped as "not visible".
+  const tabBuckets = getEntityTypeBuckets(await apiCountRes.json()).filter(
+    (bucket) => ENTITY_TYPE_TO_TAB_TESTID[bucket.key]
+  );
 
-  expect(entityTypeBuckets.length).toBeGreaterThan(0);
+  expect(tabBuckets.length).toBeGreaterThan(0);
 
   await test.step('Verify left panel counts match API aggregation', async () => {
-    for (const bucket of entityTypeBuckets) {
-      const tabTestId = ENTITY_TYPE_TO_TAB_TESTID[bucket.key];
-
-      if (!tabTestId) {
-        continue;
-      }
-
-      const tabLocator = page.getByTestId(tabTestId);
-
-      if (!(await tabLocator.isVisible())) {
-        continue;
-      }
-
+    for (const bucket of tabBuckets) {
       await expect(
-        tabLocator.getByTestId('filter-count'),
+        page
+          .getByTestId(ENTITY_TYPE_TO_TAB_TESTID[bucket.key])
+          .getByTestId('filter-count'),
         `Left panel count for "${bucket.key}" should match API count`
       ).toHaveText(`${bucket.doc_count}`);
     }
@@ -161,47 +185,39 @@ async function runSearchValidation(page: Page): Promise<void> {
   });
 
   await test.step('Click each tab and verify search results match entity type', async () => {
-    for (const bucket of entityTypeBuckets) {
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    for (const bucket of tabBuckets) {
       const tabTestId = ENTITY_TYPE_TO_TAB_TESTID[bucket.key];
+      let tabSearchRes = initialTabSearchRes;
 
-      if (!tabTestId) {
-        continue;
-      }
-
-      const tabLocator = page.getByTestId(tabTestId);
-
-      if (!(await tabLocator.isVisible())) {
-        continue;
-      }
-
-      let tabSearchBody: TabSearchBody;
-
-      if (bucket.key === initialTabSearchIndex) {
-        // The auto-selected tab was already loaded by the initial search; clicking it
-        // is a no-op in the Menu onClick handler, so no request would ever arrive.
-        tabSearchBody = initialTabSearchBody;
-      } else {
-        const tabSearchResPromise = page.waitForResponse((response) =>
-          isTabResultsResponse(response, bucket.key)
+      // The auto-selected tab was already loaded by the initial search; clicking it
+      // is a no-op in the Menu onClick handler, so no request would ever arrive.
+      if (bucket.key !== initialTabSearchIndex) {
+        const tabSearchResPromise = waitForResponseWithStatus(
+          page,
+          (response) => isTabResultsResponse(response, bucket.key),
+          200
         );
 
-        await tabLocator.click();
+        await page.getByTestId(tabTestId).click();
 
         // Fail fast if the click did not activate the tab, instead of hanging on a
         // waitForResponse predicate that can never match.
         await expect(getSelectedTab(page, tabTestId)).toBeVisible();
 
-        const tabSearchRes = await tabSearchResPromise;
-        expect(tabSearchRes.status()).toBe(200);
-
-        tabSearchBody = await tabSearchRes.json();
+        tabSearchRes = await tabSearchResPromise;
       }
 
-      expect(
-        tabSearchBody?.hits?.total?.value ?? 0,
-        `Tab "${bucket.key}" search total hits should match the aggregation count`
-      ).toBe(bucket.doc_count);
+      await expectTabTotalToMatchAggregation(
+        apiContext,
+        apiCountRes.url(),
+        tabSearchRes.url(),
+        bucket.key
+      );
     }
+
+    await afterAction();
   });
 }
 

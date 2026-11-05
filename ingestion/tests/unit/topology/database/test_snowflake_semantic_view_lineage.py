@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 from metadata.generated.schema.type.basic import Uuid
+from metadata.ingestion.source.database import semantic_metric_lineage as sml
 from metadata.ingestion.source.database.snowflake import semantic_view_lineage as svl
 from metadata.ingestion.source.database.snowflake.semantic_view_lineage import (
     SnowflakeSemanticViewLineage,
@@ -167,25 +168,6 @@ def test_group_pairs_by_base_table():
     assert sorted(grouped[ORDERS_TBL]) == [("o_totalprice", "LINE_AMOUNT"), ("o_totalprice", "TOTAL_REVENUE")]
 
 
-def test_build_column_lineage_groups_by_destination():
-    base_entity = MagicMock()
-    view_entity = MagicMock()
-
-    def fake_get_column_fqn(entity, column):
-        prefix = "base" if entity is base_entity else "view"
-        return f"{prefix}.{column}"
-
-    with patch.object(svl, "get_column_fqn", side_effect=fake_get_column_fqn):
-        result = SnowflakeSemanticViewLineage._build_column_lineage(
-            base_entity,
-            view_entity,
-            [("o_totalprice", "LINE_AMOUNT"), ("o_totalprice", "TOTAL_REVENUE")],
-        )
-
-    by_to = {cl.toColumn.root: [c.root for c in cl.fromColumns] for cl in result}
-    assert by_to == {"view.LINE_AMOUNT": ["base.o_totalprice"], "view.TOTAL_REVENUE": ["base.o_totalprice"]}
-
-
 def test_get_databases_applies_filter():
     extractor = _extractor()
     extractor._run = MagicMock(return_value=[("t", "DB1"), ("t", "DB2"), ("t", "IGNORED")])
@@ -230,7 +212,7 @@ def test_iter_database_lineage_emits_table_and_column_edges():
     extractor._fetch_table_maps = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): TABLE_MAP})
     extractor._fetch_columns = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): COLUMNS})
 
-    with patch.object(svl, "get_column_fqn", side_effect=lambda entity, column: f"{id(entity)}.{column}"):
+    with patch.object(sml, "get_column_fqn", side_effect=lambda entity, column: f"{id(entity)}.{column}"):
         requests = list(extractor._iter_database_lineage("DB"))
 
     # one edge per base table (ORDERS + CUSTOMERS) -> semantic view

@@ -15,7 +15,7 @@ import {
   BreadcrumbItemType,
   Breadcrumbs,
 } from '@openmetadata/ui-core-components';
-import { HomeLine } from '@untitledui/icons';
+import { HomeLine } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, Key, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

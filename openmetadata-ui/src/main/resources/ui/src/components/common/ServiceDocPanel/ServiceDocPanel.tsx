@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowUpRight, BookOpen01, Key01, Lock01 } from '@untitledui/icons';
-import { Col, Row } from 'antd';
+import {
+  ArrowUpRight,
+  BookOpen01,
+  Key01,
+  Lock01,
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { first, last, noop, startCase } from 'lodash';
 import {
@@ -82,7 +86,6 @@ const AUTH_FIELD_NAMES = new Set([
 const NESTED_FOCUS_FIELDS = new Set([
   'connectionOptions',
   'connectionArguments',
-  'sampleDataStorageConfig',
   'policyAgentConfig',
 ]);
 const LINEAGE_FIELDS = new Set(['useAccessHistory', 'accessHistoryChunkSize']);
@@ -605,6 +608,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const [connectorMarkdown, setConnectorMarkdown] = useState<string>('');
   const [isMarkdownReady, setIsMarkdownReady] = useState<boolean>(false);
   const markdownRequestIdRef = useRef(0);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const getActiveFieldName = useCallback(
     (activeFieldValue?: ServiceDocPanelProp['activeField']) => {
@@ -739,33 +743,48 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   );
 
   useEffect(() => {
-    if (!isMarkdownReady || focusedMode) {
+    if (!isMarkdownReady || focusedMode || !activeFieldName) {
       return;
     }
 
-    if (activeFieldName) {
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        // Remove all previous highlights first
-        const previousHighlighted = document.querySelectorAll(
-          '[data-highlighted="true"]'
-        );
-        previousHighlighted.forEach((el) => {
-          (el as HTMLElement).dataset.highlighted = 'false';
+    const selector = `[data-id="${CSS.escape(activeFieldName)}"]`;
+    let observer: MutationObserver | undefined;
+
+    const highlight = () => {
+      const element = panelRef.current?.querySelector<HTMLElement>(selector);
+      if (!element) {
+        return false;
+      }
+
+      observer?.disconnect();
+      scrollDocElementIntoView(element, activeFieldName === 'selected-entity');
+      element.dataset.highlighted = 'true';
+
+      return true;
+    };
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    const frame = requestAnimationFrame(() => {
+      // Remove all previous highlights first
+      panelRef.current
+        ?.querySelectorAll<HTMLElement>('[data-highlighted="true"]')
+        .forEach((el) => {
+          el.dataset.highlighted = 'false';
         });
 
-        const element = document.querySelector(
-          `[data-id="${CSS.escape(activeFieldName)}"]`
-        );
-        if (element) {
-          scrollDocElementIntoView(
-            element as HTMLElement,
-            activeFieldName === 'selected-entity'
-          );
-          (element as HTMLElement).dataset.highlighted = 'true';
-        }
-      });
-    }
+      // The docs body is rendered by a lazily loaded editor, so a field
+      // focused right after the markdown arrives can find no section yet.
+      // Watch the panel until the section appears instead of giving up.
+      if (!highlight() && panelRef.current) {
+        observer = new MutationObserver(highlight);
+        observer.observe(panelRef.current, { childList: true, subtree: true });
+      }
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
   }, [activeFieldName, focusedMode, isMarkdownReady]);
 
   const displayMarkdown = useMemo(
@@ -960,11 +979,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   }
 
   return (
-    <Row
+    <div
       className={focusedMode ? 'service-doc-panel-focused' : undefined}
-      data-testid="service-requirements">
-      <Col span={24}>{docsPanel}</Col>
-    </Row>
+      data-testid="service-requirements"
+      ref={panelRef}>
+      {docsPanel}
+    </div>
   );
 };
 

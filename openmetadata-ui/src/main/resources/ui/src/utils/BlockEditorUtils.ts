@@ -19,6 +19,7 @@ import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio
 import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
 import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
+import { SAFE_HREF_REGEX } from '../constants/regex.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
 import {
   convertMarkdownFormatToHtmlString,
@@ -73,12 +74,7 @@ export const formatServerContent = (htmlString: string) => {
 
     // Validate href to only allow safe protocols before embedding into entity link string.
     // This prevents unsafe URLs from bypassing DOMPurify via the post-sanitization replacement.
-    const hasSafeProtocol =
-      rawHref?.startsWith('http://') ||
-      rawHref?.startsWith('https://') ||
-      rawHref?.startsWith('/') ||
-      rawHref?.startsWith('#');
-    const href = rawHref && hasSafeProtocol ? rawHref : '';
+    const href = rawHref && SAFE_HREF_REGEX.test(rawHref) ? rawHref : '';
 
     const safeEntityType = sanitizeEntityLinkField(entityType ?? '');
     const safeFqn = sanitizeEntityLinkField(fqn ?? '');
@@ -128,8 +124,7 @@ export const transformImgTagsToFileAttachment = (
     return htmlString;
   }
 
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlString;
+  const tempDiv = new DOMParser().parseFromString(htmlString, 'text/html').body;
 
   const imgTags = tempDiv.querySelectorAll('img[src]');
 
@@ -160,7 +155,9 @@ export const transformImgTagsToFileAttachment = (
 
 export const setEditorContent = (editor: Editor, newContent: string) => {
   // Convert the markdown string to an HTML string
-  let htmlString = getHtmlStringFromMarkdownString(newContent);
+  let htmlString = getSanitizeContent(
+    getHtmlStringFromMarkdownString(newContent)
+  );
 
   // Transform img tags to file-attachment divs before Tiptap processes them
   htmlString = transformImgTagsToFileAttachment(htmlString);

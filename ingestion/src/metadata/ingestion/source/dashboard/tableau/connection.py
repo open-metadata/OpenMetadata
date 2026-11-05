@@ -15,13 +15,13 @@ Source connection handler
 from __future__ import annotations
 
 import traceback
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import SSLError
 from tableauserverclient.server.endpoint.exceptions import (
     InternalServerError,
-    ServerResponseError,
+    XMLError,
 )
 
 from metadata.core.connections.test_connection import (
@@ -62,6 +62,9 @@ from metadata.utils.ssl_manager import SSLManager
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
+        TableauPipelineConnection,
+    )
 
 logger = ingestion_logger()
 
@@ -75,13 +78,14 @@ def _status_of(error: BaseException) -> int | None:
     """Return the HTTP status a Tableau error carries, if any.
 
     Only the two Tableau error types whose ``.code`` is HTTP-ish are trusted -
-    ``ServerResponseError.code`` is a string whose first three digits are the
-    status (e.g. ``401002``), ``InternalServerError.code`` is the status itself -
+    ``XMLError.code`` is a string whose first three digits are the status (e.g.
+    ``401002``), ``InternalServerError.code`` is the status itself -
     plus a raw ``requests`` error's ``.response.status_code``. Reading ``.code``
     off any exception would misclassify an unrelated app code the chain happens
-    to carry.
+    to carry. ``XMLError`` covers both ``ServerResponseError`` and the
+    ``FailedSignInError`` a rejected token, password or site raises at sign-in.
     """
-    if isinstance(error, ServerResponseError) and error.code[:3].isdigit():
+    if isinstance(error, XMLError) and error.code[:3].isdigit():
         status = int(error.code[:3])
     elif isinstance(error, InternalServerError) and isinstance(error.code, int):
         status = error.code
@@ -172,7 +176,7 @@ def get_connection(connection: TableauConnectionConfig) -> TableauClient:
 
 
 def set_verify_ssl(
-    connection: TableauConnectionConfig,
+    connection: TableauConnectionConfig | TableauPipelineConnection,
 ) -> tuple[bool | str, SSLManager | None]:
     """
     Set verify ssl based on connection configuration
@@ -207,7 +211,9 @@ def set_verify_ssl(
     )
 
 
-def build_server_config(connection: TableauConnectionConfig) -> dict[str, dict[str, Any]]:
+def build_server_config(
+    connection: TableauConnectionConfig | TableauPipelineConnection,
+) -> TSC.TableauAuth | TSC.PersonalAccessTokenAuth:
     """
     Build client configuration
     Args:

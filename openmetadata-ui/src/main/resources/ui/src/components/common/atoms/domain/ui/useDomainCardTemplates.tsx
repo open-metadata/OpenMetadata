@@ -58,37 +58,31 @@ export const useDomainCardTemplates = () => {
           </Typography>
         </Box>
 
-        <Grid gap="4">
-          <Grid.Item span={12}>
-            <Box direction="col" gap={1}>
-              <Typography size="text-xs">{t('label.owner')}</Typography>
-              {renderDomainOwnersCell(entity)}
-            </Box>
-          </Grid.Item>
-          <Grid.Item span={12}>
-            <Box direction="col" gap={1}>
-              <Typography size="text-xs">{t('label.domain-type')}</Typography>
-              {renderDomainTypeCell(entity)}
-            </Box>
-          </Grid.Item>
-        </Grid>
+        {/* Not the 24-column Grid: its gap repeats across all 23 tracks
+            (368px at gap-4), which overflows narrow cards and gets clipped. */}
+        <Box direction="row" gap={4}>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Typography size="text-xs">{t('label.owner')}</Typography>
+            {renderDomainOwnersCell(entity)}
+          </Box>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Typography size="text-xs">{t('label.domain-type')}</Typography>
+            {renderDomainTypeCell(entity)}
+          </Box>
+        </Box>
 
-        <Grid gap="4">
-          <Grid.Item span={12}>
-            <Box direction="col" gap={1}>
-              <Typography size="text-xs">
-                {t('label.glossary-term-plural')}
-              </Typography>
-              {renderDomainGlossaryTagsCell(entity)}
-            </Box>
-          </Grid.Item>
-          <Grid.Item span={12}>
-            <Box direction="col" gap={1}>
-              <Typography size="text-xs">{t('label.tag-plural')}</Typography>
-              {renderDomainClassificationTagsCell(entity)}
-            </Box>
-          </Grid.Item>
-        </Grid>
+        <Box direction="row" gap={4}>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Typography size="text-xs">
+              {t('label.glossary-term-plural')}
+            </Typography>
+            {renderDomainGlossaryTagsCell(entity)}
+          </Box>
+          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+            <Typography size="text-xs">{t('label.tag-plural')}</Typography>
+            {renderDomainClassificationTagsCell(entity)}
+          </Box>
+        </Box>
       </Box>
     ),
     [t]

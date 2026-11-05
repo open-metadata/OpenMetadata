@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test, type Request } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 
 const STATIC_RESOURCE_TYPES = new Set([
   'document',
@@ -65,7 +66,7 @@ test('mounts the built application without bootstrap errors', async ({
 
   await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('left-sidebar')).toBeVisible({
-    timeout: 30_000,
+    timeout: ACTION_TIMEOUT,
   });
   await expect
     .poll(

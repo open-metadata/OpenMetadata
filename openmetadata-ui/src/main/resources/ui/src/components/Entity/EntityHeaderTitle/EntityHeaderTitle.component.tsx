@@ -10,20 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
+import {
+  Badge,
+  Button,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Copy01,
+  ExclamationCircleFilled,
+  LinkExternal01,
+  Star01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
-import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -33,6 +39,15 @@ import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 // Extracted so this ternary doesn't add to the cyclomatic complexity of the
 // functions that call it (it's evaluated twice per render for the follow
 // button's tooltip and its label).
+// Brand pill: utility tokens resolve to the previous light values
+// (brand-50 fill, brand-700 text) and flip in dark.
+const FOLLOW_BUTTON_CLASS_NAME = classNames(
+  'entity-follow-button tw:h-auto tw:gap-1 tw:rounded-2xl tw:px-3 tw:py-1',
+  'tw:bg-utility-brand-50 tw:text-sm tw:font-medium tw:text-utility-brand-700',
+  'tw:hover:bg-utility-brand-50 tw:hover:text-utility-brand-700 tw:*:data-text:px-0',
+  'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600'
+);
+
 const getFollowLabelKey = (isFollowing?: boolean) =>
   `label.${isFollowing ? 'un-follow' : 'follow'}`;
 
@@ -61,7 +76,6 @@ const EntityHeaderTitle = ({
   entityUrl,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
-  const location = useCustomLocation();
   const [copyTooltip, setCopyTooltip] = useState<string>();
   const { onCopyToClipBoard } = useClipboard(
     entityUrl ?? globalThis.location.href
@@ -74,11 +88,6 @@ const EntityHeaderTitle = ({
     setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
   };
-
-  const isTourRoute = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
-  );
 
   const formattedEntityType = useMemo(
     () => entityUtilClassBase.getFormattedEntityType(entityType as EntityType),
@@ -103,20 +112,26 @@ const EntityHeaderTitle = ({
       <>
         {isDisabled && (
           <Badge
-            className="m-l-xs badge-grey"
-            count={t('label.disabled')}
+            className="m-l-xs"
+            color="gray"
             data-testid="disabled"
-          />
+            size="sm"
+            type="pill-color">
+            {t('label.disabled')}
+          </Badge>
         )}
         {deleted && (
-          <Col className="text-xs" flex="100px">
+          <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              <ExclamationCircleFilled
+                className="tw:mr-1 tw:shrink-0"
+                size={12}
+              />
               {t('label.deleted')}
             </span>
-          </Col>
+          </div>
         )}
-        {badge && <Col>{badge}</Col>}
+        {badge && <div>{badge}</div>}
       </>
     ),
     [isDisabled, deleted, badge]
@@ -140,17 +155,20 @@ const EntityHeaderTitle = ({
       <div className="d-flex items-center gap-2">
         <Tooltip
           placement="bottom"
-          title={renderHighlightedText(displayName ?? name)}>
-          <Typography.Text
+          title={renderHighlightedText(displayName ?? name)}
+          triggerClassName="tw:block tw:min-w-0"
+          // Let presses reach the enclosing header Link (client-side navigation).
+          onTriggerPress={(e) => e.continuePropagation()}>
+          <Typography
             ellipsis
             className={classNames(
-              'entity-header-name',
+              'entity-header-name tw:min-w-0 tw:text-primary',
               nameClassName,
               'm-b-0 d-block display-xs font-semibold'
             )}
             data-testid="entity-header-display-name">
             {renderHighlightedText(displayName ?? name)}
-          </Typography.Text>
+          </Typography>
         </Tooltip>
         {badges}
         {suffix}
@@ -170,29 +188,33 @@ const EntityHeaderTitle = ({
           entity: formattedEntityType,
         })}>
         <Button
-          className="entity-follow-button flex-center gap-1 text-sm "
+          showTextWhileLoading
+          className={FOLLOW_BUTTON_CLASS_NAME}
+          color="tertiary"
           data-testid="entity-follow-button"
-          disabled={deleted}
-          icon={<Icon component={StarFilledIcon} />}
-          loading={isFollowingLoading}
+          iconLeading={Star01}
+          isDisabled={deleted}
+          isLoading={isFollowingLoading}
+          size="sm"
           onClick={handleFollowingClick}>
-          <Typography.Text>{t(getFollowLabelKey(isFollowing))}</Typography.Text>
+          {t(getFollowLabelKey(isFollowing))}
         </Button>
       </Tooltip>
     );
   };
 
   const renderContent = () => (
-    <Row
-      align="middle"
-      className={classNames('entity-header-title', className)}
-      data-testid={`${serviceName}-${name}`}
-      gutter={12}
-      wrap={false}>
-      {icon && <Col className="flex-center">{icon}</Col>}
-      <Col
+    <div
+      className={classNames(
+        // min-w-0 lets a long name shrink so its ellipsis applies instead of overlapping the header actions.
+        'entity-header-title tw:flex tw:min-w-0 tw:flex-nowrap tw:items-center tw:gap-3',
+        className
+      )}
+      data-testid={`${serviceName}-${name}`}>
+      {icon && <div className="flex-center">{icon}</div>}
+      <div
         className={classNames(
-          'd-flex flex-col gap-1 w-min-0 entity-header-container',
+          'd-flex flex-col gap-1 w-min-0 entity-header-container tw:relative tw:max-w-full',
           {
             'w-max-full-200': deleted || badge,
           }
@@ -203,49 +225,52 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Tooltip placement="bottom" title={entityName}>
-            <Typography.Text
+          <Tooltip
+            placement="bottom"
+            title={entityName}
+            triggerClassName="tw:block tw:min-w-0"
+            // Let presses reach the enclosing header Link (client-side navigation).
+            onTriggerPress={(e) => e.continuePropagation()}>
+            <Typography
               ellipsis
-              className={classNames(displayNameClassName, 'm-b-0', {
-                'display-xs entity-header-name font-semibold': !displayName,
-                'text-md entity-header-display-name font-medium': displayName,
+              className={classNames(displayNameClassName, 'm-b-0 tw:min-w-0', {
+                'display-xs entity-header-name font-semibold tw:block tw:text-primary':
+                  !displayName,
+                'text-md entity-header-display-name font-medium tw:text-secondary':
+                  displayName,
               })}
               data-testid="entity-header-name">
               {entityName}
-              {openEntityInNewPage && (
-                <IconExternalLink
-                  className="anticon vertical-middle m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              )}
-            </Typography.Text>
+            </Typography>
           </Tooltip>
+          {/* Outside the ellipsis so a long name can't truncate the icon away. */}
+          {openEntityInNewPage && (
+            <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
+          )}
 
-          <Tooltip
-            placement="topRight"
-            title={
-              copyTooltip ??
+          <ButtonUtility
+            data-testid="entity-header-copy-button"
+            icon={Copy01}
+            size="lg"
+            tooltip={
+              copyTooltip ||
               t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              className="remove-button-default-styling copy-button flex-center p-xss "
-              icon={<Icon component={ShareIcon} />}
-              onClick={handleShareButtonClick}
-            />
-          </Tooltip>
+            }
+            tooltipPlacement="top right"
+            onClick={handleShareButtonClick}
+          />
           {(isEmpty(displayName) || !showName) && suffix}
           {renderFollowButton()}
         </div>
-      </Col>
+      </div>
 
       {isEmpty(displayName) ? badges : null}
-    </Row>
+    </div>
   );
 
-  return link && !isTourRoute ? (
+  return link ? (
     <Link
-      className="no-underline d-inline-block w-max-full entity-header-title-link"
+      className="no-underline d-inline-block w-max-full tw:min-w-0 entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}

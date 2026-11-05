@@ -48,6 +48,8 @@ interface ExploreCacheState {
   getCached: <T = unknown>(key: string) => ExploreCacheEntry<T> | undefined;
   /** Write a new entry under {@code key}. Evicts the oldest entry if over capacity. */
   setCached: <T = unknown>(key: string, data: T) => void;
+  /** Share count requests across pages/tabs, with the server's short freshness window. */
+  getOrLoad: <T>(key: string, load: () => Promise<T>) => Promise<T>;
   /** Drop every entry. Call on logout / user switch / explicit refresh. */
   clearCache: VoidFunction;
 }
@@ -79,6 +81,24 @@ export const useExploreCache = create<ExploreCacheState>()((set, get) => ({
       }
     }
     set({ entries: next });
+  },
+  getOrLoad: <T>(key: string, load: () => Promise<T>): Promise<T> => {
+    const cached = get().getCached<Promise<T>>(key);
+    if (cached && Date.now() - cached.timestamp < 2000) {
+      return cached.data;
+    }
+    const pending = Promise.resolve().then(load);
+    get().setCached(key, pending);
+    void pending.catch(() => {
+      // A logout, eviction, or newer request may already have replaced this entry.
+      if (get().entries.get(key)?.data === pending) {
+        const entries = new Map(get().entries);
+        entries.delete(key);
+        set({ entries });
+      }
+    });
+
+    return pending;
   },
   clearCache: () => set({ entries: new Map() }),
 }));

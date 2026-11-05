@@ -89,6 +89,9 @@
   },
   "mappings": {
     "properties": {
+      "policyTags": {
+        "type": "keyword"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -163,6 +166,13 @@
       "updatedAt": {
         "type": "date",
         "format": "epoch_second"
+      },
+      "createdAt": {
+        "type": "date",
+        "format": "epoch_millis"
+      },
+      "createdBy": {
+        "type": "keyword"
       },
       "updatedBy": {
         "type": "text"

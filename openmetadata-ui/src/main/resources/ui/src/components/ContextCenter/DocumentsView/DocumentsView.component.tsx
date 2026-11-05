@@ -19,33 +19,50 @@ import {
   Checkbox,
   Dot,
   Dropdown,
-  EmptyPlaceholder,
   FileIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Eye } from '@openmetadata/ui-core-components/icons';
-import { Check, ChevronRight } from '@untitledui/icons';
+import {
+  Check,
+  ChevronRight,
+  Copy01,
+  Eye,
+  Share07,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { compare } from 'fast-json-patch';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
 import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
-import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
+import {
+  ShareConfig,
+  ShareRole,
+  ShareVisibility,
+} from '../../../generated/entity/context/contextMemory';
+import { EntityReference } from '../../../generated/entity/type';
+import {
+  moveFileToFolder,
+  moveFileToRoot,
+  updateContextFile,
+} from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
+import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
@@ -87,7 +104,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
 
   if (folders.length === 0) {
     return (
-      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-utility-gray-400">
+      <Typography as="p" className="tw:px-3 tw:py-2 tw:text-quaternary">
         {t('label.no-entity', { entity: t('label.folder-plural') })}
       </Typography>
     );
@@ -103,7 +120,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
 
         return (
           <Dropdown.Item
-            className={isCurrent ? 'tw:[&>div]:bg-utility-blue-50' : undefined}
+            className={isCurrent ? 'tw:[&>div]:bg-brand-primary' : undefined}
             data-testid={`move-to-folder-${folder.id}`}
             id={folder.id}
             key={folder.id}
@@ -152,6 +169,22 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
    Per-row actions dropdown (Share / Move to Folder / Delete)
 --------------------------------------------------------------- */
 
+const VisibilityOption: FC<{ label: string; description: string }> = ({
+  description,
+  label,
+}) => (
+  <Box direction="col">
+    <Typography size="text-sm" weight="medium">
+      {label}
+    </Typography>
+    <Typography
+      className="tw:whitespace-normal tw:text-tertiary"
+      size="text-xs">
+      {description}
+    </Typography>
+  </Box>
+);
+
 const FileActions: FC<FileActionsProps> = ({
   canDelete,
   canEdit,
@@ -161,10 +194,60 @@ const FileActions: FC<FileActionsProps> = ({
   isLoadingMoreFolders = false,
   onDeleteFile,
   onFileMoved,
+  onFileUpdated,
   onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [isSharePickerOpen, setIsSharePickerOpen] = useState(false);
+
+  const applyShareConfig = async (shareConfig: ShareConfig) => {
+    try {
+      setIsSharing(true);
+      const patch = compare(file, { ...file, shareConfig });
+      onFileUpdated?.(await updateContextFile(file.id, patch));
+      showSuccessToast(
+        t('message.entity-updated-successfully', {
+          entity: t('label.visibility'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  /**
+   * Shared without anybody named is indistinguishable from Private, so the two are set together:
+   * picking people IS the act of sharing.
+   */
+  const handleShareWithPeople = async (people: EntityReference[]) => {
+    await applyShareConfig({
+      visibility: ShareVisibility.Shared,
+      sharedWith: people.map((principal) => ({
+        principal,
+        role: ShareRole.Viewer,
+      })),
+    });
+    setIsSharePickerOpen(false);
+  };
+
+  const handleVisibilityAction = (visibility: ShareVisibility) => {
+    if (visibility === ShareVisibility.Shared) {
+      setIsSharePickerOpen(true);
+    } else {
+      applyShareConfig({ visibility });
+    }
+  };
+
+  const sharedPrincipals =
+    file.shareConfig?.sharedWith
+      ?.map((shared) => shared.principal)
+      .filter((principal): principal is EntityReference =>
+        Boolean(principal)
+      ) ?? [];
 
   const handleMoveToFolder = async (folderId: string) => {
     try {
@@ -198,86 +281,168 @@ const FileActions: FC<FileActionsProps> = ({
   }
 
   return (
-    <Dropdown.Root>
-      <ButtonUtility
-        color="tertiary"
-        data-testid="manage-button"
-        icon={<DotsVerticalIcon height={20} width={20} />}
-        size="sm"
-        tooltip={t('label.manage-entity', { entity: t('label.document') })}
-      />
-      <Dropdown.Popover className="tw:w-46">
-        <Dropdown.Menu
-          onAction={(key) => {
-            if (key === 'delete') {
-              onDeleteFile?.(file);
-            }
-          }}>
-          {canEdit && (
-            <SubmenuTrigger>
-              <Dropdown.Item
-                data-testid="move-btn"
-                isDisabled={isMoving || folders.length === 0}>
-                {() => (
-                  <Box align="center" justify="between">
-                    <Box align="center" gap={2}>
-                      <MoveFolderIcon
-                        className="tw:text-secondary"
-                        height={20}
-                        width={20}
-                      />
-                      <Typography
-                        ellipsis
-                        className="tw:grow tw:text-secondary">
-                        {t('label.move-to-folder')}
-                      </Typography>
-                    </Box>
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
-                      strokeWidth={2}
-                    />
-                  </Box>
-                )}
-              </Dropdown.Item>
-              <Dropdown.Popover
-                className="tw:w-52"
-                offset={-6}
-                placement="right top">
-                <FolderPickerMenu
-                  currentFolderId={file.folder?.id}
-                  folders={folders}
-                  hasMoreFolders={hasMoreFolders}
-                  isLoadingMoreFolders={isLoadingMoreFolders}
-                  onLoadMoreFolders={onLoadMoreFolders}
-                  onPick={handleMoveToFolder}
-                />
-              </Dropdown.Popover>
-            </SubmenuTrigger>
-          )}
+    // The people picker is a popover of its own, anchored where the menu was. It cannot live inside
+    // the menu: a press in a second overlay reads to the menu as a press outside, and closes both.
+    <UserSelectableList
+      multiSelect
+      hasPermission={!isSharing}
+      popoverProps={{
+        open: isSharePickerOpen,
+        placement: 'bottom end',
+        // Opened by the menu's Shared option only; a press on the anchor opens the menu instead.
+        onOpenChange: (open) => !open && setIsSharePickerOpen(false),
+      }}
+      selectedUsers={sharedPrincipals}
+      onClose={() => setIsSharePickerOpen(false)}
+      onUpdate={handleShareWithPeople}>
+      <span className="tw:inline-flex">
+        <Dropdown.Root>
+          <ButtonUtility
+            data-testid="manage-button"
+            icon={DotsVerticalIcon}
+            size="lg"
+            tooltip={t('label.manage-entity', { entity: t('label.document') })}
+          />
+          <Dropdown.Popover className="tw:w-46">
+            <Dropdown.Menu
+              onAction={(key) => {
+                if (key === 'delete') {
+                  onDeleteFile?.(file);
+                }
+              }}>
+              {canEdit && (
+                <SubmenuTrigger>
+                  <Dropdown.Item
+                    data-testid="visibility-btn"
+                    isDisabled={isSharing}>
+                    {() => (
+                      <Box align="center" justify="between">
+                        <Box align="center" gap={2}>
+                          <Share07
+                            className="tw:text-secondary"
+                            height={20}
+                            width={20}
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:grow tw:text-secondary">
+                            {t('label.visibility')}
+                          </Typography>
+                        </Box>
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          strokeWidth={2}
+                        />
+                      </Box>
+                    )}
+                  </Dropdown.Item>
+                  <Dropdown.Popover
+                    className="tw:w-80"
+                    offset={-6}
+                    placement="right top">
+                    <Dropdown.Menu
+                      aria-label={t('label.visibility')}
+                      onAction={(key) =>
+                        handleVisibilityAction(key as ShareVisibility)
+                      }>
+                      <Dropdown.Item
+                        data-testid="visibility-Private"
+                        id={ShareVisibility.Private}>
+                        <VisibilityOption
+                          description={t('message.visible-only-to-you')}
+                          label={t('label.private')}
+                        />
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="visibility-Entity"
+                        id={ShareVisibility.Entity}>
+                        <VisibilityOption
+                          description={t(
+                            'message.visible-to-everyone-in-workspace'
+                          )}
+                          label={t('label.workspace')}
+                        />
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="visibility-Shared"
+                        id={ShareVisibility.Shared}>
+                        <VisibilityOption
+                          description={t('message.visible-to-specific-people')}
+                          label={t('label.shared')}
+                        />
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </SubmenuTrigger>
+              )}
 
-          {canDelete && (
-            <Dropdown.Item data-testid="delete-btn" id="delete">
-              <Box align="center" gap={2}>
-                <TrashIcon
-                  aria-hidden="true"
-                  className="tw:shrink-0 tw:text-error-primary"
-                  height={20}
-                  width={20}
-                />
-                <Typography
-                  ellipsis
-                  className="tw:grow tw:text-error-primary"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.delete')}
-                </Typography>
-              </Box>
-            </Dropdown.Item>
-          )}
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
+              {canEdit && (
+                <SubmenuTrigger>
+                  <Dropdown.Item
+                    data-testid="move-btn"
+                    isDisabled={isMoving || folders.length === 0}>
+                    {() => (
+                      <Box align="center" justify="between">
+                        <Box align="center" gap={2}>
+                          <MoveFolderIcon
+                            className="tw:text-secondary"
+                            height={20}
+                            width={20}
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:grow tw:text-secondary">
+                            {t('label.move-to-folder')}
+                          </Typography>
+                        </Box>
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          strokeWidth={2}
+                        />
+                      </Box>
+                    )}
+                  </Dropdown.Item>
+                  <Dropdown.Popover
+                    className="tw:w-52"
+                    offset={-6}
+                    placement="right top">
+                    <FolderPickerMenu
+                      currentFolderId={file.folder?.id}
+                      folders={folders}
+                      hasMoreFolders={hasMoreFolders}
+                      isLoadingMoreFolders={isLoadingMoreFolders}
+                      onLoadMoreFolders={onLoadMoreFolders}
+                      onPick={handleMoveToFolder}
+                    />
+                  </Dropdown.Popover>
+                </SubmenuTrigger>
+              )}
+
+              {canDelete && (
+                <Dropdown.Item data-testid="delete-btn" id="delete">
+                  <Box align="center" gap={2}>
+                    <Trash01
+                      aria-hidden="true"
+                      className="tw:shrink-0 tw:text-error-primary"
+                      size={20}
+                    />
+                    <Typography
+                      ellipsis
+                      className="tw:grow tw:text-error-primary"
+                      size="text-sm"
+                      weight="medium">
+                      {t('label.delete')}
+                    </Typography>
+                  </Box>
+                </Dropdown.Item>
+              )}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      </span>
+    </UserSelectableList>
   );
 };
 
@@ -341,10 +506,10 @@ const ListHeader: FC<ListHeaderProps> = ({
     return (
       <Box
         align="center"
-        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-utility-blue-100 tw:bg-utility-blue-50"
+        className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-brand-primary"
         gap={2}>
         <Typography
-          className="tw:text-utility-blue-700"
+          className="tw:text-brand-secondary"
           size="text-sm"
           weight="semibold">
           {selectedCount} {t('label.selected-lowercase')}
@@ -365,7 +530,7 @@ const ListHeader: FC<ListHeaderProps> = ({
           className="tw:py-1.5"
           color="tertiary"
           data-testid="bulk-download-btn"
-          iconLeading={<DownloadIcon height={18} width={18} />}
+          iconLeading={DownloadIcon}
           size="sm"
           onClick={onBulkDownload}>
           {t('label.download')}
@@ -377,9 +542,7 @@ const ListHeader: FC<ListHeaderProps> = ({
               className="tw:py-1.5"
               color="tertiary"
               data-testid="bulk-move-btn"
-              iconLeading={
-                <FolderIcon height={18} strokeWidth={2} width={18} />
-              }
+              iconLeading={FolderIcon}
               size="sm">
               {t('label.move')}
             </Button>
@@ -400,7 +563,7 @@ const ListHeader: FC<ListHeaderProps> = ({
             className="tw:py-1.5"
             color="tertiary-destructive"
             data-testid="bulk-delete-btn"
-            iconLeading={<TrashIcon height={16} width={16} />}
+            iconLeading={Trash01}
             size="sm"
             onClick={onBulkDelete}>
             {t('label.delete')}
@@ -413,7 +576,7 @@ const ListHeader: FC<ListHeaderProps> = ({
   return (
     <Box
       align="center"
-      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary">
+      className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary">
       <Typography
         className="tw:text-quaternary"
         data-testid="documents-view-file-count"
@@ -447,6 +610,7 @@ const FileRow: FC<FileRowProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileUpdated,
   onOpenPreview,
   onPreview,
   onSelectFile,
@@ -486,10 +650,8 @@ const FileRow: FC<FileRowProps> = ({
   return (
     <Box
       align="center"
-      className={`tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
-        isActive
-          ? 'tw:bg-utility-blue-50'
-          : 'tw:bg-primary hover:tw:bg-secondary_subtle'
+      className={`tw:@container tw:relative tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:cursor-pointer tw:transition-colors tw:duration-100 ${
+        isActive ? 'tw:bg-brand-primary' : 'tw:hover:bg-primary_hover'
       }`}
       data-testid={`document-row-${file.id}`}
       gap={4}
@@ -524,7 +686,7 @@ const FileRow: FC<FileRowProps> = ({
           weight="medium">
           {fileName}
         </Typography>
-        <Box align="center" gap={2} wrap="wrap">
+        <Box align="center" className="tw:whitespace-nowrap" gap={2}>
           <Typography
             className="tw:text-quaternary"
             data-testid="document-size"
@@ -548,6 +710,7 @@ const FileRow: FC<FileRowProps> = ({
               <Typography
                 className="tw:text-quaternary"
                 data-testid="document-updated-by"
+                ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
                 size="text-xs">
                 {file.updatedBy}
               </Typography>
@@ -570,6 +733,7 @@ const FileRow: FC<FileRowProps> = ({
               <Typography
                 className="tw:text-quaternary"
                 data-testid="document-folder-name"
+                ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
                 size="text-xs">
                 {folderName}
               </Typography>
@@ -584,30 +748,33 @@ const FileRow: FC<FileRowProps> = ({
         gap={2}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
-        <DocumentStatusBadge
-          error={file.processingError}
-          stats={file.extractionStats}
-          status={file.processingStatus}
-        />
+        {/* Hidden on narrow rows (preview panel open) so it can't squeeze the file details */}
+        <span className="tw:hidden tw:@xl:inline-flex">
+          <DocumentStatusBadge
+            error={file.processingError}
+            stats={file.extractionStats}
+            status={file.processingStatus}
+          />
+        </span>
         <ButtonUtility
           className={`tw:ml-1.5${
             isPreviewSupported ? '' : ' tw:invisible tw:pointer-events-none'
           }`}
-          color="tertiary"
           data-testid="preview-btn"
-          icon={<Eye height={20} width={20} />}
+          icon={Eye}
+          size="lg"
           tooltip={t('label.preview')}
           onClick={isPreviewSupported ? () => onOpenPreview?.(file) : undefined}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="download-btn"
-          icon={<DownloadIcon height={20} width={20} />}
+          icon={DownloadIcon}
+          size="lg"
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton url={rowUrl}>
-          <CopyIcon aria-hidden="true" height={20} width={20} />
+        <CopyLinkButton size="lg" url={rowUrl}>
+          <Copy01 data-icon aria-hidden="true" />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
@@ -618,6 +785,7 @@ const FileRow: FC<FileRowProps> = ({
           isLoadingMoreFolders={isLoadingMoreFolders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
+          onFileUpdated={onFileUpdated}
           onLoadMoreFolders={onLoadMoreFolders}
         />
       </Box>
@@ -655,6 +823,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onFileUpdated,
   onOpenPreview,
   onPreview,
   onSelectFile,
@@ -682,7 +851,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 
   const emptyStateContent = selectedFolderName ? (
     <div className="tw:relative tw:flex-1">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         actions={
           onUploadFile
             ? [
@@ -700,16 +869,14 @@ const DocumentsView: FC<DocumentsViewProps> = ({
         title={t('label.folder-name-is-empty', {
           folderName: selectedFolderName,
         })}
-        variant="blank"
       />
     </div>
   ) : (
     <div className="tw:relative tw:flex-1">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearchResultIcon />}
         title={t('label.no-matching-results')}
-        variant="blank"
       />
     </div>
   );
@@ -763,6 +930,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     onDeleteFile={onDeleteFile}
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
+                    onFileUpdated={onFileUpdated}
                     onLoadMoreFolders={onLoadMoreFolders}
                     onOpenPreview={onOpenPreview}
                     onPreview={onPreview}

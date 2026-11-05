@@ -12,10 +12,9 @@
  */
 
 import { TFunction } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 import {
-  AlertType,
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -26,8 +25,8 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-  ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
 import {
   AlertAiFormFieldsProps,
@@ -110,42 +109,67 @@ export const getAlertAiResources = (
   return 'filteringRules' in value ? value.filteringRules?.resources ?? [] : [];
 };
 
+/**
+ * Whether a rule section displays. Once the server has said whether the sources support any rule
+ * of its kind, it displays when they do. Until then, a view keeps the parent's flag, and a form
+ * displays it only for rules the alert already holds, so a saved alert never hides them.
+ */
+const resolveSectionDisplay = (
+  isViewOnly: boolean | undefined,
+  hasSources: boolean,
+  hasRules: boolean | undefined,
+  chosenRules: ArgumentsInput[],
+  shouldShowSection: boolean
+): boolean => {
+  if (!hasSources) {
+    return shouldShowSection;
+  }
+  if (!isUndefined(hasRules)) {
+    return hasRules;
+  }
+
+  return isViewOnly ? shouldShowSection : !isEmpty(chosenRules);
+};
+
 /** Derives the selected rules and section-visibility inputs for the AI alert form fields. */
 export const getAlertAiSectionInputs = ({
   value,
-  selectedSource,
-  selectedFilterResource,
-  supportedFilters,
-  supportedTriggers,
+  isViewOnly,
+  selectedSources,
+  hasFilters,
+  hasTriggers,
   shouldShowActionsSection,
   shouldShowFiltersSection,
 }: {
   value: AlertAiFormValue;
-  selectedSource?: string;
-  selectedFilterResource?: ObservabilityFilterResourceDescriptor;
-  supportedFilters?: EventFilterRule[];
-  supportedTriggers?: EventFilterRule[];
+  isViewOnly?: boolean;
+  selectedSources: string[];
+  hasFilters?: boolean;
+  hasTriggers?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
 }) => {
+  const hasSources = !isEmpty(selectedSources);
   const selectedFilters = value.input?.filters ?? [];
   const selectedTriggers = value.input?.actions ?? [];
-  const selectedSupportedFilters =
-    selectedFilterResource?.supportedFilters ?? supportedFilters;
-  const selectedSupportedTriggers =
-    selectedFilterResource?.supportedActions ?? supportedTriggers;
 
   return {
     selectedFilters,
     selectedTriggers,
-    selectedSupportedFilters,
-    selectedSupportedTriggers,
-    shouldDisplayFiltersSection: selectedSource
-      ? !isEmpty(selectedSupportedFilters)
-      : shouldShowFiltersSection,
-    shouldDisplayActionsSection: selectedSource
-      ? !isEmpty(selectedSupportedTriggers)
-      : shouldShowActionsSection,
+    shouldDisplayFiltersSection: resolveSectionDisplay(
+      isViewOnly,
+      hasSources,
+      hasFilters,
+      selectedFilters,
+      shouldShowFiltersSection
+    ),
+    shouldDisplayActionsSection: resolveSectionDisplay(
+      isViewOnly,
+      hasSources,
+      hasTriggers,
+      selectedTriggers,
+      shouldShowActionsSection
+    ),
   };
 };
 
@@ -153,14 +177,14 @@ export const getAlertAiSectionInputs = ({
 export const getAlertAiSectionVisibility = ({
   isViewOnly,
   selectedFilters,
-  selectedSource,
+  selectedSources,
   selectedTriggers,
   shouldShowActionsSection,
   shouldShowFiltersSection,
 }: {
   isViewOnly?: boolean;
   selectedFilters: ArgumentsInput[];
-  selectedSource?: string;
+  selectedSources: string[];
   selectedTriggers: ArgumentsInput[];
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
@@ -169,55 +193,64 @@ export const getAlertAiSectionVisibility = ({
     shouldShowActionsSection && (!isViewOnly || !isEmpty(selectedTriggers)),
   shouldRenderFiltersSection:
     shouldShowFiltersSection && (!isViewOnly || !isEmpty(selectedFilters)),
-  shouldRenderSourceSection: !isViewOnly || !isEmpty(selectedSource),
+  shouldRenderSourceSection: !isViewOnly || !isEmpty(selectedSources),
 });
 
-/** Returns a cloned form value with a nested path updated, creating containers as needed. */
+/**
+ * Returns a copy of `source` with `path` set to `nextValue`, cloning only the nodes along the path
+ * and sharing every off-path branch by reference — a cheaper immutable update than deep-cloning the
+ * whole form value on each keystroke. (It does not reduce re-renders: the destination rows are
+ * index-keyed and unmemoized. The functional `updateAlertAiValue` below is the real write fix.)
+ * Missing containers are created as array or object based on the next path segment.
+ */
 export const setValueAtPath = (
   source: AlertAiFormValue,
   path: (string | number)[],
   nextValue: unknown
 ): AlertAiFormValue => {
-  const clone = structuredClone(source);
-  let current: Record<string, unknown> | unknown[] = clone as unknown as Record<
-    string,
+  if (path.length === 0) {
+    return nextValue as AlertAiFormValue;
+  }
+
+  const [head, ...rest] = path;
+  const src = source as unknown;
+  const container = (Array.isArray(src)
+    ? [...src]
+    : { ...(src as Record<string, unknown>) }) as unknown as Record<
+    string | number,
     unknown
   >;
 
-  path.forEach((pathItem, index) => {
-    if (index === path.length - 1) {
-      (current as Record<string | number, unknown>)[pathItem] = nextValue;
+  const currentChild = container[head];
+  const emptyContainer = typeof rest[0] === 'number' ? [] : {};
+  const child =
+    currentChild === undefined || currentChild === null
+      ? emptyContainer
+      : currentChild;
 
-      return;
-    }
+  container[head] =
+    rest.length === 0
+      ? nextValue
+      : setValueAtPath(child as AlertAiFormValue, rest, nextValue);
 
-    const nextPathItem = path[index + 1];
-    const currentValue = (current as Record<string | number, unknown>)[
-      pathItem
-    ];
-
-    if (currentValue === undefined || currentValue === null) {
-      (current as Record<string | number, unknown>)[pathItem] =
-        typeof nextPathItem === 'number' ? [] : {};
-    }
-
-    current = (current as Record<string | number, unknown>)[pathItem] as
-      | Record<string, unknown>
-      | unknown[];
-  });
-
-  return clone;
+  return container as unknown as AlertAiFormValue;
 };
 
-/** Applies an immutable nested update and emits the create-alert form value shape. */
+/**
+ * Applies an immutable nested update via a functional updater so rapid successive writes compose
+ * against the LATEST state instead of a captured render-time snapshot — without this two quick
+ * fills (header key then value) clobber each other and emit an empty header key the backend rejects.
+ * `_value` is retained for call-site compatibility and intentionally unused.
+ */
 export const updateAlertAiValue = (
-  value: AlertAiFormValue,
+  _value: AlertAiFormValue,
   onChange: AlertAiFormFieldsProps['onChange'] | undefined,
   path: (string | number)[],
   nextValue: unknown
 ) => {
   onChange?.(
-    setValueAtPath(value, path, nextValue) as ModifiedCreateEventSubscription
+    (prev) =>
+      setValueAtPath(prev, path, nextValue) as ModifiedCreateEventSubscription
   );
 };
 
@@ -286,37 +319,35 @@ export const getTextArgumentCopy = (argument: string, t: TFunction) => {
 };
 
 /** Computes add-rule affordance flags for a filter or trigger rule section. */
+// Each rule on offer can be chosen once, as in the classic form. A trigger applies to the sources
+// it names, so an alert on several sources needs one trigger for each of them.
 export const getRuleSectionFlags = ({
-  field,
   isViewOnly,
   selectedRules,
-  selectedSource,
+  selectedSources,
   supportedRules,
 }: {
-  field: RuleSectionField;
   isViewOnly?: boolean;
   selectedRules: ArgumentsInput[];
-  selectedSource?: string;
+  selectedSources?: string[];
   supportedRules?: EventFilterRule[];
-}) => {
-  const maxRules = field === 'actions' ? 1 : supportedRules?.length ?? 0;
+}) => ({
+  canAddRule: selectedRules.length < (supportedRules?.length ?? 0),
+  isAddDisabled: isEmpty(selectedSources),
+  showAddButton: !isViewOnly,
+});
 
-  return {
-    canAddRule:
-      Boolean(supportedRules?.length) && selectedRules.length < maxRules,
-    isAddDisabled: isEmpty(selectedSource),
-    showAddButton:
-      !isViewOnly && (field === 'filters' || selectedRules.length === 0),
-  };
-};
-
-/** Builds rule dropdown items and disables rules that are already selected. */
+/**
+ * Builds rule dropdown items and disables rules that are already selected. A saved rule the sources
+ * no longer offer, or that the server has not described yet, is still listed by its name, disabled,
+ * so the dropdown never shows it blank.
+ */
 export const getRuleItems = (
   supportedRules: EventFilterRule[] | undefined,
   selectedRules: ArgumentsInput[]
-) =>
-  supportedRules
-    ?.filter((rule): rule is EventFilterRule & { name: string } =>
+) => {
+  const offered = (supportedRules ?? [])
+    .filter((rule): rule is EventFilterRule & { name: string } =>
       Boolean(rule.name)
     )
     .map((rule) => ({
@@ -325,7 +356,17 @@ export const getRuleItems = (
         (selectedRule) => selectedRule.name === rule.name
       ),
       label: rule.displayName ?? rule.name,
-    })) ?? [];
+    }));
+  const unknown = uniqBy(
+    selectedRules.filter(
+      (rule): rule is ArgumentsInput & { name: string } =>
+        Boolean(rule.name) && !offered.some((item) => item.id === rule.name)
+    ),
+    'name'
+  ).map((rule) => ({ id: rule.name, isDisabled: true, label: rule.name }));
+
+  return [...offered, ...unknown];
+};
 
 /** Returns translated copy used by filter and trigger rule sections. */
 export const getRuleCopy = (field: RuleSectionField, t: TFunction) => {
@@ -431,19 +472,22 @@ export const getDestinationTypeUpdate = (
   const destinationType = nextDestinationType as
     | SubscriptionCategory
     | SubscriptionType;
+  const configField = getConfigFieldFromDestinationType(nextDestinationType);
   const nextDestination: Omit<ModifiedDestination, 'type'> & {
     type?: SubscriptionType;
   } = {
-    ...destination,
     category: isInternalDestinationType
       ? (nextDestinationType as SubscriptionCategory)
       : SubscriptionCategory.External,
     destinationType,
+    config: configField ? { [configField]: true } : undefined,
+    downstreamDepth: undefined,
+    notifyDownstream: undefined,
   };
 
-  if (!isInternalDestinationType) {
-    nextDestination.type = nextDestinationType as SubscriptionType;
-  }
+  nextDestination.type = isInternalDestinationType
+    ? undefined
+    : (nextDestinationType as SubscriptionType);
 
   return nextDestination as ModifiedDestination;
 };
@@ -459,16 +503,3 @@ export const getDestinationWithNotifyDownstream = (
     : undefined,
   notifyDownstream,
 });
-
-/**
- * Event types offered by the event-type filter. Only the Settings → Notifications
- * flow narrows them to the source's supported types (classic
- * `AddNotificationPage`); the Observability flow always offered every type.
- */
-export const getRuleEventTypes = (
-  alertType: AlertType | undefined,
-  resource?: ObservabilityFilterResourceDescriptor
-) =>
-  alertType === AlertType.Notification
-    ? resource?.supportedEventTypes
-    : undefined;

@@ -27,10 +27,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
-}));
-
 // Mock ModalWithMarkdownEditor to a simple inline component for predictable DOM
 jest.mock(
   '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
@@ -116,9 +112,7 @@ describe('DescriptionSection', () => {
         />
       );
 
-      const editIcon = screen.getByTestId('edit-icon-svg');
-
-      expect(editIcon).toBeInTheDocument();
+      expect(screen.getByTestId('edit-description')).toBeInTheDocument();
     });
 
     it('does not show edit control when showEditButton is false', () => {

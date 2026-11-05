@@ -17,18 +17,23 @@ import java.util.List;
 import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 
 /**
  * Interface to be implemented by all services entities to provide a way to access all the common
  * fields.
  */
-public interface ServiceEntityInterface extends EntityInterface {
+public interface ServiceEntityInterface extends EntityInterface<EntityStatus> {
 
   ServiceConnectionEntityInterface getConnection();
 
   ServiceEntityInterface withOwners(List<EntityReference> owners);
 
   void setPipelines(List<EntityReference> pipelines);
+
+  default List<EntityReference> getPipelines() {
+    return null;
+  }
 
   void setIngestionRunner(EntityReference ingestionRunner);
 
@@ -48,4 +53,6 @@ public interface ServiceEntityInterface extends EntityInterface {
   default ServiceAttributes getServiceAttributes() {
     return null;
   }
+
+  default void setServiceAttributes(ServiceAttributes serviceAttributes) {}
 }

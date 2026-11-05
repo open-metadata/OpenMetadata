@@ -14,6 +14,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,10 +35,12 @@ import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -65,7 +69,7 @@ class ContextMemoryIndexTest {
             .withSummary("Quick guide on Certification filtering")
             .withMemoryType(ContextMemoryType.FAQ)
             .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
-            .withStatus(ContextMemoryStatus.ACTIVE)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
             .withPinned(true)
             .withSourceType(ContextMemorySourceType.CHAT_PROMOTION)
             .withUsageCount(7)
@@ -80,7 +84,9 @@ class ContextMemoryIndexTest {
     assertEquals("Filter the Explore page by the Certification tag.", doc.get("answer"));
     assertEquals(ContextMemoryType.FAQ.value(), doc.get("memoryType"));
     assertEquals(ContextMemoryScope.USER_GLOBAL.value(), doc.get("memoryScope"));
-    assertEquals(ContextMemoryStatus.ACTIVE.value(), doc.get("status"));
+    assertFalse(
+        doc.containsKey("status"),
+        "the memory's stage is indexed through the shared entityStatus field, not its own status");
     assertEquals(true, doc.get("pinned"));
     assertEquals(ContextMemorySourceType.CHAT_PROMOTION.value(), doc.get("sourceType"));
     assertEquals(7, doc.get("usageCount"));
@@ -134,6 +140,44 @@ class ContextMemoryIndexTest {
   }
 
   @Test
+  void buildSearchIndexDoc_aMemoryNeverCountedIndexesNoOutcomes() {
+    ContextMemory memory = baseMemory().withUsageCount(37);
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
+
+    assertFalse(
+        doc.containsKey("outcomes"),
+        "a list read from search must fall back to usage, not show zero citations");
+    assertEquals(37, doc.get("usageCount"));
+  }
+
+  @Test
+  void buildSearchIndexDoc_indexesTheStoredOutcomes() {
+    ContextMemory memory =
+        baseMemory()
+            .withOutcomes(
+                new MemoryOutcomes()
+                    .withAppliedCount(12)
+                    .withPositiveCount(3)
+                    .withNegativeCount(1)
+                    .withCorrectedCount(2)
+                    .withLastAppliedAt(1_700_000_000_000L)
+                    .withLastCorrectedAt(1_690_000_000_000L)
+                    .withCountedAt(1_700_000_500_000L));
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
+
+    Map<?, ?> outcomes = (Map<?, ?>) doc.get("outcomes");
+    assertEquals(12, outcomes.get("appliedCount"));
+    assertEquals(3, outcomes.get("positiveCount"));
+    assertEquals(1, outcomes.get("negativeCount"));
+    assertEquals(2, outcomes.get("correctedCount"));
+    assertEquals(1_700_000_000_000L, outcomes.get("lastAppliedAt"));
+    assertEquals(1_690_000_000_000L, outcomes.get("lastCorrectedAt"));
+    assertEquals(1_700_000_500_000L, outcomes.get("countedAt"));
+  }
+
+  @Test
   void buildSearchIndexDoc_flattensShareConfig() {
     UUID userId = UUID.randomUUID();
     EntityReference principal = new EntityReference().withId(userId).withType(Entity.USER);
@@ -179,6 +223,7 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(new HashMap<>());
 
     assertNull(doc.get("visibility"));
+    assertEquals(ContextMemoryIndex.UNANCHORED, doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
     @SuppressWarnings("unchecked")
     List<String> sharedWithIds = (List<String>) doc.get("sharedWithIds");
     assertTrue(sharedWithIds.isEmpty());
@@ -219,6 +264,7 @@ class ContextMemoryIndexTest {
     EntityReference docPrimary = (EntityReference) doc.get("primaryEntity");
     assertNotNull(docPrimary);
     assertEquals("orders", docPrimary.getDisplayName());
+    assertEquals(primaryEntity.getId().toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
 
     @SuppressWarnings("unchecked")
     List<EntityReference> docRelated = (List<EntityReference>) doc.get("relatedEntities");
@@ -256,6 +302,13 @@ class ContextMemoryIndexTest {
 
     assertTrue(index.getRequiredReindexFields().contains("tags"));
     assertTrue(index.getRequiredReindexFields().contains("owners"));
+  }
+
+  @Test
+  void requiredReindexFields_includeTheRelationshipFieldsTheDocReads() {
+    Set<String> fields = new ContextMemoryIndex(baseMemory()).getRequiredReindexFields();
+
+    assertTrue(fields.containsAll(Set.of("primaryEntity", "relatedEntities", "sourceFile")));
   }
 
   private ContextMemory baseMemory() {

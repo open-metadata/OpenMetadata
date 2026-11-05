@@ -21,7 +21,7 @@ import {
   ResizableTableContainer,
   TableBody as AriaTableBody,
 } from 'react-aria-components';
-import { ChevronDown, ChevronRight } from '@untitledui/icons';
+import { ChevronDown, ChevronRight } from '../icons';
 import { Badge } from '../components/base/badges/badges';
 import { PaginationPageDefault } from '../components/application/pagination/pagination';
 import {
@@ -172,6 +172,29 @@ export const SmallSize: Story = {
             </Table.Cell>
             <Table.Cell>{user.email}</Table.Cell>
             <Table.Cell>{user.role}</Table.Cell>
+          </Table.Row>
+        ))}
+      </AriaTableBody>
+    </Table>
+  ),
+};
+
+export const CenteredColumn: Story = {
+  render: () => (
+    <Table aria-label="Users table (centred status)">
+      <Table.Header>
+        <Table.Head isRowHeader label="Name" />
+        <Table.Head align="center" label="Status" />
+      </Table.Header>
+      <AriaTableBody>
+        {SAMPLE_DATA.map((user) => (
+          <Table.Row id={String(user.id)} key={user.id}>
+            <Table.Cell>{user.name}</Table.Cell>
+            <Table.Cell>
+              <div className="tw:flex tw:justify-center">
+                <StatusBadge status={user.status} />
+              </div>
+            </Table.Cell>
           </Table.Row>
         ))}
       </AriaTableBody>

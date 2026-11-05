@@ -19,13 +19,7 @@ interface ObservabilityPageShellProps
   extends PropsWithChildren<HTMLAttributes<HTMLDivElement>> {
   contentClassName?: string;
   header: ReactNode;
-  /**
-   * Document title. The detail pages using this shell (`TestCaseDetail`,
-   * `TestSuiteDetail`) pass a fetched entity name, which is more specific
-   * than anything derivable from the URL. Those routes carry `:fqn`, so they
-   * are never kept alive and their Helmet mounts after any shell-level title
-   * on each navigation and wins.
-   */
+  // Fetched entity name; a page claim always outranks a shell's.
   pageTitle: string;
 }
 

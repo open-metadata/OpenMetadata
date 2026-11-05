@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Operation } from 'fast-json-patch';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';
@@ -24,7 +24,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Directory } from '../generated/entity/data/directory';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../interface/platform/service.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
@@ -95,7 +95,9 @@ export const getServiceMainTabColumns = (
             scheduleInterval ? (
               <span>{scheduleInterval}</span>
             ) : (
-              <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+              <Typography className="tw:text-primary">
+                {NO_DATA_PLACEHOLDER}
+              </Typography>
             ),
         },
       ]
@@ -114,11 +116,11 @@ export const getServiceMainTabColumns = (
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           width: 200,
           render: (usageSummary: Database['usageSummary']) => (
-            <Typography.Text>
+            <Typography className="tw:text-primary">
               {getUsagePercentile(
                 usageSummary?.weeklyStats?.percentileRank ?? 0
               )}
-            </Typography.Text>
+            </Typography>
           ),
         },
       ]

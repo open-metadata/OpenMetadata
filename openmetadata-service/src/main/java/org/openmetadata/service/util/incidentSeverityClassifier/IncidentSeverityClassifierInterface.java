@@ -23,5 +23,5 @@ public abstract class IncidentSeverityClassifierInterface {
     return new LogisticRegressionIncidentSeverityClassifier();
   }
 
-  public abstract Severity classifyIncidentSeverity(EntityInterface entity);
+  public abstract Severity classifyIncidentSeverity(EntityInterface<?> entity);
 }

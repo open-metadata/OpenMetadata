@@ -35,6 +35,7 @@ import {
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 const entities = {
   'Api Service': ApiServiceClass,
@@ -67,7 +68,7 @@ const adminUser = new UserClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -80,7 +81,11 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key, EntityClass]) => {
+Object.entries(
+  pickEntityMatrix(__filename, entities, {
+    'Database Service': DatabaseServiceClass,
+  })
+).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
 

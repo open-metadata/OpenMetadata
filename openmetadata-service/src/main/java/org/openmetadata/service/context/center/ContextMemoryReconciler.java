@@ -11,8 +11,11 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -24,106 +27,165 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * in two passes — exact normalized question first, then word-overlap similarity — so a re-derived
  * fact keeps its pill identity (and the usageCount/lastUsedAt retrieval telemetry that rides it)
  * even when the model rephrases the question between runs. An automated pill that is no longer
- * derived from the source is hard-deleted (these pills are regenerable from the source, so a
- * tombstone would only leave an invisible row polluting search and counts). A pill a human has
- * edited (sourceType flipped to Manual) is left untouched. Before creating a genuinely new pill,
- * a best-effort search probe checks whether another source already carries the same fact, so two
- * documents stating one policy yield one pill, not two.
+ * derived from its last source is hard-deleted; a shared pill is detached from only the changed
+ * source. A pill a human has edited (sourceType flipped to Manual) is left untouched, and so is one
+ * moved out of Approved: re-extraction never rewrites it or approves it again. Equivalent
+ * file-derived facts may be linked to more than one source; retiring one source preserves the
+ * memory while another still references it.
  */
 @Slf4j
 public class ContextMemoryReconciler {
   private final ContextMemoryRepository memoryRepository;
-  private final MemoryDuplicateProbe duplicateProbe;
+  private final DuplicateFinder duplicateFinder;
 
-  public ContextMemoryReconciler(ContextMemoryRepository memoryRepository) {
-    this(memoryRepository, new SearchMemoryDuplicateProbe());
+  @FunctionalInterface
+  public interface DuplicateFinder {
+    ContextMemory findEquivalent(ContextMemory derived);
   }
 
-  ContextMemoryReconciler(
-      ContextMemoryRepository memoryRepository, MemoryDuplicateProbe duplicateProbe) {
+  public ContextMemoryReconciler(ContextMemoryRepository memoryRepository) {
+    this(memoryRepository, ignored -> null);
+  }
+
+  public ContextMemoryReconciler(
+      ContextMemoryRepository memoryRepository, DuplicateFinder duplicateFinder) {
     this.memoryRepository = memoryRepository;
-    this.duplicateProbe = duplicateProbe;
+    this.duplicateFinder = duplicateFinder;
   }
 
   /** Counts of what the run did, by reconciliation outcome. */
-  public record ReconcileResult(
-      int created, int updated, int kept, int deleted, int skippedDuplicates) {}
+  public record ReconcileResult(int created, int updated, int kept, int deleted) {}
+
+  public ReconcileResult reuseExtractedFrom(
+      EntityReference sourceRef, EntityReference existingSourceRef) {
+    List<ContextMemory> existing =
+        memoryRepository.listExtractedMemories(
+            existingSourceRef.getId(), existingSourceRef.getType());
+    if (existing.isEmpty() || existing.stream().anyMatch(pill -> !isReusableFileMemory(pill))) {
+      return null;
+    }
+    for (ContextMemory pill : existing) {
+      memoryRepository.linkExtractedMemory(pill.getId(), sourceRef);
+    }
+    return new ReconcileResult(0, 0, existing.size(), 0);
+  }
+
+  private boolean isReusableFileMemory(ContextMemory pill) {
+    return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
+        && pill.getEntityStatus() == ContextMemoryStatus.APPROVED
+        && pill.getMemoryScope() == ContextMemoryScope.ENTITY_SCOPED
+        && pill.getShareConfig() != null
+        && pill.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
+  }
 
   public ReconcileResult reconcile(
       EntityReference sourceRef, String sourceType, List<ContextMemory> derived) {
     Map<String, ContextMemory> derivedByQuestion = indexByQuestion(derived);
     List<ContextMemory> existing =
         memoryRepository.listExtractedMemories(sourceRef.getId(), sourceType);
-    Counts counts = new Counts();
+    ReconciliationPlan plan = new ReconciliationPlan();
 
-    // Pass 1: exact normalized-question match. Always claim the matching question, even for a
-    // human-owned (Manual) pill: it stops a re-derived duplicate from being created alongside it.
-    // Only automated pills are then updated; a pill a human edited is left exactly as-is.
+    List<ContextMemory> unmatched = planExactMatches(sourceRef, derivedByQuestion, existing, plan);
+    planSimilarMatches(sourceRef, derivedByQuestion, unmatched, plan);
+    planNewMemories(sourceRef, derivedByQuestion.values(), plan);
+    // ADR:2026-10-27-memory-reconciliation-resolves-comparisons-before-writes
+    plan.writes.forEach(Runnable::run);
+
+    LOG.info(
+        "Reconciled pills for {} {}: {} created, {} updated, {} kept, {} deleted",
+        sourceRef.getType(),
+        sourceRef.getId(),
+        plan.created,
+        plan.updated,
+        plan.kept,
+        plan.deleted);
+    return new ReconcileResult(plan.created, plan.updated, plan.kept, plan.deleted);
+  }
+
+  private List<ContextMemory> planExactMatches(
+      EntityReference sourceRef,
+      Map<String, ContextMemory> derivedByQuestion,
+      List<ContextMemory> existing,
+      ReconciliationPlan plan) {
     List<ContextMemory> unmatched = new ArrayList<>();
     for (ContextMemory pill : existing) {
       ContextMemory match = derivedByQuestion.remove(questionKey(pill));
       if (match == null) {
         unmatched.add(pill);
-      } else if (isAutomated(pill)) {
-        if (applyDerived(pill, match)) {
-          counts.updated++;
-        } else {
-          counts.kept++;
-        }
+      } else {
+        planMatchedMemory(sourceRef, pill, match, derivedByQuestion, plan);
       }
     }
+    return unmatched;
+  }
 
-    // Pass 2: similarity match for rephrased questions — the same fact reworded keeps its pill
-    // identity instead of being retired and recreated. Runs before retirement so a rephrase can
-    // never look like a removal.
+  private void planSimilarMatches(
+      EntityReference sourceRef,
+      Map<String, ContextMemory> derivedByQuestion,
+      List<ContextMemory> unmatched,
+      ReconciliationPlan plan) {
     for (ContextMemory pill : unmatched) {
       ContextMemory match = removeMostSimilar(derivedByQuestion, pill);
       if (match == null) {
         if (isAutomated(pill)) {
-          deleteRetired(pill);
-          counts.deleted++;
+          planRelease(sourceRef, pill, plan);
         }
-      } else if (isAutomated(pill)) {
-        if (applyDerived(pill, match)) {
-          counts.updated++;
-        } else {
-          counts.kept++;
-        }
-      }
-    }
-
-    // Pass 3: genuinely new candidates. Skip one that another source already carries.
-    Set<UUID> thisSourcePillIds = new HashSet<>();
-    existing.forEach(pill -> thisSourcePillIds.add(pill.getId()));
-    for (ContextMemory pill : derivedByQuestion.values()) {
-      if (duplicateElsewhere(pill, thisSourcePillIds)) {
-        counts.skippedDuplicates++;
       } else {
-        memoryRepository.create(null, pill);
-        counts.created++;
+        planMatchedMemory(sourceRef, pill, match, derivedByQuestion, plan);
       }
     }
-
-    LOG.info(
-        "Reconciled pills for {} {}: {} created, {} updated, {} kept, {} deleted, {} duplicates skipped",
-        sourceRef.getType(),
-        sourceRef.getId(),
-        counts.created,
-        counts.updated,
-        counts.kept,
-        counts.deleted,
-        counts.skippedDuplicates);
-    return new ReconcileResult(
-        counts.created, counts.updated, counts.kept, counts.deleted, counts.skippedDuplicates);
   }
 
-  /**
-   * Hard-deletes an automated pill the source no longer yields. These pills are regenerable from the
-   * source, so removing the row (and its search/vector index entry) is cleaner than an invisible
-   * ARCHIVED tombstone that would still pollute retrieval and counts.
-   */
-  private void deleteRetired(ContextMemory pill) {
-    memoryRepository.delete(Entity.ADMIN_USER_NAME, pill.getId(), false, true);
+  private void planNewMemories(
+      EntityReference sourceRef, Iterable<ContextMemory> derived, ReconciliationPlan plan) {
+    for (ContextMemory pill : derived) {
+      ContextMemory equivalent = duplicateFinder.findEquivalent(pill);
+      if (equivalent == null || plan.changingIds.contains(equivalent.getId())) {
+        plan.writes.add(() -> memoryRepository.create(null, pill));
+        plan.created++;
+      } else {
+        plan.writes.add(() -> memoryRepository.linkExtractedMemory(equivalent.getId(), sourceRef));
+        plan.kept++;
+      }
+    }
+  }
+
+  private void planMatchedMemory(
+      EntityReference sourceRef,
+      ContextMemory existing,
+      ContextMemory derived,
+      Map<String, ContextMemory> unmatched,
+      ReconciliationPlan plan) {
+    if (isEngineManaged(existing)
+        && !releaseSharedIfChanged(sourceRef, existing, derived, unmatched, plan)) {
+      if (planUpdate(existing, derived, plan)) {
+        plan.updated++;
+      } else {
+        plan.kept++;
+      }
+    }
+  }
+
+  private void planRelease(
+      EntityReference sourceRef, ContextMemory memory, ReconciliationPlan plan) {
+    plan.writes.add(() -> memoryRepository.releaseExtractedMemory(memory.getId(), sourceRef));
+    plan.changingIds.add(memory.getId());
+    plan.deleted++;
+  }
+
+  private boolean releaseSharedIfChanged(
+      EntityReference sourceRef,
+      ContextMemory existing,
+      ContextMemory derived,
+      Map<String, ContextMemory> unmatched,
+      ReconciliationPlan plan) {
+    if (sameContent(existing, derived)
+        || !memoryRepository.hasOtherSources(existing.getId(), sourceRef)) {
+      return false;
+    }
+    planRelease(sourceRef, existing, plan);
+    unmatched.put(questionKey(derived), derived);
+    return true;
   }
 
   private Map<String, ContextMemory> indexByQuestion(List<ContextMemory> derived) {
@@ -160,38 +222,13 @@ public class ContextMemoryReconciler {
   }
 
   /**
-   * True when another source's automated pill already states this fact. Recall comes from the
-   * probe; the decision is the same deterministic word-overlap gate as the passes above. Manual
-   * and chat-authored memories never suppress extraction — a user's private note must not silence
-   * a document's knowledge.
-   */
-  private boolean duplicateElsewhere(ContextMemory candidate, Set<UUID> thisSourcePillIds) {
-    for (MemoryDuplicateProbe.ProbeHit hit : duplicateProbe.findSimilar(candidate)) {
-      if (thisSourcePillIds.contains(hit.id()) || !isAutomatedSourceType(hit.sourceType())) {
-        continue;
-      }
-      double score =
-          MemoryTextSimilarity.weighted(
-              candidate.getQuestion(), candidate.getAnswer(), hit.question(), hit.answer());
-      if (score >= MemoryTextSimilarity.DUPLICATE_THRESHOLD) {
-        LOG.info(
-            "Skipping duplicate pill '{}': memory {} already states it",
-            candidate.getTitle(),
-            hit.id());
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Updates an existing pill in place from its newly-derived match, preserving id/name/telemetry.
+   * Plans an in-place update from the newly-derived match, preserving id/name/telemetry.
    * Returns true only when something actually changed, so an unchanged pill keeps its embedding
    * instead of being needlessly re-indexed.
    */
-  private boolean applyDerived(ContextMemory existing, ContextMemory derived) {
-    boolean changed =
-        !sameContent(existing, derived) || existing.getStatus() != ContextMemoryStatus.ACTIVE;
+  private boolean planUpdate(
+      ContextMemory existing, ContextMemory derived, ReconciliationPlan plan) {
+    boolean changed = !sameContent(existing, derived) || needsMetadataRepair(existing);
     if (changed) {
       ContextMemory updated = JsonUtils.deepCopy(existing, ContextMemory.class);
       updated.setTitle(derived.getTitle());
@@ -199,12 +236,36 @@ public class ContextMemoryReconciler {
       updated.setAnswer(derived.getAnswer());
       updated.setSummary(derived.getSummary());
       updated.setMemoryType(derived.getMemoryType());
-      updated.setStatus(ContextMemoryStatus.ACTIVE);
+      if (updated.getMemoryScope() == null) {
+        updated.setMemoryScope(derived.getMemoryScope());
+      }
+      if (updated.getPrimaryEntity() == null) {
+        updated.setPrimaryEntity(derived.getPrimaryEntity());
+      }
+      if (needsVisibilityRepair(updated)) {
+        updated.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+      }
       updated.setUpdatedBy(Entity.ADMIN_USER_NAME);
       updated.setUpdatedAt(System.currentTimeMillis());
-      memoryRepository.update(null, existing, updated, Entity.ADMIN_USER_NAME);
+      plan.writes.add(
+          () -> memoryRepository.update(null, existing, updated, Entity.ADMIN_USER_NAME));
+      plan.changingIds.add(existing.getId());
     }
     return changed;
+  }
+
+  private boolean needsMetadataRepair(ContextMemory memory) {
+    return memory.getMemoryScope() == null
+        || memory.getPrimaryEntity() == null
+        || needsVisibilityRepair(memory);
+  }
+
+  private boolean needsVisibilityRepair(ContextMemory memory) {
+    MemoryShareConfig config = memory.getShareConfig();
+    return config == null
+        || config.getVisibility() == null
+        || (config.getVisibility() == MemoryVisibility.SHARED
+            && (config.getSharedWith() == null || config.getSharedWith().isEmpty()));
   }
 
   private boolean sameContent(ContextMemory a, ContextMemory b) {
@@ -220,9 +281,12 @@ public class ContextMemoryReconciler {
         || pill.getSourceType() == ContextMemorySourceType.PAGE_EXTRACTION;
   }
 
-  private boolean isAutomatedSourceType(String sourceType) {
-    return ContextMemorySourceType.FILE_EXTRACTION.value().equals(sourceType)
-        || ContextMemorySourceType.PAGE_EXTRACTION.value().equals(sourceType);
+  /**
+   * The engine only maintains Approved pills. Extraction creates every pill Approved, so any other
+   * stage was a reviewer's decision that re-extracting the same fact must not undo.
+   */
+  private boolean isEngineManaged(ContextMemory pill) {
+    return isAutomated(pill) && pill.getEntityStatus() == ContextMemoryStatus.APPROVED;
   }
 
   private String questionKey(ContextMemory pill) {
@@ -230,12 +294,12 @@ public class ContextMemoryReconciler {
     return question == null ? "" : question.trim().toLowerCase(Locale.ROOT);
   }
 
-  /** Mutable tally threaded through reconciliation to keep each step a small single-purpose method. */
-  private static final class Counts {
+  private static final class ReconciliationPlan {
+    private final List<Runnable> writes = new ArrayList<>();
+    private final Set<UUID> changingIds = new HashSet<>();
     private int created;
     private int updated;
     private int kept;
     private int deleted;
-    private int skippedDuplicates;
   }
 }

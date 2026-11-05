@@ -14,12 +14,8 @@
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
-import static org.openmetadata.service.Entity.METRIC;
-import static org.openmetadata.service.Entity.TABLE;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -93,13 +89,24 @@ public class FullyQualifiedName {
   }
 
   private static <L extends FqnBaseListener> void walk(String string, L listener) {
-    FqnLexer fqnLexer = new FqnLexer(CharStreams.fromString(string));
-    CommonTokenStream tokens = new CommonTokenStream(fqnLexer);
-    FqnParser fqnParser = new FqnParser(tokens);
-    fqnParser.setErrorHandler(new BailErrorStrategy());
-    FqnContext fqn = fqnParser.fqn();
+    final FqnContext fqn = parse(string);
     ParseTreeWalker walker = new ParseTreeWalker();
     walker.walk(listener, fqn);
+  }
+
+  /**
+   * FQNs arrive from request paths and query parameters, so malformed input (an unbalanced quote,
+   * an empty segment) is a client error and is reported as one.
+   */
+  private static FqnContext parse(final String fullyQualifiedName) {
+    final FqnLexer fqnLexer = new FqnLexer(CharStreams.fromString(fullyQualifiedName));
+    final FqnParser fqnParser = new FqnParser(new CommonTokenStream(fqnLexer));
+    fqnParser.setErrorHandler(new BailErrorStrategy());
+    try {
+      return fqnParser.fqn();
+    } catch (ParseCancellationException e) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidFQN(fullyQualifiedName), e);
+    }
   }
 
   public static String getParentFQN(String fqn) {
@@ -220,7 +227,7 @@ public class FullyQualifiedName {
     try {
       String[] parts = split(segment);
       roundTrips = parts.length == 1 && unquoteName(parts[0]).equals(name);
-    } catch (ParseCancellationException e) {
+    } catch (IllegalArgumentException e) {
       roundTrips = false;
     }
     return roundTrips;
@@ -239,7 +246,7 @@ public class FullyQualifiedName {
       try {
         split(fullyQualifiedName);
         valid = true;
-      } catch (ParseCancellationException e) {
+      } catch (IllegalArgumentException e) {
         valid = false;
       }
     }
@@ -340,44 +347,8 @@ public class FullyQualifiedName {
         .toList();
   }
 
-  /**
-   * Split columnFQN of format serviceName.model.dataModelName.columnName
-   * column FQN for struct columns are of format
-   * serviceName.model.dataModelName.column.child1.child2
-   * and not serviceName.model.dataModelName."column.child1.child2" so split length should be 4 or more
-   * Return data model FQN of format serviceName.model.dataModelName
-   *
-   * @param columnFQN the FQN of the column
-   * @return the FQN of the parent dashboard data model
-   */
-  public static String getDashboardDataModelFQN(String columnFQN) {
-    String[] split = split(columnFQN);
-    if (split.length < 4) {
-      throw new IllegalArgumentException("Invalid dashboard data model column FQN: " + columnFQN);
-    }
-    // Return data model FQN of format serviceName.model.dataModelName
-    return build(split[0], split[1], split[2]);
-  }
-
-  /**
-   * Split a metric dimension/measure FQN of format metricName.dimension.dimensionName
-   * or metricName.measure.measureName and return the parent metric FQN.
-   */
-  public static String getMetricFQN(String childFQN) {
-    String[] split = split(childFQN);
-    if (split.length < 3) {
-      throw new IllegalArgumentException("Invalid metric child FQN: " + childFQN);
-    }
-    return build(Arrays.copyOf(split, split.length - 2));
-  }
-
-  // Get parent entity fqn for a given column fqn
+  // Get parent entity fqn for a given child (column/field/task/feature) fqn
   public static String getParentEntityFQN(String columnFQN, String entityType) {
-    return switch (entityType) {
-      case TABLE -> getTableFQN(columnFQN);
-      case DASHBOARD_DATA_MODEL -> getDashboardDataModelFQN(columnFQN);
-      case METRIC -> getMetricFQN(columnFQN);
-      default -> throw new IllegalArgumentException("Unsupported entity type: " + entityType);
-    };
+    return ChildFieldResolver.parentFqnOf(columnFQN, entityType);
   }
 }

@@ -35,7 +35,7 @@ import org.openmetadata.service.util.TestUtils;
  * @param <T> The service entity type (e.g., DatabaseService, DashboardService)
  * @param <K> The create request type (e.g., CreateDatabaseService)
  */
-public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateEntity>
+public abstract class BaseServiceIT<T extends EntityInterface<?>, K extends CreateEntity>
     extends BaseEntityIT<T, K> {
 
   // Services typically don't support patch, don't have search indices, and don't need tag testing

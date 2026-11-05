@@ -30,7 +30,7 @@ from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
 from metadata.entity_resolution.engine import EntityResolver
-from metadata.entity_resolution.table import TableResolver, TableServiceBinding
+from metadata.entity_resolution.table import TableResolver
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
@@ -41,7 +41,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.tableUsageCount import (
@@ -54,6 +53,7 @@ from metadata.ingestion.api.steps import BulkSink
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.life_cycle_utils import get_query_type
@@ -82,14 +82,14 @@ class MetadataUsageBulkSink(BulkSink):
         config: MetadataUsageSinkConfig,
         metadata: OpenMetadata,
         *,
-        table_services: tuple[TableServiceBinding, ...] = (),
+        table_service_types: dict[str, str] | None = None,
     ):
         super().__init__()
         self.config = config
         self.service_name = None
         self.wrote_something = False
         self.metadata = metadata
-        self.table_services = table_services
+        self.table_service_types = table_service_types or {}
         self.table_join_dict = {}
         self.table_usage_map = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
@@ -185,7 +185,7 @@ class MetadataUsageBulkSink(BulkSink):
         Handle table usage.
         """
         resolver = EntityResolver(self.metadata)
-        table_resolver = TableResolver(resolver, self.table_services)
+        table_resolver = TableResolver(resolver, self.table_service_types)
         try:
             for file_handler in self.iterate_files():
                 self.table_usage_map = {}
@@ -269,7 +269,7 @@ class MetadataUsageBulkSink(BulkSink):
                 self.get_table_usage_and_joins(
                     table_entities,
                     table_usage,
-                    table_resolver=TableResolver(resolver, self.table_services),
+                    table_resolver=TableResolver(resolver, self.table_service_types),
                 )
             finally:
                 resolver.close()
@@ -414,7 +414,7 @@ class MetadataUsageBulkSink(BulkSink):
                 user = None
                 process_user = None
                 if create_query.users:
-                    user = self.metadata.get_entity_reference(entity=User, fqn=create_query.users[0])
+                    user = self.metadata.get_cached_user_reference(name=model_str(create_query.users[0]))
                 elif create_query.usedBy:
                     process_user = create_query.usedBy[0]
                 query_type = get_query_type(create_query=create_query)

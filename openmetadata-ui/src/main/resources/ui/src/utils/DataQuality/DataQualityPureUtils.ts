@@ -17,11 +17,13 @@ import {
   isArray,
   isEmpty,
   isNil,
+  isString,
   isUndefined,
   lowerCase,
   omit,
   omitBy,
   parseInt,
+  pick,
 } from 'lodash';
 import QueryString from 'qs';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
@@ -54,12 +56,13 @@ import {
   TestDataType,
   type TestDefinition,
 } from '../../generated/tests/testDefinition';
+import { type DataQualityDashboardChartFilters } from '../../interface/observability/dataQuality.interface';
 import type { TableSearchSource } from '../../interface/search.interface';
-import {
-  DataQualityPageTabs,
-  type DataQualityDashboardChartFilters,
-} from '../../pages/DataQuality/DataQualityPage.interface';
-import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import type {
+  ListTestCaseParamsBySearch,
+  TestCaseExportFilters,
+} from '../../rest/testAPI';
 import { formatDate } from '../date-time/DateTimeUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../DatePickerMenuUtils';
 import EntityLink from '../EntityLink';
@@ -291,6 +294,81 @@ export const getTestCaseFiltersValue = (
 
   return updatedParams;
 };
+
+/**
+ * The filters the test case list sends to `/search/list`. The Bulk Edit export
+ * is built from the same params so it loads the rows the list showed.
+ */
+export const getTestCaseListFilterParams = (
+  params: TestCaseSearchParams,
+  selectedFilter: string[],
+  searchValue?: string
+): ListTestCaseParamsBySearch => ({
+  ...getTestCaseFiltersValue(params, selectedFilter),
+  testCaseStatus: isEmpty(params?.testCaseStatus)
+    ? undefined
+    : params?.testCaseStatus,
+  q: searchValue || undefined,
+});
+
+const TEST_CASE_EXPORT_FILTER_KEYS: (keyof TestCaseExportFilters)[] = [
+  'testCaseStatus',
+  'testCaseType',
+  'entityLink',
+  'tags',
+  'tier',
+  'owner',
+  'q',
+  'testPlatforms',
+  'dataQualityDimension',
+  'serviceName',
+  'dataProductFqn',
+  'startTimestamp',
+  'endTimestamp',
+];
+
+const isEmptyFilterValue = (value: unknown) =>
+  isNil(value) || ((isString(value) || isArray(value)) && isEmpty(value));
+
+/**
+ * Keeps only the list params the test case export accepts. Paging, sorting and
+ * listing-only params such as `fields` or `include` must not reach the export.
+ */
+export const getTestCaseExportFilters = (
+  params?: ListTestCaseParamsBySearch
+): TestCaseExportFilters =>
+  omitBy(
+    pick(params ?? {}, TEST_CASE_EXPORT_FILTER_KEYS),
+    isEmptyFilterValue
+  ) as TestCaseExportFilters;
+
+/**
+ * Bulk Edit carries the export filters in its URL, next to
+ * `sourceEntityType`, so a reload keeps the rows the user opened it with.
+ */
+export const getTestCaseBulkEditSearch = (
+  sourceEntityType?: string,
+  filters?: TestCaseExportFilters
+) =>
+  QueryString.stringify(
+    { sourceEntityType, ...getTestCaseExportFilters(filters) },
+    // Only the comma joining array items stays raw, so a comma inside a
+    // value (e.g. the search text) is not split back into an array.
+    {
+      arrayFormat: 'comma',
+      encodeValuesOnly: true,
+      skipNulls: true,
+      addQueryPrefix: true,
+    }
+  );
+
+export const getTestCaseExportFiltersFromSearch = (search: string) =>
+  getTestCaseExportFilters(
+    QueryString.parse(search, {
+      ignoreQueryPrefix: true,
+      comma: true,
+    }) as ListTestCaseParamsBySearch
+  );
 
 export const transformToTestCaseStatusObject = (
   data: DataQualityReport['data']

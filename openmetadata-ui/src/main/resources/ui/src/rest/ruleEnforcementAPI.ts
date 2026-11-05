@@ -12,8 +12,8 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { EntityRule } from '../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
 import { EntityType } from '../enums/entity.enum';
+import { EntityRule } from '../interface/platform/ruleEnforcement.interface';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/system/settings/entityRulesSettings';

@@ -18,11 +18,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -36,6 +34,12 @@ import { mockPipelineEntityDetails } from './mocks/PipelineSummary.mock';
 import { mockTableEntityDetails } from './mocks/TableSummary.mock';
 import { mockTagEntityDetails } from './mocks/TagSummary.mock';
 import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
 
 const mockHandleClosePanel = jest.fn();
 
@@ -116,9 +120,12 @@ jest.mock('../../../utils/EntityPureUtils', () => ({
 }));
 jest.mock('../../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  stringToHTML: jest.fn(),
   bytesToSize: jest.fn(),
   ordinalize: jest.fn(),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn(),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -257,6 +264,21 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
         )}
     </div>
   )),
+}));
+
+const mockGetLineageDataByFQN = jest.fn();
+
+jest.mock('../../../rest/lineageAPI', () => ({
+  ...jest.requireActual('../../../rest/lineageAPI'),
+  getLineageDataByFQN: (...args: unknown[]) => mockGetLineageDataByFQN(...args),
+}));
+
+const mockGetListTestCaseBySearch = jest.fn();
+
+jest.mock('../../../rest/testAPI', () => ({
+  ...jest.requireActual('../../../rest/testAPI'),
+  getListTestCaseBySearch: (...args: unknown[]) =>
+    mockGetListTestCaseBySearch(...args),
 }));
 
 const mockGetTableDetailsByFQN = jest.fn();

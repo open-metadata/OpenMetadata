@@ -10,57 +10,44 @@ full rebuild required to replace legacy lineage and extension triples when upgra
 The [catalog scale harness](rdf-scale-validation.md) measures full rebuilds, serving queries,
 resource peaks, cancellation, and restart persistence against a specified catalog size.
 
-## The shipped Fuseki image
+## The Fuseki image
 
-`docker/rdf-store/` builds the supported image (`openmetadata-fuseki:6.2.0`):
+Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag
+(today `6.2.0-318ff87`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
+environment OpenMetadata needs, what readiness checks, and how to verify a deployment. In short:
 
-- **Fuseki 6.2.0 on `eclipse-temurin:21-jre-jammy`.** Jena 6.x requires Java 21. The download is
-  verified against a pinned SHA-512 checksum at build time.
-- **Runs as non-root user `fuseki` (uid/gid 1000).** On Kubernetes set `fsGroup: 1000` (the shipped
-  manifest does) so the persistent volume is writable.
+- **Fuseki 6.2.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,
+  running as uid 1000 under `tini`. On Kubernetes set `fsGroup: 1000` so the volume is writable; a
+  volume written by a root-running image needs a one-time `chown`, which the entrypoint prints.
+- **Datasets from `FUSEKI_DATASETS`**: `openmetadata`, `openmetadata_a`, and `openmetadata_b`, at
+  `/fuseki/databases/<name>` on the `/fuseki` volume.
+- **Union default graph and deadlines, server-wide.** `FUSEKI_UNION_DEFAULT_GRAPH=true` lets the
+  SPARQL playground and MCP knowledge-graph tools read the named graphs OpenMetadata writes into
+  without a `GRAPH` clause; without it a plain `?s ?p ?o` returns nothing.
+  `FUSEKI_QUERY_TIMEOUT_MS=50000` and `FUSEKI_UPDATE_TIMEOUT_MS=50000` fire before the 60-second
+  client deadline: client-side `requestTimeoutMs` releases an OpenMetadata thread but cannot stop
+  work already executing in Fuseki, so the server must release TDB2's writer lock first. Jena 6.2.0
+  has a known failure on the second WHERE-bearing operation in one timed update request.
+  OpenMetadata's generated mutations therefore combine batch sources with `VALUES`/`UNION`, and the
+  admin SPARQL API rejects requests containing more than one WHERE-bearing operation with a clear
+  validation error. Direct Fuseki clients must follow the same restriction.
+- **The OpenMetadata Graph Store extension** with `OPENMETADATA_EXTENSION_ENABLED=true`.
+- **Admin-only access.** Only `/$/ping` is anonymous; OpenMetadata connects as `admin`.
+- **Explicit equal heap** from `FUSEKI_HEAP` (default `4g`; the development compose files use
+  1500 MB).
+- **Capped direct buffers.** Fuseki holds about 5 MiB of them per HTTP request until the next
+  collection, up to the heap size by default. The pinned image predates the 256 MiB default cap
+  (open-metadata/jena#6), so the Compose files and the Kubernetes example set
+  `JVM_ARGS=-Xms<heap> -Xmx<heap> -XX:MaxDirectMemorySize=256m`. `JVM_ARGS` replaces the heap
+  flags `FUSEKI_HEAP` would set.
+- **No Lucene text index.** The retired in-repo image wrapped each dataset in a Jena
+  `text:TextDataset`; no OpenMetadata code issues `text:query`.
 
-  **Upgrading an existing deployment requires a one-time chown.** A volume written by the previous
-  root-running image stays owned by uid 0, and the container refuses to start against it — by
-  design, since the alternative is a server that runs but cannot write. The startup log says so
-  explicitly (`/fuseki-data ... is not writable by uid 1000`). For Docker Compose, with the stack
-  stopped:
+### Upgrading from the in-repo image
 
-  ```bash
-  docker run --rm -v <project>_fuseki-tdb2-data:/data alpine chown -R 1000:1000 /data
-  ```
-
-  On Kubernetes, `fsGroup: 1000` handles this at mount time and no manual step is needed.
-- **Launched with `--config=/fuseki/config.ttl`, not `--loc`.** The assembler file is what enables
-  `tdb2:unionDefaultGraph`, which `--loc` cannot express and which the SPARQL playground and MCP
-  knowledge-graph tools depend on — OpenMetadata writes into named graphs, so without it a plain
-  `?s ?p ?o` returns nothing.
-
-  The assembler also sets `arq:queryTimeout=50000` and `arq:updateTimeout=50000`. These server
-  deadlines intentionally fire before the shipped 60-second client deadline: client-side
-  `requestTimeoutMs` releases an OpenMetadata thread but cannot stop work already executing in
-  Fuseki, so the server must release TDB2's writer lock first. Jena 6.2.0 has a known failure on the
-  second WHERE-bearing operation in one timed update request. OpenMetadata's generated mutations
-  therefore combine batch sources with `VALUES`/`UNION`, and the admin SPARQL API rejects requests
-  containing more than one WHERE-bearing operation with a clear validation error. Direct Fuseki
-  clients must follow the same restriction.
-
-  Note the dataset location: `config.ttl` uses
-  `/fuseki-data/openmetadata`, whereas the old `--loc=/fuseki-data` launch wrote TDB2 files directly
-  into `/fuseki-data`. Upgrading from that layout requires moving the files (below) — the locations
-  are deliberately not the same.
-- **The assembler provisions `openmetadata`, `openmetadata_a`, and `openmetadata_b`** on the data volume with the same union-default-graph and timeout settings. `FUSEKI_BASE` retains authentication and any operator-managed registrations. The OpenMetadata Graph Store extension is refreshed from the image at startup.
-- **Each dataset has its own persistent Lucene index** (`lucene`, `lucene_a`, `lucene_b`) for
-  `rdfs:label`, `dcterms:description`, and the OpenMetadata `name` property. The services use
-  Jena `text:TextDataset` wrappers so both SPARQL updates and Graph Store uploads maintain the
-  indexes. Graph and statement identifiers keep named-graph searches and deletions consistent
-  through live updates and repeated blue/green rebuilds.
-- **Explicit equal heap** (`-Xms4g -Xmx4g` in the image; the development compose files override to
-  1500 MB) plus GC logging to `/fuseki-data/gc.log`.
-
-### Upgrading an existing deployment (`--loc` → `--config`)
-
-A wrong `tdb2:location` does not fail — it silently starts an **empty** store. Verify data
-survival with a triple count before and after the upgrade:
+The retired `docker/rdf-store/` image stored TDB2 at `/fuseki-data/<dataset>`. Mounting that volume
+at `/fuseki` does not fail: it silently starts **empty** datasets. Verify data survival with a
+triple count before and after the move:
 
 ```bash
 curl -s -u admin:<password> --data-urlencode \
@@ -69,40 +56,43 @@ curl -s -u admin:<password> --data-urlencode \
   http://localhost:3030/openmetadata/sparql
 ```
 
-Run it on the old image, then move the existing store into the location the assembler expects
-before starting the new one:
-
-```bash
-# With the container stopped, on the host path backing /fuseki-data:
-mkdir -p /fuseki-data/openmetadata
-mv /fuseki-data/Data-* /fuseki-data/*.lock /fuseki-data/openmetadata/
-```
-
-Then start the new image and run the count again; the two must match. If they do not, stop and
-restore rather than letting a rebuild repopulate — an empty store that looks healthy is the failure
-mode this check exists to catch.
-For deployments that previously created alternates through the admin API, stop Fuseki and back up
-both the TDB2 directories and the `rdf_active_dataset` SQL row before upgrading. Move each existing
-alternate's data to the matching `/fuseki-data/openmetadata_a` or `_b` assembler location and remove
-its duplicate registration from `FUSEKI_BASE/configuration`. Preserve the active dataset's contents;
-starting an empty alternate with an existing active pointer would expose an empty graph. Verify
-counts against the active dataset after restart.
+Run it on the old image, stop it, copy the three dataset directories into `/fuseki/databases/` on
+a new volume ([the commands](rdf-fuseki-image-release.md#cutting-over-an-existing-deployment)), start
+the published image and run the count again; the two must match. If they do not, stop and restore
+rather than letting a rebuild repopulate: an empty store that looks healthy is the failure mode
+this check exists to catch. Alternatively start empty and run the RDF indexing app with
+`recreateIndex: true`. Preserve the `rdf_active_dataset` SQL row either way, and copy all three
+datasets, since the active pointer may name an alternate.
 
 Apply the native 2.0.2 SQL migrations and upgrade every OpenMetadata pod before enabling online
 rebuilds. Older pods do not participate in the mutation journal or routing fence.
 
-### Populating full-text indexes after an upgrade
+## Access to the agent SPARQL endpoint
 
-The previous `ja:textIndex` property on a plain TDB2 dataset did not activate Jena text indexing.
-Adding the text-dataset wrapper indexes new writes; it does not backfill triples already on disk.
-After upgrading, run the RDF indexing app with `recreateIndex: true` and `blueGreenRebuild: true` to
-populate a new target and its Lucene index before promotion. Reusing a target clears its old
-triples and text documents together. Include the corresponding `lucene*` directory with each
-TDB2 dataset in backups; account for these indexes in disk capacity planning.
+`POST /v1/rdf/sparql/agent` is the read-only endpoint the AI agent's knowledge-graph tool calls as
+the signed-in user. It requires the `ExecuteSparqlQuery` operation on the `rdf` resource.
 
-For datasets populated outside OpenMetadata, follow Jena's
-[text-index backfill procedure](https://jena.apache.org/documentation/query/text-query.html#building-a-text-index)
-with a separate assembler description for each text dataset while Fuseki is stopped.
+- **Default.** The Data Consumer policy grants it through its own rule,
+  `DataConsumerPolicy-ExecuteSparqlQuery-Rule`. Every user inherits Data Consumer through the
+  Organization team, so users can run agent SPARQL queries on a fresh install and after upgrading
+  to 2.1.0. The upgrade adds the rule to an existing `DataConsumerPolicy` once; if you delete it
+  afterwards, later upgrades do not restore it. The upgrade skips the rule if no allow rule of
+  Data Consumer lists `ViewAll` any more, for example because you removed it. In that case add
+  the rule yourself if you want the default.
+- **Restricted viewing.** The endpoint evaluates queries over the whole projected graph and does
+  not filter by asset (#33224). If you restrict what users can view through custom policies,
+  **delete `DataConsumerPolicy-ExecuteSparqlQuery-Rule`**, or those users can query assets they
+  cannot otherwise see. The upgrade only notices that `ViewAll` was removed from Data Consumer. It
+  does not notice a `ViewAll` narrowed by a condition or to specific resources, or deny rules in
+  other policies such as domain-only or conditional-deny policies, so check for those yourself
+  before or after upgrading.
+- **Opting out.** Delete that rule to withdraw the grant from everyone. To withdraw it from
+  specific users, give them a role with a deny rule for `ExecuteSparqlQuery`; a deny rule wins
+  over the inherited grant. Admins always pass.
+- **Granting selectively.** With the rule deleted, grant the operation to chosen roles with a
+  policy rule that names `ExecuteSparqlQuery`. A wildcard `All` allow rule does not grant it.
+
+`GET /v1/permissions/rdf?user=<name>` reports the effective result for a user.
 
 ## Capacity planning
 
@@ -182,14 +172,23 @@ short interval, or a SQL outage that prevents enqueueing, is outside the queue's
 Enqueue failures are logged and degrade projection health when SQL is available; a failed health
 write is retried while that process remains alive. This is not a transactional metadata outbox.
 
+During a rolling upgrade from a release before 2.1.0, reasoning freshness can report results as
+current that are not. Older servers enqueue without recording
+`rdf_projection_health.enqueuedWatermark`. A 2.1.0 server that delivers or dead-letters such a
+write records its ID, but an older server that drains it removes the only trace of that write. An
+older server's blue/green promotion also switches datasets without assigning a new generation.
+Avoid blue/green rebuilds until every server runs 2.1.0, and refresh reasoning after the last older
+server stops.
+
 ## Write throughput
 
-TDB2 is a single-writer store, and the indexing pipeline is built around that fact: partition
-workers read and translate entities in parallel, but all writes for a dataset funnel through a
+TDB2 is a single-writer store, and the indexing pipeline is built around that fact: reader
+threads load and translate entities in parallel, but all writes for a dataset funnel through a
 single sink writer with **exactly one in-flight request**. Adding client threads does not add
 write throughput by design — reader parallelism keeps the writer fed, and the writer keeps exactly
 one transaction open on Fuseki at a time, so client timeouts measure actual server work instead of
-queue position.
+queue position. For the same reason a reindex runs on one server: spreading it across servers
+would add readers, but every write would still wait for the same Fuseki writer.
 
 Live metadata hooks persist replayable operations in `rdf_live_write_queue` after the metadata
 transaction commits, then execute asynchronously. A database fence permits one live writer across
@@ -220,9 +219,9 @@ Throughput therefore depends on the number and size of write transactions:
   upload before acquiring TDB2's writer, then checks the operation deadline during parsing and
   before commit. Only gzip is supported.
 
-The supplied image includes a Graph Store extension. Its defaults are 50 seconds per upload,
-64 MiB decompressed per request, and 16 simultaneous receivers. Override the first two through
-`JVM_ARGS` properties `openmetadata.fuseki.writeTimeoutMs` and `openmetadata.fuseki.maxUploadBytes`.
+The image includes a Graph Store extension (`OPENMETADATA_EXTENSION_ENABLED=true`). Its defaults
+are 50 seconds per upload, 64 MiB decompressed per request, and 16 simultaneous receivers. Override
+the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`.
 Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
 used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
 read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
@@ -277,50 +276,51 @@ memory-mapped, so starving page cache is a common cause of slow reads and writes
 ### Reading the run record's stage timings
 
 `readerTimeMs`, `processTimeMs` and `sinkTimeMs` on a run record are **aggregate work summed across
-concurrent workers**, not elapsed time. Reading runs on one worker per partition and translation on
-a pool of up to 50 threads, so those two stages overlap both each other and the writer. The
-consequence is deliberate but easy to misread: **the stage times can add up to more than the run
-actually took.** In the two-partition measurement below, the stages summed to 19.8 s for a run whose
-wall clock was 12.0 s — that gap is the parallelism working, not an error.
+concurrent threads**, not elapsed time. Reading runs on the reader threads and translation on a pool
+of up to 50 threads, so those two stages overlap both each other and the writer. The consequence is
+deliberate but easy to misread: **the stage times can add up to more than the run actually took.**
+In the four-reader measurement below, reading alone summed to 70 s in a run that took 41.5 s —
+that gap is the parallelism working, not an error.
 
 Read them as "where did this run spend its effort", and take elapsed time from the run record's
 `startTime`/`endTime`. The one stage that does approximate wall clock is `sinkTimeMs`: RDF writes are
 serialized to a single in-flight request, so there is nothing for it to overlap with.
 
-### Partition size decides read concurrency
+### Reader threads decide read concurrency
 
-Measured end to end (`RdfIndexAppScaleIT`, 2,000 tables, Fuseki 6.2.0), the **read stage is about
-three quarters of a run** — 11.6 s of a 15.5 s job, against 3.1 s of RDF writes and 0.6 s of
-translation. Reading is not wasteful: the RDF mapper needs an entity's full field set, because a
-search-index-style subset silently drops triples. It is simply the largest stage.
+A reindex pages each entity type by keyset, which fetches stored rows only, and hands each page to
+one of `producerThreads` reader threads, which load the entity's full field set — the expensive
+part of a read, because the RDF mapper needs every field — and pass it to the writer. A type of any
+size is read by every reader thread at once.
 
-A partition is the unit of read concurrency — one worker reads one partition at a time — so the
-number of partitions caps how much of that stage runs in parallel:
+Measured end to end on one catalog of 10,000 tables, every hundredth of them 500 columns wide, with
+Fuseki 6.2.0 on a 4 GiB heap. Each time is the mean of three runs and includes clearing and
+compacting the dataset, about 11.5 s of every run:
 
-| `partitionSize` | Effective size | Partitions | App wall clock |
-| ---: | ---: | ---: | ---: |
-| `10000` (default) | 6,666 after the entity complexity factor | 1 | 15.5 s |
-| `1000` (the floor) | 1,000 | 2 | **12.0 s** |
+| Reindex | App wall clock | Records / s |
+| --- | ---: | ---: |
+| `producerThreads: 4` (default) | 43.3 s | 231 |
+| `producerThreads: 8` | 42.9 s | 233 |
+| The distributed mode this replaced, at its defaults | 77.4 s | 129 |
 
-Going from one reader to two cut wall clock 23%, and the summed stage time (19.8 s) exceeding wall
-clock (12.0 s) is the proof that partitions really did run concurrently.
+Beyond four readers the single writer is busy most of the run, so more readers help only a little.
+Raise `producerThreads` when `readerTimeMs` dominates and `sinkTimeMs` is well below the run's
+duration; otherwise the writer, not reading, is the limit.
 
-The practical consequence: **with the default, any entity type holding fewer than ~6,700 rows gets a
-single partition and reindexes single-threaded**, however many servers or cores are available. If a
-catalog is small or mid-sized and a rebuild looks slower than these numbers suggest, lower
-`partitionSize` (1,000 is the floor) so the type spans several partitions. Large catalogs already
-produce plenty of partitions and need no change — and more partitions are not free, since each
-carries claim and heartbeat traffic.
+Loaded pages wait in memory for the writer, so a run reads ahead at most two pages per reader
+thread and at most about 4,000 loaded entities, never fewer than two pages. A larger `batchSize`
+therefore shortens the read-ahead rather than multiplying memory: at `batchSize: 1000` four pages
+are in flight whatever `producerThreads` is.
 
 ### What not to tune
 
-- **Do not raise `consumerThreads` or `producerThreads` to fix slow indexing.** Writes are
-  single-file by design; extra workers only speed up the read/translate side, which is rarely the
-  bottleneck.
+- **Do not raise `producerThreads` past the point where `sinkTimeMs` approaches the run's
+  duration.** Writes are single-file by design; extra readers only speed up the read/translate
+  side, and once the writer is saturated they add database load without making the run faster.
 - **Do not raise `RDF_WRITE_MAX_RETRIES` when requests are timing out.** The client-side deadline
   does not cancel the server-side update — Fuseki keeps parsing and committing the abandoned
   request, so each same-size retry multiplies server load. (The server-side `arq:updateTimeout` in
-  the shipped `config.ttl` bounds this damage, but retry storms still waste the writer.)
+  `FUSEKI_UPDATE_TIMEOUT_MS` bounds this damage, but retry storms still waste the writer.)
 - **Fuseki sizing is the primary unlock for wide-table catalogs.** Before touching batch or retry
   settings, give Fuseki production resources: at least 2 CPU cores (request = limit in the shipped
   manifest), heap per the capacity table above, container memory headroom beyond `-Xmx` for TDB2's
@@ -352,6 +352,12 @@ thrashes the database. Two mechanisms keep them apart:
   and defers, re-checking every 60 s for up to 30 minutes. If the search run still hasn't finished,
   the RDF run ends `STOPPED` with an explanatory message and waits for its next scheduled slot.
   **On-demand runs bypass the guard** (operator intent wins) with a warning in the logs.
+- **One run at a time.** Every run takes the `rdf_reindex_lock` row before anything else, including
+  the admission-guard wait, and renews it every 30 s until it has reported its final status. A run
+  that finds the lock held, such as a scheduled run meeting an on-demand run, ends `STOPPED` with a
+  message naming the run that holds it, rather than failing. An on-demand run triggered while a
+  scheduled run waits for the guard is skipped the same way; stop the waiting run to start at once.
+  The lock of a run whose server stopped expires after five minutes.
 
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
@@ -360,19 +366,24 @@ weekly schedule. Custom schedules and applications with scheduling disabled are 
 
 By default a `recreateIndex` run clears the served dataset before it starts repopulating it, so
 every query returns partial results until the run finishes — on a large catalog that window is
-measured in hours. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
+measured in hours. From the clear until a complete rebuild finishes, `GET /v1/rdf/status` reports
+`DEGRADED`. The rebuild runs on the one server that started it and is not resumed elsewhere: if that
+server stops mid-run (a rolling deploy, an OOM kill, a node drain), the graph stays partial, and
+`DEGRADED`, until the next rebuild completes. Use blue/green for catalogs whose rebuild takes long
+enough to overlap a deploy; an interrupted blue/green run leaves the previous graph serving. Enabling **Blue/Green Rebuild** in the RDF Indexing application's configuration
 (alongside *Recreate RDF Store*) changes the shape of a rebuild:
 the run builds into an idle second dataset and switches to it only after the build succeeds, so the
-previous graph keeps serving until cutover, and its dataset is retained until the next rebuild
-reuses it.
+previous graph keeps serving until cutover. Once the new dataset serves, the run empties and
+compacts the previous one, which nothing reads again. A run that fails or is stopped leaves its
+half-built dataset in place for inspection; the next rebuild clears it.
 
 Builds alternate between the fixed `openmetadata_a` and `openmetadata_b` names derived from the
-configured endpoint. The original `openmetadata` directory remains present too: allow space for
-up to three dataset copies plus compaction headroom until an operator retires the unused original.
+configured endpoint. The original `openmetadata` dataset is emptied the same way once a promotion
+retires it, so between runs only the serving dataset holds a full copy.
 Custom endpoint names need matching base, `_a`, and `_b` assembler declarations.
 
-The coordinator persists the selected dataset, rebuild generation, and payload budget on the job.
-Workers use those immutable values. Live writes commit a mutation journal entry before contacting
+The run records the selected dataset, rebuild generation, and payload budget on the job, and
+every write of the run uses those immutable values. Live writes commit a mutation journal entry before contacting
 Fuseki and route under the shared SQL fence. Promotion replays the journal into the completed
 snapshot, then atomically checks the final watermark and changes the pointer. Each pod consults
 that pointer when routing; there is no polling delay after cutover. Promotion also marks
@@ -380,7 +391,7 @@ materialized inference rules dirty in the same transaction so their output can b
 
 The journal is bounded to 256 MiB or 100,000 mutations. Exhaustion or inability to capture a
 mutation fails the rebuild while allowing the live mutation to proceed against the serving graph.
-A 120-second lease, renewed every 30 seconds, fences abandoned workers. A new run can reclaim an
+A 120-second lease, renewed every 30 seconds, fences an abandoned run. A new run can reclaim an
 expired target; stale generation handles cannot write to it. Catch-up has a five-minute budget.
 An uncertain **build** write quarantines its generation to prevent a delayed request corrupting
 an immediately reused target. After restarting Fuseki to terminate outstanding requests, an
@@ -404,26 +415,66 @@ idle dataset's disk entirely, stop Fuseki and remove the unused
 
 ## Compaction and disk growth
 
-OpenMetadata requests Fuseki compaction after clearing a recreate run and after indexing its
-records. Blue/green runs compact the target before promotion so live writers can continue using
-the serving dataset. In-place runs compact after reporting completion. TDB2 copies index pages
-even during insert-only writes; clearing and compacting an
-empty target does not reclaim the obsolete pages created during its subsequent rebuild. Larger
-bounded batches reduce transaction churn, but the volume must still accommodate peak usage before
-compaction. See the [scale validation](rdf-scale-validation.md) for measurements and workload settings.
-Compaction is best-effort: an indexing run can succeed even if disk reclamation fails.
+TDB2 never reuses space on its own. Every write transaction copies the index pages it touches,
+and the old pages stay on disk until the dataset is compacted. A store that only receives live
+writes therefore grows with every entity change: a full rewrite of one entity costs several
+hundred kilobytes, so a nightly ingestion that changes tens of thousands of entities adds tens of
+gigabytes. Only compaction returns that space, and it needs free space about the size of the live
+data to copy it into.
 
-To compact manually:
+OpenMetadata compacts the serving dataset itself:
+
+- **On a schedule.** One server compacts every `RDF_COMPACTION_INTERVAL_HOURS`, while the RDF
+  reindex lock keeps it from overlapping an indexing run.
+- **When the store runs low.** The `openmetadata/fuseki` image's storage extension reports the
+  volume at `GET /$/openmetadata/storage`. A store without it reports nothing, and maintenance runs
+  on the schedule only. When free space falls below `RDF_URGENT_COMPACTION_FREE_PERCENT`,
+  or the image's write guard is refusing writes, the next check (every 15 minutes) compacts without
+  waiting for the interval. If a compaction cannot bring the store back above that threshold, the
+  live graph or other datasets fill the volume: urgent compactions then stop for one interval,
+  while the scheduled compaction still runs, and the server logs that the volume needs expanding.
+- **During indexing.** A recreate run clears the dataset, compacts it while it is empty, and
+  compacts again after loading. When the image's write guard refuses the clear, the run compacts
+  to free the old pages and clears again once, so a reindex also recovers a full volume. Blue/green
+  runs compact the target before promotion and empty the dataset the promotion retires.
+
+Fuseki blocks every writer to a dataset for the whole compaction, so OpenMetadata pauses its own
+writes to the serving dataset first, on every server. Queued live writes wait in SQL and are
+applied once the pause ends; waiting does not count as a failed delivery attempt and does not mark
+the projection degraded. Other writes wait for the pause for up to `RDF_REQUEST_TIMEOUT_MS`, then
+get HTTP 503 with `Retry-After`. A write that times out while Fuseki compacts, whoever started the
+compaction, is retried the same way. Maintenance never overlaps a reindex or an inference run, and a
+server's first check runs five minutes after it starts.
+`RDF_MAINTENANCE_MAX_DURATION_MINUTES` bounds how long a compaction, or the clear that starts a
+recreate run, may hold that pause. Both run under this budget rather than the per-request timeout:
+Fuseki cannot cancel a `CLEAR`, so a shorter budget would only abandon a clear that still completes.
+
+The same extension also refuses writes, with HTTP 507 Insufficient Storage, once the
+volume has less free space than `OPENMETADATA_STORAGE_MIN_FREE` (10% by default). TDB2 memory-maps
+its files, so a write on a full volume does not fail cleanly: the JVM gets SIGBUS and exits on every
+restart. The guard keeps the volume from filling and leaves room to compact, as long as the reserve
+is at least the size of the live data, which is what a compaction copies. OpenMetadata treats its
+refusal like the maintenance pause.
+
+Each compaction is logged, and timed by result in `ontology.rdf.compaction`; alert on
+`ontology.rdf.compaction.last.success` falling behind the interval. Every server reports the
+cluster's last successful maintenance compaction there. Once none has succeeded for two intervals,
+whatever the reason, each check logs an error and `GET /api/v1/rdf/status` reports
+`projectionState: DEGRADED` until the next one succeeds. A compaction Fuseki could not start is
+retried at the next check. One it started and that did not succeed is logged as an error
+and waits for the next interval: when the volume has less free space than the live data, the copy
+fails or restarts Fuseki, and a retry would only do the same. A copy that failed stays allocated
+until Fuseki restarts, so expand the volume, then restart Fuseki. To compact by hand:
 
 ```bash
 curl -u admin:<password> -X POST \
   'http://localhost:3030/$/compact/openmetadata?deleteOld=true'
 ```
 
-Fuseki returns an asynchronous task identifier. Inspect active and completed tasks at `/$/tasks`
-and confirm the data volume has enough space for both the old and replacement datasets. TDB2 index
-growth can reflect small transactions, failed or skipped compaction, or a volume that filled before
-compaction completed. [Jena storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html).
+Fuseki returns an asynchronous task identifier; `/$/tasks/<id>` reports `success` once it has
+finished. Writes to the dataset wait until it does. See the
+[Jena storage FAQ](https://jena.apache.org/documentation/tdb/faqs.html) and the
+[scale validation](rdf-scale-validation.md) for measurements.
 
 ## Configuration reference
 
@@ -460,8 +511,12 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_SHACL_VALIDATION_MODE` | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | `false` |
 | `RDF_STRICT_OWL_PROFILE` | `true` |
-| `RDF_ASK_COLLATE_ENABLED` | `false` |
+| `RDF_AI_ENABLED` | `false` |
 | `RDF_FEDERATION_ENABLED` | `false` |
+| `RDF_STORAGE_MAINTENANCE_ENABLED` | `true` |
+| `RDF_COMPACTION_INTERVAL_HOURS` | `24` |
+| `RDF_MAINTENANCE_MAX_DURATION_MINUTES` | `240` |
+| `RDF_URGENT_COMPACTION_FREE_PERCENT` | `50` |
 
 Use `RDF_ENDPOINT` for new deployments. `RDF_REMOTE_ENDPOINT` remains a deprecated fallback for
 backward compatibility, and `RDF_ENDPOINT` takes precedence when both are set. Override the
@@ -474,8 +529,8 @@ Useful Fuseki administration endpoints are:
 - `/$/ping` for liveness and readiness.
 - `/$/stats` for dataset and operation statistics.
 - `/$/metrics` for **Prometheus-format metrics** — scrape this in production; it exposes request
-  counts and latency per endpoint alongside JVM memory and GC figures. It requires basic auth in
-  the shipped `shiro.ini`; configure the Prometheus scrape with the dedicated Fuseki credentials.
+  counts and latency per endpoint alongside JVM memory and GC figures. It requires basic auth,
+  like every path except `/$/ping`; configure the Prometheus scrape with the Fuseki credentials.
 - `/$/tasks` for compaction and other asynchronous administration work.
 
 On the OpenMetadata side:
@@ -486,6 +541,9 @@ On the OpenMetadata side:
 - Per-record indexing failures persist in the `rdf_index_failures` table, are wiped at the start of
   each run, and are queryable at `GET /v1/rdf/reindex/failures` (also surfaced by the RDF app's
   "View Reindex Failures" button in the UI).
+- A server that starts while an RDF run is executing on another server leaves that run alone. When
+  the run's own server stopped, its run record is marked failed once its reindex lock expires,
+  within about six minutes, with a message naming the server that stopped renewing the lock.
 
 Monitor indexing records per second, SPARQL update latency, container RSS, page-cache availability,
 persistent-volume usage, and journal growth. OpenMetadata logs `RDF circuit breaker is open` after
@@ -494,9 +552,15 @@ credentials, and network reachability before increasing retries.
 
 ## Inference
 
-Materialized inference is the production path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs.
+Materialized inference is the only inference path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs. SPARQL queries see that output when they request `inferenceLevel=custom`.
 
-Legacy in-process inference is bounded by `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` and refuses to copy a larger store into the OpenMetadata JVM. Keep the default bound unless a measured small deployment has enough heap. Use SPARQL 1.1 property paths for request-specific traversal; they execute inside Fuseki without copying the graph.
+`inferenceLevel=none`, the default, reads asserted data only. Fuseki's union default graph also holds the rule graphs (`<baseUri>graph/inferred/<rule>`), so while materialized inference is enabled OpenMetadata runs such a query with every other named graph as its dataset (`FROM` and `FROM NAMED`). The complete-lineage endpoint, the RDF insights and the agent SPARQL endpoint read asserted data the same way. A query that declares its own `FROM` or `FROM NAMED` runs as written. Each server reads the graph list from Fuseki and relists after its own write names a graph the list lacks, or after a blue/green promotion; a background refresh every two minutes picks up graphs created by another server or written to Fuseki directly, so those can be missing from `none` results until then. Inferred graphs are never included (ADR:2026-10-11-asserted-only-rdf-reads-name-every-non-inferred-graph). Jena evaluates a query over several `FROM` graphs through a read-only union view rather than TDB2's native union default graph, so expect `none` queries over large datasets to cost more than `custom` ones. Disabling materialized inference does not empty the rule graphs: clear `graph/inferred/*` first, or `none` queries include them again.
+
+A run recomputes the whole rule bundle whenever any rule is dirty, because rules read each other's conclusions; a requested rule name only has to exist. The run empties every rule graph, then applies the enabled rules in passes until a pass derives nothing new, so conclusions of facts removed since the last run disappear. While a run is in progress, `custom` queries see an incomplete closure. A run that needs more than 64 passes fails and leaves its rules dirty, as does any rule the store rejects. Changes that arrive during a run, whether graph writes or rule edits, keep the affected rules dirty for the next run. When a run runs out of passes after such changes, the growing input rather than the rules kept it from converging: it stops without recording an error, leaves every rule dirty, and ends `STOPPED` (`409` on demand).
+
+Only one run executes at a time across the cluster. A scheduled run that finds another in progress ends `STOPPED`; an on-demand `POST /v1/rdf/rules/materialize` returns `409`. The run holds a five-minute lease in `rdf_reindex_lock`, renewed every 30 seconds, so a server that stops mid-run blocks others for at most five minutes. A run whose lease another server takes over, for example after its renewals stalled past the expiry, stops at its next update and leaves the rule status to the run that took over, ending `STOPPED` (`409` on demand). A run that stops waiting for an update at `requestTimeoutMs` keeps its lease until it expires instead of releasing it, because Fuseki may still be applying that update; keep `arq:updateTimeout` well under five minutes so the update ends first. Deleting a rule empties its graph at once, or through the next run when one is in progress. The `transitive-lineage-closure` starter rule ships disabled, because it stores every ancestor/descendant pair; prefer `prov:wasDerivedFrom+` anchored to the assets in question. Stored rules that no longer pass validation are disabled before they next run, with the reason in their `lastError`.
+
+OpenMetadata no longer runs reasoners in its own process. `RDF_INFERENCE_ENABLED`, `RDF_DEFAULT_INFERENCE_LEVEL`, and `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` are ignored, with a startup warning when `RDF_INFERENCE_ENABLED` is set, and SPARQL requests for `rdfs` or `owl` inference return `503`. Use SPARQL 1.1 property paths for request-specific traversal; they execute inside Fuseki without copying the graph.
 The complete-lineage endpoint intentionally does not impose a row limit on its property-path query.
 Size `RDF_REQUEST_TIMEOUT_MS`, Fuseki resources, and client response handling for the largest
 lineage graph operators can request. Semantic search is not an exhaustive traversal: each seed
@@ -516,8 +580,8 @@ The original `RdfWritePathScaleHarness` measurements used Fuseki 6.2.0 in Docker
 | 100k entities | piped RDF Thrift | 158 s | 632 |
 
 These are historical results from before complete-payload staging and durable rebuild coordination.
-The measurements below also predate the active Lucene indexes; rerun the harness with the shipped
-assembler to include text-index maintenance in write-throughput measurements.
+The measurements below were taken on the retired in-repo image, before it gained Lucene indexes;
+the published image has none.
 They compare transports on this branch, not this branch against `origin/main`, and do not establish
 current indexing-app or live-event throughput. The harness exercises translation and storage;
 `scripts/rdf-reindex-benchmark.sh` instead triggers the complete indexing app.
@@ -552,7 +616,7 @@ Two scripts turn the guidance above into checks against a real stack:
 
 # Add the runaway-UPDATE check: submits a deliberately expensive UPDATE and asserts
 # the server aborts it near arq:updateTimeout. Takes ~1 minute, and is the direct
-# proof that the --config launch (not --loc) is in effect.
+# proof that FUSEKI_UPDATE_TIMEOUT_MS reached the server.
 ./docker/docker-compose-quickstart/test-rdf-services.sh --with-timeout-test
 ```
 

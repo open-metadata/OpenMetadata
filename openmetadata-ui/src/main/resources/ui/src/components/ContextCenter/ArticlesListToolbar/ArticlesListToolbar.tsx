@@ -11,23 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  Dropdown,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown, Sort } from '@openmetadata/ui-core-components/icons';
 import { ReactNode } from 'react';
-import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ArticleSortOption } from '../../../constants/ContextCenter.constants';
-
-const SORT_BUTTON_CLS =
-  'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
-  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:outline-1 tw:-outline-offset-1' +
-  ' tw:cursor-pointer tw:transition tw:duration-100 tw:ease-linear' +
-  ' hover:tw:outline-brand tw:whitespace-nowrap tw:bg-primary tw:outline-primary';
 
 export interface ArticlesListToolbarProps {
   quickFilters: ReactNode;
@@ -70,19 +58,14 @@ const ArticlesListToolbar = ({
           </Button>
         )}
         <Dropdown.Root>
-          <AriaButton
-            className={SORT_BUTTON_CLS}
-            data-testid="articles-sort-button">
-            <Sort className="tw:text-quaternary" size={14} />
-            <Typography className="tw:text-secondary" weight="medium">
-              {t(selectedSortLabel)}
-            </Typography>
-            <ChevronDown
-              className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-              size={16}
-              strokeWidth={2.5}
-            />
-          </AriaButton>
+          <Button
+            color="secondary"
+            data-testid="articles-sort-button"
+            iconLeading={Sort}
+            iconTrailing={ChevronDown}
+            size="md">
+            {t(selectedSortLabel)}
+          </Button>
           <Dropdown.Popover className="tw:w-56">
             <Dropdown.Menu
               selectedKeys={[selectedSortId]}

@@ -89,7 +89,7 @@ const rdfStatus = (
   overrides: Partial<RDFStatus> = {},
   inferenceEnabled = true
 ): RDFStatus => ({
-  askCollateEnabled: false,
+  aiEnabled: false,
   baseUri: 'https://om.example.com',
   enabled: true,
   inference: {

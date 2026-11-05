@@ -23,12 +23,15 @@ from itertools import groupby, product
 from typing import Any
 from urllib.parse import quote, urlparse
 
-from cachetools import LRUCache
+from cachetools import LRUCache, TTLCache
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     Kafka as KafkaBrokerConfig,
@@ -60,6 +63,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     EventType,
@@ -106,6 +110,13 @@ logger = ingestion_logger()
 # The cache is reset for every event and capped at this size, so it can never
 # grow without bound or exhaust memory.
 RESOLUTION_CACHE_MAXSIZE = 1000
+
+# Every event re-resolves its datasets against each candidate service, so a
+# table missing from one of them would cost a request per event. Misses are
+# remembered only briefly, so a table ingested during a long run still becomes
+# visible.
+MISSING_ENTITY_CACHE_MAXSIZE = 1000
+MISSING_ENTITY_CACHE_TTL_SECONDS = 300
 
 # Kinesis Producer Library (KPL) aggregated-record framing.
 # When the OpenLineage Kinesis transport runs with AggregationEnabled, KPL packs
@@ -216,6 +227,9 @@ class OpenlineageSource(PipelineServiceSource):
             ownership_update_mode=self.source_config.ownershipUpdateMode,
         )
         self._entity_cache: LRUCache = LRUCache(maxsize=10000)
+        self._missing_entity_cache: TTLCache = TTLCache(
+            maxsize=MISSING_ENTITY_CACHE_MAXSIZE, ttl=MISSING_ENTITY_CACHE_TTL_SECONDS
+        )
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
         self._db_service_type_map: dict[str, str] = self._build_db_service_type_map()
@@ -525,26 +539,34 @@ class OpenlineageSource(PipelineServiceSource):
         The cache key includes the requested ``fields`` so a call asking for
         e.g. ``fields=["columns"]`` never gets served a stale response cached
         by an earlier, differently-fielded call for the same entity.
+
+        An entity that does not exist is remembered for a short time,
+        regardless of the requested fields.
         """
         if not hasattr(self, "_entity_cache"):
             return self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
         fields_key = ",".join(sorted(kwargs.get("fields") or []))
         key = f"{entity_class.__name__}:{fqn_str}:{fields_key}"
-        if key not in self._entity_cache:
-            result = self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
-            if result is not None:
-                self._entity_cache[key] = result
-            return result
-        return self._entity_cache[key]
+        if key in self._entity_cache:
+            return self._entity_cache[key]
+        missing_key = f"{entity_class.__name__}:{fqn_str}"
+        if missing_key in self._missing_entity_cache:
+            return None
+        result = self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
+        if result is None:
+            self._missing_entity_cache[missing_key] = True
+        else:
+            self._entity_cache[key] = result
+        return result
 
     @staticmethod
-    def _match_column_name(table, field_name: str) -> str:
+    def _match_column_name(table, field_name: str) -> str | None:
         """Resolve an OpenLineage field name to the real stored column name, case-insensitively."""
         lower = field_name.lower()
         for column in getattr(table, "columns", None) or []:
             if column.name.root.lower() == lower:
                 return column.name.root
-        return lower
+        return None if table and table.tableType == TableType.Sharded else lower
 
     def _build_db_service_type_map(self):
         """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
@@ -641,15 +663,26 @@ class OpenlineageSource(PipelineServiceSource):
         resolved = services is not None
         found = []
         for db_service in services or self.get_db_service_names():
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=db_service,
-                database_name=table_details.database,
-                schema_name=table_details.schema,
-                table_name=table_details.name,
-            )
-            if result:
+            key = ("TableReference", db_service, table_details.database, table_details.schema, table_details.name)
+            if hasattr(self, "_missing_entity_cache") and key in self._missing_entity_cache:
+                continue
+            if hasattr(self, "_entity_cache") and key in self._entity_cache:
+                matches = (self._entity_cache[key],)
+            else:
+                matches = get_table_binding_resolution(self.metadata, db_service).resolve(
+                    TableReference(table_details.database, table_details.schema, table_details.name),
+                    service_name=db_service,
+                    lookup=TableLookup.FQN,
+                )
+                if not matches and hasattr(self, "_missing_entity_cache"):
+                    self._missing_entity_cache[key] = True
+            if len(matches) > 1:
+                raise AmbiguousServiceException("Dataset reference resolves to multiple tables")
+            result = model_str(matches[0].fullyQualifiedName) if matches else None
+            if result and matches:
+                if hasattr(self, "_entity_cache"):
+                    self._entity_cache[f"Table:{result}:"] = matches[0]
+                    self._entity_cache[key] = matches[0]
                 if not resolved:
                     return result
                 found.append(result)
@@ -859,12 +892,16 @@ class OpenlineageSource(PipelineServiceSource):
                     if not input_table_fqn:
                         continue
                     input_table_entity = self._get_by_name_cached(Table, input_table_fqn, fields=["columns"])
+                    output_column = self._match_column_name(output_table_entity, field_name)
+                    input_column = self._match_column_name(input_table_entity, input_field.get("field", ""))
+                    if not output_column or not input_column:
+                        continue
                     _result.append(  # output table, input table, output column, input column
                         (
                             output_table_fqn,
                             input_table_fqn,
-                            f"{output_table_fqn}.{self._match_column_name(output_table_entity, field_name)}",
-                            f"{input_table_fqn}.{self._match_column_name(input_table_entity, input_field.get('field', ''))}",
+                            f"{output_table_fqn}.{output_column}",
+                            f"{input_table_fqn}.{input_column}",
                         )
                     )
 
@@ -1187,46 +1224,60 @@ class OpenlineageSource(PipelineServiceSource):
             raise InvalidSourceException(f"Unsupported broker config type: {type(broker)}")
 
     def _poll_kafka(self, broker: KafkaBrokerConfig) -> Iterable[OpenLineageEvent]:
-        """Poll events from Kafka topic."""
+        """Poll events from Kafka topic.
+
+        A message's offset is stored only when the topology resumes this generator,
+        that is once the event it carries has been processed. The consumer commits
+        stored offsets in the background and on close, so a run that stops mid-event
+        reads that event again next time instead of losing it.
+        """
         try:
             consumer = self.client
             session_active = True
             empty_msg_cnt = 0
             pool_timeout = broker.poolTimeout
+            # Next unprocessed offset per partition. Nothing polls while the topology
+            # processes an event, so a long one outlasts max.poll.interval.ms and the
+            # consumer is evicted from its group. It drops the offset stored meanwhile
+            # and, once rejoined, hands back events this run already processed.
+            next_offsets: dict[int, int] = {}
             while session_active:
                 message = consumer.poll(timeout=pool_timeout)
-                if message is None:
-                    logger.debug("no new messages")
+                if message is None or message.error():
+                    if message is None:
+                        logger.debug("no new messages")
+                    else:
+                        logger.warning(f"Kafka consumer error: {message.error()}")
                     empty_msg_cnt += 1
                     if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
-                        session_active = False
-                elif message.error():
-                    logger.warning(f"Kafka consumer error: {message.error()}")
-                    empty_msg_cnt += 1
-                    if empty_msg_cnt * pool_timeout > self.service_connection.sessionTimeout:
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")
                     empty_msg_cnt = 0
-                    try:
-                        _result = message_to_open_lineage_event(json.loads(message.value()))
-                        result = self._filter_event_by_types(
-                            _result,
-                            [EventType.COMPLETE, EventType.RUNNING, EventType.START],
-                        )
-                        if result:
-                            yield result
-                    except Exception as e:
-                        logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")
-                        logger.debug(traceback.format_exc())
+                    partition, offset = message.partition(), message.offset()
+                    if offset < next_offsets.get(partition, 0):
+                        logger.debug("Skipping offset %s of partition %s, already processed", offset, partition)
+                    else:
+                        try:
+                            _result = message_to_open_lineage_event(json.loads(message.value()))
+                            result = self._filter_event_by_types(
+                                _result,
+                                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+                            )
+                            if result:
+                                yield result
+                        except Exception as e:
+                            logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")
+                            logger.debug(traceback.format_exc())
+                        next_offsets[partition] = offset + 1
+                    consumer.store_offsets(message=message)
 
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")  # noqa: B904, RUF010
 
         finally:
-            # Close down consumer to commit final offsets.
-            # @todo address this
+            # Commits the offsets stored for processed events and leaves the group.
             consumer.close()
 
     def _poll_kinesis(self, broker: KinesisBrokerConfig) -> Iterable[OpenLineageEvent]:

@@ -33,6 +33,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.BotUserNotFoundException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -87,7 +88,7 @@ public class OpenMetadataConnectionBuilder {
   private String getBotFromPipeline(IngestionPipeline ingestionPipeline) {
     String botName;
     switch (ingestionPipeline.getPipelineType()) {
-      case METADATA, DBT, POLICY_AGENT -> botName = Entity.INGESTION_BOT_NAME;
+      case METADATA, DBT, POLICY_AGENT, REVERSE_METADATA -> botName = Entity.INGESTION_BOT_NAME;
       case AUTO_CLASSIFICATION -> botName = "autoClassification-bot";
       case APPLICATION -> {
         String type = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
@@ -193,7 +194,7 @@ public class OpenMetadataConnectionBuilder {
   private User retrieveBotUser(String botName) {
     User botUser = retrieveIngestionBotUser(botName);
     if (botUser == null) {
-      throw new IllegalArgumentException(
+      throw new BotUserNotFoundException(
           String.format("Please, verify that the bot [%s] is present.", botName));
     }
     return botUser;

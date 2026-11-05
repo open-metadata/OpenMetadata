@@ -12,7 +12,7 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import { Package, Plus } from '@untitledui/icons';
+import { Package, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -205,8 +205,9 @@ const MarketplaceDataProductsWidget = ({
   if (loading) {
     return (
       <div
-        className="marketplace-widget-section"
-        data-testid="marketplace-dp-widget">
+        className="marketplace-widget-section tw:bg-surface"
+        data-testid="marketplace-dp-widget"
+        data-tour-step="data-marketplace">
         <Loader size="small" />
       </div>
     );
@@ -214,8 +215,9 @@ const MarketplaceDataProductsWidget = ({
 
   return (
     <div
-      className="marketplace-widget-section"
-      data-testid="marketplace-dp-widget">
+      className="marketplace-widget-section tw:bg-surface"
+      data-testid="marketplace-dp-widget"
+      data-tour-step="data-marketplace">
       <div className="marketplace-widget-header">
         <div>
           <Typography
@@ -242,8 +244,9 @@ const MarketplaceDataProductsWidget = ({
               <Button
                 color="secondary"
                 data-testid="add-data-product-btn"
+                iconLeading={Plus}
                 onPress={openDrawer}>
-                + {t('label.add-entity', { entity: t('label.data-product') })}
+                {t('label.add-entity', { entity: t('label.data-product') })}
               </Button>
             )}
             {totalCount > DISPLAY_COUNT && (

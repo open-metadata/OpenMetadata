@@ -14,11 +14,9 @@
 import { waitFor } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Include } from '../../generated/type/include';
 import { useFqn } from '../../hooks/useFqn';
 import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
@@ -112,10 +110,6 @@ jest.mock('react-router-dom', () => ({
     .mockReturnValue({ fqn: 'api.collection.v1', tab: 'api_endpoint' }),
   useLocation: jest.fn().mockReturnValue({ pathname: '/test' }),
 }));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
 
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,

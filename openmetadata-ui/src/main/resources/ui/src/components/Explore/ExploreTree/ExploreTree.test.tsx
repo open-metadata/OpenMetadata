@@ -10,15 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../../context/TourProvider/TourProvider';
+  act,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import * as miscAPI from '../../../rest/miscAPI';
 import * as searchAPI from '../../../rest/searchAPI';
 import ExploreTree, { getExploreTreeAggregationResponse } from './ExploreTree';
+
+// swc exports are non-configurable getters, so re-export the actual modules as
+// plain objects to keep jest.spyOn (and restoreAllMocks) working on them.
+jest.mock('../../../rest/miscAPI', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../rest/miscAPI'),
+}));
+
+jest.mock('../../../rest/searchAPI', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../rest/searchAPI'),
+}));
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
@@ -51,12 +67,44 @@ const mustLength = (arg: { queryFilter?: unknown }): number =>
       ?.bool?.must ?? []
   ).length;
 
+const getTreeRow = (element: HTMLElement) =>
+  element.closest('[role="row"]') as HTMLElement;
+
+const getExpandButton = (element: HTMLElement) =>
+  within(getTreeRow(element)).getByTestId('tree-expand-btn');
+
 afterEach(() => {
   jest.restoreAllMocks();
+  useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
   window.history.pushState({}, '', '/');
 });
 
 describe('ExploreTree', () => {
+  it.each([
+    ['shows', DEFAULT_DOMAIN_VALUE, true],
+    ['leaves out', 'Finance', false],
+  ])(
+    '%s the empty-tree placeholder when the domain scope is %s',
+    async (_, activeDomain, hasPlaceholder) => {
+      useDomainStore.setState({ activeDomain });
+      jest
+        .spyOn(searchAPI, 'searchQuery')
+        .mockResolvedValue(buildAggregationResponse([]));
+
+      const { queryByTestId } = render(
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      );
+
+      await waitFor(() => {
+        expect(queryByTestId('loader')).not.toBeInTheDocument();
+      });
+
+      expect(Boolean(queryByTestId('no-data-placeholder'))).toBe(
+        hasPlaceholder
+      );
+    }
+  );
+
   it('renders the correct tree nodes', async () => {
     const { getByText, queryByTestId } = render(
       <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
@@ -77,56 +125,6 @@ describe('ExploreTree', () => {
     expect(getByText('label.governance')).toBeInTheDocument();
   });
 
-  it('does not fetch entity counts while the product tour is open', async () => {
-    const searchQuerySpy = jest
-      .spyOn(searchAPI, 'searchQuery')
-      .mockResolvedValue(buildAggregationResponse([]));
-
-    const { queryByTestId } = render(
-      <TourContext.Provider
-        value={
-          {
-            isTourOpen: true,
-          } as Partial<TourProviderContextProps> as TourProviderContextProps
-        }>
-        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
-      </TourContext.Provider>
-    );
-
-    await waitFor(() => {
-      expect(queryByTestId('loader')).not.toBeInTheDocument();
-    });
-
-    expect(searchQuerySpy).not.toHaveBeenCalled();
-  });
-
-  it('fetches entity counts when the product tour closes', async () => {
-    const searchQuerySpy = jest
-      .spyOn(searchAPI, 'searchQuery')
-      .mockResolvedValue(buildAggregationResponse([]));
-
-    const renderWithTour = (isTourOpen: boolean) => (
-      <TourContext.Provider
-        value={
-          {
-            isTourOpen,
-          } as Partial<TourProviderContextProps> as TourProviderContextProps
-        }>
-        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
-      </TourContext.Provider>
-    );
-
-    const { rerender } = render(renderWithTour(true));
-
-    expect(searchQuerySpy).not.toHaveBeenCalled();
-
-    rerender(renderWithTour(false));
-
-    await waitFor(() => {
-      expect(searchQuerySpy).toHaveBeenCalled();
-    });
-  });
-
   it('grays out categories that cannot contain the selected asset type', async () => {
     const { getByText, queryByTestId } = render(
       <ExploreTree
@@ -140,15 +138,11 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    const databaseNode = getByText('label.database-plural').closest(
-      '.ant-tree-treenode'
-    );
-    const dashboardNode = getByText('label.dashboard-plural').closest(
-      '.ant-tree-treenode'
-    );
+    const databaseNode = getTreeRow(getByText('label.database-plural'));
+    const dashboardNode = getTreeRow(getByText('label.dashboard-plural'));
 
-    expect(databaseNode).not.toHaveClass('ant-tree-treenode-disabled');
-    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
+    expect(databaseNode).not.toHaveAttribute('aria-disabled', 'true');
+    expect(dashboardNode).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('reports a category-root click as a browse selection, not a quick filter', async () => {
@@ -195,10 +189,7 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    const governanceSwitcher = getByText('label.governance')
-      .closest('.ant-tree-treenode')
-      ?.querySelector('.ant-tree-switcher');
-    fireEvent.click(governanceSwitcher as Element);
+    fireEvent.click(getExpandButton(getByText('label.governance')));
 
     fireEvent.click(getByText('label.glossary-plural'));
 
@@ -210,6 +201,30 @@ describe('ExploreTree', () => {
     expect(fields).toHaveLength(1);
     expect(fields[0].key).toBe('entityType');
     expect(fields[0].value[0].key).toBe('glossaryTerm');
+  });
+
+  it('re-applies a leaf filter when the already-selected leaf is clicked again', async () => {
+    const onFieldValueSelect = jest.fn();
+    const { getByText, queryByTestId } = render(
+      <ExploreTree
+        onFieldValueSelect={onFieldValueSelect}
+        onTreeSelect={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(getExpandButton(getByText('label.governance')));
+    fireEvent.click(getByText('label.glossary-plural'));
+    fireEvent.click(getByText('label.glossary-plural'));
+
+    expect(onFieldValueSelect).toHaveBeenCalledTimes(2);
+    expect(getTreeRow(getByText('label.glossary-plural'))).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
   });
 
   it('counts honor the active quick filter while category visibility tracks the whole estate', async () => {
@@ -268,9 +283,10 @@ describe('ExploreTree', () => {
     // A category with no matches under the filter (Dashboards has 0 tables) is
     // still rendered, because visibility tracks the unfiltered estate.
     expect(getByText('label.dashboard-plural')).toBeInTheDocument();
-    expect(
-      getByText('label.dashboard-plural').closest('.ant-tree-treenode')
-    ).not.toHaveClass('ant-tree-treenode-disabled');
+    expect(getTreeRow(getByText('label.dashboard-plural'))).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 
   it('grays out non-matching categories when a service browse path is active', async () => {
@@ -321,16 +337,12 @@ describe('ExploreTree', () => {
         mustLength(arg) > 0 &&
         JSON.stringify(arg.queryFilter).includes('serviceType')
     );
-    const databaseNode = getByText('label.database-plural').closest(
-      '.ant-tree-treenode'
-    );
-    const dashboardNode = getByText('label.dashboard-plural').closest(
-      '.ant-tree-treenode'
-    );
+    const databaseNode = getTreeRow(getByText('label.database-plural'));
+    const dashboardNode = getTreeRow(getByText('label.dashboard-plural'));
 
     expect(filteredCall).toBeDefined();
-    expect(databaseNode).not.toHaveClass('ant-tree-treenode-disabled');
-    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
+    expect(databaseNode).not.toHaveAttribute('aria-disabled', 'true');
+    expect(dashboardNode).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('grays out non-matching categories when an advanced service filter is active', async () => {
@@ -373,12 +385,10 @@ describe('ExploreTree', () => {
         mustLength(arg) > 0 &&
         JSON.stringify(arg.queryFilter).includes('serviceType')
     );
-    const dashboardNode = getByText('label.dashboard-plural').closest(
-      '.ant-tree-treenode'
-    );
+    const dashboardNode = getTreeRow(getByText('label.dashboard-plural'));
 
     expect(filteredCall).toBeDefined();
-    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
+    expect(dashboardNode).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('reuses the cached unfiltered presence aggregation across filter changes', async () => {
@@ -501,13 +511,9 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    const governanceSwitcher = getByText('label.governance')
-      .closest('.ant-tree-treenode')
-      ?.querySelector('.ant-tree-switcher');
-    fireEvent.click(governanceSwitcher as Element);
+    fireEvent.click(getExpandButton(getByText('label.governance')));
 
-    const tagsNode =
-      getByText('label.tag-plural').closest('.ant-tree-treenode');
+    const tagsNode = getTreeRow(getByText('label.tag-plural'));
 
     // The latest filter (Tier2 → 5) wins; the stale Tier1 (→ 10) is dropped.
     expect(tagsNode).toHaveTextContent('5');
@@ -614,13 +620,51 @@ describe('ExploreTree', () => {
     // Databases is expanded by default and lazy-loads its service types; drill
     // one level deeper into the service so a nested level is mounted.
     const bigQueryNode = await findByText('BigQuery');
-    const switcher = bigQueryNode
-      .closest('.ant-tree-treenode')
-      ?.querySelector('.ant-tree-switcher');
-    fireEvent.click(switcher as Element);
+    fireEvent.click(getExpandButton(bigQueryNode));
 
     expect(await findByText('bigquery_prod')).toBeInTheDocument();
   };
+
+  it('retries a failed lazy load on the next expand', async () => {
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(treeWithServiceMock());
+    const aggregateSpy = jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValue(
+        buildFieldAggregationResponse('service.displayName.keyword', [
+          { key: 'bigquery_prod', doc_count: 900 },
+        ])
+      );
+
+    const { findByText, getByText, queryByTestId } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(getExpandButton(await findByText('BigQuery')));
+
+    // The failed load collapses the node instead of leaving it expanded and
+    // empty, so the next expand fetches again.
+    await waitFor(() => {
+      expect(aggregateSpy).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(getExpandButton(getByText('BigQuery'))).toHaveAttribute(
+        'aria-label',
+        'Expand'
+      );
+    });
+
+    fireEvent.click(getExpandButton(getByText('BigQuery')));
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+    expect(aggregateSpy).toHaveBeenCalledTimes(2);
+  });
 
   it('keeps the expanded subtree mounted when a node is selected (browse)', async () => {
     jest
@@ -704,6 +748,10 @@ describe('ExploreTree', () => {
     await waitFor(() => {
       expect(queryByText('bigquery_prod')).not.toBeInTheDocument();
     });
+
+    // The still-expanded Databases root must re-fetch its children after the
+    // rebuild, otherwise it stays expanded but empty.
+    expect(await findByText('BigQuery')).toBeInTheDocument();
   });
 
   it('does not leak the browse flag from a no-op re-select into a filter change', async () => {

@@ -13,7 +13,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { EntityType } from '../enums/entity.enum';
 import { Directory } from '../generated/entity/data/directory';
 import { File } from '../generated/entity/data/file';
@@ -22,6 +21,7 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
+import { QueryVote } from '../interface/entity/vote.interface';
 import APIClient from './axiosClient';
 import {
   DriveAssetEntityTypes,

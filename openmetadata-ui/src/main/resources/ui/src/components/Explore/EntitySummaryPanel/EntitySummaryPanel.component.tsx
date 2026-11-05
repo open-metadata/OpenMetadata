@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { XClose } from '@untitledui/icons';
-import { Button, Card } from 'antd';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
@@ -20,15 +20,14 @@ import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { LineageData } from '../../../components/Lineage/Lineage.interface';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import { LineageData } from '../../../interface/lineage.interface';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getApiCollectionByFQN,
@@ -100,9 +99,9 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
 import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
@@ -204,6 +203,15 @@ const mergeEntityData = (
 const ONTOLOGY_EXPLORER = 'ontology-explorer';
 const GLOSSARY_TERM_ASSETS_TAB = 'glossary-term-assets-tab';
 const DETAILS_ENTITY_TYPE_KEY = 'details.entityType';
+const getSummaryLineageConfig = ({
+  upstreamDepth = 1,
+  downstreamDepth = 1,
+  nodesPerLayer = 50,
+  pipelineViewMode = PipelineViewMode.Node,
+}: Pick<
+  EntitySummaryPanelProps,
+  'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer' | 'pipelineViewMode'
+>) => ({ upstreamDepth, downstreamDepth, nodesPerLayer, pipelineViewMode });
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -515,12 +523,12 @@ export default function EntitySummaryPanel({
       const response = await getLineageDataByFQN({
         fqn: currentFqn,
         entityType,
-        config: {
-          upstreamDepth: upstreamDepth ?? 1,
-          downstreamDepth: downstreamDepth ?? 1,
-          nodesPerLayer: nodesPerLayer ?? 50,
-          pipelineViewMode: pipelineViewMode ?? PipelineViewMode.Node,
-        },
+        config: getSummaryLineageConfig({
+          upstreamDepth,
+          downstreamDepth,
+          nodesPerLayer,
+          pipelineViewMode,
+        }),
       });
 
       if (entityDetails?.details?.fullyQualifiedName !== currentFqn) {
@@ -908,14 +916,14 @@ export default function EntitySummaryPanel({
     }
     if (!viewPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none h-min-80"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.data-asset'),
-          })}
-          size={SIZE.MEDIUM}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.data-asset'),
+            })}
+          />
+        </div>
       );
     }
     const type = (get(entityDetails, DETAILS_ENTITY_TYPE_KEY) ??
@@ -1088,8 +1096,6 @@ export default function EntitySummaryPanel({
             entityType
           )}
           entityData={entityData ?? undefined}
-          entityDetails={entityDetails}
-          entityType={entityType}
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={canEditCustomFields}
           isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
@@ -1139,14 +1145,14 @@ export default function EntitySummaryPanel({
               onDisplayNameUpdate={handleDisplayNameUpdate}
             />
           )}
-          <ErrorPlaceHolder
-            className="border-none h-min-80"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.data-asset'),
-            })}
-            size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={t('label.view-entity', {
+                entity: t('label.data-asset'),
+              })}
+            />
+          </div>
         </>
       );
     }
@@ -1172,34 +1178,39 @@ export default function EntitySummaryPanel({
             entityLink={entityLink}
             entityType={entityType}
             hasEditPermission={canEditDisplayName}
+            plain={panelPath === 'lineage'}
             testId="entity-header-title"
             tooltipPlacement="bottom left"
             onDisplayNameUpdate={handleDisplayNameUpdate}
           />
-          <Button
+          <ButtonUtility
             aria-label={t('label.close')}
-            className="drawer-close-icon flex-center mr-2"
+            className="tw:mr-2"
             data-testid="drawer-close-icon"
-            icon={<XClose />}
-            size="small"
+            icon={XClose}
+            size="lg"
             onClick={handleClosePanel}
           />
         </div>
       )}
       <div className="d-flex gap-2 w-full h-full">
-        <Card
-          bordered={false}
-          className={`summary-panel-container${
-            isSideDrawer ? ' drawer-summary-panel-container' : ''
-          }`}>
-          <Card
-            className={`content-area ${
-              isSideDrawer ? 'drawer-content-area' : ''
-            }`}
-            style={{ width: '100%', display: 'block' }}>
-            {renderTabContent()}
-          </Card>
-        </Card>
+        <div
+          className={classNames('summary-panel-container tw:bg-surface', {
+            'drawer-summary-panel-container': isSideDrawer,
+          })}>
+          <div
+            className={classNames('tw:relative tw:flex tw:w-full', {
+              'tw:max-h-[calc(100vh-70px)]': isSideDrawer,
+            })}>
+            <div
+              className={classNames(
+                'content-area tw:relative tw:block tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle',
+                { 'drawer-content-area': isSideDrawer }
+              )}>
+              <div className="tw:relative">{renderTabContent()}</div>
+            </div>
+          </div>
+        </div>
         {entityType && !sideDrawerOverviewOnly && (
           <EntityRightPanelVerticalNav
             activeTab={activeTab}

@@ -16,7 +16,7 @@ import { expect, Locator, Page } from '@playwright/test';
 // hydrate and shift rows). dragTo snapshots both boxes up front and presses at
 // those coordinates, so a drag begun mid-reflow presses on whatever slid into
 // the old spot and no dragstart fires. Hold both rows still before pressing.
-const waitForStableBox = async (locator: Locator) => {
+export const waitForStableBox = async (locator: Locator) => {
   let previous: { x: number; y: number } | undefined;
 
   await expect(async () => {
@@ -66,6 +66,10 @@ export const dragAndDropElement = async (
     .catch(() => undefined);
 
   await dragRowLocator.scrollIntoViewIfNeeded();
+  // dragTo presses the source, then scrolls the target into view mid-drag; a
+  // target clipped by a scroll area (the settings modal) then moves under the
+  // pointer and the drop never lands. Bring it into view before pressing.
+  await dropTargetLocator.scrollIntoViewIfNeeded();
   await waitForStableBox(dragRowLocator);
   await waitForStableBox(dropTargetLocator);
 
@@ -102,9 +106,7 @@ export const confirmationDragAndDropTeam = async (
   dropTeam: string
 ) => {
   // Confirmation message before the transfer
-  await expect(
-    page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
-  ).toContainText(
+  await expect(page.getByTestId('confirmation-modal')).toContainText(
     `Click on Confirm if you’d like to move ${dragTeam} team under ${dropTeam} team.`
   );
 
@@ -113,13 +115,19 @@ export const confirmationDragAndDropTeam = async (
       response.url().includes('/api/v1/teams/') &&
       response.request().method() === 'PATCH'
   );
-  const teamsListResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/teams?parentTeam=') &&
+  const teamsListResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === '/api/v1/teams' &&
+      url.searchParams.has('parentTeam') &&
       response.request().method() === 'GET'
-  );
-  await page.locator('.ant-modal-footer > .ant-btn-primary').click();
-  await patchResponse;
+    );
+  });
+  await page
+    .getByTestId('confirmation-modal')
+    .getByRole('button', { name: 'Confirm', exact: true })
+    .click();
+  expect((await patchResponse).status()).toBe(200);
   const teamsListResponseResult = await teamsListResponse;
 
   expect(teamsListResponseResult.status()).toBe(200);

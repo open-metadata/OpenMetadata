@@ -13,18 +13,26 @@
 import {
   Box,
   Button,
-  Card,
-  EmptyPlaceholder,
+  ButtonUtility,
   Owner,
   PageHeader,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
-import { Plus, Tag01 } from '@untitledui/icons';
+import {
+  Classification as ClassificationIcon,
+  Download01,
+  Edit01,
+  Lock01,
+  Plus,
+  RefreshCcw01,
+  Tag01,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
   forwardRef,
+  ReactNode,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -34,20 +42,16 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
-import { ReactComponent as LockIcon } from '../../../assets/svg/closed-lock.svg';
-import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
-import { DE_ACTIVE_COLOR, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
-  ResourceEntity,
   UIPermission,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -55,6 +59,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { exportClassificationInCSVFormat, getTags } from '../../../rest/tagAPI';
@@ -78,6 +83,9 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -87,34 +95,14 @@ import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interf
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 import { useTagUsageCounts } from './useTagUsageCounts';
-
-// Stretch the antd table so its body fills the panel height even with only a
-// few rows — otherwise the body shrinks to its content (scroll.y sets
-// max-height, not height) and the horizontal scrollbar floats mid-panel with
-// empty space below it.
-const TAG_TABLE_FILL_CLASSNAME = [
-  'tw:h-full',
-  'tw:[&_.ant-spin-nested-loading]:h-full',
-  'tw:[&_.ant-spin-container]:h-full',
-  'tw:[&_.ant-table]:h-full tw:[&_.ant-table]:flex tw:[&_.ant-table]:flex-col',
-  'tw:[&_.ant-table-container]:flex-1 tw:[&_.ant-table-container]:min-h-0',
-  'tw:[&_.ant-table-container]:flex tw:[&_.ant-table-container]:flex-col',
-  'tw:[&_.ant-table-header]:shrink-0',
-  'tw:[&_.ant-table-body]:flex-1 tw:[&_.ant-table-body]:!max-h-none',
-].join(' ');
 
 function computeEditDescriptionPermission(
   isVersionView: boolean,
@@ -174,7 +162,7 @@ function computeClassificationPermissionFlags(
     deletePermission:
       classificationPermissions.Delete && !isSystemClassification,
     editOwnerPermission: computeEditOwnerPermission(isEditable, flags),
-    editDomainPermission: isEditable && flags.canEditAll,
+    editDomainPermission: isEditable && flags.canEditDomains,
   };
 }
 
@@ -202,9 +190,11 @@ const ClassificationDetails = forwardRef(
     const { permissions } = usePermissionProvider();
     const { showModal } = useEntityExportModalProvider();
     const { t } = useTranslation();
+    const isAiMode = useIsAiMode();
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
     const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
+    const domainProps = useGenericDomainLabel();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
@@ -348,7 +338,7 @@ const ClassificationDetails = forwardRef(
         isSystemClassification ? (
           <AppBadge
             className="whitespace-nowrap"
-            icon={<LockIcon height={12} />}
+            icon={<Lock01 size={12} />}
             label={capitalize(currentClassification?.provider)}
           />
         ) : null,
@@ -511,7 +501,7 @@ const ClassificationDetails = forwardRef(
                     description={t('message.import-entity-help', {
                       entity: t('label.tag-lowercase-plural'),
                     })}
-                    icon={ImportIcon}
+                    icon={Download01}
                     id="import-button"
                     name={t('label.import')}
                   />
@@ -529,7 +519,7 @@ const ClassificationDetails = forwardRef(
                     description={t('message.export-entity-help', {
                       entity: t('label.tag-lowercase-plural'),
                     })}
-                    icon={ExportIcon}
+                    icon={Upload01}
                     id="export-button"
                     name={t('label.export')}
                   />
@@ -600,11 +590,10 @@ const ClassificationDetails = forwardRef(
       },
     }));
 
-    function renderHeaderRow() {
-      if (!currentClassification) {
-        return null;
-      }
-
+    function renderHeaderCard(
+      classification: Classification,
+      breadcrumb?: ReactNode
+    ) {
       return (
         <PageHeader
           actions={
@@ -646,38 +635,24 @@ const ClassificationDetails = forwardRef(
                   afterDeleteAction={handleAfterDeleteAction}
                   allowSoftDelete={false}
                   canDelete={deletePermission && !isClassificationDisabled}
-                  displayName={getEntityName(currentClassification)}
-                  entityFQN={currentClassification?.fullyQualifiedName}
-                  entityId={currentClassification.id}
-                  entityName={currentClassification.name}
+                  displayName={getEntityName(classification)}
+                  entityFQN={classification.fullyQualifiedName}
+                  entityId={classification.id}
+                  entityName={classification.name}
                   entityType={EntityType.CLASSIFICATION}
                   extraDropdownContent={extraDropdownContent}
                 />
               )}
             </Box>
           }
-          breadcrumb={
-            <HeaderBreadcrumb
-              autoCollapse
-              className="tw:mb-0"
-              items={[
-                {
-                  label: t('label.classification-plural'),
-                  href: ROUTES.TAGS,
-                },
-                { label: getEntityName(currentClassification) },
-              ]}
-              showHome={false}
-              size="xs"
-            />
-          }
+          breadcrumb={breadcrumb}
           data-testid="header"
           title={
             <EntityHeaderTitle
               badge={
                 <div className="d-flex gap-1">
                   {headerBadge}
-                  {currentClassification?.mutuallyExclusive && (
+                  {classification.mutuallyExclusive && (
                     <div data-testid="mutually-exclusive-container">
                       <AppBadge
                         bgColor={theme.primaryColor}
@@ -690,22 +665,58 @@ const ClassificationDetails = forwardRef(
               }
               className="flex-wrap"
               displayName={displayName}
+              displayNameClassName="text-xl"
               icon={
-                <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
+                <ClassificationIcon className="tw:text-quaternary" size={36} />
               }
               isDisabled={isClassificationDisabled}
-              name={name ?? currentClassification.name}
+              name={name ?? classification.name}
+              nameClassName="text-xl"
               serviceName="classification"
             />
           }
+          variant={isAiMode ? 'gradient' : 'flat'}
         />
+      );
+    }
+
+    function renderHeaderRow() {
+      if (!currentClassification) {
+        return null;
+      }
+
+      // Same placement as ContextCenterHeader: classic mode shows the trail (with
+      // Home) above the card, AI mode tucks it inside the card without Home.
+      const breadcrumbEl = (
+        <HeaderBreadcrumb
+          autoCollapse
+          noMargin
+          items={[
+            {
+              label: t('label.classification-plural'),
+              href: ROUTES.TAGS,
+            },
+            { label: getEntityName(currentClassification) },
+          ]}
+          showHome={!isAiMode}
+        />
+      );
+
+      return (
+        <>
+          {!isAiMode && <div className="tw:mb-3">{breadcrumbEl}</div>}
+          {renderHeaderCard(
+            currentClassification,
+            isAiMode ? breadcrumbEl : undefined
+          )}
+        </>
       );
     }
 
     function renderTagsPanel() {
       return isEmpty(tags) && !isLoading ? (
         <Box className="tw:relative tw:min-h-[360px]">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               createPermission
                 ? [
@@ -727,8 +738,9 @@ const ClassificationDetails = forwardRef(
         </Box>
       ) : (
         <Table
-          className={TAG_TABLE_FILL_CLASSNAME}
+          sticky
           columns={tableColumn}
+          containerClassName="tw:flex tw:flex-col tw:rounded-xl tw:border-subtle"
           customPaginationProps={{
             currentPage,
             isLoading,
@@ -743,10 +755,8 @@ const ClassificationDetails = forwardRef(
           loading={isLoading}
           pagination={false}
           rowKey="id"
-          scroll={{
-            x: 'max-content',
-            y: 'calc(100vh - 380px - var(--ant-navbar-height))',
-          }}
+          scroll={{ x: 'max-content' }}
+          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
           size="small"
         />
       );
@@ -767,7 +777,7 @@ const ClassificationDetails = forwardRef(
             Promise.resolve(handleUpdateClassification?.(updatedData))
           }>
           <div className="classification-details-content tw:mt-4 tw:flex tw:min-h-0 tw:flex-1 tw:gap-4">
-            <Card className="classification-details-card tw:flex tw:min-w-0 tw:flex-3 tw:flex-col tw:p-4">
+            <div className="classification-details-card tw:flex tw:min-w-0 tw:flex-3 tw:flex-col">
               <div className="m-b-sm" data-testid="description-container">
                 <Description
                   wrapInCard
@@ -782,12 +792,14 @@ const ClassificationDetails = forwardRef(
               </div>
 
               {renderTagsPanel()}
-            </Card>
+            </div>
             <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-5">
-              <DomainLabelV2
+              <DomainLabel
+                {...domainProps}
                 multiple
                 showDomainHeading
                 hasPermission={editDomainPermission}
+                variant="widget"
               />
               <WidgetCard
                 dataTestId="classification-owner-name"
@@ -808,16 +820,18 @@ const ClassificationDetails = forwardRef(
                         });
                       }}>
                       {isEmpty(currentClassification.owners) ? (
-                        <WidgetPlusButton
+                        <ButtonUtility
                           data-testid="add-owner"
-                          title={t('label.add-entity', {
+                          icon={Plus}
+                          tooltip={t('label.add-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />
                       ) : (
-                        <WidgetEditButton
+                        <ButtonUtility
                           data-testid="edit-owner"
-                          title={t('label.edit-entity', {
+                          icon={Edit01}
+                          tooltip={t('label.edit-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { BrowserContext, Request, Route } from '@playwright/test';
+import { guardStorageStateBoot } from '../../utils/storageStateRecovery';
 
 /**
  * Reduces the server load a Playwright shard generates.
@@ -22,13 +23,20 @@ import { BrowserContext, Request, Route } from '@playwright/test';
  * execution budget, and that spread is the contention behind the timeout
  * failures — the server does more work than the tests have time for.
  *
- * Everything here is per-worker and read-through: the first request still hits
- * the real server, so a cached response can never drift from it the way a
- * hand-written stub body would.
+ * Everything here is per-worker and read-through. Correctness also depends on
+ * excluding server-driven values and invalidating overlapping reads and writes.
  */
 
 /** Analytics collection is a write, and no test asserts on the stored events. */
 const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
+
+/**
+ * The tracking pixel in `index.html` is a document subresource, so the `load`
+ * event — what `page.goto`/`reload` wait for by default — waits on an internet
+ * host. When it stalls, a fully rendered page times out its navigation (seen in
+ * OntologyReview.spec.ts: Studio on screen, `page.goto` timed out on "load").
+ */
+const SCARF_PIXEL = 'https://static.scarf.sh/**';
 
 /**
  * Boot endpoints safe to serve from the per-worker cache.
@@ -75,6 +83,10 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
  *   asserts on. `AddIngestionPage` and `EditIngestionPage` also call the
  *   provider's `fetchAirflowStatus()` explicitly after a save — a refetch whose
  *   only purpose is to see a *newer* answer than the one already held.
+ * - `system/settings/lineageSettings`, `system/settings/appConfiguration`,
+ *   `system/config/customUiThemePreference` — specs write them, and a write
+ *   invalidates only the writing worker's cache. Every other worker keeps
+ *   whatever it read for the rest of its life.
  */
 const CACHEABLE_BOOT_PATHS = [
   // No writer anywhere in the suite.
@@ -84,11 +96,6 @@ const CACHEABLE_BOOT_PATHS = [
   '/api/v1/system/config/rdf',
   '/api/v1/system/search/nlq',
   '/api/v1/limits/config',
-  // No API writer; the specs that change these do it through the UI, so the
-  // browser PUT invalidates the `/api/v1/system/` family.
-  '/api/v1/system/config/customUiThemePreference',
-  '/api/v1/system/settings/lineageSettings',
-  '/api/v1/system/settings/appConfiguration',
 ];
 
 type CachedResponse = {
@@ -109,12 +116,13 @@ type CacheEntry = {
 };
 
 // One entry per (path + query). The key is the URL alone (see cacheKey), so the
-// space is the ~9 cacheable paths plus any query variants — bounded and small.
+// space is the cacheable paths plus any query variants — bounded and small.
 // The cap stays as a guard against an unforeseen query-string explosion; at its
-// ~9-entry steady state it never trips, so eviction (LRU, see serveBootConfig)
+// steady state of one entry per path it never trips, so eviction (LRU, see serveBootConfig)
 // is now belt-and-braces rather than load-bearing.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();
+let writeGeneration = 0;
 
 const remember = (key: string, value: CacheEntry) => {
   if (bootCache.size >= MAX_CACHED_RESPONSES) {
@@ -147,6 +155,7 @@ const familyPrefix = (pathname: string) => {
  * which is why CACHEABLE_BOOT_PATHS excludes anything with an API writer.
  */
 const invalidateFamily = (pathname: string) => {
+  writeGeneration++;
   const prefix = familyPrefix(pathname);
 
   if (!prefix) {
@@ -195,10 +204,11 @@ const escapeRegExp = (value: string) =>
  * One predicate handler sets `all`, and the whole context then intercepts
  * every request. Measured on merge_group runs of #32594, that cost the suite
  * ~7% wall-clock and +15.6 GB of asset traffic: ~29k requests a shard
- * round-tripped through the Node driver instead of ~8.5k, and intercepted
- * requests miss the browser's HTTP cache (`static:304` 4,151 -> 2,239 while
- * `static:200` rose 22.3k). A RegExp is forwarded as `regexSource`, so the
- * browser pauses only these paths.
+ * round-tripped through the Node driver instead of ~8.5k. A RegExp is forwarded
+ * as `regexSource`, so the browser pauses only these paths. Routing still
+ * disables the context's native HTTP cache, including for unmatched assets:
+ * https://playwright.dev/docs/api/class-browsercontext#browser-context-route
+ * Measure API savings and static traffic separately when changing this cache.
  *
  * Matched against the full URL, since that is what `urlMatches` tests a RegExp
  * against. `[^?#]*` cannot cross a `?`, so a path that appears inside a query
@@ -242,6 +252,27 @@ const replayableHeaders = (headers: Record<string, string>) =>
     )
   );
 
+const fetchRouteResponse = async (route: Route) => {
+  try {
+    return await route.fetch();
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !/^route\.fetch: (?:socket hang up|(?:read )?ECONNRESET)\b/.test(
+        error.message
+      )
+    ) {
+      throw error;
+    }
+
+    // route.fetch uses a separate HTTP client. Preserve a reset as a failed
+    // browser request instead of an unhandled fixture exception or a retry.
+    await route.abort('connectionreset');
+
+    return undefined;
+  }
+};
+
 const serveBootConfig = async (route: Route) => {
   const request = route.request();
 
@@ -267,7 +298,13 @@ const serveBootConfig = async (route: Route) => {
     return;
   }
 
-  const response = await route.fetch();
+  const generation = writeGeneration;
+  const response = await fetchRouteResponse(route);
+
+  if (!response) {
+    return;
+  }
+
   const payload: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),
@@ -281,7 +318,7 @@ const serveBootConfig = async (route: Route) => {
   // handler fails the test just as readily and consistency is one line.
   const pathname = pathnameOf(request.url());
 
-  if (response.ok() && pathname) {
+  if (response.ok() && pathname && generation === writeGeneration) {
     remember(key, { pathname, response: payload });
   }
 
@@ -297,21 +334,12 @@ const serveBootConfig = async (route: Route) => {
  * Serving them from a per-worker cache fixes the server side, but it routes
  * ~26k requests per shard through the Playwright driver, and that per-request
  * overhead could plausibly cost more wall-clock than the saved bytes. The
- * earlier objection came from the CACHEABLE_BOOT_PATTERN measurement, where a
- * predicate handler set Playwright's `all` flag and the whole context
- * intercepted ~29k requests a shard only to reject most — costing ~7%
- * wall-clock. That does not apply here: STATIC_ASSET is a RegExp handed to
- * `context.route` directly, so the browser pauses only asset URLs, not every
- * request. With the boot-config cache landed, unmitigated static traffic is now
- * the largest item left — ~65 GB and ~687k requests a merge_group run — so it
- * is worth paying the interception cost if it nets out positive.
- *
- * Enabled by default so a merge_group run measures it against the prior
- * static-off baseline (compare `staticServerMs`, `staticBytes` and
- * `maxExecutionSeconds` in playwright-performance.json). Set
- * PW_CACHE_STATIC_ASSETS=false to turn it back off if the driver overhead wins.
+ * merge_group measurement behind CACHEABLE_BOOT_PATTERN says it does: the same
+ * ~29k requests a shard, intercepted only so a predicate could reject them,
+ * cost ~7% wall-clock. So this stays off by default and now has a reason
+ * rather than a caveat. Set PW_CACHE_STATIC_ASSETS=true to A/B it in CI.
  */
-const cacheStaticAssets = process.env.PW_CACHE_STATIC_ASSETS !== 'false';
+const cacheStaticAssets = process.env.PW_CACHE_STATIC_ASSETS === 'true';
 // Same full-URL form as CACHEABLE_BOOT_PATTERN, so it can be handed to
 // `context.route` directly instead of through a predicate.
 const STATIC_ASSET =
@@ -330,7 +358,12 @@ const serveStaticAsset = async (route: Route) => {
     return;
   }
 
-  const response = await route.fetch();
+  const response = await fetchRouteResponse(route);
+
+  if (!response) {
+    return;
+  }
+
   const entry: CachedResponse = {
     status: response.status(),
     headers: replayableHeaders(response.headers()),
@@ -347,6 +380,33 @@ const serveStaticAsset = async (route: Route) => {
 };
 
 /**
+ * `BrowserContext.close()` disposes `context.request` — which runs every
+ * `route.fetch()` and owns its response — as its first step, before a single
+ * page is closed, so `page.isClosed()` is still false when the in-flight fetch
+ * ("Request context disposed") or body read ("Response has been disposed")
+ * fails. That check alone let a `beforeAll` that closes its own
+ * `browser.newPage()` fail the first test of the describe. A disposal only
+ * counts as teardown once the context's `close` event proves it; on a live
+ * context it is still an error.
+ */
+const CONTEXT_CLOSE_TIMEOUT_MS = 30_000;
+
+const isContextClosing = async (route: Route) => {
+  const page = route.request().frame().page();
+
+  return (
+    page.isClosed() ||
+    page
+      .context()
+      .waitForEvent('close', { timeout: CONTEXT_CLOSE_TIMEOUT_MS })
+      .then(
+        () => true,
+        () => false
+      )
+  );
+};
+
+/**
  * Playwright rethrows out of a route handler (`RouteHandler._handleImpl`) and
  * `BrowserContext._onRoute` does not catch it, so a handler that throws fails
  * whichever test owns the route. Losing the target mid-flight is routine here
@@ -354,15 +414,29 @@ const serveStaticAsset = async (route: Route) => {
  * test that navigates away or ends while one is in flight would otherwise fail
  * on a request nothing asserts on. Closing the context also disposes the
  * `route.fetch()` response it owns, so a `body()` read racing teardown fails
- * with "Response has been disposed" rather than "has been closed". Anything
- * else still propagates — a cache that is broken for a real reason must not be
+ * with "Response has been disposed" rather than "has been closed". The same
+ * race can also land after Playwright already resolved the route for the closing
+ * page, so `fulfill` reports "Route is already handled!". Anything else still
+ * propagates — a cache that is broken for a real reason must not be
  * silent.
  */
-const ignoreClosedTarget = async (serve: () => Promise<void>) => {
+export const ignoreClosedTarget = async (
+  route: Route,
+  serve: () => Promise<void>
+) => {
   try {
     await serve();
   } catch (error) {
-    if (!/has been closed|Response has been disposed/.test(String(error))) {
+    if (/has been closed|Route is already handled/.test(String(error))) {
+      return;
+    }
+
+    const disposedByClose =
+      /Response has been disposed|Request context disposed/.test(
+        String(error)
+      ) && (await isContextClosing(route));
+
+    if (!disposedByClose) {
       throw error;
     }
   }
@@ -385,27 +459,35 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
 
   installed.add(context);
 
+  // Every context entry point already funnels through here, so this is the one
+  // place the lost-storageState-token guard reaches all of them.
+  guardStorageStateBoot(context);
+
   // Guarded like the two below: analytics beacons are fired on navigation and
   // unload, so a `fulfill` here is more likely than either of them to land on a
   // page that is already going away.
   await context.route(ANALYTICS_COLLECT, (route) =>
-    ignoreClosedTarget(() => route.fulfill({ status: 200, body: '' }))
+    ignoreClosedTarget(route, () => route.fulfill({ status: 200, body: '' }))
+  );
+
+  await context.route(SCARF_PIXEL, (route) =>
+    ignoreClosedTarget(route, () => route.fulfill({ status: 204 }))
   );
 
   await context.route(CACHEABLE_BOOT_PATTERN, (route) =>
-    ignoreClosedTarget(() => serveBootConfig(route))
+    ignoreClosedTarget(route, () => serveBootConfig(route))
   );
 
   if (cacheStaticAssets) {
     await context.route(STATIC_ASSET, (route) =>
-      ignoreClosedTarget(() => serveStaticAsset(route))
+      ignoreClosedTarget(route, () => serveStaticAsset(route))
     );
   }
 
   // Passive listener rather than another route, so observing writes costs
   // nothing on the request path.
-  context.on('request', (request) => {
-    if (request.method() === 'GET') {
+  const invalidateWrite = (request: Request) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
       return;
     }
 
@@ -414,7 +496,13 @@ export const installServerLoadReducers = async (context: BrowserContext) => {
     if (pathname?.startsWith('/api/v1/')) {
       invalidateFamily(pathname);
     }
-  });
+  };
+  context.on('request', invalidateWrite);
+  // A GET during an outstanding write can still read the pre-commit value.
+  // Clear it when the write completes; generation checks also prevent an older
+  // in-flight GET from repopulating the cache after either invalidation.
+  context.on('response', (response) => invalidateWrite(response.request()));
+  context.on('requestfailed', invalidateWrite);
 };
 
 /**

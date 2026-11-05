@@ -18,6 +18,7 @@ import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Votes;
@@ -31,7 +32,7 @@ import org.openmetadata.schema.type.Votes;
  * null/no-op defaults for features that don't apply to lightweight entities.
  */
 @SuppressWarnings("unused")
-public interface NamedEntityInterface extends EntityInterface {
+public interface NamedEntityInterface extends EntityInterface<EntityStatus> {
 
   @Override
   default List<EntityReference> getOwners() {

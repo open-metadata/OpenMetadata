@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
@@ -151,6 +153,46 @@ class EntityRepositoryBulkFieldsTest {
   }
 
   @Test
+  void resolveTargetsBySource_batchesPerTypeKeepsRowOrderAndDropsMissingTargets() {
+    DomainAwarePipelineRepo repo = new DomainAwarePipelineRepo(pipelineDAO);
+    UUID teamA = UUID.randomUUID();
+    UUID teamB = UUID.randomUUID();
+    EntityReference table = reference(Entity.TABLE);
+    EntityReference container = reference(Entity.CONTAINER);
+    EntityReference otherTable = reference(Entity.TABLE);
+    // An OWNS row can outlive its target; the per-row lookup it replaces skipped such rows.
+    EntityReference deletedTable = reference(Entity.TABLE);
+    List<EntityRelationshipObject> rows =
+        List.of(
+            owns(teamA, table),
+            owns(teamB, otherTable),
+            owns(teamA, deletedTable),
+            owns(teamA, container));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.TABLE)).thenReturn(true);
+      entityMock.when(() -> Entity.hasEntityRepository(Entity.CONTAINER)).thenReturn(true);
+      entityMock
+          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.TABLE), anyList(), any()))
+          .thenReturn(List.of(otherTable, table));
+      entityMock
+          .when(() -> Entity.getEntityReferencesByIds(eq(Entity.CONTAINER), anyList(), any()))
+          .thenReturn(List.of(container));
+
+      Map<UUID, List<EntityReference>> owned = repo.resolveTargetsBySource(rows, Include.ALL);
+
+      assertEquals(List.of(table, container), owned.get(teamA));
+      assertEquals(List.of(otherTable), owned.get(teamB));
+      entityMock.verify(
+          () -> Entity.getEntityReferencesByIds(eq(Entity.TABLE), anyList(), eq(Include.ALL)),
+          times(1));
+      entityMock.verify(
+          () -> Entity.getEntityReferencesByIds(eq(Entity.CONTAINER), anyList(), eq(Include.ALL)),
+          times(1));
+    }
+  }
+
+  @Test
   void folderChildrenCount_isBatchedIntoOneQueryPerPage() {
     Folder f0 = folder("drive.f0");
     Folder f1 = folder("drive.f1");
@@ -190,6 +232,33 @@ class EntityRepositoryBulkFieldsTest {
   }
 
   @Test
+  void folderChildrenCount_loadsForTheSearchIndexWithoutClearingOtherFields() {
+    Folder f0 = folder("drive.f0").withDescription("kept");
+    when(relationshipDAO.countNonDeletedChildFilesBatch(
+            anyList(), anyString(), anyInt(), anyString()))
+        .thenReturn(
+            List.of(
+                CollectionDAO.EntityRelationshipCount.builder().id(f0.getId()).count(2).build()));
+
+    newFolderRepository().loadFieldsForSearchIndex(List.of(f0), Set.of("childrenCount"));
+
+    // Without a registered fetcher this throws, and every folder write lands in the retry queue.
+    assertEquals(2, f0.getChildrenCount());
+    assertEquals("kept", f0.getDescription());
+  }
+
+  @Test
+  void loadFieldsForSearchIndex_rejectsAFieldWithNoFetcher() {
+    // Folder parent is loaded in setFieldsInBulk, not by a fetcher, so the search write path
+    // cannot load it and must fail loud rather than index it as missing.
+    FolderRepository repository = newFolderRepository();
+    List<Folder> folders = List.of(folder("drive.f0"));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.loadFieldsForSearchIndex(folders, Set.of("parent")));
+  }
+
+  @Test
   void folderChildrenCount_forEmptyPage_issuesNoQuery() {
     newFolderRepository().setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>());
 
@@ -206,6 +275,20 @@ class EntityRepositoryBulkFieldsTest {
     verify(relationshipDAO, never())
         .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
     assertNull(f0.getChildrenCount());
+  }
+
+  private static EntityReference reference(String type) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type);
+  }
+
+  private static EntityRelationshipObject owns(UUID teamId, EntityReference target) {
+    return EntityRelationshipObject.builder()
+        .fromId(teamId.toString())
+        .toId(target.getId().toString())
+        .fromEntity(Entity.TEAM)
+        .toEntity(target.getType())
+        .relation(Relationship.OWNS.ordinal())
+        .build();
   }
 
   private FolderRepository newFolderRepository() {

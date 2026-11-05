@@ -32,6 +32,7 @@ import {
   updateRelatedMetric,
   updateUnitOfMeasurement,
 } from '../../utils/metric';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 const metric1 = new MetricClass();
@@ -44,7 +45,7 @@ const adminUser = new UserClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -66,6 +67,17 @@ test.describe(
         metric2.create(apiContext),
         metric3.create(apiContext),
       ]);
+
+      // The related-metrics picker finds these through search.
+      await Promise.all(
+        [metric2, metric3].map((metric) =>
+          waitForSearchIndexed(
+            apiContext,
+            metric.entityResponseData.fullyQualifiedName,
+            'metric_search_index'
+          )
+        )
+      );
 
       await afterAction();
     });

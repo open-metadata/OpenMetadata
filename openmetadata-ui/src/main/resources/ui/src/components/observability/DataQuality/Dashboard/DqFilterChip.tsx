@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown } from '@untitledui/icons';
-import classNames from 'classnames';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { DQ_FILTER_TYPES } from '../../../../constants/DataQuality.constants';
 import {
   fqnsToGlossaryTags,
@@ -24,7 +23,6 @@ import {
   chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from './dqFilterChip.utils';
 import DqSearchFilterChip from './DqSearchFilterChip';
 
@@ -59,7 +57,7 @@ const DqFilterChip = ({
       <UserTeamSelectableList
         hasPermission
         owner={filter.selectedOwners}
-        popoverProps={{ open: isOpen, placement: 'bottomLeft', onOpenChange }}
+        popoverProps={{ open: isOpen, onOpenChange }}
         // `UserTeamSelectableList` closes itself by clearing its internal
         // visibility state, but `popoverProps` is spread onto the Popover last,
         // so the `open` above wins and that internal close does nothing. Owning
@@ -71,9 +69,7 @@ const DqFilterChip = ({
           onOpenChange(false);
         }}>
         <button
-          className={classNames(chipTriggerClassName, {
-            [chipTriggerSelectedClassName]: filter.selectedOwnerKeys.length > 0,
-          })}
+          className={chipTriggerClassName(filter.selectedOwnerKeys.length > 0)}
           data-testid={`search-dropdown-${filter.key}`}
           type="button">
           {filter.label}

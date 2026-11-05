@@ -1,5 +1,6 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.service.context.center.ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS;
 import static org.openmetadata.service.jdbi3.ContextFileContentRepository.CONTEXT_FILE_CONTENT_ENTITY;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
@@ -26,30 +27,31 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.context.center.ContextProcessingEngine.ConditionalUpdateExhaustedException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.RequestEntityCache;
 
 /**
  * Orchestrates asynchronous processing of an uploaded {@link ContextFile}: text extraction
  * (Analyzing) followed by LLM knowledge-pill extraction (ExtractingContext), ending at Processed.
- * The two stages run on separate pools — text extraction is CPU-bound, the LLM step is
- * network-bound and seconds-long, so mixing them would starve the text pool. All persistence goes
- * through conditional updates so a concurrent writer never has its change clobbered; exhausted
- * contention requeues the stage instead of failing the file.
+ * Text extraction runs on a bounded pool; the LLM stage uses the shared persistent background job
+ * queue with article memory extraction. All entity persistence goes through conditional updates so
+ * a concurrent writer never has its change clobbered; exhausted contention requeues the stage.
  */
 @Slf4j
 public class ContextFileProcessingService {
-  private static final int MAX_CONDITIONAL_UPDATE_ATTEMPTS = 10;
   private static final long CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS = 10;
   private final ContextFileRepository repository;
   private final Supplier<AssetService> assetServiceSupplier;
   private final Executor executor;
   private final ContextFileTextExtractor textExtractor;
-  private final Executor llmExecutor;
+  private final JobDAO jobDao;
   private final Supplier<DocumentMemoryExtractor> memoryExtractorSupplier;
   private final Supplier<Boolean> llmEnabledSupplier;
   private final Supplier<FileContextProcessingEngine> fileEngineSupplier;
@@ -61,7 +63,7 @@ public class ContextFileProcessingService {
         AssetServiceFactory::getService,
         DEFAULT_EXECUTOR,
         new ContextFileTextExtractor(),
-        LLM_EXECUTOR,
+        Entity.getJobDAO(),
         () -> AiProviderHolder.get().documentExtractor(),
         LLMClientHolder::isMemoryExtractionEnabled,
         null);
@@ -72,7 +74,7 @@ public class ContextFileProcessingService {
       Supplier<AssetService> assetServiceSupplier,
       Executor executor,
       ContextFileTextExtractor textExtractor,
-      Executor llmExecutor,
+      JobDAO jobDao,
       Supplier<DocumentMemoryExtractor> memoryExtractorSupplier,
       Supplier<Boolean> llmEnabledSupplier,
       Supplier<FileContextProcessingEngine> fileEngineSupplier) {
@@ -80,14 +82,14 @@ public class ContextFileProcessingService {
     this.assetServiceSupplier = assetServiceSupplier;
     this.executor = executor;
     this.textExtractor = textExtractor;
-    this.llmExecutor = llmExecutor;
+    this.jobDao = jobDao;
     this.memoryExtractorSupplier = memoryExtractorSupplier;
     this.llmEnabledSupplier = llmEnabledSupplier;
     this.fileEngineSupplier = fileEngineSupplier;
   }
 
   /**
-   * Single shared thread pool per stage. Kept separate from {@code
+   * Shared text-extraction pool. Kept separate from {@code
    * AsyncService.getExecutorService()} because {@link #process(UUID, UUID)} blocks on {@code
    * AssetService.read(...).join()} for S3/Azure reads, which are themselves scheduled on
    * AsyncService — sharing the pool would starve those read tasks (and potentially deadlock) once
@@ -99,9 +101,6 @@ public class ContextFileProcessingService {
    */
   private static final Executor DEFAULT_EXECUTOR =
       createBoundedExecutor("context-file-extraction-");
-
-  /** Separate network-bound pool for LLM completion so slow calls never starve text extraction. */
-  private static final Executor LLM_EXECUTOR = createBoundedExecutor("context-memory-extraction-");
 
   private static final Set<ProcessingStatus> TRANSIENT_STATUSES =
       Set.of(
@@ -163,8 +162,17 @@ public class ContextFileProcessingService {
           repository.listAll(repository.getFields(""), new ListFilter(Include.NON_DELETED));
       for (ContextFile file : files) {
         if (isInterrupted(file)) {
-          submit(file.getId(), UUID.fromString(file.getHeadContentId()));
-          resubmitted++;
+          try {
+            UUID contentId = UUID.fromString(file.getHeadContentId());
+            if (file.getProcessingStatus() == ProcessingStatus.ExtractingContext) {
+              submitMemoryExtraction(file.getId(), contentId);
+            } else {
+              submit(file.getId(), contentId);
+            }
+            resubmitted++;
+          } catch (RuntimeException e) {
+            LOG.error("Failed to recover interrupted context file {}", file.getId(), e);
+          }
         }
       }
     } catch (Exception e) {
@@ -298,18 +306,26 @@ public class ContextFileProcessingService {
   }
 
   private void submitMemoryExtraction(UUID fileId, UUID contentId) {
+    submitMemoryExtraction(fileId, contentId, false);
+  }
+
+  private void submitMemoryExtraction(UUID fileId, UUID contentId, boolean retry) {
     try {
-      llmExecutor.execute(() -> runMemoryExtraction(fileId, contentId));
-    } catch (RejectedExecutionException e) {
-      LOG.warn(
-          "Skipping knowledge pill extraction for file {} because the LLM executor rejected it",
-          fileId,
-          e);
+      ContextMemoryExtractionJobHandler.Args args =
+          ContextMemoryExtractionJobHandler.Args.file(fileId, contentId);
+      jobDao.enqueueFileMemoryJob(
+          fileId.toString(),
+          args.jobKey(),
+          JsonUtils.pojoToJson(args),
+          Entity.ADMIN_USER_NAME,
+          !retry);
+    } catch (RuntimeException e) {
+      LOG.error("Unable to queue knowledge pill extraction for file {}", fileId, e);
       try {
         applyFailure(
             fileId,
             contentId,
-            "Knowledge pill extraction queue is full. Please retry later.",
+            "Unable to queue knowledge pill extraction. Please retry later.",
             false);
       } catch (ConditionalUpdateExhaustedException exhausted) {
         LOG.warn("Unable to mark rejected knowledge pill extraction failed for file {}", fileId);
@@ -322,7 +338,7 @@ public class ContextFileProcessingService {
     try {
       runMemoryExtractionInternal(fileId, contentId);
     } catch (ConditionalUpdateExhaustedException e) {
-      submitMemoryExtraction(fileId, contentId);
+      submitMemoryExtraction(fileId, contentId, true);
     } finally {
       RequestEntityCache.clear();
     }
@@ -344,6 +360,10 @@ public class ContextFileProcessingService {
     } catch (Exception e) {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, e);
       applyFailure(fileId, contentId, describeFailure(e), false);
+      if (e instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw new IllegalStateException(e);
     }
   }
 
@@ -365,8 +385,15 @@ public class ContextFileProcessingService {
   private FileContextProcessingEngine defaultFileEngine() {
     ContextMemoryRepository memoryRepository =
         (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    SemanticMemoryDuplicateFinder duplicateFinder =
+        new SemanticMemoryDuplicateFinder(
+            memoryRepository,
+            () -> Entity.getSearchRepository().getVectorIndexService(),
+            LLMClientHolder.get());
     return new FileContextProcessingEngine(
-        repository, memoryExtractorSupplier.get(), new ContextMemoryReconciler(memoryRepository));
+        repository,
+        memoryExtractorSupplier.get(),
+        new ContextMemoryReconciler(memoryRepository, duplicateFinder));
   }
 
   private void markProcessed(UUID fileId, UUID contentId) {
@@ -496,20 +523,20 @@ public class ContextFileProcessingService {
 
   private boolean updateFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
     for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
-      ContextFile current = getFile(fileId);
-      if (current == null) {
-        return false;
-      }
-      ContextFile updated = updater.apply(current);
-      if (updated == null) {
-        return false;
-      }
-      try {
+      try (var ignored = FreshReadScope.enter()) {
+        ContextFile current = getFile(fileId);
+        if (current == null) {
+          return false;
+        }
+        ContextFile updated = updater.apply(current);
+        if (updated == null) {
+          return false;
+        }
         repository.updateIfCurrent(null, current, updated, current.getUpdatedBy());
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
-        RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, current.getFullyQualifiedName());
+        RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, null);
         if (attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS
             && !waitForConditionalUpdateRetry(CONTEXT_FILE_ENTITY, fileId)) {
           return false;
@@ -522,23 +549,22 @@ public class ContextFileProcessingService {
   private boolean updateContent(
       UUID contentId, Function<ContextFileContent, ContextFileContent> updater) {
     for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
-      ContextFileContent current = getContent(contentId);
-      if (current == null) {
-        return false;
-      }
-      ContextFileContent updated = updater.apply(current);
-      if (updated == null) {
-        return false;
-      }
-      try {
+      try (var ignored = FreshReadScope.enter()) {
+        ContextFileContent current = getContent(contentId);
+        if (current == null) {
+          return false;
+        }
+        ContextFileContent updated = updater.apply(current);
+        if (updated == null) {
+          return false;
+        }
         repository
             .getContentRepository()
             .updateIfCurrent(null, current, updated, current.getUpdatedBy());
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file content {} changed during extraction update", contentId);
-        RequestEntityCache.invalidate(
-            CONTEXT_FILE_CONTENT_ENTITY, contentId, current.getFullyQualifiedName());
+        RequestEntityCache.invalidate(CONTEXT_FILE_CONTENT_ENTITY, contentId, null);
         if (attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS
             && !waitForConditionalUpdateRetry(CONTEXT_FILE_CONTENT_ENTITY, contentId)) {
           return false;
@@ -556,12 +582,6 @@ public class ContextFileProcessingService {
       Thread.currentThread().interrupt();
       LOG.warn("Interrupted while retrying {} {} extraction update", entityType, entityId);
       return false;
-    }
-  }
-
-  private static class ConditionalUpdateExhaustedException extends RuntimeException {
-    private ConditionalUpdateExhaustedException(String entityType, UUID entityId) {
-      super("Repeated concurrent updates for " + entityType + " " + entityId);
     }
   }
 }

@@ -12,15 +12,16 @@
  */
 
 import { Button, NavList, Typography } from '@openmetadata/ui-core-components';
-import { Glossary as GlossaryIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  Glossary as GlossaryIcon,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { DomainFilterChip } from '../../../components/common/DomainFilterChip/DomainFilterChip.component';
 import GlossaryV1Skeleton from '../../../components/common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -29,11 +30,13 @@ import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
-const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
+const GlossaryLeftPanel = ({
+  glossaries,
+  onAddGlossary,
+}: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
-  const navigate = useNavigate();
   const navRef = useRef<HTMLElement>(null);
 
   const createGlossaryPermission = useMemo(
@@ -58,10 +61,6 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
       })),
     [glossaries]
   );
-
-  const handleAddGlossaryClick = () => {
-    navigate(ROUTES.ADD_GLOSSARY);
-  };
 
   useEffect(() => {
     const activeItem = navRef.current?.querySelector<HTMLElement>(
@@ -91,24 +90,29 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   }, [glossaryFqn]);
 
   return (
-    <div className="tw:h-full" data-testid="glossary-left-panel">
+    <div
+      className="tw:h-full"
+      data-testid="glossary-left-panel"
+      data-tour-step="glossary">
       <GlossaryV1Skeleton loading={glossaries.length === 0}>
         <div className="tw:flex tw:flex-col tw:gap-4">
           {createGlossaryPermission && (
             <div className="tw:px-3">
               <Button
-                className="tw:w-full"
+                className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                 color="secondary"
                 data-testid="add-glossary"
-                iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                iconLeading={Plus}
                 size="sm"
-                onPress={handleAddGlossaryClick}>
+                onPress={onAddGlossary}>
                 <Typography className="tw:text-brand-tertiary" weight="regular">
                   {t('label.add-entity', { entity: t('label.glossary') })}
                 </Typography>
               </Button>
             </div>
           )}
+
+          <DomainFilterChip className="tw:px-3" />
 
           <nav aria-label={t('label.glossary-plural')} ref={navRef}>
             <NavList

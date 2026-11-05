@@ -13,16 +13,17 @@
 Validator for table rule library SQL expression
 """
 
-from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError
-
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.mixins.rule_library_threshold_mixin import (
+    RuleLibraryThresholdMixin,
+)
 from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
 )
+from metadata.data_quality.validations.utils import render_sql_expression
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
+from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
 
@@ -39,7 +40,7 @@ DATABASES_WITHOUT_DATABASE_CONCEPT = {
 }
 
 
-class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
+class TableRuleLibrarySqlExpressionValidator(RuleLibraryThresholdMixin):
     """Validator for table-level SQL Expression based rules in the Rule Library."""
 
     # The rule's SQL is executed as written, so the sampler never sees it.
@@ -80,15 +81,7 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
         params = {"table_name": table_name}
         params.update(self._get_user_params())
 
-        try:
-            template = Template(sql_template.root, undefined=StrictUndefined)
-            return template.render(**params)
-        except TemplateSyntaxError as e:
-            raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
-        except UndefinedError as e:
-            raise ValueError(
-                f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
-            ) from e
+        return render_sql_expression(sql_template.root, params)
 
     def _run_results(self, sql_expression) -> int:
         raise NotImplementedError
@@ -113,11 +106,4 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
         sql_expression = self.compile_sql_expression(table_name)
         count: int = self._run_results(sql_expression)
 
-        result_message = f"Table '{table_name}' has {count} rows matching the condition. Expected 0."
-
-        return self.get_test_case_result_object(
-            self.execution_date,
-            self.get_test_case_status(count == 0),
-            result_message,
-            [TestResultValue(name="Row Count", value=str(count), predictedValue=None)],
-        )
+        return self.get_rule_library_result(f"Table '{table_name}'", count)

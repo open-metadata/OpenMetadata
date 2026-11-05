@@ -8,17 +8,22 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.dashboard.DomoDashboardConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig__1;
+import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
+import org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
 import org.openmetadata.schema.services.connections.mcp.McpConnection;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
@@ -26,6 +31,9 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   private static final String ALPHA_KEY = "alpha-api-key";
   private static final String BETA_KEY = "beta-api-key";
   private static final String SFTP_PASSWORD = "openmetadata-sftp-secret";
+  private static final String FABRIC_CERTIFICATE = "fabric-certificate-pem";
+  private static final String FABRIC_PRIVATE_KEY = "fabric-private-key-pem";
+  private static final String FABRIC_PASSPHRASE = "fabric-key-passphrase";
 
   public PasswordEntityMaskerTest() {
     CONFIG.setMaskPasswordsAPI(true);
@@ -34,6 +42,28 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   @Override
   protected String getMaskedPassword() {
     return PasswordEntityMasker.PASSWORD_MASK;
+  }
+
+  @Test
+  void testOpenMetadataServerJwtTokenIsMaskedAndRestored() {
+    // OpenMetadataJWTClientConfig#jwtToken (the token embedded in a server connection) is a
+    // @PasswordField: it must be masked for non-bot readers and restored on write.
+    final OpenMetadataConnection original =
+        new OpenMetadataConnection()
+            .withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken(TOKEN));
+
+    final OpenMetadataConnection masked =
+        (OpenMetadataConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(original, "OpenMetadata", ServiceType.METADATA);
+    assertEquals(getMaskedPassword(), masked.getSecurityConfig().getJwtToken());
+
+    final OpenMetadataConnection restored =
+        (OpenMetadataConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(
+                    masked, original, "OpenMetadata", ServiceType.METADATA);
+    assertEquals(TOKEN, restored.getSecurityConfig().getJwtToken());
   }
 
   @Test
@@ -263,5 +293,65 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     assertEquals(
         "Failed to unmask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
         thrown.getMessage());
+  }
+
+  @Test
+  void testMicrosoftFabricClientSecretIsMaskedAndRestored() {
+    MicrosoftFabricConnection original =
+        fabricConnection(new ClientSecretAuthentication().withClientSecret(TOKEN));
+
+    MicrosoftFabricConnection masked = maskFabric(original);
+    assertEquals(
+        getMaskedPassword(), ((ClientSecretAuthentication) masked.getAuthType()).getClientSecret());
+
+    MicrosoftFabricConnection restored = unmaskFabric(masked, original);
+    assertEquals(TOKEN, ((ClientSecretAuthentication) restored.getAuthType()).getClientSecret());
+  }
+
+  @Test
+  void testMicrosoftFabricCertificateCredentialsAreMaskedAndRestored() {
+    MicrosoftFabricConnection original =
+        fabricConnection(
+            new CertificateAuthentication()
+                .withCertificate(FABRIC_CERTIFICATE)
+                .withPrivateKey(FABRIC_PRIVATE_KEY)
+                .withPrivateKeyPassphrase(FABRIC_PASSPHRASE));
+
+    MicrosoftFabricConnection masked = maskFabric(original);
+    assertEquals(
+        List.of(getMaskedPassword(), getMaskedPassword(), getMaskedPassword()),
+        certificateSecrets(masked));
+
+    MicrosoftFabricConnection restored = unmaskFabric(masked, original);
+    assertEquals(
+        List.of(FABRIC_CERTIFICATE, FABRIC_PRIVATE_KEY, FABRIC_PASSPHRASE),
+        certificateSecrets(restored));
+  }
+
+  private MicrosoftFabricConnection fabricConnection(Object authType) {
+    return new MicrosoftFabricConnection()
+        .withHostPort("workspace.datawarehouse.fabric.example.test")
+        .withClientId("fabric-client-id")
+        .withTenantId("fabric-tenant-id")
+        .withAuthType(authType);
+  }
+
+  private MicrosoftFabricConnection maskFabric(MicrosoftFabricConnection connection) {
+    return (MicrosoftFabricConnection)
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(connection, "MicrosoftFabric", ServiceType.DATABASE);
+  }
+
+  private MicrosoftFabricConnection unmaskFabric(
+      MicrosoftFabricConnection masked, MicrosoftFabricConnection original) {
+    return (MicrosoftFabricConnection)
+        EntityMaskerFactory.createEntityMasker()
+            .unmaskServiceConnectionConfig(
+                masked, original, "MicrosoftFabric", ServiceType.DATABASE);
+  }
+
+  private List<String> certificateSecrets(MicrosoftFabricConnection connection) {
+    CertificateAuthentication auth = (CertificateAuthentication) connection.getAuthType();
+    return List.of(auth.getCertificate(), auth.getPrivateKey(), auth.getPrivateKeyPassphrase());
   }
 }

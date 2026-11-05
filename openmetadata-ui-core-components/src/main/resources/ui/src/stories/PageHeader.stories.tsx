@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Database01, HomeLine, Plus } from '@untitledui/icons';
+import { Database01, HomeLine, Plus } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { Avatar } from '../components/base/avatar/avatar';

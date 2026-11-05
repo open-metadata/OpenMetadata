@@ -13,6 +13,21 @@
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
+// What a request that 401'd and waited on the refresh gets when that refresh
+// fails. The failure itself reaches the app as the coordinator's
+// `refresh-failed` event, whose handler decides between a silent
+// re-authentication and a sign-out; callers must not act on it themselves.
+export class RefreshFailedError extends Error {
+  constructor() {
+    super('Token refresh failed');
+    this.name = 'RefreshFailedError';
+  }
+}
+
+export const isRefreshFailedError = (
+  error: unknown
+): error is RefreshFailedError => error instanceof RefreshFailedError;
+
 type PendingEntry = {
   config: AxiosRequestConfig;
   resolve: (value: AxiosResponse) => void;
@@ -40,7 +55,7 @@ export class RefreshQueue {
     const entries = this.pending.splice(0, this.pending.length);
     if (freshToken === null) {
       for (const entry of entries) {
-        entry.reject(new Error('Token refresh failed'));
+        entry.reject(new RefreshFailedError());
       }
 
       return;

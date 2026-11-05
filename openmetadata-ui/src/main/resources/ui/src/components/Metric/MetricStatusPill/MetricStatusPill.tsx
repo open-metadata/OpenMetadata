@@ -15,10 +15,10 @@ import {
   Archive,
   Check,
   Clock,
-  Edit03,
+  Edit01,
   Trash01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityStatus } from '../../../generated/entity/data/metric';
@@ -46,7 +46,7 @@ const STATUS_CONFIG: Record<
   [EntityStatus.Draft]: {
     labelKey: 'label.draft',
     color: 'gray',
-    Icon: Edit03,
+    Icon: Edit01,
   },
   [EntityStatus.Rejected]: {
     labelKey: 'label.rejected',
@@ -93,7 +93,7 @@ const MetricStatusPill: FC<MetricStatusPillProps> = ({
       data-testid={dataTestId}
       role="status">
       <Badge className="tw:gap-1" color={config.color} size="sm">
-        <Icon aria-hidden="true" className="tw:size-3 tw:shrink-0" />
+        <Icon aria-hidden="true" className="tw:shrink-0" size={12} />
         {label}
       </Badge>
     </span>

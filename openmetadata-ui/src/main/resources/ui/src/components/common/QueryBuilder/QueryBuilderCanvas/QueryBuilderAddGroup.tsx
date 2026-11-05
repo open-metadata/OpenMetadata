@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, Expand } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronDown,
+  Plus as Expand,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QueryBuilderAddGroupProps } from './QueryBuilderCanvas.types';
@@ -44,7 +47,7 @@ const QueryBuilderAddGroup: FC<QueryBuilderAddGroupProps> = ({
         className="tw:mt-5 tw:self-start"
         data-testid={testId}
         iconLeading={Expand}
-        iconTrailing={<ChevronDown className="tw:size-4" />}
+        iconTrailing={ChevronDown}
         size="sm">
         {label}
       </Button>

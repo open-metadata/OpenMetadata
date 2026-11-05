@@ -64,11 +64,13 @@ export * from './base/form/hook-form';
 export * from './base/grid/grid';
 export * from './base/input/hint-text';
 export * from './base/input/input';
+export * from './base/input/number-input';
 export * from './base/input/input-group';
 export * from './base/input/label';
 export * from './base/input/password-input';
 export * from './base/progress-indicators/progress-circles';
 export * from './base/progress-indicators/progress-indicators';
+export * from './base/progress-indicators/run-history-bar';
 export * from './base/progress-indicators/simple-circle';
 export * from './base/radio-buttons/radio-buttons';
 export * from './base/select/combobox';
@@ -77,7 +79,9 @@ export { Popover as SelectPopover } from './base/select/popover';
 export * from './base/select/select';
 export * from './base/select/select-item';
 export * from './base/select/select-native';
+export * from './base/select/tag-select';
 export * from './base/skeleton/skeleton';
+export * from './base/skeleton/skeleton-paragraph';
 export * from './base/slider/slider';
 export * from './base/tags/base-components/tag-checkbox';
 export * from './base/tags/base-components/tag-close-x';
@@ -151,16 +155,25 @@ export * from './application/date-picker/date-range-picker';
 export * from './application/date-picker/range-calendar';
 export * from './application/date-picker/range-preset';
 export * from './application/empty-placeholder/empty-placeholder';
+export * from './application/hover-card/hover-card';
 export * from './application/modals/modal';
+export * from './application/modals/simple-modal';
 export * from './application/page-layout/page-layout';
 export * from './application/pagination/pagination';
 export * from './application/pagination/pagination-base';
 export * from './application/pagination/pagination-dot';
 export * from './application/pagination/pagination-line';
 export * from './application/popover/popover';
+export * from './application/confirm-popover/confirm-popover';
 export * from './application/progress-steps/progress-steps';
 export { SlideoutMenu } from './application/slideout-menus/slideout-menu';
 export * from './application/table/table';
+export {
+  GridList,
+  GridListItem,
+  ListLayout,
+  Virtualizer,
+} from 'react-aria-components';
 export * from './application/tabs/tabs';
 export * from './application/toast/toast';
 export * from './application/toast/toast-provider';
@@ -201,3 +214,5 @@ export type {
   OwnerChipProps,
   OwnerAvatarStackProps,
 } from './application/owner/owner.types';
+
+export * from './base/input/number-input';

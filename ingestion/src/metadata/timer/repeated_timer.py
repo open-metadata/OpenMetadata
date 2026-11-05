@@ -41,4 +41,5 @@ class RepeatedTimer:
 
     def stop(self) -> None:
         self.event.set()
-        self.thread.join()
+        if self.thread.is_alive():
+            self.thread.join()

@@ -255,8 +255,8 @@ class TestLookerLineageBarrier:
             return _data_model(data_model_name)
 
         looker._pending_views = [
-            ("my_view", "my_model_my_view_view"),
-            ("other_view", "my_model_other_view_view"),
+            ("my_project", "my_view", "my_model_my_view_view"),
+            ("my_project", "other_view", "my_model_other_view_view"),
         ]
 
         with patch.object(LookerSource, "_build_data_model", side_effect=flaky):

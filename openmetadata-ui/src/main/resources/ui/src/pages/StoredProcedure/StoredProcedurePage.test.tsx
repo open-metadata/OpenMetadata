@@ -15,7 +15,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -105,13 +105,6 @@ jest.mock('../../components/common/EntityDescription/Description', () => {
 jest.mock('../../components/Lineage/Lineage.component', () => {
   return jest.fn().mockImplementation(() => <p>testEntityLineageComponent</p>);
 });
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
-  }
-);
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
@@ -247,7 +240,11 @@ describe('StoredProcedure component', () => {
       renderPage();
     });
 
-    expect(await screen.findByText('testErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('StoredProcedurePage should render page for ViewBasic permissions', async () => {

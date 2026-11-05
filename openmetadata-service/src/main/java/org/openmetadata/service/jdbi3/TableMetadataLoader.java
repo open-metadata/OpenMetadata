@@ -2,11 +2,13 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
@@ -16,6 +18,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecordWithId;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -34,9 +37,21 @@ public final class TableMetadataLoader {
       CUSTOM_METRICS_EXTENSION + TABLE_COLUMN_EXTENSION;
 
   private final Supplier<EntityExtensionDAO> extensions;
+  private final Supplier<CustomPropertyReferences> references;
+  private final String holderType;
 
-  public TableMetadataLoader(final Supplier<EntityExtensionDAO> extensions) {
+  /**
+   * @param references reference-typed column values live in their own table and are merged into
+   *     each column's extension on read
+   * @param holderType the entity type whose columns this loader reads
+   */
+  public TableMetadataLoader(
+      final Supplier<EntityExtensionDAO> extensions,
+      final Supplier<CustomPropertyReferences> references,
+      final String holderType) {
     this.extensions = extensions;
+    this.references = references;
+    this.holderType = holderType;
   }
 
   /** Sets table metrics, and column metrics when requested, for every table in one query batch. */
@@ -113,16 +128,60 @@ public final class TableMetadataLoader {
     if (nullOrEmpty(columns)) {
       return;
     }
-    final Map<String, List<Column>> columnsByKey = indexColumnKeys(columns);
+    // Column extensions are persisted for nested children too, so hydrate the whole column tree;
+    // otherwise a nested column reads back with no extension and an unchanged re-ingest records
+    // a spurious change.
+    final Map<String, List<Column>> columnsByKey =
+        indexColumnKeys(EntityUtil.getFlattenedEntityField(columns));
     try {
       // Older rows can carry another jsonSchema; the exact persisted key is authoritative.
       for (final ExtensionRecord record :
           extensions.get().getExtensionsByKeys(tableId, new ArrayList<>(columnsByKey.keySet()))) {
         applyColumnExtension(record, columnsByKey.get(record.extensionName()));
       }
+      applyColumnReferences(tableId, columnsByKey);
     } catch (RuntimeException exception) {
       LOG.warn("Failed to load column extensions for table {}", tableId, exception);
     }
+  }
+
+  /**
+   * For reads that did not ask for {@code extension}: drops reference properties from the inline
+   * copy (for example a cached row written before 2.1), so they are served only with their rows.
+   */
+  public void stripColumnReferences(final List<Column> columns) {
+    final String columnType = CustomPropertyReferences.columnTypeOf(holderType);
+    if (columnType == null || nullOrEmpty(columns)) {
+      return;
+    }
+    final Predicate<String> isReference =
+        CustomPropertyReferences.referencePropertiesOf(columnType);
+    for (final Column column : EntityUtil.getFlattenedEntityField(columns)) {
+      if (column.getExtension() != null) {
+        column.setExtension(
+            CustomPropertyReferences.withReferences(column.getExtension(), null, isReference));
+      }
+    }
+  }
+
+  private void applyColumnReferences(final UUID tableId, final Map<String, List<Column>> byKey) {
+    final String columnType = CustomPropertyReferences.columnTypeOf(holderType);
+    if (columnType == null) {
+      return;
+    }
+    final Map<String, ObjectNode> referencesByKey =
+        references.get().readColumns(columnType, tableId, byKey.keySet());
+    final Predicate<String> isReference =
+        CustomPropertyReferences.referencePropertiesOf(columnType);
+    referencesByKey.forEach(
+        (key, values) ->
+            byKey
+                .get(key)
+                .forEach(
+                    column ->
+                        column.setExtension(
+                            CustomPropertyReferences.withReferences(
+                                column.getExtension(), values, isReference))));
   }
 
   private Map<String, List<Column>> indexColumnKeys(final List<Column> columns) {

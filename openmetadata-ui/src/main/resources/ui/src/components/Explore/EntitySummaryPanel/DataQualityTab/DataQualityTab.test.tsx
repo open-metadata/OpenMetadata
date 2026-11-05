@@ -60,64 +60,6 @@ jest.mock(
   })
 );
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Card: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <div className={className} data-testid="card" {...props}>
-        {children}
-      </div>
-    )),
-    Col: jest
-      .fn()
-      .mockImplementation(({ children, span, className, ...props }) => (
-        <div
-          className={className}
-          data-span={span}
-          data-testid="col"
-          {...props}>
-          {children}
-        </div>
-      )),
-    Row: jest
-      .fn()
-      .mockImplementation(({ children, className, gutter, ...props }) => (
-        <div
-          className={className}
-          data-gutter={gutter}
-          data-testid="row"
-          {...props}>
-          {children}
-        </div>
-      )),
-    Typography: {
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ellipsis, ...props }) => (
-          <span
-            className={className}
-            data-ellipsis={ellipsis}
-            data-testid="typography-text"
-            {...props}>
-            {children}
-          </span>
-        )),
-      Paragraph: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <p
-            className={className}
-            data-testid="typography-paragraph"
-            {...props}>
-            {children}
-          </p>
-        )),
-    },
-  };
-});
-
 // Mock child components
 jest.mock('../../../common/DataQualitySection/DataQualitySection', () => {
   return jest
@@ -156,8 +98,12 @@ jest.mock('../../../common/Loader/Loader', () => {
 });
 
 jest.mock('../../../common/StatusBadge/StatusBadgeV2.component', () => {
-  return jest.fn().mockImplementation(({ label, status }) => (
-    <div data-label={label} data-status={status} data-testid="status-badge">
+  return jest.fn().mockImplementation(({ className, label, status }) => (
+    <div
+      className={className}
+      data-label={label}
+      data-status={status}
+      data-testid="status-badge">
       {label}
     </div>
   ));
@@ -433,6 +379,37 @@ describe('DataQualityTab', () => {
         expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
       });
     });
+
+    it('should show the incidents empty message on the incidents tab', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+
+      getListTestCaseBySearch.mockResolvedValue({ data: [] });
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.no-data-quality-test-message')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole('tab', { name: /label.incident-plural/ })
+      );
+
+      expect(
+        await screen.findByText('message.no-incident-found')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-data-quality-test-message')
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('Test Cases Rendering', () => {
@@ -613,6 +590,12 @@ describe('DataQualityTab', () => {
       expect(screen.queryByText('Test Case 1')).not.toBeInTheDocument();
       expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
       expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+
+      const abortedBadge = screen
+        .getAllByTestId('status-badge')
+        .find((badge) => badge.dataset.status === 'aborted');
+
+      expect(abortedBadge).toBeInTheDocument();
     });
 
     it('should show no test cases message when filter has no results', async () => {
@@ -666,6 +649,34 @@ describe('DataQualityTab', () => {
         expect(screen.getByText(/label.no-entity/)).toBeInTheDocument();
       });
     });
+
+    it('reports no matching results when a search finds no test cases', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getAllByTestId('data-quality-section')[0]
+        ).toBeInTheDocument();
+      });
+
+      // The search re-queries the API; the counts from the first load stay.
+      getListTestCaseBySearch.mockResolvedValueOnce({ data: [] });
+      fireEvent.change(screen.getAllByTestId('search-input')[0], {
+        target: { value: 'zzz_no_such_test' },
+      });
+
+      expect(
+        await screen.findByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
+    });
   });
 
   describe('Tab Navigation', () => {
@@ -707,7 +718,7 @@ describe('DataQualityTab', () => {
       fireEvent.click(incidentsTab);
 
       expect(
-        screen.getByText('label.new', { selector: '.stat-label.new' })
+        screen.getByRole('button', { name: /label.new/ })
       ).toBeInTheDocument();
     });
 
@@ -762,44 +773,15 @@ describe('DataQualityTab', () => {
     });
 
     it('should render incident status counts', () => {
-      // Check for new count (should be 1 based on mock data)
-      const newCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '1' &&
-          className.includes('stat-count') &&
-          className.includes('new')
-        );
-      });
-
-      expect(newCount).toBeInTheDocument();
-
-      // Check for assigned count (should be 1 based on mock data)
-      const assignedCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '1' &&
-          className.includes('stat-count') &&
-          className.includes('assigned')
-        );
-      });
-
-      expect(assignedCount).toBeInTheDocument();
-
-      // Check for acknowledged count (should be 0 based on mock data)
-      const ackCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '0' &&
-          className.includes('stat-count') &&
-          className.includes('ack')
-        );
-      });
-
-      expect(ackCount).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /label.new/ })
+      ).toHaveTextContent('1');
+      expect(
+        screen.getByRole('button', { name: /label.assigned/ })
+      ).toHaveTextContent('1');
+      expect(
+        screen.getByRole('button', { name: /label.acknowledged/ })
+      ).toHaveTextContent('0');
 
       // Check for resolved count (should be 0 based on mock data)
       const resolvedCount = screen.getByText((content, element) => {
@@ -1049,7 +1031,7 @@ describe('DataQualityTab', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.no-access-placeholder')
+          screen.getByTestId('permission-error-placeholder')
         ).toBeInTheDocument();
       });
 

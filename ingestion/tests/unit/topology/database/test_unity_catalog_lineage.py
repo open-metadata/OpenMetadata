@@ -15,6 +15,7 @@ Test Unity Catalog lineage functionality
 
 import json
 from collections import namedtuple
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -25,6 +26,7 @@ from metadata.generated.schema.entity.data.container import (
     Container,
     ContainerDataModel,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -188,6 +190,18 @@ def run(lineage_source, rows=(), tables=None, external_rows=(), probe_error=None
     stub_rows(lineage_source, rows, external_rows=external_rows, probe_error=probe_error)
     resolve_tables(lineage_source, tables or {})
     return list(lineage_source._iter())
+
+
+def assert_no_table_listing(lineage_source):
+    """The invariant: no entity type is paged through except the service's catalogs.
+
+    The metric-view pass has no lineage row to drive it, so it lists ``Database`` --
+    a handful of rows in one request. Paging ``Table`` is the cost this guards: one
+    request per hundred tables in the service, nearly all of them for tables no edge
+    mentions.
+    """
+    listed = [call.kwargs["entity"] for call in lineage_source.metadata.list_all_entities.call_args_list]
+    assert set(listed) <= {Database}
 
 
 def _entity_names(tables):
@@ -408,6 +422,130 @@ class TestNativeLineageStream:
         results = run(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
 
         assert results == []
+        assert [list(warning) for warning in lineage_source.status.warnings] == [["cat.schema.src"]]
+
+    def test_an_unresolved_upstream_is_reported_once(self, lineage_source):
+        tables = {"cat.schema.tgt": a_table("tgt"), "cat.schema.other": a_table("other")}
+        rows = [table_row("cat.schema.src", "cat.schema.other"), table_row("cat.schema.src", "cat.schema.tgt")]
+
+        run(lineage_source, rows, tables)
+
+        assert len(lineage_source.status.warnings) == 1
+
+
+def cross_service_source(process_cross_database_lineage=True, cross_database_service_names=("other_service",)):
+    """A source whose upstreams may live in other services, its lookups keyed by full name"""
+    config = json.loads(json.dumps(MOCK_CONFIG["source"]))
+    config["sourceConfig"]["config"].update(
+        processCrossDatabaseLineage=process_cross_database_lineage,
+        crossDatabaseServiceNames=list(cross_database_service_names),
+    )
+    with (
+        patch("metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"),
+        patch("metadata.ingestion.source.database.unitycatalog.lineage.create_connection") as mock_create_connection,
+    ):
+        source = UnitycatalogLineageSource(WorkflowSource.model_validate(config), MagicMock())
+        source.engine = mock_create_connection.return_value.sql.client
+    return source
+
+
+def run_across_services(source, rows, tables):
+    """Everything the connector emits for `rows`, with `tables` keyed by `service.catalog.schema.table`"""
+    stub_rows(source, rows)
+    source.metadata.get_by_name.side_effect = lambda entity=None, fqn=None, **_: tables.get(str(fqn))
+    return list(source._iter())
+
+
+class TestCrossServiceLineage:
+    """An upstream ingested under another service, as the metastore-wide system tables report it."""
+
+    def test_an_upstream_in_a_cross_database_service_is_resolved(self):
+        source = cross_service_source()
+        tables = {
+            "other_service.cat.schema.src": a_table("src"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+
+        results = run_across_services(source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
+
+        assert len(results) == 1
+        assert results[0].right.edge.fromEntity.id == tables["other_service.cat.schema.src"].id
+        assert source.status.warnings == []
+
+    def test_the_own_service_wins_over_a_cross_database_service(self):
+        source = cross_service_source()
+        tables = {
+            "local_unitycatalog.cat.schema.src": a_table("src"),
+            "other_service.cat.schema.src": a_table("src"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+
+        results = run_across_services(source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
+
+        assert results[0].right.edge.fromEntity.id == tables["local_unitycatalog.cat.schema.src"].id
+
+    @pytest.mark.parametrize(
+        "process_cross_database_lineage, cross_database_service_names",
+        [(False, ("other_service",)), (True, ())],
+    )
+    def test_without_cross_database_lineage_only_the_own_service_is_searched(
+        self, process_cross_database_lineage, cross_database_service_names
+    ):
+        source = cross_service_source(process_cross_database_lineage, cross_database_service_names)
+        tables = {
+            "other_service.cat.schema.src": a_table("src"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+
+        results = run_across_services(source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
+
+        assert results == []
+        assert [list(warning) for warning in source.status.warnings] == [["cat.schema.src"]]
+
+    def test_a_target_is_never_looked_up_in_another_service(self):
+        source = cross_service_source()
+        tables = {
+            "local_unitycatalog.cat.schema.src": a_table("src"),
+            "other_service.cat.schema.tgt": a_table("tgt"),
+        }
+
+        results = run_across_services(source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
+
+        assert results == []
+
+    def test_a_name_missed_as_a_target_is_still_found_as_an_upstream(self):
+        source = cross_service_source()
+        tables = {
+            "other_service.cat.schema.mid": a_table("mid"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+        rows = [table_row("cat.schema.src", "cat.schema.mid"), table_row("cat.schema.mid", "cat.schema.tgt")]
+
+        results = run_across_services(source, rows, tables)
+
+        assert [result.right.edge.fromEntity.id for result in results] == [tables["other_service.cat.schema.mid"].id]
+
+    def test_a_failed_own_service_lookup_does_not_fall_through_to_another_service(self):
+        """The own-service table may exist; a same-named one elsewhere must not take its edge"""
+        source = cross_service_source()
+        tables = {
+            "local_unitycatalog.cat.schema.src": a_table("src"),
+            "other_service.cat.schema.src": a_table("src"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+        stub_rows(source, [table_row("cat.schema.src", "cat.schema.tgt")])
+
+        def get_by_name(entity=None, fqn=None, **_):
+            if str(fqn) == "local_unitycatalog.cat.schema.src":
+                raise RuntimeError("connection reset")
+            return tables.get(str(fqn))
+
+        source.metadata.get_by_name.side_effect = get_by_name
+
+        assert list(source._iter()) == []
+        assert "local_unitycatalog.cat.schema.src" not in source._table_cache
+        assert [list(warning) for warning in source.status.warnings] == [["cat.schema.src"]]
+        assert "connection reset" in source.status.warnings[0]["cat.schema.src"]
 
 
 class TestSqlEnrichment:
@@ -964,7 +1102,7 @@ class TestPathBasedLineage:
         assert edge.lineageDetails.columnsLineage[0].fromColumns[0].root == f"svc.{external_table}.id"
         assert edge.lineageDetails.columnsLineage[0].toColumn.root == f"svc.{managed_table}.id"
         assert edge.lineageDetails.sqlQuery.root.startswith("CREATE TABLE managed_table_ns")
-        lineage_source.metadata.list_all_entities.assert_not_called()
+        assert_no_table_listing(lineage_source)
 
 
 class TestLineageDrivenIteration:
@@ -980,7 +1118,7 @@ class TestLineageDrivenIteration:
         results = run(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
 
         assert len(results) == 1
-        lineage_source.metadata.list_all_entities.assert_not_called()
+        assert_no_table_listing(lineage_source)
 
     def test_an_upstream_named_by_two_targets_is_resolved_once(self, lineage_source):
         tables = {
@@ -1012,7 +1150,7 @@ class TestLineageDrivenIteration:
         lineage_source.metadata.get_by_name.side_effect = RuntimeError("connection reset")
 
         assert lineage_source._get_table_entity("cat.schema.tgt") is None
-        assert "cat.schema.tgt" not in lineage_source._table_cache
+        assert len(lineage_source._table_cache) == 0
 
     def test_filters_apply_to_the_names_the_system_tables_report(self, lineage_source):
         tables = {
@@ -1076,3 +1214,41 @@ class TestLineageDrivenIteration:
         list(lineage_source._iter())
 
         assert calls == ["locations", "lineage"]
+
+
+class TestMetricViewOptOut:
+    """``includeMetricViews`` gates the metric-view pass in both workflows.
+
+    It lives on the connection rather than on a pipeline config because the metadata
+    and lineage workflows each have their own, and both have to read the same switch.
+    """
+
+    @staticmethod
+    def _one_catalog(lineage_source):
+        lineage_source.metadata.list_all_entities.return_value = [
+            SimpleNamespace(name="cat", fullyQualifiedName="svc.cat")
+        ]
+
+    @staticmethod
+    def _discovery_queries(executed):
+        return [sql for sql in executed if "INFORMATION_SCHEMA.VIEWS" in sql]
+
+    def test_metric_views_are_discovered_by_default(self, lineage_source):
+        self._one_catalog(lineage_source)
+        executed = stub_rows(lineage_source)
+        resolve_tables(lineage_source, {})
+
+        list(lineage_source._iter())
+
+        assert self._discovery_queries(executed)
+
+    def test_the_opt_out_skips_the_pass_before_it_queries(self, lineage_source):
+        """The point of the flag is the cost, not just the edges: a run that does not
+        want metric views must not pay the per-catalog discovery queries either."""
+        lineage_source.service_connection.includeMetricViews = False
+        self._one_catalog(lineage_source)
+        executed = stub_rows(lineage_source)
+        resolve_tables(lineage_source, {})
+
+        assert list(lineage_source._iter()) == []
+        assert self._discovery_queries(executed) == []

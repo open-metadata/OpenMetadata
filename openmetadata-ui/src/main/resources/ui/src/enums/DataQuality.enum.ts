@@ -29,3 +29,7 @@ export enum DataQualityDimensions {
   Uniqueness = 'Uniqueness',
   Validity = 'Validity',
 }
+export enum IncidentTimeMetricsType {
+  TIME_TO_RESPONSE = 'timeToResponse',
+  TIME_TO_RESOLUTION = 'timeToResolution',
+}

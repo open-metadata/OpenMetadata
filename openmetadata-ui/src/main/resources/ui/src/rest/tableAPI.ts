@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
@@ -29,6 +28,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { QueryVote } from '../interface/entity/vote.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
@@ -64,11 +64,13 @@ export const getTableVersion = async (id: string, version?: string) => {
 
 export const getTableDetailsByFQN = async (
   fqn: string,
-  params?: ListParams
+  params?: ListParams,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<Table>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
+      signal,
       params: {
         ...params,
         include: params?.include ?? Include.All,

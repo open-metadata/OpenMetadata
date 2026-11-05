@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpClient;
@@ -106,6 +107,9 @@ public class RdfReindexInsertOnlyIT {
 
     AppRunRecord firstRun = triggerAndWait(httpClient, readLatestRunStartTime(httpClient));
     assertExpectedTriples(source, target);
+    assertTrue(
+        firstRun.getSuccessContext().getStats().getJobStats().getReaderTimeMs() > 0,
+        () -> "The run must record the time spent reading entities: " + firstRun);
 
     AppRunRecord secondRun = triggerAndWait(httpClient, firstRun.getStartTime());
     assertExpectedTriples(source, target);
@@ -204,16 +208,11 @@ public class RdfReindexInsertOnlyIT {
     config.put("recreateIndex", true);
     config.put("batchSize", 100);
     config.put("producerThreads", 2);
-    config.put("consumerThreads", 3);
-    config.put("queueSize", 5000);
-    config.put("useDistributedIndexing", false);
-    config.put("partitionSize", 10000);
 
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            error -> error.getMessage() != null && error.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               httpClient.execute(

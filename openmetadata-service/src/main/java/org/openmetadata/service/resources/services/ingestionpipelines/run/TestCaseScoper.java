@@ -25,7 +25,7 @@ public class TestCaseScoper implements SourceConfigScoper {
   // The test suite source filters on the test case name, not its FQN - an FQN would run nothing.
   // Names are unique within the test case's table suite, which is the suite this scope runs.
   @Override
-  public Map<String, Object> sourceConfigOverride(EntityInterface testCase) {
+  public Map<String, Object> sourceConfigOverride(EntityInterface<?> testCase) {
     return Map.of(TEST_CASES, List.of(testCase.getName()));
   }
 }

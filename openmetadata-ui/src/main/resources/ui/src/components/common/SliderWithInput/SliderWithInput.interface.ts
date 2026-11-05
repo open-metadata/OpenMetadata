@@ -15,4 +15,5 @@ export interface SliderWithInputProps {
   value?: number;
   onChange: (value: number | null) => void;
   className?: string;
+  min?: number;
 }

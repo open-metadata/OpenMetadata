@@ -59,6 +59,12 @@ import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringUtils';
 import { getUsagePercentile } from './TablePureUtils';
 
+// A creation time before the Unix epoch is the year-0001 placeholder older ingestion stored for a
+// source that reported none (ADR:2026-10-29-lifecycle-timestamps-before-the-epoch-are-dropped-on-write).
+export const isRecordedLifeCycleTimestamp = (
+  timestamp?: number
+): timestamp is number => timestamp !== undefined && timestamp >= 0;
+
 const { t } = i18n;
 
 export const HeaderDotSeparator = () => (
@@ -674,6 +680,18 @@ const getTableHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
             <ExtraInfoLabel
               label={t('label.row-plural')}
               value={tableDetails.profile?.rowCount}
+            />
+          </>
+        )}
+        {isRecordedLifeCycleTimestamp(
+          tableDetails?.lifeCycle?.created?.timestamp
+        ) && (
+          <>
+            <HeaderDotSeparator />
+            <ExtraInfoLabel
+              dataTestId="table-created-time"
+              label={t('label.created-time')}
+              value={formatDateTime(tableDetails.lifeCycle.created.timestamp)}
             />
           </>
         )}

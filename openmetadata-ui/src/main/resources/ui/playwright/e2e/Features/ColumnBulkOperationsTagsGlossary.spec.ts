@@ -22,14 +22,17 @@ import {
   searchGlossaryPicker,
 } from '../../utils/glossaryPicker';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const GRID_API_URL = '/api/v1/columns/grid';
 
 async function waitForGridResponse(page: Page) {
-  return page.waitForResponse(
-    (r) => r.url().includes(GRID_API_URL) && r.status() === 200
+  return waitForResponseWithStatus(
+    page,
+    (r) => r.request().method() === 'GET' && r.url().includes(GRID_API_URL),
+    200
   );
 }
 
@@ -89,7 +92,9 @@ async function waitForColumnInGridIndex(
         );
 
         if (!response.ok()) {
-          return 0;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const body = await response.json();
@@ -119,7 +124,9 @@ async function waitForGlossaryTermInSearch(
         );
 
         if (!response.ok()) {
-          return false;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const body = await response.json();
@@ -214,16 +221,16 @@ test.describe('Column Bulk Operations - Tags & Glossary Select in Drawer', () =>
       await searchRes;
     });
 
-    await test.step('Option renders inside the drawer top layer', async () => {
-      // Before the fix this option portaled to document.body, outside the
-      // drawer — so scoping the locator to the drawer would not find it.
+    await test.step('Option renders above the drawer', async () => {
+      // The core listbox is a react-aria popover nested in the drawer's modal,
+      // so it portals to the body yet stays interactive above the drawer.
       await expect(
-        drawer.getByTestId(`tag-${CLASSIFICATION_TAG_FQN}`)
+        page.getByTestId(`tag-${CLASSIFICATION_TAG_FQN}`)
       ).toBeVisible();
     });
 
     await test.step('Clicking the option selects the tag', async () => {
-      await drawer.getByTestId(`tag-${CLASSIFICATION_TAG_FQN}`).click();
+      await page.getByTestId(`tag-${CLASSIFICATION_TAG_FQN}`).click();
 
       await expect(
         tagsField.locator('[data-testid^="selected-tag-"]')

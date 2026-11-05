@@ -37,6 +37,7 @@ import {
   waitForAllLoadersToDisappear,
   waitForWidgetsToRender,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 const user = new UserClass();
 
@@ -64,13 +65,13 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
 });
 
-entities.forEach((EntityClass) => {
+pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
   const entity = new EntityClass();
 
   const rowSelector =
@@ -104,7 +105,7 @@ entities.forEach((EntityClass) => {
       });
 
       test('No edit owner permission', async ({ page }) => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
         await waitForWidgetsToRender(page);
 

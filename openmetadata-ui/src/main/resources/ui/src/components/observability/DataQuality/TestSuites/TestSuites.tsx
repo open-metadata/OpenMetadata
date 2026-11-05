@@ -11,23 +11,20 @@
  *  limitations under the License.
  */
 import { Box, EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus } from '@untitledui/icons';
-import classNames from 'classnames';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TestSuiteListPanel } from '../../../DataQuality/TestSuite/TestSuiteList/TestSuiteListPanel.component';
 import { useTestSuitesListPage } from '../../../DataQuality/TestSuite/TestSuiteList/useTestSuitesListPage';
 import {
   chipChevronClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from '../Dashboard/dqFilterChip.utils';
 import DqSummaryPanel from '../DqSummaryPanel';
 
@@ -99,13 +96,14 @@ const TestSuites = () => {
 
   if (!testSuiteFlags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-suite'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-suite'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -119,12 +117,9 @@ const TestSuites = () => {
         <UserTeamSelectableList
           hasPermission
           owner={selectedOwner}
-          popoverProps={{ placement: 'bottomLeft' }}
           onUpdate={handleOwnerSelect}>
           <button
-            className={classNames(chipTriggerClassName, {
-              [chipTriggerSelectedClassName]: Boolean(ownerFilterValue),
-            })}
+            className={chipTriggerClassName(Boolean(ownerFilterValue))}
             data-testid="owner-select-filter"
             type="button">
             {ownerFilterValue?.label ?? t('label.owner')}

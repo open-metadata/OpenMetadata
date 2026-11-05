@@ -18,6 +18,12 @@ import { EntityReference } from '../../../generated/entity/type';
 import { DomainLabel } from './DomainLabel.component';
 import { DomainLabelProps } from './DomainLabel.interface';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
@@ -122,11 +128,11 @@ describe('DomainLabel Component', () => {
   it('should render single domain correctly', () => {
     renderDomainLabel({ domains: [mockDomain1] });
 
-    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-tag-domain.one')).toBeInTheDocument();
     expect(screen.getByText('Domain One')).toBeInTheDocument();
   });
 
-  it('should render multiple domains with dropdown when multiple and headerLayout are true', () => {
+  it('should collapse extra domains behind a "+N More" toggle when multiple and headerLayout are true', () => {
     renderDomainLabel({
       domains: [mockDomain1, mockDomain2],
       multiple: true,
@@ -134,8 +140,10 @@ describe('DomainLabel Component', () => {
     });
 
     expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
-    expect(screen.getByText('+1')).toBeInTheDocument();
+    expect(screen.getByTestId('show-all-domains')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('domain-tag-domain.two')
+    ).not.toBeInTheDocument();
   });
 
   it('should render all domains when multiple is true but headerLayout is false', () => {
@@ -147,7 +155,7 @@ describe('DomainLabel Component', () => {
 
     expect(screen.getByText('Domain One')).toBeInTheDocument();
     expect(screen.getByText('Domain Two')).toBeInTheDocument();
-    expect(screen.queryByTestId('domain-count-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('show-all-domains')).not.toBeInTheDocument();
   });
 
   it('should render "No Domains" text when domains array is empty', () => {
@@ -178,7 +186,7 @@ describe('DomainLabel Component', () => {
 
     renderDomainLabel({ domains: [domainWithoutName] });
 
-    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-tag-domain.one')).toBeInTheDocument();
   });
 
   it('should render domain heading when showDomainHeading is true', () => {
@@ -194,14 +202,14 @@ describe('DomainLabel Component', () => {
     expect(screen.queryByText('Domains')).not.toBeInTheDocument();
   });
 
-  it('should not show domain icon for single domain in header layout', () => {
+  it('should render a single domain chip in header layout', () => {
     renderDomainLabel({
       headerLayout: true,
       multiple: false,
       domains: [mockDomain1],
     });
 
-    expect(screen.queryByTestId('domain-icon')).not.toBeInTheDocument();
+    expect(screen.getByTestId('domain-tag-domain.one')).toBeInTheDocument();
   });
 
   it('should render DomainSelectableList when hasPermission is true', () => {
@@ -239,7 +247,7 @@ describe('DomainLabel Component', () => {
 
     renderDomainLabel({ domains: [emptyDomain] });
 
-    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
+    expect(screen.getByText('Unknown')).toBeInTheDocument();
   });
 
   it('should handle domain with empty fullyQualifiedName', () => {
@@ -250,7 +258,7 @@ describe('DomainLabel Component', () => {
 
     renderDomainLabel({ domains: [domainWithEmptyFQN] });
 
-    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
+    expect(screen.getByText('Domain One')).toBeInTheDocument();
   });
 
   it('should handle mixed domain types (inherited and non-inherited)', () => {
@@ -261,17 +269,17 @@ describe('DomainLabel Component', () => {
     });
 
     expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
+    expect(screen.getByTestId('show-all-domains')).toBeInTheDocument();
   });
 
-  it('should have proper test ID for domain count button', () => {
+  it('should collapse to a "+N More" toggle for multiple header-layout domains', () => {
     renderDomainLabel({
       domains: [mockDomain1, mockDomain2],
       multiple: true,
       headerLayout: true,
     });
 
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
+    expect(screen.getByTestId('show-all-domains')).toBeInTheDocument();
   });
 
   it('should have proper test ID for no domain text', () => {

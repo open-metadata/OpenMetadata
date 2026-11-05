@@ -188,7 +188,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Database entity, String fields) {
+  public EntityInterface<?> getParentEntity(Database entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -224,8 +224,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     List<DatabaseSchema> schemas =
         schemaRepository.listAllForCSV(
             schemaRepository.getFields("owners,tags,domains,extension"),
-            database.getFullyQualifiedName());
-    schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+            database.getFullyQualifiedName(),
+            user);
+    schemas.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
 
     // Export schemas and all their child entities
     return new DatabaseCsv(database, user, recursive).exportAllCsv(schemas, recursive, callback);
@@ -289,6 +290,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
     setInheritedFields(entities, fields);
 
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  @Override
+  protected void hydrateHistoryEntities(List<Database> databases) {
+    for (Database database : databases) {
+      if (database.getService() == null) {
+        throw EntityNotFoundException.byMessage(
+            "Database " + database.getId() + " has no service relationship");
+      }
+    }
   }
 
   private void fetchAndSetDatabaseSpecificFields(List<Database> databases, Fields fields) {
@@ -568,8 +579,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
@@ -633,7 +647,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
         List<Table> tables =
             tableRepository.listAllForCSV(
                 tableRepository.getFields("owners,tags,domains,extension,columns"),
-                schema.getFullyQualifiedName());
+                schema.getFullyQualifiedName(),
+                importedBy);
 
         // Add tables and their columns
         for (Table table : tables) {
@@ -650,7 +665,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
         List<StoredProcedure> storedProcedures =
             spRepository.listAllForCSV(
                 spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
-                schema.getFullyQualifiedName());
+                schema.getFullyQualifiedName(),
+                importedBy);
 
         // Add stored procedures
         for (StoredProcedure sp : storedProcedures) {
@@ -670,7 +686,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     /**
      * Add entity to CSV file with entity type
      */
-    public <E extends EntityInterface> void addEntityToCSV(
+    public <E extends EntityInterface<?>> void addEntityToCSV(
         CsvFile csvFile, E entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());

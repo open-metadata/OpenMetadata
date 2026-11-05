@@ -17,7 +17,7 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
@@ -147,9 +147,11 @@ export const useFilterSelection = (config: FilterSelectionConfig) => {
                   </div>
                 </div>
                 <ButtonUtility
-                  aria-label="Remove filter"
-                  color="tertiary"
-                  icon={<XClose size={14} />}
+                  icon={XClose}
+                  size="xs"
+                  tooltip={t('label.remove-entity', {
+                    entity: t('label.filter'),
+                  })}
                   onClick={() => handleRemoveFilter(filter.key)}
                 />
               </Badge>

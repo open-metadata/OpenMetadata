@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -23,7 +24,11 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
-import { addMultiOwner, removeOwner } from '../../utils/entity';
+import {
+  addMultiOwner,
+  removeOwner,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
   addAssetsToTag,
@@ -40,6 +45,7 @@ import {
   verifyTagPageUI,
 } from '../../utils/tag';
 import { visitUserProfilePage } from '../../utils/user';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 base.describe.configure({ mode: 'serial' });
 
@@ -56,25 +62,25 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataStewardUser.login(page);
+    await dataStewardUser.signIn(page);
     await use(page);
     await page.close();
   },
   limitedAccessPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await limitedAccessUser.login(page);
+    await limitedAccessUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -93,7 +99,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 
 test.describe('Tag Page with Admin Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -234,15 +240,10 @@ test.describe('Tag Page with Admin Roles', () => {
       `/tags/${encodeURIComponent(
         classification.responseData.fullyQualifiedName ??
           classification.responseData.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
-    await adminPage
-      .getByTestId('tags-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await waitForAllLoadersToDisappear(adminPage.getByTestId('tags-container'));
 
     await expect(adminPage.getByTestId('add-new-tag-button')).toBeVisible();
 
@@ -254,11 +255,12 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await fillTagForm(adminPage, domain);
 
-    const createTagResponse = adminPage.waitForResponse(
+    const createTagResponse = waitForResponseWithStatus(
+      adminPage,
       (response) =>
         response.url().includes('/api/v1/tags') &&
-        response.request().method() === 'POST' &&
-        response.ok()
+        response.request().method() === 'POST',
+      'ok'
     );
 
     await submitForm(adminPage);
@@ -269,15 +271,10 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.goto(
       `/tag/${encodeURIComponent(
         createdTagData.fullyQualifiedName ?? NEW_TAG.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
-    await adminPage
-      .getByTestId('tags-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await waitForAllLoadersToDisappear(adminPage.getByTestId('tags-container'));
 
     await expect(adminPage.getByTestId('domain-link')).toContainText(
       domain.data.displayName
@@ -370,11 +367,9 @@ test.describe('Tag Page with Admin Roles', () => {
     const openClassification = async () => {
       await redirectToHomePage(adminPage);
       await sidebarClick(adminPage, SidebarItem.TAGS);
-      await expect(
-        adminPage.locator(
-          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
-        )
-      ).toHaveCount(0, { timeout: 30000 });
+      await waitForAllLoadersToDisappear(
+        adminPage.locator('[data-testid="tags-container"] .table-container')
+      );
 
       const classificationEntry = adminPage
         .locator('[data-testid="side-panel-classification"]')
@@ -382,7 +377,9 @@ test.describe('Tag Page with Admin Roles', () => {
           exact: true,
         })
         .first();
-      await expect(classificationEntry).toBeVisible({ timeout: 30000 });
+      await expect(classificationEntry).toBeVisible({
+        timeout: ACTION_TIMEOUT,
+      });
       await classificationEntry.click();
       await expect(
         adminPage.locator(
@@ -419,12 +416,10 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
-      await expect(
-        adminPage.locator(
-          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
-        )
-      ).toHaveCount(0, { timeout: 30000 });
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(
+        adminPage.locator('[data-testid="tags-container"] .table-container')
+      );
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeDisabled();
 
@@ -444,12 +439,10 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
-      await expect(
-        adminPage.locator(
-          '[data-testid="tags-container"] .table-container [data-testid="loader"]'
-        )
-      ).toHaveCount(0, { timeout: 30000 });
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(
+        adminPage.locator('[data-testid="tags-container"] .table-container')
+      );
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeEnabled();
     } finally {
@@ -460,7 +453,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
 test.describe('Tag Page with Data Consumer Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -537,7 +530,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
 
 test.describe('Tag Page with Data Steward Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -590,7 +583,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
 test.describe('Tag Page with Limited EditTag Permission', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({

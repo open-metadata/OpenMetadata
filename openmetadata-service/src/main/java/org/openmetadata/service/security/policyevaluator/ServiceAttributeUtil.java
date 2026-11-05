@@ -35,7 +35,7 @@ final class ServiceAttributeUtil {
   private ServiceAttributeUtil() {}
 
   /** Connector type ({@code Snowflake}, {@code Postgres}), or null if unknown. */
-  static String serviceTypeOf(EntityInterface service) {
+  static String serviceTypeOf(EntityInterface<?> service) {
     if (service instanceof ServiceEntityInterface typedService
         && typedService.getServiceType() != null) {
       return typedService.getServiceType().value();
@@ -44,7 +44,7 @@ final class ServiceAttributeUtil {
   }
 
   /** Declared environment, or null when unset — the attributes block is optional. */
-  static String environmentOf(EntityInterface service) {
+  static String environmentOf(EntityInterface<?> service) {
     if (!(service instanceof ServiceEntityInterface typedService)) {
       return null;
     }

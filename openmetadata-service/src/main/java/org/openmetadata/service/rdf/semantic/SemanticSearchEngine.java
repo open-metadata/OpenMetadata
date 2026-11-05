@@ -94,7 +94,7 @@ public class SemanticSearchEngine {
 
   public List<SearchResult> findSimilarEntities(String entityId, String entityType, int limit) {
     try {
-      EntityInterface entity = Entity.getEntity(entityType, UUID.fromString(entityId), "", null);
+      EntityInterface<?> entity = Entity.getEntity(entityType, UUID.fromString(entityId), "", null);
       float[] entityEmbedding = getOrGenerateEmbedding(entity);
       List<SearchResult> similar = findSimilarByEmbedding(entityEmbedding, entityType, limit * 2);
       similar =
@@ -146,7 +146,8 @@ public class SemanticSearchEngine {
 
     for (String entityId : entityIds) {
       try {
-        EntityInterface entity = Entity.getEntity(entityType, UUID.fromString(entityId), "", null);
+        EntityInterface<?> entity =
+            Entity.getEntity(entityType, UUID.fromString(entityId), "", null);
         float[] entityEmbedding = getOrGenerateEmbedding(entity);
 
         double similarity = cosineSimilarity(embedding, entityEmbedding);
@@ -302,7 +303,7 @@ public class SemanticSearchEngine {
         .collect(Collectors.toList());
   }
 
-  private float[] getOrGenerateEmbedding(EntityInterface entity) {
+  private float[] getOrGenerateEmbedding(EntityInterface<?> entity) {
     String cacheKey = entity.getId().toString();
 
     return embeddingCache.computeIfAbsent(
@@ -390,7 +391,7 @@ public class SemanticSearchEngine {
       String type = parts[parts.length - 2];
       String id = parts[parts.length - 1];
 
-      EntityInterface entity = Entity.getEntity(type, UUID.fromString(id), "", null);
+      EntityInterface<?> entity = Entity.getEntity(type, UUID.fromString(id), "", null);
       return entity.getEntityReference();
     } catch (Exception e) {
       return null;
@@ -398,7 +399,7 @@ public class SemanticSearchEngine {
   }
 
   private List<SearchResult> enhanceWithRelationships(
-      EntityInterface source, List<SearchResult> similar, int limit) {
+      EntityInterface<?> source, List<SearchResult> similar, int limit) {
     // Query for common relationships patterns
     for (SearchResult result : similar) {
       try {

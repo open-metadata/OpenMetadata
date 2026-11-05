@@ -14,12 +14,12 @@ import { act } from '@testing-library/react';
 import { renderHook } from '@testing-library/react-hooks';
 import React from 'react';
 import { DeleteType } from '../../components/common/DeleteWidget/DeleteWidget.interface';
+import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { deleteAsyncEntity } from '../../rest/miscAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AsyncDeleteProvider, {
   useAsyncDeleteProvider,
 } from './AsyncDeleteProvider';
-import { AsyncDeleteWebsocketResponse } from './AsyncDeleteProvider.interface';
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -280,5 +280,60 @@ describe('AsyncDeleteProvider', () => {
 
     // Callback should still only be called once (cleanup worked)
     expect(mockOnDeleteFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores the status of the latest websocket message, not the first one', () => {
+    const { result } = renderHook(() => useAsyncDeleteProvider(), { wrapper });
+
+    act(() => {
+      result.current.handleDeleteEntityWebsocketResponse({
+        status: 'FAILED',
+        jobId: 'job-1',
+        entityName: 'First',
+        error: 'metric is not empty',
+      });
+    });
+    act(() => {
+      result.current.handleDeleteEntityWebsocketResponse({
+        status: 'COMPLETED',
+        jobId: 'job-2',
+        entityName: 'Second',
+        error: null,
+      });
+    });
+
+    expect(result.current.asyncDeleteJob).toEqual(
+      expect.objectContaining({ jobId: 'job-2', status: 'COMPLETED' })
+    );
+  });
+
+  it('does not report a new delete as failed because an earlier job failed', async () => {
+    const onDeleteFailure = jest.fn();
+    const afterDeleteAction = jest.fn();
+    const { result } = renderHook(() => useAsyncDeleteProvider(), { wrapper });
+
+    act(() => {
+      result.current.handleDeleteEntityWebsocketResponse({
+        status: 'FAILED',
+        jobId: 'job-1',
+        entityName: 'First',
+        error: 'metric is not empty',
+      });
+    });
+    (deleteAsyncEntity as jest.Mock).mockResolvedValueOnce({
+      ...mockResponse,
+      jobId: 'job-2',
+    });
+
+    await act(async () => {
+      await result.current.handleOnAsyncEntityDeleteConfirm({
+        ...mockDeleteParams,
+        afterDeleteAction,
+        onDeleteFailure,
+      });
+    });
+
+    expect(afterDeleteAction).toHaveBeenCalledWith(true);
+    expect(onDeleteFailure).not.toHaveBeenCalled();
   });
 });

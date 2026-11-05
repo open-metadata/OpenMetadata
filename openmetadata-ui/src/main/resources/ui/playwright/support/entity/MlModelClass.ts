@@ -16,7 +16,6 @@ import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
-  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
@@ -28,21 +27,24 @@ import {
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+import { resolveParents } from './ParentResolver';
+import { MlmodelServiceClass } from './service/MlmodelServiceClass';
+
+/**
+ * Without `service` the ML model sits in the shard's shared mlmodelService.
+ * Pass an MlmodelServiceClass when the test needs its own service — to
+ * assert on a unique service name, visit the service page, or mutate it.
+ */
+export type MlModelClassOptions = {
+  name?: string;
+  service?: MlmodelServiceClass;
+  sharedInfraKey?: string;
+};
 
 export class MlModelClass extends EntityClass {
   private mlModelName: string;
-  service: {
-    name: string;
-    serviceType: string;
-    connection: {
-      config: {
-        type: string;
-        trackingUri: string;
-        registryUri: string;
-        supportsMetadataExtraction: boolean;
-      };
-    };
-  };
+  service = new MlmodelServiceClass().entity;
+  private readonly serviceOverride?: MlmodelServiceClass;
   children: Array<{ name: string; dataType: string; description: string }>;
   entity: {
     name: string;
@@ -57,28 +59,19 @@ export class MlModelClass extends EntityClass {
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
 
-  constructor(name?: string) {
+  constructor(options: MlModelClassOptions = {}) {
     super(EntityTypeEndpoint.MlModel);
     this.type = 'MlModel';
     this.childrenTabId = 'features';
     this.serviceCategory = SERVICE_TYPE.MLModels;
     this.serviceType = ServiceTypes.ML_MODEL_SERVICES;
+    this.serviceOverride = options.service;
+    this.sharedInfraKey = options.sharedInfraKey;
+    if (options.service) {
+      this.service = options.service.entity;
+    }
 
-    const serviceName = name ?? `pw-ml-model-service-${uuid()}`;
-    this.mlModelName = `pw-mlmodel-${uuid()}`;
-
-    this.service = {
-      name: serviceName,
-      serviceType: 'Mlflow',
-      connection: {
-        config: {
-          type: 'Mlflow',
-          trackingUri: 'Tracking URI',
-          registryUri: 'Registry URI',
-          supportsMetadataExtraction: true,
-        },
-      },
-    };
+    this.mlModelName = options.name ?? `pw-mlmodel-${uuid()}`;
 
     this.children = [
       {
@@ -107,12 +100,17 @@ export class MlModelClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    this.serviceResponseData = await createOrFetch(apiContext, {
-      label: 'MlModelClass.create',
-      createPath: '/api/v1/services/mlmodelServices',
-      fqnSegments: [this.service.name],
-      data: this.service,
-    });
+    const { parents, ownedRootPath, ownedOverride } = await resolveParents(
+      apiContext,
+      'mlmodel',
+      { service: this.serviceOverride },
+      this.sharedInfraKey
+    );
+    this.serviceResponseData = parents.service as ResponseDataType;
+    this.adoptOwnership({ ownedRootPath, ownedOverride });
+    this.service = { ...this.service, name: this.serviceResponseData.name };
+    this.entity.service = this.serviceResponseData.name;
+
     this.entityResponseData = await createOrFetch(apiContext, {
       label: 'MlModelClass.create',
       createPath: '/api/v1/mlmodels',
@@ -152,15 +150,21 @@ export class MlModelClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      ownedRootPath: this.ownedRootPath,
     };
   }
 
   public set(data: {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
+    ownedRootPath?: string;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;
+    this.ownedRootPath = data.ownedRootPath;
+    this.entity.name = data.entity.name;
+    this.entity.service = data.service.name;
+    this.service = { ...this.service, name: data.service.name };
   }
 
   async visitEntityPage(page: Page) {
@@ -172,16 +176,11 @@ export class MlModelClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await deleteFixtureEntity(
+    await this.deleteOwnedOrLeaf(
       apiContext,
-      `/api/v1/services/mlmodelServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
+      `/api/v1/mlmodels/${this.entityResponseData?.id}`
     );
 
-    return {
-      service: serviceResponse.body,
-      entity: this.entityResponseData,
-    };
+    return { entity: this.entityResponseData };
   }
 }

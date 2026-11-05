@@ -43,8 +43,6 @@ test.describe('Task Comments - Add Comment', () => {
   const commentingUser = new UserClass();
   const table = new TableClass();
 
-  let taskId: string;
-
   test.beforeAll('Setup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -71,8 +69,6 @@ test.describe('Task Comments - Add Comment', () => {
         },
       });
       createdTask = (await taskResponse.json()) as CreatedTask;
-      const task = createdTask;
-      taskId = task.id;
     } finally {
       await afterAction();
     }
@@ -92,7 +88,7 @@ test.describe('Task Comments - Add Comment', () => {
   });
 
   test('assignee should be able to add comment to task', async ({ page }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -115,7 +111,7 @@ test.describe('Task Comments - Add Comment', () => {
   test('the comment actions are reachable and operable by keyboard alone', async ({
     page,
   }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -133,36 +129,28 @@ test.describe('Task Comments - Add Comment', () => {
       .filter({ hasText: message });
     await expect(card).toBeVisible();
 
-    const actions = card.getByTestId('feed-actions');
-    const deleteAction = card.getByTestId('delete-message');
-
-    // Park the pointer away from the card first, so the reveal asserted below
-    // is attributable to focus-within and not to a leftover hover.
-    await page.mouse.move(0, 0);
-
-    await expect(actions).toHaveCSS('opacity', '0');
-
-    // In normal flow at rest, so the bar occupies its space before anything
-    // reveals it. The hover half of the same invariant is asserted in
-    // 'comment author should see edit/delete options'.
-    await expect(actions).toHaveCSS('position', 'static');
+    const menuTrigger = card.getByTestId('conversation-actions');
 
     // Regression coverage for the affordance being an `<Icon onClick>` span:
     // it could not hold focus at all, so none of this was possible without a
-    // mouse. Focusing it must also bring the bar into view via focus-within.
-    await deleteAction.focus();
+    // mouse.
+    await menuTrigger.focus();
 
-    await expect(deleteAction).toBeFocused();
-    await expect(actions).toHaveCSS('opacity', '1');
+    await expect(menuTrigger).toBeFocused();
 
-    // Enter activates it, as it would any button.
+    // Enter opens the menu on its first item, as it would any menu button.
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeFocused();
+
+    await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
 
     await expect(page.getByTestId('save-button')).toBeVisible();
   });
 
   test('non-assignee should be able to add comment', async ({ page }) => {
-    await commentingUser.login(page);
+    await commentingUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -180,7 +168,7 @@ test.describe('Task Comments - Add Comment', () => {
   });
 
   test('admin should be able to add comment to any task', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -245,7 +233,7 @@ test.describe('Task Comments - @Mention', () => {
   });
 
   test('typing @ should show user suggestion dropdown', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -284,7 +272,7 @@ test.describe('Task Comments - @Mention', () => {
   test('selecting user from @ dropdown should add mention', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -320,7 +308,9 @@ test.describe('Task Comments - @Mention', () => {
 
     const mentionItem = page.locator(`[data-value="@${mentionTarget}"]`);
 
-    await expect(mentionItem.first()).toBeVisible({ timeout: 15_000 });
+    await expect(mentionItem.filter({ visible: true })).not.toHaveCount(0, {
+      timeout: 15_000,
+    });
     await mentionItem.first().click();
 
     await page.keyboard.type(' please review this task');
@@ -388,7 +378,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   });
 
   test('comment author should see edit/delete options', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -410,45 +400,15 @@ test.describe('Task Comments - Edit/Delete', () => {
       .filter({ hasText: message });
     await expect(comment).toHaveCount(1);
 
-    // The bar sits in normal flow and is revealed by opacity alone, so hover
-    // must not touch any property that could reflow the comment body beneath
-    // it. Sampled as computed styles rather than boxes: a bounding-box
-    // comparison across `hover()` reads viewport coordinates, which shift when
-    // Playwright's actionability check scrolls the card into view - that is
-    // what made the previous geometry check report a 9px "reflow" that was
-    // really a 9px scroll. Longhands, not the `margin`/`padding` shorthands,
-    // so an empty computed value cannot make this pass by comparing '' to ''.
-    const actionsLayout = () =>
-      comment.getByTestId('feed-actions').evaluate((element) => {
-        const style = getComputedStyle(element);
+    // The author may both edit and delete their own comment. The menu renders
+    // in a popover outside the card.
+    await comment.getByTestId('conversation-actions').click();
 
-        return {
-          display: style.display,
-          height: style.height,
-          marginBottom: style.marginBottom,
-          marginTop: style.marginTop,
-          paddingBottom: style.paddingBottom,
-          paddingTop: style.paddingTop,
-          position: style.position,
-        };
-      });
-
-    // Park the pointer away from the card so the resting sample is unhovered.
-    await page.mouse.move(0, 0);
-
-    const layoutAtRest = await actionsLayout();
-
-    await comment.hover();
-
-    expect(await actionsLayout()).toEqual(layoutAtRest);
-
-    // The author may both edit and delete their own comment.
-    await expect(comment.getByTestId('edit-message')).toBeVisible();
-    await expect(comment.getByTestId('delete-message')).toBeVisible();
+    await expect(page.getByRole('menuitem')).toHaveText(['Edit', 'Delete']);
   });
 
   test('should be able to edit own comment', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -468,12 +428,8 @@ test.describe('Task Comments - Edit/Delete', () => {
       .filter({ hasText: original });
 
     await expect(comment).toBeVisible();
-    await comment.hover();
-
-    const editBtn = comment.getByTestId('edit-message');
-
-    await expect(editBtn).toBeVisible();
-    await editBtn.click();
+    await comment.getByTestId('conversation-actions').click();
+    await page.getByRole('menuitem', { name: 'Edit' }).click();
 
     // Scoped to the editing card, not to `comment` - that locator filters on
     // the original text, which stops matching the moment the editor is
@@ -543,8 +499,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   /**
    * Deletes the comment identified by `message` from an already-open drawer,
    * waiting for the real DELETE response and asserting the comment is gone
-   * from the DOM afterwards. The hover is required, not just realistic: the
-   * shared feed actions only mount while the card is hovered.
+   * from the DOM afterwards.
    */
   const deleteCommentViaUi = async (
     page: Page,
@@ -557,8 +512,8 @@ test.describe('Task Comments - Edit/Delete', () => {
       .filter({ hasText: message });
     await expect(commentCard).toBeVisible();
 
-    await commentCard.hover();
-    await commentCard.getByTestId('delete-message').click();
+    await commentCard.getByTestId('conversation-actions').click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
 
     // Asserted on the confirm button rather than the modal container: antd's
     // Modal does not forward `data-testid` to the rendered DOM.
@@ -581,7 +536,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   test('should be able to delete own comment', async ({ page }) => {
     // assigneeUser is a regular (non-admin) user, so a successful delete here
     // exercises the author-match branch of canDelete, not the admin override.
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
 
     const message = `Author-deletable comment ${Date.now()}`;
     const { drawer, taskCommentId } = await postCommentAsUser(page, message);
@@ -597,13 +552,13 @@ test.describe('Task Comments - Edit/Delete', () => {
     // this test doesn't depend on execution order relative to the one above.
     const authorContext = await browser.newContext();
     const authorPage = await authorContext.newPage();
-    await assigneeUser.login(authorPage);
+    await assigneeUser.signIn(authorPage);
 
     const message = `Admin-deletable comment ${Date.now()}`;
     const { taskCommentId } = await postCommentAsUser(authorPage, message);
     await authorContext.close();
 
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     const { drawer } = await postCommentAsUser(page, `unused-${Date.now()}`);
     // postCommentAsUser leaves an extra comment behind as a side effect of
     // reusing it purely for its navigation-to-the-open-drawer behavior; that
@@ -628,13 +583,13 @@ test.describe('Task Comments - Edit/Delete', () => {
     try {
       const authorContext = await browser.newContext();
       const authorPage = await authorContext.newPage();
-      await assigneeUser.login(authorPage);
+      await assigneeUser.signIn(authorPage);
 
       const message = `Not-my-comment ${Date.now()}`;
       await postCommentAsUser(authorPage, message);
       await authorContext.close();
 
-      await otherUser.login(page);
+      await otherUser.signIn(page);
       const { drawer } = await postCommentAsUser(
         page,
         `viewer-comment-${Date.now()}`
@@ -644,9 +599,11 @@ test.describe('Task Comments - Edit/Delete', () => {
         .getByTestId('feed-reply-card')
         .filter({ hasText: message });
       await expect(commentCard).toBeVisible();
-      await commentCard.hover();
 
-      await expect(commentCard.getByTestId('delete-message')).not.toBeVisible();
+      // Neither Edit nor Delete is theirs, so there is no menu at all.
+      await expect(commentCard.getByTestId('conversation-actions')).toHaveCount(
+        0
+      );
     } finally {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
@@ -668,7 +625,7 @@ test.describe('Task Comments - Edit/Delete', () => {
     // (which closes the drawer) instead of the dialog's confirm button, and
     // this test will hang/time out waiting for the DELETE response instead
     // of silently passing.
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
 
     const message = `Drawer-delete comment ${Date.now()}`;
     const { drawer, taskCommentId } = await postCommentAsUser(page, message);
@@ -729,7 +686,7 @@ test.describe('Task Comments - Long Comment Overflow', () => {
     // overflows needs the toggle rendered to stay readable. Covered end to end
     // rather than in Jest because the value being guarded is that a real user
     // can recover the full text, not that the previewer trims a string.
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);

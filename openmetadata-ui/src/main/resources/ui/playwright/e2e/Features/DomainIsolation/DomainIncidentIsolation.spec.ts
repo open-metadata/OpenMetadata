@@ -54,7 +54,7 @@ const test = base.extend<{ adminPage: Page; noDomainPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -63,7 +63,7 @@ const test = base.extend<{ adminPage: Page; noDomainPage: Page }>({
   noDomainPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await noDomainUser.login(page);
+      await noDomainUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -170,6 +170,17 @@ test.describe(
         }
       }
     );
+
+    // `enableAccessControl` is global and other specs turn it off; re-assert it per test.
+    test.beforeEach(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        await enableDisableSearchRBAC(apiContext, true);
+      } finally {
+        await afterAction();
+      }
+    });
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);

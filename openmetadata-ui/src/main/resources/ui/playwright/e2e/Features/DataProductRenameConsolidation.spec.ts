@@ -36,6 +36,7 @@ import {
 import {
   escapeESReservedCharacters,
   openClassificationTagPicker,
+  visitEntityPageByFqn,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
@@ -98,7 +99,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await page.getByTestId('save-button').click();
     await patchResponse;
 
-    await page.waitForURL(`**/dataProduct/${newName}/**`);
+    await page.waitForURL(`**/dataProduct/${newName}/**`, {
+      waitUntil: 'domcontentloaded',
+    });
     // Wait for the page to fully load after rename navigation
     // Ensure the data product header is visible with the new name
     await expect(page.getByTestId('entity-header-name')).toBeVisible();
@@ -193,12 +196,15 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
         page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
       ).toBeVisible();
 
-      // Verify from the table side
-      await page
-        .locator(
-          `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-        )
-        .click();
+      // Verify from the table side — direct navigation instead of
+      // clicking the entity-link on the asset card. The card body
+      // re-renders as tags/owners/counts stream in, so .click() flakes
+      // "element is not stable" under SharedInfra load.
+      await visitEntityPageByFqn({
+        page,
+        endpoint: testTable.endpoint,
+        fqn: tableFqn ?? '',
+      });
 
       await expect(
         page.getByTestId('KnowledgePanel.DataProducts')
@@ -507,13 +513,15 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
         ).toBeVisible();
       }
 
-      // Final verification from table side
+      // Final verification from table side — direct navigation instead
+      // of clicking the entity-link on the asset card (same reason as
+      // the sibling replacement above).
       const tableFqn = get(testTable, 'entityResponseData.fullyQualifiedName');
-      await page
-        .locator(
-          `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-        )
-        .click();
+      await visitEntityPageByFqn({
+        page,
+        endpoint: testTable.endpoint,
+        fqn: tableFqn ?? '',
+      });
 
       await expect(
         page.getByTestId('KnowledgePanel.DataProducts')

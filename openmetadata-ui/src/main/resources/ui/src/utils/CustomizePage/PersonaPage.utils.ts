@@ -11,8 +11,32 @@
  *  limitations under the License.
  */
 
+import { isUndefined, omit, omitBy } from 'lodash';
+import {
+  DEFAULT_LANDING_PAGE,
+  DEFAULT_PAGE_VIEW_MODE,
+  LANDING_PAGE_SECTIONS,
+  ViewModePage,
+  VIEW_MODE_PAGES,
+} from '../../constants/platform/personaAppLayout.constants';
 import { Document } from '../../generated/entity/docStore/document';
+import { Persona } from '../../generated/entity/teams/persona';
 import { Page } from '../../generated/system/ui/page';
+import {
+  PageViewMode,
+  PersonaPreferences,
+} from '../../generated/type/personaPreferences';
+
+export type PersonaAppLayoutPreferences = Pick<
+  PersonaPreferences,
+  'appMode' | 'defaultLandingPage' | 'defaultViewModes'
+>;
+
+const APP_LAYOUT_PREFERENCE_KEYS: Array<keyof PersonaAppLayoutPreferences> = [
+  'appMode',
+  'defaultLandingPage',
+  'defaultViewModes',
+];
 
 const getPageEntries = (document?: Document | null): unknown[] | undefined => {
   const pages = document?.data?.pages as unknown;
@@ -94,4 +118,77 @@ export const updatePersonaDocumentPage = (
       pages: updatedPages,
     },
   };
+};
+
+export const getPersonaPreferences = (
+  document: Document | null | undefined,
+  personaId: string | undefined
+): PersonaPreferences | undefined =>
+  (
+    document?.data?.personaPreferences as PersonaPreferences[] | undefined
+  )?.find((entry) => entry.personaId === personaId);
+
+/**
+ * Replaces the persona's App Layout preferences. An undefined field is removed
+ * rather than stored, so "no value" keeps meaning "fall through to the next
+ * default" (see `resolveEffectiveAppMode` and `resolvePersonaLandingPage`).
+ */
+export const updatePersonaAppLayout = (
+  preferences: PersonaPreferences[],
+  persona: Pick<Persona, 'id' | 'name'>,
+  changes: PersonaAppLayoutPreferences
+): PersonaPreferences[] => {
+  const values = omitBy(changes, isUndefined);
+  const hasEntry = preferences.some((entry) => entry.personaId === persona.id);
+
+  if (!hasEntry) {
+    return Object.keys(values).length
+      ? [
+          ...preferences,
+          { personaId: persona.id, personaName: persona.name, ...values },
+        ]
+      : preferences;
+  }
+
+  return preferences.map((entry) =>
+    entry.personaId === persona.id
+      ? { ...omit(entry, APP_LAYOUT_PREFERENCE_KEYS), ...values }
+      : entry
+  );
+};
+
+export const isLandingPageOption = (path?: string): path is string =>
+  LANDING_PAGE_SECTIONS.some((section) =>
+    section.options.some((option) => option.path === path)
+  );
+
+/**
+ * Where a user of this persona lands when they open the app. Only paths from
+ * the curated option list are honoured, so a stale or hand-edited value falls
+ * back to Home instead of navigating somewhere unexpected.
+ */
+export const resolvePersonaLandingPage = (
+  document: Document | null | undefined,
+  personaId: string | undefined
+): string => {
+  const path = getPersonaPreferences(document, personaId)?.defaultLandingPage;
+
+  return isLandingPageOption(path) ? path : DEFAULT_LANDING_PAGE;
+};
+
+/**
+ * The view a page opens in for users of this persona. A stored view the page
+ * doesn't offer (e.g. Tree outside Domains) falls back to Table.
+ */
+export const resolvePersonaViewMode = (
+  document: Document | null | undefined,
+  personaId: string | undefined,
+  page: ViewModePage
+): PageViewMode => {
+  const view = getPersonaPreferences(document, personaId)?.defaultViewModes?.[
+    page
+  ];
+  const offered = VIEW_MODE_PAGES.find((option) => option.page === page);
+
+  return view && offered?.views.includes(view) ? view : DEFAULT_PAGE_VIEW_MODE;
 };

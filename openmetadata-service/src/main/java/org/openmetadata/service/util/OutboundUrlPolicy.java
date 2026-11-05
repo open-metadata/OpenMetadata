@@ -136,11 +136,12 @@ public class OutboundUrlPolicy {
   }
 
   /**
-   * A host written as an address keeps the rule it has always had: an internal address is refused
-   * outright. A host written as a name is refused only when it leads somewhere the operator cannot
-   * reach as themselves, which means a link-local or cloud metadata endpoint. A name that leads to
-   * this machine or to the cluster network stays allowed: connecting to destinations an operator
-   * configures is what the product does.
+   * The boundary is a link-local or cloud metadata endpoint, which the operator cannot reach as
+   * themselves: it is refused however the host is written, NAT64 included. This machine and the
+   * cluster network stay reachable, because connecting to destinations an operator configures is
+   * what the product does. A loopback or private address literal is still refused, but only so an
+   * upgrade keeps rejecting what the earlier validator rejected. That rule is compatibility, not a
+   * boundary, so a name or a NAT64 literal leading to the same address is allowed on purpose.
    */
   private static String addressRejection(String host, InetAddress address, boolean literal) {
     if (address.isLinkLocalAddress() || isMetadataAddress(address) || isNat64Metadata(address)) {

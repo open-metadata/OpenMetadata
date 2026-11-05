@@ -410,6 +410,22 @@ class DatabrickspipelineSource(PipelineServiceSource):
             self._databricks_services_cached = True
             return []
 
+    def _lookup_system_table(self, full_name: str | None, service_name: str) -> Table | None:
+        """Resolve a `catalog.schema.table` name from the lineage system tables."""
+        if not full_name:
+            return None
+        parts = fqn.split_table_name(full_name)
+        return self._lookup_table(
+            fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                table_name=parts.get("table"),
+                database_name=parts.get("database"),
+                schema_name=parts.get("database_schema"),
+                service_name=service_name,
+            )
+        )
+
     def _lookup_table(self, table_fqn: str | None) -> Table | None:
         """Resolve a table FQN, caching both hits and misses."""
         if not table_fqn:
@@ -1150,89 +1166,95 @@ class DatabrickspipelineSource(PipelineServiceSource):
             if not entity_id:
                 return
 
-            table_lineage_list = self.client.get_table_lineage(entity_id=entity_id)
+            table_lineage_list = self.client.get_table_lineage(entity_id=entity_id) or []
             logger.debug(f"Processing pipeline lineage for {entity_id}")
-            if table_lineage_list:
-                for table_lineage in table_lineage_list:
-                    source_table_full_name = table_lineage.get("source_table_full_name")
-                    target_table_full_name = table_lineage.get("target_table_full_name")
-                    if not (source_table_full_name and target_table_full_name):
+            if not table_lineage_list:
+                logger.debug(f"No table lineage found for {entity_id}")
+                return
+            if pipeline_entity is None:
+                logger.warning("Pipeline %s not found, skipping its table lineage", pipeline_fqn)
+                return
+            pipeline_ref = EntityReference(id=pipeline_entity.id.root, type="pipeline")
+
+            # A job that reads and writes in separate statements leaves only one-sided
+            # rows: a read with no target, a write with no source. Those become
+            # table -> job and job -> table edges, the same picture Catalog Explorer
+            # draws. A table that already got a table -> table edge of this job is left
+            # there, so a well-recorded job gains no redundant hop through itself. Only
+            # edges actually emitted count: two-sided rows go first, and a self-reference
+            # or an unresolved table never marks its tables as linked.
+            linked_sources: set[str] = set()
+            linked_targets: set[str] = set()
+            two_sided_first = sorted(
+                table_lineage_list,
+                key=lambda row: not (row.get("source_table_full_name") and row.get("target_table_full_name")),
+            )
+
+            for table_lineage in two_sided_first:
+                source_table_full_name = table_lineage.get("source_table_full_name")
+                target_table_full_name = table_lineage.get("target_table_full_name")
+                if not (source_table_full_name or target_table_full_name):
+                    continue
+
+                # A table never derives from itself. The system tables record
+                # access rather than derivation, so a streaming or CDC write
+                # legitimately names its target as its own source. Kept as
+                # lineage it renders as a loop on the node and says nothing.
+                if source_table_full_name == target_table_full_name:
+                    logger.debug(f"Skipping self-referencing lineage row for {source_table_full_name}")
+                    continue
+
+                if not target_table_full_name and source_table_full_name in linked_sources:
+                    continue
+                if not source_table_full_name and target_table_full_name in linked_targets:
+                    continue
+
+                for dbservicename in self.get_db_service_names() or ["*"]:
+                    from_entity = self._lookup_system_table(source_table_full_name, dbservicename)
+                    to_entity = self._lookup_system_table(target_table_full_name, dbservicename)
+                    if (source_table_full_name and from_entity is None) or (
+                        target_table_full_name and to_entity is None
+                    ):
                         continue
 
-                    # A table never derives from itself. The system tables record
-                    # access rather than derivation, so a streaming or CDC write
-                    # legitimately names its target as its own source. Kept as
-                    # lineage it renders as a loop on the node and says nothing.
-                    if source_table_full_name == target_table_full_name:
-                        logger.debug(f"Skipping self-referencing lineage row for {source_table_full_name}")
-                        continue
-
-                    source = fqn.split_table_name(source_table_full_name)
-                    target = fqn.split_table_name(target_table_full_name)
-                    for dbservicename in self.get_db_service_names() or ["*"]:
-                        # Build FQN for source table
-                        from_table_fqn = fqn.build(
-                            metadata=self.metadata,
-                            entity_type=Table,
-                            table_name=source.get("table"),
-                            database_name=source.get("database"),
-                            schema_name=source.get("database_schema"),
-                            service_name=dbservicename,
-                        )
-
-                        from_entity = self._lookup_table(from_table_fqn)
-                        if from_entity is None:
-                            continue
-
-                        # Build FQN for target table
-                        to_table_fqn = fqn.build(
-                            metadata=self.metadata,
-                            entity_type=Table,
-                            table_name=target.get("table"),
-                            database_name=target.get("database"),
-                            schema_name=target.get("database_schema"),
-                            service_name=dbservicename,
-                        )
-
-                        to_entity = self._lookup_table(to_table_fqn)
-                        if to_entity is None:
-                            continue
-
-                        processed_column_lineage = self._process_and_validate_column_lineage(
-                            column_lineage=self.client.get_column_lineage(
-                                entity_id=entity_id,
-                                TableKey=(
-                                    source_table_full_name,
-                                    target_table_full_name,
+                    if from_entity and to_entity:
+                        edge = EntitiesEdge(
+                            fromEntity=EntityReference(id=from_entity.id, type="table"),
+                            toEntity=EntityReference(id=to_entity.id, type="table"),
+                            lineageDetails=LineageDetails(
+                                pipeline=pipeline_ref,
+                                source=LineageSource.PipelineLineage,
+                                columnsLineage=self._process_and_validate_column_lineage(
+                                    column_lineage=self.client.get_column_lineage(
+                                        entity_id=entity_id,
+                                        TableKey=(
+                                            source_table_full_name,
+                                            target_table_full_name,
+                                        ),
+                                    ),
+                                    from_entity=from_entity,
+                                    to_entity=to_entity,
                                 ),
                             ),
-                            from_entity=from_entity,
-                            to_entity=to_entity,
                         )
+                        linked_sources.add(source_table_full_name)
+                        linked_targets.add(target_table_full_name)
+                    elif from_entity:
+                        edge = EntitiesEdge(
+                            fromEntity=EntityReference(id=from_entity.id, type="table"),
+                            toEntity=pipeline_ref,
+                            lineageDetails=LineageDetails(source=LineageSource.PipelineLineage),
+                        )
+                    elif to_entity:
+                        edge = EntitiesEdge(
+                            fromEntity=pipeline_ref,
+                            toEntity=EntityReference(id=to_entity.id, type="table"),
+                            lineageDetails=LineageDetails(source=LineageSource.PipelineLineage),
+                        )
+                    else:
+                        continue
 
-                        lineage_details = LineageDetails(
-                            pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
-                            source=LineageSource.PipelineLineage,
-                            columnsLineage=processed_column_lineage,
-                        )
-
-                        yield Either(
-                            right=AddLineageRequest(
-                                edge=EntitiesEdge(
-                                    fromEntity=EntityReference(
-                                        id=from_entity.id,
-                                        type="table",
-                                    ),
-                                    toEntity=EntityReference(
-                                        id=to_entity.id,
-                                        type="table",
-                                    ),
-                                    lineageDetails=lineage_details,
-                                )
-                            )
-                        )
-            else:
-                logger.debug(f"No table lineage found for {entity_id}")
+                    yield Either(right=AddLineageRequest(edge=edge))  # pyright: ignore[reportCallIssue]
         except Exception as exc:
             yield Either(
                 left=StackTraceError(

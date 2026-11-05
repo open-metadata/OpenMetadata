@@ -15,11 +15,11 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Skeleton,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus } from '@untitledui/icons';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';
@@ -160,25 +160,16 @@ const AgentGroup: FC<AgentGroupProps> = ({
             Agent on the metadata list and takes that same top-right spot on the Collate AI list,
             whose header carries no add button. */}
         {onRefresh && (
-          <Tooltip
-            title={t('label.refresh-entity', {
+          <ButtonUtility
+            data-testid="agent-group-refresh"
+            icon={isRefreshing ? <Loader size="x-small" /> : ReloadIcon}
+            isDisabled={isRefreshing}
+            size="lg"
+            tooltip={t('label.refresh-entity', {
               entity: t('label.agent-plural'),
-            })}>
-            <Button
-              color="secondary"
-              data-testid="agent-group-refresh"
-              iconLeading={
-                isRefreshing ? (
-                  <Loader size="x-small" />
-                ) : (
-                  <ReloadIcon width={14} />
-                )
-              }
-              isDisabled={isRefreshing}
-              size="md"
-              onClick={onRefresh}
-            />
-          </Tooltip>
+            })}
+            onClick={onRefresh}
+          />
         )}
         {/* Creating an agent deploys it, so the control waits on the pipeline service status the
             same way the per-card actions do — a placeholder while it is in flight, and the slot's
@@ -197,8 +188,8 @@ const AgentGroup: FC<AgentGroupProps> = ({
           (canCreateAgent && (
             <Button
               color="secondary"
-              iconLeading={<Plus size={18} />}
-              iconTrailing={<ChevronDown size={18} />}
+              iconLeading={Plus}
+              iconTrailing={ChevronDown}
               size="sm">
               {t('label.add-entity', { entity: t('label.agent') })}
             </Button>

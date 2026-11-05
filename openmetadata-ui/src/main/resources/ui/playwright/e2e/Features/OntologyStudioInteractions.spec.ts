@@ -131,7 +131,7 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
 
   test('global Studio controls are hidden in term scope', async ({ page }) => {
     await expect(
-      page.getByTestId('ontology-glossary-menu-trigger')
+      page.getByTestId('ontology-scope-menu-trigger')
     ).not.toBeVisible();
     await expect(page.getByTestId('mode-tab-view')).not.toBeVisible();
   });

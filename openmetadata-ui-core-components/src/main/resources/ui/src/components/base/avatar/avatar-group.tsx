@@ -12,15 +12,17 @@
  */
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import type { ReactNode } from 'react';
-import {
-  Tooltip as AriaTooltip,
-  TooltipTrigger as AriaTooltipTrigger,
-} from 'react-aria-components';
+import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { getOwnerRenderer } from '../../application/owner/owner-renderer';
+import { HoverCard } from '../../application/hover-card/hover-card';
+import {
+  getOwnerRenderer,
+  resolveOwnerHref,
+} from '../../application/owner/owner-renderer';
+import { OwnerInheritedBadge } from '../../application/owner/owner-inherited-badge';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
 import type { AvatarSize, OwnerEntityReference } from '../../../types';
-import { TooltipTrigger } from '../tooltip/tooltip';
 import { getFirstAlphanumeric } from './utils';
 import type { AvatarProps } from './avatar';
 import { Avatar } from './avatar';
@@ -66,6 +68,7 @@ export const AvatarGroup = ({
   overflowUsersLabel,
   showOverflowHeadings = true,
 }: AvatarGroupProps) => {
+  const { t } = useCoreTranslation();
   const resolvedSize = groupAvatarSizeMap[avatarSize] ?? 'xs';
   const visibleOwners = owners.slice(0, maxCount);
   const overflowCount = Math.max(0, owners.length - maxCount);
@@ -89,7 +92,12 @@ export const AvatarGroup = ({
     const avatar = (
       <Avatar
         alt={nameStr}
-        className={isTeam ? 'tw:bg-utility-gray-200 tw:opacity-60' : undefined}
+        badge={
+          owner.inherited ? (
+            <OwnerInheritedBadge size={resolvedSize} />
+          ) : undefined
+        }
+        className={isTeam ? 'tw:bg-utility-gray-200' : undefined}
         contrastBorder={!isTeam}
         initials={
           !isTeam ? getFirstAlphanumeric(nameStr).toUpperCase() : undefined
@@ -102,9 +110,41 @@ export const AvatarGroup = ({
     // No `title`: a title matching the display name collides with
     // `getByTitle()` owner-filter selectors (see owner-chip.tsx). Identity is
     // carried by `data-testid` and the avatar's `alt`.
-    const chip = (
-      <span className="tw:block" data-testid={nameStr} key={owner.id}>
+    //
+    // The `owner-link` wrapper with the name test id nested inside is the same
+    // shape OwnerChip documents for its non-compact branch, so `owner-link` ->
+    // name chains resolve for a stacked group exactly as they do for a lone
+    // owner. It is also the only way to reach an owner's page from the stack:
+    // without the anchor, an entity with two or more owners renders avatars
+    // that cannot be clicked at all.
+    const nameNode = (
+      <span className="tw:block" data-testid={nameStr}>
         {avatar}
+      </span>
+    );
+
+    // Same source as OwnerChip: `Owner` normalises inputs before rendering and
+    // strips any incoming href, so the profile link exists only in the
+    // registered resolver -- reading `owner.href` here would never match and
+    // every stacked owner would render unclickable.
+    const href = resolveOwnerHref(owner);
+
+    const chip = href ? (
+      <AriaLink
+        // The link's aria-label overrides the badge's own label, so the
+        // inherited state has to be part of it.
+        aria-label={
+          owner.inherited ? `${nameStr}, ${t('label.inherited')}` : nameStr
+        }
+        className="tw:block"
+        data-testid="owner-link"
+        href={href}
+        key={owner.id}>
+        {nameNode}
+      </AriaLink>
+    ) : (
+      <span className="tw:block" data-testid="owner-link" key={owner.id}>
+        {nameNode}
       </span>
     );
 
@@ -119,7 +159,9 @@ export const AvatarGroup = ({
     <div className={cx('tw:flex tw:items-center', className)}>
       {visibleOwners.map((owner, i) => (
         <span
-          className={cx('tw:relative tw:block tw:rounded-full')}
+          // Avatar tints can be translucent; an opaque backing stops the
+          // previous avatar from showing through the overlap.
+          className="tw:relative tw:block tw:rounded-full tw:bg-surface"
           data-testid="avatar-group-item"
           key={owner.id}
           style={{
@@ -131,14 +173,28 @@ export const AvatarGroup = ({
         </span>
       ))}
       {overflowCount > 0 && (
-        <AriaTooltipTrigger closeDelay={200} delay={300}>
-          {/* TooltipTrigger (AriaButton) reads FocusableContext set by AriaTooltipTrigger
-              — plain <button> does not read that context so hover wiring is silently dropped */}
-          <TooltipTrigger
+        // A hover card, not a Tooltip: the list holds owner links, and a
+        // react-aria Link inside a TooltipTrigger takes over the trigger's ref,
+        // so the tooltip positioned itself against its own last link.
+        <HoverCard
+          className="tw:max-h-96 tw:w-72 tw:overflow-y-auto tw:p-0 tw:py-2"
+          content={
+            <OwnerOverflowPopoverContent
+              avatarSize={avatarSize}
+              overflowTeamsLabel={overflowTeamsLabel}
+              overflowTitleLabel={overflowTitleLabel}
+              overflowUsersLabel={overflowUsersLabel}
+              ownerDisplayName={ownerDisplayName}
+              owners={owners}
+              showHeadings={showOverflowHeadings}
+            />
+          }
+          placement="bottom start">
+          <AriaButton
             aria-label={`+${overflowCount} more ${
               overflowTitleLabel ?? 'owners'
             }`}
-            className="tw:rounded-full tw:bg-transparent tw:p-0"
+            className="tw:h-max tw:w-max tw:rounded-full tw:bg-transparent tw:p-0 tw:outline-hidden"
             data-testid="avatar-group-overflow"
             style={{
               marginLeft: `-${overlapPx}px`,
@@ -151,30 +207,8 @@ export const AvatarGroup = ({
               initials={`+${overflowCount}`}
               size={resolvedSize}
             />
-          </TooltipTrigger>
-          <AriaTooltip
-            className={({ isEntering, isExiting }) =>
-              cx(
-                'tw:z-50 tw:max-h-96 tw:w-72 tw:overflow-y-auto tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:outline tw:outline-1 tw:outline-secondary tw:will-change-transform',
-                isEntering &&
-                  'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in',
-                isExiting &&
-                  'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out'
-              )
-            }
-            offset={8}
-            placement="bottom start">
-            <OwnerOverflowPopoverContent
-              avatarSize={avatarSize}
-              overflowTeamsLabel={overflowTeamsLabel}
-              overflowTitleLabel={overflowTitleLabel}
-              overflowUsersLabel={overflowUsersLabel}
-              ownerDisplayName={ownerDisplayName}
-              owners={owners}
-              showHeadings={showOverflowHeadings}
-            />
-          </AriaTooltip>
-        </AriaTooltipTrigger>
+          </AriaButton>
+        </HoverCard>
       )}
     </div>
   );

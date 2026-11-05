@@ -17,10 +17,10 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddIcon } from '../../../assets/svg/ic_add.svg';
 import { NODE_TYPE_MAPPINGS } from '../../../constants/WorkflowBuilder.constants';
 import { NodeSubType } from '../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
@@ -78,7 +78,7 @@ const TaskItem = ({
           {t('label.beta')}
         </Badge>
       )}
-      <AddIcon />
+      <Plus className="tw:shrink-0 tw:text-quaternary" size={20} />
     </Card>
   );
 };
@@ -107,12 +107,11 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
   const automatedTasks = Object.entries(NODE_TYPE_MAPPINGS)
     .filter(
       ([, mapping]) =>
-        mapping.type === NodeType.AutomatedTask &&
-        !('category' in mapping && mapping.category === 'sink')
+        mapping.type === NodeType.AutomatedTask && !('category' in mapping)
     )
     .map(([subType, mapping]) => ({
       icon: getNodeIcon(subType as NodeSubType, {
-        style: { width: '16px', height: '16px' },
+        size: 'sm',
       }),
       label: mapping.label,
       type: subType as NodeSubType,
@@ -124,7 +123,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
     )
     .map(([subType, mapping]) => ({
       icon: getNodeIcon(subType as NodeSubType, {
-        style: { width: '16px', height: '16px' },
+        size: 'sm',
       }),
       isBeta: subType === NodeSubType.SinkTask,
       label: mapping.label,
@@ -135,7 +134,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
     .filter(([, mapping]) => mapping.type === NodeType.UserTask)
     .map(([subType, mapping]) => ({
       icon: getNodeIcon(subType as NodeSubType, {
-        style: { width: '16px', height: '16px' },
+        size: 'sm',
       }),
       label: mapping.label,
       type: subType as NodeSubType,
@@ -190,7 +189,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
             onDragStart(e, NodeSubType.StartEvent, 'Start');
           }}>
           {getNodeIcon(NodeSubType.StartEvent, {
-            style: { width: '16px', height: '16px' },
+            size: 'sm',
           })}
           <Typography
             as="p"
@@ -214,7 +213,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
             onDragStart(e, NodeSubType.EndEvent, 'End');
           }}>
           {getNodeIcon(NodeSubType.EndEvent, {
-            style: { width: '16px', height: '16px' },
+            size: 'sm',
           })}
           <Typography
             as="p"

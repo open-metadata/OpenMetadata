@@ -13,7 +13,7 @@
 import {
   LimitConfig,
   ResourceLimit,
-} from '../context/LimitsProvider/useLimitsStore';
+} from '../interface/platform/limits.interface';
 import axiosClient from './axiosClient';
 import { ResourceLimitsParams } from './limitsAPI.interface';
 

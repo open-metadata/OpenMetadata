@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /* eslint-disable max-len */
-import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
+import { IncidentTimeMetricsType } from '../enums/DataQuality.enum';
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseType } from '../enums/TestSuite.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';

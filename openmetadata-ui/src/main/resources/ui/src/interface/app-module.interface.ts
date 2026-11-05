@@ -13,7 +13,7 @@
 
 import { BadgeColors } from '@openmetadata/ui-core-components';
 import { ComponentType, SVGProps } from 'react';
-import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
 import { Operation } from '../generated/entity/policies/policy';
 import { ExtensionPointRegistry } from '../utils/ExtensionPointRegistry';
 import { PluginRouteProps } from './app-plugin.interface';

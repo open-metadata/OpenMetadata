@@ -321,7 +321,7 @@ def test_stream_connection_error_with_retries(sse_client):
         return MockRequestsSession(mock_response)
 
     with patch("requests.Session", side_effect=create_mock_client):  # noqa: SIM117
-        with patch("time.sleep"):
+        with patch("metadata.ingestion.ometa.sse_client.time"):
             events = list(sse_client.stream("GET", "/events"))
 
     assert call_count == 3
@@ -338,7 +338,7 @@ def test_stream_max_retries_exceeded(sse_client):
     mock_session = MockRequestsSession(mock_response)
 
     with patch("requests.Session", return_value=mock_session):  # noqa: SIM117
-        with patch("time.sleep"):
+        with patch("metadata.ingestion.ometa.sse_client.time"):
             with pytest.raises(requests.exceptions.ConnectionError):
                 list(sse_client.stream("GET", "/events"))
 
@@ -399,7 +399,7 @@ def test_stream_resets_retry_count_on_success(sse_client):
         return MockRequestsSession(mock_response)
 
     with patch("requests.Session", side_effect=create_mock_client):  # noqa: SIM117
-        with patch("time.sleep"):
+        with patch("metadata.ingestion.ometa.sse_client.time"):
             events = list(sse_client.stream("GET", "/events"))
 
     assert call_count == 2
@@ -609,7 +609,8 @@ def test_stream_exponential_backoff_on_retries(sse_client):
         return MockRequestsSession(mock_response)
 
     with patch("requests.Session", side_effect=create_mock_client):  # noqa: SIM117
-        with patch("time.sleep", side_effect=mock_sleep):
+        with patch("metadata.ingestion.ometa.sse_client.time") as mock_time:
+            mock_time.sleep.side_effect = mock_sleep
             events = list(sse_client.stream("GET", "/events"))  # noqa: F841
 
     assert len(sleep_delays) == 2

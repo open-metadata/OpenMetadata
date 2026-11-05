@@ -136,10 +136,8 @@ class BigQuerySystemMetricsComputer(SystemMetricsComputer, CacheProvider):
                     "rowsAffected": getattr(q, rows_affected_field),
                 }
                 for q in query_results
-                if getattr(q, rows_affected_field)
-                or -1 > 0  # noqa: RUF021
-                and q.project_id == project_id
-                and q.dataset_id == dataset_id
-                and q.table_name == table
+                # JOBS is queried per dataset, so every sibling table's DML is in query_results.
+                if (getattr(q, rows_affected_field) or 0) > 0
+                and (q.project_id, q.dataset_id, q.table_name) == (project_id, dataset_id, table)
             ]
         )

@@ -3,6 +3,7 @@ package org.openmetadata.service.security.auth;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static org.openmetadata.service.security.SecurityUtil.parseLoginRequest;
 import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeFailureResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
@@ -11,9 +12,7 @@ import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -158,7 +157,8 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       UserSession session = sessionService.acquireRefreshLease(req, resp).orElse(null);
       leasedSession = session;
       if (session == null) {
-        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No active session");
+        sendError(
+            resp, HttpServletResponse.SC_UNAUTHORIZED, sessionService.describeMissingSession(req));
         return;
       }
 
@@ -237,31 +237,9 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
     }
   }
 
-  private LoginRequest parseLoginRequest(HttpServletRequest req) throws IOException {
-    if ("POST".equalsIgnoreCase(req.getMethod())) {
-      StringBuilder sb = new StringBuilder();
-      try (BufferedReader reader = req.getReader()) {
-        String line;
-        while ((line = reader.readLine()) != null) {
-          sb.append(line);
-        }
-      }
-      LoginRequest loginRequest = JsonUtils.readValue(sb.toString(), LoginRequest.class);
-
-      if (loginRequest.getPassword() != null) {
-        byte[] decodedBytes;
-        try {
-          decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
-        } catch (Exception ex) {
-          throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
-        }
-        loginRequest.withPassword(new String(decodedBytes));
-      }
-
-      return loginRequest;
-    } else {
-      throw new IllegalArgumentException("GET method not supported for login. Use POST method.");
-    }
+  @Override
+  public void close() {
+    authenticator.close();
   }
 
   private void sendError(HttpServletResponse resp, int status, String message) {
@@ -285,7 +263,8 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       String previousRefreshToken,
       String updatedRefreshToken) {
     Optional<UserSession> completedSession =
-        sessionService.completeRefresh(session, updatedRefreshToken, null);
+        sessionService.completeRefresh(
+            session, updatedRefreshToken, SessionService.ProviderTokenUpdate.NONE);
     if (completedSession.isEmpty() || completedSession.get().getStatus() != SessionStatus.ACTIVE) {
       deleteOrphanedRefreshToken(previousRefreshToken, updatedRefreshToken);
       sessionService.revokeSession(req, resp);

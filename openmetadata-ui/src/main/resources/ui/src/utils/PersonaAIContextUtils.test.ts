@@ -13,9 +13,11 @@
 import { PERSONA_CONTEXT_ASSET_TYPES } from '../constants/PersonaAIContext.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ContextSection } from '../generated/type/personaContextDefinition';
+import { CacheState } from '../generated/type/personaContextStatus';
 import {
   buildPersonaContextVersionHistory,
   getDefaultPersonaContextSections,
+  getPersonaContextFreshness,
   getPersonaContextSections,
   getRuleConditionCount,
   getRuleExplorePath,
@@ -329,6 +331,27 @@ describe('PersonaAIContextUtils', () => {
         },
       ]);
     });
+
+    it('reports a prompt-only edit as an AI context change', () => {
+      const history = {
+        entityType: 'persona',
+        versions: [
+          versionSnapshot(3.1, { characterBudget: 120000, rules: [] }),
+          versionSnapshot(3.2, {
+            characterBudget: 120000,
+            prompt: 'You assist finance analysts.',
+            rules: [],
+          }),
+        ],
+      };
+
+      const entries = buildPersonaContextVersionHistory(history as never);
+
+      // Left out of the comparison, a prompt edit read as "no AI context change".
+      expect(entries[0].changes).toEqual([
+        { key: 'message.persona-context-history-prompt' },
+      ]);
+    });
   });
 });
 
@@ -376,4 +399,34 @@ describe('getRuleExplorePath', () => {
       '"field":"extension.table.testCp.keyword"'
     );
   });
+});
+
+describe('getPersonaContextFreshness', () => {
+  const status = (cacheState: CacheState, lastGeneratedAt?: number) => ({
+    cacheState,
+    tokensEst: 0,
+    entitiesIncluded: 0,
+    lastGeneratedAt,
+    personaId: 'p',
+  });
+
+  it.each([
+    [false, status(CacheState.Fresh, 1), 'message.not-configured', 'error'],
+    [true, undefined, undefined, undefined],
+    [true, status(CacheState.Fresh, 1), 'label.fresh', 'success'],
+    [true, status(CacheState.Stale, 1), 'label.stale', 'warning'],
+    [true, status(CacheState.Stale), 'label.not-generated', 'gray'],
+    [true, status(CacheState.Generating), 'label.generating', 'warning'],
+    [true, status(CacheState.Failed), 'label.failed', 'error'],
+  ])(
+    'hasRules=%s status=%o -> %s',
+    (hasRules, cacheStatus, labelKey, color) => {
+      expect(getPersonaContextFreshness(hasRules, cacheStatus)?.labelKey).toBe(
+        labelKey
+      );
+      expect(getPersonaContextFreshness(hasRules, cacheStatus)?.color).toBe(
+        color
+      );
+    }
+  );
 });

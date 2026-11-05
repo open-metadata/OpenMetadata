@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CommonWidgets } from './CommonWidgets';
@@ -128,8 +129,8 @@ jest.mock('../../common/CertificationWidget/CertificationWidget', () => ({
   __esModule: true,
   default: () => <div data-testid="certification-widget" />,
 }));
-jest.mock('../DomainLabelV2/DomainLabelV2', () => ({
-  DomainLabelV2: ({ multiple }: { multiple?: boolean }) => (
+jest.mock('../../common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: ({ multiple }: { multiple?: boolean }) => (
     <div
       data-multiple={String(Boolean(multiple))}
       data-testid="domain-widget"

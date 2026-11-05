@@ -15,13 +15,14 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   Modal,
   ModalOverlay,
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@untitledui/icons';
+import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -190,14 +191,12 @@ export const VersionHistoryDrawer = ({
                   )}
                 </Box>
                 {canEdit && !entry.isCurrent && (
-                  <Button
-                    aria-label={t('label.restore')}
-                    color="secondary"
+                  <ButtonUtility
                     data-testid={`restore-version-${entry.version}`}
-                    iconLeading={RefreshCcw01}
+                    icon={RefreshCcw01}
                     isLoading={restoringVersion === entry.version}
-                    size="sm"
-                    title={t('label.restore')}
+                    size="lg"
+                    tooltip={t('label.restore')}
                     onClick={() => setRestoreTarget(entry)}
                   />
                 )}

@@ -15,11 +15,15 @@ import {
   Badge,
   Box,
   Button,
-  EmptyPlaceholder,
   NavList,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Grid01, Plus, Star01, Tag01 } from '@untitledui/icons';
+import {
+  Grid01,
+  Plus,
+  Star01,
+  Tag01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -27,11 +31,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -39,8 +43,8 @@ import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
 import { ProviderType } from '../../generated/entity/bot';
@@ -738,10 +742,10 @@ const TagsPage = () => {
             <div className="p-x-sm m-b-sm">
               {createClassificationPermission && (
                 <Button
-                  className="tw:w-full"
+                  className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                   color="secondary"
                   data-testid="add-classification"
-                  iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                  iconLeading={Plus}
                   size="sm"
                   onClick={() => {
                     classificationForm.reset();
@@ -787,7 +791,7 @@ const TagsPage = () => {
 
   const classificationEmptyState = (
     <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px]">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           createClassificationPermission
             ? [
@@ -823,7 +827,6 @@ const TagsPage = () => {
           },
         ]}
         title={t('message.classification-empty-state-title')}
-        variant="features"
       />
     </Box>
   );
@@ -833,11 +836,9 @@ const TagsPage = () => {
   }
   if (error) {
     return (
-      <ErrorPlaceHolder>
-        <Typography as="p" className="tw:text-center tw:m-auto">
-          {error}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" title={error} />
+      </div>
     );
   }
 

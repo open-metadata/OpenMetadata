@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import { Badge, Tooltip } from '@openmetadata/ui-core-components';
-import { Link } from '@openmetadata/ui-core-components/icons';
+import { Link01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TermReference } from '../../../generated/entity/data/glossaryTerm';
+import { useIsTextClamped } from '../../../hooks/useIsTextClamped';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 
 // `data-diff` marks version-view additions/removals for tests; the legacy
 // `.diff-added` class is not used because its global styles override Badge's.
@@ -33,42 +35,38 @@ const getVersionBadgeProps = (versionStatus?: VersionStatus) => {
   return { color: 'gray' as const, className: undefined, diff: undefined };
 };
 
-// Reference endpoints are user-entered; anything other than http(s), e.g.
-// `javascript:`, must never reach `href`.
-const getSafeReferenceHref = (endpoint?: string) => {
-  if (!endpoint) {
-    return undefined;
-  }
-
-  try {
-    const { protocol } = new URL(endpoint);
-
-    return ['http:', 'https:'].includes(protocol) ? endpoint : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
 export const SynonymBadge = ({
   synonym,
   versionStatus,
+  className,
 }: {
   synonym: string;
   versionStatus?: VersionStatus;
+  className?: string;
 }) => {
-  const { color, className, diff } = getVersionBadgeProps(versionStatus);
+  const versionProps = getVersionBadgeProps(versionStatus);
+  const { ref, isClamped } = useIsTextClamped<HTMLSpanElement>(synonym);
 
   return (
-    <Badge
-      className={classNames('tw:max-w-50', className)}
-      color={color}
-      data-diff={diff}
-      data-testid={synonym}
-      size="sm"
+    // Badge is a plain span, so the Tooltip wraps it in a hover-only trigger
+    // rather than adding a tab stop per synonym; it only opens when the text is cut off.
+    <Tooltip
+      excludeTriggerFromTabOrder
+      isDisabled={!isClamped}
       title={synonym}
-      type="color">
-      <span className="tw:truncate">{synonym}</span>
-    </Badge>
+      triggerClassName="tw:flex">
+      <Badge
+        className={classNames('tw:max-w-50', versionProps.className, className)}
+        color={versionProps.color}
+        data-diff={versionProps.diff}
+        data-testid={synonym}
+        size="sm"
+        type="color">
+        <span className="tw:truncate" ref={ref}>
+          {synonym}
+        </span>
+      </Badge>
+    </Tooltip>
   );
 };
 
@@ -87,7 +85,7 @@ export const ReferenceBadge = ({
         className="tw:no-underline"
         data-diff={diff}
         data-testid={`reference-link-${reference.name}`}
-        href={getSafeReferenceHref(reference.endpoint)}
+        href={getSafeHttpUrl(reference.endpoint)}
         rel="noopener noreferrer"
         target="_blank">
         <Badge
@@ -95,7 +93,7 @@ export const ReferenceBadge = ({
           color={color}
           size="sm"
           type="color">
-          <Link
+          <Link01
             className="tw:size-3.5 tw:shrink-0"
             data-testid="external-link-icon"
           />

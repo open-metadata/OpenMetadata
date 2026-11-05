@@ -45,8 +45,14 @@ export interface DescendantSelection {
 // A loaded branch's children decide the row outright; unexpanded, its own membership does.
 export const getNodeSelectionState = (
   { selected, total, hasLoadedChildren }: DescendantSelection,
-  isSelected: boolean
+  isSelected: boolean,
+  /** Checkbox semantics: true only for a cascading multi-select. */
+  derivesFromDescendants = true
 ) => {
+  if (!derivesFromDescendants) {
+    return { isFullySelected: isSelected, isPartiallySelected: false };
+  }
+
   const isFullySelected = hasLoadedChildren
     ? selected === total
     : isSelected || (total > 0 && selected === total);

@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import EntityVersionPage from './EntityVersionPage.component';
@@ -41,10 +39,6 @@ jest.mock('../../hooks/useFqn', () => ({
 
 jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
@@ -150,7 +144,11 @@ describe('EntityVersionPage', () => {
       render(<EntityVersionPage />);
     });
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(mockGetTableDetailsByFQN).not.toHaveBeenCalled();
   });
 

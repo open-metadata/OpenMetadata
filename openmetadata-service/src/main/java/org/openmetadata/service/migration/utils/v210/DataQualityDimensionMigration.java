@@ -18,6 +18,7 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.IdBatches;
 
 /**
  * Gives every pre-existing test case the data quality dimension of its test definition (issue
@@ -31,6 +32,9 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  */
 @Slf4j
 public final class DataQualityDimensionMigration {
+
+  private static final String TEST_CASE_TABLE = "test_case";
+  private static final String IDS_BIND = "ids";
 
   private DataQualityDimensionMigration() {}
 
@@ -73,9 +77,20 @@ public final class DataQualityDimensionMigration {
    * <p>Test definitions set to `NoDimension`, or naming a dimension that does not exist, drop out
    * of the join and are left with no relationship — the same result as creating a test case against
    * them today. The anti-join makes the statement idempotent and leaves alone any test case that
-   * already carries a dimension of its own.
+   * already carries a dimension of its own. It runs once per batch of test case ids, so no single
+   * statement grows with the number of test cases.
    */
   private static int backfill(final Handle handle, final ConnectionType connectionType) {
+    final String sql = backfillSql(connectionType);
+    return IdBatches.fold(
+        handle,
+        TEST_CASE_TABLE,
+        0,
+        (inserted, batch) ->
+            inserted + handle.createUpdate(sql).bindList(IDS_BIND, batch).execute());
+  }
+
+  private static String backfillSql(final ConnectionType connectionType) {
     final boolean mysql = connectionType == ConnectionType.MYSQL;
     // relation 15 = relatedTo, relation 0 = contains (type/entityRelationship.json ordinals).
     final String sql =
@@ -97,7 +112,7 @@ public final class DataQualityDimensionMigration {
             + "LEFT JOIN entity_relationship existing ON existing.toId = tc.id "
             + "AND existing.toEntity = 'testCase' AND existing.fromEntity = 'dataQualityDimension' "
             + "AND existing.relation = 15 "
-            + "WHERE existing.toId IS NULL";
-    return handle.createUpdate(sql).execute();
+            + "WHERE existing.toId IS NULL AND tc.id IN (<ids>)";
+    return sql;
   }
 }

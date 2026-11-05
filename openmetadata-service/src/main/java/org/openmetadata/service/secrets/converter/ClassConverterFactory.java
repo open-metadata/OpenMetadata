@@ -22,7 +22,10 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
+import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
+import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
@@ -52,13 +55,13 @@ import org.openmetadata.schema.services.connections.database.CockroachConnection
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.Db2Connection;
-import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
 import org.openmetadata.schema.services.connections.database.DorisConnection;
 import org.openmetadata.schema.services.connections.database.DremioConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.InformixConnection;
 import org.openmetadata.schema.services.connections.database.MicrosoftAccessConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MongoDBConnection;
 import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MyDbConnection;
@@ -79,7 +82,6 @@ import org.openmetadata.schema.services.connections.database.databricks.AzureADS
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
-import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -103,6 +105,7 @@ import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
+import org.openmetadata.schema.services.connections.pipeline.TableauPipelineConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
@@ -278,7 +281,14 @@ public final class ClassConverterFactory {
               SsrsConnection.class,
               new NestedConfigClassConverter(
                   SsrsConnection.class,
-                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))));
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
+              TableauPipelineConnection.class,
+              new NestedConfigClassConverter(
+                  TableauPipelineConnection.class,
+                  Map.of(
+                      "authType", List.of(BasicAuth.class, AccessTokenAuth.class),
+                      "sslConfig", List.of(ValidateSSLClientConfig.class)))));
 
   static {
     Map<Class<?>, ClassConverter> converters =
@@ -291,10 +301,14 @@ public final class ClassConverterFactory {
                 Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
                 Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
                 Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
-                Map.entry(DeltaLakeConnection.class, new DeltaLakeConnectionClassConverter()),
                 Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
                 Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
                 Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
+                Map.entry(
+                    StorageServiceMetadataPipeline.class,
+                    new StorageServiceMetadataPipelineClassConverter()),
+                Map.entry(
+                    StorageMetadataGCSConfig.class, new StorageMetadataGCSConfigClassConverter()),
                 Map.entry(
                     ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
                 Map.entry(OpenSearchConnection.class, new OpenSearchConnectionClassConverter()),
@@ -312,7 +326,6 @@ public final class ClassConverterFactory {
                 Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
                 Map.entry(SapHanaConnection.class, new SapHanaConnectionClassConverter()),
                 Map.entry(StarRocksConnection.class, new StarRocksConnectionClassConverter()),
-                Map.entry(StorageConfig.class, new StorageConfigClassConverter()),
                 Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
                 Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
                 Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
@@ -336,6 +349,8 @@ public final class ClassConverterFactory {
                 Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
                 Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),
                 Map.entry(DatabricksConnection.class, new DatabricksConnectionClassConverter()),
+                Map.entry(
+                    MicrosoftFabricConnection.class, new MicrosoftFabricConnectionClassConverter()),
                 Map.entry(UnityCatalogConnection.class, new UnityCatalogConnectionClassConverter()),
                 Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
                 Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),

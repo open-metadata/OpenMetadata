@@ -258,8 +258,8 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
   }
 
   private BulkOperation convertEntityToRequest(Object entity, String entityType) {
-    if (entity instanceof EntityInterface) {
-      return getEntityInterfaceOperation(entityType, (EntityInterface) entity);
+    if (entity instanceof EntityInterface<?>) {
+      return getEntityInterfaceOperation(entityType, (EntityInterface<?>) entity);
     } else if (entity instanceof EntityTimeSeriesInterface) {
       return getEntityTimeSeriesInterfaceOperation(entityType, (EntityTimeSeriesInterface) entity);
     } else {
@@ -267,7 +267,7 @@ public class OpenSearchIndexSink implements BulkSink, Closeable {
     }
   }
 
-  private BulkOperation getEntityInterfaceOperation(String entityType, EntityInterface entity) {
+  private BulkOperation getEntityInterfaceOperation(String entityType, EntityInterface<?> entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
     String jsonDoc =

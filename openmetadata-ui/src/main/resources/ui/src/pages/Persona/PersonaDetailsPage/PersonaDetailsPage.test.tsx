@@ -19,7 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Description from '../../../components/common/EntityDescription/Description';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { PersonaDetailsPage } from './PersonaDetailsPage';
@@ -101,15 +101,6 @@ jest.mock('react-router-dom', () => {
     useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   };
 });
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>NoDataPlaceholder.component</div>);
-  }
-);
-
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <p>TitleBreadcrumb.component</p>)
@@ -208,7 +199,7 @@ describe('PersonaDetailsPage', () => {
     render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     expect(
-      await screen.findByText('NoDataPlaceholder.component')
+      await screen.findByTestId('no-data-placeholder')
     ).toBeInTheDocument();
   });
 

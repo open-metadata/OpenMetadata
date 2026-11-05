@@ -30,15 +30,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 import org.apache.jena.query.ParameterizedSparqlString;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -54,6 +52,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -62,7 +61,7 @@ import org.openmetadata.service.rdf.RdfRepository;
 /**
  * Runs the real RdfIndexApp end to end over a seeded catalog and reports the throughput the app
  * itself records. Unlike the write-path harness this exercises everything a production run does:
- * partition workers reading through keyset pagination, the single-writer sink, relationship and
+ * keyset reads loaded by the reader threads, the single-writer sink, relationship and
  * lineage writes, and the run-record stats operators actually see.
  *
  * <p>Opt-in — it seeds thousands of entities. Enable with {@code -DrdfScale=true}, size it with
@@ -75,10 +74,8 @@ public class RdfIndexAppScaleIT {
 
   private static final String APP_NAME = "RdfIndexApp";
 
-  @ParameterizedTest(name = "distributed={0}")
-  @MethodSource("executionModes")
-  void reindexSeededCatalogAndReportThroughput(boolean distributed, TestNamespace namespace)
-      throws Exception {
+  @Test
+  void reindexSeededCatalogAndReportThroughput(TestNamespace namespace) throws Exception {
     assumeTrue(RdfTestUtils.isRdfEnabled(), "RDF is disabled; run with -DenableRdf=true");
     assumeTrue(Boolean.getBoolean("rdfScale"), "Scale run is opt-in; enable with -DrdfScale=true");
     assumeFalse(TestSuiteBootstrap.isK8sEnabled(), "App trigger is not compatible with K8s");
@@ -101,7 +98,7 @@ public class RdfIndexAppScaleIT {
     String previousDataset = RdfRepository.getInstance().activeDatasetName();
 
     long runStart = System.nanoTime();
-    trigger(httpClient, distributed);
+    trigger(httpClient);
     AppRunRecord run = awaitCompletion(httpClient, previousStart);
     double runSeconds = (System.nanoTime() - runStart) / 1e9;
 
@@ -184,29 +181,17 @@ public class RdfIndexAppScaleIT {
     return columns;
   }
 
-  private static Stream<Boolean> executionModes() {
-    String configured = System.getProperty("rdfScaleDistributed");
-    return configured == null
-        ? Stream.of(false, true)
-        : Stream.of(Boolean.parseBoolean(configured));
-  }
-
-  private static void trigger(HttpClient httpClient, boolean distributed) {
+  private static void trigger(HttpClient httpClient) {
     Map<String, Object> config = new HashMap<>();
     config.put("entities", List.of("table"));
     config.put("recreateIndex", true);
     config.put("blueGreenRebuild", true);
     config.put("batchSize", 100);
-    config.put("producerThreads", Integer.getInteger("rdfScaleProducerThreads", 2));
-    config.put("consumerThreads", 3);
-    config.put("queueSize", 5000);
-    config.put("useDistributedIndexing", distributed);
-    config.put("partitionSize", Integer.getInteger("rdfScalePartitionSize", 10000));
+    config.put("producerThreads", Integer.getInteger("rdfScaleProducerThreads", 4));
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(3))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            error -> error.getMessage() != null && error.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               httpClient.execute(

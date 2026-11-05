@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
@@ -54,7 +55,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -317,7 +317,7 @@ const DashboardDetails = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(dashboardDetails)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(dashboardDetails)}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader
@@ -355,9 +355,11 @@ const DashboardDetails = ({
               <Tabs.List
                 actions={
                   isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
+                    <ButtonUtility
+                      data-testid="tab-expand-button"
+                      icon={isTabExpanded ? Collapse : Expand}
+                      size="lg"
+                      tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')
                       }
                       onClick={toggleTabExpanded}

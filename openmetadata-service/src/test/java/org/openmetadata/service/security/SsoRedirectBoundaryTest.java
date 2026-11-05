@@ -28,8 +28,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
@@ -38,6 +40,8 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -107,6 +111,72 @@ class SsoRedirectBoundaryTest {
     assertPendingSessionUnchanged(store, pendingSession);
   }
 
+  /**
+   * Issue #26311: {@code oidcConfiguration.serverUrl} left at its localhost default while the
+   * deployment is served elsewhere. The configured callback URL has to be right for login to work
+   * at all, so its host anchors the landing page.
+   */
+  @Test
+  void oidcLoginLandsOnTheCallbackHostWhenServerUrlIsStale() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store, "http://localhost:8585"));
+
+    HttpResponse<String> response = login(baseUri, SERVER_URL + "/auth/callback", Map.of());
+
+    assertEquals(302, response.statusCode());
+    assertEquals(SERVER_URL + "/auth/callback", store.onlySession().getRedirectUri());
+  }
+
+  /** The landing page is trusted only on the configured host; a forged host header adds nothing. */
+  @Test
+  void oidcLoginRejectsALandingOnAForgedHost() throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    URI baseUri = startServer(newOidcHandler(store));
+
+    HttpResponse<String> response =
+        login(
+            baseUri,
+            "https://evil.example.com/auth/callback",
+            Map.of("X-Forwarded-Proto", "https", "X-Forwarded-Host", "evil.example.com"));
+
+    assertRejected(response);
+    assertTrue(store.isEmpty());
+  }
+
+  /**
+   * Signing in again replaces the browser's session cookie, so nothing reaches the session it named
+   * again. That session is revoked rather than left counting toward maxActiveSessionsPerUser, and
+   * the user stays signed in on their other devices.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"/auth/callback", "/mcp/callback"})
+  void oidcLoginRevokesOnlyTheSessionItsCookieReplaces(String landingPath) throws Exception {
+    InMemorySessionStore store = new InMemorySessionStore();
+    String userId = UUID.randomUUID().toString();
+    UserSession thisBrowser = storeActiveSession(store, userId);
+    UserSession otherDevice = storeActiveSession(store, userId);
+    URI baseUri = startServer(newOidcHandler(store));
+
+    HttpResponse<String> response =
+        get(loginUri(baseUri, SERVER_URL + landingPath), "OM_SESSION=" + thisBrowser.getId());
+
+    assertEquals(302, response.statusCode());
+    assertEquals(SessionStatus.REVOKED, store.statusOf(thisBrowser));
+    assertEquals(SessionStatus.ACTIVE, store.statusOf(otherDevice));
+  }
+
+  /** #26311: with serverUrl stale, the signin fallback stays on the callback host. */
+  @Test
+  void oidcCallbackWithoutPendingSessionSendsSigninToTheCallbackHostWhenServerUrlIsStale()
+      throws Exception {
+    URI baseUri = startServer(newOidcHandler(new InMemorySessionStore(), "http://localhost:8585"));
+
+    HttpResponse<String> response =
+        get(baseUri.resolve("/callback?code=authorization-code&state=state-abc"), null);
+
+    assertEquals(SERVER_URL + "/signin", response.headers().firstValue("Location").orElseThrow());
+  }
+
   @Test
   void samlLoginRejectsUntrustedRedirectWithoutPersistingSession() throws Exception {
     InMemorySessionStore store = new InMemorySessionStore();
@@ -144,7 +214,13 @@ class SsoRedirectBoundaryTest {
   }
 
   private AuthenticationCodeFlowHandler newOidcHandler(InMemorySessionStore store) {
+    return newOidcHandler(store, SERVER_URL);
+  }
+
+  private AuthenticationCodeFlowHandler newOidcHandler(
+      InMemorySessionStore store, String serverUrl) {
     AuthenticationConfiguration authConfig = oidcAuthConfig(startOidcProvider());
+    authConfig.getOidcConfiguration().setServerUrl(serverUrl);
     return new AuthenticationCodeFlowHandler(
         authConfig, new AuthorizerConfiguration(), new SessionService(authConfig, store));
   }
@@ -236,32 +312,63 @@ class SsoRedirectBoundaryTest {
   }
 
   private HttpResponse<String> get(URI uri, String cookie) throws Exception {
+    return get(uri, cookie, Map.of());
+  }
+
+  private HttpResponse<String> get(URI uri, String cookie, Map<String, String> headers)
+      throws Exception {
     HttpRequest.Builder request = HttpRequest.newBuilder(uri).GET();
     if (cookie != null) {
       request.header("Cookie", cookie);
     }
+    headers.forEach(request::header);
     return httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
   }
 
+  private HttpResponse<String> login(URI baseUri, String redirectUri, Map<String, String> headers)
+      throws Exception {
+    return get(loginUri(baseUri, redirectUri), null, headers);
+  }
+
+  private static URI loginUri(URI baseUri, String redirectUri) {
+    return baseUri.resolve(
+        "/api/v1/auth/login?redirectUri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8));
+  }
+
   private UserSession storeTamperedPendingSession(InMemorySessionStore store, String provider) {
-    long now = System.currentTimeMillis();
     UserSession session =
-        UserSession.builder()
-            .id(SessionIdGenerator.newSessionId())
-            .type(SessionType.AUTH)
-            .provider(provider)
-            .status(SessionStatus.PENDING)
+        unexpiredSession(provider, SessionStatus.PENDING)
             .redirectUri(ATTACKER_REDIRECT)
             .state("state-abc")
-            .version(0L)
-            .createdAt(now)
-            .updatedAt(now)
-            .lastAccessedAt(now)
-            .expiresAt(now + 60_000)
-            .idleExpiresAt(now + 60_000)
             .build();
     store.create(session);
     return session;
+  }
+
+  private UserSession storeActiveSession(InMemorySessionStore store, String userId) {
+    UserSession session =
+        unexpiredSession("google", SessionStatus.ACTIVE)
+            .userId(userId)
+            .username("signed-in-user")
+            .build();
+    store.create(session);
+    return session;
+  }
+
+  private static UserSession.UserSessionBuilder unexpiredSession(
+      String provider, SessionStatus status) {
+    long now = System.currentTimeMillis();
+    return UserSession.builder()
+        .id(SessionIdGenerator.newSessionId())
+        .type(SessionType.AUTH)
+        .provider(provider)
+        .status(status)
+        .version(0L)
+        .createdAt(now)
+        .updatedAt(now)
+        .lastAccessedAt(now)
+        .expiresAt(now + 60_000)
+        .idleExpiresAt(now + 60_000);
   }
 
   private void assertRejected(HttpResponse<String> response) {
@@ -338,6 +445,15 @@ class SsoRedirectBoundaryTest {
         }
       }
       return deleted;
+    }
+
+    private SessionStatus statusOf(UserSession session) {
+      return sessions.get(session.getId()).getStatus();
+    }
+
+    private UserSession onlySession() {
+      assertEquals(1, sessions.size());
+      return sessions.values().iterator().next();
     }
 
     private boolean isEmpty() {

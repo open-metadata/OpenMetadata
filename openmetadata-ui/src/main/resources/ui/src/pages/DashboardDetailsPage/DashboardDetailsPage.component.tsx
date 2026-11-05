@@ -18,21 +18,20 @@ import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import DashboardDetails from '../../components/Dashboard/DashboardDetails/DashboardDetails.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { ROUTES } from '../../constants/constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { Chart } from '../../generated/entity/data/chart';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import {
   addFollower,
   patchDashboardDetails,
@@ -49,10 +48,6 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-export type ChartType = {
-  displayName: string;
-} & Chart;
 
 const DashboardDetailsPage = () => {
   const { t } = useTranslation();
@@ -345,24 +340,28 @@ const DashboardDetailsPage = () => {
   // (ViewBasic || ViewAll) replacing the raw `!ViewAll && !ViewBasic` pair.
   const getBlockingStateElement = (): JSX.Element | null => {
     if (permissionsLoading || dashboardLoading) {
-      return <PageLoader />;
+      return <EntityDetailsPageSkeleton />;
     }
     if (isError) {
       return (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('dashboard', dashboardFQN)}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            title={getEntityMissingError('dashboard', dashboardFQN)}
+          />
+        </div>
       );
     }
     if (!canViewDashboard) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.dashboard-detail-plural-lowercase'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.dashboard-detail-plural-lowercase'),
+            })}
+          />
+        </div>
       );
     }
 
@@ -374,7 +373,7 @@ const DashboardDetailsPage = () => {
     return blockingStateElement;
   }
   if (!dashboardDetails) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (

@@ -16,7 +16,6 @@ import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import {
@@ -119,16 +118,6 @@ jest.mock('../../components/common/EntityDescription/Description', () =>
     ))
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ type, children }) => (
-    <div>
-      ErrorPlaceHolder
-      <span>{type}</span>
-      <div>{children}</div>
-    </div>
-  ))
-);
-
 jest.mock(
   '../../components/Container/ContainerChildren/ContainerChildren',
   () =>
@@ -193,10 +182,6 @@ jest.mock('../../components/Entity/EntityRightPanel/EntityRightPanel', () =>
 
 jest.mock('../../components/Lineage/Lineage.component', () =>
   jest.fn().mockReturnValue(<>EntityLineage</>)
-);
-
-jest.mock('../../context/LineageProvider/LineageProvider', () =>
-  jest.fn().mockReturnValue(<>LineageProvider</>)
 );
 
 jest.mock('../../components/common/Loader/Loader', () => ({
@@ -273,13 +258,16 @@ jest.mock('../../utils/EntitySortUtils', () => ({
 jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  stringToHTML: jest.fn().mockImplementation((str) => str),
   getErrorText: jest
     .fn()
     .mockImplementation(
       (error: Error, defaultMessage: string) =>
         error?.message || defaultMessage || 'Error'
     ),
+}));
+
+jest.mock('../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn().mockImplementation((str) => str),
 }));
 
 jest.mock('../../utils/TableUtils', () => {
@@ -420,7 +408,7 @@ describe('Container Page Component', () => {
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     expect(
-      await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
+      await screen.findByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 
@@ -431,9 +419,9 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
@@ -471,13 +459,17 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {
@@ -489,7 +481,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
@@ -536,7 +528,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const followButton = await screen.findByRole('button', {
       name: 'Follow Container',
@@ -556,7 +548,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
       name: 'label.container-plural',
@@ -585,7 +577,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
       name: 'label.container-plural',

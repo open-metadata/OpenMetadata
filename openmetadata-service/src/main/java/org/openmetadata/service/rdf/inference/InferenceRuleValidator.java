@@ -118,6 +118,9 @@ public final class InferenceRuleValidator {
           "ruleBody must not contain SERVICE clauses; inference is local-only and federated rules are rejected");
     }
     validateMaterializationCompatibility(query, errors);
+    if (query.getQueryPattern() != null) {
+      errors.addAll(FixedPointRuleCheck.check(query));
+    }
   }
 
   private static void validateMaterializationCompatibility(

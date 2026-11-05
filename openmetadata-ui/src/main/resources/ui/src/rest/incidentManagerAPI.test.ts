@@ -96,20 +96,11 @@ describe('incidentManagerAPI', () => {
       );
     });
 
-    it('should pass a paging cursor back verbatim as the offset', async () => {
-      const { paging } = groupsResponse.data;
+    it('should ask for a page by its number', async () => {
+      await listIncidentGroups({ groupBy: IncidentGroupBy.Table, page: 3 });
 
-      await listIncidentGroups({
-        groupBy: IncidentGroupBy.Table,
-        offset: paging.after,
-      });
-      await listIncidentGroups({
-        groupBy: IncidentGroupBy.Table,
-        offset: paging.before,
-      });
-
-      expect(getCallConfig(0).params.offset).toBe('MTA=');
-      expect(getCallConfig(1).params.offset).toBe('MA==');
+      expect(getCallConfig(0).params.page).toBe(3);
+      expect(getCallConfig(0).params).not.toHaveProperty('offset');
     });
   });
 

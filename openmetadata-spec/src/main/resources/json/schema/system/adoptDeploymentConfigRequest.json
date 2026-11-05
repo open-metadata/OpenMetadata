@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/system/adoptDeploymentConfigRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AdoptDeploymentConfigRequest",
+  "description": "Admin request to replace stored values of a setting with the values from the deployment configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.AdoptDeploymentConfigRequest",
+  "properties": {
+    "paths": {
+      "description": "JSON pointers of the fields to take from the deployment configuration. When empty, every field listed as overridden is taken.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

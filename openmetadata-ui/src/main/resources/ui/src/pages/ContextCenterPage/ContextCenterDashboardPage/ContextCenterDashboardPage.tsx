@@ -15,11 +15,15 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, FlipBackward, Plus, Stars01 } from '@untitledui/icons';
+import {
+  ChevronDown,
+  FlipBackward,
+  Plus,
+  Stars01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -32,6 +36,7 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
@@ -44,22 +49,22 @@ import {
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import {
+  DEFAULT_MEMORY_STATUSES,
   MOST_CITED_MEMORIES_LIMIT,
   RECENT_DASHBOARD_ARTICLES_LIMIT,
   RECENT_DASHBOARD_DOCUMENTS_LIMIT,
   RECENT_DASHBOARD_MEMORIES_LIMIT,
 } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -75,7 +80,10 @@ import {
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import {
+  createArticleKnowledgePage,
+  getMemoryCitations,
+} from '../../../utils/ContextCenterPureUtils';
 import {
   CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
@@ -83,10 +91,12 @@ import {
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
@@ -231,6 +241,7 @@ const ContextCenterDashboardPage: FC = () => {
         limit: RECENT_DASHBOARD_MEMORIES_LIMIT,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
+        statuses: DEFAULT_MEMORY_STATUSES.join(','),
       });
       setMemoriesCount(response.paging.total ?? response.data.length);
       setMemories(response.data);
@@ -246,7 +257,7 @@ const ContextCenterDashboardPage: FC = () => {
     try {
       const response = await getListContextMemories({
         limit: MOST_CITED_MEMORIES_LIMIT,
-        sortBy: 'usageCount',
+        sortBy: 'appliedCount',
         sortOrder: 'desc',
       });
       setMostCitedMemories(response.data);
@@ -300,11 +311,10 @@ const ContextCenterDashboardPage: FC = () => {
   const handleOpenKnowledgePage = useCallback(
     (page: Pick<KnowledgePage, 'pageType' | 'page' | 'fullyQualifiedName'>) => {
       if (page.pageType === PageType.QUICK_LINK) {
-        window.open(
-          (page.page as QuickLink).url,
-          '_blank',
-          'noopener,noreferrer'
-        );
+        const safeUrl = getSafeHttpUrl((page.page as QuickLink).url);
+        if (safeUrl) {
+          window.open(safeUrl, '_blank', 'noopener,noreferrer');
+        }
 
         return;
       }
@@ -392,10 +402,14 @@ const ContextCenterDashboardPage: FC = () => {
     () =>
       memories.map((memory) => ({
         title: memory.title ?? getEntityName(memory),
-        meta: [`cited ${memory.usageCount}×`],
+        meta: [
+          t('label.cited-n-times', {
+            count: getMemoryCitations(memory).count ?? 0,
+          }),
+        ],
         onClick: () => handleOpenMemory(memory.name),
       })),
-    [memories, handleOpenMemory]
+    [memories, handleOpenMemory, t]
   );
 
   const mostCitedItems = useMemo(
@@ -403,7 +417,7 @@ const ContextCenterDashboardPage: FC = () => {
       mostCitedMemories.map((memory) => ({
         id: memory.id,
         title: memory.title ?? getEntityName(memory),
-        citedCount: memory.usageCount ?? 0,
+        citedCount: getMemoryCitations(memory).count ?? 0,
         onClick: () => handleOpenMemory(memory.name),
       })),
     [mostCitedMemories, handleOpenMemory]
@@ -411,7 +425,9 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-dashboard-page">
       <DocumentTitle title={t('label.context-center')} />
       <PageLayout
@@ -471,10 +487,11 @@ const ContextCenterDashboardPage: FC = () => {
             'tw:flex tw:flex-col tw:gap-5 tw:h-full tw:min-h-0',
             pageLayoutClassNames.content
           )}
-          data-testid="dashboard-detail-card">
+          data-testid="dashboard-detail-card"
+          data-tour-step="context-center">
           {isDashboardEmpty ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-              <EmptyPlaceholder
+              <FeaturesPlaceholder
                 actions={
                   hasCreatePermission
                     ? [
@@ -527,7 +544,6 @@ const ContextCenterDashboardPage: FC = () => {
                   },
                 ]}
                 title={t('label.give-your-ai-something-to-know')}
-                variant="features"
               />
             </div>
           ) : (
@@ -597,7 +613,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {recentlyViewedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"
@@ -666,7 +682,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {mostCitedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"

@@ -27,11 +27,9 @@ import {
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignSingleSelectDomain,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
-  removeSingleSelectDomain,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -40,6 +38,7 @@ import {
   addTestSuitePipeline,
   removeFirstNTestCasesFromLogicalTestSuite,
 } from '../../utils/dataQuality';
+import { setDomain } from '../../utils/domainPicker';
 import {
   addMultiOwner,
   removeOwnersFromList,
@@ -130,7 +129,9 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
     }
   );
 
-  await page.goto('/data-quality/test-suites/table-suites');
+  await page.goto('/data-quality/test-suites/table-suites', {
+    waitUntil: 'domcontentloaded',
+  });
   await tableSuiteRequestReceived.promise;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
@@ -221,7 +222,9 @@ test('Searching the bundle suites list from a later page resets to the first pag
       const listResponse = page.waitForResponse((response) =>
         isBundleSuiteList(new URL(response.url()))
       );
-      await page.goto('/data-quality/test-suites/bundle-suites?pageSize=1');
+      await page.goto('/data-quality/test-suites/bundle-suites?pageSize=1', {
+        waitUntil: 'domcontentloaded',
+      });
       await listResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -281,7 +284,9 @@ test(
     };
     const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
     const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
-    await page.goto('/data-quality/test-suites/bundle-suites');
+    await page.goto('/data-quality/test-suites/bundle-suites', {
+      waitUntil: 'domcontentloaded',
+    });
 
     const loggedInUserRequest = ownerPage.waitForResponse(
       `/api/v1/users/loggedInUser*`
@@ -369,9 +374,9 @@ test(
     });
 
     await test.step('Domain Add, Update and Remove', async () => {
-      await assignSingleSelectDomain(page, domain1.responseData);
-      await assignSingleSelectDomain(page, domain2.responseData);
-      await removeSingleSelectDomain(page, domain2.responseData, true);
+      await setDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData);
+      await setDomain(page, domain2.responseData, { verify: 'cleared' });
     });
 
     await test.step('User as Owner assign, update & delete for test suite', async () => {

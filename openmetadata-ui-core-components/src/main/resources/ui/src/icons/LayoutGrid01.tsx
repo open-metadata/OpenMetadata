@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const LayoutGrid01: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,13 +29,13 @@ export const LayoutGrid01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M3 12h18m-9-9v18M7.8 3h8.4c1.68 0 2.52 0 3.162.327a3 3 0 0 1 1.311 1.311C21 5.28 21 6.12 21 7.8v8.4c0 1.68 0 2.52-.327 3.162a3 3 0 0 1-1.311 1.311C18.72 21 17.88 21 16.2 21H7.8c-1.68 0-2.52 0-3.162-.327a3 3 0 0 1-1.311-1.311C3 18.72 3 17.88 3 16.2V7.8c0-1.68 0-2.52.327-3.162a3 3 0 0 1 1.311-1.311C5.28 3 6.12 3 7.8 3"
+      d="M2.5 10h15M10 2.5v15m-3.5-15h7c1.4 0 2.1 0 2.635.273a2.5 2.5 0 0 1 1.093 1.093C17.5 4.4 17.5 5.1 17.5 6.5v7c0 1.4 0 2.1-.272 2.635a2.5 2.5 0 0 1-1.092 1.093c-.536.272-1.236.272-2.636.272h-7c-1.4 0-2.1 0-2.635-.272a2.5 2.5 0 0 1-1.092-1.092C2.5 15.6 2.5 14.9 2.5 13.5v-7c0-1.4 0-2.1.273-2.635a2.5 2.5 0 0 1 1.093-1.092C4.4 2.5 5.1 2.5 6.5 2.5"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.3}
     />
   </svg>
 );

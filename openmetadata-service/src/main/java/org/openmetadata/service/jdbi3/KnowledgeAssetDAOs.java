@@ -81,6 +81,42 @@ public interface KnowledgeAssetDAOs {
       return "nameHash";
     }
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_file SET json = :json, nameHash = :nameHash "
+                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+                + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_file SET json = (:json :: jsonb), nameHash = :nameHash "
+                + "WHERE id = :id AND json->>'version' = :version "
+                + "AND (json->>'updatedAt')::bigint = :updatedAt",
+        connectionType = POSTGRES)
+    int updateWithVersionAndTimestamp(
+        @Bind("id") String id,
+        @BindFQN("nameHash") String fullyQualifiedName,
+        @BindJson("json") String json,
+        @Bind("version") String version,
+        @Bind("updatedAt") Long updatedAt);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.extractionStats.sourceHash')) = :sourceHash "
+                + "AND id <> :excludeId AND (deleted = false OR deleted IS NULL) "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json->'extractionStats'->>'sourceHash' = :sourceHash "
+                + "AND id <> :excludeId AND deleted = false "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = POSTGRES)
+    List<String> listByExtractedSourceHash(
+        @Bind("sourceHash") String sourceHash, @Bind("excludeId") String excludeId);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(*) FROM context_file cf "
@@ -110,6 +146,34 @@ public interface KnowledgeAssetDAOs {
         @Bind("folderId") String folderId,
         @Bind("excludeId") String excludeId,
         @Bind("containsRelation") int containsRelation);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file "
+                + "WHERE json ->> 'assetId' = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = POSTGRES)
+    int countByAssetId(@Bind("assetId") String assetId);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json ->> 'assetId' = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = POSTGRES)
+    List<String> findByAssetId(@Bind("assetId") String assetId);
 
     // Same lookup as above but for soft-deleted (archived) files. A soft-deleted file keeps its
     // nameHash, so it still reserves the name against the unique constraint even though the live
@@ -250,6 +314,25 @@ public interface KnowledgeAssetDAOs {
       return "fqnHash";
     }
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE knowledge_center SET json = :json, fqnHash = :fqnHash "
+                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+                + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE knowledge_center SET json = (:json :: jsonb), fqnHash = :fqnHash "
+                + "WHERE id = :id AND json->>'version' = :version "
+                + "AND (json->>'updatedAt')::bigint = :updatedAt",
+        connectionType = POSTGRES)
+    int updateWithVersionAndTimestamp(
+        @Bind("id") String id,
+        @BindFQN("fqnHash") String fullyQualifiedName,
+        @BindJson("json") String json,
+        @Bind("version") String version,
+        @Bind("updatedAt") Long updatedAt);
+
     @Override
     default boolean supportsSoftDelete() {
       return false;
@@ -311,7 +394,7 @@ public interface KnowledgeAssetDAOs {
           getTableName(),
           getNameHashColumn(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause));
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause));
     }
 
     @Override
@@ -365,7 +448,7 @@ public interface KnowledgeAssetDAOs {
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause),
           limit,
           beforeName,
           beforeId);
@@ -421,7 +504,7 @@ public interface KnowledgeAssetDAOs {
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause),
           limit,
           afterName,
           afterId);
@@ -439,8 +522,12 @@ public interface KnowledgeAssetDAOs {
       }
     }
 
-    private String getKnowledgePageWhereClause(String knowledgePageQueryClause) {
-      return nullOrEmpty(knowledgePageQueryClause) ? "WHERE TRUE" : knowledgePageQueryClause;
+    // Keeps the filter's domain condition (e.g. the navbar pick), which the base list adds itself.
+    private String getKnowledgePageWhereClause(ListFilter filter, String knowledgePageQueryClause) {
+      String where =
+          nullOrEmpty(knowledgePageQueryClause) ? "WHERE TRUE" : knowledgePageQueryClause;
+      String domainCondition = filter.getDomainCondition(getTableName());
+      return nullOrEmpty(domainCondition) ? where : where + " AND " + domainCondition;
     }
 
     private String getKnowledgePageTypeQuery(String clause, String type) {

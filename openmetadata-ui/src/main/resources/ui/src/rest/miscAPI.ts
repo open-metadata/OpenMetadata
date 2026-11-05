@@ -13,17 +13,17 @@
 
 import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
-import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { PAGE_SIZE } from '../constants/constants';
-import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { AggregationRequest } from '../generated/search/aggregationRequest';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
+import { AsyncDeleteJob } from '../interface/entity/asyncDelete.interface';
+import { Edge } from '../interface/lineage.interface';
 import { SearchResponse } from '../interface/search.interface';
 import {
   escapeESReservedCharacters,

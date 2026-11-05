@@ -21,6 +21,7 @@ import {
   ContextRule,
   PersonaContextDefinition,
 } from '../generated/type/personaContextDefinition';
+import { PersonaContextStatus } from '../generated/type/personaContextStatus';
 import { getEncodedFqn } from '../utils/StringUtils';
 import axiosClient from './axiosClient';
 
@@ -88,6 +89,16 @@ export interface PersonaContextDocument {
   truncatedCount: number;
 }
 
+export const getPersonaAIContextStatus = async (
+  params: Pick<GetPersonasParams, 'after' | 'before' | 'limit'>
+) => {
+  const response = await axiosClient.get<
+    PagingResponse<PersonaContextStatus[]>
+  >(`${BASE_URL}/aiContext/status`, { params });
+
+  return response.data;
+};
+
 export const getPersonaAIContext = async (id: string) => {
   const response = await axiosClient.get<PersonaContextDefinition>(
     `${BASE_URL}/${id}/aiContext`
@@ -100,7 +111,7 @@ export const updatePersonaAIContext = async (
   id: string,
   data: Pick<
     PersonaContextDefinition,
-    'cacheTtlMinutes' | 'characterBudget' | 'enabled'
+    'cacheTtlMinutes' | 'characterBudget' | 'enabled' | 'prompt'
   >
 ) => {
   const response = await axiosClient.put<PersonaContextDefinition>(

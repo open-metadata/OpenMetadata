@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from contextlib import closing
 from typing import Annotated, Any
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
@@ -62,14 +63,13 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.utils import model_str
@@ -89,6 +89,7 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
+    upstream_table_ids: dict[str, UUID] = Field(default_factory=dict)
 
 
 class DatabaseServiceTopology(ServiceTopology):
@@ -213,10 +214,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
-    database_source_state: set = set()  # noqa: RUF012
-    stored_procedure_source_state: set = set()  # noqa: RUF012
-    database_entity_source_state: set = set()  # noqa: RUF012
-    schema_entity_source_state: set = set()  # noqa: RUF012
+    database_source_state = PerSourceState(set)
+    stored_procedure_source_state = PerSourceState(set)
+    database_entity_source_state = PerSourceState(set)
+    schema_entity_source_state = PerSourceState(set)
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation  # noqa: F821
 
@@ -228,7 +229,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     _connection: BaseConnection | None = None
 
     topology = DatabaseServiceTopology()
-    context = TopologyContextManager(topology)
 
     # ``vars(self).setdefault(...)`` for thread-safe lazy init.
     # See: https://docs.python.org/3/library/threadsafety.html
@@ -239,7 +239,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         cached = instance_dict.get("tags_registry")
         if cached is not None:
             return cached
-        return instance_dict.setdefault("tags_registry", TagRegistry())
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
     @property
     def tag_canonicalizer(self) -> TagCanonicalizer:
@@ -257,9 +257,27 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         tag_name: str,
         classification_description: str,
         tag_description: str,
+        entity_fqn: str | None = None,
     ) -> TagDefinition | None:
-        """Resolve and register a nonempty tag definition."""
+        """Resolve and register a tag definition, or return None when it cannot be stored.
+
+        ``entity_fqn`` is the entity the tag is being attached to, named in the warning for a skipped tag.
+        """
         if not tag_name or not tag_name.strip():
+            return None
+        if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag_name)):
+            # Source systems allow names the server rejects, such as the JSON values Snowflake ML Feature Store
+            # sets. The tag is skipped rather than failing the run: StatusWarningHandler counts the logged
+            # warning in the run status, not as a failure.
+            # %r keeps the line intact and shows the control characters that made the name invalid
+            logger.warning(
+                "%sSkipped tag %r in classification %r: classification and tag names must be 1 to %d characters"
+                " long and cannot contain '\"', '>', '::' or control characters",
+                f"{entity_fqn}: " if entity_fqn else "",
+                tag_name,
+                classification_name,
+                fqn.ENTITY_NAME_MAX_LENGTH,
+            )
             return None
         tag = self.tag_canonicalizer.resolve(
             classification_name=classification_name,
@@ -286,6 +304,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 tag_name=definition.tag_name,
                 classification_description=definition.classification_description,
                 tag_description=definition.tag_description,
+                entity_fqn=entity_fqn,
             )
             if tag is not None:
                 self.attach_tag(entity_fqn=entity_fqn, tag=tag)

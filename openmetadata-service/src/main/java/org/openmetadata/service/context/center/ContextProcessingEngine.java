@@ -7,6 +7,9 @@ import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.context.center.ContextMemoryReconciler.ReconcileResult;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor.DeriveResult;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.llm.LLMCompletionException;
+import org.openmetadata.service.util.FreshReadScope;
 
 /**
  * Shared core of Context Center knowledge-pill extraction. Given a source entity (a ContextFile, a
@@ -17,6 +20,7 @@ import org.openmetadata.service.context.center.DocumentMemoryExtractor.DeriveRes
  */
 @Slf4j
 public abstract class ContextProcessingEngine {
+  static final int MAX_CONDITIONAL_UPDATE_ATTEMPTS = 10;
   protected final DocumentMemoryExtractor extractor;
   protected final ContextMemoryReconciler reconciler;
 
@@ -24,6 +28,25 @@ public abstract class ContextProcessingEngine {
       DocumentMemoryExtractor extractor, ContextMemoryReconciler reconciler) {
     this.extractor = extractor;
     this.reconciler = reconciler;
+  }
+
+  protected final void updateSource(UUID entityId, Runnable update) {
+    for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
+      try (var ignored = FreshReadScope.enter()) {
+        update.run();
+        return;
+      } catch (PreconditionFailedException e) {
+        if (attempt == MAX_CONDITIONAL_UPDATE_ATTEMPTS) {
+          throw new ConditionalUpdateExhaustedException(entityType(), entityId);
+        }
+      }
+    }
+  }
+
+  static class ConditionalUpdateExhaustedException extends RuntimeException {
+    ConditionalUpdateExhaustedException(String entityType, UUID entityId) {
+      super("Repeated concurrent updates for " + entityType + " " + entityId);
+    }
   }
 
   /** A source's current text, a stable hash of it, and the reference pills are linked back to. */
@@ -69,7 +92,15 @@ public abstract class ContextProcessingEngine {
   }
 
   private ExtractionOutcome extractAndReconcile(UUID entityId, Source source) {
+    ExtractionOutcome reused = reuseExisting(entityId, source);
+    if (reused != null) {
+      return reused;
+    }
     DeriveResult derived = extractor.derive(source.text(), source.sourceRef(), sourceType());
+    if (derived.chunksProcessed() != derived.chunksTotal()) {
+      throw new LLMCompletionException(
+          "Knowledge pill extraction did not process every source chunk");
+    }
     ReconcileResult reconciled =
         reconciler.reconcile(source.sourceRef(), entityType(), derived.memories());
     ExtractionStats stats =
@@ -81,6 +112,10 @@ public abstract class ContextProcessingEngine {
             .withSourceHash(source.hash());
     stampStats(entityId, stats);
     return ExtractionOutcome.processed(stats, reconciled);
+  }
+
+  protected ExtractionOutcome reuseExisting(UUID entityId, Source source) {
+    return null;
   }
 
   /**

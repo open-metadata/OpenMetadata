@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
+import { isPlainObject, omit } from 'lodash';
+import { Node } from 'reactflow';
 import { EntityType } from '../enums/entity.enum';
+import { SinkType } from '../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
+import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
 import { t } from './i18next/LocalUtil';
@@ -223,4 +227,88 @@ export const buildFieldOptions = (
   });
 
   return options;
+};
+
+/**
+ * Maps each entity-specific trigger field to the one selected entity type it belongs to, so the
+ * field picker can group it under that type. A field shared by several selected types is left
+ * ungrouped: the trigger matches it on every type that has it, so naming one type would mislead.
+ */
+export const buildEntityFieldGroups = (
+  entitySpecific: Record<string, string[]>,
+  selectedEntityTypes: string[]
+): Record<string, string> => {
+  const owners: Record<string, string[]> = {};
+  selectedEntityTypes.forEach((entityType) => {
+    (entitySpecific[entityType] ?? []).forEach((field) => {
+      owners[field] = [...(owners[field] ?? []), entityType];
+    });
+  });
+
+  return Object.fromEntries(
+    Object.entries(owners)
+      .filter(([, entityTypes]) => entityTypes.length === 1)
+      .map(([field, [entityType]]) => [field, entityType])
+  );
+};
+
+/**
+ * Whether a builder node writes to a Git sink. The builder's sink form saves every sink as a Git
+ * sink, so a sink node not configured yet counts as one.
+ */
+export const isGitSinkNode = (node: Node): boolean =>
+  node.data?.subType === NodeSubType.SinkTask &&
+  (node.data?.config?.sinkType ?? SinkType.Git) === SinkType.Git;
+
+// Query entities are not synced to a Git sink.
+const isGitSinkSyncedEntityType = (entityType: string): boolean =>
+  entityType !== EntityType.QUERY;
+
+/**
+ * Entity types a workflow's trigger can be defined on. Query entities are not synced to a Git sink,
+ * so a workflow with one offers neither them nor an "All" that includes them.
+ */
+export const getTriggerDataAssets = (
+  entityTypes: string[],
+  hasGitSinkNode: boolean
+): string[] =>
+  hasGitSinkNode ? entityTypes.filter(isGitSinkSyncedEntityType) : entityTypes;
+
+/**
+ * The trigger's selected data assets and their filters, limited to the entity types a Git sink
+ * syncs.
+ */
+export const getGitSinkTriggerNodeConfig = (
+  config: NodeConfig
+): NodeConfig => ({
+  ...config,
+  dataAssets: config.dataAssets.filter(isGitSinkSyncedEntityType),
+  dataAssetFilters: config.dataAssetFilters.filter((dataAssetFilter) =>
+    isGitSinkSyncedEntityType(dataAssetFilter.dataAsset)
+  ),
+});
+
+// A trigger filter is a string applied to every entity type, or an object keyed by entity type.
+const getGitSinkTriggerFilter = (filter: unknown): unknown =>
+  isPlainObject(filter) ? omit(filter as object, EntityType.QUERY) : filter;
+
+/**
+ * A trigger config limited to the entity types a Git sink syncs: in its entity types and in its
+ * per-entity-type `filter` (event-based) and `filters` (periodic batch).
+ */
+export const getGitSinkTriggerConfig = (
+  triggerConfig: Record<string, unknown>
+): Record<string, unknown> => {
+  const { entityTypes, filter, filters } = triggerConfig;
+
+  return {
+    ...triggerConfig,
+    ...(Array.isArray(entityTypes) && {
+      entityTypes: entityTypes.filter(isGitSinkSyncedEntityType),
+    }),
+    ...(filter !== undefined && { filter: getGitSinkTriggerFilter(filter) }),
+    ...(filters !== undefined && {
+      filters: getGitSinkTriggerFilter(filters),
+    }),
+  };
 };

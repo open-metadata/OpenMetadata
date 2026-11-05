@@ -160,6 +160,7 @@ public class PersonaContextBuilder {
     PersonaContext context =
         new PersonaContext()
             .withPersona(persona.getEntityReference())
+            .withPrompt(prompt(definition))
             .withGeneratedAt(System.currentTimeMillis())
             .withSharedKnowledge(sharedKnowledge)
             .withSearchScope(searchScope(definition));
@@ -171,6 +172,17 @@ public class PersonaContextBuilder {
     return persona.getContextDefinition() == null
         ? new PersonaContextDefinition()
         : persona.getContextDefinition();
+  }
+
+  /**
+   * The admin's instructions for the assistant, withheld while the context is switched off so a
+   * disabled persona reaches the assistant with nothing at all. Never rendered into the markdown,
+   * which consumers treat as reference data rather than instructions.
+   */
+  static String prompt(PersonaContextDefinition definition) {
+    return Boolean.TRUE.equals(definition.getEnabled()) && !nullOrEmpty(definition.getPrompt())
+        ? definition.getPrompt()
+        : null;
   }
 
   static int characterBudget(PersonaContextDefinition definition) {
@@ -545,7 +557,7 @@ public class PersonaContextBuilder {
     String entityType = rule.getEntityType();
     String fqn = stringValue(document.get("fullyQualifiedName"));
     try {
-      EntityInterface entity = loadKnowledgeEntity(entityType, fqn);
+      EntityInterface<?> entity = loadKnowledgeEntity(entityType, fqn);
       KnowledgeItem item = fullKnowledgeItem(entityType, entity);
       if (item == null) {
         return null;
@@ -566,8 +578,8 @@ public class PersonaContextBuilder {
     }
   }
 
-  private static EntityInterface loadKnowledgeEntity(String entityType, String fqn) {
-    EntityInterface entity =
+  private static EntityInterface<?> loadKnowledgeEntity(String entityType, String fqn) {
+    EntityInterface<?> entity =
         Entity.getEntityByName(entityType, fqn, knowledgeFields(entityType), Include.NON_DELETED);
     if (entity instanceof Metric metric) {
       MetricRepository repository = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
@@ -789,7 +801,7 @@ public class PersonaContextBuilder {
     return values.stream().flatMap(Collection::stream).distinct().toList();
   }
 
-  static <T extends EntityInterface> Map<UUID, T> entitiesById(
+  static <T extends EntityInterface<?>> Map<UUID, T> entitiesById(
       String entityType, List<UUID> ids, Class<T> entityClass) {
     Map<UUID, T> entitiesById = new HashMap<>();
     if (ids.isEmpty()) {
@@ -817,7 +829,7 @@ public class PersonaContextBuilder {
     }
   }
 
-  static KnowledgeItem fullKnowledgeItem(String entityType, EntityInterface entity) {
+  static KnowledgeItem fullKnowledgeItem(String entityType, EntityInterface<?> entity) {
     if (entity instanceof GlossaryTerm term && term.getEntityStatus() != EntityStatus.APPROVED) {
       return null;
     }
@@ -1000,7 +1012,7 @@ public class PersonaContextBuilder {
       Map<String, Object> document,
       AIContext context,
       KnowledgeItem knowledgeItem,
-      EntityInterface knowledgeEntity) {}
+      EntityInterface<?> knowledgeEntity) {}
 
   record RuleMaterialization(ContextRule rule, int matched, List<SelectedEntity> entities) {}
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { MessagingServiceClass } from '../../../support/entity/service/MessagingServiceClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { test } from '../../../support/fixtures/base';
 import { registerFilterSeparationSuite } from './SearchSeparationSuite';
@@ -20,5 +21,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'Topic',
   reindexEntityType: 'topic',
-  entityFactory: () => new TopicClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () => new TopicClass({ service: new MessagingServiceClass() }),
 });

@@ -46,6 +46,41 @@ export const fqnsToGlossaryTags = (fqns: string[]): TagLabel[] =>
 export const glossaryTagsToFqns = (tags: TagLabel[]): string[] =>
   tags.map((tag) => tag.tagFQN);
 
+// The payload a term carries; the picker hands it back as the applied tag.
+export const glossaryTermValue = (
+  term: ModifiedGlossaryTerm | GlossaryTerm
+): GlossaryPickerValue =>
+  ({
+    tagFQN: term.fullyQualifiedName || '',
+    name: getEntityName(term),
+    displayName: term.displayName,
+    source: TagSource.Glossary,
+    entity: term,
+  } as GlossaryPickerValue);
+
+// `childrenCount` is a nested count, so any non-zero value means a chevron.
+export const glossaryTermToTreeNode = (
+  term: GlossaryTerm,
+  isParentMutuallyExclusive: boolean
+): TreeSelectNode<GlossaryPickerValue> => {
+  const fqn = term.fullyQualifiedName || term.name;
+  const hasChildren = (term.childrenCount ?? 0) > 0;
+
+  return {
+    id: fqn,
+    label: getEntityName(term),
+    value: fqn,
+    isLeaf: !hasChildren,
+    allowSelection: true,
+    lazyLoad: true,
+    icon: <GlossaryTermIcon size={16} />,
+    isParentMutuallyExclusive,
+    // Declared, not inferred: a lazy branch has no children to infer from.
+    hasExclusiveChildren: term.mutuallyExclusive === true && hasChildren,
+    data: glossaryTermValue(term),
+  };
+};
+
 // The payload a glossary root carries so a parent picker can resolve its entity.
 export const glossaryRootValue = (glossary: Glossary): GlossaryPickerValue =>
   ({
@@ -94,15 +129,7 @@ export const convertToTreeNodes = (
     icon: <GlossaryTermIcon size={16} />,
     lazyLoad: option.lazyLoad !== false,
     isParentMutuallyExclusive: option.isParentMutuallyExclusive,
-    data: option.data
-      ? ({
-          tagFQN: option.data.fullyQualifiedName || '',
-          name: getEntityName(option.data),
-          displayName: option.data.displayName,
-          source: TagSource.Glossary,
-          entity: option.data,
-        } as GlossaryPickerValue)
-      : undefined,
+    data: option.data ? glossaryTermValue(option.data) : undefined,
   }));
 };
 

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -19,35 +20,39 @@ import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { withSuggestions } from '../../components/AppRouter/withSuggestions';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
   DataAssetsHeaderProps,
   DataAssetWithDomains,
 } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import { DataQualityIndicator } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator';
+import { DataQualityIndicatorCounts } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.types';
+import {
+  countUnresolvedIncidents,
+  DQ_INDICATOR_FETCH_LIMIT,
+  EMPTY_DQ_INDICATOR_COUNTS,
+  OPEN_INCIDENT_STATUSES,
+} from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
   FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Table, TableType } from '../../generated/entity/data/table';
 import { PageType } from '../../generated/system/ui/page';
@@ -59,8 +64,9 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
+import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
-import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import {
   tableQueryCountFn,
@@ -75,6 +81,7 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
+import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
   checkIfExpandViewSupported,
@@ -92,11 +99,13 @@ import {
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
   findColumnByEntityLink,
+  generateEntityLink,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
@@ -109,20 +118,40 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
+// The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
+const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
+  canViewTests
+    ? getListTestCaseIncidentStatus({
+        originEntityFQN: tableFqn,
+        latest: true,
+        // The server picks each test case's latest status before applying this filter, so
+        // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
+        // before that and still includes resolved test cases.
+        testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
+        // `latest` is only honoured together with a time range.
+        startTs: 0,
+        endTs: Date.now(),
+        limit: DQ_INDICATOR_FETCH_LIMIT,
+      })
+    : Promise.resolve({ data: [], paging: { total: 0 } });
+
+// useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
+// the render that starts the request, so the badge never flashes a placeholder 0.
+const useTableQueryCount = (tableId: string) =>
+  useQuery({
+    queryKey: tableQueryCountKey(tableId),
+    queryFn: tableQueryCountFn(tableId),
+    enabled: Boolean(tableId),
+  });
+
 const TableDetailsPageV1: React.FC = () => {
-  const {
-    isTourOpen,
-    activeTabForTourDatasetPage,
-    isTourPage,
-    tourMockDatasetData,
-  } = useTourProvider();
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const queryClient = useQueryClient();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const location = useLocation();
   const breadcrumbData = (
     location.state as {
@@ -134,7 +163,8 @@ const TableDetailsPageV1: React.FC = () => {
     FEED_COUNT_INITIAL_DATA
   );
 
-  const [dqFailureCount, setDqFailureCount] = useState(0);
+  const [dqIndicatorCounts, setDqIndicatorCounts] =
+    useState<DataQualityIndicatorCounts>(EMPTY_DQ_INDICATOR_COUNTS);
   const { customizedPage } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -149,42 +179,12 @@ const TableDetailsPageV1: React.FC = () => {
     [columnPart, datasetFQN]
   );
 
-  const alertBadge = useMemo(() => {
-    return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
-      <Tooltip
-        excludeTriggerFromTabOrder
-        placement="right"
-        title={t('label.check-active-data-quality-incident-plural')}
-        triggerClassName="tw:inline-flex">
-        <Link
-          aria-label={t('label.check-active-data-quality-incident-plural')}
-          to={getEntityDetailsPath(
-            EntityType.TABLE,
-            tableFqn,
-            EntityTabs.PROFILER
-          )}>
-          <RedAlertIcon className="text-red-3" height={24} width={24} />
-        </Link>
-      </Tooltip>
-    ) : undefined;
-  }, [dqFailureCount, tableFqn]);
-
-  // Two useEntityPermissions calls in this component, partitioned by deleted-sensitivity,
-  // not by position convenience: getDerivedPermissionFlags never gates view flags on
-  // `deleted` (only canEdit* is), so this view-tier call is correct to run this early —
-  // before {@code tableDetails} exists — because it has to be: {@code tableFields}/
-  // {@code tableCacheKey}/the entity {@code useQuery}'s {@code enabled} below need these view
-  // flags to even RUN that query, and {@code tableDetails} is that query's result. That's a
-  // real ordering cycle (view flags gate the fetch that would supply `deleted`), not a
-  // shortcut. The edit-tier call (canEditCustomFields, canEditLineage — the only flags that
-  // need `deleted`) lives further down, at the earliest point `deleted` exists; see the
-  // comment there. Both calls share one React Query cache entry (same queryKey), so having
-  // two costs an extra derivation, not an extra fetch — never diverges into two fetches as
-  // long as both pass the identical (resource, identifier) pair.
   const {
-    permissions: tablePermissions, // children consume the raw OperationPermission prop
+    permissions: tablePermissions,
     isLoading: isPermissionsLoading,
     error: permissionsError,
+  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn);
+  const {
     canViewBasic: viewBasicPermission,
     canViewAll: viewAllPermission,
     canViewCustomFields: viewCustomPropertiesPermission,
@@ -193,7 +193,7 @@ const TableDetailsPageV1: React.FC = () => {
     canViewDataProfile: viewProfilerPermission,
     canViewUsage: viewUsagePermission,
     canViewTests: viewTestCasePermission,
-  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn);
+  } = getDerivedPermissionFlags(tablePermissions);
   // Same value as viewBasicPermission above, named for what it means at its one call site
   // (the entity useQuery's `enabled` a few lines down) rather than re-destructured.
   const canViewTableInQuery = viewBasicPermission;
@@ -238,13 +238,10 @@ const TableDetailsPageV1: React.FC = () => {
   //   - Mutations apply optimistic updates via {@code queryClient.setQueryData}; every
   //     consumer reading the same key sees the change instantly (no prop drilling).
   //
-  // {@code enabled} gates the fire so we don't fetch in tour mode (we seed the mock directly
-  // below) or before view permissions have resolved. The tour case writes to the cache via
-  // {@code setQueryData} so {@code tableDetails} below stays one variable.
+  // {@code enabled} gates the fire so we don't fetch before view permissions have resolved.
   const isTableQueryEnabled = useMemo(
-    () =>
-      Boolean(tableFqn && canViewTableInQuery && !isTourOpen && !isTourPage),
-    [tableFqn, canViewTableInQuery, isTourOpen, isTourPage]
+    () => Boolean(tableFqn && canViewTableInQuery),
+    [tableFqn, canViewTableInQuery]
   );
 
   const {
@@ -259,13 +256,8 @@ const TableDetailsPageV1: React.FC = () => {
 
   const tableDetailsId = tableDetails?.id ?? '';
 
-  // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
-  // the render that starts the request, so the badge never flashes a placeholder 0.
-  const { data: queryCount = 0, isFetching: isQueryCountLoading } = useQuery({
-    queryKey: tableQueryCountKey(tableDetailsId),
-    queryFn: tableQueryCountFn(tableDetailsId),
-    enabled: Boolean(tableDetails?.id),
-  });
+  const { data: queryCount = 0, isFetching: isQueryCountLoading } =
+    useTableQueryCount(tableDetailsId);
 
   // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
   // render so the navigate call doesn't fire during the same commit that returns the query
@@ -338,66 +330,73 @@ const TableDetailsPageV1: React.FC = () => {
             tableFqn,
             tablePermissions,
             tableDetails,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [tablePermissions, tableFqn, tableDetails, navigate]
+    [tablePermissions, tableFqn, tableDetails, navigate, showModal]
   );
 
-  const fetchDQUpstreamFailureCount = async () => {
-    if (!tableClassBase.getAlertEnableStatus()) {
-      setDqFailureCount(0);
-    }
-
-    // Todo: Remove this once we have support for count in API
-    try {
-      const data = await getDataQualityLineage(tableFqn, {
-        upstreamDepth: 1,
-      });
-      setDqLineageData(data);
-      const updatedNodes =
-        data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
-        [];
-      setDqFailureCount(updatedNodes.length);
-    } catch {
-      setDqFailureCount(0);
-    }
-  };
-
-  const getTestCaseFailureCount = async () => {
-    try {
+  const fetchDqIndicatorCounts = useCallback(
+    async (isCurrent: () => boolean) => {
       if (!tableClassBase.getAlertEnableStatus()) {
-        setDqFailureCount(0);
+        setDqIndicatorCounts(EMPTY_DQ_INDICATOR_COUNTS);
 
         return;
       }
 
-      const testSuiteId = tableDetails?.testSuite?.id;
+      // ponytail: incidents are classified from the first DQ_INDICATOR_FETCH_LIMIT failing tests and
+      // open incidents only. Past that the level is still right, only the tooltip counts drift;
+      // a server-side "open incidents on passing tests" count is the upgrade path.
+      const [failingResult, incidentResult, lineageResult] =
+        await Promise.allSettled([
+          getListTestCaseBySearch({
+            entityLink: generateEntityLink(tableFqn),
+            includeAllTests: true,
+            testCaseStatus: TestCaseStatus.Failed,
+            limit: DQ_INDICATOR_FETCH_LIMIT,
+          }),
+          fetchOpenIncidents(tableFqn, viewTestCasePermission),
+          getDataQualityLineage(tableFqn, { upstreamDepth: 1 }),
+        ]);
 
-      if (!testSuiteId) {
-        await fetchDQUpstreamFailureCount();
-
+      // A slower response for the table the user just left must not overwrite this one.
+      if (!isCurrent()) {
         return;
       }
 
-      const { data } = await fetchTestCaseResultByTestSuiteId(
-        testSuiteId,
-        TestCaseStatus.Failed
-      );
-      const failureCount = data.reduce(
-        (acc, curr) => acc + Number.parseInt(curr.document_count ?? '0'),
-        0
+      const failingTests =
+        failingResult.status === 'fulfilled' ? failingResult.value.data : [];
+      const failingTestCaseIds = new Set(
+        failingTests.map((testCase) => testCase.id ?? '')
       );
 
-      if (failureCount === 0) {
-        await fetchDQUpstreamFailureCount();
-      } else {
-        setDqFailureCount(failureCount);
+      if (lineageResult.status === 'fulfilled') {
+        setDqLineageData(lineageResult.value);
       }
-    } catch {
-      setDqFailureCount(0);
-    }
-  };
+
+      setDqIndicatorCounts({
+        failingTests:
+          failingResult.status === 'fulfilled'
+            ? failingResult.value.paging?.total ?? failingTests.length
+            : 0,
+        unresolvedIncidents:
+          incidentResult.status === 'fulfilled'
+            ? countUnresolvedIncidents(
+                incidentResult.value.data,
+                failingTestCaseIds
+              )
+            : 0,
+        upstreamIssues:
+          lineageResult.status === 'fulfilled'
+            ? lineageResult.value.nodes?.filter(
+                (node) => node?.fullyQualifiedName !== tableFqn
+              ).length ?? 0
+            : 0,
+      });
+    },
+    [tableFqn, setDqLineageData, viewTestCasePermission]
+  );
 
   const {
     tableTags,
@@ -433,22 +432,13 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableDetails, tableDetails?.tags]);
 
-  // Edit-tier useEntityPermissions call — the counterpart to the view-tier call near the top
-  // of this component (see its comment for why this component calls the hook twice). This is
-  // the earliest point `deleted` exists (destructured just above, from {@code tableDetails}
-  // resolved by the entity useQuery): every canEdit* flag is gated on it, so a soft-deleted
-  // entity must read as edit-locked from the first render that knows about it — don't
-  // destructure a canEdit* flag or `can` from the view-tier call above, it was captured
-  // before `deleted` existed and would silently return an ungated edit permission.
   const {
     canEditCustomFields: editCustomAttributePermission,
     canEditLineage: editLineagePermission,
-  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
-    deleted: Boolean(deleted),
-  });
+  } = getDerivedPermissionFlags(tablePermissions, Boolean(deleted));
 
-  // Permission fetching itself now lives in useEntityPermissions (called above, twice). This
-  // effect keeps the one unrelated side effect the old fetch effect's cleanup carried —
+  // Permission fetching itself now lives in useEntityPermissions. This effect keeps the one
+  // unrelated side effect the old fetch effect's cleanup carried —
   // resetting the DQ lineage store when the table FQN changes — decoupled from permissions.
   useEffect(() => {
     return () => {
@@ -480,7 +470,7 @@ const TableDetailsPageV1: React.FC = () => {
   }, [tableFqn]);
 
   const handleTabChange = (activeKey: string) => {
-    if (activeKey !== activeTab && !isTourOpen) {
+    if (activeKey !== activeTab) {
       navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
         replace: true,
         state: location.state,
@@ -500,21 +490,29 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
-    try {
-      const res = await saveUpdatedTableData(updatedTable);
+  const onTableUpdate = useCallback(
+    async (updatedTable: Table, key?: keyof Table) => {
+      try {
+        const res = await saveUpdatedTableData(updatedTable);
 
-      setTableDetails((previous) => {
-        if (!previous) {
-          return;
-        }
+        setTableDetails((previous) => {
+          if (!previous) {
+            return;
+          }
 
-        return mergeEntityStateUpdate<Table>(previous, res, updatedTable, key);
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+          return mergeEntityStateUpdate<Table>(
+            previous,
+            res,
+            updatedTable,
+            key
+          );
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [saveUpdatedTableData, setTableDetails]
+  );
 
   const handleUpdateOwner = useCallback(
     async (newOwners?: Table['owners']) => {
@@ -527,7 +525,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'owners');
     },
-    [tableDetails]
+    [tableDetails, onTableUpdate]
   );
 
   const handleUpdateRetentionPeriod = useCallback(
@@ -541,7 +539,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'retentionPeriod');
     },
-    [tableDetails]
+    [tableDetails, onTableUpdate]
   );
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
@@ -572,7 +570,6 @@ const TableDetailsPageV1: React.FC = () => {
     const tabs = tableClassBase.getTableDetailPageTabs({
       queryCount,
       isQueryCountLoading,
-      isTourOpen,
       tablePermissions,
       activeTab,
       deleted,
@@ -604,7 +601,6 @@ const TableDetailsPageV1: React.FC = () => {
   }, [
     queryCount,
     isQueryCountLoading,
-    isTourOpen,
     tablePermissions,
     activeTab,
     deleted,
@@ -626,9 +622,19 @@ const TableDetailsPageV1: React.FC = () => {
     columnPart,
   ]);
 
+  // The tab actually shown. A hidden or unknown tab in the URL (for example
+  // knowledge_graph while RDF is off) falls back to the first tab, and the
+  // widget layout must follow that fallback rather than the raw route param.
+  const renderedActiveTab = useMemo(
+    () => getRenderedActiveTab(tabs, activeTab),
+    [tabs, activeTab]
+  );
+
+  const firstTab = tabs[0];
   const isExpandViewSupported = useMemo(
-    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
-    [tabs[0], activeTab]
+    () =>
+      checkIfExpandViewSupported(firstTab, renderedActiveTab, PageType.Table),
+    [firstTab, renderedActiveTab]
   );
 
   // {@code setTableDetails} is a closure over {@code tableCacheKey}, which itself depends on
@@ -843,7 +849,7 @@ const TableDetailsPageV1: React.FC = () => {
         const activeCol = findColumnByEntityLink(
           prev.fullyQualifiedName ?? '',
           prev.columns,
-          suggestion.entityLink
+          suggestion.entityLink ?? ''
         );
 
         if (!activeCol) {
@@ -877,12 +883,7 @@ const TableDetailsPageV1: React.FC = () => {
   );
 
   useEffect(() => {
-    if (isTourOpen || isTourPage) {
-      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
-      if (mock?.tableDetails) {
-        setTableDetails(mock.tableDetails as Table);
-      }
-    } else if (viewBasicPermission) {
+    if (viewBasicPermission) {
       // Don't manually clear the cache to {@code undefined} here — that would flash a Loader
       // on every navigation between tables even when the destination is already cached.
       // {@link useQuery}'s own refetch-on-key-change handles this: a stale entry serves
@@ -890,22 +891,24 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [
-    tableFqn,
-    isTourOpen,
-    isTourPage,
-    viewBasicPermission,
-    tourMockDatasetData,
-  ]);
+  }, [tableFqn, viewBasicPermission]);
 
-  // P1.2: getTestCaseFailureCount drives the global red-alert badge in the page chrome,
+  const loadedTableFqn = tableDetails?.fullyQualifiedName;
+
+  // P1.2: fetchDqIndicatorCounts drives the global DQ indicator in the page chrome,
   // so it must run as soon as tableDetails resolves — deferring would mean the user could
   // miss a critical "this dataset has failing tests" indicator on first paint.
   useEffect(() => {
-    if (tableDetails) {
-      getTestCaseFailureCount();
+    if (!loadedTableFqn) {
+      return;
     }
-  }, [tableDetails?.fullyQualifiedName]);
+    let isCurrent = true;
+    void fetchDqIndicatorCounts(() => isCurrent);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [loadedTableFqn, fetchDqIndicatorCounts]);
 
   useSub(
     'updateDetails',
@@ -935,53 +938,57 @@ const TableDetailsPageV1: React.FC = () => {
 
   // Wait for permissions to resolve before deciding what to render — without this we'd flash
   // a "no permission" placeholder during the brief window before the permissions endpoint
-  // returns. Once permissions are in, this gate falls through naturally. Skipped in tour mode,
-  // matching the old `useState(!isTourOpen)` seed — the tour never waits on a real fetch.
-  if (!isTourOpen && isPermissionsLoading) {
-    return <TableDetailsPageSkeleton />;
+  // returns. Once permissions are in, this gate falls through naturally.
+  if (isPermissionsLoading) {
+    return <EntityDetailsPageSkeleton />;
   }
 
-  if (!(isTourOpen || isTourPage) && !viewBasicPermission) {
+  if (!viewBasicPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.table-details'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.table-details'),
+          })}
+        />
+      </div>
     );
   }
 
   // Still loading the entity itself — useQuery is mid-flight or hasn't started (e.g. the
-  // FQN just changed and the new cache slot is empty). Distinct from the permission gate
-  // above so we keep the loader spinning instead of flashing the missing-entity placeholder.
+  // FQN just changed and the new cache slot is empty). Keeps the permission-gate skeleton on
+  // screen instead of swapping to a spinner between skeleton and header, or flashing the
+  // missing-entity placeholder.
   if (tableLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   // Fetch completed but no entity body — typically a 404 (invalid FQN) or a network error
   // that {@code tableError} surfaced. Show the missing-entity placeholder instead of
   // looping on the loader (the original page used a separate gate for this).
   if (!tableDetails) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   const renderTabs = () => (
     <Tabs
       className="tw:gap-3"
       data-testid="tabs"
-      selectedKey={getRenderedActiveTab(
-        tabs,
-        isTourOpen ? activeTabForTourDatasetPage : activeTab
-      )}
+      selectedKey={renderedActiveTab}
       onSelectionChange={(key) => handleTabChange(String(key))}>
       <Tabs.List
         actions={
           isExpandViewSupported && (
-            <AlignRightIconButton
-              className={isTabExpanded ? 'rotate-180' : ''}
-              title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+            <ButtonUtility
+              data-testid="tab-expand-button"
+              icon={isTabExpanded ? Collapse : Expand}
+              size="lg"
+              tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
               onClick={toggleTabExpanded}
             />
           )
@@ -1004,8 +1011,9 @@ const TableDetailsPageV1: React.FC = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={entityName}>
+    <PageLayoutV1 fillEntityTabs pageTitle={entityName}>
       <GenericProvider<Table>
+        activeTab={renderedActiveTab}
         columnFqn={columnFqn}
         customizedPage={customizedPage}
         data={tableDetails}
@@ -1023,7 +1031,12 @@ const TableDetailsPageV1: React.FC = () => {
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={updateTableDetailsState}
-              badge={alertBadge}
+              badge={
+                <DataQualityIndicator
+                  counts={dqIndicatorCounts}
+                  tableFqn={tableFqn}
+                />
+              }
               breadcrumbData={breadcrumbData}
               dataAsset={tableDetails}
               entityType={EntityType.TABLE}
@@ -1052,4 +1065,4 @@ const TableDetailsPageV1: React.FC = () => {
   );
 };
 
-export default withSuggestions(withActivityFeed(TableDetailsPageV1));
+export default withActivityFeed(TableDetailsPageV1);

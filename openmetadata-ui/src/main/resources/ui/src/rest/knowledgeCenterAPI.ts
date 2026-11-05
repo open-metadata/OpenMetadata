@@ -13,10 +13,10 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
+import { VotingDataProps } from '../interface/entity/vote.interface';
 import {
   CreateKnowledgePage,
   KnowledgePage,
