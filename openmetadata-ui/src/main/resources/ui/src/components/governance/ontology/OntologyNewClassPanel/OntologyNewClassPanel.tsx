@@ -181,6 +181,15 @@ const restoreCarriedDraft = (
     (mapping) => !carried?.conceptIris.includes(mapping.conceptIri)
   ),
 });
+// The server accepts only OWL_CLASS or BOTH as a class position
+// (OntologyClassHierarchy.requireClass), and axioms and own properties put the
+// new concept in one.
+const hasOwlOnlyContent = (
+  type: OntologyConceptType,
+  hasAxioms: boolean,
+  propertyCount: number
+) =>
+  type === OntologyConceptType.SkosConcept && (hasAxioms || propertyCount > 0);
 const NAME_ISSUES: ClassIdentityIssue[] = ['name-invalid', 'name-taken'];
 const ISSUE_MESSAGES: Record<ClassIdentityIssue, string> = {
   'name-required': 'message.ontology-concept-name-required',
@@ -310,6 +319,11 @@ const OntologyNewClassPanel = ({
     properties.length === 0 || canCreateProperty,
     !needsAxioms || canCreateAxiom,
   ].every(Boolean);
+  const skosWithOwlOnly = hasOwlOnlyContent(
+    conceptType,
+    needsAxioms,
+    properties.length
+  );
   const pendingMapping: MappingInput = {
     mappingType,
     conceptIri: mappingIri,
@@ -358,7 +372,7 @@ const OntologyNewClassPanel = ({
 
     return undefined;
   })();
-  const valid = blockedReason === undefined;
+  const valid = [blockedReason === undefined, !skosWithOwlOnly].every(Boolean);
   const effectiveIri = classIri(ontology.namespace ?? '', localName, customIri);
 
   const reconcileRef = useRef<() => Promise<void>>(async () => undefined);
@@ -622,10 +636,12 @@ const OntologyNewClassPanel = ({
       submitting.current = false;
     }
   };
-  const conceptOptions = model.concepts.map((c) => ({
-    id: c.iri,
-    label: c.displayName ?? c.name,
-  }));
+  const conceptOptions = model.concepts
+    .filter((c) => c.conceptType !== OntologyConceptType.SkosConcept)
+    .map((c) => ({
+      id: c.iri,
+      label: c.displayName ?? c.name,
+    }));
   const inherited = inheritedClassProperties(
     model,
     selectedIris(selections.parents)
@@ -1110,6 +1126,15 @@ const OntologyNewClassPanel = ({
                 />
               ))}
             </RadioGroup>
+            {skosWithOwlOnly ? (
+              <Typography
+                color="danger"
+                data-testid="new-class-skos-owl-only"
+                role="alert"
+                size="text-xs">
+                {t('message.ontology-concept-skos-owl-only')}
+              </Typography>
+            ) : null}
             <Input
               hint={fieldHint(
                 t('message.ontology-concept-iri-hint'),
