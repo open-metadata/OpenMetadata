@@ -20,7 +20,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -40,7 +39,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -60,7 +59,6 @@ import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigra
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
-import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
 class IngestionPipelineMigrationEntryPointTest {
 
@@ -115,8 +113,6 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
             mockStatic(LineageEdgePipelineCleanupMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
-        MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
-            mockStatic(WorkflowRedeployMigration.class);
         MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
             mockStatic(McpGrantUserNameIndexes.class);
         MockedStatic<DataProductDomainContainmentRepair> containmentRepair =
@@ -144,7 +140,7 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
-      // 2.1.0 databases skip 2.0.9's data migration, so 2.1.0 repairs containment too.
+      // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
       // Each destination's id owns its secrets, so ids are settled before secrets are bound.
@@ -170,13 +166,12 @@ class IngestionPipelineMigrationEntryPointTest {
                     .addMcpConsentColumnsOnMySql(handle));
         grantUserNameIndexes.verify(() -> McpGrantUserNameIndexes.addOnMySql(handle));
       }
-      // `migrate` runs before Flowable starts, so each step that deploys a workflow starts it.
-      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
+      // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
+      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
       lineageEdgeCleanup.verify(
           () -> LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(collectionDAO));
-      workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
     }
   }
 

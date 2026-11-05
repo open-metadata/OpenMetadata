@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.utils.v209;
+package org.openmetadata.service.migration.utils.v208;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -13,7 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
-import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmentRepair.DomainLinks;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair.DomainLinks;
 
 class DataProductDomainContainmentRepairTest {
   private static final UUID PRODUCT = UUID.randomUUID();

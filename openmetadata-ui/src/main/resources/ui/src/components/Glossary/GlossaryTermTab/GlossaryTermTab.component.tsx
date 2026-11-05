@@ -543,9 +543,15 @@ const GlossaryTermStatusCell = ({
           <StatusBadge label={status} status={EntityStatusClass[status]} />
         )}
       </AriaButton>
-      <Popover isNonModal placement="top start">
+      {/* The flex chain hands react-aria's max-height down to the timeline, so
+          only the steps scroll and the header stays in view. */}
+      <Popover
+        isNonModal
+        className="tw:flex tw:flex-col"
+        containerClassName="tw:flex tw:min-h-0 tw:flex-col"
+        placement="top start">
         <div
-          className="tw:min-w-65 tw:p-3"
+          className="tw:flex tw:min-h-0 tw:min-w-65 tw:flex-col tw:p-3"
           data-testid="workflow-history-popover"
           ref={popoverContentRef}
           {...popoverHoverProps}>
@@ -659,7 +665,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
-  const { paging, handlePagingChange, pageSize } = usePaging(PAGE_SIZE_LARGE);
+  const { paging, handlePagingChange, pageSize, handlePageSizeChange } =
+    usePaging();
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
@@ -1130,7 +1137,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
         const isPendingFurtherApproval =
           isTaskPendingFurtherApproval(updatedTask);
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: GLOSSARY_PROPOSALS_QUERY_KEY,
         });
 
@@ -2000,8 +2007,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   }, [isDraggingTerm, moveDraggedGlossaryTermToRoot]);
 
-  // Trigger new fetch when search term or status filter changes. Both reset
-  // pagination back to the first page.
+  // Trigger new fetch when the search term, status filter or page size
+  // changes. Each resets pagination back to the first page.
   useEffect(() => {
     if (
       activeGlossary &&
@@ -2015,7 +2022,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }));
       fetchAllTerms();
     }
-  }, [searchTerm, selectedStatus]);
+  }, [searchTerm, selectedStatus, pageSize]);
 
   // Check if this is due to search or filter returning no results
   const isSearchActive = hasActiveSearchTerm(searchTerm);
@@ -2136,6 +2143,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleGlossaryTermPageChange}
+              onShowSizeChange={handlePageSizeChange}
             />
           </div>
         )}
