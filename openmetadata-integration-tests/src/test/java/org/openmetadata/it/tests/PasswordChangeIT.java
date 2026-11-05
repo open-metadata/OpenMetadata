@@ -27,6 +27,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.LoginRequest;
@@ -40,6 +41,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -60,7 +62,11 @@ class PasswordChangeIT {
 
   @BeforeEach
   void initAuthenticator() {
-    authenticator.init(null);
+    // 2.0's BasicAuthenticator reads the authorizer configuration at init; these flows use none of
+    // it.
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    config.setAuthorizerConfiguration(new AuthorizerConfiguration());
+    authenticator.init(config);
   }
 
   @Test

@@ -2710,8 +2710,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     String userName = ns.shortPrefix("logout");
     User user =
         createEntity(new CreateUser().withName(userName).withEmail(userName + "@example.com"));
-    String signingToken = userToken(user);
-    String otherToken = userToken(user);
+    String signingToken = userToken(user, 3600);
+    // 2.0 tokens carry no jti, so two minted in the same second with the same expiry are one token.
+    String otherToken = userToken(user, 7200);
 
     clientWithToken(signingToken)
         .getHttpClient()
@@ -2730,10 +2731,16 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   /** A sessionless access token as a password sign-in issues it. */
-  private static String userToken(User user) {
+  private static String userToken(User user, long expirySeconds) {
     return JWTTokenGenerator.getInstance()
         .generateJWTToken(
-            user.getName(), Set.of(), false, user.getEmail(), 3600, false, ServiceTokenType.OM_USER)
+            user.getName(),
+            Set.of(),
+            false,
+            user.getEmail(),
+            expirySeconds,
+            false,
+            ServiceTokenType.OM_USER)
         .getJWTToken();
   }
 
