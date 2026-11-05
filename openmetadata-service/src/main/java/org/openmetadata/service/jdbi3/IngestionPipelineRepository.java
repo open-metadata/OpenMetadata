@@ -128,7 +128,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String RUNNER_NAME_SEPARATOR = "-";
   private static final String RUNNER_NAME_TAKEN =
       "Ingestion pipeline '%s' cannot be sent to the ingestion runner: the runner knows it by the"
-          + " same name as the deployed pipeline '%s'. Rename one of the two pipelines.";
+          + " same name as the deployed pipeline '%s'. Recreate one of the two under another name.";
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -1393,6 +1393,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             "Failed to deploy pipeline '{}' before update. Aborting DB update to maintain consistency.",
             updated.getName(),
             e);
+        throw e;
+      } catch (BadRequestException e) {
         throw e;
       } catch (Exception e) {
         LOG.error(
