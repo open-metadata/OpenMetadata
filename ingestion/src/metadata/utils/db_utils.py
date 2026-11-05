@@ -16,11 +16,13 @@ Helpers module for db sources
 import time
 import traceback
 from collections.abc import Callable, Iterable
+from typing import cast
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
 )
@@ -82,21 +84,41 @@ def get_view_lineage(
     db_name = view.db_name
     schema_fallback = False
     view_definition = view.view_definition
-    table_fqn = fqn.build(
-        metadata,
-        entity_type=Table,
-        service_name=service_names[0],  # Use first service for table entity lookup
-        database_name=db_name,
-        schema_name=schema_name,
-        table_name=table_name,
-    )
-    table_entity: Table = metadata.get_by_name(
-        entity=Table,
-        fqn=table_fqn,
-    )
-
-    if not view_definition:
-        logger.warning(f"View definition for view {table_fqn} not available")
+    try:
+        table_fqn = fqn.build(
+            metadata,
+            entity_type=Table,
+            service_name=service_names[0],
+            database_name=db_name,
+            schema_name=schema_name,
+            table_name=table_name,
+        )
+        if table_fqn is None:
+            raise ValueError("Could not build view FQN")  # noqa: TRY301 -- share the lookup failure channel
+        table_entity = metadata.get_by_name(entity=Table, fqn=table_fqn)
+        if not view_definition:
+            logger.warning(f"View definition for view {table_fqn} not available")
+            return
+        if table_entity is None:
+            raise ValueError("View entity not found in the catalog")  # noqa: TRY301 -- share the lookup failure channel
+    except Exception as exc:
+        view_fqn = fqn.build(
+            metadata,
+            entity_type=Table,
+            service_name=service_names[0],
+            database_name=db_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            skip_es_search=True,
+        )
+        yield Either(
+            left=StackTraceError(
+                name=cast("str", view_fqn),
+                error=f"Could not resolve view [{view_fqn}]: {exc}",
+                stackTrace=traceback.format_exc(),
+            ),
+            right=None,
+        )
         return
 
     try:
