@@ -15,6 +15,7 @@ import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
 import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import type { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import type { EntityTags } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -422,7 +423,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       queryViewerTab: (
         <QueryViewer
           isActive={activeTab === EntityTabs.CONFIG}
-          sqlQuery={JSON.stringify(topicDetails.topicConfig)}
+          sqlQuery={
+            isEmpty(topicDetails.topicConfig)
+              ? ''
+              : JSON.stringify(topicDetails.topicConfig)
+          }
         />
       ),
       lineageTab: (

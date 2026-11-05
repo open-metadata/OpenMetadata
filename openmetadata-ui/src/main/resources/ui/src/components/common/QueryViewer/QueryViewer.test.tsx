@@ -54,14 +54,6 @@ describe('QueryViewer Component', () => {
     expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
   });
 
-  it('should render no-data placeholder when stringified config is undefined', () => {
-    render(<QueryViewer sqlQuery={JSON.stringify(undefined)} />);
-
-    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
-    expect(screen.queryByTestId('schema-editor')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('query-line')).not.toBeInTheDocument();
-  });
-
   it('should render title without SQL editor when query is undefined-like empty string', () => {
     render(
       <QueryViewer sqlQuery="" title={<span>Path: seeds/my_seed.csv</span>} />

@@ -99,6 +99,7 @@ const QueryViewer = ({
       {hasQuery ? (
         <div className="tw:pt-px tw:pl-2">
           <SchemaEditor
+            autoFormat={false}
             className="custom-code-mirror-theme"
             editorClass={classNames(
               lineCount > 4 ? 'table-query-editor' : 'query-editor'

@@ -46,7 +46,7 @@ test.describe(
   { tag: ['@Features', DOMAIN_TAGS.DISCOVERY] },
   () => {
     const topicWithConfig = new TopicClass();
-    const topicWithoutConfig = new TopicClass();
+    const topicWithEmptyConfig = new TopicClass();
     const searchIndexWithSettings = new SearchIndexClass();
     const searchIndexWithoutSettings = new SearchIndexClass();
 
@@ -55,13 +55,17 @@ test.describe(
 
       await Promise.all([
         topicWithConfig.create(apiContext),
-        topicWithoutConfig.create(apiContext),
+        topicWithEmptyConfig.create(apiContext),
         searchIndexWithSettings.create(apiContext),
         searchIndexWithoutSettings.create(apiContext),
       ]);
       await topicWithConfig.patch({
         apiContext,
         patchData: [{ op: 'add', path: '/topicConfig', value: TOPIC_CONFIG }],
+      });
+      await topicWithEmptyConfig.patch({
+        apiContext,
+        patchData: [{ op: 'add', path: '/topicConfig', value: {} }],
       });
       await searchIndexWithSettings.patch({
         apiContext,
@@ -82,7 +86,7 @@ test.describe(
 
       await Promise.all([
         topicWithConfig.delete(apiContext),
-        topicWithoutConfig.delete(apiContext),
+        topicWithEmptyConfig.delete(apiContext),
         searchIndexWithSettings.delete(apiContext),
         searchIndexWithoutSettings.delete(apiContext),
       ]);
@@ -109,10 +113,10 @@ test.describe(
       await expect(panel.getByText('Config', { exact: true })).toHaveCount(0);
     });
 
-    test('Topic config tab shows a placeholder when the topic has no config', async ({
+    test('Topic config tab shows a placeholder when the topic config is empty', async ({
       page,
     }) => {
-      await topicWithoutConfig.visitEntityPage(page);
+      await topicWithEmptyConfig.visitEntityPage(page);
       const panel = await openTab(page, 'config', 'Config');
 
       await expect(panel.getByTestId('no-data-placeholder')).toBeVisible();

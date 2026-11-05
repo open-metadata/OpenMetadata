@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { get, uniqueId } from 'lodash';
+import { get, isEmpty, uniqueId } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
@@ -210,7 +210,11 @@ export const getSearchIndexDetailsTabs = ({
       children: (
         <QueryViewer
           isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
-          sqlQuery={JSON.stringify(searchIndexDetails?.searchIndexSettings)}
+          sqlQuery={
+            isEmpty(searchIndexDetails?.searchIndexSettings)
+              ? ''
+              : JSON.stringify(searchIndexDetails?.searchIndexSettings)
+          }
         />
       ),
     },
