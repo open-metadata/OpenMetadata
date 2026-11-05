@@ -872,10 +872,21 @@ public class TeamRepository extends EntityRepository<Team> {
     super.postDelete(entity, hardDelete);
     // Descendants cache this team as their parent, and members inherit its roles and policies.
     SubjectCache.invalidateAll();
-    PolicyConditionUpdater.updateAllPolicyConditions(
-        condition ->
-            PolicyConditionUpdater.removeFromCondition(
-                condition, entity.getName(), PolicyConditionUpdater.TEAM_FUNCTIONS));
+    // A soft-deleted team already drops out of every membership, so conditions naming it match
+    // nothing until a restore brings it back; only a hard delete rewrites them
+    // (ADR:2026-10-30-deleted-policy-condition-references-become-false).
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeFromCondition(
+                  condition, entity.getName(), PolicyConditionUpdater.TEAM_FUNCTIONS));
+    }
+  }
+
+  @Override
+  protected void postRestore(Team entity) {
+    super.postRestore(entity);
+    SubjectCache.invalidateAll();
   }
 
   @Override
