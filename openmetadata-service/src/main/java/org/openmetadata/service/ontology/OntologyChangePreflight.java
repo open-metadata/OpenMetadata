@@ -13,17 +13,17 @@
 
 package org.openmetadata.service.ontology;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.BadRequestException;
-import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
@@ -39,10 +39,25 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
 public final class OntologyChangePreflight {
-  private final EntityLoader entityLoader;
+  private static final List<String> BUILT_IN_VOCABULARIES =
+      List.of(
+          "http://www.w3.org/2002/07/owl#",
+          "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+          "http://www.w3.org/2000/01/rdf-schema#",
+          "http://www.w3.org/2001/XMLSchema#");
 
-  public OntologyChangePreflight(final EntityLoader entityLoader) {
+  private final EntityLoader entityLoader;
+  private final DeclaredConcepts declaredConcepts;
+
+  public OntologyChangePreflight(
+      final EntityLoader entityLoader, final DeclaredConcepts declaredConcepts) {
     this.entityLoader = entityLoader;
+    this.declaredConcepts = declaredConcepts;
+  }
+
+  /** Glossary change sets never read ontology concepts. */
+  public OntologyChangePreflight(final EntityLoader entityLoader) {
+    this(entityLoader, (ontologyId, iris) -> Set.of());
   }
 
   public void validate(
@@ -54,7 +69,7 @@ public final class OntologyChangePreflight {
         validateSourceMemories(operation, activeSourceMemories);
         NativeOntologyChanges.validateTarget(changeSet, operation, entityLoader);
       }
-      requireImportedConcepts(operations);
+      requireReferencedConcepts(changeSet.getOntology().getId(), operations);
       return;
     }
     final Set<UUID> scope = glossaryScope(changeSet);
@@ -68,10 +83,13 @@ public final class OntologyChangePreflight {
   }
 
   /**
-   * An import lists the concepts it creates that an operation states a fact about. Applying the
-   * operation without them would store a relationship or rule on a concept that does not exist.
+   * The concepts an axiom or property names are read from the operation itself, because the
+   * client-supplied requiresConceptIris is optional and a partial import can drop it. A concept is
+   * satisfied by an UPSERT_CONCEPT in the set or by one already declared in the ontology. Terms of
+   * the OWL, RDF, RDFS and XSD vocabularies are built in and need no declaration.
    */
-  private static void requireImportedConcepts(final List<OntologyChangeOperation> operations) {
+  private void requireReferencedConcepts(
+      final UUID ontologyId, final List<OntologyChangeOperation> operations) {
     final Set<String> created =
         operations.stream()
             .filter(
@@ -80,18 +98,45 @@ public final class OntologyChangePreflight {
                         && operation.getConcept() != null)
             .map(operation -> operation.getConcept().getIri().toString())
             .collect(Collectors.toSet());
+    final Map<OntologyChangeOperation, Set<String>> unresolved = new LinkedHashMap<>();
     for (final OntologyChangeOperation operation : operations) {
-      for (final URI required : listOrEmpty(operation.getRequiresConceptIris())) {
-        if (!created.contains(required.toString())) {
-          throw new BadRequestException(
-              "Ontology operation '"
-                  + operation.getId()
-                  + "' needs the concept "
-                  + required
-                  + ", which is not part of this change set");
-        }
+      final Set<String> missing = new TreeSet<>(referencedConcepts(operation));
+      missing.removeIf(iri -> created.contains(iri) || isBuiltIn(iri));
+      if (!missing.isEmpty()) {
+        unresolved.put(operation, missing);
       }
     }
+    if (unresolved.isEmpty()) {
+      return;
+    }
+    final Set<String> declared =
+        declaredConcepts.declared(
+            ontologyId,
+            unresolved.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+    unresolved.forEach(
+        (operation, missing) -> {
+          missing.removeAll(declared);
+          if (!missing.isEmpty()) {
+            throw new BadRequestException(
+                "Ontology operation '"
+                    + operation.getId()
+                    + "' needs the concept "
+                    + missing.iterator().next()
+                    + ", which is not part of this change set");
+          }
+        });
+  }
+
+  private static Set<String> referencedConcepts(final OntologyChangeOperation operation) {
+    return switch (operation.getOperationType()) {
+      case UPSERT_AXIOM -> OntologyConceptReferences.of(operation.getAxiom());
+      case UPSERT_PROPERTY -> OntologyConceptReferences.of(operation.getProperty());
+      default -> Set.of();
+    };
+  }
+
+  private static boolean isBuiltIn(final String iri) {
+    return BUILT_IN_VOCABULARIES.stream().anyMatch(iri::startsWith);
   }
 
   /**
@@ -272,6 +317,12 @@ public final class OntologyChangePreflight {
   private record VersionGuard(OperationTarget target, Double expectedVersion) {}
 
   public record OperationTarget(String entityType, UUID id) {}
+
+  /** The subset of these IRIs that live concepts of the ontology declare. */
+  @FunctionalInterface
+  public interface DeclaredConcepts {
+    Set<String> declared(UUID ontologyId, Set<String> iris);
+  }
 
   @FunctionalInterface
   public interface EntityLoader {

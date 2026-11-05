@@ -13,7 +13,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -64,6 +63,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyClassHierarchy;
+import org.openmetadata.service.ontology.OntologyConceptReferences;
 import org.openmetadata.service.ontology.OntologyDisjointnessClashes;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPropertyRules;
@@ -767,39 +767,16 @@ public final class NativeOntologyRdfImporter {
 
     /** The concepts this import creates that the axiom states a fact about, in IRI order. */
     private List<URI> referencedNewConcepts(final OntologyAxiom axiom) {
-      final Set<String> referenced = new TreeSet<>();
-      collectIris(axiom.getSubjectIri(), referenced);
-      collectIris(axiom.getTargetIri(), referenced);
-      listOrEmpty(axiom.getExpressions())
-          .forEach(expression -> collectIris(expression, referenced));
-      referenced.retainAll(newConceptIris);
-      return referenced.stream().map(URI::create).toList();
+      return newAmong(OntologyConceptReferences.of(axiom));
     }
 
     /** The concepts this import creates that the property names in its domain or range. */
     private List<URI> referencedNewConcepts(final OntologyProperty property) {
-      final Set<String> referenced = new TreeSet<>();
-      listOrEmpty(property.getDomain()).forEach(iri -> collectIris(iri, referenced));
-      listOrEmpty(property.getRange()).forEach(iri -> collectIris(iri, referenced));
-      referenced.retainAll(newConceptIris);
-      return referenced.stream().map(URI::create).toList();
+      return newAmong(OntologyConceptReferences.of(property));
     }
 
-    private static void collectIris(final URI iri, final Set<String> into) {
-      if (iri != null) {
-        into.add(iri.toString());
-      }
-    }
-
-    private static void collectIris(final OntologyExpression expression, final Set<String> into) {
-      if (expression == null) {
-        return;
-      }
-      collectIris(expression.getClassIri(), into);
-      collectIris(expression.getIndividualIri(), into);
-      listOrEmpty(expression.getIndividualIris()).forEach(iri -> collectIris(iri, into));
-      listOrEmpty(expression.getOperands()).forEach(operand -> collectIris(operand, into));
-      collectIris(expression.getFiller(), into);
+    private List<URI> newAmong(final Set<String> referenced) {
+      return referenced.stream().filter(newConceptIris::contains).map(URI::create).toList();
     }
 
     /** Repeats of one id get a numbered suffix, so every id in a preview is unique. */

@@ -16,6 +16,7 @@ package org.openmetadata.service.ontology;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
@@ -30,6 +31,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
@@ -77,6 +79,95 @@ class OntologyChangePreflightTest {
         () -> preflight.validate(nativeChangeSet(), List.of(concept, axiomNeeding(account))));
   }
 
+  @Test
+  void derivesTheMissingConceptFromAnAxiomWhoseOperationOmitsRequiresConceptIris() {
+    final OntologyChangeOperation axiom = axiomNeeding(URI.create("https://example.org/Account"));
+    assertTrue(axiom.getRequiresConceptIris().isEmpty());
+
+    final BadRequestException refusal =
+        assertThrows(
+            BadRequestException.class,
+            () -> preflightWithoutConcepts().validate(nativeChangeSet(), List.of(axiom)));
+
+    assertEquals(
+        "Ontology operation '"
+            + axiom.getId()
+            + "' needs the concept https://example.org/Account, which is not part of this change set",
+        refusal.getMessage());
+  }
+
+  @Test
+  void derivesTheMissingConceptFromAPropertyDomainWhoseOperationOmitsRequiresConceptIris() {
+    final OntologyChangeOperation property =
+        propertyRanging(
+            URI.create("https://example.org/Account"),
+            URI.create("http://www.w3.org/2001/XMLSchema#string"));
+
+    final BadRequestException refusal =
+        assertThrows(
+            BadRequestException.class,
+            () -> preflightWithoutConcepts().validate(nativeChangeSet(), List.of(property)));
+
+    assertEquals(
+        "Ontology operation '"
+            + property.getId()
+            + "' needs the concept https://example.org/Account, which is not part of this change set",
+        refusal.getMessage());
+  }
+
+  @Test
+  void acceptsAnAxiomOnAConceptTheOntologyAlreadyDeclares() {
+    final URI account = URI.create("https://example.org/Account");
+    final UUID ontologyId = UUID.randomUUID();
+    final OntologyChangeSet changeSet =
+        new OntologyChangeSet()
+            .withOntology(new EntityReference().withId(ontologyId).withType("ontology"));
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) -> {
+              throw new AssertionError("New definitions are not loaded");
+            },
+            (id, iris) -> id.equals(ontologyId) ? iris : Set.of());
+
+    assertDoesNotThrow(() -> preflight.validate(changeSet, List.of(axiomNeeding(account))));
+  }
+
+  @Test
+  void refusesAConceptTheOntologyDoesNotDeclareEvenWhenAnotherOneIsDeclared() {
+    final OntologyChangeOperation axiom = axiomNeeding(URI.create("https://example.org/Account"));
+    final OntologyChangePreflight preflight =
+        new OntologyChangePreflight(
+            (entityType, id) -> {
+              throw new AssertionError("New definitions are not loaded");
+            },
+            (id, iris) -> Set.of("https://example.org/Other"));
+
+    assertThrows(
+        BadRequestException.class, () -> preflight.validate(nativeChangeSet(), List.of(axiom)));
+  }
+
+  @Test
+  void acceptsAPropertyRangedOverAnXsdDatatypeAndDomainedOnACreatedConcept() {
+    final URI account = URI.create("https://example.org/Account");
+    final OntologyChangeOperation concept =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.UPSERT_CONCEPT)
+            .withConcept(new OntologyConcept().withId(UUID.randomUUID()).withIri(account));
+    final OntologyChangeOperation property =
+        propertyRanging(account, URI.create("http://www.w3.org/2001/XMLSchema#string"));
+
+    assertDoesNotThrow(
+        () -> preflightWithoutConcepts().validate(nativeChangeSet(), List.of(concept, property)));
+  }
+
+  private static OntologyChangePreflight preflightWithoutConcepts() {
+    return new OntologyChangePreflight(
+        (entityType, id) -> {
+          throw new AssertionError("New definitions are not loaded");
+        });
+  }
+
   private static OntologyChangeSet nativeChangeSet() {
     return new OntologyChangeSet()
         .withOntology(new EntityReference().withId(UUID.randomUUID()).withType("ontology"));
@@ -86,8 +177,18 @@ class OntologyChangePreflightTest {
     return new OntologyChangeOperation()
         .withId(UUID.randomUUID())
         .withOperationType(OntologyChangeOperationType.UPSERT_AXIOM)
-        .withAxiom(new OntologyAxiom().withId(UUID.randomUUID()))
-        .withRequiresConceptIris(List.of(concept));
+        .withAxiom(new OntologyAxiom().withId(UUID.randomUUID()).withSubjectIri(concept));
+  }
+
+  private static OntologyChangeOperation propertyRanging(final URI domain, final URI range) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.UPSERT_PROPERTY)
+        .withProperty(
+            new OntologyProperty()
+                .withId(UUID.randomUUID())
+                .withDomain(List.of(domain))
+                .withRange(List.of(range)));
   }
 
   @Test

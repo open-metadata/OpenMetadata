@@ -27,7 +27,6 @@
     "links": {
       "type": "array",
       "items": { "$ref": "#/definitions/link" },
-      "maxItems": 100,
       "default": []
     }
   },
