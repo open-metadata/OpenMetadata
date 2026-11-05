@@ -48,6 +48,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_OWNERS_ID = "owners.id";
   private static final String FIELD_CREATED_BY = "createdBy";
   private static final String FIELD_DOMAINS_FQN = "domains.fullyQualifiedName";
+  public static final String NAV_DOMAIN_PARAM = "navDomain";
+  public static final String NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM = "navDomainKeepsUnassigned";
   private static final String FIELD_DATA_PRODUCTS_FQN = "dataProducts.fullyQualifiedName";
   private static final String FIELD_SERVICE_NAME = "service.name";
   private static final String FIELD_TEST_CASE_STATUS = "testCaseResult.testCaseStatus";
@@ -157,7 +159,24 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       return String.format(
           "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeJsonString(domain));
     }
-    return "";
+    return getNavbarDomainCondition();
+  }
+
+  // The navbar pick matches the domain and its sub-domains, and optionally items with no domain.
+  private String getNavbarDomainCondition() {
+    String navDomain = getQueryParam(NAV_DOMAIN_PARAM);
+    if (nullOrEmpty(navDomain)) {
+      return "";
+    }
+    String fqn = escapeJsonString(navDomain);
+    String unassigned =
+        Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM))
+            ? String.format(
+                ",{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"%s\"}}}}", FIELD_DOMAINS_FQN)
+            : "";
+    return String.format(
+        "{\"bool\":{\"should\":[{\"term\":{\"%s\":\"%s\"}},{\"prefix\":{\"%s\":\"%s.\"}}%s],\"minimum_should_match\":1}}",
+        FIELD_DOMAINS_FQN, fqn, FIELD_DOMAINS_FQN, fqn, unassigned);
   }
 
   private String getIncludeCondition(String entityType) {

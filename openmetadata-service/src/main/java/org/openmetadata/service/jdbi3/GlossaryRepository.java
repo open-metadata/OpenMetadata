@@ -228,10 +228,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   protected void postDelete(Glossary entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    PolicyConditionUpdater.updateAllPolicyConditions(
-        condition ->
-            PolicyConditionUpdater.removeByPrefixFromCondition(
-                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    // A soft delete cascades to the child terms without removing their labels from assets, so a
+    // condition naming them still matches; rewriting it to false would switch off Deny rules that
+    // still apply. A hard delete removes the labels, after which false is exactly what it matches.
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeByPrefixFromCondition(
+                  condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    }
   }
 
   @Override
@@ -266,7 +271,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         repository.listAllForCSV(
             repository.getFields(
                 "owners,reviewers,tags,relatedTerms,synonyms,extension,parent,domains"),
-            glossary.getFullyQualifiedName());
+            glossary.getFullyQualifiedName(),
+            user);
     terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }

@@ -29,7 +29,9 @@ import {
   migrateJsonLogic,
 } from '../QueryBuilderPureUtils';
 import { generateUUID } from '../StringUtils';
+import { collapseColumnTagsVar } from './jsonLogicColumnTags';
 import { fromEngineJsonLogic } from './jsonLogicNegation';
+import { routeTagsGroupToTier } from './jsonLogicTierVar';
 import type { GroupMode } from './types';
 import { QUERY_BUILDER_CONJUNCTION, QUERY_BUILDER_GROUP_MODE } from './types';
 
@@ -244,7 +246,9 @@ export const loadQueryBuilderTree = ({
     // RAQB throws outright when a saved rule names a field the current config does not define — a live risk whenever a
     // field is renamed or an entity type narrows its allow-list.
     const loaded = QbUtils.loadFromJsonLogic(
-      fromEngineJsonLogic(migrateJsonLogic(parsed)) as JsonLogicTree,
+      routeTagsGroupToTier(
+        fromEngineJsonLogic(collapseColumnTagsVar(migrateJsonLogic(parsed)))
+      ) as JsonLogicTree,
       config
     );
 

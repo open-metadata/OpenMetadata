@@ -77,7 +77,6 @@ const StoredCredentialRow = ({
     </div>
 
     <ButtonUtility
-      color="tertiary"
       data-testid="credential-file-remove"
       icon={Trash01}
       isDisabled={isDisabled}
@@ -131,7 +130,6 @@ const SelectedFileChip = ({
     </div>
 
     <ButtonUtility
-      color="tertiary"
       data-testid="credential-file-remove"
       icon={Trash01}
       isDisabled={isDisabled}

@@ -124,6 +124,7 @@ import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.ActiveProviderValidator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -641,17 +642,12 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Entity type for which to get the global profiler configuration",
-              schema = @Schema(type = "string"))
-          @QueryParam("entityType")
-          @DefaultValue("table")
-          String entityType) {
-    ResourceContext resourceContext = new ResourceContext(entityType);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // One global setting, so one resource decides it: a caller-chosen type would let a policy on
+    // tables be stepped around by asking as another type.
+    ResourceContext resourceContext = new ResourceContext(Entity.TABLE);
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
@@ -701,6 +697,7 @@ public class SystemResource {
 
   @POST
   @Path("/settings/source/{configType}/adopt")
+  @IdentityEndpoint
   @Operation(
       operationId = "adoptDeploymentConfig",
       summary = "Use the deployment configuration for stored settings",
@@ -1130,23 +1127,24 @@ public class SystemResource {
       })
   public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    SecurityConfiguration originalConfig =
-        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+    // Masked for every caller, bots included: no client needs the stored secrets back.
+    return maskedCopy(SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+  }
 
-    // Create a deep copy to avoid mutating the original shared objects
-    String configJson = JsonUtils.pojoToJson(originalConfig);
-    SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
-
-    // Apply password masking if needed - only to the copy
-    if (authorizer.shouldMaskPasswords(securityContext)) {
+  /** A copy with the secrets masked, as an admin reads the configuration. */
+  static SecurityConfiguration maskedCopy(SecurityConfiguration config) {
+    SecurityConfiguration copy =
+        JsonUtils.readValue(JsonUtils.pojoToJson(config), SecurityConfiguration.class);
+    if (copy.getAuthenticationConfiguration() != null) {
       SettingsSecrets.maskInPlace(
-          AUTHENTICATION_CONFIGURATION, config.getAuthenticationConfiguration());
+          AUTHENTICATION_CONFIGURATION, copy.getAuthenticationConfiguration());
     }
-    return config;
+    return copy;
   }
 
   @PUT
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "updateSecurityConfig",
       summary = "Update complete security configuration",
@@ -1216,6 +1214,7 @@ public class SystemResource {
 
   @PATCH
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "patchSecurityConfig",
       summary = "Patch security configuration",
@@ -1244,9 +1243,12 @@ public class SystemResource {
       SecurityConfiguration currentConfig =
           stored == null ? currentSecurityConfiguration() : stored.configuration();
 
-      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
+      // The patch works on the configuration as the admin reads it, so a copy or move from a secret
+      // moves the mask; the secrets come back below where that is safe.
+      SecurityConfiguration maskedConfig = maskedCopy(currentConfig);
+      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, maskedConfig);
 
-      JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
+      JsonValue patched = JsonUtils.applyPatch(maskedConfig, filteredPatch);
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
@@ -1325,6 +1327,12 @@ public class SystemResource {
     }
   }
 
+  /**
+   * Gives back the stored secrets a client sent masked or left out, but only while the setting each
+   * one is used with is unchanged, so a write never sends a stored secret somewhere new. A secret
+   * still masked after that has to be entered again
+   * (ADR:2026-11-03-security-config-writes-never-move-a-stored-secret).
+   */
   static void preserveMaskedSecuritySecrets(
       SecurityConfiguration updated, SecurityConfiguration original) {
     if (updated == null || updated.getAuthenticationConfiguration() == null) {
@@ -1337,10 +1345,15 @@ public class SystemResource {
         updated.getAuthenticationConfiguration(),
         originalAuthentication);
     if (originalAuthentication != null) {
-      SettingsSecrets.restoreMaskedInPlace(
-          AUTHENTICATION_CONFIGURATION,
-          updated.getAuthenticationConfiguration(),
-          originalAuthentication);
+      TestLoginCandidates.restoreLiveSecretsInPlace(updated, original);
+    }
+    Set<String> withheld =
+        SettingsSecrets.maskedSecrets(
+            AUTHENTICATION_CONFIGURATION, updated.getAuthenticationConfiguration());
+    if (!withheld.isEmpty()) {
+      throw new BadRequestException(
+          String.format(
+              "Enter %s again: the setting it is used with changed.", String.join(", ", withheld)));
     }
   }
 

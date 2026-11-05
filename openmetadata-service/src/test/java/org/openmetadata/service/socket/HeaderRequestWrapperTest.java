@@ -14,6 +14,7 @@ package org.openmetadata.service.socket;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -91,6 +92,42 @@ class HeaderRequestWrapperTest {
 
     assertEquals("attacker-uuid", wrapper.getHeader("UserId"));
     assertEquals("attacker-uuid", wrapper.getHeaders("UserId").nextElement());
+  }
+
+  @Test
+  void removeHeader_hidesClientValueFromEveryAccessor() {
+    // A validated field the handshake could not establish must leave the header absent; otherwise
+    // the client's own SessionId/UserId would reach WebSocketManager through the fallback.
+    HttpServletRequest underlying = mock(HttpServletRequest.class);
+    when(underlying.getHeader("SessionId")).thenReturn("attacker-session");
+    when(underlying.getHeaders("SessionId")).thenReturn(enumeration("attacker-session"));
+    when(underlying.getHeaderNames()).thenReturn(enumeration("Cookie", "SessionId"));
+    HeaderRequestWrapper wrapper = new HeaderRequestWrapper(underlying);
+    wrapper.removeHeader("SessionId");
+
+    assertNull(wrapper.getHeader("SessionId"));
+    assertEquals(List.of(), Collections.list(wrapper.getHeaders("SessionId")));
+    assertEquals(List.of("Cookie"), Collections.list(wrapper.getHeaderNames()));
+  }
+
+  @Test
+  void headerNamesAreMatchedCaseInsensitively() {
+    // HTTP header names are case-insensitive: a client "userid" must not slip past a "UserId"
+    // override or suppression.
+    HttpServletRequest underlying = mock(HttpServletRequest.class);
+    when(underlying.getHeader("userid")).thenReturn("victim-uuid");
+    when(underlying.getHeaders("userid")).thenReturn(enumeration("victim-uuid"));
+    when(underlying.getHeaders("sessionid")).thenReturn(enumeration("attacker-session"));
+    when(underlying.getHeaderNames()).thenReturn(enumeration("userid", "sessionid", "Cookie"));
+    HeaderRequestWrapper wrapper = new HeaderRequestWrapper(underlying);
+    wrapper.removeHeader("UserId");
+    wrapper.removeHeader("SessionId");
+    wrapper.addHeader("UserId", "validated-uuid");
+
+    assertEquals("validated-uuid", wrapper.getHeader("userid"));
+    assertEquals(List.of("validated-uuid"), Collections.list(wrapper.getHeaders("userid")));
+    assertEquals(List.of(), Collections.list(wrapper.getHeaders("sessionid")));
+    assertEquals(List.of("Cookie", "UserId"), Collections.list(wrapper.getHeaderNames()));
   }
 
   private Enumeration<String> enumeration(String... values) {
