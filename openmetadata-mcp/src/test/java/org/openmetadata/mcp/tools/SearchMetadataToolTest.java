@@ -873,6 +873,37 @@ class SearchMetadataToolTest {
     }
   }
 
+  /** Past the window the engine fails or returns an empty page, which would read as no matches. */
+  @Test
+  void aRequestPastTheResultWindowIsRejectedByName() throws Exception {
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                searchMetadataTool.execute(
+                    authorizer, securityContext, Map.of("query", "*", "from", 10000)));
+
+    assertTrue(thrown.getMessage().contains("'from'"), thrown.getMessage());
+    verify(searchRepository, never()).search(any(), any(SubjectContext.class));
+  }
+
+  /** A size-0 count returns no hits, only the total, and must not report 0 matches. */
+  @Test
+  void anEmptyPageStillReportsTheRealTotal() {
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", List.of());
+    hitsContainer.put("total", Map.of("value", 50000));
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "*", 0, 0, List.of(), false, 0);
+
+    assertEquals(50000, result.get("totalFound"));
+    assertEquals(0, result.get("returnedCount"));
+  }
+
   private Map<String, Object> buildHit(double score, String fqn) {
     Map<String, Object> source = new HashMap<>();
     source.put("entityType", "table");

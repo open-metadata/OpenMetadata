@@ -198,8 +198,9 @@ public class SearchMetadataTool implements McpTool {
     }
 
     size = Math.min(size, 50);
+    requireWithinResultWindow(from);
     // The engine refuses from + size past its result window, so the last page is shortened.
-    size = Math.min(size, Math.max(0, MAX_RESULT_HITS - from));
+    size = Math.min(size, MAX_RESULT_HITS - from);
 
     boolean includeDeleted = false;
     if (params.containsKey("includeDeleted")) {
@@ -419,18 +420,8 @@ public class SearchMetadataTool implements McpTool {
 
     List<Object> hits = safeGetList(topHits.get("hits"));
     List<Map<String, Object>> cleanedResults = new ArrayList<>();
-    int totalResults = 0;
+    int totalResults = totalHitCount(topHits);
     if (hits != null && !hits.isEmpty()) {
-
-      if (topHits.get("total") instanceof Map) {
-        Map<String, Object> totalObj = safeGetMap(topHits.get("total"));
-        if (totalObj != null && totalObj.get("value") instanceof Number) {
-          totalResults = ((Number) totalObj.get("value")).intValue();
-        }
-      } else if (topHits.get("total") instanceof Number) {
-        totalResults = ((Number) topHits.get("total")).intValue();
-      }
-
       boolean scoresVary = scoresDiscriminate(hits);
       for (Object hitObj : hits) {
         Map<String, Object> hit = safeGetMap(hitObj);
@@ -494,6 +485,27 @@ public class SearchMetadataTool implements McpTool {
     attachPagingContract(result, from, totalResults);
 
     return result;
+  }
+
+  /** Read even when the page is empty, so a size-0 count reports the real total and not 0. */
+  private static int totalHitCount(Map<String, Object> topHits) {
+    Object total = topHits.get("total");
+    Object value = total instanceof Map<?, ?> totalObject ? totalObject.get("value") : total;
+    return value instanceof Number number ? number.intValue() : 0;
+  }
+
+  /**
+   * Past the engine's result window a request fails, or comes back empty and reads as no matches.
+   * Naming the limit tells the caller to narrow the query instead of paging on.
+   */
+  private static void requireWithinResultWindow(int from) {
+    if (from >= MAX_RESULT_HITS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "'from' must be below %d: search pages through the first %d matches only. Narrow"
+                  + " the query (a service, schema, tag or queryFilter) to reach the rest.",
+              MAX_RESULT_HITS, MAX_RESULT_HITS));
+    }
   }
 
   /**

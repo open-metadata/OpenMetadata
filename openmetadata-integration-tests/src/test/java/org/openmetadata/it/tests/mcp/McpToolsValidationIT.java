@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -171,16 +172,20 @@ public class McpToolsValidationIT extends McpTestBase {
             });
   }
 
-  /** LLM models are outside the dataAsset alias but are part of the default search scope. */
+  /** Default search keeps the dataAsset types and adds LLM models, which are outside that alias. */
   @Test
   @Order(23)
-  void testSearchMetadataWithoutEntityTypeFindsLlmModels(TestNamespace ns) throws Exception {
+  void testSearchMetadataWithoutEntityTypeFindsTablesAndLlmModels(TestNamespace ns)
+      throws Exception {
     LLMModel model = LLMModelTestFactory.createGPT(ns);
-    String fqn = model.getFullyQualifiedName().toLowerCase();
+    List<String> fqns =
+        List.of(
+            model.getFullyQualifiedName().toLowerCase(Locale.ROOT),
+            testTable.getFullyQualifiedName().toLowerCase(Locale.ROOT));
     Map<String, Object> arguments = new HashMap<>();
-    arguments.put("queryFilter", Map.of("term", Map.of("fullyQualifiedName", fqn)));
+    arguments.put("queryFilter", Map.of("terms", Map.of("fullyQualifiedName", fqns)));
     arguments.put("size", 5);
-    Awaitility.await("MCP search without entityType should find the new LLM model")
+    Awaitility.await("MCP search without entityType should find the table and the new LLM model")
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
@@ -189,14 +194,19 @@ public class McpToolsValidationIT extends McpTestBase {
                   executeToolCall(McpTestUtils.createToolCallRequest("search_metadata", arguments));
               JsonNode response =
                   OBJECT_MAPPER.readTree(result.get("content").get(0).get("text").asText());
-              JsonNode match = findResultByName(response, model.getName());
-              assertThat(match)
-                  .withFailMessage(
-                      "Expected LLM model '%s' in default search results: %s",
-                      model.getName(), response.get("results"))
-                  .isNotNull();
-              assertThat(match.get("entityType").asText()).isEqualTo(Entity.LLM_MODEL);
+              assertFoundAs(response, model.getName(), Entity.LLM_MODEL);
+              assertFoundAs(response, testTable.getName(), Entity.TABLE);
             });
+  }
+
+  private void assertFoundAs(JsonNode response, String name, String entityType) {
+    JsonNode match = findResultByName(response, name);
+    assertThat(match)
+        .withFailMessage(
+            "Expected %s '%s' in default search results: %s",
+            entityType, name, response.get("results"))
+        .isNotNull();
+    assertThat(match.get("entityType").asText()).isEqualTo(entityType);
   }
 
   @Test
