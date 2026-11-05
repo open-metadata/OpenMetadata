@@ -15,8 +15,11 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class PipelineService extends EntityServiceBase<Pipeline> {
-  /** The largest page of statuses the server returns. */
-  private static final int STATUS_PAGE_SIZE = 1000;
+  /**
+   * The largest page of statuses the server returns
+   * (ADR:2026-11-05-pipeline-entity-status-reads-hold-at-most-one-page).
+   */
+  private static final int MAX_STATUS_PAGE_SIZE = 1000;
 
   public PipelineService(HttpClient httpClient) {
     super(httpClient, "/v1/pipelines");
@@ -51,13 +54,13 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
   public ListResponse<PipelineStatus> listPipelineStatuses(String fqn, Long startTs, Long endTs)
       throws OpenMetadataException {
     List<PipelineStatus> statuses = new ArrayList<>();
-    ListParams params = new ListParams().setLimit(STATUS_PAGE_SIZE);
+    ListParams params = new ListParams().setLimit(MAX_STATUS_PAGE_SIZE);
     ListResponse<PipelineStatus> page;
     do {
       page = listPipelineStatuses(fqn, startTs, endTs, params);
       statuses.addAll(page.getData());
       params.setAfter(page.getPaging() == null ? null : page.getPaging().getAfter());
-    } while (page.getData().size() == STATUS_PAGE_SIZE && params.getAfter() != null);
+    } while (page.getData().size() == MAX_STATUS_PAGE_SIZE && params.getAfter() != null);
     return new ListResponse<>(statuses);
   }
 

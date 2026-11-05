@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
-import { PIPELINE_STATUS_PAGE_SIZE } from '../constants/pipeline.constants';
+import { MAX_PIPELINE_STATUS_PAGE_SIZE } from '../constants/pipeline.constants';
 import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -155,13 +155,13 @@ export const getAllPipelineStatuses = async (
   do {
     const { data, paging } = await getPipelineStatus(
       fqn,
-      { ...params, after, limit: PIPELINE_STATUS_PAGE_SIZE },
+      { ...params, after, limit: MAX_PIPELINE_STATUS_PAGE_SIZE },
       signal
     );
     statuses.push(...data);
     after = paging.after;
     pageLength = data.length;
-  } while (after && pageLength === PIPELINE_STATUS_PAGE_SIZE);
+  } while (after && pageLength === MAX_PIPELINE_STATUS_PAGE_SIZE);
 
   return statuses;
 };

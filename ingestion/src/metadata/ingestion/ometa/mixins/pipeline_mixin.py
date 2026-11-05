@@ -28,8 +28,9 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
-# The largest page of statuses the server returns.
-PIPELINE_STATUS_PAGE_SIZE = 1000
+# The largest page of statuses the server returns
+# (ADR:2026-11-05-pipeline-entity-status-reads-hold-at-most-one-page).
+MAX_PIPELINE_STATUS_PAGE_SIZE = 1000
 
 
 class OMetaPipelineMixin:
@@ -90,8 +91,9 @@ class OMetaPipelineMixin:
         """
         List PipelineStatus records for a Pipeline within a time range, newest first.
 
-        With a limit, return at most that many. Without one, follow the paging
-        cursor: the server returns at most one page per request.
+        Return at most `limit` records, or every record in the range without one.
+        The server returns at most one page per request, so this follows the
+        paging cursor until it has them.
         """
         try:
             parts = fqn_utils.split(fqn)
@@ -99,10 +101,12 @@ class OMetaPipelineMixin:
         except Exception:
             normalized_fqn = fqn
 
-        page_size = limit if limit is not None else PIPELINE_STATUS_PAGE_SIZE
         statuses: list[PipelineStatus] = []
         after: str | None = None
         while True:
+            page_size = MAX_PIPELINE_STATUS_PAGE_SIZE
+            if limit is not None:
+                page_size = min(limit - len(statuses), MAX_PIPELINE_STATUS_PAGE_SIZE)
             params = f"startTs={start_ts}&endTs={end_ts}&limit={page_size}"
             if after:
                 params += f"&after={after}"
@@ -115,7 +119,8 @@ class OMetaPipelineMixin:
             page = [PipelineStatus(**status) for status in resp.get("data", [])]
             statuses.extend(page)
             after = (resp.get("paging") or {}).get("after")
-            if limit is not None or not after or len(page) < page_size:
+            reached_limit = limit is not None and len(statuses) >= limit
+            if reached_limit or not after or len(page) < page_size:
                 return statuses
 
     def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:

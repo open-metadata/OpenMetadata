@@ -1,9 +1,9 @@
-# A pipeline status read loads at most one page of 1,000 statuses
+# Status reads of a pipeline entity hold at most one page of 1,000 statuses
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-05 (initial)
 - **Deciders:** harshsoni2024
-- **Guard:** `PipelineStatusPaginationSqlTest` (rows read per call, on MySQL and PostgreSQL),
+- **Guard:** `PipelineStatusPaginationSqlTest` (rows each read loads, on MySQL and PostgreSQL),
   `PipelineResourceIT.list_pipelineStatuses_pagedByDefault_200_OK`
 - **Related:** #36446 (the status list paged in SQL)
 
@@ -12,9 +12,9 @@
 one, or with 0, it read every status between `startTs` and `endTs` into memory, and `limit` itself
 could be 1,000,000. Anyone who can view a pipeline chooses that range, and a history grows by up to
 1,000 statuses per bulk write, so one request could hold the whole history in the heap. Two other
-reads had the same shape: the bulk write loaded every stored status between its first and last
-timestamp to find the rows it overwrites, and the observability summary loaded every run of the
-last 30 days to average their runtime.
+reads of a pipeline's status history had the same shape: the bulk write loaded every stored status
+between its first and last timestamp to find the rows it overwrites, and the observability summary
+loaded every run of the last 30 days to average their runtime.
 
 ## Decision
 - The status list always pages in SQL. `limit` defaults to 10 and is at most
@@ -22,18 +22,17 @@ last 30 days to average their runtime.
   entity lists do.
 - A client that needs a whole range follows `paging.after` until a page comes back short. The UI's
   Executions tab, the Java SDK's `listPipelineStatuses(fqn, startTs, endTs)` and the Python
-  `list_pipeline_statuses` without a `limit` page this way, 1,000 statuses at a time.
+  `list_pipeline_statuses` page this way, 1,000 statuses at a time; each keeps its own copy of the
+  maximum and cites this record.
 - The bulk write reads only the stored statuses at the timestamps it writes.
 - The observability average runtime still covers every run of the last 30 days, but reads them a
   page at a time and keeps only a running total.
 
 ## Consequences
-- One request reads at most 1,000 status rows, whatever the size of the history.
+- No request holds more than 1,000 statuses at once, whatever the size of the history.
 - An API caller that omitted `limit` to receive the whole range now receives 10 statuses and has to
-  follow the cursor.
+  follow the cursor; a `limit` above 1,000, accepted before, is refused with 400.
 - The average's work still grows with the number of runs in its window; only the memory a request
   holds is bounded.
 - The maximum and the clients' page size are the same number, so lowering the maximum means
   changing those clients with it.
-- The size of a single status is still unbounded; capping it, or the request body, is a separate
-  decision.

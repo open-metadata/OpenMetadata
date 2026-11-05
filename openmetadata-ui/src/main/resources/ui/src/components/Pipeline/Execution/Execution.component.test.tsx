@@ -70,15 +70,23 @@ const mockProps = {
 };
 
 describe('Test Execution Component', () => {
-  it('Should read every page of the selected range', async () => {
+  it('Should show every status the selected range returns', async () => {
+    (getAllPipelineStatuses as jest.Mock).mockResolvedValueOnce([
+      run(1),
+      run(2),
+      run(3),
+    ]);
+
     render(<ExecutionsTab {...mockProps} />);
 
     await waitFor(() =>
-      expect(getAllPipelineStatuses).toHaveBeenCalledWith(
-        'pipelineFQN',
-        { endTs: 2000, startTs: 1000 },
-        expect.any(AbortSignal)
-      )
+      expect(screen.getByTestId('execution-count')).toHaveTextContent('3')
+    );
+
+    expect(getAllPipelineStatuses).toHaveBeenCalledWith(
+      'pipelineFQN',
+      { endTs: 2000, startTs: 1000 },
+      expect.any(AbortSignal)
     );
   });
 

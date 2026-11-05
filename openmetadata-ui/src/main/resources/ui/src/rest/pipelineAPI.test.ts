@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PIPELINE_STATUS_PAGE_SIZE } from '../constants/pipeline.constants';
+import { MAX_PIPELINE_STATUS_PAGE_SIZE } from '../constants/pipeline.constants';
 import { StatusType } from '../generated/entity/data/pipeline';
 import APIClient from './axiosClient';
 import { getAllPipelineStatuses } from './pipelineAPI';
@@ -38,7 +38,7 @@ describe('getAllPipelineStatuses', () => {
 
   it('follows the after cursor until a page comes back short', async () => {
     (APIClient.get as jest.Mock)
-      .mockResolvedValueOnce(statusPage(PIPELINE_STATUS_PAGE_SIZE, 'older'))
+      .mockResolvedValueOnce(statusPage(MAX_PIPELINE_STATUS_PAGE_SIZE, 'older'))
       .mockResolvedValueOnce(statusPage(3, 'oldest'));
     const { signal } = new AbortController();
 
@@ -48,13 +48,13 @@ describe('getAllPipelineStatuses', () => {
       signal
     );
 
-    expect(statuses).toHaveLength(PIPELINE_STATUS_PAGE_SIZE + 3);
+    expect(statuses).toHaveLength(MAX_PIPELINE_STATUS_PAGE_SIZE + 3);
     expect(APIClient.get).toHaveBeenCalledTimes(2);
     expect(APIClient.get).toHaveBeenNthCalledWith(1, STATUS_URL, {
       params: {
         after: undefined,
         endTs: 2,
-        limit: PIPELINE_STATUS_PAGE_SIZE,
+        limit: MAX_PIPELINE_STATUS_PAGE_SIZE,
         startTs: 1,
       },
       signal,
@@ -63,7 +63,7 @@ describe('getAllPipelineStatuses', () => {
       params: {
         after: 'older',
         endTs: 2,
-        limit: PIPELINE_STATUS_PAGE_SIZE,
+        limit: MAX_PIPELINE_STATUS_PAGE_SIZE,
         startTs: 1,
       },
       signal,
@@ -72,7 +72,7 @@ describe('getAllPipelineStatuses', () => {
 
   it('stops when a full page carries no cursor', async () => {
     (APIClient.get as jest.Mock).mockResolvedValueOnce(
-      statusPage(PIPELINE_STATUS_PAGE_SIZE)
+      statusPage(MAX_PIPELINE_STATUS_PAGE_SIZE)
     );
 
     const statuses = await getAllPipelineStatuses('service.pipeline', {
@@ -80,7 +80,7 @@ describe('getAllPipelineStatuses', () => {
       startTs: 1,
     });
 
-    expect(statuses).toHaveLength(PIPELINE_STATUS_PAGE_SIZE);
+    expect(statuses).toHaveLength(MAX_PIPELINE_STATUS_PAGE_SIZE);
     expect(APIClient.get).toHaveBeenCalledTimes(1);
   });
 });
