@@ -45,6 +45,7 @@ const TONE_CLASSES: Record<TopicStatTone, { dot: string; label: string }> = {
 // The selected chip takes its tone's surface; the rest stay neutral. Button
 // draws its own border on `::after` (see CLAUDE.md §Styling), so the tone
 // recolours that rather than adding a second border around it.
+// ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site
 const SELECTED_SURFACE: Record<TopicStatTone, string> = {
   critical: 'tw:bg-utility-error-50 tw:after:outline-utility-error-200',
   success: 'tw:bg-utility-success-50 tw:after:outline-utility-success-200',
@@ -79,8 +80,8 @@ const TopicStatChips: React.FC<TopicStatChipsProps> = ({
       <Button
         aria-pressed={stat.id === value}
         className={classNames(
-          'tw:rounded-lg tw:px-3 tw:py-1.5',
-          stat.id === value ? SELECTED_SURFACE[stat.tone] : 'tw:bg-primary'
+          'tw:rounded-lg tw:px-2.5 tw:py-1',
+          stat.id === value && SELECTED_SURFACE[stat.tone]
         )}
         color="secondary"
         data-testid={`topic-stat-${stat.id}`}

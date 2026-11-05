@@ -128,6 +128,9 @@ describe('AuditLogList', () => {
     const skeletons = screen.getAllByTestId('skeleton');
 
     expect(skeletons.length).toBeGreaterThan(0);
+    expect(screen.getByTestId('audit-log-list-skeleton')).toBeInTheDocument();
+    // Playwright treats `audit-log-list` as "loaded", so loading must not render it.
+    expect(screen.queryByTestId('audit-log-list')).not.toBeInTheDocument();
   });
 
   it('should render empty state with EmptyPlaceholder when no logs', () => {

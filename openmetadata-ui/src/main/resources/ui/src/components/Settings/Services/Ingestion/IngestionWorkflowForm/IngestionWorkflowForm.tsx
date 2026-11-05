@@ -15,7 +15,7 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import classNames from 'classnames';
-import { capitalize, isUndefined, omit, omitBy } from 'lodash';
+import { capitalize, cloneDeep, isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
   lazy,
@@ -46,7 +46,11 @@ import {
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
-import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import {
+  getSchemaByWorkflowType,
+  validateOwnerConfigMaps,
+} from '../../../../../utils/IngestionWorkflowUtils';
+import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
@@ -191,11 +195,19 @@ const IngestionWorkflowForm = forwardRef<
     useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
 
-  const schema = useMemo(
-    () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
+  const schema = useMemo(() => {
+    const workflowSchema = getSchemaByWorkflowType(
+      pipeLineType,
+      serviceCategory
+    );
 
-    [pipeLineType, serviceCategory]
-  );
+    return serviceData?.serviceType === 'BigQuery'
+      ? workflowSchema
+      : {
+          ...workflowSchema,
+          properties: omit(workflowSchema.properties, ['shardedTables']),
+        };
+  }, [pipeLineType, serviceCategory, serviceData?.serviceType]);
 
   const validator = useMemo(
     () => customizeValidator<IngestionWorkflowData>(),
@@ -366,7 +378,7 @@ const IngestionWorkflowForm = forwardRef<
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
-      let formData = { ...e.formData };
+      let formData = formatAdditionalProperties(cloneDeep(e.formData));
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [
@@ -406,6 +418,7 @@ const IngestionWorkflowForm = forwardRef<
         focusOnFirstError
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
+        customValidate={validateOwnerConfigMaps}
         fields={customFields}
         formContext={{ handleFocus: handleFieldFocus }}
         formData={internalData}
@@ -437,7 +450,7 @@ const IngestionWorkflowForm = forwardRef<
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <Button color="link-color" onClick={onCancel}>
+              <Button color="secondary" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 

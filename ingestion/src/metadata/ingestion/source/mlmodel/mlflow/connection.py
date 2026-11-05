@@ -34,7 +34,7 @@ class MlflowConnection(BaseConnection[MlflowConnectionConfig, MlflowClient]):
         connection = self.service_connection
         return MlflowClient(
             tracking_uri=connection.trackingUri,
-            registry_uri=connection.registryUri,
+            registry_uri=connection.registryUri.get_secret_value(),
         )
 
     def test_connection(

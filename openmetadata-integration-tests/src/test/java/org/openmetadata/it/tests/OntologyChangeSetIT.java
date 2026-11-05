@@ -45,7 +45,6 @@ import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
-import org.openmetadata.schema.api.data.OntologyMemoryProposalStatus;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -66,8 +65,6 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 
 /** Integration coverage for durable drafts, undo/redo, edit leases, and atomic application. */
 @Execution(ExecutionMode.CONCURRENT)
@@ -155,23 +152,9 @@ public class OntologyChangeSetIT {
             .withState(OntologyChangeOperationState.ACTIVE);
     OntologyChangeSet changeSet = createChangeSet(client, glossary, operation, ns);
 
-    OntologyMemoryProposalStatus proposalStatus =
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/ontology/ai/memories/" + memory.getId() + "/proposals",
-                null,
-                OntologyMemoryProposalStatus.class);
-    assertFalse(proposalStatus.getQueued());
-    assertEquals(
-        List.of(changeSet.getId()),
-        proposalStatus.getProposals().stream()
-            .map(proposal -> proposal.getChangeSet().getId())
-            .toList());
-    assertEquals(
-        List.of(proposedTerm.getName()), proposalStatus.getProposals().getFirst().getTerms());
-    assertFalse(proposalStatus.getEnabled());
+    assertTrue(
+        listedIds(client, "memorySourced=true&state=DRAFT").contains(changeSet.getId()),
+        "a draft with memory evidence lists as memory-sourced");
 
     assertTrue(
         listOrEmpty(memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities())
@@ -196,16 +179,9 @@ public class OntologyChangeSetIT {
         List.of(),
         listOrEmpty(
             memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities()));
-    assertTrue(
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/ontology/ai/memories/" + memory.getId() + "/proposals",
-                null,
-                OntologyMemoryProposalStatus.class)
-            .getProposals()
-            .isEmpty());
+    assertFalse(
+        listedIds(client, "memorySourced=true&state=DRAFT").contains(changeSet.getId()),
+        "an applied draft is no longer an open memory-sourced draft");
 
     memories.patch(
         memory.getId().toString(),
@@ -528,11 +504,6 @@ public class OntologyChangeSetIT {
     assertFalse(
         listedIds(client, "memorySourced=true&state=DRAFT,SUBMITTED")
             .contains(memoryDraft.getId()));
-    OntologyChangeSetRepository repository =
-        (OntologyChangeSetRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CHANGE_SET);
-    assertFalse(
-        repository.findOpenBySourceMemoryId(memory.getId()).stream()
-            .anyMatch(draft -> draft.getId().equals(memoryDraft.getId())));
   }
 
   @Test

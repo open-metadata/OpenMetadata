@@ -5,6 +5,7 @@ import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
+import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
 import java.util.Set;
@@ -12,10 +13,15 @@ import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
+import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
+import org.openmetadata.mcp.server.auth.util.UriUtils;
+import org.openmetadata.mcp.server.transport.JsonRpcErrorBody;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -31,6 +37,7 @@ import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 
 @Slf4j
@@ -76,9 +83,10 @@ public class McpServer implements McpServerProvider {
     this.limits = limits;
     this.environment = environment;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
-    List<McpSchema.Tool> tools = getTools();
+    List<McpSchema.Tool> tools =
+        exposedTools(getTools(), SecurityConfigurationManager.getCurrentMcpConfig());
     List<McpSchema.Prompt> prompts = getPrompts();
-    addStatelessTransport(contextHandler, tools, prompts, config);
+    addStatelessTransport(contextHandler, tools, prompts);
   }
 
   /**
@@ -102,6 +110,8 @@ public class McpServer implements McpServerProvider {
    */
   private static final Set<String> RDF_DEPENDENT_TOOLS =
       Set.of("sparql_query", "entity_neighborhood", "find_by_tag", "shacl_validate");
+
+  private static final Set<String> WRITE_HELPER_TOOLS = Set.of("describe_entity_type");
 
   /**
    * Advertises the knowledge-graph tools only where they can actually run.
@@ -132,6 +142,41 @@ public class McpServer implements McpServerProvider {
     return repository != null && repository.isEnabled();
   }
 
+  /**
+   * Read-only mode, for every caller including admins, whom no policy can deny. It filters here,
+   * after a subclass has added its own tools in {@link #getTools()}, so those are covered too.
+   * Tools are registered once at startup, so {@link #executeTool} checks again on every call:
+   * turning the mode on blocks writes before the restart that drops them from tools/list. See
+   * ADR:2026-11-04-mcp-read-only-mode-hides-write-tools.
+   */
+  static List<McpSchema.Tool> exposedTools(List<McpSchema.Tool> tools, MCPConfiguration config) {
+    List<McpSchema.Tool> exposed = tools;
+    if (isReadOnlyMode(config)) {
+      exposed = tools.stream().filter(McpServer::isAvailableInReadOnlyMode).toList();
+      LOG.info(
+          "[MCP] Read-only mode; withholding {} write tool(s) from tools/list",
+          tools.size() - exposed.size());
+    }
+    return exposed;
+  }
+
+  private static boolean isReadOnlyMode(MCPConfiguration config) {
+    return config != null && Boolean.TRUE.equals(config.getReadOnly());
+  }
+
+  // The MCP spec defaults readOnlyHint to false, so a tool without it counts as a write tool.
+  // describe_entity_type only reads, but it exists to prepare a create_entity call.
+  private static boolean isAvailableInReadOnlyMode(McpSchema.Tool tool) {
+    boolean readOnlyHint =
+        tool.annotations() != null && Boolean.TRUE.equals(tool.annotations().readOnlyHint());
+    return readOnlyHint && !WRITE_HELPER_TOOLS.contains(tool.name());
+  }
+
+  private static boolean isRefusedInReadOnlyMode(McpSchema.Tool tool) {
+    return isReadOnlyMode(SecurityConfigurationManager.getCurrentMcpConfig())
+        && !isAvailableInReadOnlyMode(tool);
+  }
+
   protected List<McpSchema.Prompt> getPrompts() {
     return promptsContext.loadPromptsDefinitionsFromJson("json/data/mcp/prompts.json");
   }
@@ -139,39 +184,20 @@ public class McpServer implements McpServerProvider {
   private void addStatelessTransport(
       MutableServletContextHandler contextHandler,
       List<McpSchema.Tool> tools,
-      List<McpSchema.Prompt> prompts,
-      OpenMetadataApplicationConfig config) {
+      List<McpSchema.Prompt> prompts) {
     try {
       McpSchema.ServerCapabilities serverCapabilities = buildServerCapabilities();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
       // Get base URL from MCP configuration or system settings
-      String baseUrl = getBaseUrlFromConfig();
+      String baseUrl = UriUtils.withoutTrailingSlash(getBaseUrlFromConfig());
       LOG.info("MCP OAuth initialized with base URL: {}", baseUrl);
+      OAuthHttpStatelessServerTransportProvider.warnIfBaseUrlMissesContextPath(
+          baseUrl, contextHandler.getContextPath());
 
       org.openmetadata.service.security.jwt.JWTTokenGenerator jwtGenerator =
           org.openmetadata.service.security.jwt.JWTTokenGenerator.getInstance();
 
-      // Create the appropriate authenticator based on the current auth provider.
-      // LDAP uses LdapAuthenticator for credential validation via LDAP bind;
-      // all other providers use BasicAuthenticator for DB-based validation.
-      org.openmetadata.service.security.auth.AuthenticatorHandler credentialAuthenticator;
-      org.openmetadata.schema.api.security.AuthenticationConfiguration currentAuthConfig =
-          SecurityConfigurationManager.getCurrentAuthConfig();
-      if (currentAuthConfig != null
-          && currentAuthConfig.getProvider()
-              == org.openmetadata.schema.services.connections.metadata.AuthProvider.LDAP) {
-        credentialAuthenticator = new org.openmetadata.service.security.auth.LdapAuthenticator();
-        credentialAuthenticator.init(config);
-        LOG.info("LdapAuthenticator initialized for MCP OAuth credential validation");
-      } else {
-        credentialAuthenticator = new org.openmetadata.service.security.auth.BasicAuthenticator();
-        credentialAuthenticator.init(config);
-        LOG.info("BasicAuthenticator initialized for MCP OAuth credential validation");
-      }
-
-      org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider authProvider =
-          new org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider(
-              jwtGenerator, credentialAuthenticator);
+      UserSSOOAuthProvider authProvider = new UserSSOOAuthProvider(jwtGenerator);
 
       // Get allowed origins from MCP configuration (database-backed)
       List<String> allowedOrigins = getAllowedOriginsFromConfig();
@@ -200,6 +226,7 @@ public class McpServer implements McpServerProvider {
               new AuthEnrichedMcpContextExtractor(),
               authProvider,
               allowedOrigins);
+      statelessOauthTransport.setContextPath(contextHandler.getContextPath());
       McpStatelessSyncServer server =
           io.modelcontextprotocol.server.McpServer.sync(statelessOauthTransport)
               .serverInfo("openmetadata-mcp-stateless", "1.1.0")
@@ -215,9 +242,7 @@ public class McpServer implements McpServerProvider {
       // Register Basic Auth / LDAP login handler with the transport provider.
       // The /mcp/* wildcard servlet intercepts all /mcp/ paths, so dedicated servlets at
       // /mcp/login can't be reached. Instead, the transport provider delegates internally.
-      org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet basicAuthLoginServlet =
-          new org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet(
-              authProvider, credentialAuthenticator);
+      BasicAuthLoginServlet basicAuthLoginServlet = new BasicAuthLoginServlet(authProvider);
       statelessOauthTransport.setBasicAuthLoginServlet(basicAuthLoginServlet);
       LOG.info("Registered Basic Auth login handler in transport provider");
 
@@ -272,7 +297,7 @@ public class McpServer implements McpServerProvider {
       // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
       // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
-      // invokes this handler, which mints the MCP authorization code and redirects to the client.
+      // invokes this handler, which asks the user to approve the client before a code is minted.
       org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
           (req, resp, username, email, relayState) ->
               authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
@@ -325,25 +350,23 @@ public class McpServer implements McpServerProvider {
 
   protected McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpStatelessServerFeatures.SyncToolSpecification(
-        tool, (context, req) -> runInCleanRequestContext(() -> executeTool(tool, context, req)));
+        tool, (context, req) -> runCallback(tool.name(), () -> executeTool(tool, context, req)));
   }
 
   private McpSchema.CallToolResult executeTool(
       McpSchema.Tool tool, McpTransportContext context, McpSchema.CallToolRequest req) {
-    String token = (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER);
-    String activePersona =
-        (String) context.get(AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER);
-    CatalogSecurityContext securityContext =
-        activePersona == null
-            ? jwtFilter.getCatalogSecurityContext(token)
-            : jwtFilter.getCatalogSecurityContext(token, activePersona);
+    CatalogSecurityContext securityContext = securityContextFrom(context);
     String userName = securityContext.getUserPrincipal().getName();
     String clientName = (String) context.get(AuthEnrichedMcpContextExtractor.CLIENT_NAME);
     DefaultToolContext.CallToolOutcome outcome = null;
     try {
       ImpersonationContext.setImpersonatedBy(getMcpBotName());
       outcome =
-          toolContext.callToolWithMetadata(authorizer, limits, tool.name(), securityContext, req);
+          isRefusedInReadOnlyMode(tool)
+              ? DefaultToolContext.forbidden(
+                  "The MCP server is in read-only mode, so " + tool.name() + " is unavailable")
+              : toolContext.callToolWithMetadata(
+                  authorizer, limits, tool.name(), securityContext, req);
       return outcome.result();
     } finally {
       recordUsage(tool.name(), userName, clientName, outcome);
@@ -364,20 +387,50 @@ public class McpServer implements McpServerProvider {
   McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
-        (exchange, arguments) ->
-            runInCleanRequestContext(
-                () -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments)));
+        (context, arguments) ->
+            runCallback(
+                prompt.name(),
+                () ->
+                    promptsContext.callPrompt(
+                        securityContextFrom(context), prompt.name(), arguments)));
+  }
+
+  /** Tools and prompts both resolve the caller from the request headers, never from the body. */
+  private CatalogSecurityContext securityContextFrom(McpTransportContext context) {
+    String token = (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER);
+    String activePersona =
+        (String) context.get(AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER);
+    return activePersona == null
+        ? jwtFilter.getCatalogSecurityContext(token)
+        : jwtFilter.getCatalogSecurityContext(token, activePersona);
   }
 
   /**
    * The SDK runs each callback on a Reactor bounded-elastic worker that outlives the call, so the
    * entity cache and impersonation state a call leaves on its thread would otherwise answer the
    * next call that lands there. A servlet filter cannot clear them: it runs on a different thread.
+   *
+   * <p>The SDK answers an exception that is not an {@link McpError} with -32603 and the
+   * exception's own message. A token the server could not confirm becomes an {@link McpError} that
+   * reads as temporarily unavailable, without that message, which names the principal.
    */
-  private static <T> T runInCleanRequestContext(Supplier<T> callback) {
+  private static <T> T runCallback(String name, Supplier<T> callback) {
     PerRequestContextCleaner.clear();
     try {
       return callback.get();
+    } catch (CredentialUnavailableException e) {
+      LOG.debug("MCP callback token could not be confirmed", e);
+      throw McpError.builder(JsonRpcErrorBody.UNAVAILABLE)
+          .message(CredentialUnavailableException.CLIENT_MESSAGE)
+          .build();
+    } catch (VirtualMachineError | LinkageError e) {
+      // Reactor treats these as fatal: it drops them on the worker instead of failing the call, so
+      // the request waiting for the reply would hold its thread until the server restarts. The
+      // name is logged because a stack overflow's trace keeps only the deepest frames.
+      LOG.error("MCP callback {} failed", name, e);
+      throw McpError.builder(McpSchema.ErrorCodes.INTERNAL_ERROR)
+          .message("The server could not complete this call")
+          .build();
     } finally {
       PerRequestContextCleaner.clear();
     }

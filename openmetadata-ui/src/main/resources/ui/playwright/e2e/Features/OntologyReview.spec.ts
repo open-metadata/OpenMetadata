@@ -13,21 +13,28 @@
 
 import { APIRequestContext, Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
+import { SearchIndex } from '../../../src/enums/search.enum';
 import { ContextMemory } from '../../../src/generated/entity/context/contextMemory';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
-import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
 import { OntologyChangeSet } from '../../../src/generated/entity/data/ontologyChangeSet';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
-import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
 import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
+import { TeamClass } from '../../support/team/TeamClass';
+import { UserClass } from '../../support/user/UserClass';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { fillCodeEditor } from '../../utils/codeEditor';
-import { fullUuid, getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import {
+  clickIgnoringToasts,
+  fullUuid,
+  getWorkerAdminAPIContext,
+  uuid,
+} from '../../utils/common';
 import { MEMORIES_API } from '../../utils/ContextCenterUtil';
-import { readGraphEdges, readNodePositions } from '../../utils/ontologyStudio';
+import { readNodePositions } from '../../utils/ontologyStudio';
+import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -75,41 +82,25 @@ const approveReview = async (page: Page, task: Task) => {
 };
 
 const selectOntology = async (page: Page, ontology: Ontology) => {
-  const listing = page.waitForResponse(
-    (response) => new URL(response.url()).pathname === '/api/v1/ontologies'
-  );
-  await page
-    .getByRole('button', { name: 'Select Ontology', exact: true })
-    .click();
-  let result = await okJson<{ data: Ontology[]; paging: { after?: string } }>(
-    await listing,
-    'List native ontologies'
-  );
-  const node = page.getByTestId(`tree-node-${ontology.id}`);
-  while (!result.data.some((item) => item.id === ontology.id)) {
-    expect(
-      result.paging.after,
-      'Created ontology is available to its author'
-    ).toBeTruthy();
-    const nextPage = page.waitForResponse(
-      (response) => new URL(response.url()).pathname === '/api/v1/ontologies'
-    );
-    await page
-      .getByTestId('tree-node-load-more-root')
-      .getByRole('button')
-      .click();
-    result = await okJson<typeof result>(
-      await nextPage,
-      'Read the next ontology page'
-    );
-  }
+  const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
+  await scopeMenu.click();
+  const node = page.getByTestId(`ontology-scope-${ontology.id}`);
+  await expect(node).toBeVisible();
   await node.click();
+  await expect(scopeMenu).toHaveAttribute(
+    'data-scope-key',
+    `ontology:${ontology.id}`
+  );
+  await expect(page).toHaveURL(
+    new RegExp(`[?&]ontology=${ontology.id}(?:&|$)`)
+  );
 };
 
 const openPublication = async (page: Page, ontology: Ontology) => {
-  await page.goto('/governance/ontology');
-  await selectOntology(page, ontology);
-  await page.getByTestId('mode-tab-releases').click();
+  await page.goto(`/governance/ontology?ontology=${ontology.id}`);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await page.getByTestId('ontology-publication-trigger').click();
+  await expect(page.getByTestId('ontology-publication-modal')).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Capture release', exact: true })
   ).toBeEnabled();
@@ -119,16 +110,19 @@ const activateRelease = async (
   page: Page,
   ontology: Ontology,
   release: OntologyRelease,
-  expectedRevision: number
+  expectedRevision: number,
+  action: 'publish' | 'rollback'
 ) => {
   const activation = page.waitForResponse(
     (response) =>
       response.url().endsWith(`/api/v1/ontologies/${ontology.id}/activation`) &&
       response.request().method() === 'PUT'
   );
-  await page
-    .getByRole('button', { name: 'Activate release', exact: true })
-    .click();
+  await clickIgnoringToasts(
+    action === 'publish'
+      ? page.getByTestId('ontology-publish-release')
+      : page.getByRole('button', { name: 'Activate release', exact: true })
+  );
   const response = await activation;
   expect(response.request().postDataJSON()).toEqual({
     releaseId: release.id,
@@ -140,6 +134,14 @@ const activateRelease = async (
   );
   expect(state.activeReleaseId).toBe(release.id);
   expect(state.activationRevision).toBe(expectedRevision + 1);
+  await expect(
+    page.getByTestId('ontology-release-history-trigger')
+  ).toContainText(release.semanticVersion ?? String(release.releaseRevision));
+  if (action === 'publish') {
+    await expect(page.getByTestId('ontology-release-stage')).toContainText(
+      'Published'
+    );
+  }
   await expect(page.getByTestId('ontology-active-release')).toHaveText(
     'Active'
   );
@@ -169,7 +171,7 @@ test.describe(
   { tag: ['@Features', '@Governance'] },
   () => {
     for (const status of [403, 404]) {
-      test(`returns to glossary Studio when an ontology deep link fails with ${status}`, async ({
+      test(`preserves native scope and exposes recovery when a deep link fails with ${status}`, async ({
         freshUserPage: { page },
       }) => {
         const ontologyId = fullUuid();
@@ -185,14 +187,26 @@ test.describe(
         );
 
         expect((await loading).status()).toBe(status);
+        await expect(page).toHaveURL(new RegExp('ontology=' + ontologyId));
+        await expect(
+          page.getByTestId('ontology-studio-shell').getByRole('alert')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('ontology-scope-menu-trigger')
+        ).toHaveText('Ontology');
+        await expect(page.getByTestId('ontology-explorer')).toHaveCount(0);
+        await expect(
+          page.getByRole('button', { name: 'Reload', exact: true })
+        ).toBeVisible();
+        await page
+          .getByRole('button', { name: 'All ontologies', exact: true })
+          .click();
         await expect(page).toHaveURL(
           /\/governance\/ontology\?source=context-center$/
         );
-        await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-          'aria-selected',
-          'true'
-        );
-        await expect(page.getByTestId('ontology-explorer')).toBeVisible();
+        await expect(
+          page.getByTestId('ontology-scope-menu-trigger')
+        ).toHaveAttribute('data-scope-key', 'ontology:all');
       });
     }
 
@@ -332,6 +346,332 @@ test.describe(
   'Native ontology publication',
   { tag: ['@Features', '@Governance'] },
   () => {
+    test('manages reviewers with reload persistence and locks settings during an open review', async ({
+      isolatedUserPage: author,
+      isolatedUser,
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      // Only needs to exist as a pickable user, so skip a browser sign-in.
+      const reviewer = new UserClass();
+      const teamName = `pw_review_team_${uuid()}`;
+      const team = new TeamClass({
+        name: teamName,
+        displayName: teamName,
+        description: 'Review exclusion fixture',
+        teamType: 'Group',
+        users: [],
+        policies: [],
+      });
+      const name = `pw_review_settings_${uuid()}`;
+      const tasks: string[] = [];
+      let ontology: Ontology | undefined;
+      try {
+        await reviewer.create(api);
+        await team.create(api);
+        await waitForSearchIndexed(
+          api,
+          reviewer.responseData.name,
+          SearchIndex.USER,
+          {
+            matchBy: 'nameOrDisplayName',
+          }
+        );
+        await waitForSearchIndexed(
+          api,
+          isolatedUser.responseData.name,
+          SearchIndex.USER,
+          { matchBy: 'nameOrDisplayName' }
+        );
+        await waitForSearchIndexed(
+          api,
+          team.responseData.name,
+          SearchIndex.TEAM,
+          {
+            matchBy: 'nameOrDisplayName',
+          }
+        );
+        ontology = await okJson<Ontology>(
+          await api.post('/api/v1/ontologies', {
+            data: {
+              name,
+              iri: `urn:${name}`,
+              namespace: `urn:${name}:`,
+              reviewers: [],
+            },
+          }),
+          'Create reviewer settings ontology'
+        );
+        const ontologyId = ontology.id;
+        await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create reviewable concept'
+        );
+        await author.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await author.getByTestId('ontology-publication-trigger').click();
+        const card = author.getByTestId('ontology-release-reviewers');
+        const picker = card.getByRole('combobox', { name: 'Add reviewer' });
+        const searchFor = async (name: string) => {
+          const users = author.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/search/query' &&
+              url.searchParams.get('q') === name &&
+              url.searchParams.get('index') === SearchIndex.USER
+            );
+          });
+          const teams = author.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === '/api/v1/search/query' &&
+              url.searchParams.get('q') === name &&
+              url.searchParams.get('index') === SearchIndex.TEAM
+            );
+          });
+          await picker.fill(name);
+          expect((await users).status()).toBe(200);
+          expect((await teams).status()).toBe(200);
+          await expect(picker).toHaveValue(name);
+        };
+
+        await test.step('Add a user and exclude the current user, added user and teams', async () => {
+          await expect(picker).toBeEnabled();
+          await searchFor(reviewer.responseData.name);
+          const firstAddition = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}` &&
+              response.request().method() === 'PATCH'
+          );
+          await author
+            .getByRole('option', {
+              name:
+                reviewer.responseData.displayName ?? reviewer.responseData.name,
+            })
+            .click();
+          expect((await firstAddition).status()).toBe(200);
+          await expect(card).toContainText(
+            reviewer.responseData.displayName ?? reviewer.responseData.name
+          );
+          await picker.fill(reviewer.responseData.name);
+          await expect(picker).toHaveValue(reviewer.responseData.name);
+          await expect(
+            author.getByRole('option', {
+              name:
+                reviewer.responseData.displayName ?? reviewer.responseData.name,
+            })
+          ).toHaveCount(0);
+          await searchFor(isolatedUser.responseData.name);
+          await expect(
+            author.getByRole('option', {
+              name:
+                isolatedUser.responseData.displayName ??
+                isolatedUser.responseData.name,
+            })
+          ).toHaveCount(0);
+          await searchFor(team.responseData.name);
+          await expect(
+            author.getByRole('option', { name: team.responseData.displayName })
+          ).toHaveCount(0);
+        });
+
+        await test.step('Remove and restore the reviewer across reloads', async () => {
+          await author.reload();
+          await author.getByTestId('ontology-publication-trigger').click();
+          const restored = author.getByTestId('ontology-release-reviewers');
+          const row = restored.getByRole('row', {
+            name: new RegExp(
+              reviewer.responseData.displayName ?? reviewer.responseData.name
+            ),
+          });
+          await expect(row).toBeVisible();
+          const removal = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}` &&
+              response.request().method() === 'PATCH'
+          );
+          await row.press('Delete');
+          expect((await removal).status()).toBe(200);
+          await expect(row).toHaveCount(0);
+          await author.reload();
+          await author.getByTestId('ontology-publication-trigger').click();
+          const emptyCard = author.getByTestId('ontology-release-reviewers');
+          await expect(emptyCard).toContainText('No configured reviewers');
+          const emptyPicker = emptyCard.getByRole('combobox', {
+            name: 'Add reviewer',
+          });
+          await emptyPicker.fill(reviewer.responseData.name);
+          const addition = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}` &&
+              response.request().method() === 'PATCH'
+          );
+          await author
+            .getByRole('option', {
+              name:
+                reviewer.responseData.displayName ?? reviewer.responseData.name,
+            })
+            .click();
+          expect((await addition).status()).toBe(200);
+          await expect(emptyCard).toContainText(
+            reviewer.responseData.displayName ?? reviewer.responseData.name
+          );
+        });
+
+        await test.step('Freeze reviewer and rule controls for the submitted review', async () => {
+          const rule = author
+            .getByTestId('ontology-release-reviewers')
+            .getByRole('button', {
+              name: 'Any one',
+            });
+          await rule.click();
+          const ruleUpdate = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologies/${ontologyId}` &&
+              response.request().method() === 'PATCH'
+          );
+          await author
+            .getByRole('option', { name: 'All', exact: true })
+            .click();
+          expect((await ruleUpdate).status()).toBe(200);
+          const state = await okJson<OntologyState>(
+            await api.get(`/api/v1/ontologies/${ontologyId}/state`),
+            'Read reviewer settings revision'
+          );
+          const release = await okJson<OntologyRelease>(
+            await api.post(`/api/v1/ontologies/${ontologyId}/releases`, {
+              data: { expectedWorkingRevision: state.workingRevision },
+            }),
+            'Capture reviewer settings release'
+          );
+          await submitReview(
+            api,
+            'ontologyRelease',
+            release.fullyQualifiedName,
+            tasks
+          );
+          await author.reload();
+          await author.getByTestId('ontology-publication-trigger').click();
+          const locked = author.getByTestId('ontology-release-reviewers');
+          await expect(
+            locked.getByRole('combobox', { name: 'Add reviewer' })
+          ).toBeDisabled();
+          // A locked control also renders a focusable tooltip trigger with the
+          // same name, so match the disabled select itself.
+          await expect(
+            locked
+              .getByRole('button', { name: 'All' })
+              .and(author.locator('[data-disabled="true"]'))
+          ).toBeVisible();
+          await expect(locked).toContainText('locked by review');
+          await expect(
+            locked.getByRole('row', {
+              name: new RegExp(
+                reviewer.responseData.displayName ?? reviewer.responseData.name
+              ),
+            })
+          ).toBeVisible();
+        });
+      } finally {
+        await cleanReviews(api, tasks);
+        if (ontology) {
+          await deleteFixtureEntity(
+            api,
+            `/api/v1/ontologies/${ontology.id}?recursive=true`
+          );
+        }
+        await team.delete(api);
+        await reviewer.delete(api);
+      }
+    });
+
+    test('shows the exact punctuation and newline reason after a reviewer rejects', async ({
+      isolatedUserPage: author,
+      freshUserPage: { page: reviewerPage, user: reviewer },
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = `pw_review_rejection_${uuid()}`;
+      const reason =
+        '<b>Reject this version.</b>\n  Keep “Customer”; fix range & retry.';
+      const tasks: string[] = [];
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: {
+            name,
+            iri: `urn:${name}`,
+            namespace: `urn:${name}:`,
+            reviewers: [{ id: reviewer.responseData.id, type: 'user' }],
+          },
+        }),
+        'Create rejection ontology'
+      );
+      try {
+        await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Customer',
+              ontology: ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create rejected concept'
+        );
+        const state = await okJson<OntologyState>(
+          await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+          'Read rejection revision'
+        );
+        const release = await okJson<OntologyRelease>(
+          await api.post(`/api/v1/ontologies/${ontology.id}/releases`, {
+            data: { expectedWorkingRevision: state.workingRevision },
+          }),
+          'Capture rejected release'
+        );
+        const task = await submitReview(
+          api,
+          'ontologyRelease',
+          release.fullyQualifiedName,
+          tasks
+        );
+        await reviewerPage.goto(`/tasks/${task.id}`);
+        await expect(reviewerPage.getByTestId('task-reject')).toBeEnabled();
+        await reviewerPage.getByTestId('task-reject').click();
+        const comment = reviewerPage.getByTestId('task-action-comment');
+        await comment.getByRole('textbox').fill(reason);
+        const resolution = reviewerPage.waitForResponse(
+          (response) =>
+            response.url().endsWith(`/api/v1/tasks/${task.id}/resolve`) &&
+            response.request().method() === 'POST'
+        );
+        await reviewerPage.getByTestId('task-action-comment-confirm').click();
+        expect((await resolution).status()).toBe(200);
+        await author.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await author.getByTestId('ontology-publication-trigger').click();
+        const displayed = author.getByTestId('ontology-rejection-reason');
+        await expect(displayed).toBeVisible();
+        await expect(displayed).toHaveText(reason);
+        await expect(displayed.locator('b')).toHaveCount(0);
+        await expect(
+          author.getByTestId('ontology-request-review')
+        ).toBeDisabled();
+      } finally {
+        await cleanReviews(api, tasks);
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/ontologies/${ontology.id}?recursive=true`
+        );
+      }
+    });
+
     test('captures, reviews, activates and rolls back sealed releases in Studio', async ({
       isolatedUserPage: author,
       freshUserPage: { page: reviewer, user },
@@ -373,6 +713,10 @@ test.describe(
           'Second published definition',
         ]) {
           await openPublication(author, ontology);
+          await author
+            .getByTestId('ontology-release-notes')
+            .getByRole('textbox')
+            .fill(description);
           const capture = author.waitForResponse(
             (response) =>
               response
@@ -388,6 +732,10 @@ test.describe(
             'Capture release in Studio'
           );
           expect(release.baseReleaseId).toBe(releases.at(-1)?.id);
+          expect(release.semanticVersion).toBe(
+            releases.length === 0 ? '1.0.0' : '1.1.0'
+          );
+          expect(release.releaseNotes).toBe(description);
           releases.push(release);
           expect(release.entityStatus).toBe('Draft');
           await expect(
@@ -396,18 +744,21 @@ test.describe(
               exact: true,
             })
           ).toBeDisabled();
-          await expect(author.getByRole('alert')).toContainText(
-            'Logical consistency has not been checked'
-          );
+          await expect(
+            author
+              .getByTestId('ontology-release-definition')
+              .getByRole('alert')
+              .filter({ hasText: 'Logical consistency has not been checked' })
+          ).toBeVisible();
 
           const submission = author.waitForResponse(
             (response) =>
               new URL(response.url()).pathname === '/api/v1/tasks' &&
               response.request().method() === 'POST'
           );
-          await author
-            .getByRole('button', { name: 'Request approval', exact: true })
-            .click();
+          await clickIgnoringToasts(
+            author.getByTestId('ontology-request-review')
+          );
           const task = await okJson<Task>(
             await submission,
             'Submit captured release for workflow approval'
@@ -455,20 +806,43 @@ test.describe(
           expect(beforeActivation.activationRevision).toBe(releases.length - 1);
 
           await openPublication(author, ontology);
-          await author.getByLabel('Ontology release', { exact: true }).click();
-          await author.getByTestId(`tree-node-${release.id}`).click();
-          await activateRelease(author, ontology, release, releases.length - 1);
+          await expect(
+            author.getByTestId('ontology-release-stage')
+          ).toContainText('Approved');
+          await expect(
+            author.getByTestId('ontology-publish-release')
+          ).toContainText(release.semanticVersion ?? '');
+          await author.getByTestId('ontology-publication-tab-releases').click();
+          await author
+            .getByTestId(`ontology-release-select-${release.id}`)
+            .click();
+          await activateRelease(
+            author,
+            ontology,
+            release,
+            releases.length - 1,
+            'publish'
+          );
         }
 
         const [firstRelease] = releases;
         await author.reload();
-        await author.getByTestId('mode-tab-releases').click();
+        await author.getByTestId('ontology-release-history-trigger').click();
+        await expect(
+          author.getByTestId('ontology-publication-tab-releases')
+        ).toHaveAttribute('aria-selected', 'true');
+        await author
+          .getByTestId(
+            `ontology-release-select-${releases[releases.length - 1].id}`
+          )
+          .click();
         await expect(author.getByTestId('ontology-active-release')).toHaveText(
           'Active'
         );
-        await author.getByLabel('Ontology release', { exact: true }).click();
-        await author.getByTestId(`tree-node-${firstRelease.id}`).click();
-        await activateRelease(author, ontology, firstRelease, 2);
+        await author
+          .getByTestId(`ontology-release-select-${firstRelease.id}`)
+          .click();
+        await activateRelease(author, ontology, firstRelease, 2, 'rollback');
         await author
           .getByTestId('ontology-release-definition')
           .getByRole('button', { name: 'Customer', exact: true })
@@ -505,47 +879,75 @@ test.describe(
           api,
           `/api/v1/ontologyConcepts/${concept.id}`
         );
-        for (const [format, label, extension] of [
-          ['turtle', 'Turtle (.ttl)', 'ttl'],
-          ['rdfxml', 'RDF/XML (.rdf)', 'rdf'],
-          ['ntriples', 'N-Triples (.nt)', 'nt'],
-          ['jsonld', 'JSON-LD', 'jsonld'],
+        await author.getByTestId('ontology-publication-tab-changes').click();
+        await expect(
+          author.getByTestId('ontology-release-definition')
+        ).toBeVisible();
+        await expect(
+          author.getByRole('button', { name: 'Capture release', exact: true })
+        ).toBeVisible();
+        await author.keyboard.press('Escape');
+        await expect(
+          author.getByTestId('ontology-publication-modal')
+        ).not.toBeVisible();
+        for (const [card, previewFormat, extension] of [
+          ['rdfxml', 'turtle', 'rdf'],
+          ['jsonld', 'turtle', 'jsonld'],
+          ['skos', 'skos', 'ttl'],
+          ['csv', 'csv', 'csv'],
         ]) {
-          const exported = author.waitForResponse((response) => {
+          const exportPath = `/api/v1/ontologyReleases/${firstRelease.id}/export`;
+          const previewed = author.waitForResponse((response) => {
             const url = new URL(response.url());
 
             return (
-              url.pathname ===
-                `/api/v1/ontologyReleases/${firstRelease.id}/export` &&
-              url.searchParams.get('format') === format
+              url.pathname === exportPath &&
+              url.searchParams.get('format') === previewFormat
             );
           });
-          const downloaded = author.waitForEvent('download');
-          await author
-            .getByTestId('ontology-release-definition')
-            .getByRole('button', { name: 'Export', exact: true })
-            .click();
-          if (format === 'turtle') {
+          await author.getByTestId('ontology-import-export-trigger').click();
+          const formatButton = author.getByTestId(
+            `ontology-release-format-${card}`
+          );
+          await expect(formatButton).toBeVisible();
+          if (card !== 'rdfxml') {
+            await formatButton.click();
+          }
+          const preview = await previewed;
+          expect(preview.ok()).toBeTruthy();
+          expect(await preview.text()).toContain('First published definition');
+          await expect(
+            author.getByTestId('ontology-release-export-preview')
+          ).not.toBeEmpty();
+          if (card === 'rdfxml') {
             await testInfo.attach('native-release-export', {
               body: await author
-                .getByRole('menu', { name: 'Export', exact: true })
+                .getByRole('dialog')
                 .screenshot({ animations: 'disabled' }),
               contentType: 'image/png',
             });
           }
-          await author
-            .getByRole('menuitem', { name: label, exact: true })
-            .click();
-          const response = await exported;
-          expect(response.ok()).toBeTruthy();
+          const fetched = author.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              url.pathname === exportPath &&
+              url.searchParams.get('format') === card &&
+              url.searchParams.get('shaclGate') === 'false'
+            );
+          });
+          const downloaded = author.waitForEvent('download');
+          await clickIgnoringToasts(
+            author.getByTestId('ontology-run-release-export')
+          );
           const download = await downloaded;
           expect(download.suggestedFilename()).toBe(
-            `ontology-release-${firstRelease.id}.${extension}`
+            `${name}-release-${firstRelease.releaseRevision}.${extension}`
           );
           const path = testInfo.outputPath(download.suggestedFilename());
           await download.saveAs(path);
           const content = await readFile(path, 'utf8');
-          expect(content).toBe(await response.text());
+          expect(content).toBe(await (await fetched).text());
           expect(content).toContain(concept.iri);
           expect(content).toContain('First published definition');
           expect(content).not.toContain('Second published definition');
@@ -559,367 +961,6 @@ test.describe(
         );
       }
     });
-  }
-);
-
-test(
-  'authors a native ontology and concept in Studio with independent reviewers',
-  { tag: ['@Features', '@Governance'] },
-  async (
-    { isolatedUserPage: author, freshUserPage: { user: reviewer } },
-    testInfo
-  ) => {
-    test.slow();
-    const api = await getWorkerAdminAPIContext();
-    const name = `pw_authoring_${uuid()}`;
-    let ontology: Ontology | undefined;
-    try {
-      await author.goto('/governance/ontology');
-      await author.getByTestId('ontology-create').click();
-      const form = author.getByTestId('ontology-create-form');
-      await form.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
-      await form
-        .getByRole('textbox', { name: 'Ontology IRI', exact: true })
-        .fill(`urn:${name}`);
-      await form
-        .getByRole('textbox', { name: 'Namespace', exact: true })
-        .fill('relative/path');
-      await form.getByRole('button', { name: 'Save', exact: true }).click();
-      await expect(form).toContainText('Enter a valid concept IRI.');
-      await form
-        .getByRole('textbox', { name: 'Namespace', exact: true })
-        .fill(`urn:${name}:`);
-      await form
-        .getByRole('combobox', { name: 'Reviewers', exact: true })
-        .fill(reviewer.responseData.name);
-      await author
-        .getByRole('option')
-        .filter({
-          hasText:
-            reviewer.responseData.displayName ?? reviewer.responseData.name,
-        })
-        .click();
-      await form
-        .getByRole('combobox', { name: 'Reviewers', exact: true })
-        .press('Escape');
-      const created = author.waitForResponse(
-        (response) =>
-          new URL(response.url()).pathname === '/api/v1/ontologies' &&
-          response.request().method() === 'POST'
-      );
-      await form.getByRole('button', { name: 'Save', exact: true }).click();
-      ontology = await okJson<Ontology>(
-        await created,
-        'Create ontology in Studio'
-      );
-      expect(ontology.reviewers).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            id: reviewer.responseData.id,
-            type: 'user',
-          }),
-        ])
-      );
-      expect(ontology.owners).toHaveLength(1);
-
-      await author.getByTestId('mode-tab-model').click();
-      await author.getByTestId('ontology-add-concept').click();
-      const editor = author.getByTestId('ontology-concept-editor');
-      await editor
-        .getByRole('textbox', { name: 'Name', exact: true })
-        .fill('Customer');
-      await editor
-        .getByRole('textbox', { name: 'Description', exact: true })
-        .fill('Native customer definition');
-      await expect(editor.getByRole('button', { name: /Type$/ })).toContainText(
-        'OWL_CLASS'
-      );
-      const conceptCreated = author.waitForResponse(
-        (response) =>
-          new URL(response.url()).pathname === '/api/v1/ontologyConcepts' &&
-          response.request().method() === 'POST'
-      );
-      await editor.getByRole('button', { name: 'Save', exact: true }).click();
-      const concept = await okJson<OntologyConcept>(
-        await conceptCreated,
-        'Create concept in Studio'
-      );
-      expect(concept.ontology.id).toBe(ontology.id);
-      expect(concept.iri).toMatch(new RegExp(`^urn:${name}:`));
-      await expect(
-        editor.getByRole('textbox', { name: 'Concept IRI', exact: true })
-      ).toHaveValue(concept.iri);
-      await expect(
-        editor.getByRole('textbox', { name: 'Name', exact: true })
-      ).toBeDisabled();
-      await editor
-        .getByRole('textbox', { name: 'Display Name', exact: true })
-        .fill('Customers');
-      await editor
-        .getByRole('button', { name: 'Add mapping', exact: true })
-        .click();
-      const mappingEditor = editor.getByTestId('ontology-concept-mapping');
-      const mapping = {
-        conceptIri: `https://example.org/${name}/Customer`,
-        mappingType: 'EXACT_MATCH',
-        schemeIri: `https://example.org/${name}/vocabulary`,
-        source: 'External vocabulary',
-      };
-      await mappingEditor
-        .getByRole('textbox', { name: 'Concept IRI', exact: true })
-        .fill(mapping.conceptIri);
-      await mappingEditor
-        .getByRole('textbox', { name: 'Scheme IRI', exact: true })
-        .fill(mapping.schemeIri);
-      await mappingEditor
-        .getByRole('textbox', { name: 'Source', exact: true })
-        .fill(mapping.source);
-      const edited = author.waitForResponse(
-        (response) =>
-          response.url().endsWith(`/api/v1/ontologyConcepts/${concept.id}`) &&
-          response.request().method() === 'PATCH'
-      );
-      await editor.getByRole('button', { name: 'Save', exact: true }).click();
-      const updated = await okJson<OntologyConcept>(
-        await edited,
-        'Update concept in Studio'
-      );
-      expect(updated.iri).toBe(concept.iri);
-      expect(updated.displayName).toBe('Customers');
-      expect(updated.conceptMappings).toEqual([mapping]);
-      await author.reload();
-      await author.getByTestId('mode-tab-model').click();
-      await author
-        .getByRole('button', { name: 'Customers', exact: true })
-        .click();
-      await expect(
-        editor.getByRole('textbox', { name: 'Description', exact: true })
-      ).toHaveValue('Native customer definition');
-      await expect(
-        mappingEditor.getByRole('textbox', { name: 'Concept IRI', exact: true })
-      ).toHaveValue(mapping.conceptIri);
-      await expect(
-        mappingEditor.getByRole('textbox', { name: 'Scheme IRI', exact: true })
-      ).toHaveValue(mapping.schemeIri);
-      await expect(
-        mappingEditor.getByRole('textbox', { name: 'Source', exact: true })
-      ).toHaveValue(mapping.source);
-      await testInfo.attach('native-concept-mappings', {
-        body: await mappingEditor.screenshot(),
-        contentType: 'image/png',
-      });
-      await mappingEditor
-        .getByRole('button', { name: 'Remove', exact: true })
-        .click();
-      const mappingRemoved = author.waitForResponse(
-        (response) =>
-          response.url().endsWith(`/api/v1/ontologyConcepts/${concept.id}`) &&
-          response.request().method() === 'PATCH'
-      );
-      await editor.getByRole('button', { name: 'Save', exact: true }).click();
-      const withoutMapping = await okJson<OntologyConcept>(
-        await mappingRemoved,
-        'Remove native concept mapping'
-      );
-      expect(withoutMapping.conceptMappings).toEqual([]);
-      expect(withoutMapping.iri).toBe(concept.iri);
-      await expect(mappingEditor).toHaveCount(0);
-      await author.getByTestId('ontology-model-property').click();
-      await author.getByTestId('ontology-add-property').click();
-      const propertyEditor = author.getByTestId('ontology-property-editor');
-      await propertyEditor
-        .getByRole('textbox', { name: 'Name', exact: true })
-        .fill('status');
-      await propertyEditor.getByRole('button', { name: /Type$/ }).click();
-      await author.getByRole('option', { name: 'DATA', exact: true }).click();
-      await propertyEditor
-        .getByRole('textbox', { name: 'Domain classes', exact: true })
-        .fill(concept.iri);
-      await propertyEditor
-        .getByRole('textbox', { name: 'Range', exact: true })
-        .fill('http://www.w3.org/2001/XMLSchema#string');
-      await propertyEditor
-        .getByRole('button', { name: 'Add Value', exact: true })
-        .click();
-      await propertyEditor
-        .getByRole('textbox', { name: 'Value', exact: true })
-        .fill(' active ');
-      await propertyEditor
-        .getByRole('textbox', { name: 'Data Type', exact: true })
-        .fill('http://www.w3.org/2001/XMLSchema#string');
-      const propertyCreated = author.waitForResponse(
-        (response) =>
-          new URL(response.url()).pathname === '/api/v1/ontologyProperties' &&
-          response.request().method() === 'POST'
-      );
-      await propertyEditor
-        .getByRole('button', { name: 'Save', exact: true })
-        .click();
-      const property = await okJson<OntologyProperty>(
-        await propertyCreated,
-        'Create native data property in Studio'
-      );
-      expect(property.ontology.id).toBe(ontology.id);
-      expect(property.kind).toBe('DATA');
-      expect(property.domain).toEqual([concept.iri]);
-      expect(property.enumValues).toEqual([
-        {
-          value: ' active ',
-          datatypeIri: 'http://www.w3.org/2001/XMLSchema#string',
-        },
-      ]);
-      await propertyEditor
-        .getByRole('textbox', { name: 'Display Name', exact: true })
-        .fill('Customer status');
-      const propertyPatched = author.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .endsWith(`/api/v1/ontologyProperties/${property.id}`) &&
-          response.request().method() === 'PATCH'
-      );
-      await propertyEditor
-        .getByRole('button', { name: 'Save', exact: true })
-        .click();
-      const savedProperty = await okJson<OntologyProperty>(
-        await propertyPatched,
-        'Update native property in Studio'
-      );
-      expect(savedProperty.iri).toBe(property.iri);
-      expect(savedProperty.enumValues).toEqual(property.enumValues);
-      await author.reload();
-      await author.getByTestId('mode-tab-model').click();
-      await author.getByTestId('ontology-model-property').click();
-      await author
-        .getByRole('button', { name: 'Customer status', exact: true })
-        .click();
-      await expect(
-        propertyEditor.getByRole('textbox', { name: 'Value', exact: true })
-      ).toHaveValue(' active ');
-      for (const permanent of [false, true]) {
-        await test.step(`Delete the native property (permanent: ${permanent})`, async () => {
-          await author
-            .getByRole('button', { name: 'Delete', exact: true })
-            .click();
-          const modal = author.getByTestId('delete-modal');
-          if (permanent) {
-            await modal.getByTestId('hard-delete').click();
-          }
-          const deleted = author.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname ===
-                `/api/v1/ontologyProperties/${property.id}` &&
-              response.request().method() === 'DELETE'
-          );
-          await modal.getByTestId('confirm-button').click();
-          const response = await deleted;
-          expect(response.status()).toBe(200);
-          expect(new URL(response.url()).searchParams.get('hardDelete')).toBe(
-            String(permanent)
-          );
-          await expect(propertyEditor).not.toBeVisible();
-          const stored = await api.get(
-            `/api/v1/ontologyProperties/${property.id}?include=all`
-          );
-          if (permanent) {
-            expect(stored.status()).toBe(404);
-          } else {
-            expect(
-              (await okJson<OntologyProperty>(stored, 'Read deleted property'))
-                .deleted
-            ).toBe(true);
-            await okJson<OntologyProperty>(
-              await api.put('/api/v1/ontologyProperties/restore', {
-                data: { id: property.id },
-              }),
-              'Restore property before permanent deletion'
-            );
-            await author.reload();
-            await author.getByTestId('mode-tab-model').click();
-            await author.getByTestId('ontology-model-property').click();
-            await author
-              .getByRole('button', { name: 'Customer status', exact: true })
-              .click();
-          }
-        });
-      }
-      const parent = await okJson<OntologyConcept>(
-        await api.post('/api/v1/ontologyConcepts', {
-          data: {
-            name: 'Party',
-            ontology: ontology.fullyQualifiedName,
-            conceptType: 'OWL_CLASS',
-          },
-        }),
-        'Declare the superclass'
-      );
-      await author.getByTestId('ontology-model-axiom').click();
-      await author.getByTestId('ontology-add-axiom').click();
-      const axiom = author.getByTestId('ontology-axiom-panel');
-      await axiom
-        .getByRole('textbox', { name: 'Name', exact: true })
-        .fill('CustomerIsParty');
-      await axiom
-        .getByRole('textbox', { name: 'Display Name', exact: true })
-        .fill('Customer is a Party');
-      await axiom
-        .getByRole('textbox', { name: 'Description', exact: true })
-        .fill('Customers are parties');
-      await axiom
-        .getByRole('textbox', { name: 'Subject', exact: true })
-        .fill(concept.iri);
-      await axiom
-        .getByRole('textbox', { name: /^Concept IRI/ })
-        .fill(parent.iri);
-      await expect(axiom.getByTestId('ontology-axiom-submit')).toBeEnabled();
-      const axiomCreated = author.waitForResponse(
-        (response) =>
-          new URL(response.url()).pathname === '/api/v1/ontologyAxioms' &&
-          response.request().method() === 'POST'
-      );
-      await axiom.getByTestId('ontology-axiom-submit').click();
-      const hierarchy = await okJson<OntologyAxiom>(
-        await axiomCreated,
-        'Create the native subclass axiom'
-      );
-      expect(hierarchy.ontology.id).toBe(ontology.id);
-      await expect(author.getByText('Saved', { exact: true })).toBeVisible();
-      await author.getByTestId('mode-tab-graph').click();
-      await expect(author.locator('.ontology-g6-container')).toBeVisible();
-      expect(await readNodePositions(author)).toEqual(
-        expect.objectContaining({
-          [concept.id]: expect.any(Object),
-          [parent.id]: expect.any(Object),
-        })
-      );
-      expect(await readGraphEdges(author)).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            from: concept.id,
-            to: parent.id,
-            relationType: 'subClassOf',
-          }),
-        ])
-      );
-      await author.getByTestId('submode-tab-tree').click();
-      await expect(
-        author.getByTestId(`ontology-tree-term-${concept.id}`)
-      ).toBeVisible();
-      await expect(
-        author.getByTestId(`ontology-tree-term-${parent.id}`)
-      ).toBeVisible();
-      await author.screenshot({
-        path: testInfo.outputPath('native-definition-authoring.png'),
-        fullPage: true,
-      });
-    } finally {
-      if (ontology) {
-        await deleteFixtureEntity(
-          api,
-          `/api/v1/ontologies/${ontology.id}?recursive=true`
-        );
-      }
-    }
   }
 );
 
@@ -1026,14 +1067,13 @@ test(
         page.getByTestId(`ontology-memory-draft-${draft.id}`)
       ).toBeHidden();
       await selectOntology(page, ontology);
-      await page.getByTestId('mode-tab-model').click();
-      await page.getByRole('button', { name: 'Customer', exact: true }).click();
+      await page.getByTestId('fit-view').click();
+      const positions = await readNodePositions(page);
+      await page.mouse.click(positions[conceptId].x, positions[conceptId].y);
       await expect(
-        page
-          .getByTestId('ontology-concept-editor')
-          .getByRole('textbox', { name: 'Description', exact: true })
-      ).toHaveValue('A customer buys products.');
-      await page.getByTestId('mode-tab-releases').click();
+        page.getByTestId('ontology-concept-inspector')
+      ).toContainText('A customer buys products.');
+      await page.getByTestId('ontology-publication-trigger').click();
       const captured = page.waitForResponse(
         (response) =>
           new URL(response.url()).pathname ===

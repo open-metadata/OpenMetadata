@@ -95,7 +95,7 @@ function AddWidgetTabContent({
         justify="center">
         <img
           alt={widget.name}
-          className="tw:py-4"
+          className="tw:py-4 tw:filter-(--widget-preview-filter)"
           data-testid="widget-image"
           src={widgetImage}
         />
@@ -112,7 +112,7 @@ function AddWidgetTabContent({
             className="tw:px-8 tw:mt-4"
             color="primary"
             data-testid="add-widget-button"
-            iconLeading={<Plus />}
+            iconLeading={Plus}
             isDisabled={!widgetAddable}
             onPress={getAddWidgetHandler(widget, selectedWidgetSize)}>
             {t('label.add')}

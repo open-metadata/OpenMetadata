@@ -14,11 +14,12 @@
 package org.openmetadata.service.alerting.audience;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -27,10 +28,12 @@ import org.openmetadata.service.alerting.matching.AlertsRuleEvaluator;
 
 /**
  * Resolves the owners of an entity, users and teams, as recipients. Fetching an entity with the
- * "owners" field resolves inherited ownership, which test cases rely on. For a conversation, its
- * creator and the owners of the entity it is about.
+ * "owners" field resolves inherited ownership, which test cases rely on. A conversation or a task
+ * has no owners of its own: its owners are its creator, unless a bot, and the owners of the entity
+ * it is about.
  */
 public class OwnerRecipientResolver implements RecipientResolutionStrategy {
+  private static final String TASK_FIELDS = "about,createdBy";
 
   private final UserRecipientResolver users;
   private final TeamRecipientResolver teams;
@@ -46,16 +49,19 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionAction action,
       SubscriptionDestination destination,
       AddressDirectory directory) {
-    return Entity.CONVERSATION.equalsIgnoreCase(event.getEntityType())
-        ? Recipients.from(
-            Lookup.of(
-                "the conversation of event " + event.getId(),
-                () -> AlertsRuleEvaluator.getConversation(event)),
-            conversation -> ofConversation(conversation, directory))
-        : Recipients.from(
-            Lookup.of(
-                "the entity of event " + event.getId(), () -> AlertsRuleEvaluator.getEntity(event)),
-            entity -> of(entity, directory));
+    String what = "the " + event.getEntityType() + " of event " + event.getId();
+    return switch (typeOf(event.getEntityType())) {
+      case Entity.CONVERSATION -> Recipients.from(
+          Lookup.of(what, () -> AlertsRuleEvaluator.getConversation(event)),
+          conversation ->
+              ofActivity(conversation.getCreatedBy(), conversation.getEntityRef(), directory));
+      case Entity.TASK -> Recipients.from(
+          Lookup.of(what, () -> AlertsRuleEvaluator.getTask(event)),
+          task -> ofActivity(task.getCreatedBy(), task.getAbout(), directory));
+      default -> Recipients.from(
+          Lookup.of(what, () -> AlertsRuleEvaluator.getEntity(event)),
+          entity -> of(entity, directory));
+    };
   }
 
   @Override
@@ -65,30 +71,34 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionAction action,
       SubscriptionDestination destination,
       AddressDirectory directory) {
-    return Entity.CONVERSATION.equalsIgnoreCase(entityType)
-        ? Recipients.from(
-            Lookup.of(
-                "conversation " + entityId,
-                () -> Entity.getConversationRepository().getEventPayload(entityId)),
-            conversation -> ofConversation(conversation, directory))
-        : Recipients.from(stored(entityType, entityId), entity -> of(entity, directory));
+    String what = entityType + " " + entityId;
+    return switch (typeOf(entityType)) {
+      case Entity.CONVERSATION -> Recipients.from(
+          Lookup.of(what, () -> Entity.getConversationRepository().getEventPayload(entityId)),
+          conversation ->
+              ofActivity(conversation.getCreatedBy(), conversation.getEntityRef(), directory));
+      case Entity.TASK -> Recipients.from(
+          Lookup.of(
+              what,
+              () ->
+                  Entity.<Task>getEntity(Entity.TASK, entityId, TASK_FIELDS, Include.NON_DELETED)),
+          task -> ofActivity(task.getCreatedBy(), task.getAbout(), directory));
+      default -> Recipients.from(stored(entityType, entityId), entity -> of(entity, directory));
+    };
   }
 
-  private Recipients ofConversation(Conversation conversation, AddressDirectory directory) {
-    EntityReference creator = conversation.getCreatedBy();
+  private Recipients ofActivity(
+      EntityReference creator, EntityReference subject, AddressDirectory directory) {
     Recipients ofCreator =
         creator == null
             ? Recipients.none()
-            : Principals.of(List.of(creator), users, teams, directory);
-    return ofCreator.and(ofSubject(conversation, directory));
-  }
-
-  private Recipients ofSubject(Conversation conversation, AddressDirectory directory) {
-    EntityReference subject = conversation.getEntityRef();
-    return subject == null
-        ? Recipients.none()
-        : Recipients.from(
-            stored(subject.getType(), subject.getId()), entity -> of(entity, directory));
+            : users.resolvePeople(List.of(creator.getId()), directory);
+    Recipients ofSubject =
+        subject == null
+            ? Recipients.none()
+            : Recipients.from(
+                stored(subject.getType(), subject.getId()), entity -> of(entity, directory));
+    return ofCreator.and(ofSubject);
   }
 
   private Recipients of(EntityInterface<?> entity, AddressDirectory directory) {
@@ -99,6 +109,10 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
     return Lookup.of(
         entityType + " " + entityId,
         () -> Entity.getEntity(entityType, entityId, "owners", Include.NON_DELETED));
+  }
+
+  private static String typeOf(String entityType) {
+    return entityType == null ? "" : entityType.toLowerCase(Locale.ROOT);
   }
 
   @Override

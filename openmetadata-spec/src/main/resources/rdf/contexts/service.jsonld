@@ -58,10 +58,6 @@
       "serviceType": {
         "@id": "om:serviceType",
         "@type": "xsd:string"
-      },
-      "connection": {
-        "@id": "om:hasConnection",
-        "@type": "@json"
       }
     }
   ]

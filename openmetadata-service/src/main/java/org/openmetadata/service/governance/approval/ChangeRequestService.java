@@ -237,9 +237,7 @@ public final class ChangeRequestService {
           repository.executeInTransaction(
               () -> {
                 ChangeRequest locked = lockForUpdate(repository, snapshot);
-                boolean current =
-                    isOpen(locked)
-                        && Objects.equals(locked.getActiveRevisionNumber(), revisionNumber);
+                boolean current = reviewsActiveRevision(locked, revisionNumber);
                 if (current) {
                   dao()
                       .changeRequestDAO()
@@ -249,6 +247,16 @@ public final class ChangeRequestService {
               });
     }
     return reviewable;
+  }
+
+  /** Whether {@code revisionNumber} is still the active revision of an open request. */
+  public static boolean isActiveRevision(UUID changeRequestId, int revisionNumber) {
+    ChangeRequest request = dao().changeRequestDAO().findById(changeRequestId);
+    return request != null && reviewsActiveRevision(request, revisionNumber);
+  }
+
+  static boolean reviewsActiveRevision(ChangeRequest request, int revisionNumber) {
+    return isOpen(request) && Objects.equals(request.getActiveRevisionNumber(), revisionNumber);
   }
 
   /**
@@ -834,8 +842,7 @@ public final class ChangeRequestService {
       EntityRepository<?> repository, UUID entityId, List<MutationOp> ops) {
     List<MutationOp> restated = ops;
     if (MutationPlanner.hasFieldChange(ops)) {
-      JsonNode current =
-          JsonUtils.valueToTree(ChangeApplyService.readCurrent(repository, entityId, ops));
+      JsonNode current = ChangeApplyService.currentTree(repository, entityId, ops);
       restated = MutationPlanner.rebase(current, ops);
     }
     return restated;

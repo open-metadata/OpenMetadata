@@ -29,7 +29,7 @@ export const useTitleAndCount = (config: TitleAndCountConfig) => {
 
   const titleAndCount = useMemo(
     () => (
-      <div className="tw:flex tw:items-center tw:gap-2">
+      <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
         <Typography size="text-md" weight="bold">
           {displayTitle}
         </Typography>

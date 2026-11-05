@@ -126,6 +126,13 @@ public class RdfOntologyActivationIT extends BaseOntologyApprovalIT {
         ontology,
         "<urn:Customer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Party>",
         true);
+    // The promotion outlives this class; later classes that query the store directly must read
+    // the promoted dataset, not the stale configured one.
+    assertTrue(
+        RdfTestUtils.executeSparqlAsk(
+            activeGraphAsk(
+                ontology,
+                "<urn:Customer> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <urn:Party>")));
   }
 
   @Test
@@ -190,14 +197,16 @@ public class RdfOntologyActivationIT extends BaseOntologyApprovalIT {
   private static boolean ask(Ontology ontology, String pattern) {
     return JsonUtils.readTree(
             RdfRepository.getInstance()
-                .executeSparqlQuery(
-                    "ASK { GRAPH <"
-                        + OntologyActiveGraph.graph(ontology.getId())
-                        + "> { "
-                        + pattern
-                        + " } }",
-                    "json"))
+                .executeSparqlQuery(activeGraphAsk(ontology, pattern), "json"))
         .path("boolean")
         .asBoolean();
+  }
+
+  private static String activeGraphAsk(Ontology ontology, String pattern) {
+    return "ASK { GRAPH <"
+        + OntologyActiveGraph.graph(ontology.getId())
+        + "> { "
+        + pattern
+        + " } }";
   }
 }

@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import MemoriesView from './MemoriesView.component';
 
 jest.mock('react-i18next', () => ({
@@ -34,10 +35,6 @@ jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
 jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
   jest.fn(() => <button aria-label="Copy link" data-testid="copy-link-btn" />)
 );
-
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: jest.fn(() => <svg />),
-}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
@@ -132,6 +129,67 @@ const mockMemories: ContextMemory[] = [
 ];
 
 describe('MemoriesView', () => {
+  beforeEach(() => {
+    useApplicationStore.setState({ userProfilePics: {} });
+  });
+
+  it.each([
+    ['alice', 'Alice Smith'],
+    ['MemoryReconciliationApplicationBot', 'Memory Reconciliation Agent'],
+  ])('shows the cached display name for author %s', (name, displayName) => {
+    useApplicationStore.setState({
+      userProfilePics: {
+        [name]: { id: name, name, displayName, email: '' },
+      },
+    });
+
+    render(
+      <MemoriesView
+        data={[{ ...mockMemories[0], updatedBy: name }]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByText(displayName)).toBeInTheDocument();
+    expect(screen.queryByText(name)).not.toBeInTheDocument();
+  });
+
+  it('shows the raw author name until the profile is cached', () => {
+    render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
+
+    expect(screen.getByText('alice')).toBeInTheDocument();
+
+    act(() => {
+      useApplicationStore.getState().updateUserProfilePics({
+        id: 'alice',
+        user: {
+          id: 'alice',
+          name: 'alice',
+          displayName: 'Alice Smith',
+          email: '',
+        },
+      });
+    });
+
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    expect(screen.queryByText('alice')).not.toBeInTheDocument();
+  });
+
+  it.each([undefined, ''])(
+    'falls back to the author name when the cached display name is %s',
+    (displayName) => {
+      useApplicationStore.setState({
+        userProfilePics: {
+          alice: { id: 'alice', name: 'alice', displayName, email: '' },
+        },
+      });
+
+      render(<MemoriesView data={[mockMemories[0]]} isLoading={false} />);
+
+      expect(screen.getByText('alice')).toBeInTheDocument();
+    }
+  );
+
   it('renders the memories view container', () => {
     render(<MemoriesView data={mockMemories} isLoading={false} />);
 

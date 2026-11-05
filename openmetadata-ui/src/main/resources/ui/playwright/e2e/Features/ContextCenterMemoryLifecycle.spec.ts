@@ -136,9 +136,7 @@ test.describe(
       ).toBeVisible();
     });
 
-    test('unprocessed memories appear by default and cannot propose terms', async ({
-      page,
-    }) => {
+    test('unprocessed memories appear by default', async ({ page }) => {
       await navigateToMemories(page);
       const row = await searchAndGetMemoryRow(
         page,
@@ -153,9 +151,6 @@ test.describe(
       await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
         'Unprocessed'
       );
-      await expect(
-        dialog.getByRole('button', { name: /propose term/i })
-      ).not.toBeVisible();
       await page.screenshot({
         path: test.info().outputPath('unprocessed-memory.png'),
       });
@@ -169,9 +164,7 @@ test.describe(
       await expect(row).not.toBeVisible();
     });
 
-    test('retired details show reasons and successor while proposal actions stay hidden', async ({
-      page,
-    }) => {
+    test('retired details show reasons and successor', async ({ page }) => {
       test.slow();
       await navigateToMemories(page);
       await page.getByTestId('memory-status-filter').click();
@@ -198,9 +191,6 @@ test.describe(
       await expect(dialog.getByTestId('memory-lifecycle-reason')).toContainText(
         supersededReason
       );
-      await expect(
-        dialog.getByRole('button', { name: /propose term/i })
-      ).not.toBeVisible();
       await page.screenshot({
         path: test.info().outputPath('superseded-memory.png'),
         animations: 'disabled',
@@ -223,9 +213,6 @@ test.describe(
         path: test.info().outputPath('invalidated-memory.png'),
         animations: 'disabled',
       });
-      await expect(
-        dialog.getByRole('button', { name: /propose term/i })
-      ).not.toBeVisible();
     });
 
     test('linked memory modals stay closed after cancel, escape, editing and successor navigation', async ({

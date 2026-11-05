@@ -27,14 +27,13 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { getAgentStatusSummary } from '../../../utils/AgentsStatusWidgetPureUtils';
 import {
   getAgentRunningStatusMessage,
   getIconFromStatus,
 } from '../../../utils/AgentsStatusWidgetUtils';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import './agents-status-widget.less';
 import { AgentsStatusWidgetProps } from './AgentsStatusWidget.interface';
 
@@ -120,10 +119,9 @@ function AgentsStatusWidget({
         <AccordionPanel>
           {!isLoading && isEmpty(agentsInfo) && (
             <div className="flex-center p-y-md">
-              <ErrorPlaceHolder
-                size={SIZE.SMALL}
-                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-              />
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoDataPlaceholder data-testid="no-data-placeholder" />
+              </div>
             </div>
           )}
 

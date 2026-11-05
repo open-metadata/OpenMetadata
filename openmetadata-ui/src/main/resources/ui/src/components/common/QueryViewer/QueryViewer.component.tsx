@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button, Card, Tooltip } from '@openmetadata/ui-core-components';
+import { Badge, ButtonUtility, Card } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, split } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../EmptyPlaceholder/NoDataPlaceholder';
 import './query-viewer.style.less';
 
 const SchemaEditor = withSuspenseFallback(
@@ -38,14 +40,16 @@ const QueryViewer = ({
 
   const hasQuery = !isEmpty(sqlQuery);
 
-  const { queryLine, lineCount } = useMemo(() => {
+  const { formattedQuery, queryLine, lineCount } = useMemo(() => {
     if (!hasQuery) {
-      return { queryLine: '', lineCount: 0 };
+      return { formattedQuery: '', queryLine: '', lineCount: 0 };
     }
 
-    const lineCount = split(sqlQuery, '\n').length;
+    const formattedQuery = getSchemaEditorValue(sqlQuery);
+    const lineCount = split(formattedQuery, '\n').length;
 
     return {
+      formattedQuery,
       queryLine: `${lineCount} ${
         lineCount > 1 ? t('label.line-plural') : t('label.line')
       }`,
@@ -53,13 +57,15 @@ const QueryViewer = ({
     };
   }, [sqlQuery, hasQuery]);
 
-  const { onCopyToClipBoard } = useClipboard(hasQuery ? sqlQuery : '');
+  const { onCopyToClipBoard } = useClipboard(formattedQuery);
 
   return (
     <Card className="w-auto dbt-tab-container">
       {(title || hasQuery) && (
         <Card.Header
-          className="tw:min-h-14 tw:items-center"
+          className={classNames('tw:min-h-14 tw:items-center', {
+            'tw:justify-end': !title,
+          })}
           extra={
             hasQuery ? (
               <div className="tw:flex tw:items-center tw:gap-2">
@@ -74,25 +80,14 @@ const QueryViewer = ({
                   size="sm">
                   {queryLine}
                 </Badge>
-                <Tooltip
-                  placement="top end"
-                  title={t('message.copy-to-clipboard')}>
-                  <Button
-                    aria-label={t('message.copy-to-clipboard')}
-                    className="tw:size-8"
-                    color="secondary"
-                    data-testid="query-entity-copy-button"
-                    iconLeading={
-                      <CopyIcon
-                        aria-hidden
-                        className="tw:text-[var(--om-legacy-color-37352f)] tw:dark:text-fg-secondary tw:[&_path]:fill-current"
-                        height={16}
-                        width={16}
-                      />
-                    }
-                    onPress={() => onCopyToClipBoard()}
-                  />
-                </Tooltip>
+                <ButtonUtility
+                  data-testid="query-entity-copy-button"
+                  icon={Copy01}
+                  size="lg"
+                  tooltip={t('message.copy-to-clipboard')}
+                  tooltipPlacement="top end"
+                  onClick={() => onCopyToClipBoard()}
+                />
               </div>
             ) : null
           }
@@ -101,9 +96,10 @@ const QueryViewer = ({
           }
         />
       )}
-      <div className="tw:pt-px tw:pl-2">
-        {hasQuery && (
+      {hasQuery ? (
+        <div className="tw:pt-px tw:pl-2">
           <SchemaEditor
+            autoFormat={false}
             className="custom-code-mirror-theme"
             editorClass={classNames(
               lineCount > 4 ? 'table-query-editor' : 'query-editor'
@@ -112,10 +108,14 @@ const QueryViewer = ({
             options={{ readOnly: true }}
             refreshEditor={isActive}
             showCopyButton={false}
-            value={sqlQuery}
+            value={formattedQuery}
           />
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="tw:relative tw:min-h-60">
+          <NoDataPlaceholder data-testid="no-data-placeholder" />
+        </div>
+      )}
     </Card>
   );
 };

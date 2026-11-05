@@ -16,6 +16,9 @@ export const TAB_CONFIGURATION = 'configuration';
 export const TAB_RUNS = 'recent-runs';
 export const TAB_LIVE_INDEXING = 'live-indexing';
 
+export const SUB_PAGE_RUN_CONFIG = 'run-config';
+export const SUB_PAGE_EDIT_SCHEDULE = 'edit-schedule';
+
 /** Label for each app detail tab shown in the modal header. */
 export const TAB_LABEL_KEYS: Record<string, string> = {
   [TAB_SCHEDULE]: 'label.schedule',

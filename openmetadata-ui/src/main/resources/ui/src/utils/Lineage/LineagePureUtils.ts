@@ -16,11 +16,7 @@ import type { ColumnLevelLineageNode } from '../../components/Lineage/Lineage.in
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import type { Column } from '../../generated/entity/data/table';
 import type { TagLabel } from '../../generated/type/tagLabel';
-import type {
-  EdgeDetails,
-  LineageNodeType,
-  NodeData,
-} from '../../interface/lineage.interface';
+import type { EdgeDetails, NodeData } from '../../interface/lineage.interface';
 import type { TableSearchSource } from '../../interface/search.interface';
 import type { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 
@@ -84,7 +80,7 @@ const buildColumnLevelNodesForColumns = (
 
 const buildColumnLevelNodesForEdge = (
   node: EdgeDetails,
-  nodes: Record<string, LineageNodeType>,
+  nodes: Record<string, NodeData>,
   entityKey: 'fromEntity' | 'toEntity',
   direction: LineageDirection
 ): ColumnLevelLineageNode[] => {
@@ -128,7 +124,7 @@ const buildColumnLevelNodesForEdge = (
 
 export const prepareColumnLevelNodesFromEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeType>,
+  nodes: Record<string, NodeData>,
   direction: LineageDirection = LineageDirection.Downstream
 ) => {
   const entityKey =
@@ -145,7 +141,7 @@ export const prepareColumnLevelNodesFromEdges = (
 
 export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeType>
+  nodes: Record<string, NodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,
@@ -156,7 +152,7 @@ export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
 
 export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeType>
+  nodes: Record<string, NodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,

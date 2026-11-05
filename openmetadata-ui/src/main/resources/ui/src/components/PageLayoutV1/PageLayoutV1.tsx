@@ -19,6 +19,10 @@ import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
+import {
+  ENTITY_TABS_FILL_COLUMN_CLASS,
+  ENTITY_TABS_FILL_GRID_CLASS,
+} from './PageLayoutV1.constants';
 
 export type PageLayoutVariant = 'default' | 'compact';
 
@@ -33,6 +37,9 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanelWidth?: number;
   fullHeight?: boolean;
   variant?: PageLayoutVariant;
+  // The page renders `.entity-details-page-tabs`: in the AI shell its active tab
+  // panel grows to the bottom of the canvas.
+  fillEntityTabs?: boolean;
 }
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
@@ -47,6 +54,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   fullHeight = false,
   variant = 'default',
+  fillEntityTabs = false,
 }: PageLayoutProp) => {
   const location = useLocation();
 
@@ -108,8 +116,17 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             flex: `0 0 ${contentWidth}`,
             marginInlineStart: `${((center ? 3 : 0) / 24) * 100}%`,
           }}>
-          <Grid className="layout-row layout-grid">
-            <Grid.Item className="layout-column" span={24}>
+          <Grid
+            className={classNames('layout-row layout-grid', {
+              [ENTITY_TABS_FILL_GRID_CLASS]: fillEntityTabs,
+            })}
+            data-testid="page-layout-v1-grid">
+            <Grid.Item
+              className={classNames('layout-column', {
+                [ENTITY_TABS_FILL_COLUMN_CLASS]: fillEntityTabs,
+              })}
+              data-testid="page-layout-v1-column"
+              span={24}>
               {children}
             </Grid.Item>
           </Grid>

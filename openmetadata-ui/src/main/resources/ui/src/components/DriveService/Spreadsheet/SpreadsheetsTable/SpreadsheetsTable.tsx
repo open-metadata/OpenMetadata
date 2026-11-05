@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  EmptyPlaceholder,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -31,9 +27,9 @@ import {
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Spreadsheet } from '../../../../generated/entity/data/spreadsheet';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
-import { ServicePageData } from '../../../../interface/platform/service.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -48,6 +44,8 @@ import {
   tagTableObject,
 } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import { SpreadsheetsTableProps } from './SpreadsheetsTable.interface';
@@ -119,15 +117,15 @@ function SpreadsheetsTable({
     [paging]
   );
 
-  const tableColumn: ColumnsType<ServicePageData> = useMemo(
+  const tableColumn: ColumnsType<Spreadsheet> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 300,
-        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
-        render: (_, record: ServicePageData) => {
+        sorter: getColumnSorter<Spreadsheet, 'name'>('name'),
+        render: (_, record: Spreadsheet) => {
           const spreadsheetDisplayName = getEntityName(record);
 
           return (
@@ -147,8 +145,8 @@ function SpreadsheetsTable({
           );
         },
       },
-      ...descriptionTableObject<ServicePageData>({ width: 400 }),
-      ...tagTableObject<ServicePageData>(),
+      ...descriptionTableObject<Spreadsheet>({ width: 400 }),
+      ...tagTableObject<Spreadsheet>(),
     ],
     [searchValue, t]
   );
@@ -212,19 +210,17 @@ function SpreadsheetsTable({
         emptyText: (
           <div className="tw:relative tw:min-h-70">
             {searchValue ? (
-              <EmptyPlaceholder
+              <NoSearchResultsPlaceholder
                 description={t('message.check-spelling-or-try-shorter-term')}
-                icon={<NoSearch className="tw:text-secondary" />}
+                icon={<NoSearch />}
                 title={t('label.no-matching-result-plural')}
-                variant="blank"
               />
             ) : (
-              <EmptyPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+              <NoDataPlaceholder
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.spreadsheet-plural'),
                 })}
-                variant="blank"
               />
             )}
           </div>

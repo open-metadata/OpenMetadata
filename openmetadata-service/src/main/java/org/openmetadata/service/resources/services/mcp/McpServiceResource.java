@@ -380,7 +380,7 @@ public class McpServiceResource
       @Valid CreateMcpService update) {
     McpService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (McpService) response.getEntity());
     return response;
   }

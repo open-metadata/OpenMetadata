@@ -28,7 +28,6 @@ import {
   AppDataRetentionColored,
   AppMcpServer,
   AppMcpServerColored,
-  AppMemberWeeklyEmails,
   AppMemberWeeklyEmailsColored,
   AppMemoryReconciliationColored,
   AppMetadataExplorer,
@@ -56,6 +55,7 @@ import {
   AppWeeklyInsightsDigest,
   AppWeeklyInsightsDigestColored,
   LayoutGrid01,
+  WeeklyEmails,
 } from '@openmetadata/ui-core-components/icons';
 import type { RJSFSchema } from '@rjsf/utils';
 import type { AxiosError } from 'axios';
@@ -109,7 +109,7 @@ const APP_ICONS: Record<string, AppIcon> = {
   DataInsightsReportApplication: AppDataInsightsReport,
   DataRetentionApplication: AppDataRetention,
   McpApplication: AppMcpServer,
-  MemberWeeklyEmailApplication: AppMemberWeeklyEmails,
+  MemberWeeklyEmailApplication: WeeklyEmails,
   MetadataExporterApplication: AppMetadataExplorer,
   OnboardingApplication: AppOnboarding,
   QueryRunner: AppQueryRunner,
@@ -201,12 +201,10 @@ class ApplicationsClassBase {
       throw new Error(`Application schema not found: ${fqn}`);
     }
     const module = await loader();
-    const schema =
-      (module as { default?: unknown }).default ??
-      (module as Record<string, unknown>);
+    const schema = module.default;
 
     return fqn === SEARCH_INDEXING_APPLICATION
-      ? withSearchEntityTypes(schema as RJSFSchema)
+      ? withSearchEntityTypes(schema)
       : schema;
   }
   public getJSONUISchema() {

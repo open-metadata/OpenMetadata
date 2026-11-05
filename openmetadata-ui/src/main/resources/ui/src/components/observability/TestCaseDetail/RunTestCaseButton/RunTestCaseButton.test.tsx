@@ -163,6 +163,21 @@ describe('RunTestCaseButton', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('hides the button on a soft-deleted test case', async () => {
+    setPipelines([pipeline()]);
+    setPipelinePermission(true);
+
+    const { queryClient } = renderWithQueryClient(
+      <RunTestCaseButton testCase={{ ...testCase, deleted: true }} />
+    );
+
+    await waitForPipelinesLoaded(queryClient);
+
+    expect(
+      screen.queryByTestId('run-test-case-button')
+    ).not.toBeInTheDocument();
+  });
+
   it('stays hidden while the pipeline permission is still loading', async () => {
     setPipelines([pipeline()]);
     setPipelinePermission(true, { isLoading: true });

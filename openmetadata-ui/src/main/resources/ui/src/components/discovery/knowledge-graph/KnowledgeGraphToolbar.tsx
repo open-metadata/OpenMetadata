@@ -18,19 +18,19 @@ import type {
 import {
   Box,
   Button,
-  ButtonGroup,
-  ButtonGroupItem,
+  ButtonUtility,
   Checkbox,
   Popover,
   PopoverTrigger,
   Select,
+  Tabs,
   TreeSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   BookClosed,
   Dataflow02,
-  Expand01,
+  Maximize01,
   Minimize01,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
@@ -319,25 +319,28 @@ const KnowledgeGraphToolbar = ({
         <Box
           className="tw:max-w-full tw:min-w-0"
           data-testid="graph-mode-chooser">
-          <ButtonGroup
-            disallowEmptySelection
-            aria-label={t('label.mode')}
-            className="tw:max-w-full tw:flex-wrap"
-            selectedKeys={new Set([mode])}
-            size="sm"
-            onSelectionChange={(keys) => {
-              const next = [...keys][0];
-              if (next === 'ontology' || next === 'knowledge-graph') {
-                onModeChange(next);
+          <Tabs
+            selectedKey={mode}
+            onSelectionChange={(key) => {
+              if (key === 'ontology' || key === 'knowledge-graph') {
+                onModeChange(key);
               }
             }}>
-            <ButtonGroupItem iconLeading={Dataflow02} id="knowledge-graph">
-              {t('label.knowledge-graph')}
-            </ButtonGroupItem>
-            <ButtonGroupItem iconLeading={BookClosed} id="ontology">
-              {t('label.ontology')}
-            </ButtonGroupItem>
-          </ButtonGroup>
+            <Tabs.List
+              aria-label={t('label.mode')}
+              className="tw:max-w-full tw:flex-wrap"
+              size="sm"
+              type="button-border">
+              <Tabs.Item id="knowledge-graph">
+                <Dataflow02 aria-hidden="true" size={16} />
+                {t('label.knowledge-graph')}
+              </Tabs.Item>
+              <Tabs.Item id="ontology">
+                <BookClosed aria-hidden="true" size={16} />
+                {t('label.ontology')}
+              </Tabs.Item>
+            </Tabs.List>
+          </Tabs>
         </Box>
         <Box align="center" className="tw:min-w-0 tw:max-w-full" gap={2}>
           <Select
@@ -388,8 +391,9 @@ const KnowledgeGraphToolbar = ({
           </Select>
         )}
         <Select.ComboBox
+          allowClear
           aria-label={t('label.kg-find-in-graph')}
-          className="kg-find"
+          className="tw:max-w-full tw:min-w-[min(--spacing(32.5),100%)] tw:flex-[1_1_--spacing(50)]"
           emptyState={t('label.kg-no-results')}
           fontSize="sm"
           inputValue={findText}
@@ -516,19 +520,20 @@ const KnowledgeGraphToolbar = ({
             </Popover>
           </PopoverTrigger>
 
-          <Button
+          {/* Named, not tooltipped: fullscreen focuses this button, and an open
+              tooltip would take the Escape that leaves fullscreen. */}
+          <ButtonUtility
             aria-label={t(
               viewport.isFullscreen
                 ? 'label.exit-full-screen'
                 : 'label.full-screen-view'
             )}
-            color="tertiary"
             data-testid={
               viewport.isFullscreen ? 'exit-full-screen' : 'full-screen'
             }
-            iconLeading={viewport.isFullscreen ? Minimize01 : Expand01}
-            size="sm"
-            onPress={viewport.onFullscreen}
+            icon={viewport.isFullscreen ? Minimize01 : Maximize01}
+            size="lg"
+            onClick={viewport.onFullscreen}
           />
         </Box>
       </Box>

@@ -62,6 +62,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       Set.of("requestSchema.schemaFields.description", "responseSchema.schemaFields.description");
   private static final ReadPrefetchKey PREFETCH_DEFAULT_FIELDS =
       ReadPrefetchKey.API_ENDPOINT_DEFAULT_FIELDS;
+  // A PUT loads the stored endpoint with these fields, and the bulk loader reads schema field tags
+  // only with the schemas. Without them, a re-run that sends no field tags indexes the fields bare.
+  private static final String UPDATE_FIELDS = "requestSchema,responseSchema";
 
   public APIEndpointRepository() {
     super(
@@ -70,7 +73,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         APIEndpoint.class,
         Entity.getCollectionDAO().apiEndpointDAO(),
         "",
-        "",
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the API service / API collection delete cascade: search docs by service.id
@@ -537,13 +540,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         apiEndpoint.getResponseSchema() != null
             ? apiEndpoint.getResponseSchema().getSchemaFields()
             : null;
-    for (Field schemaField : listOrEmpty(responseSchemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
-    for (Field schemaField : listOrEmpty(requestSchemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    EntityUtil.mergeFieldTags(allTags, responseSchemaFields);
+    EntityUtil.mergeFieldTags(allTags, requestSchemaFields);
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,requestSchema,responseSchema");
   }
 
   public class APIEndpointUpdater extends EntityUpdater {
@@ -656,11 +660,12 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSchemaFields(

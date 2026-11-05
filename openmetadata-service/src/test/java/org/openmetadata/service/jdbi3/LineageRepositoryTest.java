@@ -27,8 +27,11 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.util.*;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,8 +39,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -1197,5 +1206,191 @@ class LineageRepositoryTest {
     LineageRepository lineageRepository = new LineageRepository();
     assertThrows(
         EntityNotFoundException.class, () -> lineageRepository.getLineageEdgeEnds(fromId, toId));
+  }
+
+  /**
+   * The edge's pipeline is copied, as stored, into the downstream entity's search document, which
+   * every user can read. Naming a service there would copy its connection, so the write is refused
+   * before anything is stored or loaded.
+   */
+  @Test
+  void testAddLineage_ServiceAsNewPipeline_IsRejectedBeforeStoring() {
+    EntityReference serviceRef =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    when(relationshipDAO.getRecord(fromEntityId, toEntityId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(null);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(fromEntityId), any()))
+        .thenReturn(fromEntity);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(toEntityId), any()))
+        .thenReturn(toEntity);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(fromEntity)
+                    .withToEntity(toEntity)
+                    .withLineageDetails(new LineageDetails().withPipeline(serviceRef)));
+
+    LineageRepository repository = new LineageRepository();
+    IllegalArgumentException rejected =
+        assertThrows(
+            IllegalArgumentException.class, () -> repository.addLineage(addLineage, "user"));
+
+    assertTrue(rejected.getMessage().contains(Entity.DATABASE_SERVICE), rejected.getMessage());
+    verify(relationshipDAO, times(0)).insert(any(), any(), any(), any(), anyInt(), any());
+    mockedEntity.verify(() -> Entity.getEntity(eq(serviceRef), any(), any()), times(0));
+  }
+
+  /** An edge stored with a service before the restriction is indexed without it, never a copy. */
+  @Test
+  void testBuildEntityLineageData_ServicePipeline_IsNotCopied() {
+    EntityReference serviceRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DATABASE_SERVICE)
+            .withFullyQualifiedName("warehouse");
+    LineageDetails details =
+        new LineageDetails().withPipeline(serviceRef).withSource(LineageDetails.Source.MANUAL);
+
+    var esData = LineageRepository.buildEntityLineageData(fromEntity, toEntity, details);
+
+    assertNull(esData.getPipeline(), "a service must not be copied into the lineage document");
+    assertNull(esData.getPipelineEntityType());
+    mockedEntity.verify(() -> Entity.getEntity(eq(serviceRef), any(), any()), times(0));
+  }
+
+  /**
+   * Ingestion re-sends an edge's stored pipeline on every write. A service stored there before the
+   * restriction is dropped rather than refused, so those writes keep working and heal the edge.
+   */
+  @Test
+  void testResolveEdgePipeline_ServiceAlreadyOnEdge_IsDropped() throws Exception {
+    EntityReference serviceRef =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    Method resolveEdgePipeline =
+        LineageRepository.class.getDeclaredMethod(
+            "resolveEdgePipeline", EntityReference.class, EntityReference.class);
+    resolveEdgePipeline.setAccessible(true);
+
+    assertNull(resolveEdgePipeline.invoke(null, serviceRef, serviceRef));
+  }
+
+  @Test
+  void testNewlyLinkedEdgePipeline_NullOrNonPipeline_NeedsNoViewCheck() {
+    EntityReference service =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    assertNull(LineageRepository.newlyLinkedEdgePipeline(null, null));
+    assertNull(LineageRepository.newlyLinkedEdgePipeline(service, null));
+  }
+
+  @Test
+  void testNewlyLinkedEdgePipeline_PipelineNotOnEdge_IsReturnedForTheViewCheck() {
+    EntityReference pipeline =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+
+    assertSame(pipeline, LineageRepository.newlyLinkedEdgePipeline(pipeline, null));
+  }
+
+  @Test
+  void testNewlyLinkedEdgePipeline_SamePipelineAlreadyOnEdge_IsNotRechecked() {
+    EntityReference pipeline =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+    LineageDetails stored = new LineageDetails().withPipeline(pipeline);
+
+    assertNull(LineageRepository.newlyLinkedEdgePipeline(pipeline, stored));
+  }
+
+  @Test
+  void testNewlyLinkedEdgePipeline_DifferentPipelineThanStored_IsReturned() {
+    EntityReference requested =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.STORED_PROCEDURE);
+    LineageDetails stored =
+        new LineageDetails()
+            .withPipeline(
+                new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE));
+
+    assertSame(requested, LineageRepository.newlyLinkedEdgePipeline(requested, stored));
+  }
+
+  @Test
+  void testExportCsvAsync_NeutralizesFormulaCells() throws Exception {
+    when(searchRepository.searchLineage(any(), any())).thenReturn(pipelineEdgeWithFormulas());
+
+    String csv =
+        new LineageRepository().exportCsvAsync("db.schema.from", 1, 1, null, "table", false);
+
+    assertFormulaCellsNeutralized(csv);
+  }
+
+  @Test
+  void testExportByEntityCountCsvAsync_NeutralizesFormulaCells() throws Exception {
+    when(searchRepository.searchLineageByEntityCount(any(), any()))
+        .thenReturn(pipelineEdgeWithFormulas());
+
+    String csv =
+        new LineageRepository()
+            .exportByEntityCountCsvAsync(
+                "db.schema.from",
+                LineageDirection.DOWNSTREAM,
+                0,
+                10,
+                1,
+                1,
+                null,
+                false,
+                "table",
+                "*");
+
+    assertFormulaCellsNeutralized(csv);
+  }
+
+  private static SearchLineageResult pipelineEdgeWithFormulas() {
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    Map<String, Object> pipeline =
+        Map.of(
+            "name", "etl",
+            "displayName", "+SUM(1,1)",
+            "description", "=HYPERLINK(\"http://example.com\")");
+    EsLineageData edge =
+        new EsLineageData()
+            .withFromEntity(new RelationshipRef().withId(fromId))
+            .withToEntity(new RelationshipRef().withId(toId))
+            .withPipeline(pipeline);
+    return new SearchLineageResult()
+        .withNodes(
+            Map.of(
+                "from", lineageNode(fromId, "db.schema.from"),
+                "to", lineageNode(toId, "db.schema.to")))
+        .withUpstreamEdges(Map.of("edge", edge))
+        .withDownstreamEdges(Map.of());
+  }
+
+  private static NodeInformation lineageNode(UUID id, String fqn) {
+    return new NodeInformation().withEntity(Map.of("id", id.toString(), "fullyQualifiedName", fqn));
+  }
+
+  private static void assertFormulaCellsNeutralized(String csv) throws Exception {
+    List<CSVRecord> records =
+        CSVFormat.DEFAULT
+            .builder()
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .build()
+            .parse(new StringReader(csv))
+            .getRecords();
+    assertEquals(1, records.size());
+    CSVRecord row = records.getFirst();
+    assertEquals("db.schema.from", row.get("fromEntityFQN"));
+    assertEquals("etl", row.get("pipelineName"));
+    assertEquals("'+SUM(1,1)", row.get("pipelineDisplayName"));
+    assertEquals("'=HYPERLINK(\"http://example.com\")", row.get("pipelineDescription"));
   }
 }

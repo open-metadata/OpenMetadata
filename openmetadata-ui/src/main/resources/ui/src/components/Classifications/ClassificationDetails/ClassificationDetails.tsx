@@ -13,7 +13,8 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
+  ButtonUtility,
+  FeaturedIcon,
   Owner,
   PageHeader,
   Tooltip,
@@ -21,6 +22,7 @@ import {
 import {
   Classification as ClassificationIcon,
   Download01,
+  Edit01,
   Lock01,
   Plus,
   RefreshCcw01,
@@ -84,6 +86,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -93,10 +96,6 @@ import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interf
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
@@ -669,7 +668,12 @@ const ClassificationDetails = forwardRef(
               displayName={displayName}
               displayNameClassName="text-xl"
               icon={
-                <ClassificationIcon className="tw:text-quaternary" size={36} />
+                <FeaturedIcon
+                  color="gray"
+                  icon={ClassificationIcon}
+                  size="md"
+                  theme="surface"
+                />
               }
               isDisabled={isClassificationDisabled}
               name={name ?? classification.name}
@@ -718,7 +722,7 @@ const ClassificationDetails = forwardRef(
     function renderTagsPanel() {
       return isEmpty(tags) && !isLoading ? (
         <Box className="tw:relative tw:min-h-[360px]">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               createPermission
                 ? [
@@ -822,16 +826,18 @@ const ClassificationDetails = forwardRef(
                         });
                       }}>
                       {isEmpty(currentClassification.owners) ? (
-                        <WidgetPlusButton
+                        <ButtonUtility
                           data-testid="add-owner"
-                          title={t('label.add-entity', {
+                          icon={Plus}
+                          tooltip={t('label.add-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />
                       ) : (
-                        <WidgetEditButton
+                        <ButtonUtility
                           data-testid="edit-owner"
-                          title={t('label.edit-entity', {
+                          icon={Edit01}
+                          tooltip={t('label.edit-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />

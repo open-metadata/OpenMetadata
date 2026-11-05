@@ -72,6 +72,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
+from metadata.ingestion.source.database.glue.connection import TABLE_NAME_MAX_LENGTH, GlueFilters
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
@@ -88,6 +89,7 @@ from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
     from metadata.ingestion.connections.connection import BaseConnection
+    from metadata.ingestion.source.database.glue.connection import GlueConnection as GlueClientConnection
 
 
 logger = ingestion_logger()
@@ -106,6 +108,10 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
+        # The startup test connection must probe what this pipeline ingests, not the connection's defaults.
+        cast("GlueClientConnection", self._connection).scope_to(
+            GlueFilters.of_pipeline(self.service_connection, self.source_config, self.config.serviceName)
+        )
         self.glue = cast("BaseConnection", self._connection).client
 
         self.schema_description_map = {}
@@ -514,7 +520,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         return next((fmt for fmt in FileFormat if fmt.value in library.lower()), None)
 
     def standardize_table_name(self, _: str, table: str) -> str:
-        return table[:128]
+        return table[:TABLE_NAME_MAX_LENGTH]
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """We don't pick up tags from Glue"""
