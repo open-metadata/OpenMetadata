@@ -22,7 +22,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Activity,
-  Copy01,
   Edit01,
   File02,
   RefreshCcw01,
@@ -69,7 +68,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { Style } from '../../../generated/type/schema';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
@@ -111,6 +109,7 @@ import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadc
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
+import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -208,7 +207,6 @@ export const DataAssetsHeader = ({
   const [upVoteLoading, setUpVoteLoading] = useState(false);
   const [downVoteLoading, setDownVoteLoading] = useState(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
@@ -502,10 +500,6 @@ export const DataAssetsHeader = ({
     }
   }, [onFollowClick]);
 
-  const handleCopyEntityUrl = useCallback(async () => {
-    await onCopyToClipBoard(globalThis.location.href);
-  }, [onCopyToClipBoard]);
-
   // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
   // component receives as a prop; `deleted` (destructured above, from `dataAsset.deleted`)
   // gates every canEdit* flag below, matching each old per-usage `&& !dataAsset.deleted`
@@ -745,8 +739,6 @@ export const DataAssetsHeader = ({
     }
   }, [dataAsset.id, fetchDataContract]);
 
-  const hasDisplayName = !isEmpty(dataAsset.displayName);
-
   const canShowFollowStat = computeCanShowFollowStat(
     excludeEntityService,
     deleted,
@@ -867,75 +859,6 @@ export const DataAssetsHeader = ({
             onClick={() => setIsStyleEditing(true)}
           />
         )}
-      </div>
-    );
-  };
-
-  const renderEntityTitle = () => {
-    const nameElementProps = hasDisplayName
-      ? {
-          as: 'span' as const,
-          size: 'text-sm' as const,
-          weight: 'medium' as const,
-        }
-      : {
-          as: 'h2' as const,
-          size: 'text-lg' as const,
-          weight: 'bold' as const,
-        };
-    const copyTooltipTitle = hasCopied
-      ? t('message.link-copy-to-clipboard')
-      : t('label.copy-item', { item: t('label.url-uppercase') });
-
-    return (
-      <div
-        className="tw:flex tw:min-w-0 tw:items-start tw:gap-3"
-        data-testid="entity-header-title">
-        <div className="tw:flex tw:min-w-0 tw:flex-col">
-          {hasDisplayName && (
-            <Typography
-              as="h2"
-              className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
-              data-testid="entity-header-display-name"
-              ellipsis={{ tooltip: entityName }}
-              size="text-lg"
-              weight="bold">
-              {entityName}
-            </Typography>
-          )}
-          <Typography
-            as={nameElementProps.as}
-            className={classNames(
-              'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
-              {
-                'tw:text-primary': !hasDisplayName,
-                'tw:text-tertiary': hasDisplayName,
-              }
-            )}
-            data-testid="entity-header-name"
-            ellipsis={{ tooltip: dataAsset.name }}
-            size={nameElementProps.size}
-            weight={nameElementProps.weight}>
-            {dataAsset.name}
-          </Typography>
-        </div>
-        {/* h-8 = the title line, so the actions stay level with the title
-            rather than centring across title + name. */}
-        <div className="tw:flex tw:h-8 tw:shrink-0 tw:items-center tw:gap-3">
-          {deleted && (
-            <span className="deleted-badge-button" data-testid="deleted-badge">
-              {t('label.deleted')}
-            </span>
-          )}
-          <ButtonUtility
-            data-testid="entity-header-copy-button"
-            icon={Copy01}
-            size="lg"
-            tooltip={copyTooltipTitle}
-            onClick={handleCopyEntityUrl}
-          />
-          <LearningIcon pageId={entityType} />
-        </div>
       </div>
     );
   };
@@ -1249,17 +1172,21 @@ export const DataAssetsHeader = ({
         </div>
 
         <div className="tw:flex tw:items-center tw:gap-4 tw:flex-wrap">
-          <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
-            {renderServiceLogo()}
-            {renderEntityTitle()}
-            {/* Level with the title line (h-8, like the copy actions), not centred across the
-                title and name lines. A deleted entity shows "Deleted" instead of its status. */}
-            <div className="tw:flex tw:h-8 tw:shrink-0 tw:items-center tw:gap-3 tw:self-start">
-              {badge}
-              {!dataAsset.deleted && statusBadge}
-              {dqFailureAlert}
-            </div>
-          </div>
+          {/* A deleted entity shows "Deleted" instead of its status. */}
+          <EntityPageTitle
+            actions={<LearningIcon pageId={entityType} />}
+            badges={
+              <>
+                {badge}
+                {!dataAsset.deleted && statusBadge}
+                {dqFailureAlert}
+              </>
+            }
+            deleted={deleted}
+            displayName={dataAsset.displayName}
+            icon={renderServiceLogo()}
+            name={dataAsset.name}
+          />
 
           <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
             {triggerAutoPilotApplicationButton}
