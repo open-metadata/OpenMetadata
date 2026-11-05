@@ -1303,3 +1303,152 @@ describe('a name held by a deleted concept', () => {
     expect(showErrorToast).not.toHaveBeenCalled();
   });
 });
+
+describe('a SKOS concept takes no OWL axioms', () => {
+  const SKOS_ERROR =
+    'A SKOS concept cannot have parents, equivalent or disjoint classes, or properties. Remove them, or choose OWL class or Both.';
+  const skosOnlyConcept = {
+    ...parents[0],
+    id: 'Vocabulary',
+    name: 'Vocabulary',
+    displayName: 'Vocabulary',
+    fullyQualifiedName: 'Finance.Vocabulary',
+    iri: ontology.namespace + 'Vocabulary',
+    conceptType: OntologyConceptType.SkosConcept,
+  };
+  const bothConcept = {
+    ...parents[0],
+    id: 'Hybrid',
+    name: 'Hybrid',
+    displayName: 'Hybrid',
+    fullyQualifiedName: 'Finance.Hybrid',
+    iri: ontology.namespace + 'Hybrid',
+    conceptType: OntologyConceptType.Both,
+  };
+
+  beforeEach(() => {
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    useKeyEchoTranslations();
+  });
+
+  const chooseType = (type: OntologyConceptType) =>
+    fireEvent.click(screen.getByTestId('new-class-type-' + type));
+  const addParent = async (name: string) => {
+    const input = screen.getByRole('combobox', { name: 'Subclass of' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: name } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name }));
+  };
+  const addProperty = (name: string) => {
+    fill('new-class-property-name', name);
+    fireEvent.keyDown(screen.getByTestId('new-class-property-name'), {
+      key: 'Enter',
+    });
+  };
+  const createRequests = () =>
+    post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
+
+  it('refuses a parent added after choosing SKOS concept and clears when OWL class is chosen', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    openAdvanced();
+    chooseType(OntologyConceptType.SkosConcept);
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+
+    await addParent('Payment');
+
+    expect(screen.getByText(SKOS_ERROR)).toBeVisible();
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByText('Payment')).toBeVisible();
+
+    chooseType(OntologyConceptType.OwlClass);
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('refuses a parent chosen before switching to SKOS concept and clears when Both is chosen', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    openAdvanced();
+    await addParent('Payment');
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+
+    chooseType(OntologyConceptType.SkosConcept);
+
+    expect(screen.getByText(SKOS_ERROR)).toBeVisible();
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+
+    chooseType(OntologyConceptType.Both);
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('refuses an own property on a SKOS concept and clears once it is removed', () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    openAdvanced();
+    chooseType(OntologyConceptType.SkosConcept);
+    addProperty('reference');
+
+    expect(screen.getByText(SKOS_ERROR)).toBeVisible();
+    expect(screen.getByTestId('new-class-create')).toBeDisabled();
+    expect(screen.getByText(/reference · String/)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove reference' }));
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+  });
+
+  it('creates a SKOS concept that has only synonyms and mappings', async () => {
+    setup();
+    fill('new-class-label', 'Remittance');
+    chooseType(OntologyConceptType.SkosConcept);
+    fill('new-class-synonyms', 'Wire,');
+    fill('new-class-mapping-iri', 'https://schema.org/Payment');
+    fireEvent.click(screen.getByTestId('new-class-add-mapping'));
+
+    expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-create')).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('new-class-create'));
+    });
+    await waitFor(() => expect(reconcile).toHaveBeenCalled());
+
+    expect(createRequests()[0][1].operations).toHaveLength(1);
+    expect(createRequests()[0][1].operations[0].concept).toMatchObject({
+      conceptType: 'SKOS_CONCEPT',
+      synonyms: ['Wire'],
+    });
+  });
+
+  it('offers only OWL class and Both concepts as parents, equivalent, disjoint and range targets', async () => {
+    setup({
+      model: { ...model, concepts: [...parents, skosOnlyConcept, bothConcept] },
+    });
+    openAdvanced();
+
+    const input = screen.getByRole('combobox', { name: 'Subclass of' });
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByRole('option', { name: 'Payment' })
+    ).toBeVisible();
+    expect(screen.getByRole('option', { name: 'Hybrid' })).toBeVisible();
+    expect(
+      screen.queryByRole('option', { name: 'Vocabulary' })
+    ).not.toBeInTheDocument();
+  });
+});

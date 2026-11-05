@@ -486,16 +486,6 @@ const OntologyDataAssetPicker = ({
                   })}
                 </Typography>
               ) : null}
-              {isLinked ? (
-                <Typography
-                  as="span"
-                  className="tw:text-tertiary"
-                  size="text-xs">
-                  {t('message.ontology-asset-already-linked', {
-                    concept: native?.concept?.name,
-                  })}
-                </Typography>
-              ) : null}
               {failures.has(asset.id) ? (
                 <Typography
                   as="span"

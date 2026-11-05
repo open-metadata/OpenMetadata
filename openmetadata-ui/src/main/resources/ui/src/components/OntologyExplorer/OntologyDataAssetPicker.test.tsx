@@ -572,5 +572,15 @@ describe('OntologyDataAssetPicker', () => {
         screen.queryByTestId('ontology-data-asset-linked-t-2')
       ).not.toBeInTheDocument();
     });
+
+    it('states that a linked asset is already linked exactly once', async () => {
+      renderNative({ linkedIds: ['t-1'] });
+
+      await screen.findByRole('checkbox', { name: 'customers' });
+
+      expect(
+        screen.getAllByText('message.ontology-asset-already-linked')
+      ).toHaveLength(1);
+    });
   });
 });

@@ -484,5 +484,76 @@ test.describe(
         );
       }
     });
+    test('a SKOS concept refuses parents, and switching to OWL class lets the class be created', async ({
+      isolatedUserPage: page,
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = 'pw_class_skos_' + uuid();
+      const skosError =
+        'A SKOS concept cannot have parents, equivalent or disjoint classes, or properties. Remove them, or choose OWL class or Both.';
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: {
+            name,
+            iri: 'urn:' + name,
+            namespace: 'https://example.org/' + name + '#',
+          },
+        }),
+        'Create SKOS rule ontology'
+      );
+      try {
+        await okJson<OntologyConcept>(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Payment',
+              ontology: ontology.fullyQualifiedName,
+              conceptType: 'OWL_CLASS',
+              iri: ontology.namespace + 'Payment',
+            },
+          }),
+          'Create parent class'
+        );
+        await page.goto('/governance/ontology?ontology=' + ontology.id);
+        await page.getByTestId('mode-tab-edit').click();
+        await page.getByTestId('ontology-add-concept').click();
+        await page.getByTestId('new-class-label').fill('Remittance');
+        await page.getByTestId('new-class-advanced-toggle').click();
+        await page.getByTestId('new-class-type-SKOS_CONCEPT').click();
+        await expect(page.getByText(skosError)).toHaveCount(0);
+        await pick(page, 'Subclass of', 'Payment');
+        await expect(page.getByText(skosError)).toBeVisible();
+        await expect(page.getByTestId('new-class-create')).toBeDisabled();
+        await page.getByTestId('new-class-type-OWL_CLASS').click();
+        await expect(page.getByText(skosError)).toHaveCount(0);
+        await expect(page.getByTestId('new-class-create')).toBeEnabled();
+        await clickIgnoringToasts(page.getByTestId('new-class-create'));
+        await expect(page.getByTestId('ontology-new-class-panel')).toHaveCount(
+          0
+        );
+        const response = await okJson<{ data: OntologyConcept[] }>(
+          await api.get('/api/v1/ontologyConcepts', {
+            params: { ontology: ontology.fullyQualifiedName },
+          }),
+          'Read class created after the type change'
+        );
+        const created = response.data.find(
+          (c) => c.iri === ontology.namespace + 'Remittance'
+        );
+        expect(created).toMatchObject({ conceptType: 'OWL_CLASS' });
+        if (created) {
+          await page.getByTestId('submode-tab-tree').click();
+          await expect(
+            page.getByTestId(`ontology-tree-term-${created.id}`)
+          ).toBeVisible();
+        }
+      } finally {
+        await deleteFixtureEntity(
+          api,
+          '/api/v1/ontologies/' +
+            ontology.id +
+            '?recursive=true&hardDelete=true'
+        );
+      }
+    });
   }
 );
