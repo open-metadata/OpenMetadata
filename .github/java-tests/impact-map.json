@@ -339,6 +339,7 @@
         "*Transaction*IT",
         "*UnitOfWork*IT",
         "*Orphan*IT",
+        "*HardDelete*IT",
         "*Benchmark*IT",
         "*OptimisticLock*IT",
         "org/openmetadata/it/tests/repositories/**",
@@ -597,6 +598,7 @@
         "*Saml*IT",
         "*Identity*IT",
         "*Session*IT",
+        "*Password*IT",
         "*Token*IT",
         "*Credential*IT",
         "*Credential*Test",
@@ -604,6 +606,7 @@
         "*Login*IT",
         "*Privilege*IT",
         "*Isolation*IT",
+        "*ReferenceList*IT",
         "*Security*IT",
         "User*IT",
         "*Sso*IT",
@@ -1155,7 +1158,8 @@
         "*PromptTemplate*IT",
         "*Ai*IT",
         "*Conversation*IT",
-        "*ContextFile*IT"
+        "*ContextFile*IT",
+        "*ContextHistory*IT"
       ]
     },
     {

@@ -29,9 +29,11 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
@@ -95,7 +97,18 @@ class BuildSearchIndexDocTest {
   }
 
   @Test
-  void testNonEntityInterface_skipsCommonFields() {
+  void aRunDocumentCarriesItsPipelinesAccessFields() {
+    EntityReference owner =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("o");
+    EntityReference domain =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN).withName("d");
+    EntityReference service =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.PIPELINE_SERVICE)
+            .withName("airflow");
+    TagLabel tier = new TagLabel().withTagFQN("Tier.Tier1");
+    TagLabel taskTag = new TagLabel().withTagFQN("PII.Sensitive");
     Pipeline pipeline =
         new Pipeline()
             .withId(UUID.randomUUID())
@@ -103,7 +116,14 @@ class BuildSearchIndexDocTest {
             .withFullyQualifiedName("svc.p")
             .withServiceType(
                 org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType
-                    .Airflow);
+                    .Airflow)
+            .withService(service)
+            .withOwners(List.of(owner))
+            .withDomains(List.of(domain))
+            .withTags(List.of(tier))
+            .withCertification(
+                new AssetCertification()
+                    .withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
     org.openmetadata.schema.entity.data.PipelineStatus status =
         new org.openmetadata.schema.entity.data.PipelineStatus()
             .withExecutionId("exec-1")
@@ -111,16 +131,30 @@ class BuildSearchIndexDocTest {
             .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful);
 
     mockAllStatics();
+    // getAllTags merges the tags of the pipeline's tasks into its own.
+    entityStaticMock
+        .when(() -> Entity.getEntityTags(Entity.PIPELINE, pipeline))
+        .thenReturn(List.of(tier, taskTag));
 
-    PipelineExecutionIndex index = new PipelineExecutionIndex(pipeline, status);
-    Map<String, Object> result = index.buildSearchIndexDoc();
+    Map<String, Object> result = new PipelineExecutionIndex(pipeline, status).buildSearchIndexDoc();
 
-    // PipelineExecutionIndex.buildSearchIndexDocInternal replaces the doc entirely
-    // so common fields are NOT present (entity is not EntityInterface)
-    assertFalse(result.containsKey("owners"));
-    assertFalse(result.containsKey("domains"));
-    // entityType is set by buildSearchIndexDocInternal, not populateCommonFields
     assertEquals("pipelineExecution", result.get("entityType"));
+    assertEquals(owner.getId().toString(), first(result, "owners").get("id"));
+    assertEquals(domain.getId().toString(), first(result, "domains").get("id"));
+    assertEquals(service.getId().toString(), ((Map<?, ?>) result.get("service")).get("id"));
+    assertEquals(List.of("PII.Sensitive"), tagFqns(result.get("tags")));
+    assertEquals("Tier.Tier1", ((Map<?, ?>) result.get("tier")).get("tagFQN"));
+    assertEquals(
+        "Certification.Gold",
+        ((Map<?, ?>) ((Map<?, ?>) result.get("certification")).get("tagLabel")).get("tagFQN"));
+  }
+
+  private static Map<?, ?> first(Map<String, Object> doc, String field) {
+    return (Map<?, ?>) ((List<?>) doc.get(field)).get(0);
+  }
+
+  private static List<Object> tagFqns(Object tags) {
+    return ((List<?>) tags).stream().<Object>map(tag -> ((Map<?, ?>) tag).get("tagFQN")).toList();
   }
 
   // ==================== Phase 2: Mixin dispatch ====================

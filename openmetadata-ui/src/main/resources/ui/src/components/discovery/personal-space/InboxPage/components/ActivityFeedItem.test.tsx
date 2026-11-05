@@ -267,7 +267,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
       'ActivityPipelineStatusChanged',
       'ActivityTagsUpdated',
       'ActivityTestCaseStatusChanged',
-      'ActivityTierChanged',
+      'AppCacheWarmup',
     ].map((name) => [name, () => <span data-testid={name} />])
   ),
   ChevronDown: () => <span />,
