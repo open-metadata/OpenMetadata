@@ -281,6 +281,7 @@ def _source(client: MicroStrategyClient, **source_config: Any) -> MicrostrategyS
         includeOwners=True,
         includeDataModels=True,
         projectFilterPattern=None,
+        dashboardFilterPattern=None,
         chartFilterPattern=None,
         dataModelFilterPattern=None,
         markDeletedDashboards=True,
@@ -389,6 +390,23 @@ class TestSource:
         ]
         assert source.dashboard_listing.is_complete
         assert not source.dashboard_listing.has_failed
+
+    def test_the_listing_confirms_nothing_to_ingest_only_when_everything_was_filtered(self, client):
+        source = _source(client)
+        assert list(source.get_dashboards_list())
+        assert not source.dashboard_listing.confirms_nothing_to_ingest
+
+        source = _source(client)
+        source.source_config.dashboardFilterPattern = SimpleNamespace(includes=None, excludes=[".*"])
+        assert list(source.get_dashboards_list()) == []
+        assert source.dashboard_listing.confirms_nothing_to_ingest
+
+    def test_no_visible_project_is_not_a_confirmation(self, server, client):
+        server.projects = []
+        source = _source(client)
+
+        assert list(source.get_dashboards_list()) == []
+        assert not source.dashboard_listing.confirms_nothing_to_ingest
 
     def test_a_failed_project_search_keeps_every_stale_entity(self, server, client):
         server.projects = [MOBILE, TUTORIAL]

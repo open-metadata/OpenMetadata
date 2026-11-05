@@ -69,7 +69,12 @@ from metadata.ingestion.source.dashboard.microstrategy.models import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel, filter_by_project
+from metadata.utils.filters import (
+    filter_by_chart,
+    filter_by_dashboard,
+    filter_by_datamodel,
+    filter_by_project,
+)
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -128,12 +133,20 @@ class MicrostrategySource(DashboardServiceSource):
                 continue
             try:
                 for result in self.client.iter_search_results(project.id):
+                    self.dashboard_listing.count_listed()
+                    # Filtered here as well as in the base, so the listing can count it.
+                    if filter_by_dashboard(self.source_config.dashboardFilterPattern, result.name):
+                        self.dashboard_listing.count_filtered()
+                        self.status.filter(result.name, "Dashboard Filtered Out")
+                        continue
                     yield MstrDashboard.model_validate(
                         {**result.model_dump(), "projectId": project.id, "projectName": project.name}
                     )
             except Exception as exc:
                 self._fail_listing(f"the dossiers of project {project.name}", exc)
-        if not self.listing_failed and not self.client.skipped_objects:
+        # No project is never a confirmation: /projects lists only what the user may read, so
+        # lost access looks like an empty server.
+        if projects and not self.listing_failed and not self.client.skipped_objects:
             self.dashboard_listing.mark_complete()
             self.datamodel_listing.mark_complete()
 
@@ -392,8 +405,10 @@ class MicrostrategySource(DashboardServiceSource):
         if not self.source_config.includeDataModels:
             return
         for dataset in dashboard_details.datasets:
+            self.datamodel_listing.count_listed()
             try:
                 if filter_by_datamodel(self.source_config.dataModelFilterPattern, dataset.name):
+                    self.datamodel_listing.count_filtered()
                     self.status.filter(dataset.name, "Data model filtered out.")
                     continue
                 data_model_request = CreateDashboardDataModelRequest(

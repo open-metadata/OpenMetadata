@@ -9,13 +9,13 @@ You can find further information on the MicroStrategy connector in the <a href="
 $$section
 ### Username $(id="username")
 
-Username to connect to MicroStrategy, e.g., `user@organization.com`. This user should have access to relevant dashboards and charts in MicroStrategy to fetch the metadata.
+Username to connect to MicroStrategy, e.g., `user@organization.com`. This user should have access to relevant dashboards and charts in MicroStrategy to fetch the metadata. Not needed with the Anonymous login mode.
 $$
 
 $$section
 ### Password $(id="password")
 
-Password of the user account to connect with MicroStrategy.
+Password of the user account to connect with MicroStrategy. Not needed with the Anonymous login mode.
 $$
 
 $$section
@@ -29,6 +29,18 @@ $$
 $$section
 ### Login Mode $(id="loginMode")
 
-Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`.
+Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`.
 If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.
+$$
+
+$$section
+### Verify SSL $(id="verifySSL")
+
+Client SSL verification. Use `validate` with the CA certificate under SSL Config for a server behind an internal certificate authority, or `ignore` for a self-signed certificate.
+$$
+
+$$section
+### SSL Config $(id="sslConfig")
+
+Client SSL configuration. Provide the CA certificate that signed the MicroStrategy server certificate.
 $$
