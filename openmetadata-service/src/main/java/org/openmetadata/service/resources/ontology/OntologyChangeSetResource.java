@@ -39,6 +39,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
@@ -137,7 +138,27 @@ public class OntologyChangeSetResource
     if (memorySourced) {
       filter.addQueryParam("memorySourced", "true");
     }
-    return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    final ResultList<OntologyChangeSet> page =
+        listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    if (scopeId == null) {
+      authorizeListedScopes(securityContext, page.getData());
+    }
+    return page;
+  }
+
+  private void authorizeListedScopes(
+      final SecurityContext securityContext, final List<OntologyChangeSet> rows) {
+    OntologyResourceAccess.requireDraftRowsRead(
+        authorizer,
+        securityContext,
+        null,
+        rows.stream()
+            .filter(row -> row.getOntology() != null)
+            .map(row -> row.getOntology().getId())
+            .toList());
+    rows.stream()
+        .filter(row -> row.getOntology() == null)
+        .forEach(row -> authorizeScopeRead(securityContext, readableChangeSet(row.getId())));
   }
 
   @GET

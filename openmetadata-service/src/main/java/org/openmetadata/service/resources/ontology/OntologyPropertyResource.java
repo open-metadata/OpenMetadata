@@ -82,7 +82,14 @@ public class OntologyPropertyResource
     final UUID ontologyId = ontologyIdOf(ontology);
     OntologyResourceAccess.requireDraftListRead(authorizer, securityContext, ontologyId);
     final ListFilter filter = ontologyFilter(include, ontologyId);
-    return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    final ResultList<OntologyProperty> page =
+        listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    OntologyResourceAccess.requireDraftRowsRead(
+        authorizer,
+        securityContext,
+        ontologyId,
+        OntologyResourceAccess.ontologyIdsOf(page.getData()));
+    return page;
   }
 
   private static UUID ontologyIdOf(final String ontology) {
