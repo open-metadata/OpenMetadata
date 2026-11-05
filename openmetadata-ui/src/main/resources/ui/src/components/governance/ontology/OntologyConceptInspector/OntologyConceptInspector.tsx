@@ -61,7 +61,9 @@ import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.cont
 import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
-import OntologyConceptLiveData from './OntologyConceptLiveData';
+import OntologyConceptLiveData, {
+  LiveDataBindingState,
+} from './OntologyConceptLiveData';
 import {
   ConceptEmptyState,
   ConceptFormCard,
@@ -366,6 +368,12 @@ const OntologyConceptInspector = ({
   const isAiMode = useIsAiMode();
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
   const bindings = useOntologyConceptBindings(concept.id);
+  let liveDataBindingState: LiveDataBindingState = 'loading';
+  if (bindings.data) {
+    liveDataBindingState = bindings.data.assets.length ? 'bound' : 'unbound';
+  } else if (bindings.isError) {
+    liveDataBindingState = 'failed';
+  }
   const ancestors = useMemo(
     () => getConceptAncestors(relations, concept.id),
     [relations, concept.id]
@@ -1007,11 +1015,14 @@ const OntologyConceptInspector = ({
           }
         />
         <OntologyConceptLiveData
+          bindingState={liveDataBindingState}
           concept={concept}
-          isBound={Boolean(bindings.data?.assets.length)}
           key={`live-data:${concept.id}`}
           model={model}
           relations={relations}
+          onRetryBindings={() =>
+            void bindings.retryRead().catch(() => undefined)
+          }
         />
       </Box>
     </aside>
