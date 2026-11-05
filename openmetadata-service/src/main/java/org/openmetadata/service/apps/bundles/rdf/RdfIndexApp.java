@@ -111,6 +111,21 @@ public class RdfIndexApp extends AbstractNativeApplication {
     this.admissionGuard = RdfReindexAdmissionGuard.forProduction(collectionDAO);
   }
 
+  /**
+   * Resolves the repository without throwing. Returns null when RDF was never initialized, which
+   * is the case on servers that start with RDF disabled.
+   */
+  private RdfRepository rdfOrNull() {
+    if (rdfRepository == null) {
+      RdfRepository repository = RdfRepository.getInstanceOrNull();
+      if (repository != null) {
+        rdfRepository = repository;
+        batchProcessor = new RdfBatchProcessor(collectionDAO, repository);
+      }
+    }
+    return rdfRepository;
+  }
+
   private RdfRepository rdf() {
     if (rdfRepository == null) {
       rdfRepository = RdfRepository.getInstance();
@@ -155,8 +170,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
       }
     }
 
-    if (!rdf().isEnabled()) {
-      LOG.error("RDF Repository is not enabled. Please enable RDF in configuration.");
+    RdfRepository repository = rdfOrNull();
+    if (repository == null || !repository.isEnabled()) {
+      LOG.error(
+          "RDF Repository is not {}. Please enable RDF in configuration.",
+          repository == null ? "initialized" : "enabled");
       updateJobStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(
           new IndexingError()
