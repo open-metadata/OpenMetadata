@@ -23,7 +23,6 @@ import {
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-
 import {
   CheckCircle,
   InfoCircle,

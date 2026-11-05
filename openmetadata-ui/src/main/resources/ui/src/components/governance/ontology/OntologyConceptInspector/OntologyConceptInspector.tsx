@@ -25,7 +25,7 @@ import {
   ArrowLeft,
   BookClosed,
   ChevronRight,
-  Edit05,
+  Edit01,
   Plus,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -712,7 +712,7 @@ const OntologyConceptInspector = ({
           <Button
             color="secondary"
             data-testid="ontology-concept-edit"
-            iconLeading={Edit05}
+            iconLeading={Edit01}
             size="xs"
             onPress={onEdit}>
             {t('label.edit')}
@@ -720,9 +720,8 @@ const OntologyConceptInspector = ({
         ) : null}
         {renderDeleteButton('xs')}
         <ButtonUtility
-          color="tertiary"
           icon={XClose}
-          size="sm"
+          size="lg"
           tooltip={t('label.close')}
           onClick={onClose}
         />
@@ -936,9 +935,8 @@ const OntologyConceptInspector = ({
         className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
         gap={2}>
         <ButtonUtility
-          color="tertiary"
           icon={ArrowLeft}
-          size="sm"
+          size="lg"
           tooltip={t('label.close')}
           onClick={onClose}
         />
@@ -953,7 +951,7 @@ const OntologyConceptInspector = ({
           <Button
             color="secondary"
             data-testid="ontology-concept-edit"
-            iconLeading={Edit05}
+            iconLeading={Edit01}
             size="xs"
             onPress={onEdit}>
             {t('label.edit')}

@@ -172,11 +172,13 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
       <SettingsSection
         testId="profile-section-identity"
         title={t('label.identity-and-access')}>
+        {/* No canEdit override: the server lets only admins change a user's
+            personas (ADR:2026-11-03-only-admins-assign-personas), which is the
+            row's own default. */}
         {isProfileLoading ? (
           <RowSkeleton />
         ) : (
           <PersonaRow
-            canEdit={canEditAll}
             updateUserDetails={updateUserDetails}
             userData={userData}
           />

@@ -107,7 +107,6 @@ const OntologyPropertyBindings = ({
           </Typography>
           {canEdit ? (
             <ButtonUtility
-              color="tertiary"
               data-testid={`ontology-binding-remove-${propertyId}`}
               icon={Trash01}
               isDisabled={!bindings.editableSnapshot}

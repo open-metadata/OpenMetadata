@@ -187,6 +187,60 @@ public class OrphanedTimeSeriesCleanupIT {
         countRowsById("test_case_resolution_status_time_series", validStatus.getId().toString()));
   }
 
+  @Test
+  void testCaseIncidentOrphans(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns, "tci");
+    TestCase testCase = createTestCase(table, "tciCase_" + ns.uniqueShortId());
+
+    CreateTestCaseResolutionStatus createStatus =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+            .withTestCaseReference(testCase.getFullyQualifiedName());
+    TestCaseResolutionStatus validStatus = client.testCaseResolutionStatuses().create(createStatus);
+    assertEquals(1, countIncidentRows(validStatus.getStateId()));
+
+    UUID orphanStateId = UUID.randomUUID();
+    insertIncidentWithoutRecords(orphanStateId);
+
+    int deleted =
+        Entity.getCollectionDAO()
+            .testCaseResolutionStatusTimeSeriesDao()
+            .deleteOrphanedIncidents(BATCH);
+
+    assertTrue(deleted >= 1, "Expected at least the inserted orphan incident to be deleted");
+    assertEquals(0, countIncidentRows(orphanStateId));
+    assertEquals(1, countIncidentRows(validStatus.getStateId()));
+  }
+
+  private void insertIncidentWithoutRecords(UUID stateId) {
+    long now = System.currentTimeMillis();
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "INSERT INTO test_case_incident (stateId, entityFQNHash, "
+                            + "testCaseResolutionStatusType, createdAt, updatedAt, latestRecordId) "
+                            + "VALUES (:stateId, :fqnHash, 'New', :now, :now, :recordId)")
+                    .bind("stateId", stateId.toString())
+                    .bind("fqnHash", "orphan-" + stateId)
+                    .bind("now", now)
+                    .bind("recordId", UUID.randomUUID().toString())
+                    .execute());
+  }
+
+  private int countIncidentRows(UUID stateId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM test_case_incident WHERE stateId = :stateId")
+                    .bind("stateId", stateId.toString())
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
   /**
    * Covers all three profiler extensions. Column profiles are keyed by the <i>column</i> FQN, whose
    * hash carries one more segment than {@code table_entity.fqnHash}, so a predicate that compares

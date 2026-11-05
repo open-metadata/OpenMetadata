@@ -146,7 +146,8 @@ public final class OntologyBulkResource {
   }
 
   private Glossary glossary(final OntologyBulkRequest request) {
-    return glossaryRepository.get(null, request.getGlossaryId(), glossaryRepository.getFields(""));
+    return glossaryRepository.get(
+        null, request.getGlossaryId(), ResourceContext.authorizationFields(glossaryRepository));
   }
 
   private void authorizeEdit(final SecurityContext securityContext, final Glossary glossary) {

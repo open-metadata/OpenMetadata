@@ -21,6 +21,7 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.type.EntityReference;
@@ -355,12 +356,15 @@ public class DefaultAuthorizer implements Authorizer {
         || resourceContext.getEntity() == null) {
       return false;
     }
-    String updatedBy = subjectContext.user().getName();
+    // Match a user reviewer by id, never by name: a reviewer can be a team, and a user whose name
+    // equals a reviewer team's name would otherwise skip policy checks
+    // (ADR:2026-11-03-a-reviewer-is-matched-by-user-id).
+    UUID userId = subjectContext.user().getId();
     List<EntityReference> reviewers = resourceContext.getEntity().getReviewers();
-    return !nullOrEmpty(reviewers)
+    return userId != null
+        && !nullOrEmpty(reviewers)
         && reviewers.stream()
-            .anyMatch(
-                e -> updatedBy.equals(e.getName()) || updatedBy.equals(e.getFullyQualifiedName()));
+            .anyMatch(e -> Entity.USER.equals(e.getType()) && userId.equals(e.getId()));
   }
 
   private static void checkImpersonationAuthorization(SubjectContext subjectContext) {
