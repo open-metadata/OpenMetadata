@@ -857,15 +857,7 @@ public class TestCaseResolutionStatusRepository
       return existing.getId();
     }
 
-    // An open incident without a task (started through the status API) takes the failure too: a
-    // test case holds one open incident, and the task check refuses a second.
-    UUID openIncident =
-        ((TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS))
-            .getOngoingIncidentStateId(testCase.getFullyQualifiedName());
-    return openIncident != null
-        ? openIncident
-        : createIncidentTask(testCase, updatedBy, failureReason);
+    return createIncidentTask(testCase, updatedBy, failureReason);
   }
 
   private static UUID createIncidentTask(

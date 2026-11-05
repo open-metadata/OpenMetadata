@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -41,7 +40,6 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.Payload;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -64,7 +62,6 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -558,49 +555,6 @@ public class IncidentTaskIntegrationIT {
         1,
         countIncidentTasksForTestCase(client, testCase),
         "a failure on a reopened incident must reuse its task");
-  }
-
-  // A test case holds one open incident: a second incident task is refused while one is open.
-  @Test
-  void testIncidentTaskIsRefusedWhileTheTestCaseHasAnOpenIncident(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    TestCase testCase = createTestCase(client, ns, "incident-second-task");
-    createFailedTestResult(client, testCase);
-    awaitIncidentTaskForTestCase(client, testCase);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () ->
-            client
-                .tasks()
-                .create(
-                    new CreateTask()
-                        .withName(ns.prefix("second-incident"))
-                        .withCategory(TaskCategory.Incident)
-                        .withType(TaskEntityType.TestCaseResolution)
-                        .withAbout("<#E::testCase::" + testCase.getFullyQualifiedName() + ">")));
-    assertEquals(1, countIncidentTasksForTestCase(client, testCase));
-  }
-
-  // An incident started through the status API has no task; a failure joins it, not a new one.
-  @Test
-  void testFailureJoinsAnOpenIncidentThatHasNoTask(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    TestCase testCase = createTestCase(client, ns, "incident-no-task");
-    TestCaseResolutionStatus incident =
-        client
-            .testCaseResolutionStatuses()
-            .create(
-                new CreateTestCaseResolutionStatus()
-                    .withTestCaseReference(testCase.getFullyQualifiedName())
-                    .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New));
-
-    createFailedTestResult(client, testCase);
-
-    awaitTestCaseIncidentId(client, testCase, incident.getStateId());
-    assertEquals(0, countIncidentTasksForTestCase(client, testCase));
   }
 
   private TestCase createTestCase(OpenMetadataClient client, TestNamespace ns, String prefix) {

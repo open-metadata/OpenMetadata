@@ -84,7 +84,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
 
   /**
    * The soft delete or restore of any of these ancestors flags the incidents under it by the
-   * ancestor's id (ADR:2026-10-30-a-test-case-holds-one-open-incident-and-incidents-are-scoped-by-its-deleted-flag),
+   * ancestor's id (ADR:2026-10-30-incidents-are-scoped-by-their-test-cases-deleted-flag),
    * so every one is written whether or not the test suite carries a table reference.
    */
   private static void putParentTableRelations(Table parentTable, Map<String, Object> doc) {
