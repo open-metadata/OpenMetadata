@@ -146,7 +146,7 @@ const SpreadsheetVersion = ({
           <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
     ],
     []
   );

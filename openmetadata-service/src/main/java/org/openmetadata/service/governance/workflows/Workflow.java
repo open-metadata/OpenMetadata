@@ -12,6 +12,9 @@ public class Workflow {
   public static final String INGESTION_PIPELINE_ID_VARIABLE = "ingestionPipelineId";
   public static final String RELATED_ENTITY_VARIABLE = "relatedEntity";
   public static final String RELATED_ENTITY_ID_VARIABLE = "relatedEntityId";
+  // The entity version the triggering event produced. Its change, read from the entity's history,
+  // is the edit the run judges, even when a later edit has replaced the entity's current change.
+  public static final String TRIGGERING_VERSION_VARIABLE = "triggeringVersion";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
