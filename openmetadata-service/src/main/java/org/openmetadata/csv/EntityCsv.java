@@ -1013,19 +1013,18 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     try {
       return restoreFormulas(CSVFormat.DEFAULT.parse(in).getRecords());
     } catch (IOException e) {
-      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      documentParserFailure(e);
     } catch (UncheckedIOException e) {
-      // Commons CSV wraps lexer errors (e.g. malformed quoted fields) raised during record
-      // iteration in UncheckedIOException; report them as parser failures like IOException.
-      IOException cause = e.getCause();
-      documentFailure(
-          failed(cause != null ? cause.getMessage() : e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      // Commons CSV wraps lexer errors met while iterating records (e.g. a stray character after
+      // a closing quote) in UncheckedIOException.
+      documentParserFailure(e.getCause());
     }
     return null;
   }
 
+  // Returns null on a parser failure, like parse(String), so importCsv(records) aborts cleanly.
   public List<CSVRecord> parse(String csv, boolean recursive) {
-    List<CSVRecord> records = new ArrayList<>();
+    List<CSVRecord> records = null;
     Reader in = new StringReader(csv);
 
     try {
@@ -1059,14 +1058,16 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       records = convertToCSVRecords(fixedRows, headers);
 
     } catch (IOException e) {
-      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      documentParserFailure(e);
     } catch (UncheckedIOException e) {
-      IOException cause = e.getCause();
-      documentFailure(
-          failed(cause != null ? cause.getMessage() : e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      documentParserFailure(e.getCause());
     }
 
     return records;
+  }
+
+  private void documentParserFailure(IOException exception) {
+    documentFailure(failed(exception.getMessage(), CsvErrorType.PARSER_FAILURE));
   }
 
   // CSVRecord is immutable, so records with escaped formula cells are re-printed and re-parsed.
