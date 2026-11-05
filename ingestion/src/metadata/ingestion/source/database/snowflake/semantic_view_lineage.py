@@ -86,7 +86,9 @@ _DATE_PART_RE = re.compile(
 # unit-named columns elsewhere in the expression.
 _INTERVAL_QUALIFIER_RE = re.compile(
     r"\b(INTERVAL)\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b"
-    r"(?:\s+TO\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b)?",
+    r"(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?"
+    r"(?:\s+TO\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b"
+    r"(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)?",
     re.IGNORECASE,
 )
 # A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DOUBLE PRECISION)``) or a

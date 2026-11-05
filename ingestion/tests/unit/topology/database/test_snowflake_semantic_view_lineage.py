@@ -414,12 +414,17 @@ def test_build_view_lineage_preserves_object_values_and_excludes_path_members(ex
         ("o.DATE_KEY + INTERVAL '1-1' YEAR TO MONTH", ["DATE_KEY"]),
         ("CAST(o.DURATION AS INTERVAL DAY TO SECOND)", ["DURATION"]),
         ("o.DURATION::INTERVAL YEAR TO MONTH", ["DURATION"]),
+        ("o.DATE_KEY + INTERVAL '1-08' YEAR(3) TO MONTH", ["DATE_KEY"]),
+        ("o.DATE_KEY + INTERVAL '1 02:03' DAY(2) TO MINUTE", ["DATE_KEY"]),
+        ("o.DATE_KEY + INTERVAL '1 02:03:04.123' DAY(2) TO SECOND(3)", ["DATE_KEY"]),
+        ("CAST(o.DURATION AS INTERVAL YEAR(2) TO MONTH)", ["DURATION"]),
+        ("o.DURATION::INTERVAL DAY(2) TO HOUR", ["DURATION"]),
         ("DATE_KEY + INTERVAL '1' MONTH + MONTH", ["DATE_KEY", "MONTH"]),
         ("DATE_KEY + INTERVAL '1' MONTH + YEAR", ["DATE_KEY", "YEAR"]),
     ]
     + [
         (f"o.DATE_KEY + {reference}", ["DATE_KEY", unit])
-        for unit in ("YEAR", "MONTH", "DAY", "DAYS", "SECOND", "TO")
+        for unit in ("YEAR", "MONTH", "DAY", "DAYS", "HOUR", "MINUTE", "SECOND", "TO")
         for reference in (unit, f'"{unit}"', f"o.{unit}")
     ]
     + [
@@ -438,7 +443,22 @@ def test_build_view_lineage_excludes_interval_qualifiers_and_infix_operators(exp
     """Real collision columns expose syntax tokens that would otherwise resolve as sources."""
     base = _table(
         "ORDERS_TBL",
-        ["DATE_KEY", "DURATION", "STATUS", "YEAR", "MONTH", "DAY", "DAYS", "SECOND", "TO", "RLIKE", "REGEXP", "ILIKE"],
+        [
+            "DATE_KEY",
+            "DURATION",
+            "STATUS",
+            "YEAR",
+            "MONTH",
+            "DAY",
+            "DAYS",
+            "HOUR",
+            "MINUTE",
+            "SECOND",
+            "TO",
+            "RLIKE",
+            "REGEXP",
+            "ILIKE",
+        ],
     )
     base.columns[0].dataType = DataType.DATE
     view = _table("SALES_ANALYSIS", ["NEXT_VALUE"])
