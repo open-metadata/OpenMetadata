@@ -448,6 +448,9 @@ public class OpenSearchBulkSink implements BulkSink {
             submitColumnIndexTask(entity, reindexContext);
           }
         }
+        if (Entity.PIPELINE.equals(entityType) && !scriptedPartialUpdates) {
+          searchRepository.restampPipelineRuns(entityInterfaces);
+        }
       }
       if (tracker != null) {
         tracker.addStageTime(
@@ -965,9 +968,10 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    List<String> tablePolicyTags = SearchIndexUtils.policyTagFqns(table);
     for (Column column : flattenedColumns) {
       try {
-        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table, tablePolicyTags);
         Map<String, Object> searchIndexDoc = columnIndex.buildSearchIndexDoc();
         String json = JsonUtils.pojoToJson(searchIndexDoc);
         String docId = searchIndexDoc.get("id").toString();

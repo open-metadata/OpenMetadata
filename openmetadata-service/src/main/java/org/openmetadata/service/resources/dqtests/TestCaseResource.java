@@ -41,7 +41,9 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -115,6 +117,8 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";
+  private static final List<MetadataOperation> VIEW_TESTS_ONLY =
+      List.of(MetadataOperation.VIEW_TESTS);
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
@@ -143,6 +147,40 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // assignment). It is advertised separately from EditTests/EditAll so that a role can grant
     // incident management without granting edit rights on the test case itself.
     return listOf(MetadataOperation.EDIT_STATUS);
+  }
+
+  /**
+   * A listed test case is authorized as its item endpoint authorizes it: ViewTests on the entity it
+   * tests. The test suite a listing names does not stand in for its rows, since a logical suite
+   * spans many tables, and each tested entity on a page is decided once.
+   */
+  @Override
+  protected RowAuthorization<TestCase> rowAuthorization(Fields fields) {
+    return new RowAuthorization<>(Entity.TABLE, VIEW_TESTS_ONLY, this::withViewableTests);
+  }
+
+  private List<TestCase> withViewableTests(SecurityContext securityContext, List<TestCase> rows) {
+    Map<EntityLink, Boolean> testsViewable = new HashMap<>();
+    return rows.stream()
+        .filter(
+            row ->
+                testsViewable.computeIfAbsent(
+                    testedEntity(row), tested -> mayViewTestsOf(securityContext, tested)))
+        .toList();
+  }
+
+  private boolean mayViewTestsOf(SecurityContext securityContext, EntityLink tested) {
+    return viewPermissionFilter.isPermitted(
+        securityContext,
+        Entity.TABLE,
+        VIEW_TESTS_ONLY,
+        TestCaseResourceContext.builder().entityLink(tested).build());
+  }
+
+  /** The entity a test case tests, without the column a column test names. */
+  private static EntityLink testedEntity(TestCase testCase) {
+    EntityLink link = EntityLink.parse(testCase.getEntityLink());
+    return new EntityLink(link.getEntityType(), link.getEntityFQN());
   }
 
   public static class TestCaseList extends ResultList<TestCase> {

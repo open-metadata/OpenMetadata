@@ -2748,7 +2748,7 @@ wheels = [
 
 [[package]]
 name = "collate-sqllineage"
-version = "2.1.8"
+version = "2.1.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "collate-sqlfluff" },
@@ -2758,9 +2758,9 @@ dependencies = [
     { name = "sqlglot" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/85/466827504cee119bcb4f67946519fb430d48c16c1ae8eccce88b73c5a53a/collate_sqllineage-2.1.8.tar.gz", hash = "sha256:326e27155f3ef743e2332037c360dac174cc6e3fa39f11f7943f1065476a04bc", size = 548137, upload-time = "2026-09-28T13:17:18.547Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/bb/b887135efedb5cc0df011ab81e7919c9f81e00ada184b9b9b71796a37c8c/collate_sqllineage-2.1.9.tar.gz", hash = "sha256:86c37ee89be99aa4ec3cf3562302e8098f620a9d64b3bae116c8c3de8b97d256", size = 557543, upload-time = "2026-11-05T10:06:07.709Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/2a/c0db86c2d7eb31f84ccb73c4e1f32fb65a1daf940dc5dce09a6f1240af61/collate_sqllineage-2.1.8-py3-none-any.whl", hash = "sha256:0391decd62c154960e58db4daa2906060a022e39188fc09b18084465c98d4573", size = 268845, upload-time = "2026-09-28T13:17:17.107Z" },
+    { url = "https://files.pythonhosted.org/packages/26/a4/ee253440feea0c4104a37edcac3efb560b1bb39c561e0bf66c5b9da43c44/collate_sqllineage-2.1.9-py3-none-any.whl", hash = "sha256:7259930e54b939de6d48a9e019860170684e6b6f60114739041e1965b773eff7", size = 268844, upload-time = "2026-11-05T10:06:06.192Z" },
 ]
 
 [[package]]
@@ -10276,10 +10276,10 @@ requires-dist = [
     { name = "collate-dbt-artifacts-parser", marker = "extra == 'playwright'" },
     { name = "collate-dbt-artifacts-parser", marker = "extra == 'slim'" },
     { name = "collate-dbt-artifacts-parser", marker = "extra == 'test'" },
-    { name = "collate-sqllineage", specifier = "==2.1.8" },
-    { name = "collate-sqllineage", marker = "extra == 'all'", specifier = "==2.1.8" },
-    { name = "collate-sqllineage", marker = "extra == 'all-dev-env'", specifier = "==2.1.8" },
-    { name = "collate-sqllineage", marker = "extra == 'slim'", specifier = "==2.1.8" },
+    { name = "collate-sqllineage", specifier = "==2.1.9" },
+    { name = "collate-sqllineage", marker = "extra == 'all'", specifier = "==2.1.9" },
+    { name = "collate-sqllineage", marker = "extra == 'all-dev-env'", specifier = "==2.1.9" },
+    { name = "collate-sqllineage", marker = "extra == 'slim'", specifier = "==2.1.9" },
     { name = "confluent-kafka", extras = ["schemaregistry"], marker = "extra == 'all'", specifier = ">=2.15.0,<3" },
     { name = "confluent-kafka", extras = ["schemaregistry"], marker = "extra == 'all-dev-env'", specifier = ">=2.15.0,<3" },
     { name = "confluent-kafka", extras = ["schemaregistry"], marker = "extra == 'kafka'", specifier = ">=2.15.0,<3" },
@@ -15736,11 +15736,11 @@ wheels = [
 
 [[package]]
 name = "sqlparse"
-version = "0.6.0"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5f/d3/3f06a1006f2261d1342aefb3c71eed02f5d4ca5bdbecd86ebc12ad38306e/sqlparse-0.6.0.tar.gz", hash = "sha256:113c35c75365ab9cc9c7231d68c6428fb11c085fc8e9eb1ad659b7ddbf6cd2b9", size = 178477, upload-time = "2026-08-13T19:16:06.396Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/e0/361c764ea58cc1a75f7b4b424a74b08449db8bfa5e9199c7275999fdd1b9/sqlparse-0.6.1.tar.gz", hash = "sha256:ca722573f848ff2d30e40ea30f53a104b7dea7635ea9285891263eb2c58fb6e7", size = 182236, upload-time = "2026-11-01T18:06:45.951Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/50/f00935da0ec7cbf325f8dc4f772ae46fbc7b672dd62876e73f0a94adda57/sqlparse-0.6.0-py3-none-any.whl", hash = "sha256:b861c0288ce2fa56209a9a6412d2e066ac664b3873b89c26c9d8415e8e32996f", size = 50070, upload-time = "2026-08-13T19:16:04.062Z" },
+    { url = "https://files.pythonhosted.org/packages/df/ff/2fee788e82e75be8f210c65c5d103bf44c880e3769c884652a4cd911b8ba/sqlparse-0.6.1-py3-none-any.whl", hash = "sha256:3be5a72d04c873d690d7c6dedd33d6fae2ef82759881ceec02fc2efd0cba564f", size = 51200, upload-time = "2026-11-01T18:06:47.434Z" },
 ]
 
 [[package]]

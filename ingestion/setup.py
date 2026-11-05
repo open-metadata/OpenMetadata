@@ -227,7 +227,7 @@ base_requirements = {
     # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
     # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
     "sqlalchemy>=2.0.0,<2.1",
-    "collate-sqllineage==2.1.8",
+    "collate-sqllineage==2.1.9",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",

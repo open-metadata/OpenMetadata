@@ -29,11 +29,13 @@ import { Edit01, InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
+import { MASKED_PASSWORD_VALUE } from '../../../../../../constants/Secrets.constants';
 import {
   SUBSCRIPTION_WEBHOOK,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from '../../../../../../constants/Teams.constants';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getWebhookIcon } from '../../../../../../utils/TeamUtils';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
@@ -360,14 +362,21 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     if (webhook) {
       if (!endpoint.trim()) {
         setError(
-          t('message.field-required-plural', { field: t('label.endpoint') })
+          t('message.field-text-is-required', {
+            fieldText: t('label.endpoint'),
+          })
         );
 
         return;
       }
 
+      // A masked endpoint stands for the one stored for this webhook, and only for it.
+      const keepsStoredEndpoint =
+        endpoint === MASKED_PASSWORD_VALUE && webhook === subKey;
       try {
-        new URL(endpoint);
+        if (!keepsStoredEndpoint) {
+          new URL(endpoint);
+        }
       } catch {
         setError(t('message.endpoint-should-be-valid'));
 
@@ -382,6 +391,7 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     const ok = await onPatch({
       ...team,
       profile: {
+        ...team.profile,
         subscription: data
           ? { [data.webhook]: { endpoint: data.endpoint } }
           : undefined,
@@ -390,12 +400,21 @@ const SubscriptionField: FC<MembersTeamInfoWidgetsProps> = ({
     if (ok) {
       setIsEditing(false);
     }
-  }, [team, webhook, endpoint, onPatch, t]);
+  }, [team, webhook, endpoint, subKey, onPatch, t]);
 
-  const handleWebhookChange = useCallback((key: string | number | null) => {
-    setWebhook(key && key !== NONE_KEY ? String(key) : '');
-    setError(undefined);
-  }, []);
+  const handleWebhookChange = useCallback(
+    (key: string | number | null) => {
+      const next = key && key !== NONE_KEY ? String(key) : '';
+      setWebhook(next);
+      if (next !== subKey) {
+        setEndpoint((current) =>
+          current === MASKED_PASSWORD_VALUE ? '' : current
+        );
+      }
+      setError(undefined);
+    },
+    [subKey]
+  );
 
   return (
     <InfoWidget
@@ -566,6 +585,7 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
   onPatch,
 }) => {
   const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
 
   // The root Organization has no meaningful team type or default persona to set;
   // both only apply to a specific team.
@@ -581,7 +601,13 @@ const MembersTeamInfoWidgets: FC<MembersTeamInfoWidgetsProps> = ({
       <OwnerField canEdit={canEdit} team={team} onPatch={onPatch} />
       {!isOrganization && <TypeField team={team} />}
       {!isOrganization && (
-        <PersonaField canEdit={canEdit} team={team} onPatch={onPatch} />
+        // Members inherit the default persona, so only admins set it
+        // (ADR:2026-11-03-only-admins-assign-personas).
+        <PersonaField
+          canEdit={canEdit && Boolean(isAdminUser)}
+          team={team}
+          onPatch={onPatch}
+        />
       )}
       <EmailField canEdit={canEdit} team={team} onPatch={onPatch} />
       <SubscriptionField canEdit={canEdit} team={team} onPatch={onPatch} />

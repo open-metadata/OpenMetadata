@@ -126,8 +126,8 @@ class MetricResourceTest {
             .withParent(new EntityReference().withId(UUID.randomUUID()))
             .withMetricGroup(new EntityReference().withId(groupId));
 
-    assertFalse(MetricResource.hierarchyMembershipChanged(original, same));
-    assertTrue(MetricResource.hierarchyMembershipChanged(original, moved));
+    assertFalse(MetricRepository.hierarchyMembershipChanged(original, same));
+    assertTrue(MetricRepository.hierarchyMembershipChanged(original, moved));
   }
 
   @Test
@@ -144,19 +144,20 @@ class MetricResourceTest {
             .withFullyQualifiedName("profitability");
     Metric updated = new Metric().withParent(parent).withMetricGroup(group);
 
-    assertEquals(List.of(parent, group), MetricResource.hierarchyDestinations(null, updated));
+    assertEquals(List.of(parent, group), MetricRepository.hierarchyDestinations(null, updated));
     assertEquals(
         List.of(),
-        MetricResource.hierarchyDestinations(
+        MetricRepository.hierarchyDestinations(
             new Metric().withParent(parent).withMetricGroup(group), updated));
-    assertEquals(List.of(), MetricResource.hierarchyDestinations(null, new Metric()));
+    assertEquals(List.of(), MetricRepository.hierarchyDestinations(null, new Metric()));
 
     try (ResourceFixture fixture = resourceFixture()) {
       ArgumentCaptor<OperationContext> operations = ArgumentCaptor.forClass(OperationContext.class);
       ArgumentCaptor<ResourceContextInterface> resources =
           ArgumentCaptor.forClass(ResourceContextInterface.class);
 
-      fixture.resource().authorizeHierarchyDestinations(mock(SecurityContext.class), null, updated);
+      MetricAuthorization.authorizeHierarchyDestinations(
+          fixture.authorizer(), mock(SecurityContext.class), null, updated);
 
       verify(fixture.authorizer(), times(2))
           .authorize(any(), operations.capture(), resources.capture());
@@ -198,15 +199,24 @@ class MetricResourceTest {
 
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class, () -> MetricResource.validateMetricPatch(assets));
+            IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(assets));
 
     assertTrue(exception.getMessage().contains("assets"));
     assertThrows(
-        IllegalArgumentException.class, () -> MetricResource.validateMetricPatch(children));
+        IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(children));
     assertThrows(
-        IllegalArgumentException.class, () -> MetricResource.validateMetricPatch(childrenCount));
-    assertTrue(MetricResource.patchMutatesHierarchy(parent));
-    assertFalse(MetricResource.patchMutatesHierarchy(assets));
+        IllegalArgumentException.class,
+        () -> MetricAuthorization.validateMetricPatch(childrenCount));
+    assertTrue(MetricAuthorization.patchMutatesHierarchy(parent));
+    assertFalse(MetricAuthorization.patchMutatesHierarchy(assets));
+  }
+
+  @Test
+  void wholeDocumentReplaceCountsAsAHierarchyChange() {
+    jakarta.json.JsonPatch rootReplace =
+        Json.createPatchBuilder().replace("", Json.createObjectBuilder().build()).build();
+
+    assertTrue(MetricAuthorization.patchMutatesHierarchy(rootReplace));
   }
 
   @Test

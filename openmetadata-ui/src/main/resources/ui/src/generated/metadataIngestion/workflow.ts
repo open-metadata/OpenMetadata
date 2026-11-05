@@ -1412,7 +1412,9 @@ export interface AirflowConnectionObject {
      */
     s3StagingDir?: string;
     /**
-     * Athena workgroup.
+     * Athena workgroup that runs the ingestion queries and whose query history usage and
+     * lineage read. When empty, queries run in the default workgroup and query history is read
+     * from every enabled workgroup.
      */
     workgroup?: string;
     /**
@@ -7706,7 +7708,15 @@ export interface DBTConfigurationSource {
      */
     dbtCloudAuthToken?: string;
     /**
-     * dbt cloud job id.
+     * When no job IDs are set, extract the dbt run artifacts from the latest completed run of
+     * every job of the project (or of the account, when no project is set) instead of only the
+     * most recent run. CI jobs are skipped.
+     */
+    dbtCloudIngestAllJobs?: boolean;
+    /**
+     * Comma-separated IDs of the dbt cloud jobs to extract the dbt run artifacts from, using
+     * the latest completed run of each job. If left empty, the artifacts of the most recent
+     * completed run across all jobs are used.
      */
     dbtCloudJobId?: string;
     /**

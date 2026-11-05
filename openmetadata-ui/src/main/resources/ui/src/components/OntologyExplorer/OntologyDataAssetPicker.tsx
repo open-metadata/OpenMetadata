@@ -376,6 +376,7 @@ const OntologyDataAssetPicker = ({
             ? t('label.search-entity', { entity: t('label.data-asset-plural') })
             : t('message.search-tables-and-columns')
         }
+        autoComplete="off"
         data-testid="ontology-data-asset-search"
         icon={SearchIcon}
         placeholder={

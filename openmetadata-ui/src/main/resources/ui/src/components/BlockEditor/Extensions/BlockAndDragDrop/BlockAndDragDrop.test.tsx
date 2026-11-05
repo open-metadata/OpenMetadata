@@ -27,12 +27,12 @@ describe('DragAndDrop', () => {
   });
 
   it('should have the correct options', () => {
-    DragAndDrop.configure({
+    const configured = DragAndDrop.configure({
       dragHandleWidth: 24,
       blockHandleWidth: 24,
     });
 
-    expect(DragAndDrop.child?.options).toStrictEqual({
+    expect(configured.options).toStrictEqual({
       dragHandleWidth: 24,
       blockHandleWidth: 24,
     });
@@ -41,7 +41,6 @@ describe('DragAndDrop', () => {
   it('should have the correct config', () => {
     expect(DragAndDrop.config).toStrictEqual({
       name: 'dragAndDrop',
-      defaultOptions: {},
       addProseMirrorPlugins: expect.anything(),
     });
   });

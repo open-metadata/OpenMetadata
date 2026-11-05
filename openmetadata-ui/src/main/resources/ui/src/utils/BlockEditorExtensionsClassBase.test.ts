@@ -12,6 +12,7 @@
  */
 
 import { Extensions } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import blockEditorExtensionsClassBase, {
   BlockEditorExtensionsClassBase,
@@ -38,7 +39,7 @@ jest.mock('@tiptap/extension-placeholder', () => ({
 
 jest.mock('@tiptap/extension-table', () => ({
   __esModule: true,
-  default: {
+  Table: {
     configure: jest.fn(() => ({ name: 'Table' })),
   },
 }));
@@ -200,6 +201,23 @@ describe('BlockEditorExtensionsClassBase', () => {
       );
 
       expect(starterKit).toBeDefined();
+    });
+
+    it('should turn off the StarterKit extensions it registers or keeps off itself', () => {
+      (
+        extensionsClass as unknown as {
+          getCoreExtensions: () => Extensions;
+        }
+      ).getCoreExtensions();
+
+      expect(StarterKit.configure).toHaveBeenCalledWith(
+        expect.objectContaining({
+          link: false,
+          trailingNode: false,
+          underline: false,
+          listKeymap: false,
+        })
+      );
     });
 
     it('should include Placeholder extension', () => {

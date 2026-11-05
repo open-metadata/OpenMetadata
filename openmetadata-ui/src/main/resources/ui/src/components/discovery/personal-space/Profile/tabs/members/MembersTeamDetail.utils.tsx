@@ -43,6 +43,8 @@ export const TEAM_FIELDS = [
   TabSpecificField.USER_COUNT,
   TabSpecificField.DOMAINS,
   TabSpecificField.OWNERS,
+  // The subscription widget reads and saves the team's webhook from it.
+  TabSpecificField.PROFILE,
   // Resolved recursively on read (excludes the team itself); needed to scope the
   // users search to the whole subtree, mirroring the legacy UserTab search.
   TabSpecificField.DESCENDANT_TEAMS,

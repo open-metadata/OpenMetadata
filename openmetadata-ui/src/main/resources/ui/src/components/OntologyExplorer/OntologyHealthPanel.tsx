@@ -27,8 +27,8 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Expand01,
   Link01,
+  Maximize01,
   Minus,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
@@ -123,7 +123,7 @@ const OntologyHealthPanel = ({
         aria-label={`${t('label.expand')} ${t('label.ontology-health')}`}
         color="tertiary"
         data-testid="ontology-health-restore"
-        iconTrailing={Expand01}
+        iconTrailing={Maximize01}
         size="sm"
         onPress={() => setView('summary')}>
         <span className="tw:flex tw:items-center tw:gap-2.5">

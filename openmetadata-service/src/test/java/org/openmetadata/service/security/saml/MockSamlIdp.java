@@ -74,12 +74,28 @@ public final class MockSamlIdp {
     return signedResponse(subjectEmail, acsUrl, spEntityId, Instant.now());
   }
 
+  /** A signed response answering the SP's AuthnRequest {@code inResponseTo}. */
+  public String signedResponse(
+      String subjectEmail, String acsUrl, String spEntityId, String inResponseTo) {
+    return signedResponse(subjectEmail, acsUrl, spEntityId, Instant.now(), inResponseTo);
+  }
+
   /** As above, issued at {@code issuedAt}; its validity window is five minutes either side. */
   public String signedResponse(
       String subjectEmail, String acsUrl, String spEntityId, Instant issuedAt) {
+    return signedResponse(subjectEmail, acsUrl, spEntityId, issuedAt, null);
+  }
+
+  private String signedResponse(
+      String subjectEmail,
+      String acsUrl,
+      String spEntityId,
+      Instant issuedAt,
+      String inResponseTo) {
     String result;
     try {
-      Document doc = Util.loadXML(buildResponseXml(subjectEmail, acsUrl, spEntityId, issuedAt));
+      Document doc =
+          Util.loadXML(buildResponseXml(subjectEmail, acsUrl, spEntityId, issuedAt, inResponseTo));
       // Message-level (Response) signature: addSign signs the document root and returns the whole
       // signed document. onelogin unconditionally requires a valid Response- or Assertion-level
       // signature, so this is sufficient when the SP's want_assertions_signed is left false.
@@ -93,12 +109,41 @@ public final class MockSamlIdp {
     return result;
   }
 
+  /**
+   * A response whose assertion alone carries the signature, as many identity providers send it. The
+   * assertion answers {@code inResponseTo}; nothing signs the response element around it, so its
+   * {@code InResponseTo} is {@code envelopeInResponseTo}, whatever whoever posts it wrote there.
+   */
+  public String assertionSignedResponse(
+      String subjectEmail,
+      String acsUrl,
+      String spEntityId,
+      String inResponseTo,
+      String envelopeInResponseTo) {
+    String result;
+    try {
+      Instant issuedAt = Instant.now();
+      Document assertion =
+          Util.loadXML(assertionXml(subjectEmail, acsUrl, spEntityId, issuedAt, inResponseTo));
+      assertion.getDocumentElement().setIdAttribute(ID_ATTRIBUTE, true);
+      String signedAssertion =
+          Util.addSign(
+              assertion, signingKey, signingCertificate, Constants.RSA_SHA256, Constants.SHA256);
+      result =
+          Util.base64encoder(responseXml(acsUrl, issuedAt, envelopeInResponseTo, signedAssertion));
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to build assertion-signed SAML response", e);
+    }
+    return result;
+  }
+
   /** An unsigned, base64 SAML Response — to assert the SP rejects assertions with no signature. */
   public String unsignedResponse(String subjectEmail, String acsUrl, String spEntityId) {
     String result;
     try {
       result =
-          Util.base64encoder(buildResponseXml(subjectEmail, acsUrl, spEntityId, Instant.now()));
+          Util.base64encoder(
+              buildResponseXml(subjectEmail, acsUrl, spEntityId, Instant.now(), null));
     } catch (Exception e) {
       throw new IllegalStateException("Failed to build unsigned SAML response", e);
     }
@@ -106,54 +151,91 @@ public final class MockSamlIdp {
   }
 
   private String buildResponseXml(
-      String subjectEmail, String acsUrl, String spEntityId, Instant issuedAt) {
-    Instant now = issuedAt.truncatedTo(ChronoUnit.SECONDS);
-    String issueInstant = DateTimeFormatter.ISO_INSTANT.format(now);
-    String notBefore = DateTimeFormatter.ISO_INSTANT.format(now.minus(5, ChronoUnit.MINUTES));
-    String notOnOrAfter = DateTimeFormatter.ISO_INSTANT.format(now.plus(5, ChronoUnit.MINUTES));
+      String subjectEmail,
+      String acsUrl,
+      String spEntityId,
+      Instant issuedAt,
+      String inResponseTo) {
+    return responseXml(
+        acsUrl,
+        issuedAt,
+        inResponseTo,
+        assertionXml(subjectEmail, acsUrl, spEntityId, issuedAt, inResponseTo));
+  }
+
+  private String responseXml(
+      String acsUrl, Instant issuedAt, String inResponseTo, String assertionXml) {
     return """
-        <samlp:Response xmlns:samlp="%s" xmlns:saml="%s" ID="%s" Version="2.0" IssueInstant="%s" Destination="%s">
+        <samlp:Response xmlns:samlp="%s" xmlns:saml="%s" ID="%s" Version="2.0" IssueInstant="%s" Destination="%s"%s>
           <saml:Issuer>%s</saml:Issuer>
           <samlp:Status><samlp:StatusCode Value="%s"/></samlp:Status>
-          <saml:Assertion ID="%s" Version="2.0" IssueInstant="%s">
-            <saml:Issuer>%s</saml:Issuer>
-            <saml:Subject>
-              <saml:NameID Format="%s">%s</saml:NameID>
-              <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
-                <saml:SubjectConfirmationData Recipient="%s" NotOnOrAfter="%s"/>
-              </saml:SubjectConfirmation>
-            </saml:Subject>
-            <saml:Conditions NotBefore="%s" NotOnOrAfter="%s">
-              <saml:AudienceRestriction><saml:Audience>%s</saml:Audience></saml:AudienceRestriction>
-            </saml:Conditions>
-            <saml:AuthnStatement AuthnInstant="%s" SessionIndex="%s">
-              <saml:AuthnContext>
-                <saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:Password</saml:AuthnContextClassRef>
-              </saml:AuthnContext>
-            </saml:AuthnStatement>
-          </saml:Assertion>
+          %s
         </samlp:Response>
         """
         .formatted(
             SAML_PROTOCOL_NS,
             SAML_ASSERTION_NS,
             newId(),
-            issueInstant,
+            issueInstant(issuedAt),
             acsUrl,
+            answers(inResponseTo),
             idpEntityId,
             Constants.STATUS_SUCCESS,
+            assertionXml);
+  }
+
+  // Declares its own namespace so it can also be signed as a document of its own.
+  private String assertionXml(
+      String subjectEmail,
+      String acsUrl,
+      String spEntityId,
+      Instant issuedAt,
+      String inResponseTo) {
+    Instant now = issuedAt.truncatedTo(ChronoUnit.SECONDS);
+    String notBefore = DateTimeFormatter.ISO_INSTANT.format(now.minus(5, ChronoUnit.MINUTES));
+    String notOnOrAfter = DateTimeFormatter.ISO_INSTANT.format(now.plus(5, ChronoUnit.MINUTES));
+    return """
+        <saml:Assertion xmlns:saml="%s" ID="%s" Version="2.0" IssueInstant="%s">
+          <saml:Issuer>%s</saml:Issuer>
+          <saml:Subject>
+            <saml:NameID Format="%s">%s</saml:NameID>
+            <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
+              <saml:SubjectConfirmationData Recipient="%s" NotOnOrAfter="%s"%s/>
+            </saml:SubjectConfirmation>
+          </saml:Subject>
+          <saml:Conditions NotBefore="%s" NotOnOrAfter="%s">
+            <saml:AudienceRestriction><saml:Audience>%s</saml:Audience></saml:AudienceRestriction>
+          </saml:Conditions>
+          <saml:AuthnStatement AuthnInstant="%s" SessionIndex="%s">
+            <saml:AuthnContext>
+              <saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:Password</saml:AuthnContextClassRef>
+            </saml:AuthnContext>
+          </saml:AuthnStatement>
+        </saml:Assertion>
+        """
+        .formatted(
+            SAML_ASSERTION_NS,
             newId(),
-            issueInstant,
+            issueInstant(issuedAt),
             idpEntityId,
             Constants.NAMEID_EMAIL_ADDRESS,
             subjectEmail,
             acsUrl,
             notOnOrAfter,
+            answers(inResponseTo),
             notBefore,
             notOnOrAfter,
             spEntityId,
-            issueInstant,
+            issueInstant(issuedAt),
             newId());
+  }
+
+  private static String issueInstant(Instant issuedAt) {
+    return DateTimeFormatter.ISO_INSTANT.format(issuedAt.truncatedTo(ChronoUnit.SECONDS));
+  }
+
+  private static String answers(String inResponseTo) {
+    return inResponseTo == null ? "" : " InResponseTo=\"" + inResponseTo + "\"";
   }
 
   private static String newId() {

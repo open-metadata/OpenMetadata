@@ -145,6 +145,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       testLevel: testLevel ?? TestLevel.TABLE,
       useDynamicAssertion: false,
       ...testCaseClassBase.initialFormValues(),
+      createPipeline: true,
       cron: DEFAULT_SCHEDULE_CRON_DAILY,
       enableDebugLog: false,
       raiseOnError: true,
@@ -203,7 +204,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
       const pipelineTestSuite = created.testSuite ?? testSuite;
-      if (!formContext?.canCreatePipeline || !pipelineTestSuite) {
+      if (
+        !values.createPipeline ||
+        !formContext?.canCreatePipeline ||
+        !pipelineTestSuite
+      ) {
         return;
       }
 
