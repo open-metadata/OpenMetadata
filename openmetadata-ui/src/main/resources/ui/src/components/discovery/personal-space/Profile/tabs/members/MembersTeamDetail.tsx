@@ -74,7 +74,11 @@ import {
   patchTeamDetail,
   restoreTeam,
 } from '../../../../../../rest/teamsAPI';
-import { getUsers, updateUserDetail } from '../../../../../../rest/userAPI';
+import {
+  getUserById,
+  getUsers,
+  updateUserDetail,
+} from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { TabContribution } from '../../../../../../utils/ExtensionPointTypes';
@@ -776,14 +780,21 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   }, [team, handlePatchTeam]);
 
   const updateOwnTeams = useCallback(
-    async (teams: EntityReference[], successKey: string) => {
+    async (
+      changeTeams: (teams: EntityReference[]) => EntityReference[],
+      successKey: string
+    ) => {
       if (!team || !currentUser) {
         return;
       }
       try {
-        const updatedUser = await updateUserDetail(
-          currentUser.id,
-          compare(currentUser, { ...currentUser, teams })
+        const updatedUser = await getUserById(currentUser.id, {
+          fields: TabSpecificField.TEAMS,
+        }).then((user) =>
+          updateUserDetail(
+            user.id,
+            compare(user, { ...user, teams: changeTeams(user.teams ?? []) })
+          )
         );
         updateCurrentUser(updatedUser);
         showSuccessToast(t(successKey, { team: getEntityName(team) }));
@@ -799,22 +810,22 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     () =>
       team &&
       updateOwnTeams(
-        [
-          ...(currentUser?.teams ?? []),
+        (teams) => [
+          ...teams,
           { id: team.id, type: EntityType.TEAM } as EntityReference,
         ],
         'server.join-team-success'
       ),
-    [team, currentUser, updateOwnTeams]
+    [team, updateOwnTeams]
   );
 
   const handleLeaveTeam = useCallback(
     () =>
       updateOwnTeams(
-        (currentUser?.teams ?? []).filter(({ id }) => id !== team?.id),
+        (teams) => teams.filter(({ id }) => id !== team?.id),
         'server.leave-team-success'
       ),
-    [team, currentUser, updateOwnTeams]
+    [team, updateOwnTeams]
   );
 
   const handleTeamExport = useCallback(() => {
