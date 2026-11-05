@@ -5767,6 +5767,7 @@
     "ontology-concept-name-taken": "A definition named {{name}} already exists in this ontology.",
     "ontology-concept-not-found": "This concept was not found in the {{version}} version of the ontology.",
     "ontology-concept-ontology-required": "Choose an ontology.",
+    "ontology-concept-skos-owl-only": "A SKOS concept cannot have parents, equivalent or disjoint classes, or properties. Remove them, or choose OWL class or Both.",
     "ontology-configured-reviewers": "Configured reviewers. The linked approval task determines assignments and decisions.",
     "ontology-consistency-not-run": "سازگاری منطقی این نسخه بررسی نشده است.",
     "ontology-create-lands-in-edit": "برای افزودن کلاس‌ها به حالت ویرایش می‌روید.",
