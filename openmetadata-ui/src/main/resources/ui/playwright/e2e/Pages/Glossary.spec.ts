@@ -1923,12 +1923,14 @@ test.describe('Glossary tests', () => {
 
     try {
       await redirectToHomePage(dataConsumerPage);
-      // Denied resources are omitted from lists; exercise their deep links.
+      // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read),
+      // so the denied glossary is reachable only by its URL.
       const fqn = glossary1.responseData.fullyQualifiedName;
       const deniedResponse = dataConsumerPage.waitForResponse(
         (response) =>
+          response.request().method() === 'GET' &&
           decodeURIComponent(new URL(response.url()).pathname) ===
-          `/api/v1/glossaries/name/${fqn}`
+            `/api/v1/glossaries/name/${fqn}`
       );
       await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
         waitUntil: 'commit',
@@ -1949,20 +1951,34 @@ test.describe('Glossary tests', () => {
   test('Verify Glossary Term Deny Permission', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    const { dataConsumerUser, glossaryTerm1, cleanup } =
+    const { dataConsumerUser, glossary1, glossaryTerm1, cleanup } =
       await setupGlossaryDenyPermissionTest(apiContext, false);
 
-    const { page: dataConsumerPage, afterAction: consumerAfterAction } =
-      await performUserLogin(browser, dataConsumerUser);
+    const {
+      page: dataConsumerPage,
+      apiContext: dataConsumerApiContext,
+      afterAction: consumerAfterAction,
+    } = await performUserLogin(browser, dataConsumerUser);
 
     try {
       await redirectToHomePage(dataConsumerPage);
-      // A denied term cannot be opened through its filtered glossary table.
+      // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
+      const termList = await okJson<{ data: { id: string }[] }>(
+        await dataConsumerApiContext.get(
+          `/api/v1/glossaryTerms?glossary=${glossary1.responseData.id}&limit=50`
+        ),
+        'glossaryTerms list as data consumer'
+      );
+
+      expect(termList.data.map((term) => term.id)).not.toContain(
+        glossaryTerm1.responseData.id
+      );
       const fqn = glossaryTerm1.responseData.fullyQualifiedName;
       const deniedResponse = dataConsumerPage.waitForResponse(
         (response) =>
+          response.request().method() === 'GET' &&
           decodeURIComponent(new URL(response.url()).pathname) ===
-          `/api/v1/glossaryTerms/name/${fqn}`
+            `/api/v1/glossaryTerms/name/${fqn}`
       );
       await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
         waitUntil: 'commit',

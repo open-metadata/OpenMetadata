@@ -25,7 +25,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import {
@@ -74,7 +73,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
       handlePageSizeChange,
       handlePagingChange,
       showPagination,
-    } = usePaging(PAGE_SIZE_BASE);
+    } = usePaging();
 
     const fetchPorts = useCallback(
       async (page = 1) => {
