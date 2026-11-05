@@ -304,6 +304,7 @@ public class SearchMetadataTool implements McpTool {
             .withFetchSource(true)
             .withDeleted(includeDeleted)
             // Callers count with totalFound; without this the engine stops counting at 10,000.
+            // ADR:2026-11-05-search-metadata-counts-exactly-and-pages-within-the-result-window
             .withTrackTotalHits(true);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
@@ -497,6 +498,7 @@ public class SearchMetadataTool implements McpTool {
   /**
    * Past the engine's result window a request fails, or comes back empty and reads as no matches.
    * Naming the limit tells the caller to narrow the query instead of paging on.
+   * ADR:2026-11-05-search-metadata-counts-exactly-and-pages-within-the-result-window
    */
   private static void requireWithinResultWindow(int from) {
     if (from >= MAX_RESULT_HITS) {
