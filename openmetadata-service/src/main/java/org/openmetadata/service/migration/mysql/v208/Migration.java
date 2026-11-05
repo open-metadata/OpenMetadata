@@ -21,6 +21,7 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
+import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -58,6 +59,14 @@ public class Migration extends MigrationProcessImpl {
         () -> {
           initializeWorkflowHandler();
           MigrationUtil.rewriteWorkflowRules();
+        });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WorkflowRedeployMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          WorkflowRedeployMigration.redeploy();
         });
   }
 }
