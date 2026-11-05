@@ -104,6 +104,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.TimezoneUtil;
 
 @Slf4j
 @Repository(name = "IngestionPipelineRepository")
@@ -543,6 +544,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
     validateSourceConfigHasType(ingestionPipeline);
+    if (ingestionPipeline.getAirflowConfig() != null
+        && ingestionPipeline.getAirflowConfig().getPipelineTimezone() != null) {
+      String timezone =
+          TimezoneUtil.normalize(ingestionPipeline.getAirflowConfig().getPipelineTimezone());
+      ingestionPipeline
+          .getAirflowConfig()
+          .setPipelineTimezone(timezone == null ? TimezoneUtil.UTC : timezone);
+    }
   }
 
   static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
@@ -630,7 +639,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         updated.getAirflowConfig() != null
             ? updated.getAirflowConfig().getScheduleInterval()
             : null;
-    return !Objects.equals(originalSchedule, updatedSchedule);
+    String originalTimezone =
+        original.getAirflowConfig() != null
+            ? original.getAirflowConfig().getPipelineTimezone()
+            : null;
+    String updatedTimezone =
+        updated.getAirflowConfig() != null
+            ? updated.getAirflowConfig().getPipelineTimezone()
+            : null;
+    return !Objects.equals(originalSchedule, updatedSchedule)
+        || !Objects.equals(originalTimezone, updatedTimezone);
   }
 
   boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {

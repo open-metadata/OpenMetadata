@@ -341,7 +341,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     }
   };
 
-  const handleScheduleSave = async (cron: string) => {
+  const handleScheduleSave = async (cron: string, timezone?: string) => {
     if (!appData) {
       return;
     }
@@ -355,6 +355,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
               ? ScheduleTimeline.None
               : ScheduleTimeline.Custom,
             ...(cron ? { cronExpression: cron } : {}),
+            ...(timezone ? { timezone } : {}),
           },
         },
         t('label.schedule')

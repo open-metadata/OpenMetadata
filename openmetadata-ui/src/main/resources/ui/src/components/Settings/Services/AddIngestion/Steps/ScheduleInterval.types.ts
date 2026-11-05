@@ -29,10 +29,19 @@ export interface ScheduleIntervalProps {
    * valid through the On Demand card.
    */
   onValidityChange?: (isValid: boolean) => void;
+  /**
+   * IANA zone the cron runs in. The timezone picker renders only when
+   * onTimezoneChange is provided, so callers that store no zone are unchanged.
+   * Clearing the picker reports `undefined`, which hands the schedule back to
+   * the server default.
+   */
+  timezone?: string;
+  onTimezoneChange?: (timezone?: string) => void;
 }
 
 export interface WorkflowExtraConfig {
   cron?: string;
+  timezone?: string;
   enableDebugLog?: boolean;
 }
 

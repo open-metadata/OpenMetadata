@@ -18,38 +18,57 @@ import { LOADING_STATE } from '../../../../../enums/common.enum';
 import { ScheduleIntervalHandle } from './ScheduleInterval.types';
 import ScheduleIntervalStep from './ScheduleIntervalStep';
 
+jest.mock('../../../../../utils/date-time/DateTimeUtils', () => ({
+  getBrowserTimezone: jest.fn().mockReturnValue('Europe/Tallinn'),
+}));
+
 jest.mock('./ScheduleInterval', () =>
   jest
     .fn()
-    .mockImplementation(({ value, onChange, disabled, onValidityChange }) => (
-      <div data-testid="schedule-interval">
-        <span data-testid="cron-value">{value ?? 'UNDEFINED'}</span>
-        <span data-testid="cron-disabled">{String(Boolean(disabled))}</span>
-        <button
-          data-testid="set-weekly-btn"
-          onClick={() => onChange?.('0 0 * * 0')}>
-          weekly
-        </button>
-        <button
-          data-testid="set-on-demand-btn"
-          onClick={() => {
-            // Mirrors the real component, which drops any custom cron error
-            // when the schedular card changes.
-            onValidityChange?.(true);
-            onChange?.(undefined);
-          }}>
-          on demand
-        </button>
-        <button
-          data-testid="clear-custom-cron-btn"
-          onClick={() => {
-            onValidityChange?.(false);
-            onChange?.('');
-          }}>
-          clear custom cron
-        </button>
-      </div>
-    ))
+    .mockImplementation(
+      ({
+        value,
+        onChange,
+        disabled,
+        onValidityChange,
+        timezone,
+        onTimezoneChange,
+      }) => (
+        <div data-testid="schedule-interval">
+          <span data-testid="cron-value">{value ?? 'UNDEFINED'}</span>
+          <span data-testid="cron-disabled">{String(Boolean(disabled))}</span>
+          <span data-testid="timezone-value">{timezone ?? 'UNDEFINED'}</span>
+          <button
+            data-testid="set-timezone-btn"
+            onClick={() => onTimezoneChange?.('Asia/Tokyo')}>
+            tokyo
+          </button>
+          <button
+            data-testid="set-weekly-btn"
+            onClick={() => onChange?.('0 0 * * 0')}>
+            weekly
+          </button>
+          <button
+            data-testid="set-on-demand-btn"
+            onClick={() => {
+              // Mirrors the real component, which drops any custom cron error
+              // when the schedular card changes.
+              onValidityChange?.(true);
+              onChange?.(undefined);
+            }}>
+            on demand
+          </button>
+          <button
+            data-testid="clear-custom-cron-btn"
+            onClick={() => {
+              onValidityChange?.(false);
+              onChange?.('');
+            }}>
+            clear custom cron
+          </button>
+        </div>
+      )
+    )
 );
 
 const mockOnDeploy = jest.fn();
@@ -115,9 +134,40 @@ describe('ScheduleIntervalStep', () => {
 
     expect(mockOnDeploy).toHaveBeenCalledWith({
       cron: DEFAULT_SCHEDULE_CRON_DAILY,
+      timezone: 'Europe/Tallinn',
       retries: 3,
       raiseOnError: false,
     });
+  });
+
+  it('should seed a new schedule with the browser timezone and submit the one picked', async () => {
+    const ref = createRef<ScheduleIntervalHandle>();
+    renderStep({}, ref);
+
+    expect(screen.getByTestId('timezone-value')).toHaveTextContent(
+      'Europe/Tallinn'
+    );
+
+    fireEvent.click(screen.getByTestId('set-timezone-btn'));
+
+    await act(async () => {
+      ref.current?.submit();
+    });
+
+    expect(mockOnDeploy).toHaveBeenCalledWith(
+      expect.objectContaining({ timezone: 'Asia/Tokyo' })
+    );
+  });
+
+  it('should keep the saved pipeline timezone in edit mode', () => {
+    renderStep({
+      isEditMode: true,
+      initialData: { cron: '0 0 * * *', timezone: 'America/New_York' },
+    });
+
+    expect(screen.getByTestId('timezone-value')).toHaveTextContent(
+      'America/New_York'
+    );
   });
 
   it('should clamp a negative retries value to zero before deploying', async () => {
@@ -135,6 +185,7 @@ describe('ScheduleIntervalStep', () => {
 
     expect(mockOnDeploy).toHaveBeenCalledWith({
       cron: DEFAULT_SCHEDULE_CRON_DAILY,
+      timezone: 'Europe/Tallinn',
       retries: 0,
       raiseOnError: true,
     });
@@ -152,6 +203,7 @@ describe('ScheduleIntervalStep', () => {
 
     expect(mockOnDeploy).toHaveBeenCalledWith({
       cron: undefined,
+      timezone: 'Europe/Tallinn',
       retries: 0,
       raiseOnError: true,
     });

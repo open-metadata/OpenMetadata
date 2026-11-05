@@ -346,7 +346,7 @@ const AppDetails = () => {
   );
 
   const onAppScheduleSave = useCallback(
-    async (cron: string) => {
+    async (cron: string, timezone?: string) => {
       if (appData) {
         const updatedData = {
           ...appData,
@@ -355,6 +355,7 @@ const AppDetails = () => {
               ? ScheduleTimeline.None
               : ScheduleTimeline.Custom,
             ...(cron ? { cronExpression: cron } : {}),
+            ...(timezone ? { timezone } : {}),
           },
         };
 

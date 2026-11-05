@@ -21,11 +21,13 @@ import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.exceptions.XMLException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ExpiryTimer;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -40,12 +42,14 @@ import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.secrets.WorkflowSinkSecrets;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionSecretGuards;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.TimezoneUtil;
 
 @Slf4j
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
@@ -123,6 +127,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     // trigger (getUpdater), so a stored definition that breaks them can still be edited otherwise.
     LOG.info("Validating workflow configuration for: {}", entity.getName());
     validateWorkflowStructure(entity);
+    if (entity.getTrigger() instanceof PeriodicBatchEntityTriggerDefinition periodic
+        && periodic.getConfig() != null
+        && periodic.getConfig().getSchedule() != null) {
+      AppSchedule schedule = periodic.getConfig().getSchedule();
+      schedule.setTimezone(TimezoneUtil.normalize(schedule.getTimezone()));
+      PeriodicBatchEntityTrigger.requireServerTimezone(schedule);
+    }
     requireDeployable(entity);
   }
 

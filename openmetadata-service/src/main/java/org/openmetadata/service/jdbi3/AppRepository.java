@@ -39,6 +39,7 @@ import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.TimezoneUtil;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
@@ -103,6 +104,11 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void prepare(App entity, boolean update) {
+    if (entity.getAppSchedule() != null && entity.getAppSchedule().getTimezone() != null) {
+      entity
+          .getAppSchedule()
+          .setTimezone(TimezoneUtil.normalize(entity.getAppSchedule().getTimezone()));
+    }
     // Encrypt sensitive fields in appConfiguration before saving
     if (entity.getAppConfiguration() != null && entity.getClassName() != null) {
       try {

@@ -109,6 +109,7 @@ import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.TimezoneUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.quartz.SchedulerException;
 
@@ -1120,6 +1121,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
             : putResourceContext;
     authorizer.authorize(
         securityContext, new OperationContext(entityType, putOperation), authorizedContext);
+    // The job is deleted and reinstalled before the store validates the request, so a zone the
+    // repository would reject has to fail here first or the stored app ends up unscheduled.
+    if (app.getAppSchedule() != null) {
+      app.getAppSchedule().setTimezone(TimezoneUtil.normalize(app.getAppSchedule().getTimezone()));
+    }
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
