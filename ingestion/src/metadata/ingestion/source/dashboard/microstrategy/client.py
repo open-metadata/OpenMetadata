@@ -66,9 +66,15 @@ class MicroStrategyClient:
     Client Handling API communication with MicroStrategy
     """
 
-    def __init__(self, config: MicroStrategyConnection, verify: bool | str | None = None):
+    def __init__(
+        self,
+        config: MicroStrategyConnection,
+        verify: bool | str | None = None,
+        cert: tuple[str, str] | None = None,
+    ):
         self.config = config
         self._verify = verify
+        self._cert = cert
         self._base_url = clean_uri(str(self.config.hostPort))
         self._cube_sql: OrderedDict[str, str | None] = OrderedDict()
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
@@ -96,6 +102,7 @@ class MicroStrategyClient:
             json=data,
             timeout=LOGIN_TIMEOUT,
             verify=self._verify if self._verify is not None else True,
+            cert=self._cert,
         )
         try:
             response.raise_for_status()
@@ -118,6 +125,7 @@ class MicroStrategyClient:
                 cookies=response.cookies,
                 allow_redirects=True,
                 verify=self._verify,
+                cert=self._cert,
             ),
             source_name="microstrategy",
         )
@@ -150,7 +158,7 @@ class MicroStrategyClient:
             self.client.post(path="/auth/logout", retries=0)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to close the MicroStrategy API session: {exc}")
+            logger.warning("Failed to close the MicroStrategy API session: %s", exc)
 
     def get_session_info(self) -> Any:
         """Read the session the token opened, proving it is valid"""
@@ -239,7 +247,7 @@ class MicroStrategyClient:
             value = fetch()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not read {what}: {exc}")
+            logger.warning("Could not read %s: %s", what, exc)
             value = None
         cache[key] = value
         if len(cache) > CACHE_SIZE:
@@ -254,5 +262,5 @@ class MicroStrategyClient:
                 valid.append(model.model_validate(item))  # pyright: ignore[reportAttributeAccessIssue]
             except ValidationError as exc:
                 self.skipped_objects += 1
-                logger.warning(f"Skipping a MicroStrategy {what} that does not match the expected shape: {exc}")
+                logger.warning("Skipping a MicroStrategy %s that does not match the expected shape: %s", what, exc)
         return valid

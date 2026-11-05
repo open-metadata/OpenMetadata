@@ -72,18 +72,33 @@ MICROSTRATEGY_ERRORS = ErrorPack(
 ).including(NETWORK_ERRORS)
 
 
-def resolve_verify(connection: MicroStrategyConnectionConfig) -> tuple[bool | str | None, SSLManager | None]:
+def resolve_ssl(
+    connection: MicroStrategyConnectionConfig,
+) -> tuple[bool | str | None, tuple[str, str] | None, SSLManager | None]:
     """
-    Map Verify SSL to a ``requests`` verify value: ``no-ssl`` keeps the system CAs (None),
-    ``ignore`` disables verification and ``validate`` points at a file holding the given CA.
+    Map Verify SSL and SSL Config to ``requests`` ``verify`` and ``cert`` values.
+
+    ``no-ssl`` keeps the system CAs (None), ``ignore`` disables verification and ``validate``
+    points at a file holding the given CA. A client certificate and key, when given, are sent
+    for mutual TLS whatever the verification mode.
     """
-    if not connection.verifySSL:
-        return None, None
-    verify = get_verify_ssl_fn(connection.verifySSL)(connection.sslConfig)
-    if isinstance(verify, str) and connection.sslConfig:
-        ssl_manager = SSLManager(ca=connection.sslConfig.root.caCertificate)
-        return ssl_manager.ca_file_path, ssl_manager
-    return verify, None
+    verify = get_verify_ssl_fn(connection.verifySSL)(connection.sslConfig) if connection.verifySSL else None
+    ssl = connection.sslConfig.root if connection.sslConfig else None
+    if not ssl:
+        return verify, None, None
+    ssl_manager = SSLManager(
+        ca=ssl.caCertificate if isinstance(verify, str) else None,
+        cert=ssl.sslCertificate,
+        key=ssl.sslKey,
+    )
+    if isinstance(verify, str):
+        verify = ssl_manager.ca_file_path
+    cert = (
+        (ssl_manager.cert_file_path, ssl_manager.key_file_path)
+        if ssl_manager.cert_file_path and ssl_manager.key_file_path
+        else None
+    )
+    return verify, cert, ssl_manager
 
 
 class MicroStrategyChecks:
@@ -132,10 +147,10 @@ class MicroStrategyConnection(BaseConnection[MicroStrategyConnectionConfig, Micr
     step_timeout_seconds = THREE_MIN
 
     def _get_client(self) -> MicroStrategyClient:
-        verify, ssl_manager = resolve_verify(self.service_connection)
+        verify, cert, ssl_manager = resolve_ssl(self.service_connection)
         if ssl_manager:
             self._on_close(ssl_manager.cleanup_temp_files)
-        client = MicroStrategyClient(self.service_connection, verify=verify)
+        client = MicroStrategyClient(self.service_connection, verify=verify, cert=cert)
         self._on_close(client.close_api_session)
         return client
 

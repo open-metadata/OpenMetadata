@@ -24,6 +24,11 @@ also asked for every result in one response (`limit=-1`).
 - The search is scoped by the `X-MSTR-ProjectID` header and paged 500 results at a time
   (`SEARCH_PAGE_SIZE`). Projects are filtered by `projectFilterPattern` before their dossiers are
   searched.
+- `username` and `password` are optional in the connection schema. The login sends them only when
+  they are set, so the Anonymous login mode (8) works without credentials. The login request times
+  out after 10 s to connect and 60 s to read (`LOGIN_TIMEOUT`); every other call keeps the REST
+  client's (10, 300).
+- A client certificate and key in SSL Config are sent for mutual TLS whatever Verify SSL is set to.
 - Cube SQL and owner email lookups are cached per id in a 512-entry LRU (`CACHE_SIZE`), failures
   included.
 - A run that could not list every project's dossiers, or dropped a listed object that did not

@@ -212,7 +212,7 @@ class MicrostrategySource(DashboardServiceSource):
             return self.metadata.get_reference_by_email(email) if email else None
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not resolve the owner of dossier [{dashboard_details.name}]: {exc}")
+            logger.warning("Could not resolve the owner of dossier [%s]: %s", dashboard_details.name, exc)
         return None
 
     def yield_dashboard(self, dashboard_details: MstrDashboardDetails) -> Iterable[Either[CreateDashboardRequest]]:
@@ -284,7 +284,7 @@ class MicrostrategySource(DashboardServiceSource):
 
         database_service = self.metadata.get_by_name(entity=DatabaseService, fqn=prefix_db_service_name)
         if not database_service:
-            logger.warning(f"Database service [{prefix_db_service_name}] from dbServicePrefixes was not found")
+            logger.warning("Database service [%s] from dbServicePrefixes was not found", prefix_db_service_name)
             return
         dialect = ConnectionTypeDialectMapper.dialect_of(database_service.serviceType.value)
 
@@ -298,7 +298,7 @@ class MicrostrategySource(DashboardServiceSource):
                     fqn=self._fqn(DashboardDataModel, data_model_name=dataset.id),
                 )
                 if not datamodel_entity:
-                    logger.debug(f"Data model [{dataset.id}] not found, skipping its lineage")
+                    logger.debug("Data model [%s] not found, skipping its lineage", dataset.id)
                     continue
                 lineage_parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
                 for table in lineage_parser.source_tables:
@@ -310,7 +310,7 @@ class MicrostrategySource(DashboardServiceSource):
                         table_name=str(table),
                     )
                     if not table_entities:
-                        logger.debug(f"[{lineage_parser.query_hash}] Table not found in metadata: {table}")
+                        logger.debug("[%s] Table not found in metadata: %s", lineage_parser.query_hash, table)
                         continue
                     for table_entity in table_entities:
                         if not self._matches_prefix(
@@ -400,7 +400,7 @@ class MicrostrategySource(DashboardServiceSource):
                 )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error to yield datamodel column [{available_object.name}]: {exc}")
+                logger.warning("Error to yield datamodel column [%s]: %s", available_object.name, exc)
         return datasource_columns
 
     def yield_datamodel(
@@ -462,5 +462,5 @@ class MicrostrategySource(DashboardServiceSource):
         whatever a non-empty seen-set leaves out, so a partial run deletes nothing.
         """
         if partial:
-            logger.warning(f"Skipping the deletion of stale {entities}: this run could not read every source object")
+            logger.warning("Skipping the deletion of stale %s: this run could not read every source object", entities)
         return partial

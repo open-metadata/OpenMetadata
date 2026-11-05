@@ -30,7 +30,7 @@ from metadata.ingestion.source.dashboard.microstrategy.connection import (
     MICROSTRATEGY_ERRORS,
     MicroStrategyChecks,
     MicroStrategyConnection,
-    resolve_verify,
+    resolve_ssl,
 )
 from metadata.ingestion.source.dashboard.microstrategy.models import MstrProject, MstrSearchResult
 
@@ -116,16 +116,28 @@ def test_errors_are_diagnosed(error, title):
     assert diagnosis.title == title
 
 
-def test_resolve_verify_maps_every_mode():
-    assert resolve_verify(_config()) == (None, None)
-    assert resolve_verify(_config(verifySSL=VerifySSL.ignore)) == (False, None)
+def test_resolve_ssl_maps_every_mode():
+    assert resolve_ssl(_config()) == (None, None, None)
+    assert resolve_ssl(_config(verifySSL=VerifySSL.ignore)) == (False, None, None)
 
-    verify, ssl_manager = resolve_verify(
+    verify, cert, ssl_manager = resolve_ssl(
         _config(verifySSL=VerifySSL.validate, sslConfig={"caCertificate": "-----BEGIN CERTIFICATE-----"})
     )
     try:
         assert verify == ssl_manager.ca_file_path
+        assert cert is None
         assert Path(verify).read_text(encoding="utf-8") == "-----BEGIN CERTIFICATE-----"
+    finally:
+        ssl_manager.cleanup_temp_files()
+
+
+def test_resolve_ssl_sends_a_client_certificate_for_mutual_tls():
+    verify, cert, ssl_manager = resolve_ssl(
+        _config(verifySSL=VerifySSL.ignore, sslConfig={"sslCertificate": "CERT", "sslKey": "KEY"})
+    )
+    try:
+        assert verify is False
+        assert [Path(path).read_text(encoding="utf-8") for path in cert] == ["CERT", "KEY"]
     finally:
         ssl_manager.cleanup_temp_files()
 
@@ -136,5 +148,5 @@ def test_client_is_built_with_the_verify_value_and_logs_out_on_close():
         client = conn.client
         conn.close()
 
-    client_cls.assert_called_once_with(conn.service_connection, verify=False)
+    client_cls.assert_called_once_with(conn.service_connection, verify=False, cert=None)
     client.close_api_session.assert_called_once_with()

@@ -192,7 +192,7 @@ class FakeMicroStrategy:
         self.logins = 0
         self.calls: list[SimpleNamespace] = []
 
-    def login(self, url: str, json: dict, timeout: Any, verify: Any) -> requests.Response:
+    def login(self, url: str, json: dict, **_: Any) -> requests.Response:
         self.logins += 1
         self.calls.append(SimpleNamespace(method="POST", path=urlparse(url).path, params={}, headers={}, body=json))
         return _response(
