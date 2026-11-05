@@ -39,14 +39,15 @@ so they can have keys of their own and open only there.
   - plaintext is encrypted for its owner;
   - ciphertext at the fields releases before 2.1 stored encrypted, an alert destination's bearer
     signing key and OAuth2 client id and secret, is encrypted for its owner again, unless the same
-    ciphertext is stored anywhere else (`StoredCiphertextCopies`: another field or alert, a table
-    that holds secrets, such as services, ingestion pipelines, users, teams, bots, workflow
-    definitions, test suites, apps, connection test workflows, settings, sessions and tokens, or a
-    version of one of those entities). Fernet encryption is randomized, so a value the server wrote
-    for one field is stored at that field only, and in the versions of the alert that holds it.
-    Versions are found by their entity's id, through the primary key of the versions table, so the
-    step reads only the rows that can hold a secret, never data assets, their versions or event
-    logs, and its cost follows the number of services, pipelines, users and apps;
+    ciphertext is stored anywhere else (`StoredCiphertextCopies`: another field or alert, any
+    other table with a `json` column, or a version of an entity of those tables). Fernet
+    encryption is randomized, so a value the server wrote for one field is stored at that field
+    only, and in the versions of the alert that holds it. Only a frozen list of large tables that
+    cannot hold a secret is left out: data assets, event logs, relationships, stored documents and
+    time series. A table the list does not name, such as one a distribution adds, is read, so a
+    store nobody listed is never missed. Versions are found by their entity's id, through the
+    primary key of the versions table, so the cost does not follow the number of data assets or
+    events;
   - any other ciphertext stays as stored. It opens for no owner, so the destination stays enabled
     and reports the field to enter again, and a profile webhook is left out of the send, until the
     value is entered again.
@@ -65,8 +66,7 @@ so they can have keys of their own and open only there.
   header values saved there in that time to enter again.
 - A value is carried over when nothing else stored holds the same ciphertext any more: its other
   copy belonged to an entity that was hard-deleted, or was replaced, re-encrypted included, without
-  a version keeping it, or is kept in a store the step does not read, such as a store a
-  distribution adds. Such a value cannot be told apart from one the server wrote.
+  a version keeping it. Such a value cannot be told apart from one the server wrote.
 - Destination ids must stay unique and stable, because they own their secrets. A destination given
   a new id has its secrets entered again.
 - Webhooks are the first secrets bound to their owner. The intended end state is one shared secret

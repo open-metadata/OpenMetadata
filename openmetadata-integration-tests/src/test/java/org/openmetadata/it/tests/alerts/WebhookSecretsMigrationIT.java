@@ -163,6 +163,8 @@ class WebhookSecretsMigrationIT {
     String storedTwice = Fernet.getInstance().encrypt(ns.prefix("a value stored twice"));
     String header = Fernet.getInstance().encrypt(ns.prefix("a header value"));
     String inAnotherVersion = Fernet.getInstance().encrypt(ns.prefix("a value in another version"));
+    String inAnUnnamedStore =
+        Fernet.getInstance().encrypt(ns.prefix("a value in an unnamed store"));
     EventSubscription alert =
         AlertFixtures.tableAlert(
             ns,
@@ -173,7 +175,8 @@ class WebhookSecretsMigrationIT {
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/oauth"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/twice"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/header"),
-                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/event")));
+                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/event"),
+                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/unnamed")));
     List<SubscriptionDestination> destinations = alert.getDestinations();
     destinations
         .get(0)
@@ -194,6 +197,7 @@ class WebhookSecretsMigrationIT {
                 "headers",
                 Map.of("Authorization", header)));
     destinations.get(4).withConfig(legacyConfig("event", oauth2(inAnotherVersion)));
+    destinations.get(5).withConfig(legacyConfig("unnamed", oauth2(inAnUnnamedStore)));
     AlertFixtures.writeBehindTheServer(alert);
     insertChangeEvent(Entity.EVENT_SUBSCRIPTION, alert.getId(), JsonUtils.pojoToJson(alert));
     Entity.getCollectionDAO()
@@ -211,10 +215,16 @@ class WebhookSecretsMigrationIT {
             List.of(AlertFixtures.external(WEBHOOK, "https://hooks.example.com/another")));
     another.getDestinations().getFirst().withConfig(legacyConfig("another", oauth2(storedTwice)));
     AlertFixtures.writeBehindTheServer(another);
+    storeInATableTheStepDoesNotName(Map.of("apiKey", inAnUnnamedStore));
 
-    runAlertStep();
-    String rowAfterOneRun = JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()));
-    runAlertStep();
+    String rowAfterOneRun;
+    try {
+      runAlertStep();
+      rowAfterOneRun = JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()));
+      runAlertStep();
+    } finally {
+      dropTheTableTheStepDoesNotName();
+    }
 
     EventSubscription stored = AlertFixtures.stored(alert.getId());
     assertEquals(rowAfterOneRun, JsonUtils.pojoToJson(stored));
@@ -224,7 +234,8 @@ class WebhookSecretsMigrationIT {
     assertEquals(storedTwice, storedValue(bound.get(2), "/authType/clientSecret"));
     assertEquals(header, storedValue(bound.get(3), "/headers/Authorization"));
     assertEquals(inAnotherVersion, storedValue(bound.get(4), "/authType/clientSecret"));
-    for (SubscriptionDestination toEnterAgain : bound.subList(2, 5)) {
+    assertEquals(inAnUnnamedStore, storedValue(bound.get(5), "/authType/clientSecret"));
+    for (SubscriptionDestination toEnterAgain : bound.subList(2, 6)) {
       BadRequestException refused =
           assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(toEnterAgain));
       assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
@@ -269,6 +280,31 @@ class WebhookSecretsMigrationIT {
             holder, JsonUtils.treeToValue(row.path("profile"), Profile.class));
     assertNull(sendable.getSubscription().getSlack(), "left out until it is entered again");
     assertNotNull(sendable.getSubscription().getGeneric());
+  }
+
+  // A store of secrets the step does not name, such as one a distribution adds.
+  private static void storeInATableTheStepDoesNotName(Map<String, Object> config) {
+    String jsonType = dialect() == ConnectionType.MYSQL ? "JSON" : "JSONB";
+    String json = dialect() == ConnectionType.MYSQL ? ":json" : ":json::jsonb";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle -> {
+              handle.execute(
+                  "CREATE TABLE distribution_store_entity (id VARCHAR(36) PRIMARY KEY, json "
+                      + jsonType
+                      + " NOT NULL)");
+              handle
+                  .createUpdate(
+                      "INSERT INTO distribution_store_entity (id, json) VALUES (:id, " + json + ")")
+                  .bind("id", UUID.randomUUID().toString())
+                  .bind("json", JsonUtils.pojoToJson(Map.of("config", config)))
+                  .execute();
+            });
+  }
+
+  private static void dropTheTableTheStepDoesNotName() {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(handle -> handle.execute("DROP TABLE IF EXISTS distribution_store_entity"));
   }
 
   // A change event as releases before 2.1 stored it: written directly, since the event DAO of 2.1

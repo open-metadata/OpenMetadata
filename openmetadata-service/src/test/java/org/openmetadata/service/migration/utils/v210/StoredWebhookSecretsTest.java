@@ -118,7 +118,7 @@ class StoredWebhookSecretsTest {
   }
 
   @Test
-  void theCopyCheckReadsTheTablesThatHoldSecretsAndNoDataAssetOrEventLog() {
+  void theCopyCheckReadsEveryTableButTheLargeOnesThatCannotHoldASecret() {
     List.of(
             "dbservice_entity",
             "llm_service_entity",
@@ -132,8 +132,10 @@ class StoredWebhookSecretsTest {
             "openmetadata_settings",
             "test_suite",
             "user_session",
-            "user_tokens")
-        .forEach(table -> assertTrue(StoredCiphertextCopies.isSecretStore(table), table));
+            "user_tokens",
+            "context_plugin_entity",
+            "a_table_a_distribution_adds")
+        .forEach(table -> assertTrue(StoredCiphertextCopies.isRead(table), table));
     List.of(
             "table_entity",
             "glossary_term_entity",
@@ -142,8 +144,10 @@ class StoredWebhookSecretsTest {
             "change_event",
             "successful_sent_change_events",
             "consumers_dlq",
-            "entity_extension_time_series")
-        .forEach(table -> assertFalse(StoredCiphertextCopies.isSecretStore(table), table));
+            "entity_relationship",
+            "entity_extension_time_series",
+            "workflow_instance_state_time_series")
+        .forEach(table -> assertFalse(StoredCiphertextCopies.isRead(table), table));
   }
 
   private String opened(JsonNode alert, int index, UUID destination, String field) {
