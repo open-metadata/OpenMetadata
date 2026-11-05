@@ -148,6 +148,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+  private static final String ENTITY_RULES_LIST_POINTER = "/entitySemantics";
 
   // Settings that hold no secrets and that the UI must read to render entity pages for every
   // authenticated user — glossary term relation types populate the Related Terms dropdown and the
@@ -540,6 +541,56 @@ public class SystemResource {
                 nullOrEmpty(rule.getIgnoredEntities())
                     || !rule.getIgnoredEntities().contains(entityType))
         .toList();
+  }
+
+  @PATCH
+  @Path("/settings/entityRulesSettings/rules/{ruleName}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchEntityRule",
+      summary = "Patch one Data Asset Rule",
+      description =
+          "Update one Data Asset Rule, found by name, using JsonPatch. Paths are relative to the "
+              + "rule (for example /enabled), so rules the caller never read are preserved. The "
+              + "patch may not rename, add or remove rules. The write uses compare-and-set: if the "
+              + "stored rules changed while the server applied the patch, the request fails with "
+              + "412 Precondition Failed instead of overwriting the newer value.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"),
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid patch, or a patch that renames, adds or removes rules"),
+        @ApiResponse(responseCode = "404", description = "Rule not found"),
+        @ApiResponse(
+            responseCode = "412",
+            description = "The stored rules changed while the patch was applied")
+      })
+  public Response patchEntityRule(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the rule to patch", schema = @Schema(type = "string"))
+          @PathParam("ruleName")
+          String ruleName,
+      @RequestBody(
+              description = "JsonPatch with operations relative to the rule",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {@ExampleObject("[{op:replace, path:/enabled, value:false}]")}))
+          JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
+    return forResponse(
+        systemRepository.patchSettingItem(
+            SettingsType.ENTITY_RULES_SETTINGS, ENTITY_RULES_LIST_POINTER, ruleName, patch));
   }
 
   @GET

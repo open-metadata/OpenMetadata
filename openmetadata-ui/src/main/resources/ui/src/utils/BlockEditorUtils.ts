@@ -166,7 +166,8 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
   htmlString =
     blockEditorExtensionsClassBase.parseContentFromBackend(htmlString);
 
-  editor.commands.setContent(htmlString);
+  // v3 emits an update on setContent by default; loading content is not an edit.
+  editor.commands.setContent(htmlString, { emitUpdate: false });
 
   // Update the editor state to reflect the new content
   const newEditorState = EditorState.create({

@@ -928,6 +928,11 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
     await expect(page.getByText('seeds/sample_seed.csv')).toBeVisible();
 
     // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(
+      page
+        .getByRole('tabpanel', { name: 'dbt' })
+        .getByTestId('no-data-placeholder')
+    ).toBeVisible();
     await expect(page.getByTestId('query-line')).not.toBeVisible();
     await expect(
       page.getByTestId('query-entity-copy-button')
@@ -979,6 +984,11 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
     );
 
     // Verify SQL-related elements are NOT visible since this is a seed file (no SQL query)
+    await expect(
+      page
+        .getByRole('tabpanel', { name: 'dbt' })
+        .getByTestId('no-data-placeholder')
+    ).toBeVisible();
     await expect(page.getByTestId('query-line')).not.toBeVisible();
     await expect(
       page.getByTestId('query-entity-copy-button')

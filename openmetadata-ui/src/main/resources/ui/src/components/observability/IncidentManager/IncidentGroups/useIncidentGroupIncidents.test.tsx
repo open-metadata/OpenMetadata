@@ -32,6 +32,15 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
 
+// Small pages keep the paging cases short; the real hook reads the user's saved list size.
+jest.mock('../../../../hooks/paging/useSavedPageSize', () => ({
+  useSavedPageSize: () => ({
+    savedPageSize: 4,
+    savePageSize: jest.fn(),
+    resolvePageSize: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -68,7 +77,6 @@ const renderIncidents = (group?: TestCaseIncidentGroup) =>
       useIncidentGroupIncidents({
         group: current,
         filters: FILTERS,
-        defaultPageSize: 4,
       }),
     { initialProps: { current: group }, wrapper: createQueryWrapper() }
   );

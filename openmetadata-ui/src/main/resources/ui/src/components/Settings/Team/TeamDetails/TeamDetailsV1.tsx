@@ -1006,9 +1006,13 @@ const TeamDetailsV1 = ({
   );
 
   const teamActionButton = useMemo(() => {
-    const canManageTeamMembership =
+    const isMembershipTeam =
       !isOrganization && !isUndefined(currentUser) && isGroupType;
-    const joinTeamButton = (Boolean(currentTeam.isJoinable) || isAdminUser) && (
+    // Only admins join or leave a team that is not joinable, as the server enforces.
+    const canChangeOwnMembership =
+      Boolean(currentTeam.isJoinable) || isAdminUser;
+    const canManageTeamMembership = isMembershipTeam && canChangeOwnMembership;
+    const joinTeamButton = (
       <Button color="primary" data-testid="join-teams" onClick={joinTeam}>
         {t('label.join-team')}
       </Button>
@@ -1033,9 +1037,11 @@ const TeamDetailsV1 = ({
     );
   }, [
     currentUser,
+    currentTeam.isJoinable,
     isAlreadyJoinedTeam,
     isGroupType,
     isAdminUser,
+    isOrganization,
     joinTeam,
     deleteUserHandler,
   ]);

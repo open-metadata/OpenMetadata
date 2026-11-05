@@ -49,6 +49,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -166,6 +167,47 @@ public final class EntityUtil {
               && ((constraint1.getReferredColumns() == null
                       && constraint2.getReferredColumns() == null)
                   || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
+
+  /**
+   * Sort a constraint's column and referredColumn lists together as pairs keyed by the local
+   * column name, so that the FK mapping {@code columns[i] → referredColumns[i]} is preserved
+   * after normalization. When there is no column-for-column mapping ({@code referredColumns} is
+   * null or its size differs from {@code columns}), each list is sorted on its own as before.
+   */
+  public static void sortConstraintPairs(TableConstraint constraint) {
+    final List<String> columns = constraint.getColumns();
+    final List<String> referredColumns = constraint.getReferredColumns();
+    if (isPairedByPosition(columns, referredColumns)) {
+      sortPairsByLocalColumn(columns, referredColumns);
+    } else {
+      sortIfPresent(columns);
+      sortIfPresent(referredColumns);
+    }
+  }
+
+  private static boolean isPairedByPosition(List<String> columns, List<String> referredColumns) {
+    return columns != null && referredColumns != null && columns.size() == referredColumns.size();
+  }
+
+  private static void sortPairsByLocalColumn(List<String> columns, List<String> referredColumns) {
+    final List<Integer> order =
+        IntStream.range(0, columns.size())
+            .boxed()
+            .sorted(Comparator.comparing(columns::get))
+            .toList();
+    final List<String> sortedColumns = order.stream().map(columns::get).toList();
+    final List<String> sortedReferredColumns = order.stream().map(referredColumns::get).toList();
+    columns.clear();
+    columns.addAll(sortedColumns);
+    referredColumns.clear();
+    referredColumns.addAll(sortedReferredColumns);
+  }
+
+  private static void sortIfPresent(List<String> values) {
+    if (values != null) {
+      Collections.sort(values);
+    }
+  }
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =
