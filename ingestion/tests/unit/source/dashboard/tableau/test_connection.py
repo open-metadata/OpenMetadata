@@ -1,9 +1,12 @@
 """Unit tests for Tableau test-connection checks."""
 
 import socket
+import time
 from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
+import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import HTTPError, SSLError
 from tableauserverclient.server.endpoint.exceptions import (
     FailedSignInError,
@@ -29,7 +32,16 @@ from metadata.ingestion.source.dashboard.tableau.connection import (
     TABLEAU_ERRORS,
     TableauChecks,
     TableauConnection,
+    build_server_config,
     get_connection,
+)
+
+from .....utils.tableau_connected_app import (  # noqa: TID252
+    CONNECTED_APP,
+    CONNECTED_APP_SCOPES,
+    PAT,
+    SCOPE_REJECTION,
+    connected_app_claims,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.tableau.connection"
@@ -334,3 +346,85 @@ def test_a_failing_sign_out_does_not_break_close():
 
     client.sign_out.assert_called_once_with()
     assert mock_get.call_count == 1
+
+
+def _connected_app_config() -> TableauConnectionConfig:
+    return TableauConnectionConfig(
+        hostPort="https://tableau.example.com",
+        siteName="MarketingTeam",
+        authType=CONNECTED_APP,
+    )
+
+
+def test_a_connected_app_signs_in_with_a_direct_trust_jwt():
+    config = _connected_app_config()
+
+    started = time.time()
+    auth = build_server_config(config)
+    finished = time.time()
+
+    assert isinstance(auth, TSC.JWTAuth)
+    assert auth.site_id == "MarketingTeam"
+    assert auth.isUat is False
+    header = jwt.get_unverified_header(auth.jwt)
+    assert (header["alg"], header["kid"], header["iss"]) == (
+        "HS256",
+        CONNECTED_APP["secretId"],
+        CONNECTED_APP["clientId"],
+    )
+    claims = connected_app_claims(auth.jwt)
+    assert claims["iss"] == CONNECTED_APP["clientId"]
+    assert claims["sub"] == CONNECTED_APP["username"]
+    assert claims["aud"] == "tableau"
+    assert claims["scp"] == CONNECTED_APP_SCOPES
+    # Five minutes after signing, inside Tableau Cloud's 10-minute cap; exp is rounded down to whole seconds.
+    assert started + 299 < claims["exp"] <= finished + 300
+
+
+def test_each_connected_app_sign_in_gets_its_own_jti():
+    config = _connected_app_config()
+
+    first = connected_app_claims(build_server_config(config).jwt)["jti"]
+    second = connected_app_claims(build_server_config(config).jwt)["jti"]
+
+    assert first
+    assert first != second
+
+
+def test_a_connected_app_401_names_the_app_checks_and_scopes():
+    diagnosis = TableauConnection(_connected_app_config()).checks().errors.classify(SCOPE_REJECTION)
+
+    assert diagnosis.title == "Authentication failed"
+    assert "connected app" in diagnosis.remediation
+    assert "clock" in diagnosis.remediation
+    assert all(scope in diagnosis.remediation for scope in CONNECTED_APP_SCOPES)
+
+
+def test_unresolvable_owners_name_the_users_scope_for_a_connected_app():
+    # The owner lookup swallows the 401, so a token without the users scope surfaces here.
+    diagnosis = TableauConnection(_connected_app_config()).checks().errors.classify(TableauOwnersNotFound("nope"))
+
+    assert diagnosis.title == "Owner information not available"
+    assert "tableau:users:read" in diagnosis.remediation
+
+
+def test_unreadable_data_models_name_the_server_floor_for_a_connected_app():
+    diagnosis = TableauConnection(_connected_app_config()).checks().errors.classify(TableauDataModelsException("nope"))
+
+    assert diagnosis.title == "Data sources could not be read"
+    assert "Tableau Server 2023.3" in diagnosis.remediation
+
+
+def test_a_pat_connection_keeps_the_pat_hints():
+    errors = (
+        TableauConnection(
+            TableauConnectionConfig(hostPort="https://tableau.example.com", siteName="MarketingTeam", authType=PAT)
+        )
+        .checks()
+        .errors
+    )
+
+    for error in (SCOPE_REJECTION, TableauOwnersNotFound("nope"), TableauDataModelsException("nope")):
+        remediation = errors.classify(error).remediation
+        assert "connected app" not in remediation
+        assert "tableau:" not in remediation

@@ -25,7 +25,6 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
-import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
@@ -287,8 +286,10 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   TableauPipelineConnection.class,
                   Map.of(
-                      "authType", List.of(BasicAuth.class, AccessTokenAuth.class),
-                      "sslConfig", List.of(ValidateSSLClientConfig.class)))));
+                      "authType",
+                      TableauConnectionClassConverter.CONNECTION_CLASSES,
+                      "sslConfig",
+                      List.of(ValidateSSLClientConfig.class)))));
 
   static {
     Map<Class<?>, ClassConverter> converters =

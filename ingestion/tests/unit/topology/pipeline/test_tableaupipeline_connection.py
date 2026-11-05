@@ -11,11 +11,14 @@
 """Tableau pipeline connection handling and its test-connection checks."""
 
 import json
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import jwt
 import pytest
 import requests
+import tableauserverclient as TSC  # noqa: N812
 from tableauserverclient.server.endpoint.exceptions import (
     FailedSignInError,
     GraphQLError,
@@ -34,7 +37,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.tableauPipel
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.dashboard.tableau.connection import set_verify_ssl
+from metadata.ingestion.source.dashboard.tableau.connection import build_server_config, set_verify_ssl
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
     TableauSiteAdminRequiredError,
 )
@@ -46,6 +49,13 @@ from metadata.ingestion.source.pipeline.tableaupipeline.connection import (
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.service_spec import ServiceSpec
 
+from ....utils.tableau_connected_app import (  # noqa: TID252
+    CONNECTED_APP,
+    CONNECTED_APP_SCOPES,
+    SCOPE_REJECTION,
+    connected_app_claims,
+)
+
 CONNECTION_MODULE = "metadata.ingestion.source.pipeline.tableaupipeline.connection"
 TEST_CONNECTION_DEFINITION = (
     Path(__file__).parents[5]
@@ -55,10 +65,12 @@ TEST_CONNECTION_DEFINITION = (
 
 def _config(**overrides) -> TableauPipelineConnectionConfig:
     return TableauPipelineConnectionConfig(
-        hostPort="https://tableau.example.com",
-        authType={"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
-        siteName="MarketingTeam",
-        **overrides,
+        **{
+            "hostPort": "https://tableau.example.com",
+            "authType": {"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
+            "siteName": "MarketingTeam",
+            **overrides,
+        }
     )
 
 
@@ -101,6 +113,32 @@ def test_get_connection_signs_in_with_the_pat_and_ssl_mode():
     assert kwargs["verify_ssl"] is False
     assert kwargs["tableau_server_auth"].token_name == "pat"
     assert kwargs["tableau_server_auth"].site_id == "MarketingTeam"
+
+
+def test_a_pipeline_connection_signs_in_with_a_direct_trust_jwt():
+    config = _config(authType=CONNECTED_APP)
+
+    started = time.time()
+    first = build_server_config(config)
+    finished = time.time()
+    second = build_server_config(config)
+
+    assert isinstance(first, TSC.JWTAuth)
+    assert first.site_id == "MarketingTeam"
+    assert first.isUat is False
+    header = jwt.get_unverified_header(first.jwt)
+    assert (header["alg"], header["kid"], header["iss"]) == (
+        "HS256",
+        CONNECTED_APP["secretId"],
+        CONNECTED_APP["clientId"],
+    )
+    claims = connected_app_claims(first.jwt)
+    assert claims["iss"] == CONNECTED_APP["clientId"]
+    assert claims["sub"] == CONNECTED_APP["username"]
+    assert claims["aud"] == "tableau"
+    assert claims["scp"] == CONNECTED_APP_SCOPES
+    assert started + 299 < claims["exp"] <= finished + 300
+    assert claims["jti"] != connected_app_claims(second.jwt)["jti"]
 
 
 def test_get_connection_wraps_client_failures():
@@ -194,6 +232,33 @@ def _server_response(status: int) -> requests.Response:
 )
 def test_tableau_errors_are_diagnosed(error, title):
     assert TABLEAU_PIPELINE_ERRORS.classify(error).title == title
+
+
+def test_a_rejected_flow_call_names_the_connected_app_checks_and_scopes():
+    # TSC raises FailedSignInError for a 401 with a Tableau error body, so a flow call outside the scopes lands here.
+    diagnosis = TableauPipelineConnection(_config(authType=CONNECTED_APP)).checks().errors.classify(SCOPE_REJECTION)
+
+    assert diagnosis.title == "Authentication failed"
+    assert "connected app" in diagnosis.remediation
+    assert "tableau:flows:read" in diagnosis.remediation
+
+
+def test_a_rejected_lineage_query_names_the_server_floor_for_a_connected_app():
+    errors = TableauPipelineConnection(_config(authType=CONNECTED_APP)).checks().errors
+
+    diagnosis = errors.classify(GraphQLError([{"message": "Validation error"}]))
+
+    assert diagnosis.title == "Metadata API rejected the query"
+    assert "Tableau Server 2023.3" in diagnosis.remediation
+
+
+def test_a_pat_pipeline_connection_keeps_the_pat_hints():
+    errors = TableauPipelineConnection(_config()).checks().errors
+
+    for error in (SCOPE_REJECTION, GraphQLError([{"message": "Validation error"}])):
+        remediation = errors.classify(error).remediation
+        assert "connected app" not in remediation
+        assert "tableau:" not in remediation
 
 
 def test_certificate_temp_files_are_removed_when_sign_in_fails():

@@ -49,7 +49,7 @@ Key fields on `TableauPipelineConnection`:
 | Field | Purpose |
 |-------|---------|
 | `hostPort` | Tableau Server URL |
-| `authType` | `BasicAuth` (username/password) or `AccessTokenAuth` (PAT name + secret) |
+| `authType` | `BasicAuth` (username/password), `AccessTokenAuth` (PAT name + secret) or `TableauConnectedAppAuth` (direct trust connected app: client ID, secret ID, secret value, username) |
 | `siteName` | Tableau site (empty for default) |
 | `apiVersion` | Optional REST API version override |
 | `verifySSL` + `sslConfig` | TLS validation mode, CA certificate, and client certificate + key (mutual TLS) when `verifySSL=validate` |

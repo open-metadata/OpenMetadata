@@ -54,6 +54,8 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ...utils.tableau_connected_app import CONNECTED_APP, PAT, sign_in  # noqa: TID252
+
 TABLEAU_HOST = "tableau-it.example.com"
 PIPELINE_SERVICE = "tableau_pipeline_it"
 DB_SERVICE = "tableau_pipeline_it_warehouse"
@@ -211,10 +213,7 @@ class FakeTableauSite:
                 "<restApiVersion>3.23</restApiVersion></serverInfo></tsResponse>"
             )
         elif path.endswith("/auth/signin"):
-            body = (
-                f'<tsResponse {NS}><credentials token="t"><site id="site-it" contentUrl="it"/>'
-                '<user id="api-user"/></credentials></tsResponse>'
-            )
+            status, body = sign_in(request.body)
         elif path.endswith("/auth/signout"):
             status = 204
         elif path.endswith("/flows/runs"):
@@ -325,11 +324,20 @@ def _create_tables(metadata, database: Database, schema_name: str, names: tuple[
     return tables
 
 
+@pytest.fixture(scope="module", params=[PAT, CONNECTED_APP], ids=["pat", "connected_app"])
+def auth_type(request) -> dict:
+    return request.param
+
+
 @pytest.fixture(scope="module")
-def warehouse_tables(metadata) -> Iterator[dict[str, Table]]:
+def warehouse_tables(metadata, auth_type) -> Iterator[dict[str, Table]]:
     """A MySQL service as OpenMetadata files it: one `default` database, with
     each MySQL database as a schema. `staging` holds an `orders` too and is
-    indexed first, so a search for `orders` in any schema finds it first."""
+    indexed first, so a search for `orders` in any schema finds it first.
+
+    Rebuilt for each auth type: hard-deleting the previous run's pipeline service
+    leaves each table-to-table edge pointing at its deleted pipeline, and the next
+    run's edge for the same pair does not replace that reference."""
     service = metadata.create_or_update(
         CreateDatabaseServiceRequest(
             name=DB_SERVICE,
@@ -347,7 +355,7 @@ def warehouse_tables(metadata) -> Iterator[dict[str, Table]]:
 
 
 @pytest.fixture(scope="module")
-def workflow_config() -> dict:
+def workflow_config(auth_type) -> dict:
     return {
         "source": {
             "type": "tableaupipeline",
@@ -357,7 +365,7 @@ def workflow_config() -> dict:
                     "type": "TableauPipeline",
                     "hostPort": f"https://{TABLEAU_HOST}",
                     "siteName": "it",
-                    "authType": {"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
+                    "authType": auth_type,
                 }
             },
             "sourceConfig": {

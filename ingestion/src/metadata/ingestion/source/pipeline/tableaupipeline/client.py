@@ -24,13 +24,11 @@ from requests.adapters import HTTPAdapter
 from tableauserverclient import (
     Filter,
     Pager,
-    PersonalAccessTokenAuth,
     RequestOptions,
     Server,
     Sort,
-    TableauAuth,
 )
-from tableauserverclient.models import BackgroundJobItem, FlowItem, FlowRunItem, TaskItem
+from tableauserverclient.models import BackgroundJobItem, Credentials, FlowItem, FlowRunItem, TaskItem
 from tableauserverclient.server.endpoint.exceptions import ServerResponseError
 from urllib3.util.retry import Retry
 
@@ -116,7 +114,7 @@ class TableauPipelineClient:
 
     def __init__(
         self,
-        tableau_server_auth: PersonalAccessTokenAuth | TableauAuth,
+        tableau_server_auth: Credentials,
         config: TableauPipelineConnection,
         verify_ssl: bool | str | None,
         ssl_manager: SSLManager | None = None,
