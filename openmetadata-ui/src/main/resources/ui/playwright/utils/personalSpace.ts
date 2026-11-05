@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, Response } from '@playwright/test';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
+import { openAiProfile } from './aiProfile';
 import { clickIgnoringToasts, selectOptionWithRetry } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { AI_SHELL_TIMEOUT } from './inbox';
@@ -22,13 +23,6 @@ export const PERSONAL_SPACE_ROUTES = {
   INBOX: '/inbox',
   MY_DATA: '/my-data',
 };
-
-/** The nav items in the Profile modal's left rail (see profileNavConfig). */
-export type ProfileNavId =
-  | 'profile'
-  | 'permissions'
-  | 'access-token'
-  | 'members';
 
 // Navigate to an AI-app-mode route and wait until the AI shell has rendered.
 export const gotoPersonalSpace = async (page: Page, path: string) => {
@@ -52,21 +46,12 @@ export const openProfileModal = async (page: Page) => {
 };
 
 /**
- * Open the Profile modal and optionally select one of its left-rail nav items.
- * Lands on the `profile` item by default, which holds the identity,
- * access-token, persona, domains, teams and roles sections.
+ * Open the Profile modal and optionally select a left-rail nav item by its id
+ * (`profile-nav-<nav>`; see profileNavConfig). A plain string so Collate can
+ * reach the nav items it registers.
  */
-export const visitProfile = async (page: Page, nav?: ProfileNavId) => {
-  await openProfileModal(page);
-  // The modal body is a lazy chunk, exposed to the same boot contention as the
-  // Inbox (see openInboxFromSidebar).
-  await expect(page.getByTestId('ai-profile-page')).toBeVisible({
-    timeout: AI_SHELL_TIMEOUT,
-  });
-  if (nav) {
-    await page.getByTestId(`profile-nav-${nav}`).click();
-  }
-};
+export const visitProfile = (page: Page, nav?: string) =>
+  openAiProfile(page, nav ? `profile-nav-${nav}` : undefined);
 
 /**
  * Dismiss the Profile modal via its dialog Close button and assert it is gone.
@@ -81,10 +66,12 @@ export const closeProfileModal = async (page: Page) => {
   await expect(dialog).toHaveCount(0);
 };
 
-const USER_PATCH = (r: { url(): string; request(): { method(): string } }) =>
+const USER_PATCH = (r: Response) =>
   r.url().includes('/api/v1/users/') && r.request().method() === 'PATCH';
 
-const waitForUserPatch = (page: Page) =>
+// The chip helpers act on whoever is signed in and never see a user id, so this
+// matches any user PATCH; aiProfile's waitForUserPatch is the id-scoped one.
+const waitForSignedInUserPatch = (page: Page) =>
   waitForResponseWithStatus(page, USER_PATCH, 200, { timeout: 60_000 });
 
 /**
@@ -92,41 +79,37 @@ const waitForUserPatch = (page: Page) =>
  * can assert the Roles Autocomplete actually calls the server as the user
  * types instead of only filtering a locally cached page of options.
  */
-export const rolesSearchResponse =
-  (query: string) => (r: { url(): string; request(): { method(): string } }) =>
-    r.request().method() === 'GET' &&
-    r.url().includes('/api/v1/roles/search') &&
-    new URL(r.url()).searchParams.get('q') === query;
+export const rolesSearchResponse = (query: string) => (r: Response) =>
+  r.request().method() === 'GET' &&
+  r.url().includes('/api/v1/roles/search') &&
+  new URL(r.url()).searchParams.get('q') === query;
 
 /**
  * Matches a GET to the personas search endpoint for the given query, so tests
  * can assert the Persona Autocomplete actually calls the server as the user
  * types instead of only filtering a locally cached page of options.
  */
-export const personasSearchResponse =
-  (query: string) => (r: { url(): string; request(): { method(): string } }) =>
-    r.request().method() === 'GET' &&
-    r.url().includes('/api/v1/personas/search') &&
-    new URL(r.url()).searchParams.get('q') === query;
+export const personasSearchResponse = (query: string) => (r: Response) =>
+  r.request().method() === 'GET' &&
+  r.url().includes('/api/v1/personas/search') &&
+  new URL(r.url()).searchParams.get('q') === query;
 
 /**
  * Matches the domain search the Domains Autocomplete fires as the user types.
  * `searchDomains` wraps the query in wildcards (`q=*<query>*`) and targets the
  * domain index, so match on both rather than on an exact `q`.
  */
-export const domainsSearchResponse =
-  (query: string) =>
-  (r: { url(): string; request(): { method(): string } }) => {
-    if (
-      r.request().method() !== 'GET' ||
-      !r.url().includes('/api/v1/search/query')
-    ) {
-      return false;
-    }
-    const params = new URL(r.url()).searchParams;
+export const domainsSearchResponse = (query: string) => (r: Response) => {
+  if (
+    r.request().method() !== 'GET' ||
+    !r.url().includes('/api/v1/search/query')
+  ) {
+    return false;
+  }
+  const params = new URL(r.url()).searchParams;
 
-    return params.get('index') === 'domain' && params.get('q') === `*${query}*`;
-  };
+  return params.get('index') === 'domain' && params.get('q') === `*${query}*`;
+};
 
 /**
  * The search each chip row fires as the user types, keyed by row test id. Teams
@@ -135,9 +118,7 @@ export const domainsSearchResponse =
  */
 const ROW_SEARCH_RESPONSE: Record<
   string,
-  (
-    query: string
-  ) => (r: { url(): string; request(): { method(): string } }) => boolean
+  (query: string) => (r: Response) => boolean
 > = {
   domains: domainsSearchResponse,
   persona: personasSearchResponse,
@@ -223,7 +204,7 @@ export const removeChip = async (
     await expect(removeButton).toHaveCount(0, { timeout: 1_000 });
   }).toPass({ timeout: 20_000 });
 
-  const saveResponse = waitForUserPatch(page);
+  const saveResponse = waitForSignedInUserPatch(page);
   await clickIgnoringToasts(page.getByTestId(`${rowTestId}-save`));
   await saveResponse;
   await waitForAllLoadersToDisappear(page);
@@ -271,10 +252,7 @@ export const assignChip = async (
   page: Page,
   rowTestId: string,
   optionTitle: string,
-  searchResponseMatcher?: (r: {
-    url(): string;
-    request(): { method(): string };
-  }) => boolean
+  searchResponseMatcher?: (r: Response) => boolean
 ) => {
   await clickIgnoringToasts(page.getByTestId(`${rowTestId}-edit`));
 
@@ -325,7 +303,7 @@ export const assignChip = async (
 };
 
 const saveChipRow = async (page: Page, rowTestId: string) => {
-  const saveResponse = waitForUserPatch(page);
+  const saveResponse = waitForSignedInUserPatch(page);
   await clickIgnoringToasts(page.getByTestId(`${rowTestId}-save`));
   await saveResponse;
   await waitForAllLoadersToDisappear(page);
@@ -350,12 +328,10 @@ export const selectUiCoreOption = async (
 
 const TOKEN_API = '/users/security/token';
 
-type ResponseLike = { url(): string; request(): { method(): string } };
-
-const isRevokePut = (r: ResponseLike) =>
+const isRevokePut = (r: Response) =>
   r.url().includes(`${TOKEN_API}/revoke`) && r.request().method() === 'PUT';
 
-const isGeneratePut = (r: ResponseLike) =>
+const isGeneratePut = (r: Response) =>
   r.url().includes(TOKEN_API) &&
   !r.url().includes('/revoke') &&
   r.request().method() === 'PUT';
@@ -464,9 +440,13 @@ export const fillChangePasswordForm = async (
 export const submitChangePassword = async (page: Page) => {
   const submit = page.getByTestId('update-password-button');
   await expect(submit).toBeEnabled();
-  const changeResponse = page.waitForResponse(
+  // Both outcomes are under test (200 success, 400 wrong current password);
+  // anything else fails here instead of in the caller's status assertion.
+  const changeResponse = waitForResponseWithStatus(
+    page,
     (r) =>
-      r.url().includes(CHANGE_PASSWORD_API) && r.request().method() === 'PUT'
+      r.url().includes(CHANGE_PASSWORD_API) && r.request().method() === 'PUT',
+    [200, 400]
   );
   await submit.click();
 

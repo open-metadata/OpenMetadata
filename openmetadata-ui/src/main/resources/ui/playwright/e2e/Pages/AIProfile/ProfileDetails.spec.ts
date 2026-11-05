@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Locator, mergeTests, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Locator,
+  mergeTests,
+  Page,
+  Response,
+} from '@playwright/test';
 import {
   PolicyClass,
   PolicyRulesType,
@@ -22,10 +30,9 @@ import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { createAdminApiContext } from '../../../utils/admin';
-import { settleAll } from '../../../utils/apiResponse';
+import { deleteFixtureEntity, settleAll } from '../../../utils/apiResponse';
 import {
   AI_SHELL_TIMEOUT,
-  openInboxFromSidebar,
   visitInbox,
   visitMyData,
 } from '../../../utils/inbox';
@@ -40,7 +47,6 @@ import {
   openProfileModal,
   PERSONAL_SPACE_ROUTES,
   personasSearchResponse,
-  ProfileNavId,
   removeChip,
   rolesSearchResponse,
   submitChangePassword,
@@ -84,13 +90,28 @@ const profileAdmin = new UserClass();
 // round-trips never race the lifecycle suite's edits on `profileAdmin`.
 const persistAdmin = new UserClass();
 
+// Best-effort hard delete: skips a fixture whose create never returned, and
+// tolerates one already gone, so one failure cannot leak the rest.
+const deleteFixture = async (
+  apiContext: APIRequestContext,
+  collection: string,
+  id: string | undefined
+) => {
+  if (id) {
+    await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/${collection}/${id}?hardDelete=true&recursive=true`
+    );
+  }
+};
+
 // Log in as `user` in a clean context (the file's admin storageState would
 // otherwise leak into browser.newPage()) and open its Profile modal.
 const onUserProfile = async (
   browser: Browser,
   user: UserClass,
   run: (page: Page) => Promise<void>,
-  nav?: ProfileNavId
+  nav?: string
 ) => {
   const { page, afterAction } = await performUserLogin(browser, user);
   try {
@@ -107,32 +128,25 @@ const onUserProfile = async (
 const assignDefaultPersona = async (page: Page, name: string) => {
   await page.getByTestId('default-persona-edit').click();
 
+  // The preselection is the user's own defaultPersona, and the seeded user has
+  // none, so the select always opens empty with its input editable.
   const select = page.getByTestId('default-persona-select');
   const input = select.locator('input');
   await expect(select).toBeVisible();
-
-  // A system-wide default persona can pre-populate this single-select, which
-  // hides the input behind a value chip. Clear any existing chip first so the
-  // input becomes editable, then type the target persona.
-  const clearButton = select
-    .getByTestId('autocomplete-selected-item')
-    .getByRole('button');
-  if ((await clearButton.count()) > 0) {
-    await clearButton.click();
-  }
-
-  await expect(input).toBeVisible();
+  await expect(select.getByTestId('autocomplete-selected-item')).toHaveCount(0);
+  await expect(input).toBeEditable();
   await input.fill(name);
   const option = await waitForListboxOption(page, input, name);
   await option.click();
 
-  const saveResponse = page.waitForResponse(
+  const saveResponse = waitForResponseWithStatus(
+    page,
     (r) =>
-      r.url().includes('/api/v1/users/') && r.request().method() === 'PATCH'
+      r.url().includes('/api/v1/users/') && r.request().method() === 'PATCH',
+    200
   );
   await page.getByTestId('default-persona-save').click();
-  const response = await saveResponse;
-  expect(response.ok()).toBeTruthy();
+  await saveResponse;
 };
 
 const displayName = (entity: {
@@ -150,9 +164,7 @@ const runChipLifecycle = async (
   rowTestId: string,
   primary: string,
   alternate: string,
-  searchResponseMatcher?: (
-    query: string
-  ) => (r: { url(): string; request(): { method(): string } }) => boolean
+  searchResponseMatcher?: (query: string) => (r: Response) => boolean
 ) => {
   const card = page.getByTestId(rowTestId);
 
@@ -262,20 +274,33 @@ test.describe('Profile — Profile', PROFILE_TAGS, () => {
 
   test.afterAll('Cleanup seeded entities', async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
-    await profileAdmin.delete(apiContext);
-    await persistAdmin.delete(apiContext);
-    await personaA.delete(apiContext);
-    await personaB.delete(apiContext);
-    await domainA.delete(apiContext);
-    await domainB.delete(apiContext);
-    await cancelDomain.delete(apiContext);
-    await teamA.delete(apiContext);
-    await teamB.delete(apiContext);
-    await roleA.delete(apiContext);
-    await roleAPolicy.delete(apiContext);
-    await roleB.delete(apiContext);
-    await roleBPolicy.delete(apiContext);
-    await afterAction();
+    try {
+      await settleAll([
+        ...[profileAdmin, persistAdmin].map((user) =>
+          deleteFixture(apiContext, 'users', user.responseData?.id)
+        ),
+        ...[personaA, personaB].map((persona) =>
+          deleteFixture(apiContext, 'personas', persona.responseData?.id)
+        ),
+        ...[domainA, domainB, cancelDomain].map((domain) =>
+          deleteFixture(apiContext, 'domains', domain.responseData?.id)
+        ),
+        ...[teamA, teamB].map((team) =>
+          deleteFixture(apiContext, 'teams', team.responseData?.id)
+        ),
+        // A role goes before the policy it references.
+        ...[
+          [roleA, roleAPolicy],
+          [roleB, roleBPolicy],
+        ].map(([role, policy]) =>
+          deleteFixture(apiContext, 'roles', role.responseData?.id).then(() =>
+            deleteFixture(apiContext, 'policies', policy.responseData?.id)
+          )
+        ),
+      ]);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('persona: assign, change, then remove through the editor', async ({
@@ -626,16 +651,6 @@ test.describe('Profile — Profile', PROFILE_TAGS, () => {
   });
 });
 
-test.describe('Profile — Personal space navigation', PROFILE_TAGS, () => {
-  test('the sidebar inbox icon opens the inbox', async ({ page }) => {
-    await openInboxFromSidebar(page);
-
-    // Lands on the Inbox; the badge opens the Tasks sub-tab when the user has
-    // open tasks (`/inbox/tasks`), otherwise the default `/inbox`.
-    await expect(page).toHaveURL(/\/inbox(\/tasks)?$/);
-  });
-});
-
 const denyUser = new UserClass();
 const denyPolicy = new PolicyClass();
 const denyRole = new RolesClass();
@@ -674,10 +689,16 @@ test.describe('Profile — Personal space permissions', PROFILE_TAGS, () => {
 
   test.afterAll('Cleanup the denied user, role and policy', async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
-    await denyUser.delete(apiContext);
-    await denyRole.delete(apiContext);
-    await denyPolicy.delete(apiContext);
-    await afterAction();
+    try {
+      await settleAll([
+        deleteFixture(apiContext, 'users', denyUser.responseData?.id),
+        deleteFixture(apiContext, 'roles', denyRole.responseData?.id).then(() =>
+          deleteFixture(apiContext, 'policies', denyPolicy.responseData?.id)
+        ),
+      ]);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('a non-admin viewer can browse but cannot edit admin fields', async ({

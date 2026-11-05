@@ -17,6 +17,7 @@ import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage, uuid } from './common';
+import { AI_SHELL_TIMEOUT } from './inbox';
 import { waitForResponseWithStatus } from './waitHelpers';
 
 /**
@@ -35,7 +36,11 @@ export const openAiProfile = async (
 
   await page.getByTestId('ask-ai-user-menu-trigger').click();
   await page.getByTestId('ai-user-menu-profile').click();
-  await expect(page.getByTestId('ai-profile-page')).toBeVisible();
+  // The modal body is a lazy chunk, exposed to the same boot contention as the
+  // Inbox (see openInboxFromSidebar).
+  await expect(page.getByTestId('ai-profile-page')).toBeVisible({
+    timeout: AI_SHELL_TIMEOUT,
+  });
 
   if (navId) {
     await page.getByTestId(navId).click();

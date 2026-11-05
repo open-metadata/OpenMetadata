@@ -28,6 +28,7 @@ import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 // Token-expiration option labels (see AccessTokenRow `expiryOptions`).
 // Each option's label and the `JWTTokenExpiry` it must send.
 const TOKEN_EXPIRY_OPTIONS = [
+  { label: '1 Hour', value: 'OneHour' },
   { label: '1 Day', value: '1' },
   { label: '7 days', value: '7' },
   { label: '30 days', value: '30' },
