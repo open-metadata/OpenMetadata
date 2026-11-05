@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.OWNS;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -87,6 +88,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1141,7 +1143,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         updatedTask.setTags(
             updateTags(
                 storedTask.getFullyQualifiedName(),
-                EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
+                EntityUtil.getFieldName(
+                    EntityFieldPath.childKey(TASKS_FIELD, updatedTask.getName()), FIELD_TAGS),
                 storedTask.getTags(),
                 updatedTask.getTags()));
       }
@@ -1174,7 +1177,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         return;
       }
       recordChange(
-          EntityUtil.getFieldName(TASKS_FIELD, origTask.getName(), FIELD_DISPLAY_NAME),
+          EntityUtil.getFieldName(
+              EntityFieldPath.childKey(TASKS_FIELD, origTask.getName()), FIELD_DISPLAY_NAME),
           origTask.getDisplayName(),
           updatedTask.getDisplayName());
     }
@@ -1191,7 +1195,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   && !origTask.getDescription().equals(updatedTask.getDescription()))
               || !nullOrEmpty(updatedTask.getDescription()))) {
         recordChange(
-            "tasks." + origTask.getName() + ".description",
+            EntityUtil.getFieldName(
+                EntityFieldPath.childKey(TASKS_FIELD, origTask.getName()), FIELD_DESCRIPTION),
             origTask.getDescription(),
             updatedTask.getDescription());
       }

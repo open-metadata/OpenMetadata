@@ -96,6 +96,9 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class EntityCsvTest {
   private static final List<CsvHeader> CSV_HEADERS;
   private static final String HEADER_STRING = "h1*,h2,h3" + LINE_SEPARATOR;
+  // The stray character after the closing quote makes Commons CSV fail while iterating records.
+  private static final String MALFORMED_QUOTED_CSV =
+      HEADER_STRING + "\"value1\"x,value2,value3" + LINE_SEPARATOR;
 
   static {
     Object[][] headers = {
@@ -502,6 +505,34 @@ public class EntityCsvTest {
     assertEquals(List.of("h1*", "h2", "h3"), records.get(0).toList());
     assertEquals(List.of("value1", "value2", ""), records.get(1).toList());
     assertEquals(List.of("value3", "value4", "value5"), records.get(2).toList());
+  }
+
+  @Test
+  void test_importMalformedCsvAbortsWithParserFailure() throws IOException {
+    TestCsv testCsv = new TestCsv();
+
+    assertParserFailureAbort(testCsv.importCsv(MALFORMED_QUOTED_CSV, true));
+  }
+
+  @Test
+  void test_recursiveImportOfMalformedCsvAbortsWithParserFailure() throws IOException {
+    // Mirrors the recursive import path of DatabaseRepository and DatabaseSchemaRepository.
+    TestCsv testCsv = new TestCsv();
+    List<CSVRecord> records = testCsv.parse(MALFORMED_QUOTED_CSV, true);
+
+    assertNull(records);
+    assertParserFailureAbort(testCsv.importCsv(records, true));
+  }
+
+  private static void assertParserFailureAbort(CsvImportResult importResult) {
+    assertEquals(ApiStatus.ABORTED, importResult.getStatus(), importResult.toString());
+    assertTrue(
+        importResult
+            .getAbortReason()
+            .startsWith(
+                "#PARSER_FAILURE: Failed to parse the CSV file: line 2 has characters after the"
+                    + " closing quote of a quoted value."),
+        importResult.getAbortReason());
   }
 
   @Test

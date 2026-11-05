@@ -146,7 +146,7 @@ describe('RequestTagPage', () => {
       about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
       assignees: ['sample_data'],
       payload: {
-        fieldPath: 'columns."address.street_name"',
+        fieldPath: 'columns.address.street_name.tags',
         currentTags: [],
         tagsToAdd: [],
         tagsToRemove: [],
