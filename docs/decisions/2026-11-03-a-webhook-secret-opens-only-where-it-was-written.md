@@ -63,9 +63,10 @@ so they can have keys of their own and open only there.
   text, so only a server that ran a pre-release build after
   ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored has endpoints and
   header values saved there in that time to enter again.
-- A value whose only other copy belongs to an entity that was hard-deleted, or is kept in a store
-  the step does not read, such as a store a distribution adds, cannot be told apart from a value
-  the server wrote, and is carried over.
+- A value is carried over when nothing else stored holds the same ciphertext any more: its other
+  copy belonged to an entity that was hard-deleted, or was replaced, re-encrypted included, without
+  a version keeping it, or is kept in a store the step does not read, such as a store a
+  distribution adds. Such a value cannot be told apart from one the server wrote.
 - Destination ids must stay unique and stable, because they own their secrets. A destination given
   a new id has its secrets entered again.
 - Webhooks are the first secrets bound to their owner. The intended end state is one shared secret
