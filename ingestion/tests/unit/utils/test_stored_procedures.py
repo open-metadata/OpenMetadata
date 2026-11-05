@@ -42,6 +42,19 @@ def test_get_procedure_name_ignores_sql_literals(query_text, expected):
     assert get_procedure_name_from_call(query_text) == expected
 
 
+@pytest.mark.parametrize(
+    "query_text,expected",
+    [
+        ("CALL etl.my#$proc$archive()", "my#$proc$archive"),
+        ("CALL etl.a#$$()", "a#$$"),
+        ("CALL etl.my#$$archive()", "my#$$archive"),
+        ("CALL etl#$live$.proc()", "proc"),
+    ],
+)
+def test_get_procedure_name_preserves_dollars_after_hash_in_identifiers(query_text: str, expected: str) -> None:
+    assert get_procedure_name_from_call(query_text) == expected
+
+
 class TestStoredProcedures:
     """Group stored procedures tests"""
 

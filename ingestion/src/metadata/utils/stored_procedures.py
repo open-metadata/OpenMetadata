@@ -213,7 +213,7 @@ def _sanitize(query_text: str) -> str:
       recognition is suppressed inside them.
     * PostgreSQL dollar-quoted `$tag$...$tag$` strings (empty tag `$$` allowed)
       are blanked like ordinary literals; an unterminated dollar-quote truncates.
-      The opener is recognized only at a token boundary (no word char or `$`
+      The opener is recognized only at a token boundary (no word char, `$` or `#`
       just before), so a `$` that continues an unquoted identifier -- Oracle's
       `my$proc` / `my$proc$archive`, Snowflake's `$1`, or a name like `a$$` --
       is preserved verbatim instead of being read as a dollar-quote opener.
@@ -270,11 +270,11 @@ def _sanitize(query_text: str) -> str:
         # A `$` that does not open a dollar-quote is preserved verbatim: Oracle's
         # `my$proc` / `my$proc$archive` and Snowflake's `$1` are unquoted
         # identifiers, so a dollar-quote opener is recognized only at a token
-        # boundary -- no word char and no other `$` just before, which keeps a
+        # boundary -- no word char, `$` or `#` just before, which keeps a
         # `$` that continues an identifier (`my$`, `a$$`) from being read as a
         # dollar-quote opener that would truncate a real `CALL`/`BEGIN`.
         # An unterminated dollar-quote truncates.
-        if c == "$" and (i == 0 or (query_text[i - 1] not in _WORD_CHARS and query_text[i - 1] != "$")):
+        if c == "$" and (i == 0 or (query_text[i - 1] not in _WORD_CHARS and query_text[i - 1] not in "$#")):
             new_i = _blank_dollar(query_text, i, n, out)
             if new_i is None:
                 return "".join(out)
