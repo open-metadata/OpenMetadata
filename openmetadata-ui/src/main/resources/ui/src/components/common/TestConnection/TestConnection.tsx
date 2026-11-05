@@ -77,7 +77,6 @@ import { useApplicationsProvider } from '../../Settings/Applications/Application
 import Loader from '../Loader/Loader';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
-import { RenderTestConnectionFailureAction } from './TestConnectionModal/TestConnectionModal.interface';
 
 const LoaderIcon: FC<{ className?: string }> = () => <Loader size="small" />;
 
@@ -183,20 +182,6 @@ const TestConnection: FC<TestConnectionProps> = ({
         EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
       ) ?? []
     : [];
-
-  const renderFailureAction: RenderTestConnectionFailureAction = (
-    failure,
-    onClose
-  ) =>
-    failureActions.map(({ key, component: Action }) => (
-      <Action
-        failure={failure}
-        key={key}
-        serviceName={serviceName}
-        serviceType={connectionType}
-        onClose={onClose}
-      />
-    ));
 
   // local state
   const [isTestingConnection, setIsTestingConnection] =
@@ -879,7 +864,18 @@ const TestConnection: FC<TestConnectionProps> = ({
         isTestingConnection={isTestingConnection}
         progress={progress}
         renderFailureAction={
-          failureActions.length > 0 ? renderFailureAction : undefined
+          failureActions.length > 0
+            ? (failure, onClose) =>
+                failureActions.map(({ key, component: Action }) => (
+                  <Action
+                    failure={failure}
+                    key={key}
+                    serviceName={serviceName}
+                    serviceType={connectionType}
+                    onClose={onClose}
+                  />
+                ))
+            : undefined
         }
         serviceType={serviceType}
         testConnectionStep={testConnectionStep}

@@ -51,7 +51,5 @@ page, so the reason for limiting the point to the connection details page is gon
 
 - `TestConnection` reads the point itself, only when `useIsAiMode()` is true, so every caller in AI
   mode (details page, add service, edit connection) shows the action and classic pages never do.
-  `TestConnection` no longer takes a `renderFailureAction` prop.
 - `TestConnectionActionProps` is `serviceType`, `serviceName` (the unsaved name while creating),
   `failure` and `onClose`. It no longer carries the page context, which a form has no entity for.
-- The id stays `service-details.test-connection.actions`; renaming it would break downstream builds.
