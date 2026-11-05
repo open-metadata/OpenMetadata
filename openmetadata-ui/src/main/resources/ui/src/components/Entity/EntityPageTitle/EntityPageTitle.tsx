@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 
 export interface EntityPageTitleProps {
   name: string;
@@ -42,6 +43,9 @@ export const EntityPageTitle = ({
   const { t } = useTranslation();
   const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
   const hasDisplayName = !isEmpty(displayName);
+  // Version views pass getTextDiff HTML; render its diff spans as elements.
+  const displayNameNode = renderHighlightedText(displayName);
+  const nameNode = renderHighlightedText(name);
 
   return (
     <div
@@ -57,10 +61,10 @@ export const EntityPageTitle = ({
               as="h2"
               className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
               data-testid="entity-header-display-name"
-              ellipsis={{ tooltip: displayName }}
+              ellipsis={{ tooltip: displayNameNode }}
               size="text-lg"
               weight="bold">
-              {displayName}
+              {displayNameNode}
             </Typography>
           )}
           <Typography
@@ -70,10 +74,10 @@ export const EntityPageTitle = ({
               hasDisplayName ? 'tw:text-tertiary' : 'tw:text-primary'
             )}
             data-testid="entity-header-name"
-            ellipsis={{ tooltip: name }}
+            ellipsis={{ tooltip: nameNode }}
             size={hasDisplayName ? 'text-sm' : 'text-lg'}
             weight={hasDisplayName ? 'medium' : 'bold'}>
-            {name}
+            {nameNode}
           </Typography>
         </div>
         {/* h-8 = the title line, so the actions stay level with the title
