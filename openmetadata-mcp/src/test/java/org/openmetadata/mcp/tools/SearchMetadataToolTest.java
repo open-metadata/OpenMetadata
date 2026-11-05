@@ -834,6 +834,45 @@ class SearchMetadataToolTest {
     assertEquals(from + returnedCount, decoded.get().offset());
   }
 
+  /** The engine refuses offsets past its 10,000-hit window, so paging stops there. */
+  @Test
+  void pagingStopsAtTheResultWindowWhenTheTotalIsHigher() {
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      hits.add(buildHit(1.0, "svc.db.schema.table_" + i));
+    }
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", hits);
+    hitsContainer.put("total", Map.of("value", 50000));
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "*", 10, 9990, List.of(), false, 0);
+
+    assertEquals(50000, result.get("totalFound"));
+    assertFalse(result.containsKey("nextCursor"));
+    assertFalse(result.containsKey("hasMore"));
+  }
+
+  @Test
+  void aPageThatWouldCrossTheResultWindowIsShortened() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(
+          authorizer, securityContext, Map.of("query", "*", "from", 9995, "size", 10));
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(9995, captor.getValue().getFrom());
+      assertEquals(5, captor.getValue().getSize());
+    }
+  }
+
   private Map<String, Object> buildHit(double score, String fqn) {
     Map<String, Object> source = new HashMap<>();
     source.put("entityType", "table");

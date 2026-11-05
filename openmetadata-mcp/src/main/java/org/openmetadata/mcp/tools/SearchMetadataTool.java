@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
@@ -197,6 +198,8 @@ public class SearchMetadataTool implements McpTool {
     }
 
     size = Math.min(size, 50);
+    // The engine refuses from + size past its result window, so the last page is shortened.
+    size = Math.min(size, Math.max(0, MAX_RESULT_HITS - from));
 
     boolean includeDeleted = false;
     if (params.containsKey("includeDeleted")) {
@@ -503,11 +506,18 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> result, int from, long totalResults) {
     result.put(McpResponseTrim.TOTAL_KEY, totalResults);
     int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
-    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY)) && returned > 0) {
+    // totalFound is exact, but the engine cannot page past its result window: no cursor there,
+    // and the message already asks to narrow the query.
+    boolean withinWindow = (long) from + returned < MAX_RESULT_HITS;
+    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY))
+        && returned > 0
+        && withinWindow) {
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
     } else if (returned == 0) {
       result.remove(McpResponseTrim.HAS_MORE_KEY);
       result.remove(McpResponseTrim.MESSAGE_KEY);
+    } else {
+      result.remove(McpResponseTrim.HAS_MORE_KEY);
     }
   }
 

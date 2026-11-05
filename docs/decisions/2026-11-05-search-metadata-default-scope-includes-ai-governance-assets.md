@@ -2,9 +2,9 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-05 (initial)
-- **Deciders:** Vishnu Jain
+- **Deciders:** Vishnu Jain; pmbrull (which types join the default scope)
 - **Guard:** `SearchMetadataToolTest#testDefaultScopeAddsAiGovernanceTypesToDataAssetTypes`
-- **Related:** openmetadata-collate#8303
+- **Related:** #37173, openmetadata-collate#8303
 
 ## Context
 Without an `entityType`, `search_metadata` searched the `dataAsset` alias. LLM models, MCP servers
