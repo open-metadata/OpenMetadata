@@ -226,9 +226,7 @@ public final class ContainerizedServer implements AutoCloseable {
         .withDatabaseName(DB_NAME)
         .withUsername(DB_USER)
         .withPassword(DB_PASSWORD)
-        .withCommand(
-            "--character-set-server=utf8mb4",
-            "--max_allowed_packet=64M");
+        .withCommand("--character-set-server=utf8mb4", "--max_allowed_packet=64M");
   }
 
   private static OpensearchContainer<?> newOpenSearch(final Network network) {
