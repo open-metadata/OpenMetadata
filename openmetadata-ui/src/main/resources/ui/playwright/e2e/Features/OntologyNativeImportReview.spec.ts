@@ -18,6 +18,7 @@ import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConc
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { selectOntologyOption } from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -770,10 +771,11 @@ test.describe(
         );
         await page.getByTestId('ontology-library-trigger').click();
         await page.getByTestId('ontology-pack-details-fibo').click();
-        await page.getByTestId('ontology-library-target').click();
-        await page
-          .getByRole('option', { name: new RegExp(ontology.name) })
-          .click();
+        await selectOntologyOption(
+          page,
+          page.getByTestId('ontology-library-target'),
+          ontology.name
+        );
         await expect(
           page.getByTestId('ontology-library-pack-review')
         ).toContainText('New');
@@ -809,10 +811,11 @@ test.describe(
         await page.keyboard.press('Escape');
         await page.getByTestId('ontology-library-trigger').click();
         await page.getByTestId('ontology-pack-details-fibo').click();
-        await page.getByTestId('ontology-library-target').click();
-        await page
-          .getByRole('option', { name: new RegExp(ontology.name) })
-          .click();
+        await selectOntologyOption(
+          page,
+          page.getByTestId('ontology-library-target'),
+          ontology.name
+        );
 
         const review = page.getByTestId('ontology-library-pack-review');
         await expect(review).toContainText('Financial Instrument');
@@ -845,10 +848,11 @@ test.describe(
         await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
         await page.getByTestId('ontology-library-trigger').click();
         await page.getByTestId('ontology-pack-details-fibo').click();
-        await page.getByTestId('ontology-library-target').click();
-        await page
-          .getByRole('option', { name: new RegExp(ontology.name) })
-          .click();
+        await selectOntologyOption(
+          page,
+          page.getByTestId('ontology-library-target'),
+          ontology.name
+        );
 
         await expect(
           page.getByTestId('ontology-library-pack-review-error')
@@ -897,10 +901,11 @@ test.describe(
           ['ontology-module-business-entities', false],
         ]);
 
-        await page.getByTestId('ontology-library-target').click();
-        await page
-          .getByRole('option', { name: new RegExp(ontology.name) })
-          .click();
+        await selectOntologyOption(
+          page,
+          page.getByTestId('ontology-library-target'),
+          ontology.name
+        );
         await expect(
           page.getByTestId('ontology-library-pack-review')
         ).toBeVisible();

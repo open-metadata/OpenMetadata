@@ -16,7 +16,11 @@ import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConc
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
-import { clickGraphNode, readNodePositions } from '../../utils/ontologyStudio';
+import {
+  clickGraphNode,
+  readNodePositions,
+  selectOntologyOption,
+} from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -498,13 +502,11 @@ for (const mode of ['classic', 'ai'] as const) {
           });
 
           const choose = async (target: Ontology) => {
-            await page
-              .getByTestId('new-class-ontology')
-              .getByRole('button')
-              .click();
-            await page
-              .getByRole('option', { name: target.name, exact: true })
-              .click();
+            await selectOntologyOption(
+              page,
+              page.getByTestId('new-class-ontology').getByRole('button'),
+              target.name
+            );
             await expect(page.getByTestId('new-class-in-ontology')).toHaveText(
               'in ' + target.name
             );
