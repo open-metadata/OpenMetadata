@@ -141,6 +141,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     validate_custom_property_value,
 )
 from metadata.ingestion.source.database.dbt.models import DbtMeta
+from metadata.ingestion.source.database.dbt.test_definition_migration import migrate_test_definition
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.entity_link import get_table_fqn
@@ -2279,6 +2280,7 @@ class DbtSource(DbtServiceSource):
                         )
                     else:
                         logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                        test_case = migrate_test_definition(self.metadata, test_case, manifest_node)
                         self.patch_dbt_test_case_description(test_case, description)
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
