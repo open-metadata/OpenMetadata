@@ -541,6 +541,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       matchedQueries,
       highlight,
       classNameForBreadcrumb,
+      variant,
     },
     ref
   ) => {
@@ -723,9 +724,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               avatarSize={24}
               isCompactView={false}
               owners={(source as TableColumnSearchSource)?.owners ?? []}
-              placeHolder={t('label.no-entity', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           ),
@@ -793,9 +791,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 avatarSize={24}
                 isCompactView={false}
                 owners={(source?.owners as EntityReference[]) ?? []}
-                placeHolder={t('label.no-entity', {
-                  entity: t('label.owner-plural'),
-                })}
                 showLabel={false}
               />
             ),
@@ -916,6 +911,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
+        variant={variant}
         onClick={(e) => {
           // Toggling selection must not also open the summary panel.
           if ((e.target as HTMLElement).closest('.assets-checkbox')) {

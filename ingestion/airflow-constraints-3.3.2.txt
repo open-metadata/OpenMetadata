@@ -1,6 +1,6 @@
 
 #
-# Security overrides: certifi, dnspython, uv, virtualenv, python-discovery, GitPython, PyJWT, pymongo, tornado, urllib3, OpenTelemetry, thrift, databricks-sql-connector.
+# Security overrides: certifi, dnspython, uv, virtualenv, python-discovery, GitPython, PyJWT, pymongo, tornado, urllib3, OpenTelemetry, thrift, databricks-sql-connector, sqlparse.
 # Re-apply these overrides after regenerating from upstream: ADR:2026-10-23-ingestion-images-pin-python-security-packages-in-tree
 # This constraints file was automatically generated on 2026-09-17T09:17:15.849003
 # via `uv pip install --resolution highest` for the "v3-3-test" branch of Airflow.
@@ -566,7 +566,7 @@ pure_eval==0.2.4
 py-spy==0.4.2
 pyOpenSSL==26.4.0
 pyarrow==25.0.1
-pyasn1==0.6.4
+pyasn1==0.6.5
 pyasn1_modules==0.4.2
 pybreaker==1.4.1
 pycountry==26.2.16
@@ -661,7 +661,7 @@ sqlalchemy-bigquery==1.17.2
 sqlalchemy-spanner==1.20.1
 sqlalchemy_drill==1.1.10
 sqlglot==30.18.0
-sqlparse==0.6.0
+sqlparse==0.6.1
 stack-data==0.6.3
 starlette==1.6.0
 statsd==4.0.1

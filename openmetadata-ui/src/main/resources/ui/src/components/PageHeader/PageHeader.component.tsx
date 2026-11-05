@@ -35,7 +35,9 @@ const PageHeader = ({
         align="center"
         className="layout-space layout-space-horizontal"
         gap={1}
-        itemClassName="layout-space-item">
+        // Line-height 0 drops the text strut around the inline-flex learning
+        // icon, which otherwise sits above the title's centre.
+        itemClassName="layout-space-item tw:leading-[0]">
         <Typography
           as="h5"
           className="heading m-b-0"
@@ -56,7 +58,7 @@ const PageHeader = ({
           )}
         </Typography>
         {learningPageId && (
-          <LearningIcon pageId={learningPageId} title={title} />
+          <LearningIcon pageId={learningPageId} size="xs" title={title} />
         )}
       </Box>
       <Typography

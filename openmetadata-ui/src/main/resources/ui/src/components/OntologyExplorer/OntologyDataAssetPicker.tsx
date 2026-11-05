@@ -363,7 +363,6 @@ const OntologyDataAssetPicker = ({
           {t('label.add-entity', { entity: t('label.data-asset-plural') })}
         </Typography>
         <ButtonUtility
-          color="tertiary"
           data-testid="ontology-data-asset-picker-close"
           icon={XClose}
           size="xs"
@@ -377,6 +376,7 @@ const OntologyDataAssetPicker = ({
             ? t('label.search-entity', { entity: t('label.data-asset-plural') })
             : t('message.search-tables-and-columns')
         }
+        autoComplete="off"
         data-testid="ontology-data-asset-search"
         icon={SearchIcon}
         placeholder={

@@ -94,6 +94,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -212,18 +213,20 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                     b ->
                         b.must(m -> m.wildcard(w -> w.field(fieldName).value(fieldValue)))
                             .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
-    SearchRequest request =
-        SearchRequest.of(
-            search ->
-                search
-                    .index(Entity.getSearchRepository().getIndexOrAliasName(index))
-                    .from(from)
-                    .size(size)
-                    .query(
-                        restrictToOrgWideMemories(
-                            ElasticRbacQueries.withAccessPolicies(
-                                query, subjectContext, rbacConditionEvaluator))));
-    return executeSearchRequest(request);
+    SearchRequest.Builder request =
+        new SearchRequest.Builder()
+            .index(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .from(from)
+            .size(size)
+            .query(
+                restrictToOrgWideMemories(
+                    ElasticRbacQueries.withAccessPolicies(
+                        query, subjectContext, rbacConditionEvaluator)));
+    List<String> sourceExcludes = PrivateSearchFields.sourceExcludes(subjectContext, index, null);
+    if (!sourceExcludes.isEmpty()) {
+      request.source(source -> source.filter(filter -> filter.excludes(sourceExcludes)));
+    }
+    return executeSearchRequest(request.build());
   }
 
   @Override
@@ -645,7 +648,16 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     // this against the dataAsset/all aliases.
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     applyDeletedFilter(requestBuilder, request, indexName);
+    String[] privateFields =
+        toArrayOrNull(PrivateSearchFields.sourceExcludes(subjectContext, request.getIndex(), null));
+    if (privateFields != null) {
+      requestBuilder.fetchSource(null, privateFields);
+    }
     return requestBuilder;
+  }
+
+  private static String[] toArrayOrNull(List<String> fields) {
+    return nullOrEmpty(fields) ? null : fields.toArray(String[]::new);
   }
 
   private void applyRbacCondition(
@@ -883,6 +895,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
         if (transformedQuery == null) {
           LOG.info("Failed to get Transformed NLQ query");
+          return fallbackToBasicSearch(request, subjectContext);
+        }
+        if (PrivateSearchFields.namesPrivateField(
+            subjectContext, request.getIndex(), transformedQuery)) {
+          LOG.info("NLQ query names a field the caller may not search; using keyword search");
           return fallbackToBasicSearch(request, subjectContext);
         }
 
@@ -1586,7 +1603,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     ElasticSearchSourceBuilderFactory searchBuilderFactory =
-        new ElasticSearchSourceBuilderFactory(searchSettings);
+        new ElasticSearchSourceBuilderFactory(
+            searchSettings,
+            PrivateSearchFields.matchesPrivateFields(subjectContext, request.getIndex()));
 
     ElasticSearchRequestBuilder requestBuilder =
         searchBuilderFactory.getSearchSourceBuilderV2(
@@ -1665,22 +1684,21 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias, subjectContext);
     }
 
-    // Handle fetch source
-    String[] includeFields =
-        !nullOrEmpty(request.getIncludeSourceFields())
-            ? request.getIncludeSourceFields().toArray(String[]::new)
-            : null;
+    // Handle fetch source; a fetched source never carries a field the caller may not read
+    String[] includeFields = toArrayOrNull(request.getIncludeSourceFields());
     String[] excludeFields =
-        !nullOrEmpty(request.getExcludeSourceFields())
-            ? request.getExcludeSourceFields().toArray(String[]::new)
-            : null;
+        toArrayOrNull(
+            PrivateSearchFields.sourceExcludes(
+                subjectContext, request.getIndex(), request.getExcludeSourceFields()));
 
-    if (Boolean.TRUE.equals(request.getFetchSource())
+    if (Boolean.FALSE.equals(request.getFetchSource())
+        && includeFields == null
+        && nullOrEmpty(request.getExcludeSourceFields())) {
+      requestBuilder.fetchSource(false);
+    } else if (Boolean.TRUE.equals(request.getFetchSource())
         || includeFields != null
         || excludeFields != null) {
       requestBuilder.fetchSource(includeFields, excludeFields);
-    } else if (Boolean.FALSE.equals(request.getFetchSource())) {
-      requestBuilder.fetchSource(false);
     }
 
     // Handle track total hits

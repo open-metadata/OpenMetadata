@@ -51,6 +51,7 @@ const storedConfig = {
   baseUrl: 'https://om.example.com',
   allowedOrigins: ['http://localhost:3000'],
   maxResponseChars: 100000,
+  readOnly: true,
   connectionTimeoutSecs: 30,
 };
 
@@ -91,6 +92,7 @@ describe('useMcpConfiguration', () => {
       baseUrl: 'https://om.example.com',
       allowedOrigins: ['http://localhost:3000'],
       maxResponseChars: 100000,
+      readOnly: true,
     });
     expect(result.current.isEveryFieldManaged).toBe(false);
   });
@@ -180,7 +182,12 @@ describe('useMcpConfiguration', () => {
   it('marks the whole form managed when the deployment owns every field', async () => {
     mockGetSettingsSource.mockResolvedValue({
       settings: [
-        mcpSource(['/baseUrl', '/allowedOrigins', '/maxResponseChars']),
+        mcpSource([
+          '/baseUrl',
+          '/allowedOrigins',
+          '/maxResponseChars',
+          '/readOnly',
+        ]),
       ],
     });
 
