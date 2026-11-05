@@ -766,7 +766,7 @@ const KnowledgePagesHierarchy = forwardRef<
             className="tw:opacity-0 tw:group-hover/tree-item:opacity-100 tw:focus-visible:opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
-            size="lg"
+            size="xs"
             tooltip={t('label.delete')}
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
@@ -783,8 +783,9 @@ const KnowledgePagesHierarchy = forwardRef<
             textValue={displayName}>
             <Tree.ItemContent
               showGuideLines
+              className="tw:gap-0.5 tw:pl-1"
               hasChildItems={hasChildren}
-              indentPerLevel={16}>
+              indentPerLevel={24}>
               {() =>
                 isQuickLink && onQuickLinkClick ? (
                   <div className="custom-group tw:flex tw:items-center tw:justify-between tw:flex-1 tw:min-w-0">
@@ -991,7 +992,7 @@ const KnowledgePagesHierarchy = forwardRef<
     return (
       <Card
         aria-label={t('label.article-plural')}
-        className="tw:h-full tw:flex tw:flex-col tw:py-5 tw:px-0"
+        className="tw:h-full tw:flex tw:flex-col tw:pt-3 tw:pb-5 tw:px-0"
         data-testid="knowledge-pages-hierarchy-container"
         role="region"
         onDragOver={(e) => e.preventDefault()}
@@ -1016,7 +1017,7 @@ const KnowledgePagesHierarchy = forwardRef<
         <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:h-full">
           <Box
             align="center"
-            className="tw:pb-5 tw:shrink-0 tw:px-2"
+            className="tw:pb-5 tw:shrink-0 tw:px-3"
             justify="between">
             <Box align="center" gap={3}>
               <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
@@ -1041,7 +1042,7 @@ const KnowledgePagesHierarchy = forwardRef<
           </Box>
 
           <div
-            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-2"
+            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-3"
             data-testid="article-list-container"
             onScroll={handleScroll}>
             {renderArticleListBody()}
