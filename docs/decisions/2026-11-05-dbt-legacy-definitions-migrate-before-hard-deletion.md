@@ -26,6 +26,8 @@ After reassignment, request `DELETE /v1/dataQuality/testDefinitions/{id}/unused`
 with the legacy definition's weak-version `If-Match` header. The endpoint locks
 the definition row and checks its version in the same transaction as hard deletion,
 so a concurrently saved customization produces HTTP 412 and is retained.
+Test-definition updates do not consolidate successive same-user edits into one
+version: each saved change must invalidate the cleanup precondition.
 The server must reject deletion while any case, including a soft-deleted case,
 references the definition. The endpoint always uses non-recursive hard deletion.
 Older servers return 404 for this new route, retaining the definition safely. Failed cleanup is reported

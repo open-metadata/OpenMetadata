@@ -83,11 +83,14 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     TestDefinition edited = getEntity(original.getId().toString());
     edited.setDescription("Customization saved after ingestion read the definition");
     edited = patchEntity(edited.getId().toString(), edited);
+    Double staleVersion = edited.getVersion();
+    edited.setDescription("A second customization in the same editing session");
+    edited = patchEntity(edited.getId().toString(), edited);
+    assertTrue(edited.getVersion() > staleVersion);
 
     ApiException stale =
         assertThrows(
-            ApiException.class,
-            () -> deleteUnusedDefinition(original.getId(), original.getVersion()));
+            ApiException.class, () -> deleteUnusedDefinition(original.getId(), staleVersion));
     assertEquals(412, stale.getStatusCode());
     assertEquals(edited.getDescription(), getEntity(original.getId().toString()).getDescription());
     deleteUnusedDefinition(edited.getId(), edited.getVersion());
@@ -135,12 +138,15 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   void test_deleteUnusedDefinitionRequiresVersionAndDeletePermission(TestNamespace ns) {
     TestDefinition definition = createEntity(createMinimalRequest(ns));
     String path = "/v1/dataQuality/testDefinitions/" + definition.getId() + "/unused";
-    assertThrows(
-        ApiException.class,
-        () ->
-            SdkClients.adminClient()
-                .getHttpClient()
-                .executeForString(HttpMethod.DELETE, path, null, RequestOptions.builder().build()));
+    ApiException missingVersion =
+        assertThrows(
+            ApiException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.DELETE, path, null, RequestOptions.builder().build()));
+    assertEquals(400, missingVersion.getStatusCode());
     ApiException denied =
         assertThrows(
             ApiException.class,

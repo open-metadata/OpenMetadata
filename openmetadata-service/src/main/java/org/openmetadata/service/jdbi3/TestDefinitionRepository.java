@@ -469,6 +469,14 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
       super(original, updated, operation);
     }
 
+    @Override
+    protected boolean consolidateChanges(
+        TestDefinition original, TestDefinition updated, Operation operation) {
+      // Conditional cleanup must observe every saved customization, including
+      // consecutive edits by the same user within a consolidation window.
+      return false;
+    }
+
     /**
      * Reclassifying a test definition moves the test cases that took their dimension from it. Test
      * cases carrying a dimension the user chose are left alone — their relationship has no
