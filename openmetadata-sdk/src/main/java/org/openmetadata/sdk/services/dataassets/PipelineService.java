@@ -1,17 +1,23 @@
 package org.openmetadata.sdk.services.dataassets;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class PipelineService extends EntityServiceBase<Pipeline> {
+  /** The largest page of statuses the server returns. */
+  private static final int STATUS_PAGE_SIZE = 1000;
+
   public PipelineService(HttpClient httpClient) {
     super(httpClient, "/v1/pipelines");
   }
@@ -38,8 +44,26 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
     return httpClient.execute(HttpMethod.PUT, path, status, Pipeline.class);
   }
 
+  /**
+   * Every status between {@code startTs} and {@code endTs}, newest first. The server returns at
+   * most one page per request, so this follows the paging cursor to the end of the range.
+   */
   public ListResponse<PipelineStatus> listPipelineStatuses(String fqn, Long startTs, Long endTs)
       throws OpenMetadataException {
+    List<PipelineStatus> statuses = new ArrayList<>();
+    ListParams params = new ListParams().setLimit(STATUS_PAGE_SIZE);
+    ListResponse<PipelineStatus> page;
+    do {
+      page = listPipelineStatuses(fqn, startTs, endTs, params);
+      statuses.addAll(page.getData());
+      params.setAfter(page.getPaging() == null ? null : page.getPaging().getAfter());
+    } while (page.getData().size() == STATUS_PAGE_SIZE && params.getAfter() != null);
+    return new ListResponse<>(statuses);
+  }
+
+  /** One page of statuses between {@code startTs} and {@code endTs}, newest first. */
+  public ListResponse<PipelineStatus> listPipelineStatuses(
+      String fqn, Long startTs, Long endTs, ListParams params) throws OpenMetadataException {
     String encodedFqn;
     try {
       encodedFqn = java.net.URLEncoder.encode(fqn, "UTF-8").replace("+", "%20");
@@ -47,8 +71,9 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
       encodedFqn = fqn;
     }
     String path = basePath + "/" + encodedFqn + "/status?startTs=" + startTs + "&endTs=" + endTs;
+    RequestOptions options = RequestOptions.builder().queryParams(params.toQueryParams()).build();
     ResultList<PipelineStatus> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType());
+        httpClient.execute(HttpMethod.GET, path, null, getResultListType(), options);
     return new ListResponse<>(result);
   }
 

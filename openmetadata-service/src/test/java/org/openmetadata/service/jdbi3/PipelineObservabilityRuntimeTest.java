@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doReturn;
@@ -13,6 +12,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.PipelineObservabilityResponse;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.EntityExtensionTimeSeriesDAO.PipelineStatusFilter;
 
 class PipelineObservabilityRuntimeTest {
   private static final String FQN = "pipeline_service.demo_pipeline";
@@ -123,26 +124,34 @@ class PipelineObservabilityRuntimeTest {
                 .build());
       }
       when(extensionDAO.getExtensionsByPrefixBatch(EXTENSION)).thenReturn(records);
-      AtomicInteger snapshots = new AtomicInteger();
-      when(timeSeriesDAO.listBetweenTimestampsByOrder(
+      AtomicInteger scans = new AtomicInteger();
+      when(timeSeriesDAO.listPipelineStatuses(
               eq(FQN),
-              eq(PipelineRepository.PIPELINE_STATUS_EXTENSION),
-              anyLong(),
-              anyLong(),
-              eq(EntityTimeSeriesDAO.OrderBy.DESC)))
+              any(PipelineStatusFilter.class),
+              eq(PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE)))
           .thenAnswer(
               call -> {
-                long start = call.getArgument(2);
-                long end = call.getArgument(3);
+                PipelineStatusFilter filter = call.getArgument(1);
+                int limit = call.getArgument(2);
+                // A scan of the window starts without a cursor; the second scan sees a new history.
+                if (filter.afterTs() == null) {
+                  scans.incrementAndGet();
+                }
                 List<PipelineStatus> snapshot =
-                    snapshots.getAndIncrement() == 0
+                    scans.get() == 1
                         ? initialStatuses
                         : List.of(
-                            new PipelineStatus().withTimestamp(end - 1000).withEndTime(end - 100));
+                            new PipelineStatus()
+                                .withTimestamp(filter.endTs() - 1000)
+                                .withEndTime(filter.endTs() - 100));
                 return snapshot.stream()
+                    .filter(status -> status.getTimestamp() >= filter.startTs())
+                    .filter(status -> status.getTimestamp() <= filter.endTs())
                     .filter(
-                        status -> status.getTimestamp() >= start && status.getTimestamp() <= end)
-                    .map(JsonUtils::pojoToJson)
+                        status ->
+                            filter.afterTs() == null || status.getTimestamp() < filter.afterTs())
+                    .sorted(Comparator.comparing(PipelineStatus::getTimestamp).reversed())
+                    .limit(limit)
                     .toList();
               });
     }

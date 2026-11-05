@@ -11,11 +11,31 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import {
+  PipelineStatus,
+  StatusType,
+} from '../../../generated/entity/data/pipeline';
+import { getAllPipelineStatuses } from '../../../rest/pipelineAPI';
 import ExecutionsTab from './Execution.component';
 
 jest.mock('./ListView/ListViewTab.component', () =>
-  jest.fn().mockImplementation(() => <div>ListViewTab</div>)
+  jest
+    .fn()
+    .mockImplementation(
+      ({ executions }: { executions?: Array<PipelineStatus> }) => (
+        <div>
+          ListViewTab
+          <span data-testid="execution-count">{executions?.length ?? 0}</span>
+        </div>
+      )
+    )
 );
 
 jest.mock('./TreeView/TreeViewTab.component', () =>
@@ -27,19 +47,18 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  getCurrentMillis: jest.fn().mockImplementation((data) => data),
-  getEpochMillisForPastDays: jest
-    .fn()
-    .mockImplementation(() => <div>StatusIndicator</div>),
+  getCurrentMillis: jest.fn().mockReturnValue(2000),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1000),
 }));
 
 jest.mock('../../../rest/pipelineAPI', () => ({
-  getPipelineStatus: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: [],
-    })
-  ),
+  getAllPipelineStatuses: jest.fn().mockResolvedValue([]),
 }));
+
+const run = (timestamp: number): PipelineStatus => ({
+  executionStatus: StatusType.Successful,
+  timestamp,
+});
 
 jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
   jest.fn().mockImplementation(() => <div>Searchbar</div>)
@@ -51,6 +70,46 @@ const mockProps = {
 };
 
 describe('Test Execution Component', () => {
+  it('Should read every page of the selected range', async () => {
+    render(<ExecutionsTab {...mockProps} />);
+
+    await waitFor(() =>
+      expect(getAllPipelineStatuses).toHaveBeenCalledWith(
+        'pipelineFQN',
+        { endTs: 2000, startTs: 1000 },
+        expect.any(AbortSignal)
+      )
+    );
+  });
+
+  it('Should keep the newest read when a superseded one resolves last', async () => {
+    let resolveSuperseded: ((statuses: PipelineStatus[]) => void) | undefined;
+    (getAllPipelineStatuses as jest.Mock)
+      .mockImplementationOnce(
+        () =>
+          new Promise<PipelineStatus[]>((resolve) => {
+            resolveSuperseded = resolve;
+          })
+      )
+      .mockResolvedValueOnce([run(1)]);
+
+    const { rerender } = render(<ExecutionsTab {...mockProps} />);
+    rerender(<ExecutionsTab {...mockProps} pipelineFQN="otherPipelineFQN" />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('execution-count')).toHaveTextContent('1')
+    );
+
+    await act(async () => {
+      resolveSuperseded?.([run(2), run(3)]);
+    });
+
+    expect(screen.getByTestId('execution-count')).toHaveTextContent('1');
+    expect((getAllPipelineStatuses as jest.Mock).mock.calls[0][2].aborted).toBe(
+      true
+    );
+  });
+
   it('Should render component properly', async () => {
     render(<ExecutionsTab {...mockProps} />);
 

@@ -16,6 +16,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
@@ -89,13 +92,15 @@ class PipelineStatusPaginationSqlTest {
 
   private void checkPages(String url, boolean mysql) {
     AtomicInteger jsonRowsRead = new AtomicInteger();
+    AtomicInteger largestRead = new AtomicInteger();
     Jdbi jdbi =
         Jdbi.create(
                 () ->
                     trackJsonRows(
                         Connection.class,
                         DriverManager.getConnection(url, mysql ? "root" : "postgres", PASSWORD),
-                        jsonRowsRead))
+                        jsonRowsRead,
+                        largestRead))
             .installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
     jdbi.getConfig(SqlObjects.class)
@@ -170,35 +175,108 @@ class PipelineStatusPaginationSqlTest {
           List.of(),
           0);
 
-      for (String search : new String[] {null, "target", "ö", "%", "_", "!", "\\", "'", "absent"}) {
-        for (Long minimum : new Long[] {null, 0L, 40L}) {
-          List<PipelineStatus> original =
-              page(repository, null, null, null, null, search, minimum, null).getData();
-          ResultList<PipelineStatus> optimized =
-              page(repository, 100, null, null, null, search, minimum, null);
-          assertEquals(original, optimized.getData(), "search=" + search + ", min=" + minimum);
-          assertEquals(original.size(), optimized.getPaging().getTotal());
-        }
-      }
-      assertEquals(9, page(repository, 0, null, null, null, null, null, null).getData().size());
-      assertEquals(9, page(repository, -1, null, null, null, null, null, null).getData().size());
-      for (Integer limit : new Integer[] {null, 0, -1}) {
-        ResultList<PipelineStatus> older =
-            page(repository, limit, null, cursor(600), null, null, null, null);
-        assertEquals(
-            List.of(500L, 400L, 300L, 200L, 100L),
-            older.getData().stream().map(PipelineStatus::getTimestamp).toList());
-        assertEquals(9, older.getPaging().getTotal());
-        if (limit == null) {
-          assertNull(older.getPaging().getBefore());
-          assertNull(older.getPaging().getAfter());
-        } else {
-          assertEquals(cursor(500), older.getPaging().getBefore());
-          assertEquals(cursor(100), older.getPaging().getAfter());
-        }
-      }
+      checkFiltersMatchTaskLevelTimings(repository);
+      ResultList<PipelineStatus> totalOnly =
+          page(repository, 0, null, null, null, null, null, null);
+      assertPage(totalOnly, List.of(), 9);
+      assertNull(totalOnly.getPaging().getBefore());
+      assertNull(totalOnly.getPaging().getAfter());
+      assertPage(
+          page(repository, 10, null, cursor(600), null, null, null, null),
+          List.of(500L, 400L, 300L, 200L, 100L),
+          9);
       checkLargeHistory(handle, repository, mysql, jsonRowsRead);
+      checkStoredStatusLookup(repository, jsonRowsRead);
+      checkAverageRuntimeReadsPageByPage(handle, repository, mysql, jsonRowsRead, largestRead);
     }
+  }
+
+  /**
+   * Search keeps a status when one of its task names contains the text, and narrows its tasks to
+   * those; a duration runs from the earliest task start to the latest task end of what remains.
+   */
+  private void checkFiltersMatchTaskLevelTimings(PipelineRepository repository) {
+    for (Long minimum : new Long[] {null, 0L, 40L}) {
+      for (String onlyInTaskName : new String[] {"ö", "%", "!", "\\", "'"}) {
+        assertPage(
+            page(repository, 100, null, null, null, onlyInTaskName, minimum, null),
+            List.of(700L),
+            1);
+      }
+      assertPage(
+          page(repository, 100, null, null, null, "_", minimum, null), List.of(700L, 300L), 2);
+      assertPage(page(repository, 100, null, null, null, "absent", minimum, null), List.of(), 0);
+    }
+    assertPage(
+        page(repository, 100, null, null, null, null, null, null),
+        List.of(900L, 800L, 700L, 600L, 500L, 400L, 300L, 200L, 100L),
+        9);
+    assertPage(
+        page(repository, 100, null, null, null, null, 0L, null),
+        List.of(900L, 800L, 700L, 600L, 300L, 100L),
+        6);
+    assertPage(
+        page(repository, 100, null, null, null, null, 40L, null),
+        List.of(800L, 700L, 600L, 300L),
+        4);
+    assertPage(
+        page(repository, 100, null, null, null, "target", null, null),
+        List.of(900L, 700L, 600L, 500L, 400L, 300L, 100L),
+        7);
+    assertPage(
+        page(repository, 100, null, null, null, "target", 0L, null),
+        List.of(900L, 700L, 600L, 300L, 100L),
+        5);
+    assertPage(
+        page(repository, 100, null, null, null, "target", 40L, null), List.of(700L, 600L, 300L), 3);
+  }
+
+  private void checkStoredStatusLookup(PipelineRepository repository, AtomicInteger jsonRowsRead) {
+    jsonRowsRead.set(0);
+    Map<Long, PipelineStatus> stored =
+        repository.loadStoredStatuses(
+            new Pipeline().withFullyQualifiedName(FQN),
+            List.of(
+                status(2000, StatusType.Failed, null),
+                status(6999, StatusType.Failed, null),
+                status(9999, StatusType.Failed, null)));
+    assertEquals(Set.of(2000L, 6999L), stored.keySet());
+    assertEquals(2, jsonRowsRead.get(), "A bulk write must read only the rows it can overwrite");
+  }
+
+  private void checkAverageRuntimeReadsPageByPage(
+      Handle handle,
+      PipelineRepository repository,
+      boolean mysql,
+      AtomicInteger jsonRowsRead,
+      AtomicInteger largestRead) {
+    int page = PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE;
+    int runs = page + 100;
+    long now = System.currentTimeMillis();
+    var batch = handle.prepareBatch(insertStatusSql(mysql));
+    for (int run = 1; run <= runs; run++) {
+      long timestamp = now - run * 1000L;
+      long runtime = run <= page ? 100L : 1000L;
+      batch
+          .bind("fqn", FullyQualifiedName.buildHash(FQN))
+          .bind("extension", PipelineRepository.PIPELINE_STATUS_EXTENSION)
+          .bind("timestamp", timestamp)
+          .bind(
+              "json",
+              JsonUtils.pojoToJson(
+                  status(
+                      timestamp,
+                      StatusType.Successful,
+                      List.of(task("target", timestamp, timestamp + runtime)))))
+          .add();
+    }
+    batch.execute();
+    jsonRowsRead.set(0);
+    largestRead.set(0);
+    assertEquals(
+        (page * 100.0 + 100 * 1000.0) / runs, repository.calculateAverageRuntime(FQN), 1e-9);
+    assertEquals(runs, jsonRowsRead.get(), "The average must cover every run of the window");
+    assertEquals(page, largestRead.get(), "No read of the window may hold more than one page");
   }
 
   private void checkLargeHistory(
@@ -207,11 +285,7 @@ class PipelineStatusPaginationSqlTest {
         IntStream.range(0, 12)
             .mapToObj(i -> task(i == 0 ? "target" : "other_" + i, 10L, 50L))
             .toList();
-    var batch =
-        handle.prepareBatch(
-            "INSERT INTO entity_extension_time_series VALUES (:fqn, :extension, :timestamp, "
-                + (mysql ? "CAST(:json AS JSON)" : "CAST(:json AS JSONB)")
-                + ")");
+    var batch = handle.prepareBatch(insertStatusSql(mysql));
     for (long timestamp = 2000; timestamp < 7000; timestamp++) {
       batch
           .bind("fqn", FullyQualifiedName.buildHash(FQN))
@@ -222,26 +296,37 @@ class PipelineStatusPaginationSqlTest {
     }
     batch.execute();
     jsonRowsRead.set(0);
-    ResultList<PipelineStatus> full =
+    int largestPage = PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE;
+    ResultList<PipelineStatus> largest =
         repository.getPipelineStatuses(
-            FQN, 2000L, 6999L, null, null, null, null, "target", 40L, 40L);
+            FQN, 2000L, 6999L, largestPage, null, null, null, "target", 40L, 40L);
     assertEquals(
-        5000, jsonRowsRead.get(), "The counter must observe the complete-range JSON reads");
+        largestPage, jsonRowsRead.get(), "The largest page must read only its own JSON rows");
     jsonRowsRead.set(0);
     ResultList<PipelineStatus> page =
         repository.getPipelineStatuses(FQN, 2000L, 6999L, 20, null, null, null, "target", 40L, 40L);
     assertEquals(
         20, jsonRowsRead.get(), "Limited requests must consume only the selected JSON rows");
-    assertEquals(5000, full.getData().size());
+    assertEquals(largestPage, largest.getData().size());
+    assertEquals(5000, largest.getPaging().getTotal());
     assertEquals(5000, page.getPaging().getTotal());
     assertEquals(20, page.getData().size());
     assertEquals(6999L, page.getData().getFirst().getTimestamp());
     assertEquals(6980L, page.getData().getLast().getTimestamp());
-    assertEquals(full.getData().subList(0, 20), page.getData());
+    assertEquals(largest.getData().subList(0, 20), page.getData());
   }
 
-  private static <T> T trackJsonRows(Class<T> type, T target, AtomicInteger jsonRowsRead) {
+  private static String insertStatusSql(boolean mysql) {
+    return "INSERT INTO entity_extension_time_series VALUES (:fqn, :extension, :timestamp, "
+        + (mysql ? "CAST(:json AS JSON)" : "CAST(:json AS JSONB)")
+        + ")";
+  }
+
+  /** Counts the JSON rows read in total, and the most any single result set returned. */
+  private static <T> T trackJsonRows(
+      Class<T> type, T target, AtomicInteger jsonRowsRead, AtomicInteger largestRead) {
     AtomicBoolean rowCounted = new AtomicBoolean();
+    AtomicInteger rowsInResult = new AtomicInteger();
     return type.cast(
         Proxy.newProxyInstance(
             type.getClassLoader(),
@@ -254,10 +339,10 @@ class PipelineStatusPaginationSqlTest {
                 throw e.getCause();
               }
               if (result instanceof PreparedStatement statement) {
-                return trackJsonRows(PreparedStatement.class, statement, jsonRowsRead);
+                return trackJsonRows(PreparedStatement.class, statement, jsonRowsRead, largestRead);
               }
               if (result instanceof ResultSet resultSet) {
-                return trackJsonRows(ResultSet.class, resultSet, jsonRowsRead);
+                return trackJsonRows(ResultSet.class, resultSet, jsonRowsRead, largestRead);
               }
               if (target instanceof ResultSet resultSet) {
                 if ("next".equals(method.getName())) {
@@ -266,6 +351,7 @@ class PipelineStatusPaginationSqlTest {
                     && isJsonColumn(resultSet, arguments[0])
                     && rowCounted.compareAndSet(false, true)) {
                   jsonRowsRead.incrementAndGet();
+                  largestRead.accumulateAndGet(rowsInResult.incrementAndGet(), Math::max);
                 }
               }
               return result;
@@ -302,10 +388,7 @@ class PipelineStatusPaginationSqlTest {
                 List.of(task("target_start", 20L, null), task("target_end", null, 70L))),
             status(200, StatusType.Successful, null),
             status(100, StatusType.Successful, List.of(task("target", 5L, 5L))));
-    String sql =
-        "INSERT INTO entity_extension_time_series VALUES (:fqn, :extension, :timestamp, "
-            + (mysql ? "CAST(:json AS JSON)" : "CAST(:json AS JSONB)")
-            + ")";
+    String sql = insertStatusSql(mysql);
     for (PipelineStatus status : statuses) {
       handle
           .createUpdate(sql)
@@ -352,7 +435,7 @@ class PipelineStatusPaginationSqlTest {
 
   private static ResultList<PipelineStatus> page(
       PipelineRepository repository,
-      Integer limit,
+      int limit,
       String before,
       String after,
       String status,

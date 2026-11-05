@@ -34,7 +34,7 @@ import {
   SEGMENT_TOGGLE_ITEM_CLASS,
 } from '../../../constants/SegmentToggle.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
-import { getPipelineStatus } from '../../../rest/pipelineAPI';
+import { getAllPipelineStatuses } from '../../../rest/pipelineAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   getCurrentMillis,
@@ -63,22 +63,33 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchPipelineStatus = async (startRange: number, endRange: number) => {
+  const fetchPipelineStatus = async (
+    startRange: number,
+    endRange: number,
+    signal: AbortSignal
+  ) => {
     try {
       setIsLoading(true);
 
-      const response = await getPipelineStatus(pipelineFQN, {
-        startTs: startRange,
-        endTs: endRange,
-      });
-      setExecutions(response.data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('message.fetch-pipeline-status-error')
+      const statuses = await getAllPipelineStatuses(
+        pipelineFQN,
+        { startTs: startRange, endTs: endRange },
+        signal
       );
+      if (!signal.aborted) {
+        setExecutions(statuses);
+      }
+    } catch (error) {
+      if (!signal.aborted) {
+        showErrorToast(
+          error as AxiosError,
+          t('message.fetch-pipeline-status-error')
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -97,7 +108,11 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   };
 
   useEffect(() => {
-    fetchPipelineStatus(startTime, endTime);
+    // Reading a range can take several requests, so a superseded read must not land last.
+    const controller = new AbortController();
+    fetchPipelineStatus(startTime, endTime, controller.signal);
+
+    return () => controller.abort();
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
   const handleSearch = (value: string) => {

@@ -36,9 +36,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -101,6 +102,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_PATCH_FIELDS = "tasks";
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("tasks.description");
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
+
+  /** The most pipeline statuses one read loads, and so the largest page the status list serves. */
+  public static final int MAX_PIPELINE_STATUS_PAGE_SIZE = 1000;
 
   public PipelineRepository() {
     super(
@@ -404,14 +408,16 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
   }
 
-  private Map<Long, PipelineStatus> loadStoredStatuses(
-      Pipeline pipeline, List<PipelineStatus> incoming) {
-    long from = incoming.getFirst().getTimestamp();
-    long to = incoming.getLast().getTimestamp();
+  Map<Long, PipelineStatus> loadStoredStatuses(Pipeline pipeline, List<PipelineStatus> incoming) {
+    // Only the rows this request can overwrite: the span between its first and last timestamp is
+    // the caller's choice, so it can cover the whole history.
+    List<Long> timestamps = incoming.stream().map(PipelineStatus::getTimestamp).toList();
     Map<Long, PipelineStatus> stored = new HashMap<>();
     for (String json :
-        getResultsFromAndToTimestamps(
-            pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, from, to)) {
+        daoCollection
+            .entityExtensionTimeSeriesDao()
+            .listAtTimestamps(
+                pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, timestamps)) {
       PipelineStatus status = JsonUtils.readValue(json, PipelineStatus.class);
       stored.put(status.getTimestamp(), status);
     }
@@ -589,157 +595,32 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             "Failed to find pipeline status for %s at %s", pipeline.getName(), timestamp));
   }
 
-  private Long calculateActualDuration(PipelineStatus pipelineStatus) {
-    if (pipelineStatus.getTaskStatus() == null || pipelineStatus.getTaskStatus().isEmpty()) {
-      return null;
-    }
-
-    Long minStartTime =
-        pipelineStatus.getTaskStatus().stream()
-            .map(Status::getStartTime)
-            .filter(java.util.Objects::nonNull)
-            .min(Long::compare)
-            .orElse(null);
-
-    Long maxEndTime =
-        pipelineStatus.getTaskStatus().stream()
-            .map(Status::getEndTime)
-            .filter(java.util.Objects::nonNull)
-            .max(Long::compare)
-            .orElse(null);
-
-    if (minStartTime != null && maxEndTime != null && maxEndTime >= minStartTime) {
-      return maxEndTime - minStartTime;
-    }
-
-    return null;
-  }
-
+  /**
+   * One page of a pipeline's statuses, newest first, filtered and paged in SQL so a request reads
+   * at most {@code limit} rows. A {@code limit} of 0 returns only the total.
+   */
   public ResultList<PipelineStatus> getPipelineStatuses(
       String fqn,
       Long starTs,
       Long endTs,
-      Integer limit,
+      int limit,
       String before,
       String after,
       String status,
       String search,
       Long minDuration,
       Long maxDuration) {
-    if (limit != null && limit > 0) {
-      var filter =
-          PipelineStatusFilter.fromRequest(
-              starTs,
-              endTs,
-              status,
-              search,
-              minDuration,
-              maxDuration,
-              before == null ? null : Long.valueOf(RestUtil.decodeCursor(before)),
-              before == null && after != null ? Long.valueOf(RestUtil.decodeCursor(after)) : null);
-      return getPipelineStatusPage(fqn, filter, limit);
-    }
-    List<PipelineStatus> pipelineStatuses;
-    pipelineStatuses =
-        JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
-            PipelineStatus.class);
-
-    // Apply multi-value status filter
-    if (status != null && !status.isEmpty()) {
-      List<String> statusValues =
-          Arrays.asList(status.split(",")).stream()
-              .map(String::trim)
-              .collect(java.util.stream.Collectors.toList());
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .filter(
-                  ps ->
-                      ps.getExecutionStatus() != null
-                          && statusValues.contains(ps.getExecutionStatus().value()))
-              .collect(java.util.stream.Collectors.toList());
-    }
-
-    // Apply search filter on taskStatus names
-    if (search != null && !search.isEmpty()) {
-      String searchLower = search.toLowerCase();
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .map(
-                  ps -> {
-                    if (ps.getTaskStatus() == null || ps.getTaskStatus().isEmpty()) {
-                      return ps;
-                    }
-                    List<org.openmetadata.schema.type.Status> filteredTasks =
-                        ps.getTaskStatus().stream()
-                            .filter(
-                                task ->
-                                    task.getName() != null
-                                        && task.getName().toLowerCase().contains(searchLower))
-                            .collect(java.util.stream.Collectors.toList());
-                    return ps.withTaskStatus(filteredTasks);
-                  })
-              .filter(ps -> ps.getTaskStatus() != null && !ps.getTaskStatus().isEmpty())
-              .collect(java.util.stream.Collectors.toList());
-    }
-
-    // Apply duration filters using task-level timings
-    if (minDuration != null || maxDuration != null) {
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .filter(
-                  ps -> {
-                    Long actualDuration = calculateActualDuration(ps);
-                    if (actualDuration == null) {
-                      return false;
-                    }
-                    boolean meetsMin = minDuration == null || actualDuration >= minDuration;
-                    boolean meetsMax = maxDuration == null || actualDuration <= maxDuration;
-                    return meetsMin && meetsMax;
-                  })
-              .collect(java.util.stream.Collectors.toList());
-    }
-
-    // Sort by timestamp (descending - newest first)
-    pipelineStatuses.sort((a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
-
-    // Store total count before pagination
-    int total = pipelineStatuses.size();
-
-    // Apply cursor-based pagination
-    // Note: With DESCENDING sort (newest first), cursor semantics are:
-    // - "before" cursor: get newer records (previous page, higher timestamps)
-    // - "after" cursor: get older records (next page, lower timestamps)
-    if (before != null) {
-      // Pagination BACKWARDS: get newer/previous page records (higher timestamps)
-      // Decode base64-encoded cursor before parsing
-      String decodedBefore = RestUtil.decodeCursor(before);
-      Long beforeTs = Long.parseLong(decodedBefore);
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .filter(ps -> ps.getTimestamp() > beforeTs)
-              .collect(java.util.stream.Collectors.toList());
-    } else if (after != null) {
-      // Pagination FORWARD: get older/next page records (lower timestamps)
-      // Decode base64-encoded cursor before parsing
-      String decodedAfter = RestUtil.decodeCursor(after);
-      Long afterTs = Long.parseLong(decodedAfter);
-      pipelineStatuses =
-          pipelineStatuses.stream()
-              .filter(ps -> ps.getTimestamp() < afterTs)
-              .collect(java.util.stream.Collectors.toList());
-    }
-
-    // Build cursors for pagination - only when limit is provided
-    String beforeCursor = null;
-    String afterCursor = null;
-
-    if (limit != null && !pipelineStatuses.isEmpty()) {
-      beforeCursor = String.valueOf(pipelineStatuses.getFirst().getTimestamp());
-      afterCursor = String.valueOf(pipelineStatuses.getLast().getTimestamp());
-    }
-
-    return new ResultList<>(pipelineStatuses, beforeCursor, afterCursor, total);
+    var filter =
+        PipelineStatusFilter.fromRequest(
+            starTs,
+            endTs,
+            status,
+            search,
+            minDuration,
+            maxDuration,
+            before == null ? null : Long.valueOf(RestUtil.decodeCursor(before)),
+            before == null && after != null ? Long.valueOf(RestUtil.decodeCursor(after)) : null);
+    return getPipelineStatusPage(fqn, filter, limit);
   }
 
   private ResultList<PipelineStatus> getPipelineStatusPage(
@@ -1939,70 +1820,69 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         .withImpactedAssets(Collections.emptyList());
   }
 
-  private Double calculateAverageRuntime(String pipelineFqn) {
+  Double calculateAverageRuntime(String pipelineFqn) {
     if (nullOrEmpty(pipelineFqn)) {
       return null;
     }
 
     try {
-      long thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000);
       long now = System.currentTimeMillis();
-
-      List<PipelineStatus> statuses =
-          JsonUtils.readObjects(
-              getResultsFromAndToTimestamps(
-                  pipelineFqn, PIPELINE_STATUS_EXTENSION, thirtyDaysAgo, now),
-              PipelineStatus.class);
-
-      if (statuses == null || statuses.isEmpty()) {
-        return null;
-      }
-
-      List<Double> runtimes = new ArrayList<>();
-
-      for (PipelineStatus status : statuses) {
-        Double runtime = null;
-
-        if (status.getTaskStatus() != null && !status.getTaskStatus().isEmpty()) {
-          Long minStart = null;
-          Long maxEnd = null;
-
-          for (org.openmetadata.schema.type.Status task : status.getTaskStatus()) {
-            if (task.getStartTime() != null && task.getEndTime() != null) {
-              if (minStart == null || task.getStartTime() < minStart) {
-                minStart = task.getStartTime();
-              }
-              if (maxEnd == null || task.getEndTime() > maxEnd) {
-                maxEnd = task.getEndTime();
-              }
+      DoubleSummaryStatistics runtimes = new DoubleSummaryStatistics();
+      forEachStatusBetween(
+          pipelineFqn,
+          now - (30L * 24 * 60 * 60 * 1000),
+          now,
+          status -> {
+            Double runtime = runtimeOf(status);
+            if (runtime != null) {
+              runtimes.accept(runtime);
             }
-          }
-
-          if (minStart != null && maxEnd != null) {
-            runtime = (double) (maxEnd - minStart);
-          }
-        }
-
-        if (runtime == null && status.getEndTime() != null && status.getTimestamp() != null) {
-          runtime = (double) (status.getEndTime() - status.getTimestamp());
-        }
-
-        if (runtime != null && runtime > 0) {
-          runtimes.add(runtime);
-        }
-      }
-
-      if (runtimes.isEmpty()) {
-        return null;
-      }
-
-      return runtimes.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-
+          });
+      return runtimes.getCount() == 0 ? null : runtimes.getAverage();
     } catch (Exception e) {
       LOG.warn(
           "Failed to calculate average runtime for pipeline {}: {}", pipelineFqn, e.getMessage());
       return null;
     }
+  }
+
+  /** Visits every status in the range a page at a time, so the range never sits in memory whole. */
+  private void forEachStatusBetween(
+      String pipelineFqn, long startTs, long endTs, Consumer<PipelineStatus> visitor) {
+    var timeSeriesDAO = daoCollection.entityExtensionTimeSeriesDao();
+    Long afterTs = null;
+    List<PipelineStatus> page;
+    do {
+      page =
+          timeSeriesDAO.listPipelineStatuses(
+              pipelineFqn,
+              PipelineStatusFilter.fromRequest(
+                  startTs, endTs, null, null, null, null, null, afterTs),
+              MAX_PIPELINE_STATUS_PAGE_SIZE);
+      page.forEach(visitor);
+      afterTs = page.isEmpty() ? null : page.getLast().getTimestamp();
+    } while (page.size() == MAX_PIPELINE_STATUS_PAGE_SIZE);
+  }
+
+  /** The span of a run's timed tasks, else its own end time; null unless positive. */
+  private static Double runtimeOf(PipelineStatus status) {
+    Double runtime = taskSpan(status.getTaskStatus());
+    if (runtime == null && status.getEndTime() != null && status.getTimestamp() != null) {
+      runtime = (double) (status.getEndTime() - status.getTimestamp());
+    }
+    return runtime != null && runtime > 0 ? runtime : null;
+  }
+
+  private static Double taskSpan(List<Status> tasks) {
+    Long minStart = null;
+    Long maxEnd = null;
+    for (Status task : listOrEmpty(tasks)) {
+      if (task.getStartTime() != null && task.getEndTime() != null) {
+        minStart = minStart == null ? task.getStartTime() : Math.min(minStart, task.getStartTime());
+        maxEnd = maxEnd == null ? task.getEndTime() : Math.max(maxEnd, task.getEndTime());
+      }
+    }
+    return minStart == null ? null : (double) (maxEnd - minStart);
   }
 
   private int getImpactedAssetsCount(String pipelineFqn) {

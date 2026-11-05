@@ -28,6 +28,9 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
+# The largest page of statuses the server returns.
+PIPELINE_STATUS_PAGE_SIZE = 1000
+
 
 class OMetaPipelineMixin:
     """
@@ -85,7 +88,10 @@ class OMetaPipelineMixin:
         limit: int | None = None,
     ) -> list[PipelineStatus]:
         """
-        List PipelineStatus records for a Pipeline within a time range.
+        List PipelineStatus records for a Pipeline within a time range, newest first.
+
+        With a limit, return at most that many. Without one, follow the paging
+        cursor: the server returns at most one page per request.
         """
         try:
             parts = fqn_utils.split(fqn)
@@ -93,17 +99,24 @@ class OMetaPipelineMixin:
         except Exception:
             normalized_fqn = fqn
 
-        params = f"startTs={start_ts}&endTs={end_ts}"
-        if limit is not None:
-            params += f"&limit={limit}"
-
-        resp = self.client.get(
-            f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status?{params}",
-        )
-
-        if resp and "data" in resp:
-            return [PipelineStatus(**status) for status in resp["data"]]
-        return []
+        page_size = limit if limit is not None else PIPELINE_STATUS_PAGE_SIZE
+        statuses: list[PipelineStatus] = []
+        after: str | None = None
+        while True:
+            params = f"startTs={start_ts}&endTs={end_ts}&limit={page_size}"
+            if after:
+                params += f"&after={after}"
+            resp = (
+                self.client.get(
+                    f"{self.get_suffix(Pipeline)}/{quote(normalized_fqn)}/status?{params}",
+                )
+                or {}
+            )
+            page = [PipelineStatus(**status) for status in resp.get("data", [])]
+            statuses.extend(page)
+            after = (resp.get("paging") or {}).get("after")
+            if limit is not None or not after or len(page) < page_size:
+                return statuses
 
     def add_task_to_pipeline(self, pipeline: Pipeline, *tasks: Task) -> Pipeline:
         """

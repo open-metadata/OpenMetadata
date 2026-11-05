@@ -27,6 +27,9 @@ export enum PIPELINE_EXECUTION_TABS {
   TREE_VIEW = 'Tree',
 }
 
+/** The largest page of statuses the pipeline status API returns. */
+export const PIPELINE_STATUS_PAGE_SIZE = 1000;
+
 export const PIPELINE_INGESTION_RUN_STATUS = {
   queued: '#777777',
   success: '#07a35a',
