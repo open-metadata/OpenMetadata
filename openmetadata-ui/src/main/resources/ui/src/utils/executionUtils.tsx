@@ -164,6 +164,13 @@ export const MAX_TREE_NODES = 5000;
 
 type ViewElement = { key: string; value: React.ReactNode };
 type Budget = { remaining: number };
+type TreeBuildContext = {
+  data: Task[];
+  viewElements: ViewElement[];
+  icon: React.ReactNode | null;
+  visited: Set<string>;
+  budget: Budget;
+};
 
 const createNode = (
   nodeKey: string,
@@ -206,19 +213,14 @@ const makeLeafNode = (
 function expandNodeChildren(
   node: TreeNode,
   entry: Task | undefined,
-  data: Task[],
-  viewElements: ViewElement[],
-  icon: React.ReactNode | null,
   nodeKey: string,
-  parentKey: string,
-  visited: Set<string>,
-  budget: Budget
+  context: TreeBuildContext
 ): void {
+  const { data, viewElements, icon, visited, budget } = context;
   if (!entry || visited.has(entry.name)) {
     return;
   }
 
-  const childParentKey = parentKey + '-' + entry.name;
   const childrenKeys = entry.downstreamTasks ?? [];
 
   if (budget.remaining > 0) {
@@ -231,7 +233,7 @@ function expandNodeChildren(
           viewElements,
           icon,
           childKey,
-          childParentKey,
+          nodeKey,
           visited,
           budget
         );
@@ -262,29 +264,26 @@ export function buildCompleteTree(
   key: string,
   parentKey: string,
   visited: Set<string> = new Set(),
-  budget: Budget = { remaining: MAX_TREE_NODES }
+  budget?: Budget
 ) {
   const nodeKey: string = parentKey + '-' + key;
+  const nodeBudget = budget ?? { remaining: MAX_TREE_NODES };
 
   // Charge every created node against the shared budget so the total
   // expansion is bounded regardless of graph shape.
-  budget.remaining -= 1;
+  nodeBudget.remaining -= 1;
 
   const title = viewElements.find((item) => item.key === key)?.value ?? null;
   const node = createNode(nodeKey, title, icon);
   const entry = data.find((item) => item.name === key);
 
-  expandNodeChildren(
-    node,
-    entry,
+  expandNodeChildren(node, entry, nodeKey, {
     data,
     viewElements,
     icon,
-    nodeKey,
-    parentKey,
     visited,
-    budget
-  );
+    budget: nodeBudget,
+  });
 
   if (node.children?.length === 0) {
     delete node.children;
