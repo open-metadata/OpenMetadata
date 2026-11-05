@@ -19,7 +19,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -56,7 +55,6 @@ import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
-import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
 class IngestionPipelineMigrationEntryPointTest {
 
@@ -107,8 +105,6 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
             mockStatic(LineageEdgePipelineCleanupMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
-        MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
-            mockStatic(WorkflowRedeployMigration.class);
         MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
             mockStatic(McpGrantUserNameIndexes.class);
         MockedStatic<DataProductDomainContainmentRepair> containmentRepair =
@@ -151,13 +147,12 @@ class IngestionPipelineMigrationEntryPointTest {
                     .addMcpConsentColumnsOnMySql(handle));
         grantUserNameIndexes.verify(() -> McpGrantUserNameIndexes.addOnMySql(handle));
       }
-      // `migrate` runs before Flowable starts, so each step that deploys a workflow starts it.
-      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
+      // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
+      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
       lineageEdgeCleanup.verify(
           () -> LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(collectionDAO));
-      workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
     }
   }
 

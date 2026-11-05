@@ -60,7 +60,6 @@ import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMig
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
-import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -199,14 +198,6 @@ public class Migration extends MigrationProcessImpl {
         () -> {
           initializeWorkflowHandler();
           GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
-        });
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        WorkflowRedeployMigration.STEP_NAME,
-        () -> {
-          initializeWorkflowHandler();
-          WorkflowRedeployMigration.redeploy();
         });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnMySql(handle);
