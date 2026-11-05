@@ -4749,6 +4749,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/isolatedDomainUser.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
