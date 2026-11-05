@@ -100,6 +100,8 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => {
       return {
         page,
         pageSize: undefined,
+        resolvedPageSize: 15,
+        savePageSize: jest.fn(),
         setPage: (...args: [number, ...unknown[]]) => {
           mockSetHashPage(...args);
           setPage(args[0]);
