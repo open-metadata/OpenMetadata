@@ -13,36 +13,49 @@
 
 package org.openmetadata.service.ontology;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.rdf.OwlEntityDeclarations;
 
 public final class OntologyChangePreflight {
   private final EntityLoader entityLoader;
+  private final DeclaredConcepts declaredConcepts;
 
-  public OntologyChangePreflight(final EntityLoader entityLoader) {
+  public OntologyChangePreflight(
+      final EntityLoader entityLoader, final DeclaredConcepts declaredConcepts) {
     this.entityLoader = entityLoader;
+    this.declaredConcepts = declaredConcepts;
+  }
+
+  /** Glossary change sets never read ontology concepts. */
+  public OntologyChangePreflight(final EntityLoader entityLoader) {
+    this(entityLoader, (ontologyId, iris) -> Set.of());
   }
 
   public void validate(
@@ -54,7 +67,7 @@ public final class OntologyChangePreflight {
         validateSourceMemories(operation, activeSourceMemories);
         NativeOntologyChanges.validateTarget(changeSet, operation, entityLoader);
       }
-      requireImportedConcepts(operations);
+      requireReferencedConcepts(changeSet.getOntology().getId(), operations);
       return;
     }
     final Set<UUID> scope = glossaryScope(changeSet);
@@ -68,10 +81,15 @@ public final class OntologyChangePreflight {
   }
 
   /**
-   * An import lists the concepts it creates that an operation states a fact about. Applying the
-   * operation without them would store a relationship or rule on a concept that does not exist.
+   * The concepts an axiom or property must state as classes are read from the operation itself,
+   * because the client-supplied requiresConceptIris is optional and a partial import can drop it.
+   * The positions are the ones the importer validates, so a preview that is clean here is clean on
+   * apply. A class is satisfied by a vocabulary class, an UPSERT_CONCEPT in the set, or a concept
+   * the ontology declares. Datatypes are skipped because the set may not carry the data property
+   * whose filler names one, and a datatype is never a concept.
    */
-  private static void requireImportedConcepts(final List<OntologyChangeOperation> operations) {
+  private void requireReferencedConcepts(
+      final UUID ontologyId, final List<OntologyChangeOperation> operations) {
     final Set<String> created =
         operations.stream()
             .filter(
@@ -80,18 +98,73 @@ public final class OntologyChangePreflight {
                         && operation.getConcept() != null)
             .map(operation -> operation.getConcept().getIri().toString())
             .collect(Collectors.toSet());
+    final Predicate<URI> isDataProperty = dataProperties(operations);
+    final Map<OntologyChangeOperation, Set<String>> unresolved = new LinkedHashMap<>();
     for (final OntologyChangeOperation operation : operations) {
-      for (final URI required : listOrEmpty(operation.getRequiresConceptIris())) {
-        if (!created.contains(required.toString())) {
-          throw new BadRequestException(
-              "Ontology operation '"
-                  + operation.getId()
-                  + "' needs the concept "
-                  + required
-                  + ", which is not part of this change set");
-        }
+      final Set<String> missing = new TreeSet<>(classPositions(operation, isDataProperty));
+      missing.removeIf(
+          iri ->
+              created.contains(iri)
+                  || OntologyClassHierarchy.isVocabularyClass(iri)
+                  || OwlEntityDeclarations.isDatatype(iri));
+      if (!missing.isEmpty()) {
+        unresolved.put(operation, missing);
       }
     }
+    if (unresolved.isEmpty()) {
+      return;
+    }
+    final Set<String> declared =
+        declaredConcepts.declared(
+            ontologyId,
+            unresolved.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+    unresolved.forEach(
+        (operation, missing) -> {
+          missing.removeAll(declared);
+          if (!missing.isEmpty()) {
+            throw new BadRequestException(
+                "Ontology operation '"
+                    + operation.getId()
+                    + "' needs the concept "
+                    + missing.iterator().next()
+                    + ", which is not part of this change set");
+          }
+        });
+  }
+
+  private static Set<String> classPositions(
+      final OntologyChangeOperation operation, final Predicate<URI> isDataProperty) {
+    final List<OntologyClassHierarchy.ClassPosition> positions =
+        switch (operation.getOperationType()) {
+          case UPSERT_AXIOM -> OntologyClassHierarchy.classPositions(
+              operation.getAxiom(),
+              isDataProperty,
+              () -> {
+                throw new BadRequestException(
+                    "Ontology operation '"
+                        + operation.getId()
+                        + "' has a class expression with more than 10000 steps");
+              });
+          case UPSERT_PROPERTY -> OntologyClassHierarchy.classPositions(operation.getProperty());
+          default -> List.of();
+        };
+    return positions.stream()
+        .map(OntologyClassHierarchy.ClassPosition::iri)
+        .filter(Objects::nonNull)
+        .map(URI::toString)
+        .collect(Collectors.toSet());
+  }
+
+  private static Predicate<URI> dataProperties(final List<OntologyChangeOperation> operations) {
+    final Map<String, OntologyProperty> inSet = new HashMap<>();
+    operations.stream()
+        .filter(
+            operation ->
+                operation.getOperationType() == OntologyChangeOperationType.UPSERT_PROPERTY)
+        .map(OntologyChangeOperation::getProperty)
+        .filter(property -> property.getIri() != null)
+        .forEach(property -> inSet.putIfAbsent(property.getIri().toString(), property));
+    return iri -> OntologyClassHierarchy.isDataProperty(iri, inSet);
   }
 
   /**
@@ -272,6 +345,12 @@ public final class OntologyChangePreflight {
   private record VersionGuard(OperationTarget target, Double expectedVersion) {}
 
   public record OperationTarget(String entityType, UUID id) {}
+
+  /** The subset of these IRIs that live concepts of the ontology declare. */
+  @FunctionalInterface
+  public interface DeclaredConcepts {
+    Set<String> declared(UUID ontologyId, Set<String> iris);
+  }
 
   @FunctionalInterface
   public interface EntityLoader {

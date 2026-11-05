@@ -149,6 +149,35 @@ class NativeOntologyImportItemsTest {
   }
 
   @Test
+  void anAssertionNamesTheNewIndividualItsExpressionPointsAt() {
+    final var preview =
+        importer.preview(
+            read(
+                PREFIXES
+                    + """
+                    ex:A a owl:Class ; rdfs:label "A" .
+                    ex:owns a owl:ObjectProperty ; rdfs:label "owns" .
+                    ex:i a owl:Class, owl:NamedIndividual ; rdfs:label "i" .
+                    ex:A rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ex:owns ; owl:hasValue ex:i ] .
+                    """),
+            emptySnapshot(root()));
+
+    final var restriction =
+        preview.getSummary().getItems().stream()
+            .filter(
+                item -> item.getDependsOnIris().contains(URI.create("https://example.org/items/i")))
+            .toList();
+    assertEquals(1, restriction.size(), preview.getSummary().getItems().toString());
+    final OntologyChangeOperation operation =
+        preview.getChangeSet().getOperations().stream()
+            .filter(candidate -> candidate.getId().equals(restriction.getFirst().getOperationId()))
+            .findFirst()
+            .orElseThrow();
+    assertTrue(
+        operation.getRequiresConceptIris().contains(URI.create("https://example.org/items/i")));
+  }
+
+  @Test
   void aRuleOverTwoNewConceptsNeedsBothInIriOrder() {
     final var preview =
         importer.preview(
