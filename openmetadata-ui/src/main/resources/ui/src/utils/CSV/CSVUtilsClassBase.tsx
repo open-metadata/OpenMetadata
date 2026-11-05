@@ -1276,6 +1276,7 @@ const InlineBulkEditReferencePickerEditor = ({
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus
               aria-label={config.searchPlaceholder}
+              autoComplete="off"
               placeholder={config.searchPlaceholder}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}

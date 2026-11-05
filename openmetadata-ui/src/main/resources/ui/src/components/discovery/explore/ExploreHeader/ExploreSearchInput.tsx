@@ -243,6 +243,7 @@ export const ExploreSearchInput = ({
           )}
           <Input
             data-input-wrapper
+            autoComplete="off"
             className={INPUT_FIELD_CONTAINER_CLASS}
             data-testid="explore-search-input"
             fontSize="xs"

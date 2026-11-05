@@ -339,6 +339,7 @@ const TeamUserSelectInput = ({
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
           ref={dropdownRef}>
           <Input
+            autoComplete="off"
             data-testid={`team-user-search-input-${destinationNumber}`}
             placeholder={t('label.search-by-type', { type: entityType })}
             ref={searchInputRef}
