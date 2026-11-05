@@ -805,7 +805,6 @@ const OntologyGraphView = ({
               : t('label.add-entity', { entity: t('label.concept') })}
           </Typography>
           <ButtonUtility
-            color="tertiary"
             data-testid="ontology-concept-authoring-close"
             icon={XClose}
             size="sm"
@@ -1068,6 +1067,7 @@ const OntologyGraphView = ({
       return createPortal(
         <Input
           aria-label={t('label.find-concept')}
+          autoComplete="off"
           icon={Search}
           inputDataTestId="ontology-graph-search"
           placeholder={`${t('label.find-concept')}…`}
@@ -1088,6 +1088,7 @@ const OntologyGraphView = ({
         }>
         <Input
           aria-label={t('label.find-concept')}
+          autoComplete="off"
           className="tw:w-54"
           icon={Search}
           inputDataTestId="ontology-graph-search"

@@ -14,23 +14,26 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   DialogTrigger,
+  FeaturedIcon,
   Input,
   Modal,
   ModalOverlay,
   Owner,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  TestSuite as TestSuiteIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { useListSearchInput } from '../../components/common/atoms/navigation/useListSearchInput';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -118,27 +121,19 @@ const TestSuiteHeaderTitle = ({
           {name}
         </Typography>
       </Box>
-      <Tooltip
-        placement="top"
-        title={
+      <ButtonUtility
+        data-testid="entity-header-copy-button"
+        icon={Copy01}
+        size="lg"
+        tooltip={
           hasCopied
             ? t('message.link-copy-to-clipboard')
             : t('label.copy-item', {
                 item: t('label.url-uppercase'),
               })
-        }>
-        <Button
-          aria-label={t('label.copy-item', {
-            item: t('label.url-uppercase'),
-          })}
-          color="tertiary"
-          data-testid="entity-header-copy-button"
-          iconLeading={Copy01}
-          size="xs"
-          type="button"
-          onClick={onCopyEntityUrl}
-        />
-      </Tooltip>
+        }
+        onClick={onCopyEntityUrl}
+      />
       <LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />
     </Box>
   );
@@ -236,6 +231,7 @@ const TestSuiteDetailsPage = () => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
@@ -374,7 +370,10 @@ const TestSuiteDetailsPage = () => {
         ),
         children: (
           <div className="tw:w-full tw:p-4">
-            <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+            <TestSuitePipelineTab
+              testSuite={testSuite}
+              onPipelinesChange={handlePipelinesChange}
+            />
           </div>
         ),
       },
@@ -459,16 +458,12 @@ const TestSuiteDetailsPage = () => {
             gap={4}
             wrap="wrap">
             <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-              <Box
-                align="center"
-                className={classNames(
-                  'tw:relative tw:size-9 tw:shrink-0',
-                  'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}
-                justify="center">
-                <TestSuiteIcon className="tw:size-5" />
-              </Box>
+              <FeaturedIcon
+                color="gray"
+                icon={TestSuiteIcon}
+                size="md"
+                theme="surface"
+              />
               <TestSuiteHeaderTitle
                 displayName={testSuite?.displayName}
                 hasCopied={hasCopied}

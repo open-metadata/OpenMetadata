@@ -32,6 +32,7 @@ import {
   deleteInboxTasks,
   InboxTask,
   isFollowedAssetsSearch,
+  openInboxFromSidebar,
   pickMenuItem,
   searchInboxTask,
   switchActivityFeed,
@@ -395,6 +396,16 @@ test.describe(
           /^(\d+|99\+)$/
         );
       });
+    });
+
+    test('the sidebar inbox icon opens the inbox', async ({
+      isolatedUserPage: page,
+    }) => {
+      await openInboxFromSidebar(page);
+
+      // Lands on the Inbox; the badge opens the Tasks sub-tab when the user has
+      // open tasks (`/inbox/tasks`), otherwise the default `/inbox`.
+      await expect(page).toHaveURL(/\/inbox(\/tasks)?$/);
     });
 
     // An activity's replies live in a conversation keyed by the activity id;

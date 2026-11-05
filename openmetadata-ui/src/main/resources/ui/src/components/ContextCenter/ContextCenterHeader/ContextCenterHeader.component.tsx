@@ -80,6 +80,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
     <div className="tw:flex tw:items-center tw:gap-3">
       {onSearch && (
         <Input
+          autoComplete="off"
           data-testid="search-input"
           icon={Search}
           inputClassName="tw:w-75"

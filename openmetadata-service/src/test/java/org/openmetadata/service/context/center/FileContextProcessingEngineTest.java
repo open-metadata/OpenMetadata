@@ -69,7 +69,8 @@ class FileContextProcessingEngineTest {
     assertEquals(6, outcome.reconciled().kept());
     verify(extractor, never()).derive(any(), any(), any());
     ArgumentCaptor<ContextFile> updated = ArgumentCaptor.forClass(ContextFile.class);
-    verify(repository).update(isNull(), eq(file), updated.capture(), eq(Entity.ADMIN_USER_NAME));
+    verify(repository)
+        .updateIfCurrent(isNull(), eq(file), updated.capture(), eq(Entity.ADMIN_USER_NAME));
     assertEquals("same-hash", updated.getValue().getExtractionStats().getSourceHash());
   }
 

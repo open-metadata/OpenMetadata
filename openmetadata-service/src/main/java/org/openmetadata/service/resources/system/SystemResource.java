@@ -148,6 +148,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+  private static final String ENTITY_RULES_LIST_POINTER = "/entitySemantics";
 
   // Settings that hold no secrets and that the UI must read to render entity pages for every
   // authenticated user — glossary term relation types populate the Related Terms dropdown and the
@@ -542,6 +543,56 @@ public class SystemResource {
         .toList();
   }
 
+  @PATCH
+  @Path("/settings/entityRulesSettings/rules/{ruleName}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchEntityRule",
+      summary = "Patch one Data Asset Rule",
+      description =
+          "Update one Data Asset Rule, found by name, using JsonPatch. Paths are relative to the "
+              + "rule (for example /enabled), so rules the caller never read are preserved. The "
+              + "patch may not rename, add or remove rules. The write uses compare-and-set: if the "
+              + "stored rules changed while the server applied the patch, the request fails with "
+              + "412 Precondition Failed instead of overwriting the newer value.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"),
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid patch, or a patch that renames, adds or removes rules"),
+        @ApiResponse(responseCode = "404", description = "Rule not found"),
+        @ApiResponse(
+            responseCode = "412",
+            description = "The stored rules changed while the patch was applied")
+      })
+  public Response patchEntityRule(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the rule to patch", schema = @Schema(type = "string"))
+          @PathParam("ruleName")
+          String ruleName,
+      @RequestBody(
+              description = "JsonPatch with operations relative to the rule",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {@ExampleObject("[{op:replace, path:/enabled, value:false}]")}))
+          JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
+    return forResponse(
+        systemRepository.patchSettingItem(
+            SettingsType.ENTITY_RULES_SETTINGS, ENTITY_RULES_LIST_POINTER, ruleName, patch));
+  }
+
   @GET
   @Path("/search/nlq")
   @Operation(
@@ -642,17 +693,12 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Entity type for which to get the global profiler configuration",
-              schema = @Schema(type = "string"))
-          @QueryParam("entityType")
-          @DefaultValue("table")
-          String entityType) {
-    ResourceContext resourceContext = new ResourceContext(entityType);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // One global setting, so one resource decides it: a caller-chosen type would let a policy on
+    // tables be stepped around by asking as another type.
+    ResourceContext resourceContext = new ResourceContext(Entity.TABLE);
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
@@ -1132,19 +1178,19 @@ public class SystemResource {
       })
   public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    SecurityConfiguration originalConfig =
-        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+    // Masked for every caller, bots included: no client needs the stored secrets back.
+    return maskedCopy(SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+  }
 
-    // Create a deep copy to avoid mutating the original shared objects
-    String configJson = JsonUtils.pojoToJson(originalConfig);
-    SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
-
-    // Apply password masking if needed - only to the copy
-    if (authorizer.shouldMaskPasswords(securityContext)) {
+  /** A copy with the secrets masked, as an admin reads the configuration. */
+  static SecurityConfiguration maskedCopy(SecurityConfiguration config) {
+    SecurityConfiguration copy =
+        JsonUtils.readValue(JsonUtils.pojoToJson(config), SecurityConfiguration.class);
+    if (copy.getAuthenticationConfiguration() != null) {
       SettingsSecrets.maskInPlace(
-          AUTHENTICATION_CONFIGURATION, config.getAuthenticationConfiguration());
+          AUTHENTICATION_CONFIGURATION, copy.getAuthenticationConfiguration());
     }
-    return config;
+    return copy;
   }
 
   @PUT
@@ -1248,9 +1294,12 @@ public class SystemResource {
       SecurityConfiguration currentConfig =
           stored == null ? currentSecurityConfiguration() : stored.configuration();
 
-      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
+      // The patch works on the configuration as the admin reads it, so a copy or move from a secret
+      // moves the mask; the secrets come back below where that is safe.
+      SecurityConfiguration maskedConfig = maskedCopy(currentConfig);
+      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, maskedConfig);
 
-      JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
+      JsonValue patched = JsonUtils.applyPatch(maskedConfig, filteredPatch);
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
@@ -1329,6 +1378,12 @@ public class SystemResource {
     }
   }
 
+  /**
+   * Gives back the stored secrets a client sent masked or left out, but only while the setting each
+   * one is used with is unchanged, so a write never sends a stored secret somewhere new. A secret
+   * still masked after that has to be entered again
+   * (ADR:2026-11-03-security-config-writes-never-move-a-stored-secret).
+   */
   static void preserveMaskedSecuritySecrets(
       SecurityConfiguration updated, SecurityConfiguration original) {
     if (updated == null || updated.getAuthenticationConfiguration() == null) {
@@ -1341,10 +1396,15 @@ public class SystemResource {
         updated.getAuthenticationConfiguration(),
         originalAuthentication);
     if (originalAuthentication != null) {
-      SettingsSecrets.restoreMaskedInPlace(
-          AUTHENTICATION_CONFIGURATION,
-          updated.getAuthenticationConfiguration(),
-          originalAuthentication);
+      TestLoginCandidates.restoreLiveSecretsInPlace(updated, original);
+    }
+    Set<String> withheld =
+        SettingsSecrets.maskedSecrets(
+            AUTHENTICATION_CONFIGURATION, updated.getAuthenticationConfiguration());
+    if (!withheld.isEmpty()) {
+      throw new BadRequestException(
+          String.format(
+              "Enter %s again: the setting it is used with changed.", String.join(", ", withheld)));
     }
   }
 

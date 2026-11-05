@@ -47,6 +47,11 @@ updates:
         versions: [">=1.6.0"]
       - dependency-name: "ch.qos.logback:logback-classic"
         versions: [">=1.6.0"]
+      # Hibernate Validator 9 removed ConstraintValidatorFactoryImpl, which Dropwizard
+      # 5 builds its validator from, so the server fails at startup. Dropwizard 5.0.2
+      # still targets 8.0.x. Remove once Dropwizard supports 9.
+      - dependency-name: "org.hibernate.validator:hibernate-validator"
+        versions: [">=9.0.0"]
 
   - package-ecosystem: "npm"
     directory: "/openmetadata-ui/src/main/resources/ui"

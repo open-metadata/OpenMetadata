@@ -295,10 +295,11 @@ class AlertsClassBase {
     setInlineAlertDetails,
     currentUser,
   }: HandleAlertSaveProps) {
+    const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
     try {
       let alertDetails;
 
-      if (fqn && !isUndefined(initialData)) {
+      if (action === 'update' && initialData) {
         const newAlertData: EventSubscription = this.getAlertUpdateData(
           data,
           initialData
@@ -320,7 +321,6 @@ class AlertsClassBase {
         alertDetails = await createAlertAPI(finalData);
       }
 
-      const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
       showSuccessToast(
         t(`server.${action}-entity-success`, {
           entity: t('label.alert-plural'),
@@ -335,7 +335,7 @@ class AlertsClassBase {
         entityLowercasePlural: t('label.alert-lowercase-plural'),
         setInlineAlertDetails,
         name: data.name,
-        defaultErrorType: 'create',
+        defaultErrorType: action,
       });
     }
   }
@@ -347,10 +347,10 @@ class AlertsClassBase {
       ...alertData,
       input: getAlertInputForForm(alertData),
       hasRulesWithoutSelections: hasRulesWithoutSelections(alertData),
-      timeout: alertData.destinations[0].timeout ?? 10,
+      timeout: alertData.destinations?.[0]?.timeout ?? 10,
       readTimeout:
-        alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
-      destinations: alertData.destinations.map((destination) => {
+        alertData.destinations?.[0]?.readTimeout ?? DEFAULT_READ_TIMEOUT,
+      destinations: (alertData.destinations ?? []).map((destination) => {
         const isExternalDestination =
           destination.category === SubscriptionCategory.External;
 

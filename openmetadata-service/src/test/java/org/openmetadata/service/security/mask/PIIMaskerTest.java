@@ -9,11 +9,14 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.SearchIndex;
@@ -22,11 +25,15 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SearchIndexField;
@@ -34,13 +41,50 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ColumnUtil;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
 
 class PIIMaskerTest {
+
+  @Test
+  void aUserChangeEventIsMaskedAsAReadOfTheUserIs() {
+    String snapshot = "{\"name\":\"alice\",\"email\":\"alice@example.com\"}";
+    ChangeEvent stored =
+        new ChangeEvent()
+            .withEntityType(Entity.USER)
+            .withEntity(snapshot)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("email")
+                                .withOldValue("alice@old.example.com")
+                                .withNewValue("alice@example.com"),
+                            new FieldChange()
+                                .withName("displayName")
+                                .withOldValue("Alice")
+                                .withNewValue("Alice A."))));
+
+    ChangeEvent masked = PIIMasker.maskUserChangeEvent(stored);
+
+    JsonNode entity = JsonUtils.readTree((String) masked.getEntity());
+    assertEquals(PIIMasker.MASKED_MAIL, entity.get("email").asText());
+    assertEquals("alice", entity.get("name").asText());
+    FieldChange email = masked.getChangeDescription().getFieldsUpdated().get(0);
+    assertEquals(PIIMasker.MASKED_MAIL, email.getOldValue());
+    assertEquals(PIIMasker.MASKED_MAIL, email.getNewValue());
+    assertEquals("Alice A.", masked.getChangeDescription().getFieldsUpdated().get(1).getNewValue());
+
+    ChangeEvent table = new ChangeEvent().withEntityType(Entity.TABLE).withEntity(snapshot);
+    assertEquals(snapshot, PIIMasker.maskUserChangeEvent(table).getEntity());
+  }
 
   @Test
   void maskSampleDataMasksSensitiveColumnsAndWholeTables() {
@@ -814,6 +858,55 @@ class PIIMaskerTest {
     }
   }
 
+  @ParameterizedTest
+  @CsvSource({
+    "ssn, ssn",
+    "ssn, SSN",
+    "contact.ssn, contact.ssn",
+    "contact.ssn, CONTACT.SSN",
+    "ssn, ssn::description"
+  })
+  void getTestCasesMasksValidatedColumnLinks(String columnName, String linkedColumn) {
+    String tableFqn = "service.db.schema.customers";
+    Table table = table(tableFqn, List.of(column(tableFqn, columnName, true)), false, List.of());
+    ColumnUtil.setColumnFQN(tableFqn, table.getColumns());
+    TestCase testCase =
+        new TestCase()
+            .withName("ssn_format")
+            .withDescription("Sensitive description")
+            .withIncidentStatus(
+                new TestCaseResolutionStatus().withFailureSummary("Incident details"))
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::" + linkedColumn + ">")
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("regex").withValue("^078-")))
+            .withTestCaseResult(new TestCaseResult().withResult("Sensitive failure"));
+    MessageParser.EntityLink link = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    EntityRepository.validateColumn(table, link.getArrayFieldName(), false);
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+
+      TestCase masked =
+          PIIMasker.getTestCases(new ResultList<>(List.of(testCase)), authorizer, securityContext)
+              .getData()
+              .getFirst();
+
+      assertEquals("ssn_format [MASKED]", masked.getName());
+      assertNull(masked.getDescription());
+      assertNull(masked.getParameterValues());
+      assertNull(masked.getTestCaseResult());
+      assertNull(masked.getIncidentStatus());
+      assertEquals(testCase.getEntityLink(), masked.getEntityLink());
+    }
+  }
+
   @Test
   void getTestCasesMasksNestedColumnCasesThroughTagsOnThePath() {
     String tableFqn = "service.db.schema.orders";
@@ -925,6 +1018,104 @@ class PIIMaskerTest {
       assertEquals("email_not_null [MASKED]", masked.getData().get(0).getName());
       assertNull(masked.getData().get(0).getTestCaseResult());
       assertEquals("row_count", masked.getData().get(1).getName());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"ssn, false, true", "SSN, false, false", "ssn, true, false"})
+  void getTestCasesPrefersExactColumnNamesAndRespectsPiiAuthorization(
+      String linkedColumn, boolean authorized, boolean masked) {
+    String tableFqn = "service.db.schema.customers";
+    Table table =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "SSN", false), column(tableFqn, "ssn", true)),
+            false,
+            List.of());
+    TestCase testCase =
+        new TestCase()
+            .withName("ssn_format")
+            .withDescription("Sensitive description")
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::" + linkedColumn + ">");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of())).thenReturn(authorized);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+
+      TestCase result = PIIMasker.getTestCase(testCase, authorizer, securityContext);
+      assertEquals(masked ? "ssn_format [MASKED]" : "ssn_format", result.getName());
+      assertEquals(masked ? null : "Sensitive description", result.getDescription());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false", "true"})
+  void getTestCaseResultsUsesTheLinkedColumnPolicy(boolean authorized) {
+    String tableFqn = "service.db.schema.customers";
+    String testFqn = tableFqn + ".SSN.ssn_format";
+    Table table = table(tableFqn, List.of(column(tableFqn, "ssn", true)), false, List.of());
+    TestCase testCase =
+        new TestCase().withEntityLink("<#E::table::" + tableFqn + "::columns::SSN>");
+    TestCaseResult result =
+        new TestCaseResult()
+            .withId(UUID.randomUUID())
+            .withTestCaseFQN(testFqn)
+            .withTimestamp(123L)
+            .withResult("Sensitive failure")
+            .withSampleData("Sensitive sample");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of())).thenReturn(authorized);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+      entity
+          .when(() -> Entity.getEntityByName(Entity.TEST_CASE, testFqn, "", Include.ALL))
+          .thenReturn(testCase);
+
+      TestCaseResult visible =
+          PIIMasker.getTestCaseResults(
+                  new ResultList<>(List.of(result)), authorizer, securityContext)
+              .getData()
+              .getFirst();
+      assertEquals(result.getId(), visible.getId());
+      assertEquals(testFqn, visible.getTestCaseFQN());
+      assertEquals(123L, visible.getTimestamp());
+      assertEquals(authorized ? "Sensitive failure" : null, visible.getResult());
+      assertEquals(authorized ? "Sensitive sample" : null, visible.getSampleData());
+      assertEquals(visible, PIIMasker.getTestCaseResult(result, authorizer, securityContext));
+      assertNull(PIIMasker.getTestCaseResult(null, authorizer, securityContext));
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({", false", "missing, false", ", true", "missing, true"})
+  void getTestCaseResultsHandlesMissingTestCases(String fqn, boolean authorized) {
+    TestCaseResult result =
+        new TestCaseResult().withTestCaseFQN(fqn).withResult("Sensitive failure");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(authorized);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.TEST_CASE, fqn, "", Include.ALL))
+          .thenThrow(new EntityNotFoundException("deleted"));
+
+      TestCaseResult visible = PIIMasker.getTestCaseResult(result, authorizer, securityContext);
+      assertEquals(authorized ? "Sensitive failure" : null, visible.getResult());
     }
   }
 

@@ -57,7 +57,6 @@ import MemoryConflictReviews from '../../../components/discovery/context-center/
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
   DEFAULT_MEMORY_LIST_STATUSES,
-  MEMORIES_PER_PAGE,
   MEMORY_FIELDS,
   MEMORY_STATUS_LABEL_KEYS,
 } from '../../../constants/ContextCenter.constants';
@@ -69,6 +68,8 @@ import {
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
+import { usePageForSize } from '../../../hooks/paging/usePageForSize';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { queryClient } from '../../../queryClient';
@@ -336,7 +337,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const [selectedStatuses, setSelectedStatuses] = useState<
     ContextMemoryStatus[]
   >(DEFAULT_MEMORY_LIST_STATUSES);
-  const [currentPage, setCurrentPage] = useState(1);
+  const { savedPageSize: memoriesPerPage } = useSavedPageSize();
+  const [currentPage, setCurrentPage] = usePageForSize(memoriesPerPage);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
   const [authorOptions, setAuthorOptions] = useState<MemoryFilterOption[]>([]);
@@ -435,8 +437,8 @@ const ContextCenterMemoriesPage: FC = () => {
             ? currentUser?.id ?? currentUser?.name
             : selectedAuthor?.id;
         const response = await getListContextMemories({
-          limit: MEMORIES_PER_PAGE,
-          offset: (currentPage - 1) * MEMORIES_PER_PAGE,
+          limit: memoriesPerPage,
+          offset: (currentPage - 1) * memoriesPerPage,
           fields: MEMORY_FIELDS,
           q: debouncedSearch.trim() || undefined,
           assets: selectedAsset?.id,
@@ -461,6 +463,7 @@ const ContextCenterMemoriesPage: FC = () => {
       activeFilter,
       applyMemoryListResponse,
       currentPage,
+      memoriesPerPage,
       currentUser?.id,
       currentUser?.name,
       debouncedSearch,
@@ -602,7 +605,7 @@ const ContextCenterMemoriesPage: FC = () => {
     void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
-  const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalMemories / memoriesPerPage));
 
   const {
     hasActiveFilters,
@@ -1072,7 +1075,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       className="tw:max-w-64"
                       color="secondary"
                       data-testid="author-filter-button"
-                      iconLeading={<User01 className="tw:shrink-0" size={14} />}
+                      iconLeading={User01}
                       iconTrailing={ChevronDown}
                       size="md">
                       {selectedAuthor?.label ?? allAuthorsLabel}
@@ -1082,6 +1085,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         <Input
                           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                           autoFocus
+                          autoComplete="off"
                           className="tw:w-full"
                           icon={Search}
                           placeholder={t('label.search-entity', {

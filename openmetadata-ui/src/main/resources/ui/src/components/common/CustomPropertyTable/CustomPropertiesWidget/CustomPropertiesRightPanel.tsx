@@ -152,6 +152,7 @@ export const CustomPropertiesRightPanel = ({
     <div className="tw:w-full" ref={searchWrapperRef}>
       <Input
         aria-label={searchLabel}
+        autoComplete="off"
         className="tw:w-full"
         icon={Search}
         inputDataTestId="custom-properties-widget-search"
@@ -159,8 +160,7 @@ export const CustomPropertiesRightPanel = ({
         size="sm"
         trailingSlot={
           <ButtonUtility
-            className="tw:mr-2 tw:p-1"
-            color="tertiary"
+            className="tw:mr-2"
             data-testid="custom-properties-widget-search-close"
             icon={XClose}
             size="xs"
@@ -185,22 +185,18 @@ export const CustomPropertiesRightPanel = ({
         <>
           {viewAllPath && (
             <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
               data-testid="custom-properties-widget-view-all"
               href={viewAllPath}
               icon={ArrowUpRight}
-              size="xs"
+              size="sm"
               tooltip={t('label.view-all')}
             />
           )}
           <span className="tw:flex" ref={searchButtonWrapperRef}>
             <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
               data-testid="custom-properties-widget-search-button"
               icon={Search}
-              size="xs"
+              size="sm"
               tooltip={searchLabel}
               onClick={() => setIsSearchOpen(true)}
             />

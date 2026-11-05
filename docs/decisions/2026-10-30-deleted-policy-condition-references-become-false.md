@@ -1,9 +1,9 @@
 # Policy conditions are rewritten through the SpEL AST, and a call naming only deleted entities becomes false
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-03 (team and role conditions rewritten on hard delete only)
 - **Deciders:** Ram Narayan Balaji
-- **Guard:** `PolicyConditionUpdaterTest`, `OpenSearchRBACConditionEvaluatorTest#falseLiteralMakesAnAllowRuleMatchNothing`, `PolicyResourceIT#test_deletingTheOnlyTagLeavesAConditionThatMatchesNothing`
+- **Guard:** `PolicyConditionUpdaterTest`, `OpenSearchRBACConditionEvaluatorTest#falseLiteralMakesAnAllowRuleMatchNothing`, `PolicyResourceIT#test_deletingTheOnlyTagLeavesAConditionThatMatchesNothing`, `PolicyResourceIT#test_softDeletedTeamAndRoleLeavePolicyConditionAsWrittenThroughRestore`
 - **Related:** #26942
 
 ## Context
@@ -43,3 +43,12 @@ all of the entities it names are gone.
   that no longer applies, which is accurate; folding them away would hide that something was deleted.
 - Conditions rewritten by earlier versions are not revisited.
 - A computed (non-literal) argument is never treated as an entity name; such calls are not rewritten.
+
+## Amendment: team and role conditions are rewritten on hard delete only (v2)
+
+Point 3 no longer rewrites `inAnyTeam()`, `matchTeam()` and `hasAnyRole()` calls on a soft delete.
+A soft-deleted team or role already drops out of every membership, so the unchanged condition
+matches nothing while it is deleted, and a restore brings the team or role back to conditions
+that still name it. Team and role conditions are therefore rewritten only on hard delete, like
+services, classifications and glossaries. Soft delete and restore of a team or role drop the
+cached policies of every user.

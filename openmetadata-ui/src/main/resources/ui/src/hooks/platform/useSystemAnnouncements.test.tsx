@@ -172,18 +172,18 @@ describe('useSystemAnnouncementsList', () => {
 
   it('pages locally, newest start first, and starts over when the filters change', async () => {
     mockList.mockResolvedValue({
-      data: Array.from({ length: 25 }, (_, i) =>
+      data: Array.from({ length: 35 }, (_, i) =>
         announcement(`a${i}`, `Announcement ${i}`, i)
       ),
-      paging: { total: 25 },
+      paging: { total: 35 },
     });
     const { result } = renderHook(() => useSystemAnnouncementsList(), {
       wrapper,
     });
-    await waitFor(() => expect(result.current.total).toBe(25));
+    await waitFor(() => expect(result.current.total).toBe(35));
 
     expect(result.current.pageCount).toBe(3);
-    expect(result.current.announcements[0].id).toBe('a24');
+    expect(result.current.announcements[0].id).toBe('a34');
 
     act(() => result.current.goToPage(3));
 
