@@ -153,7 +153,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
         assertThrows(
             ForbiddenException.class,
             () ->
-                SdkClients.dataConsumerClient()
+                createNonAdminClient(ns)
                     .getHttpClient()
                     .executeForString(
                         HttpMethod.DELETE,
