@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
@@ -84,7 +86,12 @@ public class FilterEntityImpl implements JavaDelegate {
       passesFilter = true;
     } else {
       passesFilter =
-          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
+          passesExcludedFilter(
+              entityLinkStr,
+              varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
+              excludedFilter,
+              includeFields,
+              filterLogic);
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -203,6 +210,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
   private boolean passesExcludedFilter(
       String entityLinkStr,
+      Object triggeringVersion,
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic) {
@@ -211,7 +219,7 @@ public class FilterEntityImpl implements JavaDelegate {
 
     boolean fieldBasedFilter;
     Optional<ChangeDescription> oChangeDescription =
-        Optional.ofNullable(entity.getChangeDescription());
+        Optional.ofNullable(TriggeringChange.of(entity, triggeringVersion));
 
     // ChangeDescription is empty means it is a Create event.
     if (oChangeDescription.isEmpty()) {

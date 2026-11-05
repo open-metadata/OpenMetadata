@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -31,6 +32,7 @@ import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -48,6 +50,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.JsonDiff;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -567,6 +570,68 @@ public class FeedResourceIT {
     assertEquals("accepted description", resolvedThread.getTask().getNewValue());
 
     deleteThread(taskThread.getId());
+  }
+
+  @Test
+  void put_resolveDescriptionTaskAboutAnotherUser_needsEditAllOnThatUser(TestNamespace ns)
+      throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    String userName = "profileowner_" + UUID.randomUUID().toString().substring(0, 8);
+    User profileOwner =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.om.org")
+                    .withDescription("Original profile text"));
+    Thread profileTask =
+        createDescriptionTask(
+            String.format("<#E::user::%s::description>", profileOwner.getFullyQualifiedName()),
+            shared.USER2.getEntityReference());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> resolveTaskAsUser2(profileTask.getTask().getId(), "Profile text from a task"));
+    assertEquals(TaskStatus.Open, getTask(profileTask.getTask().getId()).getTask().getStatus());
+    assertEquals(
+        "Original profile text",
+        SdkClients.adminClient().users().get(profileOwner.getId().toString()).getDescription());
+
+    Table table = createTestTable(ns);
+    Thread tableTask =
+        createDescriptionTask(
+            String.format("<#E::table::%s::description>", table.getFullyQualifiedName()),
+            shared.USER2.getEntityReference());
+    resolveTaskAsUser2(tableTask.getTask().getId(), "Table text from a task");
+    assertEquals(TaskStatus.Closed, getTask(tableTask.getTask().getId()).getTask().getStatus());
+
+    deleteThread(profileTask.getId());
+    deleteThread(tableTask.getId());
+  }
+
+  private Thread createDescriptionTask(String about, EntityReference assignee) throws Exception {
+    return createThread(
+        new CreateThread()
+            .withMessage("Please update description")
+            .withAbout(about)
+            .withType(ThreadType.Task)
+            .withTaskDetails(
+                new CreateTaskDetails()
+                    .withType(TaskType.UpdateDescription)
+                    .withAssignees(List.of(assignee))
+                    .withOldValue("old description")
+                    .withSuggestion("new description")));
+  }
+
+  private void resolveTaskAsUser2(int taskId, String newValue) throws Exception {
+    SdkClients.user2Client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/feed/tasks/" + taskId + "/resolve",
+            new ResolveTask().withNewValue(newValue),
+            RequestOptions.builder().build());
   }
 
   @Test
