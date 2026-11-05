@@ -15751,14 +15751,30 @@ public interface CollectionDAO {
       deleteAccessTokensForUser(clientId, userName);
     }
 
-    @SqlUpdate("DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)")
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_authorization_codes WHERE user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
     void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
 
-    @SqlUpdate(
-        "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE user_name = :userName AND revoked = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE",
+        connectionType = POSTGRES)
     void revokeRefreshTokensOfUser(@Bind("userName") String userName);
 
-    @SqlUpdate("DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)")
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_access_tokens WHERE user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
     void deleteAccessTokensOfUser(@Bind("userName") String userName);
 
     /**
@@ -15766,6 +15782,11 @@ public interface CollectionDAO {
      * later account with the same name would otherwise take them over. Names compare ignoring case:
      * rows written before grants were stored under the account's own name may hold the provider's
      * spelling of it. Codes go first, so none can start a new grant.
+     *
+     * <p>On MySQL these tables' utf8mb4_unicode_ci collation already ignores case, so the MySQL
+     * queries compare names plainly and use the user-name indexes added in 2.0.8. Wrapped in LOWER()
+     * they scanned and locked every user's rows, and a token refresh by any other user deadlocked
+     * against the delete.
      */
     @Transaction
     default void revokeAllGrantsOfUser(String userName) {
