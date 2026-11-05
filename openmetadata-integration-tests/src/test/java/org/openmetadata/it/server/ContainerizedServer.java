@@ -228,7 +228,6 @@ public final class ContainerizedServer implements AutoCloseable {
         .withPassword(DB_PASSWORD)
         .withCommand(
             "--character-set-server=utf8mb4",
-            "--collation-server=utf8mb4_unicode_ci",
             "--max_allowed_packet=64M");
   }
 
