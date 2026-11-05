@@ -234,7 +234,9 @@ class AIContextFinderTest {
             "entityType", "glossaryTerm",
             "fullyQualifiedName", "Business.BounceRate",
             "name", "BounceRate",
-            "description", "Share of visits that leave after a single page.");
+            "description", "Share of visits that leave after a single page.",
+            // Only an Approved term reaches AI context.
+            "entityStatus", "Approved");
     VectorIndexService vectorService = mock(VectorIndexService.class);
     when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
         .thenReturn(new VectorSearchResponse(1L, List.of(hit)));
