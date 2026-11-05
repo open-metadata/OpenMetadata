@@ -173,6 +173,7 @@ import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.TokenUtil;
@@ -1222,14 +1223,20 @@ public class UserResource extends EntityResource<User, UserRepository> {
       if (!patchOpObject.containsKey("path")) {
         continue;
       }
-      String path = patchOpObject.getString("path");
-      if (isPrivilegedUserPatchPath(path)) {
+      // A move or copy also touches its "from" location
+      // (ADR:2026-11-03-a-patch-is-authorized-at-every-location-it-touches).
+      List<String> locations = JsonPatchUtils.touchedLocations(patchOpObject);
+      String path = locations.get(0);
+      boolean copiesValue = locations.size() > 1;
+      // A team reference copied or moved into the teams skips the joinable check below.
+      if (locations.stream().anyMatch(UserResource::isPrivilegedUserPatchPath)
+          || (copiesValue && path.startsWith("/" + TEAMS_FIELD))) {
         authorizeAdminForPrivilegedFields(securityContext, containerRequestContext);
         continue;
       }
-      if (patchOpObject.containsKey("value")) {
+      if (patchOpObject.containsKey("value") || copiesValue) {
         // Check if updating personaPreferences - users can only update their own
-        if (path.startsWith("/personaPreferences") && !isSelf) {
+        if (!isSelf && locations.stream().anyMatch(l -> l.startsWith("/personaPreferences"))) {
           throw new AuthorizationException("Users can only update their own persona preferences");
         }
         // if path contains team, check if team is join able by any user

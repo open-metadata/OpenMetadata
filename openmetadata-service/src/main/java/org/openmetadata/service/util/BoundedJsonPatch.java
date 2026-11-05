@@ -16,10 +16,13 @@ package org.openmetadata.service.util;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.exc.StreamConstraintsException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
+import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
 import java.io.IOException;
@@ -39,14 +42,17 @@ public final class BoundedJsonPatch {
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper(
-          new JsonFactory()
-              .setStreamReadConstraints(
-                  StreamReadConstraints.builder()
-                      .maxDocumentLength(MAX_DOCUMENT_LENGTH)
-                      .maxNameLength(64 * 1024)
-                      .maxStringLength(16 * 1024 * 1024)
-                      .maxNestingDepth(256)
-                      .build()));
+              new JsonFactory()
+                  .setStreamReadConstraints(
+                      StreamReadConstraints.builder()
+                          .maxDocumentLength(MAX_DOCUMENT_LENGTH)
+                          .maxNameLength(64 * 1024)
+                          .maxStringLength(16 * 1024 * 1024)
+                          .maxNestingDepth(256)
+                          .build()))
+          // Read numbers exactly, so writing the tree back for the JSON-P reader changes no value.
+          .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+          .setNodeFactory(JsonNodeFactory.withExactBigDecimals(true));
 
   private BoundedJsonPatch() {}
 
@@ -106,6 +112,8 @@ public final class BoundedJsonPatch {
     }
     try (JsonReader reader = Json.createReader(new StringReader(node.toString()))) {
       return reader.readArray();
+    } catch (JsonException e) {
+      throw new InvalidPatchException("Failed to parse JSON Patch", e);
     }
   }
 }

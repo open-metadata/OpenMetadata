@@ -32,6 +32,7 @@ import jakarta.json.JsonValue;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -514,6 +515,21 @@ class JsonUtilsTest {
         "error should mention the field or expected format: " + cause.getMessage());
   }
 
+  /**
+   * An object or array where a date belongs is refused; returning without reading it would leave
+   * its members to be bound as fields of the label.
+   */
+  @Test
+  void testTagLabelAppliedAtObjectOrArrayIsRefused() {
+    for (String value : List.of("{\"tagFQN\":\"other.tag\"}", "[\"other.tag\"]")) {
+      String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":" + value + "}";
+      assertThrows(
+          org.openmetadata.schema.exception.JsonParsingException.class,
+          () -> JsonUtils.readValue(json, TagLabel.class),
+          json);
+    }
+  }
+
   @Test
   void describeBindingFailureNamesTheFieldAndUriConstraintWithoutTheValue() {
     Map<String, Object> config = athenaConfigWith("s3StagingDir", "s3://bucket/athena results/");
@@ -612,5 +628,30 @@ class JsonUtilsTest {
 
     JsonValue patched = JsonUtils.applyPatch(document, Json.createPatch(ops.build()));
     assertEquals(1000, patched.asJsonObject().getJsonArray("items").size());
+  }
+
+  /** The values a patch adds are in its body, which the reader bounds; only copy is charged. */
+  @Test
+  void applyPatch_acceptsAnAddHeavyPatchOnALargeDocument() {
+    int columnCount = 256;
+    String text = "d".repeat(JsonUtils.MAX_PATCH_GROWTH_BYTES / columnCount + 1);
+    JsonArrayBuilder columns = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      columns.add(Json.createObjectBuilder().add("name", "column" + i).add("description", text));
+    }
+    JsonObject table = Json.createObjectBuilder().add("columns", columns).build();
+    JsonArrayBuilder ops = Json.createArrayBuilder();
+    for (int i = 0; i < columnCount; i++) {
+      ops.add(
+          Json.createObjectBuilder()
+              .add("op", "add")
+              .add("path", "/columns/" + i + "/displayName")
+              .add("value", text));
+    }
+
+    JsonValue patched = JsonUtils.applyPatch(table, Json.createPatch(ops.build()));
+
+    JsonArray patchedColumns = patched.asJsonObject().getJsonArray("columns");
+    assertEquals(text, patchedColumns.getJsonObject(columnCount - 1).getString("displayName"));
   }
 }

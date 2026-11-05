@@ -23,7 +23,9 @@ do, each reachable before any authorization:
   before (`EmailPatternTest`, `MessageParserTest` prove the equivalence).
 - `BoundedJsonPatch` reads a patch within 32 MiB, 256 nesting levels and 100 000 operations, for both
   the REST reader (413 past the size bounds, 400 otherwise) and the MCP tool. `JsonUtils.applyPatch`
-  refuses a patch that grows the document more than 10 MiB beyond its own size.
+  refuses a patch whose `copy` operations duplicate more than 10 MiB between them, measuring each
+  copied value rather than the whole document. Every other operation adds only values the patch
+  body carries, which the body bound already caps.
 - A JSON Patch operation on the document root (`"path": ""`) is refused.
 - `DescriptionSanitizer` restores entity-link tokens in a single pass, only where the placeholder is
   element text, keyed by a per-call nonce.
