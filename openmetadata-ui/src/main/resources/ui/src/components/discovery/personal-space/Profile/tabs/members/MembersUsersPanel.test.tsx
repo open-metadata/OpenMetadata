@@ -54,7 +54,14 @@ jest.mock('../../../../../../rest/miscAPI', () => ({
 }));
 
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'me', name: 'admin' } }),
+  useApplicationStore: (selector?: (state: unknown) => unknown) => {
+    const state = {
+      currentUser: { id: 'me', name: 'admin' },
+      userProfilePics: { user1: { name: 'user1', displayName: 'User One' } },
+    };
+
+    return selector ? selector(state) : state;
+  },
 }));
 
 jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
@@ -270,6 +277,15 @@ describe('MembersUsersPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('users-list-table')).toBeInTheDocument();
     });
+  });
+
+  it('shows the login, not the display name, in the username column', async () => {
+    renderComponent();
+
+    const usernameCell = await screen.findByTestId('user1');
+
+    expect(usernameCell).toHaveTextContent('user1');
+    expect(usernameCell).not.toHaveTextContent('User One');
   });
 
   // Regression: the add-user button is published as a header action and the

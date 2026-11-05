@@ -16,6 +16,8 @@ import classNames from 'classnames';
 import { FC, MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -41,6 +43,12 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   onTitleClick,
 }) => {
   const isTeam = type === OwnerType.TEAM;
+  const storedName = useApplicationStore((state) =>
+    isTeam
+      ? userName
+      : getEntityName(state.userProfilePics[userName]) || userName
+  );
+  const userLabel = displayName ?? storedName;
   const handleTitleClick = (event: MouseEvent) => {
     if (onTitleClick) {
       event.preventDefault();
@@ -100,9 +108,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
           }
           onClick={handleTitleClick}>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? (
-            <span className="truncate">{displayName ?? userName}</span>
-          ) : null}
+          {showUserName ? <span className="truncate">{userLabel}</span> : null}
         </Link>
       )}
     </HoverCard>
