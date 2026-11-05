@@ -23,8 +23,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  File06 as Articles,
   DotsGrid,
+  File06 as Articles,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
