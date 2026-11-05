@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-04T03:35:59Z",
+  "generatedAt": "2026-11-05T03:21:35Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "40261121182",
-      "sourceSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "recordedAt": "2026-10-26T03:34:29Z"
-    },
     {
       "runId": "40440462393",
       "sourceSha": "c226e1fa0129852bdbfa62568459efd107d56bb3",
@@ -53,19 +48,14 @@
       "runId": "41761758946",
       "sourceSha": "357983e01551781e9889821ff9c095009a26dcee",
       "recordedAt": "2026-11-04T03:35:59Z"
+    },
+    {
+      "runId": "41956205227",
+      "sourceSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "recordedAt": "2026-11-05T03:21:35Z"
     }
   ],
   "entries": {
-    "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges": {
-      "observations": [
-        "40261121182"
-      ],
-      "project": "Basic",
-      "file": "Pages/Lineage/LineageLargeResponse.spec.ts",
-      "title": "Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": false
-    },
     "ImportExport :: Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts :: Test Case Import/Export/Edit - End-to-End Flow with EditAll User on TestCase resource \u203a EditAll User: Complete export-import-validate flow": {
       "observations": [
         "41761758946"
@@ -146,15 +136,15 @@
       "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
       "hardFailure": true
     },
-    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card": {
+    "chromium :: Features/DataQuality/DataQualityDashboard.spec.ts :: Data Quality Dashboard \u203a Reopen resolved incident in place from the Test Case page": {
       "observations": [
-        "40261121182"
+        "41956205227"
       ],
       "project": "chromium",
-      "file": "Features/ContextCenterArticles.spec.ts",
-      "title": "Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": true
+      "file": "Features/DataQuality/DataQualityDashboard.spec.ts",
+      "title": "Data Quality Dashboard \u203a Reopen resolved incident in place from the Test Case page",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "hardFailure": false
     },
     "chromium :: Features/OntologyFirstRun.spec.ts :: Ontology Studio first run \u203a creates an ontology from scratch and lands in Edit with the New class panel": {
       "observations": [
@@ -204,36 +194,6 @@
       "file": "Features/OntologyNativeStudio.spec.ts",
       "title": "Native Ontology Studio \u203a authors a native model through the shared View, Edit, and Query shell",
       "lastSeenSha": "3b46123b0a544308e0cb4bb5039aff42a4a8f3c4",
-      "hardFailure": true
-    },
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain": {
-      "observations": [
-        "40261121182"
-      ],
-      "project": "chromium",
-      "file": "Features/SampleDataDomainDataProduct.spec.ts",
-      "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": true
-    },
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association": {
-      "observations": [
-        "40261121182"
-      ],
-      "project": "chromium",
-      "file": "Features/SampleDataDomainDataProduct.spec.ts",
-      "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": true
-    },
-    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion": {
-      "observations": [
-        "40261121182"
-      ],
-      "project": "chromium",
-      "file": "Features/SampleDataDomainDataProduct.spec.ts",
-      "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": true
     },
     "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format": {
@@ -636,6 +596,16 @@
       "lastSeenSha": "ae5963d0f5a4f5ab00e896b745842d332105cbfd",
       "hardFailure": false
     },
+    "chromium :: Pages/Entity.spec.ts :: Topic \u203a Description Add, Update and Remove for child entities": {
+      "observations": [
+        "41956205227"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Topic \u203a Description Add, Update and Remove for child entities",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "hardFailure": false
+    },
     "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Change glossary term hierarchy using menu options across glossary": {
       "observations": [
         "40807482571"
@@ -646,84 +616,56 @@
       "lastSeenSha": "1c91b573328bdd25b5f7519d57d5fda320c71459",
       "hardFailure": false
     },
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service filter selection": {
+    "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Deny Permission": {
       "observations": [
-        "40261121182"
+        "41956205227"
       ],
       "project": "chromium",
-      "file": "Pages/Lineage/LineageFilters.spec.ts",
-      "title": "Lineage Filters \u203a Verify Impact Analysis service filter selection",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "file": "Pages/Glossary.spec.ts",
+      "title": "Glossary tests \u203a Verify Glossary Deny Permission",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
       "hardFailure": true
     },
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service type filter selection": {
+    "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Term Deny Permission": {
       "observations": [
-        "40261121182"
+        "41956205227"
       ],
       "project": "chromium",
-      "file": "Pages/Lineage/LineageFilters.spec.ts",
-      "title": "Lineage Filters \u203a Verify Impact Analysis service type filter selection",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "file": "Pages/Glossary.spec.ts",
+      "title": "Glossary tests \u203a Verify Glossary Term Deny Permission",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
       "hardFailure": true
     },
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities": {
+    "chromium :: Pages/ServiceEntity.spec.ts :: Database \u203a Certification Add Remove": {
       "observations": [
-        "40261121182"
+        "41956205227"
       ],
       "project": "chromium",
-      "file": "Pages/Lineage/LineageFilters.spec.ts",
-      "title": "Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": true
-    },
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities": {
-      "observations": [
-        "40261121182"
-      ],
-      "project": "chromium",
-      "file": "Pages/Lineage/LineageFilters.spec.ts",
-      "title": "Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": true
-    },
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service filter selection": {
-      "observations": [
-        "40261121182"
-      ],
-      "project": "chromium",
-      "file": "Pages/Lineage/LineageFilters.spec.ts",
-      "title": "Lineage Filters \u203a Verify lineage service filter selection",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": true
-    },
-    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service type filter selection": {
-      "observations": [
-        "40261121182"
-      ],
-      "project": "chromium",
-      "file": "Pages/Lineage/LineageFilters.spec.ts",
-      "title": "Lineage Filters \u203a Verify lineage service type filter selection",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
-      "hardFailure": true
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Database \u203a Certification Add Remove",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "hardFailure": false
     },
     "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false": {
       "observations": [
-        "41761758946"
+        "41761758946",
+        "41956205227"
       ],
       "project": "chromium",
       "file": "Pages/TableSharding.spec.ts",
       "title": "BigQuery sharded table identity \u203a persists metadata grouping enabled=false",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
       "hardFailure": true
     },
     "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true": {
       "observations": [
-        "41761758946"
+        "41761758946",
+        "41956205227"
       ],
       "project": "chromium",
       "file": "Pages/TableSharding.spec.ts",
       "title": "BigQuery sharded table identity \u203a persists metadata grouping enabled=true",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
       "hardFailure": true
     },
     "chromium :: Pages/TestSuiteDetailsPage.spec.ts :: Search test cases inside a bundle suite (AI mode) \u203a finds a test case by an upper-cased part of its name": {
@@ -736,27 +678,33 @@
       "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
       "hardFailure": false
     },
-    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords": {
+    "chromium :: Pages/Users.spec.ts :: User with Data Consumer Roles \u203a Reset Password for Data Consumer": {
       "observations": [
-        "40261121182"
+        "41956205227"
       ],
-      "project": "search-nightly",
-      "file": "Search/SearchRelevance.spec.ts",
-      "title": "Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "project": "chromium",
+      "file": "Pages/Users.spec.ts",
+      "title": "User with Data Consumer Roles \u203a Reset Password for Data Consumer",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
       "hardFailure": true
     },
-    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches": {
+    "chromium :: Pages/Users.spec.ts :: User with Data Steward Roles \u203a Reset Password for Data Steward": {
       "observations": [
-        "40261121182"
+        "41956205227"
       ],
-      "project": "search-nightly",
-      "file": "Search/SearchRelevance.spec.ts",
-      "title": "Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches",
-      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "project": "chromium",
+      "file": "Pages/Users.spec.ts",
+      "title": "User with Data Steward Roles \u203a Reset Password for Data Steward",
+      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
       "hardFailure": true
     }
   },
-  "stableIds": [],
-  "hardFailureStableIds": []
+  "stableIds": [
+    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false",
+    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true"
+  ],
+  "hardFailureStableIds": [
+    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false",
+    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true"
+  ]
 }
