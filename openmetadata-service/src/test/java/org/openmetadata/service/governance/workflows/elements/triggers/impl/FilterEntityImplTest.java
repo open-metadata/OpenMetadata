@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 
 class FilterEntityImplTest {
@@ -319,5 +320,24 @@ class FilterEntityImplTest {
     FieldChange fc = new FieldChange();
     fc.setName(name);
     return fc;
+  }
+
+  // Only a create may carry no change to judge; an update that left none must not pass the filter.
+  @Test
+  void testOnlyCreateOrUntypedRunMayCarryNoChange() throws Exception {
+    Method mayCarryNoChange =
+        FilterEntityImpl.class.getDeclaredMethod("mayCarryNoChange", Object.class);
+    mayCarryNoChange.setAccessible(true);
+
+    assertTrue((boolean) mayCarryNoChange.invoke(null, EventType.ENTITY_CREATED.value()));
+    assertFalse((boolean) mayCarryNoChange.invoke(null, EventType.ENTITY_UPDATED.value()));
+    assertTrue((boolean) mayCarryNoChange.invoke(null, (Object) null));
+  }
+
+  @Test
+  void testFollowersAndVotesAreNotTriggerFields() {
+    assertTrue(FilterEntityImpl.isTriggerField("tags"));
+    assertFalse(FilterEntityImpl.isTriggerField("followers"));
+    assertFalse(FilterEntityImpl.isTriggerField("votes"));
   }
 }
