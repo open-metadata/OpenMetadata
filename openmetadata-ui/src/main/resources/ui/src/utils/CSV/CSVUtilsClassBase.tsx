@@ -89,6 +89,10 @@ import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
 } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -116,7 +120,9 @@ import {
 import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
+import { getSettingPath } from '../RouterUtils';
 import { getTermQuery } from '../SearchPureUtils';
+import { getSettingsHashForHref } from '../SettingsModalLinkUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -960,7 +966,7 @@ const getBulkEditPickerConfig = (
     case 'owner':
     case 'owners':
       return {
-        actionPath: ROUTES.USER_LIST,
+        actionPath: getSettingPath(GlobalSettingsMenuCategory.MEMBERS),
         actionStyle: 'secondary',
         description: t('message.bulk-edit-owners-empty-description'),
         emptyIcon: <Sliders02 size={20} />,
@@ -973,7 +979,10 @@ const getBulkEditPickerConfig = (
 
     case 'reviewers':
       return {
-        actionPath: ROUTES.USER_LIST,
+        actionPath: getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.USERS
+        ),
         actionStyle: 'secondary',
         description: t('message.bulk-edit-reviewers-empty-description'),
         emptyIcon: <Sliders02 size={20} />,
@@ -1063,8 +1072,15 @@ const getBulkEditPickerConfig = (
   }
 };
 
+// In AI mode settings live in the settings modal, not on a page: open it over
+// the grid instead of a new tab, which would neither keep AI mode nor the edits.
 const openBulkEditPickerPath = (path: string) => {
-  window.open(path, '_blank', 'noopener,noreferrer');
+  const settingsHash = getSettingsHashForHref(path);
+  if (settingsHash === undefined) {
+    window.open(path, '_blank', 'noopener,noreferrer');
+  } else {
+    globalThis.location.hash = settingsHash;
+  }
 };
 
 const renderBulkEditPickerOptionMarker = (option: BulkEditPickerOption) => {
