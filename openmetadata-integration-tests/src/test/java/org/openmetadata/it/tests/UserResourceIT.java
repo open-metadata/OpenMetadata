@@ -30,6 +30,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -67,6 +70,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
  * Integration tests for User entity operations.
@@ -548,6 +552,63 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     User updated = patchEntity(user.getId().toString(), user);
 
     assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  @Test
+  void test_selfDelete_forbiddenForNonAdmin(TestNamespace ns) throws Exception {
+    User user = createEntity(selfLoginUserRequest());
+    OpenMetadataClient self = clientFor(user);
+
+    for (String path :
+        List.of(
+            "/v1/users/" + user.getId(),
+            "/v1/users/async/" + user.getId(),
+            "/v1/users/name/" + user.getName())) {
+      OpenMetadataException refused =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> self.getHttpClient().executeForString(HttpMethod.DELETE, path, null));
+      assertEquals(403, refused.getStatusCode(), path + " -> " + refused.getMessage());
+    }
+    assertFalse(Boolean.TRUE.equals(getEntity(user.getId().toString()).getDeleted()));
+  }
+
+  private static CreateUser selfLoginUserRequest() {
+    String userName = "navuser" + UUID.randomUUID().toString().substring(0, 8);
+    return new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org");
+  }
+
+  @Test
+  void test_selfPut_keepsStoredRolesAndCannotChangeThem(TestNamespace ns) throws Exception {
+    CreateUser request = selfLoginUserRequest().withRoles(List.of(dataStewardRole().getId()));
+    User user = createEntity(request);
+    OpenMetadataClient self = clientFor(user);
+
+    // A self PUT that omits roles keeps the stored one rather than stripping it.
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser().withName(user.getName()).withEmail(user.getEmail()));
+    assertTrue(
+        Users.get(user.getId().toString(), "roles").getRoles().stream()
+            .anyMatch(r -> r.getId().equals(dataStewardRole().getId())),
+        "the stored role must survive a self PUT that omits roles");
+
+    // A self PUT that changes the role set is an admin action.
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                self.getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users",
+                        new CreateUser()
+                            .withName(user.getName())
+                            .withEmail(user.getEmail())
+                            .withRoles(List.of(dataConsumerRole().getId()))));
+    assertEquals(403, refused.getStatusCode(), refused.getMessage());
   }
 
   @Test
@@ -2346,18 +2407,23 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_patchUser_rootReplacement_allowedForAdmin(TestNamespace ns) {
+  void test_patchUser_rootReplacement_refusedForAdmin(TestNamespace ns) {
+    // A root operation replaces the whole document, so it is refused for every caller: an admin
+    // edits the fields instead.
     String userName = ns.prefix("rootPatchTarget");
     User user = createEntity(new CreateUser().withName(userName).withEmail(toValidEmail(userName)));
     String displayName = ns.prefix("rootPatchedDisplayName");
     ArrayNode rootPatch = rootReplacementOps(userJsonWithField(user, "displayName", displayName));
 
-    String response =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), rootPatch);
-
-    assertTrue(response.contains(displayName), "Admin root replacement patch should be applied");
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), rootPatch));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+    assertNotEquals(displayName, Users.get(user.getId().toString()).getDisplayName());
   }
 
   @Test
@@ -2503,6 +2569,14 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     assertEquals(401, loggedInUserStatus(signingToken));
     assertEquals(200, loggedInUserStatus(otherToken));
+  }
+
+  private static OpenMetadataClient clientWithToken(String token) {
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.getServerUrl())
+            .accessToken(token)
+            .build());
   }
 
   /** A sessionless access token as a password sign-in issues it. */
@@ -2654,9 +2728,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
-  void test_updateUser_selfPartialRoleShedding_allowed(TestNamespace ns) throws Exception {
-    // Dropping one of several roles asks for no new role, so it must not require admin even though
-    // the resulting role set still differs from the current one.
+  void test_updateUser_selfRoleShedding_forbidden(TestNamespace ns) throws Exception {
+    // Dropping a role can lift a Deny rule it carries, so a user cannot drop one of their own roles
+    // either; changing the role set is an admin action.
     // The name must equal the email local part: JwtFilter resolves the caller's username from the
     // token's email claim, so a name that toValidEmail() would rewrite never authenticates.
     String userName = "roleshedder" + ns.shortPrefix();
@@ -2681,11 +2755,15 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             + "\",\"roles\":[\""
             + dataConsumerRoleId
             + "\"]}";
-    userClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", shedBody);
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                userClient.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", shedBody));
+    assertEquals(403, refused.getStatusCode(), refused.getMessage());
 
     List<EntityReference> roles = Users.get(user.getId().toString(), "roles").getRoles();
-    assertEquals(1, roles.size(), "Only the retained role should remain");
-    assertEquals(dataConsumerRoleId, roles.get(0).getId().toString());
+    assertEquals(2, roles.size(), "Both stored roles must remain");
   }
 
   @Test
