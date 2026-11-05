@@ -1997,14 +1997,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/support/entity/ingestion/KafkaIngestionClass.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AutoPilot.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/support/entity/ingestion/MetabaseIngestionClass.ts"
       ],
       "specs": [
@@ -7775,6 +7767,17 @@
       ],
       "specs": [
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Lineage/LineageExportButton/LineageExportButton.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
     {
@@ -13866,15 +13869,11 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PlatformLineage/PlatformLineage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/ImpactAnalysis.spec.ts",
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
-        "playwright/e2e/Pages/Users.spec.ts"
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
