@@ -36,15 +36,17 @@ import org.openmetadata.service.secrets.OwnedCiphertext;
 /**
  * The Fernet tokens held by alert destinations that are also stored somewhere else. Fernet
  * encryption is randomized, so a token the server wrote for one destination field is stored at that
- * field only, and in the versions and change descriptions of the alert that holds it. A token found
- * at a second field, in another alert, or in any other stored entity, version or setting is
- * reported. Read before any webhook secret is rewritten.
+ * field only, and in the history of the alert that holds it: its versions, its change descriptions
+ * and the change events recorded for it. A token found at a second field, in another alert, or in
+ * any other row of any table with a {@code json} column is reported. Read before any webhook secret
+ * is rewritten.
  */
 @Slf4j
 final class StoredCiphertextCopies {
   private static final String ALERTS = "event_subscription_entity";
   private static final String VERSIONS = "entity_extension";
-  private static final List<String> OTHER_STORES = List.of("openmetadata_settings", "user_session");
+  private static final String ALERT_ENTITY_TYPE = "eventsubscription";
+  private static final List<String> EVENT_FIELDS = List.of("", "/changeEvent");
   private static final Pattern TOKEN = Pattern.compile(Fernet.FERNET_PREFIX + "[A-Za-z0-9_=-]+");
 
   private final ConnectionType connectionType;
@@ -89,12 +91,28 @@ final class StoredCiphertextCopies {
     try (Stream<Map<String, Object>> rows = rowsHoldingTokens(handle, table, idColumn)) {
       rows.forEach(
           row -> {
-            String place = idColumn == null ? table : String.valueOf(row.get(idColumn));
-            tokensIn(String.valueOf(row.get("json")))
-                .filter(heldBy::containsKey)
-                .forEach(token -> storedIn(token, place));
+            String json = String.valueOf(row.get("json"));
+            List<String> held = tokensIn(json).filter(heldBy::containsKey).toList();
+            if (!held.isEmpty()) {
+              String place =
+                  idColumn == null ? placeOf(json, table) : String.valueOf(row.get(idColumn));
+              held.forEach(token -> storedIn(token, place));
+            }
           });
     }
+  }
+
+  // A change event recorded for an alert, as stored or inside a failed event, is that alert's own
+  // history; any other row is a place of its own.
+  private static String placeOf(String json, String table) {
+    JsonNode row = JsonUtils.readTree(json);
+    return EVENT_FIELDS.stream()
+        .map(field -> field.isEmpty() ? row : row.at(field))
+        .filter(event -> ALERT_ENTITY_TYPE.equalsIgnoreCase(event.path("entityType").asText()))
+        .map(event -> event.path("entityId").asText())
+        .filter(entityId -> !entityId.isEmpty())
+        .findFirst()
+        .orElse(table);
   }
 
   private Set<String> storedElsewhere() {
@@ -136,7 +154,7 @@ final class StoredCiphertextCopies {
     return tokens.build();
   }
 
-  // Every entity table, and the stores of settings and sessions, as this database names them.
+  // Every table with a json column, as this database names them, but the alerts and the versions.
   private List<String> otherStores(Handle handle) {
     String schema = isMySql() ? "DATABASE()" : "current_schema()";
     return handle
@@ -152,7 +170,7 @@ final class StoredCiphertextCopies {
   }
 
   private static boolean isOtherStore(String table) {
-    return !ALERTS.equals(table) && (table.endsWith("_entity") || OTHER_STORES.contains(table));
+    return !ALERTS.equals(table) && !VERSIONS.equals(table);
   }
 
   private Stream<Map<String, Object>> rowsHoldingTokens(

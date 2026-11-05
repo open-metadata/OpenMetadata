@@ -151,8 +151,9 @@ class WebhookSecretsMigrationIT {
 
   /**
    * Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and OAuth2
-   * credentials, unless it is stored somewhere else too; anywhere else it stays as stored, is
-   * refused when the destination sends, and the destination stays enabled.
+   * credentials, unless it is stored somewhere else too, the alert's own change events aside;
+   * anywhere else it stays as stored, is refused when the destination sends, and the destination
+   * stays enabled.
    */
   @Test
   void earlierCredentialsAreCarriedOverAndAnyOtherCiphertextIsEnteredAgain(TestNamespace ns) {
@@ -160,6 +161,7 @@ class WebhookSecretsMigrationIT {
     String clientSecret = ns.prefix("client-secret");
     String storedTwice = Fernet.getInstance().encrypt(ns.prefix("a value stored twice"));
     String header = Fernet.getInstance().encrypt(ns.prefix("a header value"));
+    String inAnotherEvent = Fernet.getInstance().encrypt(ns.prefix("a value in another event"));
     EventSubscription alert =
         AlertFixtures.tableAlert(
             ns,
@@ -169,7 +171,8 @@ class WebhookSecretsMigrationIT {
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/signed"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/oauth"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/twice"),
-                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/header")));
+                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/header"),
+                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/event")));
     List<SubscriptionDestination> destinations = alert.getDestinations();
     destinations
         .get(0)
@@ -189,7 +192,13 @@ class WebhookSecretsMigrationIT {
                 "https://hooks.example.com/header",
                 "headers",
                 Map.of("Authorization", header)));
+    destinations.get(4).withConfig(legacyConfig("event", oauth2(inAnotherEvent)));
     AlertFixtures.writeBehindTheServer(alert);
+    insertChangeEvent(Entity.EVENT_SUBSCRIPTION, alert.getId(), JsonUtils.pojoToJson(alert));
+    insertChangeEvent(
+        Entity.DATABASE_SERVICE,
+        UUID.randomUUID(),
+        JsonUtils.pojoToJson(Map.of("password", inAnotherEvent)));
     EventSubscription another =
         AlertFixtures.tableAlert(
             ns,
@@ -210,7 +219,8 @@ class WebhookSecretsMigrationIT {
     assertEquals(clientSecret, openedDestinationValue(bound.get(1), "/authType/clientSecret"));
     assertEquals(storedTwice, storedValue(bound.get(2), "/authType/clientSecret"));
     assertEquals(header, storedValue(bound.get(3), "/headers/Authorization"));
-    for (SubscriptionDestination toEnterAgain : bound.subList(2, 4)) {
+    assertEquals(inAnotherEvent, storedValue(bound.get(4), "/authType/clientSecret"));
+    for (SubscriptionDestination toEnterAgain : bound.subList(2, 5)) {
       BadRequestException refused =
           assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(toEnterAgain));
       assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
@@ -255,6 +265,27 @@ class WebhookSecretsMigrationIT {
             holder, JsonUtils.treeToValue(row.path("profile"), Profile.class));
     assertNull(sendable.getSubscription().getSlack(), "left out until it is entered again");
     assertNotNull(sendable.getSubscription().getGeneric());
+  }
+
+  // A change event as releases before 2.1 stored it: written directly, since the event DAO of 2.1
+  // masks every event it stores.
+  private static void insertChangeEvent(String entityType, UUID entityId, String entity) {
+    String json =
+        JsonUtils.pojoToJson(
+            new ChangeEvent()
+                .withId(UUID.randomUUID())
+                .withEventType(EventType.ENTITY_UPDATED)
+                .withEntityType(entityType)
+                .withEntityId(entityId)
+                .withUserName("admin")
+                .withTimestamp(System.currentTimeMillis())
+                .withEntity(entity));
+    String sql =
+        dialect() == ConnectionType.MYSQL
+            ? "INSERT INTO change_event (json) VALUES (:json)"
+            : "INSERT INTO change_event (json) VALUES (:json::jsonb)";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(handle -> handle.createUpdate(sql).bind("json", json).execute());
   }
 
   private static Map<String, Object> oauth2(String clientSecret) {

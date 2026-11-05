@@ -35,8 +35,9 @@ so they can have keys of their own and open only there.
   - ciphertext at the fields releases before 2.1 stored encrypted, an alert destination's bearer
     signing key and OAuth2 client id and secret, is encrypted for its owner again, unless the same
     ciphertext is stored anywhere else (`StoredCiphertextCopies`: another field or alert, or any
-    entity, version or setting). Fernet encryption is randomized, so a value the server wrote for
-    one field is stored at that field only, and in the versions of the alert that holds it;
+    other row of any table with a `json` column). Fernet encryption is randomized, so a value the
+    server wrote for one field is stored at that field only, and in the history of the alert that
+    holds it: its versions, its change descriptions and the change events recorded for it;
   - any other ciphertext stays as stored. It opens for no owner, so the destination stays enabled
     and reports the field to enter again, and a profile webhook is left out of the send, until the
     value is entered again.
