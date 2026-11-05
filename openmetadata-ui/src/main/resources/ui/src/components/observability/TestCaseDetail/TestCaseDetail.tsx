@@ -10,12 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
 import {
-  Checklist,
+  Box,
+  ButtonUtility,
+  FeaturedIcon,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import {
   Collapse,
   Expand,
   RefreshCcw01,
+  TestCase as TestCaseIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
@@ -376,16 +381,12 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 gap={4}
                 wrap="wrap">
                 <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-                  <Box
-                    align="center"
-                    className={classNames(
-                      'tw:relative tw:size-9 tw:shrink-0',
-                      'tw:overflow-hidden tw:rounded-full',
-                      'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                    )}
-                    justify="center">
-                    <Checklist size={20} />
-                  </Box>
+                  <FeaturedIcon
+                    color="brand"
+                    icon={TestCaseIcon}
+                    size="md"
+                    theme="surface"
+                  />
                   <TestCaseHeaderTitle
                     deleted={testCase.deleted}
                     displayName={displayName}

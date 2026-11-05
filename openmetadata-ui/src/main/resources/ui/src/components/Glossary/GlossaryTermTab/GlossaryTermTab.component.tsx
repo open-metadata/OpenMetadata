@@ -543,9 +543,15 @@ const GlossaryTermStatusCell = ({
           <StatusBadge label={status} status={EntityStatusClass[status]} />
         )}
       </AriaButton>
-      <Popover isNonModal placement="top start">
+      {/* The flex chain hands react-aria's max-height down to the timeline, so
+          only the steps scroll and the header stays in view. */}
+      <Popover
+        isNonModal
+        className="tw:flex tw:flex-col"
+        containerClassName="tw:flex tw:min-h-0 tw:flex-col"
+        placement="top start">
         <div
-          className="tw:min-w-65 tw:p-3"
+          className="tw:flex tw:min-h-0 tw:min-w-65 tw:flex-col tw:p-3"
           data-testid="workflow-history-popover"
           ref={popoverContentRef}
           {...popoverHoverProps}>

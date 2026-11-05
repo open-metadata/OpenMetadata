@@ -17,6 +17,7 @@ import {
   ButtonUtility,
   Dialog,
   DialogTrigger,
+  FeaturedIcon,
   Input,
   Modal,
   ModalOverlay,
@@ -24,7 +25,10 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01, TestSuite } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  TestSuite as TestSuiteIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
@@ -454,16 +458,12 @@ const TestSuiteDetailsPage = () => {
             gap={4}
             wrap="wrap">
             <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-              <Box
-                align="center"
-                className={classNames(
-                  'tw:relative tw:size-9 tw:shrink-0',
-                  'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}
-                justify="center">
-                <TestSuite size={20} />
-              </Box>
+              <FeaturedIcon
+                color="brand"
+                icon={TestSuiteIcon}
+                size="md"
+                theme="surface"
+              />
               <TestSuiteHeaderTitle
                 displayName={testSuite?.displayName}
                 hasCopied={hasCopied}
