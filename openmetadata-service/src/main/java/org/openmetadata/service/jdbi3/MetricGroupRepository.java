@@ -206,7 +206,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
   }
 
   /** EditAll on each metric a write adds to the group or removes from it. */
-  public static void authorizeMembershipChange(
+  private static void authorizeMembershipChange(
       final MetricGroup original,
       final MetricGroup updated,
       final BiConsumer<OperationContext, ResourceContextInterface> authorize) {

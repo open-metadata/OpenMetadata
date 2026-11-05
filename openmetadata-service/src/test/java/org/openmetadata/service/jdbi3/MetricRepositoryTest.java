@@ -37,6 +37,7 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
+import jakarta.json.Json;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -852,6 +853,36 @@ class MetricRepositoryTest {
               fixture
                   .repository()
                   .authorizeWrite(original, moved, actor, Edit.patch(Set.of("description"))));
+    }
+  }
+
+  @Test
+  void aPatchMayNotSetAssetsChildrenOrChildrenCount() {
+    final Metric metric = new Metric().withId(UUID.randomUUID()).withName("revenue");
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      for (final String field : List.of("assets", "children", "childrenCount")) {
+        final IllegalArgumentException error =
+            assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    fixture
+                        .repository()
+                        .validatePatch(
+                            metric,
+                            metric,
+                            Json.createPatchBuilder()
+                                .add("/" + field, Json.createArrayBuilder().build())
+                                .build()));
+        assertTrue(error.getMessage().contains(field));
+      }
+      assertDoesNotThrow(
+          () ->
+              fixture
+                  .repository()
+                  .validatePatch(
+                      metric,
+                      metric,
+                      Json.createPatchBuilder().replace("/description", "updated").build()));
     }
   }
 
