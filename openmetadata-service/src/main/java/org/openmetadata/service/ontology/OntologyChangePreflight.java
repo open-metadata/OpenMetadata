@@ -81,12 +81,12 @@ public final class OntologyChangePreflight {
   }
 
   /**
-   * The concepts an axiom or property must state as classes are read from the operation itself,
-   * because the client-supplied requiresConceptIris is optional and a partial import can drop it.
-   * The positions are the ones the importer validates, so a preview that is clean here is clean on
-   * apply. A class is satisfied by a vocabulary class, an UPSERT_CONCEPT in the set, or a concept
-   * the ontology declares. Datatypes are skipped because the set may not carry the data property
-   * whose filler names one, and a datatype is never a concept.
+   * An operation needs the classes at the positions the importer validates, read from the operation
+   * itself because requiresConceptIris is optional and a partial import can drop it, plus every IRI
+   * it declares in requiresConceptIris, which covers individuals that no class position names. A
+   * need is met by a vocabulary class, an UPSERT_CONCEPT in the set, or a concept the ontology
+   * declares. Datatypes are skipped because the set may not carry the data property whose filler
+   * names one, and a datatype is never a concept.
    */
   private void requireReferencedConcepts(
       final UUID ontologyId, final List<OntologyChangeOperation> operations) {
@@ -102,6 +102,9 @@ public final class OntologyChangePreflight {
     final Map<OntologyChangeOperation, Set<String>> unresolved = new LinkedHashMap<>();
     for (final OntologyChangeOperation operation : operations) {
       final Set<String> missing = new TreeSet<>(classPositions(operation, isDataProperty));
+      if (operation.getRequiresConceptIris() != null) {
+        operation.getRequiresConceptIris().forEach(iri -> missing.add(iri.toString()));
+      }
       missing.removeIf(
           iri ->
               created.contains(iri)
