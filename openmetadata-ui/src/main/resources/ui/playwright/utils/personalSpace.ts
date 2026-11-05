@@ -382,8 +382,10 @@ export const generateAiToken = async (page: Page) => {
   await expect(generateButton).toBeEnabled();
   const tokenResponse = waitForResponseWithStatus(page, isGeneratePut, 200);
   await generateButton.click();
-  await tokenResponse;
+  const response = await tokenResponse;
   await expect(page.getByTestId('token-value')).toBeVisible();
+
+  return response;
 };
 
 /** Regenerate the token: waits on both the revoke + generate PUTs. */

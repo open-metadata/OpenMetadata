@@ -709,11 +709,10 @@ test.describe('Profile — Personal space permissions', PROFILE_TAGS, () => {
     await test.step('Self can still set their own default persona', async () => {
       // Default Persona is its own row, editable by the user themselves.
       await viewOnlyPage.getByTestId('default-persona-edit').click();
-      await expect(
-        viewOnlyPage.locator(
-          '[data-testid="default-persona-select"][data-disabled]'
-        )
-      ).toHaveCount(0);
+      const select = viewOnlyPage.getByTestId('default-persona-select');
+      await expect(select).toBeVisible();
+      await expect(select).not.toHaveAttribute('data-disabled');
+      await expect(select.locator('input')).toBeEditable();
     });
 
     await test.step('Teams & Roles are Admin-managed in the Permissions tab', async () => {

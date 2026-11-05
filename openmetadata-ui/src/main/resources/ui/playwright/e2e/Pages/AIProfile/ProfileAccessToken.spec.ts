@@ -26,12 +26,13 @@ import {
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 // Token-expiration option labels (see AccessTokenRow `expiryOptions`).
-const TOKEN_EXPIRY_LABELS = [
-  '1 Day',
-  '7 days',
-  '30 days',
-  '60 days',
-  '90 days',
+// Each option's label and the `JWTTokenExpiry` it must send.
+const TOKEN_EXPIRY_OPTIONS = [
+  { label: '1 Day', value: '1' },
+  { label: '7 days', value: '7' },
+  { label: '30 days', value: '30' },
+  { label: '60 days', value: '60' },
+  { label: '90 days', value: '90' },
 ];
 
 // The token is generated and revoked by a per-test account, so retries and
@@ -148,13 +149,12 @@ test.describe(
       await visitProfile(page, 'access-token');
       await expectNoAiToken(page);
 
-      for (const label of TOKEN_EXPIRY_LABELS) {
+      for (const { label, value } of TOKEN_EXPIRY_OPTIONS) {
         await test.step(`Expiration: ${label}`, async () => {
           await selectUiCoreOption(page, 'token-expiry-select', label);
-          await expect(page.getByTestId('token-expiry-select')).toContainText(
-            label
-          );
-          await generateAiToken(page);
+          const response = await generateAiToken(page);
+          expect(response.request().postDataJSON().JWTTokenExpiry).toBe(value);
+          await expect(page.getByTestId('token-expiry')).toBeVisible();
           await revokeAiToken(page);
         });
       }
