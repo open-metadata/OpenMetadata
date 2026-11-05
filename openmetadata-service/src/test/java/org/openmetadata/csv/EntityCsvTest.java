@@ -527,7 +527,11 @@ public class EntityCsvTest {
   private static void assertParserFailureAbort(CsvImportResult importResult) {
     assertEquals(ApiStatus.ABORTED, importResult.getStatus(), importResult.toString());
     assertTrue(
-        importResult.getAbortReason().contains("Invalid character between encapsulated token"),
+        importResult
+            .getAbortReason()
+            .startsWith(
+                "#PARSER_FAILURE: Failed to parse the CSV file: line 2 has characters after the"
+                    + " closing quote of a quoted value."),
         importResult.getAbortReason());
   }
 

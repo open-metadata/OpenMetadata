@@ -1067,7 +1067,8 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   }
 
   private void documentParserFailure(IOException exception) {
-    documentFailure(failed(exception.getMessage(), CsvErrorType.PARSER_FAILURE));
+    documentFailure(
+        failed(CsvParseErrorMessage.describe(exception.getMessage()), CsvErrorType.PARSER_FAILURE));
   }
 
   // CSVRecord is immutable, so records with escaped formula cells are re-printed and re-parsed.
@@ -2664,7 +2665,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   }
 
   public String failed(String exception, CsvErrorType errorType) {
-    return String.format("#%s: Failed to parse the CSV filed - reason %s", errorType, exception);
+    return String.format("#%s: Failed to parse the CSV file: %s", errorType, exception);
   }
 
   public static String invalidHeader(String expected, String actual) {
