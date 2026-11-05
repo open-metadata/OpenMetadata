@@ -11,56 +11,6 @@
       "type": "string",
       "enum": ["Nats"],
       "default": "Nats"
-    },
-    "basicAuth": {
-      "title": "Username and Password",
-      "description": "Username and password authentication for NATS.",
-      "type": "object",
-      "properties": {
-        "username": {
-          "title": "Username",
-          "description": "Username for NATS authentication.",
-          "type": "string"
-        },
-        "password": {
-          "title": "Password",
-          "description": "Password for NATS authentication.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": ["username", "password"],
-      "additionalProperties": false
-    },
-    "tokenAuth": {
-      "title": "Token",
-      "description": "Token-based authentication for NATS.",
-      "type": "object",
-      "properties": {
-        "token": {
-          "title": "Token",
-          "description": "Token for NATS authentication.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": ["token"],
-      "additionalProperties": false
-    },
-    "nkeyAuth": {
-      "title": "NKey Seed",
-      "description": "NKey seed authentication for NATS.",
-      "type": "object",
-      "properties": {
-        "nkeySeed": {
-          "title": "NKey Seed",
-          "description": "NKey seed for NATS authentication.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": ["nkeySeed"],
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -78,15 +28,16 @@
     "authType": {
       "title": "Authentication Type",
       "description": "NATS authentication method. Leave empty for anonymous authentication.",
+      "mask": true,
       "oneOf": [
         {
-          "$ref": "#/definitions/basicAuth"
+          "$ref": "./nats/basicAuth.json"
         },
         {
-          "$ref": "#/definitions/tokenAuth"
+          "$ref": "./nats/tokenAuth.json"
         },
         {
-          "$ref": "#/definitions/nkeyAuth"
+          "$ref": "./nats/nkeyAuth.json"
         }
       ]
     },
