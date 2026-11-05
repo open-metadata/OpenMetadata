@@ -11,5 +11,21 @@ DROP TABLE IF EXISTS rdf_index_server_stats;
 -- A fourth-level nested table column has eight segments and needs 263 characters.
 -- VARCHAR(512) supports eleven column levels after the four-part table FQN while keeping
 -- extension usable in the composite primary key; MySQL cannot fully index a TEXT value.
-ALTER TABLE entity_extension
-  MODIFY COLUMN extension VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+-- The column keeps its character set and collation: changing either makes MySQL copy the whole
+-- table and block writes to it, while widening alone is done in place.
+SET @entity_extension_widen_ddl = (
+  SELECT IF(
+    c.CHARACTER_MAXIMUM_LENGTH < 512,
+    CONCAT(
+      'ALTER TABLE entity_extension MODIFY COLUMN extension VARCHAR(512) CHARACTER SET ',
+      c.CHARACTER_SET_NAME, ' COLLATE ', c.COLLATION_NAME, ' NOT NULL'),
+    'SELECT 1'
+  )
+  FROM information_schema.columns c
+  WHERE c.table_schema = DATABASE()
+    AND c.table_name = 'entity_extension'
+    AND c.column_name = 'extension'
+);
+PREPARE entity_extension_widen_stmt FROM @entity_extension_widen_ddl;
+EXECUTE entity_extension_widen_stmt;
+DEALLOCATE PREPARE entity_extension_widen_stmt;
