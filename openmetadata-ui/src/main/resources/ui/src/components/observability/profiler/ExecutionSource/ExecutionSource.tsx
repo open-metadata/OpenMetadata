@@ -55,7 +55,6 @@ export const ExecutionSource = ({
         {physicalName && copyable && (
           <ButtonUtility
             aria-label={t('message.copy-to-clipboard')}
-            color="tertiary"
             icon={hasCopied ? Check : Copy01}
             size="xs"
             tooltip={t(

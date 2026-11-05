@@ -8433,7 +8433,7 @@
                         },
                         "workgroup": {
                           "title": "Athena Workgroup",
-                          "description": "Athena workgroup.",
+                          "description": "Athena workgroup that runs the ingestion queries and whose query history usage and lineage read. When empty, queries run in the default workgroup and query history is read from every enabled workgroup.",
                           "type": "string"
                         },
                         "catalogId": {
@@ -8502,8 +8502,7 @@
                       "additionalProperties": false,
                       "required": [
                         "s3StagingDir",
-                        "awsConfig",
-                        "workgroup"
+                        "awsConfig"
                       ]
                     },
                     {
@@ -8617,7 +8616,16 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                              "^guest$",
+                              "^information_schema$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -8627,7 +8635,15 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^msdb$",
+                              "^model$",
+                              "^tempdb$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -8758,7 +8774,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$",
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -9402,7 +9425,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS(CAT|FUN|IBM|IBMADM|IBMINTERNAL|IBMTS|PROC|PUBLIC|STAT|TOOLS)$",
+                              "^NULLID$",
+                              "^SQLJ$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -9516,7 +9547,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^INFORMATION_SCHEMA$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -9817,7 +9855,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^sys$",
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -9951,7 +9996,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^_impala_builtins$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -10056,7 +10107,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -11292,7 +11350,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -11302,7 +11366,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -11824,7 +11894,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -12234,7 +12311,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -12244,7 +12327,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -12900,7 +12989,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS$",
+                              "^_SYS_(?!BIC$).*"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -13010,7 +13106,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^admin$",
+                              "^local$",
+                              "^config$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -13140,7 +13244,19 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$",
+                              "^system_auth$",
+                              "^system_schema$",
+                              "^system_distributed$",
+                              "^system_traces$",
+                              "^system_views$",
+                              "^system_virtual_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -13219,7 +13335,13 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^_system$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -13329,7 +13451,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^gp_toolkit$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -13339,7 +13468,14 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^template1$",
+                              "^template0$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -13453,7 +13589,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^performance_schema$",
+                              "^__internal_schema$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -14013,7 +14157,40 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^DBC$",
+                              "^SYS_CALENDAR$",
+                              "^SYSLIB$",
+                              "^SYSUDTLIB$",
+                              "^SYSADMIN$",
+                              "^SYSSPATIAL$",
+                              "^SYSTEMFE$",
+                              "^SYSBAR$",
+                              "^SYSJDBC$",
+                              "^SYSXML$",
+                              "^SYSUIF$",
+                              "^TD_SYS.*",
+                              "^TD_SERVER_DB$",
+                              "^TDSTATS$",
+                              "^TDQCD$",
+                              "^TDWM$",
+                              "^TDMAPS$",
+                              "^DBCMNGR$",
+                              "^LOCKLOGSHREDDER$",
+                              "^CRASHDUMPS$",
+                              "^EXTERNAL_AP$",
+                              "^SQLJ$",
+                              "^TDPUSER$",
+                              "^EXTUSER$",
+                              "^PUBLIC$",
+                              "^ALL$",
+                              "^DEFAULT$",
+                              "^CONSOLE$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -14274,7 +14451,16 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                              "^guest$",
+                              "^information_schema$",
+                              "^sys$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -14284,7 +14470,15 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^msdb$",
+                              "^model$",
+                              "^tempdb$"
+                            ]
+                          }
                         },
                         "storedProcedureFilterPattern": {
                           "title": "Default Stored Procedure Filter Pattern",
@@ -14398,7 +14592,14 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^SYS$",
+                              "^EXA_STATISTICS$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -14518,7 +14719,15 @@
                         "schemaFilterPattern": {
                           "title": "Default Schema Filter Pattern",
                           "description": "Regex to only include/exclude schemas that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^information_schema$",
+                              "^crdb_internal$",
+                              "^pg_extension$"
+                            ]
+                          }
                         },
                         "tableFilterPattern": {
                           "title": "Default Table Filter Pattern",
@@ -14528,7 +14737,13 @@
                         "databaseFilterPattern": {
                           "title": "Default Database Filter Pattern",
                           "description": "Regex to only include/exclude databases that matches the pattern.",
-                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern"
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "default": {
+                            "includes": [],
+                            "excludes": [
+                              "^system$"
+                            ]
+                          }
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -15029,7 +15244,8 @@
                               "^db_.*",
                               "^guest$",
                               "^information_schema$",
-                              "^sys$"
+                              "^sys$",
+                              "^_rsc$"
                             ]
                           }
                         },
@@ -15059,6 +15275,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsQueryComment": {
+                          "title": "Supports Query Comment",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
                         },
                         "supportsDatabase": {
                           "title": "Supports Database",
@@ -17271,11 +17491,14 @@
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/15"
                         },
                         "packageConnection": {
-                          "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+                          "title": "SSIS Projects Location (Local Path, S3 Bucket or Azure Blob Container)",
                           "description": "Underlying storage connection",
                           "oneOf": [
                             {
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/7/properties/config/oneOf/0"
+                            },
+                            {
+                              "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/7/properties/config/oneOf/1"
                             },
                             {
                               "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/5/properties/config/oneOf/2/definitions/localProjectsPath"

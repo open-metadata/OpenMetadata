@@ -29,7 +29,9 @@ import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigr
 import static org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration.alignFlowableTableCharsets;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
+import static org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
+import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addDenyBotUsersRuleToBotNonAdminImpersonationPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
@@ -41,6 +43,8 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -53,8 +57,10 @@ import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
+import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
+import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 import org.openmetadata.service.migration.utils.v210.WorkflowRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
@@ -72,6 +78,7 @@ public class Migration extends MigrationProcessImpl {
     ConversationReferenceMigration.migrate(handle, MYSQL);
     refreshConversationNotificationTemplates();
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
+    addDenyBotUsersRuleToBotNonAdminImpersonationPolicy(collectionDAO);
     alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, MYSQL);
@@ -123,6 +130,15 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, MYSQL));
+    // Lineage edges written before pipelines were type-restricted can name any entity — a database
+    // service among them — which the edge copied into the downstream search document
+    // (ANT-2026-RL0ZDKB8). Clear those references from the stored edges; each one is logged for
+    // credential rotation. DB-agnostic, so it also runs on Postgres.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        LineageEdgePipelineCleanupMigration.STEP_NAME,
+        () -> clearNonPipelineEdgePipelines(collectionDAO));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -162,6 +178,20 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         MCP_CONSENT_COLUMNS_STEP,
         () -> addMcpConsentColumnsOnMySql(handle));
+    // Same for the 2.0.9 MCP user-name indexes, on a database that recorded 2.0.9 before they were
+    // added to it.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        McpGrantUserNameIndexes.STEP_NAME,
+        () -> McpGrantUserNameIndexes.addOnMySql(handle));
+    // Same for the 2.0.9 data product domain containment repair. The repair only rewrites links
+    // that disagree, so running it after 2.0.9 already did changes nothing.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductDomainContainmentRepair.STEP_NAME,
+        () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
     // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
     runOnce(
         migrationDAO,
@@ -181,6 +211,7 @@ public class Migration extends MigrationProcessImpl {
         });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnMySql(handle);
+    UnsupportedNotificationTemplates.review(handle);
     // Seed data never reaches a role that already exists, so stewards of an installed catalog get
     // the ontology author and reviewer policies here. Idempotent.
     runOnce(

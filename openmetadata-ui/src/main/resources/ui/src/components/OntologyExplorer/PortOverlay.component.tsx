@@ -261,7 +261,6 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
       </kbd>
       <ButtonUtility
         className="tw:pointer-events-auto"
-        color="tertiary"
         data-testid="ontology-connect-cancel"
         icon={XClose}
         size="xs"

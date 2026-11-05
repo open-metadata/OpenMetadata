@@ -22,7 +22,11 @@ import { ReactComponent as IconExternalLink } from '../../../assets/svg/external
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as IconInfoSecondary } from '../../../assets/svg/icon-info.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/TeamUtils';
@@ -70,7 +74,7 @@ function OwnerRetVal({
   if (!displayVal || displayVal === '--') {
     return (
       <span className="d-flex gap-1 items-center" data-testid="owner-link">
-        {t('label.no-entity', { entity: t('label.owner-plural') })}
+        {NO_DATA_PLACEHOLDER}
       </span>
     );
   }

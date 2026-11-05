@@ -81,7 +81,6 @@ const PublicationClassicHeader = ({
         />
       </Tabs.List>
       <ButtonUtility
-        color="tertiary"
         icon={XClose}
         size="sm"
         tooltip={t('label.close')}
@@ -131,7 +130,6 @@ const PublicationAiHeader = ({ owner, onClose }: PublicationHeaderProps) => {
         />
       </Tabs.List>
       <ButtonUtility
-        color="tertiary"
         icon={XClose}
         size="sm"
         tooltip={t('label.close')}
