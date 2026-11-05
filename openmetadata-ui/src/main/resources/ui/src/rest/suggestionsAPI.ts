@@ -21,6 +21,9 @@ import {
   SuggestionType,
 } from '../types/taskSuggestion';
 import EntityLink from '../utils/EntityLink';
+import { ENTITY_LINK_SEPARATOR } from '../utils/EntityPureUtils';
+import Fqn from '../utils/Fqn';
+import { parseTaskFieldPath } from '../utils/TaskFieldPathUtils';
 import APIClient from './axiosClient';
 import {
   resolveTask,
@@ -77,28 +80,21 @@ const mapSuggestionTypeFromPayload = (
 const buildEntityLink = (task: Task): string => {
   const entityType = task.about?.type ?? '';
   const entityFQN = task.about?.fullyQualifiedName ?? '';
-  const fieldPath = (task.payload?.fieldPath ?? task.payload?.field) as
-    | string
-    | undefined;
+  const fieldPath = parseTaskFieldPath(
+    task.payload?.fieldPath as string | undefined
+  );
 
-  if (fieldPath) {
-    // Task fieldPath uses dot notation (e.g. "columns.col_name.description").
-    // Entity links use '::' to separate the field category from the column path
-    // (e.g. "<#E::table::FQN::columns::col_name>"). Only the first dot is a
-    // category separator; remaining dots are part of the column name (nested
-    // columns like "address.zip" must be preserved as-is at index [3]).
-    // A bare "description" or "tags" means entity-level — no field suffix needed.
-    const linkField = fieldPath
-      .replace(/\.(description|tags)$/, '')
-      .replace(/^(description|tags)$/, '')
-      .replace(/^([^.]+)\./, '$1::');
-
-    return linkField
-      ? EntityLink.getEntityLink(entityType, entityFQN, linkField)
-      : EntityLink.getEntityLink(entityType, entityFQN);
-  }
-
-  return EntityLink.getEntityLink(entityType, entityFQN);
+  // An entity link names a field as <container>::<name path>, without the
+  // property; a path to the entity itself has no field part.
+  return fieldPath?.container
+    ? EntityLink.getEntityLink(
+        entityType,
+        entityFQN,
+        `${fieldPath.container}${ENTITY_LINK_SEPARATOR}${Fqn.build(
+          ...fieldPath.names
+        )}`
+      )
+    : EntityLink.getEntityLink(entityType, entityFQN);
 };
 
 const getTaskCreatedBy = (task: Task): Task['createdBy'] | undefined => {
