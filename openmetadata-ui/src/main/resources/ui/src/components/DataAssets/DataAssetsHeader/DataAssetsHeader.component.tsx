@@ -28,7 +28,9 @@ import {
   LinkExternal01,
   RefreshCcw01,
   ThumbsDown,
+  ThumbsDownFilled,
   ThumbsUp,
+  ThumbsUpFilled,
   Trigger,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -759,7 +761,9 @@ export const DataAssetsHeader = ({
           count={votes?.upVotes ?? 0}
           countTestId="up-vote-count"
           disabled={deleted}
-          icon={ThumbsUp}
+          icon={
+            voteStatus === QueryVoteType.votedUp ? ThumbsUpFilled : ThumbsUp
+          }
           isActive={voteStatus === QueryVoteType.votedUp}
           loading={upVoteLoading}
           testId="up-vote-btn"
@@ -771,6 +775,14 @@ export const DataAssetsHeader = ({
           countTestId="down-vote-count"
           disabled={deleted}
           icon={ThumbsDown}
+          iconNode={
+            voteStatus === QueryVoteType.votedDown ? (
+              <ThumbsDownFilled
+                className="tw:text-fg-warning-primary"
+                size={20}
+              />
+            ) : undefined
+          }
           isActive={voteStatus === QueryVoteType.votedDown}
           loading={downVoteLoading}
           testId="down-vote-btn"

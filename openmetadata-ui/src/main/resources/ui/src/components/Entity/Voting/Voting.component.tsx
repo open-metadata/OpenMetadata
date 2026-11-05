@@ -51,8 +51,14 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
         count={votes?.downVotes ?? 0}
         countTestId="down-vote-count"
         disabled={disabled}
-        icon={
-          voteStatus === QueryVoteType.votedDown ? ThumbsDownFilled : ThumbsDown
+        icon={ThumbsDown}
+        iconNode={
+          voteStatus === QueryVoteType.votedDown ? (
+            <ThumbsDownFilled
+              className="tw:text-fg-warning-primary"
+              size={20}
+            />
+          ) : undefined
         }
         isActive={voteStatus === QueryVoteType.votedDown}
         loading={loading === QueryVoteType.votedDown}

@@ -196,7 +196,7 @@ const QueryCardExtraOption = ({
           className={classNames(
             'tw:gap-1',
             voteStatus === QueryVoteType.votedDown &&
-              'tw:*:data-icon:text-utility-brand-600'
+              'tw:*:data-icon:text-fg-warning-primary'
           )}
           color="secondary"
           data-testid="down-vote-btn"

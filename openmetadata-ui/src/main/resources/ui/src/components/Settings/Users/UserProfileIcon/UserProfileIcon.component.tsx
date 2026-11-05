@@ -19,10 +19,10 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  ActivityOwnerChanged,
   ChevronDown,
   InheritedRoles,
   LogOut01,
+  Persona,
   Role,
   Teams,
 } from '@openmetadata/ui-core-components/icons';
@@ -320,7 +320,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'personas',
-            icon: Role,
+            icon: Persona,
             title: t('label.switch-persona'),
             listItems: sortedPersonas,
             sizeLimit: showAllPersona ? sortedPersonas.length : 2,
@@ -339,7 +339,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'roles',
-            icon: ActivityOwnerChanged,
+            icon: Role,
             title: t('label.role-plural'),
             listItems: roles ?? [],
             labelRenderer: getEntityName,

@@ -119,7 +119,7 @@ export function withDomainIcon(
     icon: isSubDomain ? (
       <GlobeLinked className="tw:text-utility-gray-500" size={16} />
     ) : (
-      <Globe01 size={16} />
+      <Globe01 className="tw:text-utility-gray-500" size={16} />
     ),
     children: node.children
       ? withDomainIcon(node.children, true)

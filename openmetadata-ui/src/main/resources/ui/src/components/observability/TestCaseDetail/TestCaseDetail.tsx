@@ -384,10 +384,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                       'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                     )}
                     justify="center">
-                    <Checklist
-                      className="tw:dark:[&>rect]:fill-transparent"
-                      size={20}
-                    />
+                    <Checklist size={20} />
                   </Box>
                   <TestCaseHeaderTitle
                     deleted={testCase.deleted}

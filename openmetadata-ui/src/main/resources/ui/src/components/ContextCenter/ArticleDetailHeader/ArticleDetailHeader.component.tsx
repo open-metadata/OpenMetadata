@@ -526,7 +526,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       <>
         <ButtonUtility
           className={classNames({
-            'tw:*:data-icon:text-utility-brand-600': isFollowing,
+            'tw:*:data-icon:text-utility-yellow-400': isFollowing,
           })}
           data-testid="follow-btn"
           icon={isFollowing ? StarFilled : Star01}

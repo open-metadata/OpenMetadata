@@ -240,7 +240,10 @@ export const DomainLabel = ({
         <div className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5">
           <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
             <div style={{ width: '16px' }}>
-              <Globe01 size={16} style={{ marginLeft: '2px' }} />
+              <Globe01
+                className="tw:ml-0.5 tw:text-utility-gray-500"
+                size={16}
+              />
             </div>
 
             <div className="d-flex justify-between w-full">

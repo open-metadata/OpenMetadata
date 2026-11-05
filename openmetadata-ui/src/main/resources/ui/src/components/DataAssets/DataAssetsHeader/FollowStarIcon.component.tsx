@@ -22,7 +22,7 @@ export const FollowStarIcon: FC<FollowStarIconProps> = ({
 }) =>
   selected ? (
     <StarFilled
-      className={classNames('tw:text-utility-brand-600', className)}
+      className={classNames('tw:text-utility-yellow-400', className)}
       size={20}
     />
   ) : (

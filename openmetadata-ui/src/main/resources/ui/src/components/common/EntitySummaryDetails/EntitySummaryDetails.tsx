@@ -97,7 +97,7 @@ function OwnerRetVal({
         </>
       )}
       {isTeamOwner ? (
-        <Teams className="align-middle" size={18} />
+        <Teams className="align-middle tw:text-utility-gray-500" size={18} />
       ) : (
         <ProfilePicture
           displayName={displayVal}
