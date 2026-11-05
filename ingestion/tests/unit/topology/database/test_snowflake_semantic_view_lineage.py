@@ -470,6 +470,55 @@ def test_build_view_lineage_excludes_interval_qualifiers_and_infix_operators(exp
     ]
 
 
+@pytest.mark.parametrize(
+    "function_name",
+    ["CURRENT_DATE", "CURRENT_TIME", "CURRENT_TIMESTAMP", "CURRENT_USER", "LOCALTIME", "LOCALTIMESTAMP"],
+)
+@pytest.mark.parametrize(
+    "reference, is_column",
+    [
+        ("{name}", False),
+        ("{lower_name}", False),
+        ("{name}()", False),
+        ('"{name}"', True),
+        ("o.{name}", True),
+        ('o."{name}"', True),
+    ],
+)
+def test_build_view_lineage_excludes_bare_context_functions(function_name, reference, is_column):
+    """A context function must not resolve to a real same-named physical column."""
+    base = _table("ORDERS_TBL", ["STATUS", function_name])
+    view = _table("SALES_ANALYSIS", ["NEXT_VALUE"])
+    entities = {table.fullyQualifiedName.root: table for table in (base, view)}
+    extractor = SnowflakeSemanticViewLineage(
+        service_name="snow",
+        engine=None,
+        database_filter_pattern=None,
+        resolve_table_by_fqn=entities.get,
+        resolve_metric_by_name=lambda _name: None,
+    )
+    reference = reference.format(name=function_name, lower_name=function_name.lower())
+    columns = {("O", "NEXT_VALUE"): {"logical_table": "O", "expression": f"o.STATUS || TO_VARCHAR({reference})"}}
+
+    (request,) = extractor._build_view_lineage("DB", "PUBLIC", "SALES_ANALYSIS", {"O": ORDERS_TBL}, columns)
+
+    edge = request.right.edge
+    assert edge.fromEntity.id == base.id
+    assert edge.fromEntity.type == "table"
+    assert edge.toEntity.id == view.id
+    assert edge.toEntity.type == "table"
+    source_columns = ["STATUS", function_name] if is_column else ["STATUS"]
+    assert [
+        (entry.toColumn.root, [source.root for source in entry.fromColumns])
+        for entry in edge.lineageDetails.columnsLineage or []
+    ] == [
+        (
+            "snow.DB.PUBLIC.SALES_ANALYSIS.NEXT_VALUE",
+            [f"snow.DB.PUBLIC.ORDERS_TBL.{column}" for column in source_columns],
+        )
+    ]
+
+
 @pytest.mark.parametrize("type_name", ["DATE", "TIME", "TIMESTAMP"])
 @pytest.mark.parametrize("reference", ["{type_name}", "o.{type_name}", '"{type_name}"', "TO_CHAR({type_name})"])
 def test_extract_column_refs_preserves_type_named_columns(type_name, reference):

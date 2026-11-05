@@ -142,7 +142,19 @@ def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
         refs.append((name(segments[-2]), name(segments[-1])))
     for identifier in _SEGMENT_RE.findall(_COLUMN_REF_RE.sub(" ", text)):
         if not identifier.startswith("\x00") and (
-            identifier.lower() in SQL_KEYWORDS or identifier.lower() in {"rlike", "regexp", "ilike"}
+            identifier.lower() in SQL_KEYWORDS
+            or identifier.lower()
+            in {
+                "rlike",
+                "regexp",
+                "ilike",
+                "current_date",
+                "current_time",
+                "current_timestamp",
+                "current_user",
+                "localtime",
+                "localtimestamp",
+            }
         ):
             continue
         refs.append((None, name(identifier)))
