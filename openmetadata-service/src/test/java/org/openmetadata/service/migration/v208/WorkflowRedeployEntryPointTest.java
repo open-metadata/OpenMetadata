@@ -34,6 +34,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
 
@@ -56,7 +57,9 @@ class WorkflowRedeployEntryPointTest {
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
             mockStatic(WorkflowRedeployMigration.class);
-        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class)) {
+        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
+            mockStatic(McpGrantUserNameIndexes.class)) {
       migration.runDataMigration();
 
       migrationUtil.verify(MigrationUtil::rewriteWorkflowRules);

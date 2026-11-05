@@ -32,7 +32,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.migration.utils.v207.MigrationUtil;
-import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
+import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -43,7 +43,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * scanned and locked every user's tokens, and a refresh by anyone else deadlocked against it. The
  * deleted user holds many rotated tokens, as one who refreshes often does: against a plain
  * user-name index that made the revoked index the cheaper plan again. The MySQL user-name indexes
- * come from the 2.0.9 Java migration step, run twice to show a rerun is harmless.
+ * come from the 2.0.8 Java migration step, run twice to show a rerun is harmless.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @Execution(ExecutionMode.SAME_THREAD)
