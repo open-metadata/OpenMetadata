@@ -29,6 +29,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.ContainerServiceTestFactory;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -102,6 +104,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -723,6 +726,29 @@ public class LineageResourceIT {
 
     cleanupTable(client, sourceTable);
     cleanupTable(client, targetTable);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"{\"query\":", "{\"term\":{}}", "[\"not\",\"a\",\"query\"]"})
+  void testLineageSceneRejectsMalformedQueryFilter(String queryFilter) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("lens", LineageLens.SERVICE.value())
+            .queryParam("band", LineageBand.LAYER.value())
+            .queryParam("query_filter", queryFilter)
+            .build();
+
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/lineage/scene", null, options));
+
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
   }
 
   @Test

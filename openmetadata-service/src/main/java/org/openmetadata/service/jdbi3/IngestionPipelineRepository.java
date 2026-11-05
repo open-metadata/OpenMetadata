@@ -36,6 +36,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -82,6 +84,7 @@ import org.openmetadata.service.logstorage.DefaultLogStorage;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressState;
+import org.openmetadata.service.monitoring.IngestionProgressTracker.ServiceProgressSnapshot;
 import org.openmetadata.service.monitoring.ServiceProgressStreamer;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
@@ -339,6 +342,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @VisibleForTesting
   record DisplayNameCursor(String displayName, String id) {}
+
+  /** A display-name ordered listing pages on that key, so a cursor built from a row carries it. */
+  @Override
+  public String getCursorValue(IngestionPipeline pipeline, ListFilter filter) {
+    return filter == null || nullOrEmpty(filter.getSortField())
+        ? super.getCursorValue(pipeline, filter)
+        : displayNameCursorValue(pipeline);
+  }
 
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
@@ -1663,8 +1674,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  public void streamServiceProgress(String serviceFqn, SseEventSink eventSink, Sse sse) {
-    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker);
+  public void streamServiceProgress(
+      String serviceFqn,
+      SseEventSink eventSink,
+      Sse sse,
+      Function<ServiceProgressSnapshot, Optional<ServiceProgressEvent>> subscriber) {
+    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker, subscriber);
   }
 
   private ProgressUpdate getLatestProgressUpdate(String pipelineFQN, UUID runId) {
@@ -1695,27 +1710,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
     }
 
-    progressTracker.updateProgress(
-        fqn, runId, progressUpdate, discoveredPipeline(fqn, progressUpdate));
+    progressTracker.updateProgress(fqn, runId, progressUpdate, progressPipeline(fqn));
     return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
   }
 
   /**
-   * The pipeline entity to attach to the run's opening event, so the UI can discover a newly
-   * created agent from the stream itself. Loaded only for the DISCOVERY update (once per run) and
-   * never fails the progress update — a lookup error just omits the entity.
+   * Bind every service event to the pipeline instance so a reused name cannot expose an older run.
+   * A lookup failure must not fail progress reporting; subscribers omit events with no identity.
    */
-  private IngestionPipeline discoveredPipeline(String fqn, ProgressUpdate update) {
-    IngestionPipeline result = null;
-    if (update.getUpdateType() == ProgressUpdateType.DISCOVERY) {
-      try {
-        result = getByName(null, fqn, getFields(""));
-      } catch (Exception e) {
-        LOG.debug(
-            "Could not load ingestion pipeline {} for progress discovery: {}", fqn, e.getMessage());
-      }
+  private IngestionPipeline progressPipeline(String fqn) {
+    try {
+      return getByName(null, fqn, getFields(""));
+    } catch (Exception e) {
+      LOG.debug("Could not load pipeline {} for progress: {}", fqn, e.getClass().getSimpleName());
+      return null;
     }
-    return result;
   }
 
   public RestUtil.PutResponse<?> addOperationMetrics(

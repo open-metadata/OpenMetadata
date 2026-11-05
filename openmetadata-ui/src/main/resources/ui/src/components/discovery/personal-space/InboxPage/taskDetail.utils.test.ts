@@ -227,7 +227,7 @@ describe('getTaskDetailDescriptor', () => {
 
     expect(descriptor.rows[0].value).toEqual({
       kind: 'text',
-      text: 'label.no-owner',
+      text: '--',
     });
   });
 

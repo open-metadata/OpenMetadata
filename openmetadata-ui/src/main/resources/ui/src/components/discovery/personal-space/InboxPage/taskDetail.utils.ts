@@ -13,7 +13,10 @@
 
 import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
-import { TIER_CATEGORY } from '../../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  TIER_CATEGORY,
+} from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import {
   EntityReference,
@@ -613,7 +616,7 @@ const describeOwnershipUpdate = (
             key: 'owner',
             icon: 'owner',
             label: t('label.owner'),
-            value: { kind: 'text', text: t('label.no-owner') },
+            value: { kind: 'text', text: NO_DATA_PLACEHOLDER },
           },
       // Approving replaces the current owners with these, so the reviewer sees
       // both sides of the change before deciding.

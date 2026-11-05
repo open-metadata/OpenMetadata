@@ -263,7 +263,7 @@ describe('McpApplicationConfiguration', () => {
   it.each([
     [
       'every field the form shows',
-      ['/baseUrl', '/allowedOrigins', '/maxResponseChars'],
+      ['/baseUrl', '/allowedOrigins', '/maxResponseChars', '/readOnly'],
     ],
     ['the whole setting', ['/']],
   ])(
@@ -323,7 +323,12 @@ describe('McpApplicationConfiguration', () => {
 
 describe('McpApplication form schema', () => {
   const formSchema = mcpSchema as RJSFSchema;
-  const editableFields = ['baseUrl', 'allowedOrigins', 'maxResponseChars'];
+  const editableFields = [
+    'baseUrl',
+    'allowedOrigins',
+    'maxResponseChars',
+    'readOnly',
+  ];
   // Shape of a real stored mcpConfiguration row, including the fields no code reads.
   const storedConfig = {
     path: '/api/v1/mcp',
@@ -333,6 +338,7 @@ describe('McpApplication form schema', () => {
     mcpServerName: 'openmetadata-mcp-server',
     allowedOrigins: ['http://localhost:3000', 'https://app.example.com'],
     maxResponseChars: 100000,
+    readOnly: true,
     connectTimeout: 30000,
     originHeaderUri: 'http://localhost',
     mcpServerVersion: '1.0.0',

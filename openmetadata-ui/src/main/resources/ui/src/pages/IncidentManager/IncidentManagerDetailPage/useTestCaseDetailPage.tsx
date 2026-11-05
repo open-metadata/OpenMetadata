@@ -348,7 +348,9 @@ export const useTestCaseDetailPage = ({
 
     try {
       const restoredTestCase = await restoreTestCase(testCase.id);
-      setEntityDetails(restoredTestCase);
+      // The restore response omits fields the page fetched separately, such as
+      // testCaseResult; keep them so the Last run banner doesn't reset.
+      setEntityDetails((prev) => ({ ...prev, ...restoredTestCase }));
       showSuccessToast(
         t('server.restore-entity-success', {
           entity: testCase.displayName ?? testCase.name,

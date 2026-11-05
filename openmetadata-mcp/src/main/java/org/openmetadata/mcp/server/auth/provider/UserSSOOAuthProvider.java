@@ -101,6 +101,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   static final String CONSENT_DECISION_PARAM = "decision";
   static final String CONSENT_APPROVE = "approve";
 
+  private static final String SSO_ERROR_TITLE = "Authentication Failed";
+  private static final String SSO_ERROR_MESSAGE =
+      "The identity provider could not complete authentication.";
+
   /** An SSO-authenticated user and the authorization request they have not approved yet. */
   private record PendingConsent(String token, String authRequestId, String userName) {}
 
@@ -619,17 +623,14 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     LOG.info("Serving consent page for MCP client {}", client.getClientId());
     response.setStatus(HttpServletResponse.SC_OK);
     response.setContentType("text/html; charset=UTF-8");
-    response.setHeader("Cache-Control", "no-store");
-    response.setHeader("X-Frame-Options", "DENY");
-    // Added next to any policy the web security headers set; browsers enforce both.
-    response.addHeader("Content-Security-Policy", "frame-ancestors 'none'");
+    HtmlTemplates.setSignInPageHeaders(response);
     response
         .getWriter()
         .write(
             HtmlTemplates.generateConsentForm(
                 client.getClientName(),
                 consent.userName(),
-                describeRedirectTarget(redirectUri),
+                UriUtils.describeRedirectTarget(redirectUri),
                 UriUtils.withoutTrailingSlash(getBaseUrl())
                     + CONSENT_PATH
                     + "?"
@@ -739,20 +740,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   }
 
   /**
-   * What the consent page shows as the place the authorization code will be sent to. The client
-   * name is chosen by whoever registered the client, so this is the one thing on the page the user
-   * can check. Userinfo, path and query are left out because they can be made to look like a host.
-   * The raw authority is used rather than {@link URI#getHost()}, which is null for hosts such as
-   * {@code a_b.example} that a browser still navigates to.
-   */
-  private static String describeRedirectTarget(URI redirectUri) {
-    final String authority = redirectUri.getRawAuthority();
-    final String hostAndPort =
-        authority == null ? "" : "//" + authority.substring(authority.lastIndexOf('@') + 1);
-    return redirectUri.getScheme() + ":" + hostAndPort;
-  }
-
-  /**
    * Relays an upstream IdP OAuth error callback back to the MCP client's {@code redirect_uri}.
    *
    * <p>When the IdP returns an error response (e.g. {@code login_required}, {@code
@@ -763,7 +750,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    * to interactive auth. This method looks up the pending MCP auth request by {@code
    * authRequestId} (the DB-backed state), re-validates the client's redirect URI (defense-in-depth
    * against open redirect, mirroring {@link #handleSSOCallbackWithDbState}), builds the error
-   * response, and serves an HTML page that auto-redirects the browser to the client callback. It
+   * response, and serves an HTML page that sends the browser to the client callback: by itself for
+   * a loopback or app-scheme callback, through a link the user clicks for a remote web one. It
    * never invokes the web-SSO callback handler, so the buffered-response ambiguity that
    * previously swallowed the error cannot occur.
    *
@@ -836,11 +824,20 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
         errorDescription,
         pendingRequest.clientId(),
         pendingRequest.redirectUri());
-    serveErrorPage(
-        response,
-        redirectUrl,
-        "Authentication Failed",
-        "The identity provider could not complete authentication.");
+    if (UriUtils.isRemoteWebUri(requestedRedirectUri)) {
+      response.setStatus(HttpServletResponse.SC_OK);
+      response.setContentType("text/html; charset=UTF-8");
+      response
+          .getWriter()
+          .write(
+              HtmlTemplates.generateErrorReturnPage(
+                  SSO_ERROR_TITLE,
+                  SSO_ERROR_MESSAGE,
+                  redirectUrl,
+                  UriUtils.describeRedirectTarget(requestedRedirectUri)));
+    } else {
+      serveErrorPage(response, redirectUrl, SSO_ERROR_TITLE, SSO_ERROR_MESSAGE);
+    }
 
     // Best-effort cleanup — failure here doesn't affect the relayed error.
     try {

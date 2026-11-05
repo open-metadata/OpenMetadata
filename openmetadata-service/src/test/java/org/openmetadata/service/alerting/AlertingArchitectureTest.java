@@ -15,13 +15,20 @@ package org.openmetadata.service.alerting;
 
 import static com.tngtech.archunit.base.DescribedPredicate.alwaysTrue;
 import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameStartingWith;
+import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import com.github.jknack.handlebars.Handlebars;
+import com.github.jknack.handlebars.Template;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -37,6 +44,7 @@ import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.dataRetention.DataRetention;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 import org.openmetadata.service.resources.events.NotificationTemplateResource;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
@@ -76,7 +84,10 @@ class AlertingArchitectureTest {
           ApplicationHandler.class,
           DataRetention.class,
           OpenMetadataOperations.class,
-          ExpressionValidator.class);
+          ExpressionValidator.class,
+          UnsupportedNotificationTemplates.class);
+
+  private static final String TEMPLATE_SANDBOX = ALERTING + ".content.template.sandbox..";
 
   @ArchTest
   static final ArchRule eachLayerUsesOnlyTheLayersBelowIt =
@@ -152,6 +163,24 @@ class AlertingArchitectureTest {
           .should()
           .dependOnClassesThat()
           .resideInAPackage(ALERTING + "..");
+
+  /**
+   * Templates written by users compile and render only in the template sandbox.
+   * ADR:2026-11-03-user-notification-templates-render-in-a-closed-sandbox
+   */
+  @ArchTest
+  static final ArchRule templatesCompileOnlyInTheSandbox =
+      noClasses()
+          .that()
+          .resideOutsideOfPackage(TEMPLATE_SANDBOX)
+          .should()
+          .callConstructorWhere(target(owner(assignableTo(Handlebars.class))))
+          .orShould()
+          .callMethodWhere(
+              target(owner(assignableTo(Handlebars.class)))
+                  .and(target(nameStartingWith("compile"))))
+          .orShould()
+          .callMethodWhere(target(owner(assignableTo(Template.class))).and(target(name("apply"))));
 
   @ArchTest
   static final ArchRule coreReachesAlertingThroughItsSpiOrAnAdapter =

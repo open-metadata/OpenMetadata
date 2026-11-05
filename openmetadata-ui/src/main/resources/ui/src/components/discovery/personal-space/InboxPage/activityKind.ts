@@ -27,8 +27,8 @@ import {
   ActivityPipelineStatusChanged,
   ActivityTagsUpdated,
   ActivityTestCaseStatusChanged,
-  ActivityTierChanged,
-  Edit05,
+  AppCacheWarmup,
+  Edit01,
   File02,
   Globe01,
   Tag01,
@@ -68,7 +68,7 @@ export const ACTIVITY_TYPE_KIND: Record<string, ActivityKind> = {
     iconClassName: 'tw:text-utility-blue-600',
   },
   [ACTIVITY_TYPE_OTHER]: {
-    icon: Edit05,
+    icon: Edit01,
     badgeClassName: 'tw:bg-utility-gray-600',
     iconClassName: 'tw:text-utility-gray-600',
   },
@@ -126,7 +126,7 @@ export const ACTIVITY_EVENT_BADGE: Record<ActivityEventType, ActivityBadge> = {
     badgeClassName: 'tw:bg-utility-orange-700',
   },
   [ActivityEventType.TierUpdated]: {
-    icon: ActivityTierChanged,
+    icon: AppCacheWarmup,
     badgeClassName: 'tw:bg-utility-success-700',
   },
   [ActivityEventType.CustomPropertyUpdated]: {

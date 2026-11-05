@@ -16,6 +16,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card as CoreCard,
   Dialog,
   Divider,
@@ -441,6 +442,7 @@ interface ExploreResultsPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
+  additionalSearchResults?: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -465,6 +467,7 @@ interface ExploreResultsListPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
+  additionalSearchResults?: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -486,6 +489,7 @@ const ExploreResultsListPanel = ({
   loading,
   isElasticSearchIssue,
   searchResults,
+  additionalSearchResults,
   parsedSearch,
   handleSummaryPanelDisplay,
   hasActiveFilters,
@@ -503,6 +507,7 @@ const ExploreResultsListPanel = ({
     <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
       <CoreCard className="tw:min-h-0 tw:flex-1 tw:rounded-b-none tw:border-b-0 tw:border-utility-gray-blue-100 tw:dark:border-subtle">
         <div className="tw:h-full tw:overflow-y-auto tw:p-5">
+          {additionalSearchResults}
           {!loading && !isElasticSearchIssue ? (
             <SearchedData
               data={searchResults?.hits.hits ?? []}
@@ -541,6 +546,7 @@ const ExploreResultsPanel = ({
   loading,
   isElasticSearchIssue,
   searchResults,
+  additionalSearchResults,
   parsedSearch,
   handleSummaryPanelDisplay,
   hasActiveFilters,
@@ -562,6 +568,7 @@ const ExploreResultsPanel = ({
       className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
       colGap={3}>
       <ExploreResultsListPanel
+        additionalSearchResults={additionalSearchResults}
         entityDetails={entityDetails}
         handleExplorePageChange={handleExplorePageChange}
         handleExplorePageSizeChange={handleExplorePageSizeChange}
@@ -611,6 +618,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   activeTabKey,
   tabItems = [],
   searchResults,
+  additionalSearchResults,
   showRankingDetails = false,
   onChangeShowRankingDetails,
   onChangeAdvancedSearchQuickFilters,
@@ -896,14 +904,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => sortOrder === SORT_ORDER.ASC,
     [sortOrder]
   );
-  const sortProps = useMemo(
-    () => ({
-      className: 'text-base tw:text-fg-secondary',
-      'data-testid': 'last-updated',
-    }),
-    []
-  );
-
   const handleSummaryPanelDisplay = useCallback(
     (details: SearchedDataProps['data'][number]['_source']) => {
       setShowSummaryPanel(true);
@@ -1288,20 +1288,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
               dividers — which are `self-stretch` — grow with it, towering over
               the controls they separate. */}
           <div className="d-flex items-start justify-end gap-3 tw:relative tw:mt-1 tw:min-h-px tw:max-w-full tw:flex-none tw:self-start">
-            <Button
-              aria-label={t('label.sort-order')}
-              className="tw:p-0"
-              color="tertiary"
+            <ButtonUtility
               data-testid="sort-order-button"
-              iconLeading={
-                isAscSortOrder ? (
-                  <IconAscending {...sortProps} />
-                ) : (
-                  <IconDescending {...sortProps} />
-                )
-              }
-              size="sm"
-              onPress={() =>
+              icon={isAscSortOrder ? IconAscending : IconDescending}
+              size="lg"
+              tooltip={t('label.sort-order')}
+              onClick={() =>
                 onChangeSortOder(
                   isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                 )
@@ -1414,6 +1406,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             minWidth: 800,
             children: (
               <ExploreResultsPanel
+                additionalSearchResults={additionalSearchResults}
                 entityDetails={entityDetails}
                 firstEntity={firstEntity}
                 handleClosePanel={handleClosePanel}
