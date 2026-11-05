@@ -28,9 +28,9 @@ import org.jdbi.v3.core.Handle;
  * revoked index, and MySQL would take that one again: the plan that deadlocked.
  *
  * <p>Runs from the Java migration per
- * ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration. 2.1.0 runs it again because a
- * database at 2.1.0 that recorded 2.0.8 before this step was added reruns 2.0.8 for its SQL only.
- * Each index is created only when missing.
+ * ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration. 2.1.0 runs it again for a
+ * database that recorded 2.0.8 before this step was added to it. Each index is created only when
+ * missing.
  */
 public final class McpGrantUserNameIndexes {
   public static final String STEP_NAME = "mcpGrantUserNameIndexes";

@@ -44,7 +44,9 @@ class WorkflowRedeployEntryPointTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("migrationEntryPoints")
   void runDataMigrationRewritesThenRedeploysTheWorkflows(
-      String database, Function<MigrationFile, MigrationProcessImpl> createMigration)
+      String database,
+      Function<MigrationFile, MigrationProcessImpl> createMigration,
+      int indexStepRuns)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
     Handle handle = mock(Handle.class);
@@ -73,6 +75,8 @@ class WorkflowRedeployEntryPointTest {
       workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+      grantUserNameIndexes.verify(
+          () -> McpGrantUserNameIndexes.addOnMySql(handle), times(indexStepRuns));
     }
   }
 
@@ -81,11 +85,13 @@ class WorkflowRedeployEntryPointTest {
         Arguments.of(
             "MySQL",
             (Function<MigrationFile, MigrationProcessImpl>)
-                org.openmetadata.service.migration.mysql.v208.Migration::new),
+                org.openmetadata.service.migration.mysql.v208.Migration::new,
+            1),
         Arguments.of(
             "PostgreSQL",
             (Function<MigrationFile, MigrationProcessImpl>)
-                org.openmetadata.service.migration.postgres.v208.Migration::new));
+                org.openmetadata.service.migration.postgres.v208.Migration::new,
+            0));
   }
 
   private static void setField(MigrationProcessImpl migration, String fieldName, Object value)
