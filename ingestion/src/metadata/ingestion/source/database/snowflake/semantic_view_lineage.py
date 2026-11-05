@@ -83,12 +83,14 @@ _DATE_PART_RE = re.compile(
     re.IGNORECASE,
 )
 # A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DOUBLE PRECISION)``) or a
-# semi-structured path (``payload:a.b[0]``). Snowflake's multi-word type names are listed.
+# semi-structured path (``payload:a.b[0]``). A path needs a left operand; a masked
+# string key in an OBJECT constant leaves only whitespace before its separator.
+# Snowflake's multi-word type names are listed.
 _CAST_OR_PATH_RE = re.compile(
     rf"(?:::|\bAS\b)\s*(?:{_IDENTIFIER})"
     r"(?:\s+PRECISION\b|\s+VARYING\b|\s+WITH(?:OUT)?(?:\s+LOCAL)?\s+TIME\s+ZONE\b)?"
     r"(?:\s*\([^)]*\))?"
-    rf"|:\s*(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER})|\[[^\]]*\])*",
+    rf"|(?<=[\w$\x00)\]])\s*:\s*(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER})|\[[^\]]*\])*",
     re.IGNORECASE,
 )
 _MAX_RESOLUTION_DEPTH = 5

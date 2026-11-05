@@ -14,6 +14,8 @@
 from unittest.mock import MagicMock, patch
 from uuid import NAMESPACE_DNS, UUID, uuid5
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.ingestion.source.database import semantic_metric_lineage as sml
@@ -346,6 +348,78 @@ def _table(name: str, columns: list[str]) -> Table:
             for column in columns
         ],
     )
+
+
+@pytest.mark.parametrize(
+    "expression, source_columns",
+    [
+        ("{'customer': o.AMOUNT}", ["AMOUNT"]),
+        ("{'customer': AMOUNT}", ["AMOUNT"]),
+        ("{'customer': o.AMOUNT + o.TAX}", ["AMOUNT", "TAX"]),
+        ("{'customer': AMOUNT + TAX}", ["AMOUNT", "TAX"]),
+        ("{'customer': SUM(o.AMOUNT)}", ["AMOUNT"]),
+        ("{'customer': {'name': o.AMOUNT}}", ["AMOUNT"]),
+        ("{'customer': o.PAYLOAD:customer.name[0]::string, 'name': o.AMOUNT}", ["PAYLOAD", "AMOUNT"]),
+        ("({'customer': o.AMOUNT}):customer::number", ["AMOUNT"]),
+        ("OBJECT_CONSTRUCT('customer', o.AMOUNT)", ["AMOUNT"]),
+        ("o.PAYLOAD:customer.name[0]::string", ["PAYLOAD"]),
+        ('"PAYLOAD" :customer.name[0]::string', ["PAYLOAD"]),
+        ("(o.PAYLOAD) :customer.name[0]::string", ["PAYLOAD"]),
+        ("o.PAYLOAD[0] :customer.name::string", ["PAYLOAD"]),
+        ("o.PAYLOAD:customer:name::string", ["PAYLOAD"]),
+        ("{'customer': o.\"amount:USD\"::number}", ["amount:USD"]),
+        ("{'customer': 'o.TAX', 'name': o.AMOUNT /* customer */}", ["AMOUNT"]),
+    ],
+)
+def test_build_view_lineage_preserves_object_values_and_excludes_path_members(expression, source_columns):
+    """Collision columns make object keys and path members observable false dependencies."""
+    base = _table("ORDERS_TBL", ["AMOUNT", "TAX", "PAYLOAD", "customer", "name", "amount:USD"])
+    for column in base.columns:
+        column.dataType = {"AMOUNT": DataType.INT, "TAX": DataType.INT, "PAYLOAD": DataType.VARIANT}.get(
+            column.name.root, DataType.STRING
+        )
+    view = _table("SALES_ANALYSIS", ["OBJECT_VALUE"])
+    view.columns[0].dataType = DataType.VARIANT
+    entities = {table.fullyQualifiedName.root: table for table in (base, view)}
+    extractor = SnowflakeSemanticViewLineage(
+        service_name="snow",
+        engine=None,
+        database_filter_pattern=None,
+        resolve_table_by_fqn=entities.get,
+        resolve_metric_by_name=lambda _name: None,
+    )
+    columns = {("O", "OBJECT_VALUE"): {"logical_table": "O", "expression": expression}}
+
+    (request,) = extractor._build_view_lineage("DB", "PUBLIC", "SALES_ANALYSIS", {"O": ORDERS_TBL}, columns)
+
+    edge = request.right.edge
+    assert edge.fromEntity.id == base.id
+    assert edge.toEntity.id == view.id
+    assert [
+        (entry.toColumn.root, [source.root for source in entry.fromColumns])
+        for entry in edge.lineageDetails.columnsLineage or []
+    ] == [
+        (
+            "snow.DB.PUBLIC.SALES_ANALYSIS.OBJECT_VALUE",
+            [f"snow.DB.PUBLIC.ORDERS_TBL.{column}" for column in source_columns],
+        )
+    ]
+
+
+@pytest.mark.parametrize("type_name", ["DATE", "TIME", "TIMESTAMP"])
+@pytest.mark.parametrize("reference", ["{type_name}", "o.{type_name}", '"{type_name}"', "TO_CHAR({type_name})"])
+def test_extract_column_refs_preserves_type_named_columns(type_name, reference):
+    expression = reference.format(type_name=type_name)
+    qualifier = "o" if expression.startswith("o.") else None
+    assert extract_column_refs(expression) == [(qualifier, type_name)]
+
+
+@pytest.mark.parametrize(
+    "literal",
+    ["DATE '2026-01-01'", "TIME '12:00:00'", "TIMESTAMP '2026-01-01 12:00:00'", "TIMESTAMP_NTZ '2026-01-01'"],
+)
+def test_extract_column_refs_excludes_typed_literals_in_object_values(literal):
+    assert extract_column_refs("{'customer': " + literal + ", 'name': o.AMOUNT}") == [("o", "AMOUNT")]
 
 
 def test_column_lineage_ignores_names_that_are_not_column_references():
