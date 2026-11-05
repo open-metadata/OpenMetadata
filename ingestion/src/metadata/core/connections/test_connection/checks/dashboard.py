@@ -37,3 +37,5 @@ class DashboardStep(StepName):
     GetSourceTables = "GetSourceTables"
     ListDashboards = "ListDashboards"
     ListLookMLModels = "ListLookMLModels"
+    GetToken = "GetToken"
+    GetProjects = "GetProjects"

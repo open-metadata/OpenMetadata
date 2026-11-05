@@ -10,154 +10,116 @@
 #  limitations under the License.
 """
 MicroStrategy Models
+
+Only the fields the connector reads are required. The REST API adds and drops optional
+keys between releases (a search result carries ``description`` only when one is set), so
+everything else is optional: one odd object must not fail the validation of its siblings.
 """
 
-from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
-class MstrOwner(BaseModel):
+class MstrModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+
+class MstrOwner(MstrModel):
     """
     MSTR owner model
     """
 
-    name: str
     id: str
+    name: str | None = None
 
 
-class MstrProject(BaseModel):
+class MstrProject(MstrModel):
     """
     MSTR project model
     """
 
-    acg: int
     id: str
     name: str
-    status: int
-    alias: str
-    description: str
-    dateCreated: datetime  # noqa: N815
-    dateModified: datetime  # noqa: N815
-    owner: MstrOwner
+    description: str | None = None
+    status: int | None = None
 
 
-class MstrProjectList(BaseModel):
-    projects: list[MstrProject] | None = None
-
-
-class MstrSearchResult(BaseModel):
+class MstrSearchResult(MstrModel):
     """
     Mstr Search Results model
     """
 
-    name: str
     id: str
-    type: int
+    name: str
+    type: int | None = None
+    subtype: int | None = None
     description: str | None = None
-    subtype: int
-    dateCreated: str  # noqa: N815
-    dateModified: str  # noqa: N815
-    version: str
-    acg: int
-    owner: MstrOwner
-    extType: int  # noqa: N815
-    viewMedia: int  # noqa: N815
-    certifiedInfo: dict  # noqa: N815
-    templateInfo: dict  # noqa: N815
-    projectId: str  # noqa: N815
+    dateCreated: str | None = None  # noqa: N815
+    dateModified: str | None = None  # noqa: N815
+    owner: MstrOwner | None = None
+    certifiedInfo: dict[str, Any] | None = None  # noqa: N815
+    projectId: str | None = None  # noqa: N815
 
 
-class MstrSearchResultList(BaseModel):
+class MstrSearchPage(MstrModel):
     totalItems: int | None = 0  # noqa: N815
-    result: list[MstrSearchResult] | None = None
+    result: list[dict[str, Any]] | None = None
 
 
-class MstrDashboard(BaseModel):
+class MstrDashboard(MstrSearchResult):
     """
-    Mstr Dashboard model
+    A dossier as listed by the quick search, labelled with the project it was listed under
     """
 
-    name: str
-    id: str
-    type: int
-    description: str | None = None
-    subtype: int
-    dateCreated: str  # noqa: N815
-    dateModified: str  # noqa: N815
-    version: str
-    acg: int
-    owner: MstrOwner
-    extType: int  # noqa: N815
-    viewMedia: int  # noqa: N815
-    certifiedInfo: dict  # noqa: N815
-    templateInfo: dict  # noqa: N815
     projectId: str  # noqa: N815
     projectName: str  # noqa: N815
 
 
-class MstrDashboardList(BaseModel):
-    dashboards: list[MstrDashboard] | None = None
-
-
-class MstrAttribute(BaseModel):
-    id: str
-    type: int
-    name: str
-
-
-class MstrMetric(BaseModel):
-    id: str
-    type: int
-    name: str
-
-
-class MstrVisualization(BaseModel):
+class MstrVisualization(MstrModel):
     key: str
     name: str
-    visualizationType: str  # noqa: N815
+    visualizationType: str | None = None  # noqa: N815
 
 
-class MstrPage(BaseModel):
+class MstrPage(MstrModel):
     key: str
-    name: str
-    visualizations: list[MstrVisualization]
+    name: str | None = None
+    visualizations: list[MstrVisualization] = []
 
 
-class MstrChapter(BaseModel):
+class MstrChapter(MstrModel):
     key: str
-    name: str
-    pages: list[MstrPage]
+    name: str | None = None
+    pages: list[MstrPage] = []
 
 
-class MstrAvailableObject(BaseModel):
+class MstrAvailableObject(MstrModel):
     id: str
     name: str
     type: str
     forms: list[dict[str, Any]] | None = None
 
 
-class MstrDataset(BaseModel):
+class MstrDataset(MstrModel):
     id: str
     name: str
     availableObjects: list[MstrAvailableObject] | None = None  # noqa: N815
-    rows: list[dict[str, Any]] | None = None
-    columns: list[dict[str, Any]] | None = None
-    pageBy: list[dict[str, Any]] | None = None  # noqa: N815
-    sqlStatement: str | None = None  # noqa: N815
 
 
-class MstrDashboardDetails(BaseModel):
+class MstrDashboardDetails(MstrModel):
+    """
+    A dossier definition, joined with what the search listed about it
+    """
+
     id: str
     name: str
     projectId: str  # noqa: N815
     projectName: str  # noqa: N815
-    currentChapter: str  # noqa: N815
-    chapters: list[MstrChapter]
-    datasets: list[MstrDataset]
-
-
-class AuthHeaderCookie(BaseModel):
-    auth_header: dict
-    auth_cookies: Any
+    description: str | None = None
+    owner: MstrOwner | None = None
+    chapters: list[MstrChapter] = []
+    datasets: list[MstrDataset] = []
+    # False when the definition could not be read: the dossier is still ingested from its
+    # listing, but its charts and data models are unknown for this run.
+    definition_read: bool = True
