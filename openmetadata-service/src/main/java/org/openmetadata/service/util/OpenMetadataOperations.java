@@ -129,6 +129,7 @@ import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.migration.utils.MySqlCollationCheck;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
@@ -3602,6 +3603,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void validateAndRunSystemDataMigrations(boolean force) {
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
+    if (connType == ConnectionType.MYSQL) {
+      MySqlCollationCheck.verify(jdbi);
+    }
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
