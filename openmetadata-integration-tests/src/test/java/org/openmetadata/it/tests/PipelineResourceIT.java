@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -39,10 +40,12 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Status;
@@ -1006,6 +1009,30 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void test_taskWithADotInItsName_recordsItsChangeUnderTheQuotedName(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_dotted_task"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("extract.load").withDescription("Original")));
+    Pipeline pipeline = createEntity(request);
+
+    pipeline.setTasks(List.of(new Task().withName("extract.load").withDescription("Updated")));
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+
+    assertTrue(
+        changedFieldNames(updated.getChangeDescription())
+            .contains("tasks.\"extract.load\".description"));
+  }
+
+  private static List<String> changedFieldNames(ChangeDescription change) {
+    return Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+        .flatMap(List::stream)
+        .map(FieldChange::getName)
+        .toList();
+  }
+
+  @Test
   void test_pipelineMultipleStatusUpdates(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
@@ -1281,6 +1308,66 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
                 pipeline.getFullyQualifiedName(), baseTime - 1, baseTime + 6 * 3600000);
     assertEquals(
         6, statusList.getData().size(), "Should be 6: 5 original + 1 new, overlap upserted");
+  }
+
+  /**
+   * A bulk status write emits one change event per written status, even when the events of one
+   * request span several inserts.
+   */
+  @Test
+  void put_bulkPipelineStatus_emitsOneChangeEventPerStatus_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_bulk_events"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task1").withDescription("Task 1")));
+    Pipeline pipeline = createEntity(request);
+    long since = System.currentTimeMillis();
+    long baseTime = since - 3600000;
+    List<PipelineStatus> statuses = new ArrayList<>();
+    for (int run = 0; run < 150; run++) {
+      statuses.add(successfulStatus(baseTime + run * 1000L));
+    }
+
+    client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), statuses);
+
+    List<Long> eventStatusTimestamps =
+        pipelineUpdateEvents(client, pipeline.getId(), since).stream()
+            .map(PipelineResourceIT::eventStatusTimestamp)
+            .sorted()
+            .toList();
+    assertEquals(
+        statuses.stream().map(PipelineStatus::getTimestamp).toList(), eventStatusTimestamps);
+  }
+
+  /** Every pipeline update event about one pipeline since a time, read through the cursor. */
+  private static List<JsonNode> pipelineUpdateEvents(
+      OpenMetadataClient client, UUID pipelineId, long since) {
+    String window =
+        "/v1/events?entityUpdated=pipeline&limit=1000&timestamp=%d&endTs=%d"
+            .formatted(since, System.currentTimeMillis());
+    List<JsonNode> events = new ArrayList<>();
+    String after = null;
+    do {
+      String path =
+          after == null
+              ? window
+              : window + "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
+      JsonNode page =
+          JsonUtils.readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null));
+      page.path("data").forEach(events::add);
+      after = page.path("paging").path("after").textValue();
+    } while (after != null);
+    return events.stream()
+        .filter(event -> pipelineId.toString().equals(event.path("entityId").asText()))
+        .toList();
+  }
+
+  private static long eventStatusTimestamp(JsonNode event) {
+    JsonNode entity = event.path("entity");
+    JsonNode pipeline = entity.isTextual() ? JsonUtils.readTree(entity.asText()) : entity;
+    return pipeline.path("pipelineStatus").path("timestamp").asLong();
   }
 
   @Test
