@@ -347,8 +347,11 @@ public abstract class SecretsManager {
     // we don't store OM conn sensitive data
     IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
     try {
+      // A pipeline name is unique only within its service, so it cannot key the vault entry.
       encryptPasswordFields(
-          ingestionPipeline, buildSecretId(true, "pipeline", ingestionPipeline.getName()), true);
+          ingestionPipeline,
+          buildSecretId(true, "pipeline", ingestionPipeline.getId().toString()),
+          true);
     } catch (Exception e) {
       throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
