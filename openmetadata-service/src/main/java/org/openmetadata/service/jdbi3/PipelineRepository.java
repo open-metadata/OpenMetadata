@@ -39,7 +39,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -48,7 +47,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -1864,62 +1862,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     try {
       long now = System.currentTimeMillis();
-      DoubleSummaryStatistics runtimes = new DoubleSummaryStatistics();
-      forEachStatusBetween(
-          pipelineFqn,
-          now - (30L * 24 * 60 * 60 * 1000),
-          now,
-          status -> {
-            Double runtime = runtimeOf(status);
-            if (runtime != null) {
-              runtimes.accept(runtime);
-            }
-          });
-      return runtimes.getCount() == 0 ? null : runtimes.getAverage();
+      return daoCollection
+          .entityExtensionTimeSeriesDao()
+          .averagePipelineRuntime(pipelineFqn, now - (30L * 24 * 60 * 60 * 1000), now);
     } catch (Exception e) {
       LOG.warn(
           "Failed to calculate average runtime for pipeline {}: {}", pipelineFqn, e.getMessage());
       return null;
     }
-  }
-
-  /** Visits every status in the range a page at a time, so the range never sits in memory whole. */
-  private void forEachStatusBetween(
-      String pipelineFqn, long startTs, long endTs, Consumer<PipelineStatus> visitor) {
-    var timeSeriesDAO = daoCollection.entityExtensionTimeSeriesDao();
-    Long afterTs = null;
-    List<PipelineStatus> page;
-    do {
-      page =
-          timeSeriesDAO.listPipelineStatuses(
-              pipelineFqn,
-              PipelineStatusFilter.fromRequest(
-                  startTs, endTs, null, null, null, null, null, afterTs),
-              MAX_PIPELINE_STATUS_PAGE_SIZE);
-      page.forEach(visitor);
-      afterTs = page.isEmpty() ? null : page.getLast().getTimestamp();
-    } while (page.size() == MAX_PIPELINE_STATUS_PAGE_SIZE);
-  }
-
-  /** The span of a run's timed tasks, else its own end time; null unless positive. */
-  private static Double runtimeOf(PipelineStatus status) {
-    Double runtime = taskSpan(status.getTaskStatus());
-    if (runtime == null && status.getEndTime() != null && status.getTimestamp() != null) {
-      runtime = (double) (status.getEndTime() - status.getTimestamp());
-    }
-    return runtime != null && runtime > 0 ? runtime : null;
-  }
-
-  private static Double taskSpan(List<Status> tasks) {
-    Long minStart = null;
-    Long maxEnd = null;
-    for (Status task : listOrEmpty(tasks)) {
-      if (task.getStartTime() != null && task.getEndTime() != null) {
-        minStart = minStart == null ? task.getStartTime() : Math.min(minStart, task.getStartTime());
-        maxEnd = maxEnd == null ? task.getEndTime() : Math.max(maxEnd, task.getEndTime());
-      }
-    }
-    return minStart == null ? null : (double) (maxEnd - minStart);
   }
 
   private int getImpactedAssetsCount(String pipelineFqn) {

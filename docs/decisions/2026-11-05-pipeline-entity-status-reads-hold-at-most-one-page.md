@@ -26,16 +26,18 @@ loaded every run of the last 30 days to average their runtime.
   maximum and cites this record.
 - The bulk write reads only the stored statuses at the timestamps it writes, so its lookup is never
   larger than its body, which `@Size(max = 1000)` caps separately.
-- The observability average runtime still covers every run of the last 30 days, but reads them a
-  page at a time and keeps only a running total.
+- The observability average runtime is an `AVG` over the last 30 days computed in SQL
+  (ADR:2026-11-06-pipeline-run-runtime-has-one-sql-definition), so it reads no status into the
+  server.
 
 ## Consequences
 - No request under `/v1/pipelines` reads more than 1,000 statuses of a pipeline's history at once,
-  however long that history is; the trend and metrics endpoints aggregate in SQL. The bound counts
-  statuses, not bytes: how large a single status may be is not limited here.
+  however long that history is; the average runtime and the trend and metrics endpoints aggregate
+  in SQL. The bound counts statuses, not bytes: how large a single status may be is not limited
+  here.
 - An API caller that omitted `limit` to receive the whole range now receives 10 statuses and has to
   follow the cursor; a `limit` above 1,000, accepted before, is refused with 400.
-- The average's work still grows with the number of runs in its window; only the memory a request
-  holds is bounded.
+- A client that follows the cursor through a whole range still holds that range itself: the
+  Executions tab reads every run of the range it shows, one page per request.
 - The maximum and the clients' page size are the same number, so lowering the maximum means
   changing those clients with it.

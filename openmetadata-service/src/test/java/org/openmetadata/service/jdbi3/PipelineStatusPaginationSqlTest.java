@@ -15,9 +15,13 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -32,6 +36,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.type.PipelineRuntimeTrend;
+import org.openmetadata.schema.type.PipelineRuntimeTrendList;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -50,6 +56,7 @@ class PipelineStatusPaginationSqlTest {
   private static final String DATABASE = "pipeline_history_test";
   private static final String PASSWORD = "pipeline-history-test";
   private static final String FQN = "pipeline_service.demo_pipeline";
+  private static final String OTHER_FQN = "other_pipeline";
   private static final String TASK_NAME = "target_%!\\'Ö";
 
   @Test
@@ -92,15 +99,13 @@ class PipelineStatusPaginationSqlTest {
 
   private void checkPages(String url, boolean mysql) {
     AtomicInteger jsonRowsRead = new AtomicInteger();
-    AtomicInteger largestRead = new AtomicInteger();
     Jdbi jdbi =
         Jdbi.create(
                 () ->
                     trackJsonRows(
                         Connection.class,
                         DriverManager.getConnection(url, mysql ? "root" : "postgres", PASSWORD),
-                        jsonRowsRead,
-                        largestRead))
+                        jsonRowsRead))
             .installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
     jdbi.getConfig(SqlObjects.class)
@@ -187,7 +192,7 @@ class PipelineStatusPaginationSqlTest {
           9);
       checkLargeHistory(handle, repository, mysql, jsonRowsRead);
       checkStoredStatusLookup(repository, jsonRowsRead);
-      checkAverageRuntimeReadsPageByPage(handle, repository, mysql, jsonRowsRead, largestRead);
+      checkAverageAndTrendShareOneRuntime(handle, repository, mysql, jsonRowsRead);
     }
   }
 
@@ -244,39 +249,128 @@ class PipelineStatusPaginationSqlTest {
     assertEquals(2, jsonRowsRead.get(), "A bulk write must read only the rows it can overwrite");
   }
 
-  private void checkAverageRuntimeReadsPageByPage(
-      Handle handle,
-      PipelineRepository repository,
-      boolean mysql,
-      AtomicInteger jsonRowsRead,
-      AtomicInteger largestRead) {
-    int page = PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE;
-    int runs = page + 100;
-    long now = System.currentTimeMillis();
-    var batch = handle.prepareBatch(insertStatusSql(mysql));
-    for (int run = 1; run <= runs; run++) {
-      long timestamp = now - run * 1000L;
-      long runtime = run <= page ? 100L : 1000L;
-      batch
-          .bind("fqn", FullyQualifiedName.buildHash(FQN))
-          .bind("extension", PipelineRepository.PIPELINE_STATUS_EXTENSION)
-          .bind("timestamp", timestamp)
-          .bind(
-              "json",
-              JsonUtils.pojoToJson(
-                  status(
-                      timestamp,
-                      StatusType.Successful,
-                      List.of(task("target", timestamp, timestamp + runtime)))))
-          .add();
+  /**
+   * The 30-day average and the runtime trend measure a run the same way, in SQL: the span of the
+   * tasks that have both times, else the run's own end, counted only when positive.
+   */
+  private void checkAverageAndTrendShareOneRuntime(
+      Handle handle, PipelineRepository repository, boolean mysql, AtomicInteger jsonRowsRead) {
+    handle.execute(
+        "CREATE TABLE pipeline_entity (id VARCHAR(36), fqnHash VARCHAR(256), deleted BOOLEAN, json "
+            + (mysql ? "JSON" : "JSONB")
+            + ")");
+    for (String fqn : List.of(FQN, OTHER_FQN)) {
+      handle
+          .createUpdate(
+              "INSERT INTO pipeline_entity VALUES (:id, :fqnHash, FALSE, "
+                  + (mysql ? "CAST(:json AS JSON)" : "CAST(:json AS JSONB)")
+                  + ")")
+          .bind("id", UUID.randomUUID().toString())
+          .bind("fqnHash", FullyQualifiedName.buildHash(fqn))
+          .bind("json", "{}")
+          .execute();
     }
-    batch.execute();
+    // Within ten seconds of 12:07:30 UTC two days ago: inside the 30-day window, and on one trend
+    // date in any session time zone, since every UTC offset is a whole number of quarter hours.
+    long day =
+        Instant.now()
+            .truncatedTo(ChronoUnit.DAYS)
+            .minus(Duration.ofDays(2))
+            .plus(Duration.parse("PT12H7M30S"))
+            .toEpochMilli();
+    String extension = PipelineRepository.PIPELINE_STATUS_EXTENSION;
+    insert(
+        handle,
+        mysql,
+        FQN,
+        extension,
+        status(
+            day,
+            StatusType.Successful,
+            List.of(task("a", 10L, 110L), task("b", -1000L, null), task("c", null, 9000L))));
+    insert(
+        handle,
+        mysql,
+        FQN,
+        extension,
+        status(day + 1000, StatusType.Failed, List.of(task("a", 20L, null), task("b", null, 70L)))
+            .withEndTime(day + 1060));
+    insert(
+        handle,
+        mysql,
+        FQN,
+        extension,
+        status(day + 2000, StatusType.Successful, null).withEndTime(day + 2040));
+    insert(
+        handle,
+        mysql,
+        FQN,
+        extension,
+        status(day + 3000, StatusType.Successful, null).withEndTime(day + 3000));
+    insert(
+        handle,
+        mysql,
+        FQN,
+        extension,
+        status(day + 4000, StatusType.Successful, null).withEndTime(day + 3000));
+    insert(
+        handle,
+        mysql,
+        FQN,
+        extension,
+        status(day + 5000, StatusType.Failed, List.of(task("a", 100L, 90L)))
+            .withEndTime(day + 5500));
+    insert(
+        handle,
+        mysql,
+        FQN,
+        extension,
+        status(day + 6000, StatusType.Successful, List.of(task("a", 5L, 5L)))
+            .withEndTime(day + 6700));
+    insert(handle, mysql, FQN, extension, status(day + 7000, StatusType.Successful, null));
+    insert(
+        handle,
+        mysql,
+        FQN,
+        extension,
+        status(day - Duration.ofDays(29).toMillis(), StatusType.Successful, null)
+            .withEndTime(day + 100_000));
+    insert(
+        handle,
+        mysql,
+        OTHER_FQN,
+        extension,
+        status(day + 500, StatusType.Successful, null).withEndTime(day + 100_000));
+    insert(
+        handle,
+        mysql,
+        FQN,
+        "other.extension",
+        status(day + 600, StatusType.Successful, null).withEndTime(day + 100_000));
+
     jsonRowsRead.set(0);
-    largestRead.set(0);
-    assertEquals(
-        (page * 100.0 + 100 * 1000.0) / runs, repository.calculateAverageRuntime(FQN), 1e-9);
-    assertEquals(runs, jsonRowsRead.get(), "The average must cover every run of the window");
-    assertEquals(page, largestRead.get(), "No read of the window may hold more than one page");
+    double average = (100 + 60 + 40) / 3.0;
+    assertEquals(average, repository.calculateAverageRuntime(FQN), 1e-9);
+    PipelineRuntimeTrendList trend =
+        repository.getPipelineRuntimeTrend(
+            day - 1000, day + 10_000, FQN, null, null, null, null, null, null, null, null);
+    assertEquals(1, trend.getData().size(), String.valueOf(trend.getErrorMessage()));
+    PipelineRuntimeTrend runs = trend.getData().getFirst();
+    assertEquals(average, runs.getAvgRuntime(), 1e-9);
+    assertEquals(40.0, runs.getMinRuntime(), 1e-9);
+    assertEquals(100.0, runs.getMaxRuntime(), 1e-9);
+    assertEquals(0, jsonRowsRead.get(), "Runtimes are aggregated in the database");
+  }
+
+  private static void insert(
+      Handle handle, boolean mysql, String fqn, String extension, PipelineStatus status) {
+    handle
+        .createUpdate(insertStatusSql(mysql))
+        .bind("fqn", FullyQualifiedName.buildHash(fqn))
+        .bind("extension", extension)
+        .bind("timestamp", status.getTimestamp())
+        .bind("json", JsonUtils.pojoToJson(status))
+        .execute();
   }
 
   private void checkLargeHistory(
@@ -322,11 +416,8 @@ class PipelineStatusPaginationSqlTest {
         + ")";
   }
 
-  /** Counts the JSON rows read in total, and the most any single result set returned. */
-  private static <T> T trackJsonRows(
-      Class<T> type, T target, AtomicInteger jsonRowsRead, AtomicInteger largestRead) {
+  private static <T> T trackJsonRows(Class<T> type, T target, AtomicInteger jsonRowsRead) {
     AtomicBoolean rowCounted = new AtomicBoolean();
-    AtomicInteger rowsInResult = new AtomicInteger();
     return type.cast(
         Proxy.newProxyInstance(
             type.getClassLoader(),
@@ -339,10 +430,10 @@ class PipelineStatusPaginationSqlTest {
                 throw e.getCause();
               }
               if (result instanceof PreparedStatement statement) {
-                return trackJsonRows(PreparedStatement.class, statement, jsonRowsRead, largestRead);
+                return trackJsonRows(PreparedStatement.class, statement, jsonRowsRead);
               }
               if (result instanceof ResultSet resultSet) {
-                return trackJsonRows(ResultSet.class, resultSet, jsonRowsRead, largestRead);
+                return trackJsonRows(ResultSet.class, resultSet, jsonRowsRead);
               }
               if (target instanceof ResultSet resultSet) {
                 if ("next".equals(method.getName())) {
@@ -351,7 +442,6 @@ class PipelineStatusPaginationSqlTest {
                     && isJsonColumn(resultSet, arguments[0])
                     && rowCounted.compareAndSet(false, true)) {
                   jsonRowsRead.incrementAndGet();
-                  largestRead.accumulateAndGet(rowsInResult.incrementAndGet(), Math::max);
                 }
               }
               return result;
@@ -367,9 +457,12 @@ class PipelineStatusPaginationSqlTest {
   }
 
   private void seed(Handle handle, boolean mysql) {
+    // timestamp is unsigned on MySQL, as in production, so arithmetic on it follows MySQL's
+    // unsigned
+    // rules here too.
     handle.execute(
-        "CREATE TABLE entity_extension_time_series (entityFQNHash VARCHAR(256), extension VARCHAR(256), timestamp BIGINT, json "
-            + (mysql ? "JSON" : "JSONB")
+        "CREATE TABLE entity_extension_time_series (entityFQNHash VARCHAR(256), extension VARCHAR(256), timestamp "
+            + (mysql ? "BIGINT UNSIGNED, json JSON" : "BIGINT, json JSONB")
             + ", PRIMARY KEY(entityFQNHash, extension, timestamp))");
     List<PipelineStatus> statuses =
         List.of(
@@ -400,7 +493,7 @@ class PipelineStatusPaginationSqlTest {
     }
     handle
         .createUpdate(sql)
-        .bind("fqn", FullyQualifiedName.buildHash("other_pipeline"))
+        .bind("fqn", FullyQualifiedName.buildHash(OTHER_FQN))
         .bind("extension", PipelineRepository.PIPELINE_STATUS_EXTENSION)
         .bind("timestamp", 1000L)
         .bind(
