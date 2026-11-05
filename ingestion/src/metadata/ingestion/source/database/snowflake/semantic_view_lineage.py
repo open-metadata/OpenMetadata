@@ -58,10 +58,12 @@ ViewKey = tuple[str, str]
 # is not unique -- Snowflake declares every object as ``<table_alias>.<name>``.
 SemanticKey = tuple[str, str]
 
-# A comment, a string literal or a double-quoted identifier, scanned together so none
-# is read inside another. ``$$`` inside a name such as ``A$$B`` does not open a string.
+# A comment, a string literal with any type prefix (``DATE '...'``) or a quoted identifier,
+# scanned together so none is read inside another. ``A$$B`` is a name, not a string.
 _LITERAL_OR_QUOTED_RE = re.compile(
-    r"/\*.*?\*/|(?:--|//)[^\n]*|'(?:[^'\\]|\\.|'')*'|(?<![\w$])\$\$.*?\$\$|\"(?:[^\"]|\"\")*\"",
+    r"/\*.*?\*/|(?:--|//)[^\n]*"
+    r"|(?:(?<![\w$.])(?i:DATE|TIME|TIMESTAMP(?:_[LNT]?TZ)?)\s*)?'(?:[^'\\]|\\.|'')*'"
+    r"|(?<![\w$])\$\$.*?\$\$|\"(?:[^\"]|\"\")*\"",
     re.DOTALL,
 )
 # A single identifier segment once each quoted identifier is masked as ``\0<n>\0``.

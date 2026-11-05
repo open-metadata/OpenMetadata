@@ -111,6 +111,10 @@ def test_extract_column_refs_returns_unqualified_names_without_a_table():
         ("o", "B"),
     ]
     assert extract_column_refs("o.AMOUNT // COMMENTCOL\n + o.B || 'http://x'") == [("o", "AMOUNT"), ("o", "B")]
+    # a typed literal's type is not a column, but a column with that name still is
+    assert extract_column_refs(
+        "CASE WHEN o.SHIP_DATE >= DATE '2026-01-01' AND TIMESTAMP_NTZ '2026-01-01 00:00' < ts THEN o.DATE END"
+    ) == [("o", "SHIP_DATE"), ("o", "DATE"), (None, "ts")]
 
 
 # Snowflake's normal form: each object's expression is relative to its own logical table.
@@ -347,8 +351,11 @@ def _table(name: str, columns: list[str]) -> Table:
 def test_column_lineage_ignores_names_that_are_not_column_references():
     """Each trap names a column that really exists on the base table, so only the
     extractor stands between it and a wrong lineage entry."""
-    base = _table("ORDERS_TBL", ["AMOUNT", "A$$B", "C$$D", "A", "D", "PRECISION", "COMMENTCOL"])
-    view = _table("SALES_ANALYSIS", ["DOLLAR_NAMES", "AMOUNT_DP", "COMMENTED"])
+    base = _table(
+        "ORDERS_TBL",
+        ["AMOUNT", "A$$B", "C$$D", "A", "D", "PRECISION", "COMMENTCOL", "SHIP_DATE", "DATE", "TIMESTAMP"],
+    )
+    view = _table("SALES_ANALYSIS", ["DOLLAR_NAMES", "AMOUNT_DP", "COMMENTED", "SHIPPED_THIS_YEAR", "ORDER_DATE"])
     columns = {
         ("O", "DOLLAR_NAMES"): {"logical_table": "O", "expression": "o.A$$B + o.C$$D"},
         ("O", "AMOUNT_DP"): {"logical_table": "O", "expression": "CAST(o.AMOUNT AS DOUBLE PRECISION)"},
@@ -356,6 +363,11 @@ def test_column_lineage_ignores_names_that_are_not_column_references():
             "logical_table": "O",
             "expression": "o.AMOUNT /* COMMENTCOL */ -- COMMENTCOL\n // COMMENTCOL",
         },
+        ("O", "SHIPPED_THIS_YEAR"): {
+            "logical_table": "O",
+            "expression": "CASE WHEN o.SHIP_DATE >= DATE '2026-01-01' AND TIMESTAMP '2026-01-01' < NOW() THEN 1 END",
+        },
+        ("O", "ORDER_DATE"): {"logical_table": "O", "expression": "o.DATE"},
     }
     extractor = _extractor()
     extractor.resolve_table_by_fqn = MagicMock(
@@ -370,7 +382,13 @@ def test_column_lineage_ignores_names_that_are_not_column_references():
         c.toColumn.root.split(".")[-1]: sorted(f.root.split(".")[-1] for f in c.fromColumns)
         for c in request.right.edge.lineageDetails.columnsLineage
     }
-    assert lineage == {"DOLLAR_NAMES": ["A$$B", "C$$D"], "AMOUNT_DP": ["AMOUNT"], "COMMENTED": ["AMOUNT"]}
+    assert lineage == {
+        "DOLLAR_NAMES": ["A$$B", "C$$D"],
+        "AMOUNT_DP": ["AMOUNT"],
+        "COMMENTED": ["AMOUNT"],
+        "SHIPPED_THIS_YEAR": ["SHIP_DATE"],
+        "ORDER_DATE": ["DATE"],
+    }
 
 
 def test_iter_database_lineage_emits_table_level_edge_without_columns():
