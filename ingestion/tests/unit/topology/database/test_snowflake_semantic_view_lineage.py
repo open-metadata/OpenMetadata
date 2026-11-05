@@ -110,6 +110,7 @@ def test_extract_column_refs_returns_unqualified_names_without_a_table():
         ("o", "AMOUNT"),
         ("o", "B"),
     ]
+    assert extract_column_refs("o.AMOUNT // COMMENTCOL\n + o.B || 'http://x'") == [("o", "AMOUNT"), ("o", "B")]
 
 
 # Snowflake's normal form: each object's expression is relative to its own logical table.
@@ -351,7 +352,10 @@ def test_column_lineage_ignores_names_that_are_not_column_references():
     columns = {
         ("O", "DOLLAR_NAMES"): {"logical_table": "O", "expression": "o.A$$B + o.C$$D"},
         ("O", "AMOUNT_DP"): {"logical_table": "O", "expression": "CAST(o.AMOUNT AS DOUBLE PRECISION)"},
-        ("O", "COMMENTED"): {"logical_table": "O", "expression": "o.AMOUNT /* COMMENTCOL */ -- COMMENTCOL"},
+        ("O", "COMMENTED"): {
+            "logical_table": "O",
+            "expression": "o.AMOUNT /* COMMENTCOL */ -- COMMENTCOL\n // COMMENTCOL",
+        },
     }
     extractor = _extractor()
     extractor.resolve_table_by_fqn = MagicMock(
