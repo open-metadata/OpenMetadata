@@ -86,7 +86,9 @@ import org.openmetadata.service.monitoring.ServiceProgressStreamer;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.DBSecretsManager;
+import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -743,50 +745,110 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected void store(IngestionPipeline pipeline, boolean update, Double expectedVersion) {
-    IngestionPipeline original = update ? lockStoredPipeline(pipeline) : null;
-    super.store(pipeline, update, expectedVersion);
-    if (original != null) {
-      scheduleMapSecretCleanup(original);
-    }
+    writeWithSecretOwnership(
+        List.of(pipeline),
+        update,
+        () -> {
+          super.store(pipeline, update, expectedVersion);
+        });
+  }
+
+  @Override
+  protected void storeMany(List<IngestionPipeline> pipelines) {
+    writeWithSecretOwnership(
+        pipelines,
+        false,
+        () -> {
+          super.storeMany(pipelines);
+        });
   }
 
   @Override
   protected void updateMany(List<IngestionPipeline> pipelines) {
+    writeWithSecretOwnership(
+        pipelines,
+        true,
+        () -> {
+          super.updateMany(pipelines);
+        });
+  }
+
+  private SecretInventory secretInventory(SecretsManager manager, IngestionPipeline entity) {
+    return manager.secretInventory(entity);
+  }
+
+  private void writeWithSecretOwnership(
+      List<IngestionPipeline> entities, boolean update, Runnable write) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      write.run();
+      return;
+    }
+    List<SecretInventory> inputs =
+        entities.stream().map(entity -> secretInventory(manager, entity)).toList();
     executeInTransaction(
         () -> {
-          List<IngestionPipeline> originals =
-              pipelines.stream().map(this::lockStoredPipeline).toList();
-          super.updateMany(pipelines);
-          for (int i = 0; i < pipelines.size(); i++) {
-            if (originals.get(i) != null) {
-              scheduleMapSecretCleanup(originals.get(i));
-            }
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          List<SecretInventory> originals =
+              entities.stream()
+                  .map(
+                      entity ->
+                          update
+                              ? secretInventory(manager, lockStoredForSecretWrite(entity))
+                              : null)
+                  .toList();
+          SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
+          write.run();
+          for (int i = 0; i < entities.size(); i++) {
+            IngestionPipeline entity = entities.get(i);
+            ownership.recordWrite(
+                entity.getId(), originals.get(i), inputs.get(i), secretInventory(manager, entity));
+            String root = inputs.get(i).root();
+            PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
           }
           return null;
         });
   }
 
-  private void scheduleMapSecretCleanup(IngestionPipeline original) {
-    PostCommitActionQueue.runOrDefer(
-        () ->
-            executeInTransaction(
-                () -> {
-                  IngestionPipeline current = lockStoredPipeline(original);
-                  if (current != null) {
-                    SecretsManagerFactory.getSecretsManager()
-                        .deleteRemovedMapSecrets(original, current);
-                  }
-                  return null;
-                }));
+  private IngestionPipeline lockStoredForSecretWrite(IngestionPipeline entity) {
+    String stored = dao.findJsonByIdForUpdate(entity.getId(), Include.ALL);
+    if (stored == null) {
+      throw EntityNotFoundException.byId(entity.getId().toString());
+    }
+    return JsonUtils.readValue(stored, IngestionPipeline.class);
   }
 
-  private IngestionPipeline lockStoredPipeline(IngestionPipeline pipeline) {
+  private void cleanOwnedSecrets(SecretsManager manager, String root) {
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          ownership.clean(root);
+          return null;
+        });
+  }
+
+  private void scheduleSecretDeletion(IngestionPipeline entity) {
     SecretsManager manager = SecretsManagerFactory.getSecretsManager();
     if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
-      return null;
+      return;
     }
-    String stored = dao.findJsonByIdForUpdate(pipeline.getId(), Include.ALL);
-    return stored == null ? null : JsonUtils.readValue(stored, IngestionPipeline.class);
+    SecretInventory deleted = secretInventory(manager, entity);
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          executeInTransaction(
+              () -> {
+                SecretMapOwnership ownership =
+                    new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+                ownership.lock();
+                ownership.removeOwner(entity.getId(), deleted);
+                return null;
+              });
+          cleanOwnedSecrets(manager, deleted.root());
+        });
   }
 
   @Override
@@ -875,6 +937,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    */
   private boolean postDelete(
       IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
+    if (hardDelete) {
+      scheduleSecretDeletion(entity);
+    }
     super.postDelete(entity, hardDelete);
     boolean wasRunnerCleanupSkipped = false;
     if (hardDelete) {

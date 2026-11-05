@@ -63,6 +63,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.secrets.DBSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -94,6 +95,7 @@ class EntityRepositorySecretStorageTest {
             new SecretsManager.SecretsConfig("secret-storage-test", "", List.of(), null)));
     Fernet.getInstance().setFernetKey("jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=");
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.entityExtensionDAO()).thenReturn(mock(EntityExtensionDAO.class));
     when(collectionDAO.inTransaction(
             ArgumentMatchers.<TransactionalCallback<Object, CollectionDAO, RuntimeException>>any()))
         .thenAnswer(
@@ -105,6 +107,8 @@ class EntityRepositorySecretStorageTest {
     when(collectionDAO.ingestionPipelineDAO()).thenReturn(pipelineDAO);
     when(pipelineDAO.getTableName()).thenReturn("ingestion_pipeline_entity");
     when(pipelineDAO.getNameHashColumn()).thenReturn("nameHash");
+    when(pipelineDAO.findJsonByIdForUpdate(any(UUID.class), any()))
+        .thenAnswer(call -> storedJson.get());
     captureWrites(pipelineDAO);
     Entity.setCollectionDAO(collectionDAO);
     repository = new IngestionPipelineRepository(new OpenMetadataApplicationConfig());

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -586,8 +588,7 @@ public abstract class SecretsManager {
    * Non-string values are left alone: those maps also carry numbers and booleans that are not
    * secrets. Each entry is stored under its own secret id, derived from the map's id and the entry
    * key, so that {@code deleteSecrets} derives the same id for the same entry. An empty entry is
-   * kept as an empty string, a valid setting of a string-valued map, while any secret previously
-   * stored for it is removed.
+   * kept as an empty string; its backing secret is reconciled only after the entity write commits.
    */
   private void encryptSecretMapEntries(
       Map<?, ?> secretMap,
@@ -600,14 +601,14 @@ public abstract class SecretsManager {
     transformSecretMapEntries(
         secretMap,
         (entryKey, entryValue) -> {
+          String clearValue = fernet.decryptIfApplies(entryValue);
+          if (clearValue.isEmpty()) {
+            return clearValue;
+          }
           String storedValue =
-              storeValue(
-                  entryKey,
-                  fernet.decryptIfApplies(entryValue),
-                  mapSecretId,
-                  store && persistExternalSecrets);
+              storeValue(entryKey, clearValue, mapSecretId, store && persistExternalSecrets);
           String newValue = persistExternalSecrets ? storedValue : entryValue;
-          return entryValue.isEmpty() ? entryValue : encryptedForStorage(newValue, store);
+          return encryptedForStorage(newValue, store);
         });
   }
 
@@ -856,7 +857,7 @@ public abstract class SecretsManager {
 
   private void deleteSecrets(Object toDeleteSecretsFrom, String secretId) {
     visitStoredSecrets(
-        toDeleteSecretsFrom, List.of(secretId), (name, value) -> deleteStoredSecret(name), false);
+        toDeleteSecretsFrom, List.of(secretId), secret -> deleteStoredSecret(secret.name()));
   }
 
   /**
@@ -864,10 +865,7 @@ public abstract class SecretsManager {
    *     objects that enclose it
    */
   private void visitStoredSecrets(
-      Object toDeleteSecretsFrom,
-      List<String> secretIds,
-      BiConsumer<String, String> visitor,
-      boolean mapsOnly) {
+      Object toDeleteSecretsFrom, List<String> secretIds, Consumer<StoredSecret> visitor) {
     String secretId = secretIds.getLast();
     if (toDeleteSecretsFrom != null
         && !DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
@@ -886,8 +884,7 @@ public abstract class SecretsManager {
                       withNestedSecretId(
                           secretIds,
                           buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))),
-                      visitor,
-                      mapsOnly);
+                      visitor);
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                   if (obj instanceof Map<?, ?> secretMap) {
                     visitSecretMapEntries(
@@ -896,11 +893,13 @@ public abstract class SecretsManager {
                             secretIds,
                             buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))),
                         visitor);
-                  } else if (!mapsOnly) {
+                  } else {
                     visitor.accept(
-                        storedSecretName(
-                            (String) obj, secretIds, fieldName.toLowerCase(Locale.ROOT)),
-                        (String) obj);
+                        new StoredSecret(
+                            storedSecretName(
+                                (String) obj, secretIds, fieldName.toLowerCase(Locale.ROOT)),
+                            (String) obj,
+                            false));
                   }
                 } else {
                   forEachTraversableElement(
@@ -915,74 +914,96 @@ public abstract class SecretsManager {
                                       secretId,
                                       fieldName.toLowerCase(Locale.ROOT),
                                       elementKey)),
-                              visitor,
-                              mapsOnly));
+                              visitor));
                 }
               });
     }
   }
 
   private void visitSecretMapEntries(
-      Map<?, ?> secretMap, List<String> mapSecretIds, BiConsumer<String, String> visitor) {
+      Map<?, ?> secretMap, List<String> mapSecretIds, Consumer<StoredSecret> visitor) {
     secretMap.forEach(
         (key, value) -> {
           if (value instanceof String stringValue) {
             visitor.accept(
-                storedSecretName(
-                    stringValue, mapSecretIds, String.valueOf(key).toLowerCase(Locale.ROOT)),
-                stringValue);
+                new StoredSecret(
+                    storedSecretName(
+                        stringValue, mapSecretIds, String.valueOf(key).toLowerCase(Locale.ROOT)),
+                    stringValue,
+                    true));
           }
         });
   }
 
-  /** Removes dropped map credentials only after the service update has been stored. */
-  public void deleteRemovedMapSecrets(
-      ServiceEntityInterface original, ServiceEntityInterface updated, ServiceType serviceType) {
-    if (secretsManagerProvider != SecretsManagerProvider.DB) {
-      deleteRemovedMapSecrets(
-          connectionForSecretCleanup(original, serviceType),
-          connectionForSecretCleanup(updated, serviceType),
-          buildSecretId(true, serviceType.value(), original.getName()));
-    }
+  public SecretInventory secretInventory(ServiceEntityInterface service, ServiceType serviceType) {
+    Object config =
+        service.getConnection() == null || service.getConnection().getConfig() == null
+            ? null
+            : SecretsUtil.convert(
+                service.getConnection().getConfig(),
+                service.getServiceType().value(),
+                service.getName(),
+                serviceType);
+    return secretInventory(config, buildSecretId(true, serviceType.value(), service.getName()));
   }
 
-  private Object connectionForSecretCleanup(
-      ServiceEntityInterface service, ServiceType serviceType) {
-    return service.getConnection() == null || service.getConnection().getConfig() == null
-        ? null
-        : SecretsUtil.convert(
-            service.getConnection().getConfig(),
-            service.getServiceType().value(),
-            service.getName(),
-            serviceType);
+  public SecretInventory secretInventory(IngestionPipeline pipeline) {
+    IngestionPipeline typed = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
+    IngestionPipelineBuilder.addDefinedConfigForRead(typed);
+    typed.setOpenMetadataServerConnection(null);
+    return secretInventory(typed, buildSecretId(true, "pipeline", pipeline.getName()));
   }
 
-  /** Reconciles map credentials in an ingestion pipeline's source config. */
-  public void deleteRemovedMapSecrets(IngestionPipeline original, IngestionPipeline updated) {
-    if (secretsManagerProvider != SecretsManagerProvider.DB) {
-      IngestionPipeline previous = JsonUtils.deepCopy(original, IngestionPipeline.class);
-      IngestionPipeline current = JsonUtils.deepCopy(updated, IngestionPipeline.class);
-      IngestionPipelineBuilder.addDefinedConfigForRead(previous);
-      IngestionPipelineBuilder.addDefinedConfigForRead(current);
-      deleteRemovedMapSecrets(
-          previous, current, buildSecretId(true, "pipeline", original.getName()));
-    }
-  }
+  /** Local inventory only: reference targets are never fetched to establish ownership. */
+  public record SecretInventory(
+      String root,
+      Set<String> writtenMaps,
+      Set<String> storedMaps,
+      Set<String> writtenScalars,
+      Set<String> storedScalars,
+      Set<String> references) {}
+
+  private record StoredSecret(String name, String value, boolean mapEntry) {}
 
   @VisibleForTesting
-  void deleteRemovedMapSecrets(Object original, Object updated, String secretId) {
-    Map<String, String> previous = storedSecrets(original, secretId, true);
-    Map<String, String> current = storedSecrets(updated, secretId, false);
-    previous.keySet().removeAll(current.keySet());
-    // A retained entry may reference a removed key's secret; do not break that reference.
-    current.values().forEach(value -> referencedSecretName(value).ifPresent(previous::remove));
-    previous.keySet().forEach(this::deleteStoredSecret);
+  SecretInventory secretInventory(Object config, String root) {
+    Set<String> writtenMaps = new HashSet<>();
+    Set<String> storedMaps = new HashSet<>();
+    Set<String> writtenScalars = new HashSet<>();
+    Set<String> storedScalars = new HashSet<>();
+    Set<String> references = new HashSet<>();
+    visitStoredSecrets(
+        config,
+        List.of(root),
+        secret ->
+            collectSecret(
+                secret,
+                secret.mapEntry() ? writtenMaps : writtenScalars,
+                secret.mapEntry() ? storedMaps : storedScalars,
+                references));
+    return new SecretInventory(
+        root,
+        Set.copyOf(writtenMaps),
+        Set.copyOf(storedMaps),
+        Set.copyOf(writtenScalars),
+        Set.copyOf(storedScalars),
+        Set.copyOf(references));
   }
 
-  private Map<String, String> storedSecrets(Object config, String secretId, boolean mapsOnly) {
-    Map<String, String> secrets = new HashMap<>();
-    visitStoredSecrets(config, List.of(secretId), secrets::put, mapsOnly);
-    return secrets;
+  private void collectSecret(
+      StoredSecret secret, Set<String> written, Set<String> stored, Set<String> references) {
+    String clear = fernet.decryptIfApplies(secret.value());
+    if (clear.isEmpty()) {
+      return;
+    }
+    Optional<String> reference = referencedSecretName(clear);
+    reference.ifPresent(references::add);
+    if (reference.isEmpty()) {
+      written.add(secret.name());
+    }
+    if (reference.isEmpty() || reference.get().equals(secret.name())) {
+      stored.add(secret.name());
+    }
   }
 
   private static List<String> withNestedSecretId(List<String> secretIds, String nestedSecretId) {

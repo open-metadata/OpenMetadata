@@ -1,7 +1,7 @@
 # A schema property whose additionalProperties declare format: password is a map of secrets
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-04 (removed-entry cleanup)
+- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-04 (removed-entry cleanup); v3 2026-11-05 (durable ownership)
 - **Deciders:** backend security
 - **Guard:** `PasswordEntityMaskerTest`, `SecretsManagerLifecycleTest`, `KafkaConnectionMapSecretsTest`
 - **Related:** ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged, #33477 (secrets inside arrays)
@@ -66,3 +66,31 @@ update either finishes first and its credentials are retained, or waits until cl
 Approval-staged and rolled-back updates do not remove credentials. Cleanup failures are logged
 through the existing post-commit queue; they cannot roll the database back to references whose
 secrets were deleted. Secrets orphaned before this reconciliation was introduced are not recovered.
+
+## Amendment (v3, 2026-11-05)
+
+The current config cannot prove ownership after a key becomes an alias or disappears. Persist
+owned map-secret IDs and each live entity's references in `entity_extension`, keyed by the normalized
+vault namespace rather than the entity UUID. Register actual plaintext writes in the entity's
+transaction. An existing pre-ledger config seeds only same-field canonical or ancestor-path references;
+a reference supplied on a new entity never establishes ownership. Reference comparison unwraps
+Fernet locally and never fetches a vault value.
+
+A stable database mutex serializes external service/pipeline writes and reconciliation across nodes,
+including creation of a new entity that reuses a deleted entity's namespace. Cleanup reads the latest
+ownership state with `FOR UPDATE`, independent of whether the original entity row still exists.
+Retained aliases protect owned targets until their last reference disappears. Namespace records
+survive normal entity-extension deletion and are removed when no owners or pending secrets remain.
+Services and ingestion pipelines do not permit renaming their secret-path name.
+
+On hard deletion, including cascading and force pipeline deletion, commit owner removal before
+attempting vault cleanup. A cleanup failure leaves pending IDs available to the next reconciliation
+of that namespace. Scalar ownership is retained until hard deletion; normal scalar update semantics
+are unchanged. Empty map values, including Fernet-wrapped empties, bypass vault storage and only
+remove their backing credential during post-commit reconciliation. Failed entity writes therefore
+leave the original credential available.
+
+The mutex deliberately serializes low-volume service/pipeline configuration writes; a slow vault
+cleanup can delay another configuration save. There is no background cleanup retry worker: a vault
+failure requires another write/delete in the same namespace or an explicit retry. Credentials whose
+ownership was already lost before these changes cannot be reconstructed safely from a path prefix.

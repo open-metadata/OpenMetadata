@@ -41,6 +41,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.approval.MutationPlanner;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 
 @Isolated("swaps the process-wide secrets manager and repository registry")
@@ -67,6 +68,7 @@ class ServiceEntitySecretsTest {
             new SecretsManager.SecretsConfig(CLUSTER, null, List.of(), null));
     SecretsManagerFactory.setSecretsManager(vault);
     CollectionDAO collection = mock(CollectionDAO.class);
+    when(collection.entityExtensionDAO()).thenReturn(mock(EntityExtensionDAO.class));
     when(collection.inTransaction(
             ArgumentMatchers.<TransactionalCallback<Object, CollectionDAO, RuntimeException>>any()))
         .thenAnswer(
@@ -78,6 +80,8 @@ class ServiceEntitySecretsTest {
     when(dao.getEntityClass()).thenReturn(DatabaseService.class);
     when(dao.getTableName()).thenReturn("dbservice_entity");
     when(dao.getNameHashColumn()).thenReturn("nameHash");
+    when(dao.findJsonByIdForUpdate(any(UUID.class), any()))
+        .thenAnswer(call -> JsonUtils.pojoToJson(service(null).withId(call.getArgument(0))));
     recordWrites(dao);
     Entity.setCollectionDAO(collection);
     repository = new StorageRepository(dao);
