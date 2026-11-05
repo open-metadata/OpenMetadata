@@ -1352,6 +1352,7 @@ const MetricListPage = () => {
     if (selectedMetricIds.length === 0) {
       return (
         <Input
+          autoComplete="off"
           className="tw:w-full tw:sm:max-w-84"
           data-testid="metric-search"
           icon={Search}

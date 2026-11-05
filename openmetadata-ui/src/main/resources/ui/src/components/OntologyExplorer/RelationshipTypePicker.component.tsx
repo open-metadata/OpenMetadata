@@ -265,6 +265,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
       <div className="tw:border-b tw:border-secondary tw:px-3 tw:py-2">
         <Input
           aria-label={t('label.filter-relationships')}
+          autoComplete="off"
           icon={SearchInputIcon}
           inputClassName={isAiMode ? undefined : 'tw:text-xs'}
           inputDataTestId="relation-type-search"

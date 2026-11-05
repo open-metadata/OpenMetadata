@@ -1082,6 +1082,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         <Input
                           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                           autoFocus
+                          autoComplete="off"
                           className="tw:w-full"
                           icon={Search}
                           placeholder={t('label.search-entity', {

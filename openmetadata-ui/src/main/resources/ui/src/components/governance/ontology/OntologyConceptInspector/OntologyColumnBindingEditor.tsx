@@ -195,6 +195,7 @@ const OntologyColumnBindingEditor = ({
         aria-label={t('label.search-entity', {
           entity: t('label.column-plural'),
         })}
+        autoComplete="off"
         icon={Search}
         inputDataTestId="ontology-binding-column-search"
         size="sm"
