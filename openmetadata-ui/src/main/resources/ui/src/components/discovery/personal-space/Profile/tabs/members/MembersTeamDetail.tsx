@@ -38,7 +38,6 @@ import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   ROUTES,
 } from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
@@ -57,6 +56,7 @@ import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { usePageSizeState } from '../../../../../../hooks/paging/usePageSizeState';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -188,10 +188,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   // The team menu lives in the page header; the delete popover anchors to it.
   const teamMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  // Sub-team paging is local, not `usePaging`: that hook keeps its page in URL
-  // params the Users tab already uses, and most team types show both tabs.
+  // The sub-team page is local, not `usePaging`: that hook keeps its page in URL
+  // params the Users tab already uses, and most team types show both tabs. The
+  // page size is the saved one, so a pick here also resizes the Users tab.
   const [teamsPage, setTeamsPage] = useState(INITIAL_PAGING_VALUE);
-  const [teamsPageSize, setTeamsPageSize] = useState(PAGE_SIZE);
+  const [teamsPageSize, setTeamsPageSize] = usePageSizeState();
   const [teamsPaging, setTeamsPaging] = useState<Paging>({ total: 0 });
   // Kept apart from `teamsPaging`, whose total labels the tab with every sub-team.
   const [teamsSearchTotal, setTeamsSearchTotal] = useState(0);
