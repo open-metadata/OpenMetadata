@@ -45,7 +45,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import org.openmetadata.schema.api.ai.CreateMcpServer;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.ai.McpServer;
@@ -60,6 +62,7 @@ import org.openmetadata.service.jdbi3.McpServerRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.security.Authorizer;
 
 @Path("/v1/mcpServers")
@@ -81,7 +84,12 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
   public McpServer addHref(UriInfo uriInfo, McpServer mcpServer) {
     super.addHref(uriInfo, mcpServer);
     Entity.withHref(uriInfo, mcpServer.getUsedByApplications());
-    return mcpServer;
+    return McpServerMasker.mask(mcpServer);
+  }
+
+  @Override
+  protected Optional<UnaryOperator<McpServer>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(McpServerMasker::mask);
   }
 
   public McpServerResource(Authorizer authorizer, Limits limits) {
@@ -379,7 +387,8 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return addFollowerInternal(securityContext, id, userId);
+    return withRedactedEntity(
+        addFollowerInternal(securityContext, id, userId), McpServerMasker::mask);
   }
 
   @DELETE
@@ -408,7 +417,8 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return deleteFollowerInternal(securityContext, id, userId);
+    return withRedactedEntity(
+        deleteFollowerInternal(securityContext, id, userId), McpServerMasker::mask);
   }
 
   @GET

@@ -11,19 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Check, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isString } from 'lodash';
-import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React from 'react';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { SettledStatus } from '../enums/Axios.enum';
@@ -41,8 +32,6 @@ import {
 } from '../rest/tagAPI';
 import { getEntityName } from './EntityNameUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
-import { t } from './i18next/LocalUtil';
-import { getTagDisplay } from './TagsPureUtils';
 
 export const getClassifications = async (
   fields?: Array<string> | string,
@@ -146,56 +135,13 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return (
-        <Check className="tw:shrink-0" data-testid="check-outline" size={14} />
-      );
+      return <Check data-icon data-testid="check-outline" />;
     }
 
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
-};
-
-export const tagRender = (customTagProps: CustomTagProps) => {
-  const { label, onClose } = customTagProps;
-  const tagLabel = isString(label) ? getTagDisplay(label) : label;
-
-  const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
-  return (
-    <Badge
-      className="tw:gap-1 text-sm m-r-xss m-y-2"
-      color="gray"
-      data-testid={`selected-tag-${tagLabel}`}
-      size="sm"
-      type="color"
-      onMouseDown={onPreventMouseDown}>
-      <Tooltip
-        arrow
-        excludeTriggerFromTabOrder
-        delay={1500}
-        placement="top left"
-        title={getTagTooltip(label as string)}
-        triggerClassName="tw:inline-flex cursor-pointer">
-        <Typography
-          as="p"
-          className="m-0 d-inline-block break-all whitespace-normal">
-          {tagLabel}
-        </Typography>
-      </Tooltip>
-      <button
-        aria-label={t('label.remove')}
-        className="tw:flex tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary"
-        type="button"
-        onClick={onClose}>
-        <XClose data-testid="remove-tags" height={8} width={8} />
-      </button>
-    </Badge>
-  );
+  return <Trash01 data-icon data-testid="delete-icon" />;
 };
 
 export const fetchGlossaryList = async (

@@ -71,7 +71,6 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
       {showArrows && (
         <ButtonUtility
           className="carousel-arrow"
-          color="tertiary"
           data-testid="prev-slide"
           icon={ChevronLeft}
           isDisabled={avatarList.length <= 1 || currentSlide <= 0}
@@ -96,7 +95,6 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
       {showArrows && (
         <ButtonUtility
           className="carousel-arrow"
-          color="tertiary"
           data-testid="next-slide"
           icon={ChevronRight}
           isDisabled={

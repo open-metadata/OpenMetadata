@@ -1946,7 +1946,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       tabs.push({
-        name: t('label.data-model'),
+        name: t('label.data-model-plural'),
         key: EntityTabs.DATA_Model,
         count: dataModelPaging.total,
         children: (

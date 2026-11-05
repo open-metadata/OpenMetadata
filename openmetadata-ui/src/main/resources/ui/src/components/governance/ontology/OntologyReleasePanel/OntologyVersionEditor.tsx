@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { nextSemanticVersion } from './OntologyReleasePanel.utils';
 
 interface OntologyVersionEditorProps {
@@ -40,6 +41,66 @@ const OntologyVersionEditor = ({
   onNotesChange,
 }: OntologyVersionEditorProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const handleBumpChange = (value: string) => {
+    const selected = Object.values(VersionBump).find(
+      (candidate) => candidate === value
+    );
+    if (selected) {
+      onBumpChange(selected);
+    }
+  };
+  const bumpOptions = [VersionBump.Patch, VersionBump.Minor, VersionBump.Major];
+  const notesField = (
+    <TextArea
+      hideRequiredIndicator
+      data-testid="ontology-release-notes"
+      isDisabled={isDisabled}
+      label={t('label.release-notes')}
+      maxLength={16384}
+      rows={4}
+      value={notes}
+      onChange={onNotesChange}
+    />
+  );
+
+  if (isAiMode) {
+    return (
+      <>
+        <Card size="sm">
+          <Card.Content>
+            <Box direction="col" gap={3}>
+              <Typography as="h3" size="text-sm" weight="semibold">
+                {t('label.version')}
+              </Typography>
+              <RadioGroup
+                aria-label={t('label.version')}
+                className="tw:gap-2"
+                isDisabled={isDisabled}
+                value={bump}
+                onChange={handleBumpChange}>
+                {bumpOptions.map((option) => (
+                  <RadioButton
+                    data-testid={`ontology-version-${option}`}
+                    hint={t(`message.ontology-version-${option}`)}
+                    key={option}
+                    label={`${t(
+                      `label.version-${option}`
+                    )} · ${nextSemanticVersion(baseVersion, option)}`}
+                    value={option}
+                    variant="card"
+                  />
+                ))}
+              </RadioGroup>
+            </Box>
+          </Card.Content>
+        </Card>
+        <Card size="sm">
+          <Card.Content>{notesField}</Card.Content>
+        </Card>
+      </>
+    );
+  }
 
   return (
     <Box direction="col" gap={4}>
@@ -50,44 +111,26 @@ const OntologyVersionEditor = ({
         aria-label={t('label.version')}
         isDisabled={isDisabled}
         value={bump}
-        onChange={(value) => {
-          const selected = Object.values(VersionBump).find(
-            (candidate) => candidate === value
-          );
-          if (selected) {
-            onBumpChange(selected);
-          }
-        }}>
+        onChange={handleBumpChange}>
         <div className="tw:grid tw:grid-cols-1 tw:gap-2 tw:sm:grid-cols-3">
-          {[VersionBump.Patch, VersionBump.Minor, VersionBump.Major].map(
-            (option) => (
-              <Card isSelected={bump === option} key={option} size="sm">
-                <Card.Content>
-                  <RadioButton
-                    data-testid={`ontology-version-${option}`}
-                    hint={nextSemanticVersion(baseVersion, option)}
-                    label={t(`label.version-${option}`)}
-                    value={option}
-                  />
-                  <Typography color="secondary" size="text-xs">
-                    {t(`message.ontology-version-${option}`)}
-                  </Typography>
-                </Card.Content>
-              </Card>
-            )
-          )}
+          {bumpOptions.map((option) => (
+            <Card isSelected={bump === option} key={option} size="sm">
+              <Card.Content>
+                <RadioButton
+                  data-testid={`ontology-version-${option}`}
+                  hint={nextSemanticVersion(baseVersion, option)}
+                  label={t(`label.version-${option}`)}
+                  value={option}
+                />
+                <Typography color="secondary" size="text-xs">
+                  {t(`message.ontology-version-${option}`)}
+                </Typography>
+              </Card.Content>
+            </Card>
+          ))}
         </div>
       </RadioGroup>
-      <TextArea
-        hideRequiredIndicator
-        data-testid="ontology-release-notes"
-        isDisabled={isDisabled}
-        label={t('label.release-notes')}
-        maxLength={16384}
-        rows={4}
-        value={notes}
-        onChange={onNotesChange}
-      />
+      {notesField}
     </Box>
   );
 };

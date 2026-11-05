@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  FeaturedIcon,
+  PageHeader,
+} from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   ChevronDown,
@@ -617,28 +622,27 @@ const GlossaryHeader = ({
     [selectedData.votes, currentUser]
   );
 
-  const icon = useMemo(() => {
-    if (isGlossary) {
-      return (
-        <GlossaryIcon className="align-middle tw:text-quaternary" size={36} />
-      );
-    }
-
-    return (
-      <EntityStyleIcon
-        className="align-middle"
-        fallback={
-          <GlossaryTermIcon
-            className="align-middle tw:text-quaternary"
-            size={36}
-          />
+  const icon = useMemo(
+    () => (
+      <FeaturedIcon
+        color="gray"
+        icon={
+          isGlossary ? (
+            GlossaryIcon
+          ) : (
+            <EntityStyleIcon
+              fallback={<GlossaryTermIcon size={20} />}
+              iconValue={selectedData.style?.iconURL}
+              size={20}
+            />
+          )
         }
-        iconValue={selectedData.style?.iconURL}
-        imageClassName="align-middle object-contain"
-        size={36}
+        size="md"
+        theme="surface"
       />
-    );
-  }, [selectedData, isGlossary]);
+    ),
+    [selectedData, isGlossary]
+  );
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? selectedData : undefined);

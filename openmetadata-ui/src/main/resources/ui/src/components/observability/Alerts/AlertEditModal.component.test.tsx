@@ -276,6 +276,23 @@ describe('AlertEditModal', () => {
     );
   });
 
+  it('renders the shared drawer header with the title and the alerts description', () => {
+    render(<AlertEditModal isOpen onClose={jest.fn()} onSaved={jest.fn()} />);
+
+    const header = screen.getByRole('banner');
+
+    expect(header).toContainElement(screen.getByTestId('form-heading'));
+    expect(screen.getByTestId('form-heading')).toHaveTextContent(
+      'label.edit-entity'
+    );
+    expect(header).toContainElement(
+      screen.getByText('message.alerts-description')
+    );
+    expect(header).toContainElement(
+      screen.getByRole('switch', { name: 'label.show-hint' })
+    );
+  });
+
   it('keeps the Show Hint toggle and the AI form on the same show hint state', async () => {
     render(<AlertEditModal isOpen onClose={jest.fn()} onSaved={jest.fn()} />);
 

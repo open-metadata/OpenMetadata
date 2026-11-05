@@ -206,7 +206,8 @@ const MarketplaceDataProductsWidget = ({
     return (
       <div
         className="marketplace-widget-section tw:bg-surface"
-        data-testid="marketplace-dp-widget">
+        data-testid="marketplace-dp-widget"
+        data-tour-step="data-marketplace">
         <Loader size="small" />
       </div>
     );
@@ -215,7 +216,8 @@ const MarketplaceDataProductsWidget = ({
   return (
     <div
       className="marketplace-widget-section tw:bg-surface"
-      data-testid="marketplace-dp-widget">
+      data-testid="marketplace-dp-widget"
+      data-tour-step="data-marketplace">
       <div className="marketplace-widget-header">
         <div>
           <Typography
@@ -242,8 +244,9 @@ const MarketplaceDataProductsWidget = ({
               <Button
                 color="secondary"
                 data-testid="add-data-product-btn"
+                iconLeading={Plus}
                 onPress={openDrawer}>
-                + {t('label.add-entity', { entity: t('label.data-product') })}
+                {t('label.add-entity', { entity: t('label.data-product') })}
               </Button>
             )}
             {totalCount > DISPLAY_COUNT && (

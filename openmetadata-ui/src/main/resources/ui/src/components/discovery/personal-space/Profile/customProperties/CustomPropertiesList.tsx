@@ -38,6 +38,8 @@ interface CustomPropertiesListProps extends CustomPropertyEditorOptions {
   isLoading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** `default` when rendered inside another muted container (cards never nest muted-in-muted). */
+  cardVariant?: 'default' | 'muted';
 }
 
 /** A settings-modal Custom Properties tab: every property, searchable and sortable, edited in place. */
@@ -47,6 +49,7 @@ const CustomPropertiesList = ({
   isLoading: isEntityLoading,
   emptyTitle,
   emptyDescription,
+  cardVariant = 'muted',
   ...editorOptions
 }: CustomPropertiesListProps) => {
   const { t } = useTranslation();
@@ -124,7 +127,7 @@ const CustomPropertiesList = ({
       {visibleProperties.length ? (
         <Card
           className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
-          variant="muted">
+          variant={cardVariant}>
           {visibleProperties.map((property) => (
             <CustomPropertyRow
               canEdit={canEdit}

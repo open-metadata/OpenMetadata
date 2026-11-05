@@ -145,6 +145,47 @@ export async function seedLineageAndSharedInfra(
     })
   );
 
+  // A searchable document does not mean its lineage edge is searchable: the
+  // edge is written to the downstream document separately. The CI fixture
+  // copies the search data as it is now, so wait until the lineage API, which
+  // reads from search, returns every seeded entity below the root.
+  // ADR:2026-10-26-local-docker-stacks-reindex-on-demand-only
+  const downstreamIds = [depth1, ...depth2].map(
+    (entity) => entity.entityResponseData.id
+  );
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get('/api/v1/lineage/getLineage', {
+          params: {
+            fqn: root.entityResponseData.fullyQualifiedName ?? '',
+            type: getEntityTypeSearchIndexMapping(root.type),
+            upstreamDepth: 0,
+            downstreamDepth: 2,
+          },
+        });
+        // expect.poll does not retry a callback that throws, so a transient
+        // error is reported as a value and polled through.
+        if (!response.ok()) {
+          return [`getLineage HTTP ${response.status()}`];
+        }
+        const { nodes = {} } = (await response.json()) as {
+          nodes?: Record<string, { entity?: { id?: string } }>;
+        };
+        const lineageIds = new Set(
+          Object.values(nodes).map((node) => node.entity?.id)
+        );
+
+        return downstreamIds.filter((id) => !lineageIds.has(id));
+      },
+      {
+        message: 'seeded entities missing from the root lineage',
+        intervals: [1_000, 2_000, 5_000],
+        timeout: 120_000,
+      }
+    )
+    .toEqual([]);
+
   expect(root.entityResponseData.id).toBeTruthy();
   LineageDataClass.saveResponseData();
   SharedInfra.saveResponseData();
