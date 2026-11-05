@@ -32,7 +32,11 @@ export const openAiProfile = async (
   await enableAiAppMode(page);
   await redirectToHomePage(page);
 
-  await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+  // The trigger is the AI shell's first paint, which can exceed the 15s
+  // default under CPU contention (see inbox.ts).
+  await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible({
+    timeout: AI_SHELL_TIMEOUT,
+  });
 
   await page.getByTestId('ask-ai-user-menu-trigger').click();
   await page.getByTestId('ai-user-menu-profile').click();
