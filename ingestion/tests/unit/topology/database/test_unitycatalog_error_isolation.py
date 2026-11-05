@@ -36,6 +36,8 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.api.step import WorkflowFatalError
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
 
 mock_unitycatalog_config = {
@@ -153,6 +155,7 @@ class TestListingErrorIsolation:
         assert "503 Service Unavailable" in uc_source.status.failures[0].error
 
     def test_schema_listing_failure_keeps_prior_schemas(self, uc_source):
+        uc_source.service_connection.databaseSchema = None
         uc_source.client.schemas.list.return_value = _raising_listing(
             [
                 SchemaInfo(catalog_name="hive_metastore", name="schema1"),
@@ -188,6 +191,95 @@ class TestListingErrorIsolation:
         assert tables == [("t1", TableType.Regular), ("t2", TableType.Regular)]
         assert len(uc_source.status.failures) == 1
         assert uc_source.status.failures[0].name == "tables in schema [hive_metastore.default]"
+
+
+SCHEMA_SCOPE = {"databaseSchema": "local_unitycatalog.hive_metastore.default"}
+
+
+class TestStaleCleanupAfterFailedListing:
+    """A listing that failed partway is not a full view of the source: what it did not
+    reach was not seen, and must not be soft-deleted as if it were gone."""
+
+    @pytest.fixture(autouse=True)
+    def _server(self, uc_source):
+        uc_source.metadata = MagicMock()
+        uc_source.metadata.es_search_from_fqn.return_value = None
+        uc_source.client.schemas.get.return_value = SchemaInfo(catalog_name="hive_metastore", name="default")
+
+    @staticmethod
+    def _stale_cleanup_scopes(uc_source, cleanup):
+        list(cleanup())
+        return [call.kwargs["scope_params"] for call in uc_source.metadata.delete_stale_entities.call_args_list]
+
+    def test_complete_table_listing_runs_stale_table_cleanup(self, uc_source):
+        uc_source.client.api_client.do = MagicMock(return_value={"tables": [{"name": "t1", "table_type": "MANAGED"}]})
+
+        list(uc_source.get_tables_name_and_type())
+
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_tables_as_deleted) == [SCHEMA_SCOPE]
+
+    def test_failed_table_page_skips_stale_table_cleanup_of_its_schema(self, uc_source):
+        uc_source.client.api_client.do = MagicMock(
+            side_effect=[
+                {"tables": [{"name": "t1", "table_type": "MANAGED"}], "next_page_token": "page-2"},
+                Exception("500 Internal Server Error"),
+            ]
+        )
+
+        list(uc_source.get_tables_name_and_type())
+
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_tables_as_deleted) == []
+
+    def test_skipped_stale_cleanup_fails_the_run(self, uc_source):
+        uc_source.client.api_client.do = MagicMock(
+            side_effect=[
+                {"tables": [{"name": "t1", "table_type": "MANAGED"}], "next_page_token": "page-2"},
+                Exception("500 Internal Server Error"),
+            ]
+        )
+        list(uc_source.get_tables_name_and_type())
+        list(uc_source.mark_tables_as_deleted())
+
+        with (
+            patch.object(DatabaseServiceSource, "_iter", return_value=iter([])),
+            pytest.raises(WorkflowFatalError, match=r"for tables in \[hive_metastore\.default\]"),
+        ):
+            list(uc_source._iter())
+        assert uc_source.status.failures[-1].name == "Stale entity cleanup"
+
+    def test_failed_listing_does_not_fail_the_run_when_no_cleanup_was_due(self, uc_source):
+        uc_source.source_config.markDeletedTables = False
+        uc_source.client.api_client.do = MagicMock(side_effect=Exception("500 Internal Server Error"))
+        list(uc_source.get_tables_name_and_type())
+        list(uc_source.mark_tables_as_deleted())
+
+        with patch.object(DatabaseServiceSource, "_iter", return_value=iter([])):
+            assert list(uc_source._iter()) == []
+        assert [failure.name for failure in uc_source.status.failures] == ["tables in schema [hive_metastore.default]"]
+
+    def test_failed_schema_listing_skips_stale_cleanup_of_its_catalog(self, uc_source):
+        # The cleanup lists the schemas again; that second listing succeeding must not
+        # clear the tables of the schemas the walk never reached.
+        uc_source.service_connection.databaseSchema = None
+        uc_source.source_config.markDeletedSchemas = True
+        uc_source.client.schemas.list.side_effect = [
+            Exception("500 Internal Server Error"),
+            [SchemaInfo(catalog_name="hive_metastore", name="default")],
+        ]
+
+        assert list(uc_source.get_database_schema_names()) == []
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_schemas_as_deleted) == []
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_tables_as_deleted) == []
+
+    def test_failed_catalog_listing_skips_stale_database_cleanup(self, uc_source):
+        uc_source.source_config.markDeletedDatabases = True
+        uc_source.client.catalogs.list.side_effect = [
+            _raising_listing([CatalogInfo(name="demo")], Exception("500 Internal Server Error")),
+            [CatalogInfo(name="demo"), CatalogInfo(name="main")],
+        ]
+
+        assert list(uc_source.get_database_names_raw()) == ["demo"]
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_databases_as_deleted) == []
 
 
 class TestColumnErrorIsolation:
