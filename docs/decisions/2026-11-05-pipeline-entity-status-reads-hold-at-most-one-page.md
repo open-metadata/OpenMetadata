@@ -1,4 +1,4 @@
-# Status reads of a pipeline entity hold at most one page of 1,000 statuses
+# Requests under /v1/pipelines read a status history at most 1,000 statuses at a time
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-05 (initial)
@@ -24,12 +24,15 @@ loaded every run of the last 30 days to average their runtime.
   Executions tab, the Java SDK's `listPipelineStatuses(fqn, startTs, endTs)` and the Python
   `list_pipeline_statuses` page this way, 1,000 statuses at a time; each keeps its own copy of the
   maximum and cites this record.
-- The bulk write reads only the stored statuses at the timestamps it writes.
+- The bulk write reads only the stored statuses at the timestamps it writes, so its lookup is never
+  larger than its body, which `@Size(max = 1000)` caps separately.
 - The observability average runtime still covers every run of the last 30 days, but reads them a
   page at a time and keeps only a running total.
 
 ## Consequences
-- No request holds more than 1,000 statuses at once, whatever the size of the history.
+- No request under `/v1/pipelines` reads more than 1,000 statuses of a pipeline's history at once,
+  however long that history is; the trend and metrics endpoints aggregate in SQL. The bound counts
+  statuses, not bytes: how large a single status may be is not limited here.
 - An API caller that omitted `limit` to receive the whole range now receives 10 statuses and has to
   follow the cursor; a `limit` above 1,000, accepted before, is refused with 400.
 - The average's work still grows with the number of runs in its window; only the memory a request
