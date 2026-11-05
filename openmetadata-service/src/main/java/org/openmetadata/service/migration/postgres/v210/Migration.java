@@ -157,11 +157,9 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DestinationIdMigration.STEP_NAME,
         () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
-    // Webhook endpoints, header values and credentials were stored as written on user and team
-    // profiles, and on alert destinations saved before they were encrypted; new writes encrypt
-    // each one for the webhook that holds it, this does the same for what is already stored and
-    // removes what cannot be shown to be its own. Each destination's id owns its secrets, so this
-    // runs after the destination id step. Idempotent.
+    // New writes encrypt each webhook secret for the alert destination or profile webhook that
+    // holds it; this does the same for what is already stored. Each destination's id owns its
+    // secrets, so this runs after the destination id step. Idempotent.
     runOnce(
         migrationDAO,
         getVersion(),

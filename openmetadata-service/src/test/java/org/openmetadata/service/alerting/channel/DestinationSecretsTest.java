@@ -239,31 +239,35 @@ class DestinationSecretsTest {
     for (SubscriptionDestination destination : List.of(encryptedElsewhere, another)) {
       BadRequestException refused =
           assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(destination));
-      assertTrue(refused.getMessage().contains("not written for"), refused.getMessage());
+      assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
       assertThrows(BadRequestException.class, () -> WebhookConfigRules.stored(destination));
     }
   }
 
   @Test
-  void bindStoredAlert_bindsWhatWasEnteredAndRemovesWhatCannotBeShownToBeItsOwn() {
-    String foreign = Fernet.getInstance().encrypt("a value held elsewhere");
+  void bindStoredAlert_carriesOverEarlierCredentialsAndLeavesAnyOtherCiphertextToEnterAgain() {
+    String elsewhere = Fernet.getInstance().encrypt("a value stored elsewhere");
     SubscriptionDestination entered = incomingWebhook(SubscriptionType.SLACK);
     SubscriptionDestination signed =
         buildBearerDestination(SubscriptionType.WEBHOOK, Fernet.getInstance().encrypt("hmac-key"));
-    SubscriptionDestination copied = buildOAuth2Destination("client", foreign);
+    SubscriptionDestination oauth =
+        buildOAuth2Destination(
+            Fernet.getInstance().encrypt("client"), Fernet.getInstance().encrypt("oauth-secret"));
+    SubscriptionDestination storedTwice = buildOAuth2Destination("client", elsewhere);
     SubscriptionDestination withHeader = incomingWebhook(SubscriptionType.WEBHOOK);
-    withHeader.withConfig(withHeader(configOf(withHeader), foreign));
+    withHeader.withConfig(
+        withHeader(configOf(withHeader), Fernet.getInstance().encrypt("a header value")));
     EventSubscription alert =
         new EventSubscription()
             .withId(UUID.randomUUID())
             .withName("legacy")
-            .withDestinations(List.of(entered, signed, copied, withHeader))
-            .withChangeDescription(destinationsChange(List.of(copied)));
+            .withDestinations(List.of(entered, signed, oauth, storedTwice, withHeader))
+            .withChangeDescription(destinationsChange(List.of(storedTwice)));
     JsonNode row = JsonUtils.valueToTree(alert);
 
-    assertTrue(DestinationSecrets.bindStoredAlert(row));
+    assertTrue(DestinationSecrets.bindStoredAlert(row, elsewhere::equals));
     String once = JsonUtils.pojoToJson(row);
-    assertFalse(DestinationSecrets.bindStoredAlert(row));
+    assertFalse(DestinationSecrets.bindStoredAlert(row, elsewhere::equals));
     assertEquals(once, JsonUtils.pojoToJson(row));
 
     List<SubscriptionDestination> bound =
@@ -271,10 +275,19 @@ class DestinationSecretsTest {
     assertEquals(ENDPOINT, configOf(DestinationSecrets.decrypted(bound.get(0))).get("endpoint"));
     assertEquals(
         "hmac-key", authTypeOf(DestinationSecrets.decrypted(bound.get(1))).get("secretKey"));
-    assertFalse(authTypeOf(bound.get(2)).containsKey("clientSecret"));
-    assertFalse(headersOf(bound.get(3)).containsKey("Authorization"));
-    assertEquals(List.of(true, true, false, false), enabledOf(bound));
-    assertFalse(once.contains(foreign), "neither the row nor its history keeps it");
+    Map<String, Object> oauthUsed = authTypeOf(DestinationSecrets.decrypted(bound.get(2)));
+    assertEquals("client", oauthUsed.get("clientId"));
+    assertEquals("oauth-secret", oauthUsed.get("clientSecret"));
+    for (SubscriptionDestination toEnterAgain : List.of(bound.get(3), bound.get(4))) {
+      BadRequestException refused =
+          assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(toEnterAgain));
+      assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
+    }
+    assertEquals(elsewhere, authTypeOf(bound.get(3)).get("clientSecret"));
+    assertEquals(List.of(true, true, true, true, true), enabledOf(bound));
+    assertTrue(
+        row.at("/changeDescription/fieldsUpdated/0/newValue").asText().contains(PASSWORD_MASK),
+        "history keeps the mask");
   }
 
   @Test

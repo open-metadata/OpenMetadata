@@ -152,13 +152,44 @@ public final class ProfileWebhookSecrets {
 
   /**
    * A copy of the profile with every webhook secret decrypted: the profile as it is used to send. A
-   * secret not written for its webhook is refused with a 400, so nothing is sent with it.
+   * webhook holding a value that does not open for it is left out of the copy until the value is
+   * entered again, and the profile's other webhooks still send.
    */
   public static Profile decrypted(Holder holder, Profile profile) {
-    return transformWebhooks(
-        profile,
-        (slot, config) ->
-            ConfigSecrets.decrypt(holder.ownerOf(slot), config, WebhookSecrets.fieldsIn(config)));
+    Profile result = profile;
+    if (hasWebhooks(profile)) {
+      JsonNode tree = JsonUtils.valueToTree(profile);
+      ObjectNode subscriptions = (ObjectNode) tree.path(SUBSCRIPTION);
+      List<String> leftOut = new ArrayList<>();
+      subscriptions
+          .properties()
+          .forEach(
+              webhook -> {
+                if (webhook.getValue().isObject()
+                    && !opened(holder, webhook.getKey(), webhook.getValue())) {
+                  leftOut.add(webhook.getKey());
+                }
+              });
+      subscriptions.remove(leftOut);
+      result = JsonUtils.treeToValue(tree, Profile.class);
+    }
+    return result;
+  }
+
+  private static boolean opened(Holder holder, String slot, JsonNode config) {
+    boolean opened = true;
+    try {
+      ConfigSecrets.decrypt(holder.ownerOf(slot), config, WebhookSecrets.fieldsIn(config));
+    } catch (BadRequestException e) {
+      LOG.warn(
+          "The {} webhook of {} {} is left out of the send: {}",
+          slot,
+          holder.entityType(),
+          holder.id(),
+          e.getMessage());
+      opened = false;
+    }
+    return opened;
   }
 
   /** A copy of the profile with every webhook secret masked. */
@@ -227,49 +258,39 @@ public final class ProfileWebhookSecrets {
   /**
    * Binds, in place, the profile webhook secrets of a stored user or team row written before they
    * were bound to their webhook ({@link ConfigSecrets#bindStored}); its change descriptions keep the
-   * mask. A webhook that loses a value is removed, to be added again. Running it again changes
-   * nothing. Returns whether anything changed.
+   * mask. Releases before 2.1 stored profile webhooks in plain text, so no ciphertext is carried
+   * over: a webhook holding one is left out of every send until the value is entered again. Running
+   * it again changes nothing. Returns whether anything changed.
    */
   public static boolean bindStoredEntity(String entityType, JsonNode entity) {
     Holder holder = new Holder(entityType, UUID.fromString(entity.path("id").asText()));
     JsonNode before = entity.deepCopy();
-    if (entity.at(SUBSCRIPTIONS) instanceof ObjectNode subscriptions) {
-      List<String> unbound = new ArrayList<>();
-      subscriptions
-          .properties()
-          .forEach(
-              webhook -> {
-                if (!bindStoredWebhook(holder, webhook.getKey(), webhook.getValue())) {
-                  unbound.add(webhook.getKey());
-                }
-              });
-      subscriptions.remove(unbound);
-    }
+    entity
+        .at(SUBSCRIPTIONS)
+        .properties()
+        .forEach(webhook -> bindStoredWebhook(holder, webhook.getKey(), webhook.getValue()));
     CHANGE_DESCRIPTIONS.forEach(
         name -> transformChangeDescription(entity.path(name), ConfigSecrets::mask));
     return !entity.equals(before);
   }
 
-  /** Whether the webhook keeps every value it holds once its secrets are bound to it. */
-  private static boolean bindStoredWebhook(Holder holder, String slot, JsonNode config) {
-    List<JsonPointer> removed =
+  private static void bindStoredWebhook(Holder holder, String slot, JsonNode config) {
+    List<JsonPointer> toEnterAgain =
         config.isObject()
             ? ConfigSecrets.bindStored(
                 holder.ownerOf(slot),
                 config,
                 WebhookSecrets.fieldsIn(config),
-                WebhookSecrets.KEPT_ON_THE_SERVER)
+                (field, value) -> false)
             : List.of();
-    if (!removed.isEmpty()) {
+    if (!toEnterAgain.isEmpty()) {
       LOG.warn(
-          "The {} webhook of {} {} held values at {} that were not written for it; it is removed "
-              + "until it is added again",
+          "The {} webhook of {} {}: the values at {} must be entered again before it sends",
           slot,
           holder.entityType(),
           holder.id(),
-          removed);
+          toEnterAgain);
     }
-    return removed.isEmpty();
   }
 
   private static boolean transformEntityTree(

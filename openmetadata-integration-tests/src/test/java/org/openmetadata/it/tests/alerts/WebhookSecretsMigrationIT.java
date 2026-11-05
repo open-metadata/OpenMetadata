@@ -2,11 +2,15 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -146,14 +150,16 @@ class WebhookSecretsMigrationIT {
   }
 
   /**
-   * Ciphertext in a row stored before secrets were bound to their webhook may have been written for
-   * anything, so it is kept only where it never leaves the server, the signing key; anywhere else it
-   * is removed, and the destination disabled, or the profile webhook removed, until entered again.
+   * Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and OAuth2
+   * credentials, unless it is stored somewhere else too; anywhere else it stays as stored, is
+   * refused when the destination sends, and the destination stays enabled.
    */
   @Test
-  void legacyCiphertextIsKeptOnlyWhereItNeverLeavesTheServer(TestNamespace ns) {
-    String foreign = Fernet.getInstance().encrypt(ns.prefix("a value held elsewhere"));
+  void earlierCredentialsAreCarriedOverAndAnyOtherCiphertextIsEnteredAgain(TestNamespace ns) {
     String signingKey = ns.prefix("signing-key");
+    String clientSecret = ns.prefix("client-secret");
+    String storedTwice = Fernet.getInstance().encrypt(ns.prefix("a value stored twice"));
+    String header = Fernet.getInstance().encrypt(ns.prefix("a header value"));
     EventSubscription alert =
         AlertFixtures.tableAlert(
             ns,
@@ -162,6 +168,7 @@ class WebhookSecretsMigrationIT {
             List.of(
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/signed"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/oauth"),
+                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/twice"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/header")));
     List<SubscriptionDestination> destinations = alert.getDestinations();
     destinations
@@ -172,27 +179,25 @@ class WebhookSecretsMigrationIT {
                 Map.of("type", "bearer", "secretKey", Fernet.getInstance().encrypt(signingKey))));
     destinations
         .get(1)
-        .withConfig(
-            legacyConfig(
-                "oauth",
-                Map.of(
-                    "type",
-                    "oauth2",
-                    "tokenUrl",
-                    "https://login.example.com/token",
-                    "clientId",
-                    "client",
-                    "clientSecret",
-                    foreign)));
+        .withConfig(legacyConfig("oauth", oauth2(Fernet.getInstance().encrypt(clientSecret))));
+    destinations.get(2).withConfig(legacyConfig("twice", oauth2(storedTwice)));
     destinations
-        .get(2)
+        .get(3)
         .withConfig(
             Map.of(
                 "endpoint",
                 "https://hooks.example.com/header",
                 "headers",
-                Map.of("Authorization", foreign)));
+                Map.of("Authorization", header)));
     AlertFixtures.writeBehindTheServer(alert);
+    EventSubscription another =
+        AlertFixtures.tableAlert(
+            ns,
+            "holds_the_same_value",
+            null,
+            List.of(AlertFixtures.external(WEBHOOK, "https://hooks.example.com/another")));
+    another.getDestinations().getFirst().withConfig(legacyConfig("another", oauth2(storedTwice)));
+    AlertFixtures.writeBehindTheServer(another);
 
     runAlertStep();
     String rowAfterOneRun = JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()));
@@ -200,20 +205,21 @@ class WebhookSecretsMigrationIT {
 
     EventSubscription stored = AlertFixtures.stored(alert.getId());
     assertEquals(rowAfterOneRun, JsonUtils.pojoToJson(stored));
-    assertFalse(rowAfterOneRun.contains(foreign), rowAfterOneRun);
     List<SubscriptionDestination> bound = stored.getDestinations();
     assertEquals(signingKey, openedDestinationValue(bound.get(0), "/authType/secretKey"));
-    assertTrue(
-        JsonUtils.valueToTree(bound.get(1)).at("/config/authType/clientSecret").isMissingNode());
-    assertTrue(
-        JsonUtils.valueToTree(bound.get(2)).at("/config/headers/Authorization").isMissingNode());
-    assertEquals(
-        List.of(true, false, false),
-        bound.stream().map(SubscriptionDestination::getEnabled).toList());
+    assertEquals(clientSecret, openedDestinationValue(bound.get(1), "/authType/clientSecret"));
+    assertEquals(storedTwice, storedValue(bound.get(2), "/authType/clientSecret"));
+    assertEquals(header, storedValue(bound.get(3), "/headers/Authorization"));
+    for (SubscriptionDestination toEnterAgain : bound.subList(2, 4)) {
+      BadRequestException refused =
+          assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(toEnterAgain));
+      assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
+    }
+    assertTrue(bound.stream().allMatch(SubscriptionDestination::getEnabled));
   }
 
   @Test
-  void aProfileWebhookHoldingLegacyCiphertextIsRemoved(TestNamespace ns) {
+  void aProfileWebhookHoldingCiphertextIsLeftOutUntilEnteredAgain(TestNamespace ns) {
     Team team =
         SdkClients.adminClient()
             .teams()
@@ -222,16 +228,14 @@ class WebhookSecretsMigrationIT {
                     .withName(ns.prefix("legacy_cipher_team"))
                     .withTeamType(CreateTeam.TeamType.GROUP));
     String secret = ns.prefix("entered-secret");
+    String header = Fernet.getInstance().encrypt(ns.prefix("a header value"));
     Profile legacy = legacyProfile("https://hooks.example.com/" + ns.shortPrefix(), secret);
     legacy
         .getSubscription()
         .withSlack(
             new Webhook()
                 .withEndpoint(URI.create("https://hooks.example.com/slack"))
-                .withHeaders(
-                    Map.of(
-                        "Authorization",
-                        Fernet.getInstance().encrypt(ns.prefix("a value held elsewhere")))));
+                .withHeaders(Map.of("Authorization", header)));
     TeamDAO dao = Entity.getCollectionDAO().teamDAO();
     Team stored =
         JsonUtils.readValue(dao.findById(dao.getTableName(), team.getId(), ""), Team.class);
@@ -242,8 +246,31 @@ class WebhookSecretsMigrationIT {
     runProfileStep();
 
     JsonNode row = JsonUtils.readTree(dao.findById(dao.getTableName(), team.getId(), ""));
-    assertTrue(row.at("/profile/subscription/slack").isMissingNode(), row.toString());
+    assertEquals(header, row.at("/profile/subscription/slack/headers/Authorization").asText());
     assertEquals(secret, openedProfileValue(row, "/authType/clientSecret"));
+    ProfileWebhookSecrets.Holder holder =
+        new ProfileWebhookSecrets.Holder(Entity.TEAM, team.getId());
+    Profile sendable =
+        ProfileWebhookSecrets.decrypted(
+            holder, JsonUtils.treeToValue(row.path("profile"), Profile.class));
+    assertNull(sendable.getSubscription().getSlack(), "left out until it is entered again");
+    assertNotNull(sendable.getSubscription().getGeneric());
+  }
+
+  private static Map<String, Object> oauth2(String clientSecret) {
+    return Map.of(
+        "type",
+        "oauth2",
+        "tokenUrl",
+        "https://login.example.com/token",
+        "clientId",
+        "client",
+        "clientSecret",
+        clientSecret);
+  }
+
+  private static String storedValue(SubscriptionDestination stored, String field) {
+    return JsonUtils.valueToTree(stored.getConfig()).at(field).asText();
   }
 
   private static Map<String, Object> legacyConfig(String path, Map<String, Object> authType) {

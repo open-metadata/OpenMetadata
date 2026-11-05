@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -32,10 +33,12 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * Brings stored webhook configurations, on alert destinations and on user and team profiles, to the
  * form new writes store: in the entity row, each secret encrypted for the destination or profile
  * webhook that holds it, and in its versions, the change descriptions recorded with them and the
- * stored change events of users and teams, the mask, since nothing sends from those. A stored value
- * that cannot be shown to have been entered for its webhook is removed, and the destination is
- * disabled, or the profile webhook removed, until it is entered again. Values already in that form
- * are kept, so running it again changes nothing.
+ * stored change events of users and teams, the mask, since nothing sends from those. Plaintext is
+ * encrypted for its webhook. Ciphertext is carried over where releases before 2.1 stored it
+ * encrypted, the bearer and OAuth2 credentials of an alert destination, when it is stored nowhere
+ * else ({@link StoredCiphertextCopies}); any other value stays as stored and is entered again
+ * before its webhook sends. Values already in that form are kept, so running it again changes
+ * nothing.
  */
 @Slf4j
 public final class WebhookSecretsMigration {
@@ -68,7 +71,12 @@ public final class WebhookSecretsMigration {
   public static void bindAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
-      rewriteById(handle, sql, "event_subscription_entity", DestinationSecrets::bindStoredAlert);
+      Set<String> storedElsewhere = StoredCiphertextCopies.find(handle, connectionType);
+      rewriteById(
+          handle,
+          sql,
+          "event_subscription_entity",
+          row -> DestinationSecrets.bindStoredAlert(row, storedElsewhere::contains));
       rewriteVersions(handle, sql, Entity.EVENT_SUBSCRIPTION, DestinationSecrets::maskAlertTree);
     }
   }

@@ -283,7 +283,7 @@ class ProfileWebhookSecretsTest {
   }
 
   @Test
-  void deliveryRefusesASecretNotWrittenForItsWebhook() {
+  void deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt() {
     Profile stored = ProfileWebhookSecrets.ofANewEntity(HOLDER, profileWith(oauth2("the secret")));
     String storedSecret = clientSecretOf(stored);
     ProfileWebhookSecrets.Holder another =
@@ -296,22 +296,21 @@ class ProfileWebhookSecretsTest {
     Profile encryptedElsewhere =
         profileWith(oauth2(Fernet.getInstance().encrypt("a value held elsewhere")));
 
-    assertRefused(() -> ProfileWebhookSecrets.decrypted(another, stored), "not written for");
-    assertRefused(() -> ProfileWebhookSecrets.decrypted(HOLDER, inAnotherSlot), "not written for");
-    assertRefused(
-        () -> ProfileWebhookSecrets.decrypted(HOLDER, encryptedElsewhere), "not written for");
+    assertNull(ProfileWebhookSecrets.decrypted(another, stored).getSubscription().getGeneric());
+    assertNull(ProfileWebhookSecrets.decrypted(HOLDER, inAnotherSlot).getSubscription().getSlack());
+    assertNull(
+        ProfileWebhookSecrets.decrypted(HOLDER, encryptedElsewhere).getSubscription().getGeneric());
   }
 
   @Test
-  void bindingAStoredRowKeepsWhatIsItsOwnAndRemovesTheRest() {
+  void bindingAStoredRowEncryptsWhatWasEnteredAndCarriesNoCiphertextOver() {
     String foreign = Fernet.getInstance().encrypt("a value held elsewhere");
     Profile legacy =
         new Profile()
             .withSubscription(
                 new SubscriptionConfig()
                     .withGeneric(oauth2("entered in the clear"))
-                    .withSlack(oauth2(foreign))
-                    .withgChat(bearer(Fernet.getInstance().encrypt("a signing key"))));
+                    .withSlack(oauth2(foreign)));
     JsonNode row =
         JsonUtils.valueToTree(
             new User()
@@ -326,12 +325,18 @@ class ProfileWebhookSecretsTest {
     assertEquals(once, JsonUtils.pojoToJson(row));
 
     JsonNode subscriptions = row.at("/profile/subscription");
-    assertTrue(subscriptions.path("slack").isMissingNode(), "a webhook holding a foreign value");
     assertEncrypted(
         GENERIC, "/authType/clientSecret", subscriptions.path(GENERIC), "entered in the clear");
-    assertEncrypted("gChat", "/authType/secretKey", subscriptions.path("gChat"), "a signing key");
-    assertFalse(once.contains(foreign), "history keeps the mask");
-    assertTrue(once.contains(PASSWORD_MASK));
+    assertEquals(foreign, subscriptions.at("/slack/authType/clientSecret").asText());
+    SubscriptionConfig sendable =
+        ProfileWebhookSecrets.decrypted(
+                HOLDER, JsonUtils.treeToValue(row.path("profile"), Profile.class))
+            .getSubscription();
+    assertNull(sendable.getSlack(), "left out until it is entered again");
+    assertEquals("entered in the clear", clientSecretOf(sendable.getGeneric()));
+    assertTrue(
+        row.at("/changeDescription/fieldsUpdated/0/newValue").asText().contains(PASSWORD_MASK),
+        "history keeps the mask");
   }
 
   @Test

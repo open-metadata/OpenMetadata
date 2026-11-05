@@ -33,8 +33,8 @@ public final class WebhookSecrets {
           JsonPointer.compile("/authType/clientId"),
           JsonPointer.compile("/authType/clientSecret"));
 
-  /** The secrets that never leave the server: the signing key only ever keys an HMAC. */
-  public static final List<JsonPointer> KEPT_ON_THE_SERVER = List.of(SIGNING_KEY);
+  /** The secrets releases before 2.1 stored encrypted: the bearer and OAuth2 credentials. */
+  public static final List<JsonPointer> ENCRYPTED_BEFORE_2_1 = AUTHENTICATION;
 
   private WebhookSecrets() {}
 

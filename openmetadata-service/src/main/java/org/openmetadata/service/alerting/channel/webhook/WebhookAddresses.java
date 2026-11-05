@@ -15,7 +15,6 @@ package org.openmetadata.service.alerting.channel.webhook;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.LinkedHashSet;
@@ -66,17 +65,10 @@ public final class WebhookAddresses implements AddressDirectory {
         team.getProfile());
   }
 
-  // A profile holding a secret not written for its webhook is left out, as one without an address.
+  // A profile webhook whose secrets do not open is left out, as one without an address.
   private Recipient ofProfile(String name, ProfileWebhookSecrets.Holder holder, Profile profile) {
-    Recipient recipient = null;
-    try {
-      recipient =
-          WebhookRecipient.ofProfile(
-              name, ProfileWebhookSecrets.decrypted(holder, profile), onProfile);
-    } catch (BadRequestException e) {
-      LOG.warn("The profile webhook of {} is left out: {}", name, e.getMessage());
-    }
-    return recipient;
+    return WebhookRecipient.ofProfile(
+        name, ProfileWebhookSecrets.decrypted(holder, profile), onProfile);
   }
 
   @Override

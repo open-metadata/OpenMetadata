@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.OwnedCiphertext;
@@ -36,13 +37,11 @@ import org.openmetadata.service.secrets.SecretOwner;
  * that owner before the configuration is stored, decrypted where a message is sent, masked in a
  * response, and restored from the stored configuration when a request sends back what it read. An
  * alert's destinations and the webhooks on a user's or a team's profile keep their secrets this one
- * way. A secret opens only for the owner and field it was written for ({@link OwnedCiphertext}), so
- * ciphertext written for anything else is never sent.
+ * way. A secret opens only for the owner and field it was written for ({@link OwnedCiphertext}).
  */
 @Slf4j
 public final class ConfigSecrets {
-  private static final String NOT_WRITTEN_HERE =
-      "The stored value at '%s' was not written for this configuration; enter it again";
+  private static final String ENTER_AGAIN = "The value at '%s' must be entered again";
 
   // Where a configuration delivers what it carries: the endpoint it posts to, and, for OAuth
   // credentials, the token URL they are shown to. A secret restored beside a moved target would
@@ -110,20 +109,23 @@ public final class ConfigSecrets {
 
   /**
    * Binds to {@code owner}, in place, the secrets of a configuration stored before they were bound.
-   * Plaintext was entered for this configuration and is encrypted for it. Ciphertext may have been
-   * written for anything, so it is removed, except at the {@code kept} fields, whose value never
-   * leaves the server, where it is encrypted for the owner again. Ciphertext already bound is kept,
-   * so running it again changes nothing. Returns the fields removed.
+   * Plaintext is encrypted for the owner. Ciphertext is encrypted for the owner again where {@code
+   * carriedOver} accepts it; anywhere else it stays as stored, opens for no owner, and is refused
+   * where it would be used until it is entered again. Ciphertext already bound is kept, so running
+   * it again changes nothing. Returns the fields left to enter again.
    */
   public static List<JsonPointer> bindStored(
-      SecretOwner owner, JsonNode config, List<JsonPointer> fields, List<JsonPointer> kept) {
-    List<JsonPointer> removed = new ArrayList<>();
+      SecretOwner owner,
+      JsonNode config,
+      List<JsonPointer> fields,
+      BiPredicate<JsonPointer, String> carriedOver) {
+    List<JsonPointer> toEnterAgain = new ArrayList<>();
     for (JsonPointer field : fields) {
-      if (removedWhileBinding(owner, config, field, kept.contains(field))) {
-        removed.add(field);
+      if (!boundWhereStored(owner, config, field, carriedOver)) {
+        toEnterAgain.add(field);
       }
     }
-    return List.copyOf(removed);
+    return List.copyOf(toEnterAgain);
   }
 
   public static boolean isMask(String value) {
@@ -186,24 +188,26 @@ public final class ConfigSecrets {
             .isPresent();
   }
 
-  private static boolean removedWhileBinding(
-      SecretOwner owner, JsonNode config, JsonPointer field, boolean kept) {
+  /** Whether the field holds, once bound, a value that opens for {@code owner}. */
+  private static boolean boundWhereStored(
+      SecretOwner owner,
+      JsonNode config,
+      JsonPointer field,
+      BiPredicate<JsonPointer, String> carriedOver) {
     String value = config.at(field).asText();
     boolean alreadyBound = value.isEmpty() || OwnedCiphertext.isOwned(value);
-    Optional<String> secret = alreadyBound ? Optional.empty() : secretToBind(value, kept);
+    Optional<String> secret =
+        alreadyBound ? Optional.empty() : secretToBind(field, value, carriedOver);
     secret.ifPresent(
         it -> set(config, field, OwnedCiphertext.encrypt(owner, field.toString(), it)));
-    boolean removed = !alreadyBound && secret.isEmpty();
-    if (removed) {
-      ((ObjectNode) config.at(field.head())).remove(field.last().getMatchingProperty());
-    }
-    return removed;
+    return alreadyBound || secret.isPresent();
   }
 
-  private static Optional<String> secretToBind(String value, boolean kept) {
+  private static Optional<String> secretToBind(
+      JsonPointer field, String value, BiPredicate<JsonPointer, String> carriedOver) {
     Optional<String> secret = Optional.of(value);
     if (Fernet.isTokenized(value)) {
-      secret = kept ? decryptedOrEmpty(value) : Optional.empty();
+      secret = carriedOver.test(field, value) ? decryptedOrEmpty(value) : Optional.empty();
     }
     return secret;
   }
@@ -228,7 +232,7 @@ public final class ConfigSecrets {
     boolean ciphertext = Fernet.getInstance().isKeyDefined() && Fernet.isTokenized(value);
     return ciphertext
         ? OwnedCiphertext.decrypt(owner, field.toString(), value)
-            .orElseThrow(() -> new BadRequestException(NOT_WRITTEN_HERE.formatted(field)))
+            .orElseThrow(() -> new BadRequestException(ENTER_AGAIN.formatted(field)))
         : value;
   }
 }
