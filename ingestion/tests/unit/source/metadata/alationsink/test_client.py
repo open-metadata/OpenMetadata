@@ -91,7 +91,7 @@ def test_no_poll_starts_after_the_deadline():
 
     with (
         patch(f"{CLIENT_MODULE}.JOB_TIMEOUT_SECONDS", 10),
-        patch(f"{CLIENT_MODULE}.time.monotonic", lambda: next(clock)),
+        patch(f"{CLIENT_MODULE}.time", monotonic=lambda: next(clock)),
     ):
         errors = client.write_entities(39, _columns(3))
 
@@ -136,7 +136,7 @@ def test_timeout_reports_the_last_poll_error():
 
     with (
         patch(f"{CLIENT_MODULE}.JOB_TIMEOUT_SECONDS", 10),
-        patch(f"{CLIENT_MODULE}.time.monotonic", lambda: next(clock)),
+        patch(f"{CLIENT_MODULE}.time", monotonic=lambda: next(clock)),
     ):
         errors = client.write_entities(39, _columns(3))
 
