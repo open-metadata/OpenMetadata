@@ -15,11 +15,11 @@ import { useMemo } from 'react';
 import { AlertType as CapabilitiesAlertType } from '../../../generated/events/api/alertCapabilitiesRequest';
 import { AlertType } from '../../../generated/events/eventSubscription';
 import { useAlertSelection } from '../../../hooks/useAlertSelection';
+import { UseObservabilityAlertResourcesReturn } from '../../../interface/observability/alertForm.interface';
 import {
   shouldShowRuleSection,
   toCapabilitiesInput,
 } from '../../../utils/Alerts/AlertSelectionUtil';
-import { UseObservabilityAlertResourcesReturn } from '../AddObservabilityPage.interface';
 
 // One array for "nothing selected", so what depends on the sources does not change every render.
 const NO_SOURCES: string[] = [];

@@ -28,11 +28,11 @@ import {
   AlertType,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
+import { useAlertFormData } from '../../../hooks/observability/alerts/useAlertFormData';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
+} from '../../../utils/AlertsClassBase.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import AlertAiForm from './AlertAiForm.component';
 import {
