@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Owner } from '@openmetadata/ui-core-components';
+import { FilterFunnel01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { lazy } from 'react';
-import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import {
   ColumnsType,
@@ -61,11 +61,12 @@ const TagsViewer = withSuspenseFallback(
 );
 
 export const columnFilterIcon = (filtered: boolean) => (
-  <FilterIcon
-    className={classNames('filter-icon tw:size-3.5 tw:shrink-0', {
+  <FilterFunnel01
+    className={classNames('filter-icon tw:shrink-0', {
       'filter-icon-active': filtered,
     })}
     data-testid="filter-icon"
+    size={14}
   />
 );
 

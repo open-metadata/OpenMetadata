@@ -16,13 +16,15 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { QuickLink } from '@openmetadata/ui-core-components/icons';
+import {
+  Article,
+  Eye,
+  QuickLink,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
-import { ReactComponent as EyeIcon } from '../../../assets/svg/ic-eye.svg';
 import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -208,11 +210,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
         <WidgetCard
           title={t('label.recently-viewed')}
           titleIcon={
-            <EyeIcon
-              className="tw:text-quaternary tw:shrink-0"
-              height={16}
-              width={16}
-            />
+            <Eye className="tw:text-quaternary tw:shrink-0" size={16} />
           }>
           {isEmpty(recentlyViewed) ? (
             <Typography className="tw:text-quaternary" size="text-xs">
@@ -238,10 +236,9 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
                 <WidgetCard
                   title={startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
                   titleIcon={
-                    <FileIcon
+                    <Article
                       className="tw:text-quaternary tw:shrink-0"
-                      height={16}
-                      width={16}
+                      size={16}
                     />
                   }>
                   <Box direction="col" gap={2}>

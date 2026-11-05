@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { ThumbsDown, ThumbsUp } from '@openmetadata/ui-core-components/icons';
+import {
+  ThumbsDown,
+  ThumbsDownFilled,
+  ThumbsUp,
+  ThumbsUpFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
@@ -35,7 +40,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
         count={votes?.upVotes ?? 0}
         countTestId="up-vote-count"
         disabled={disabled}
-        icon={ThumbsUp}
+        icon={voteStatus === QueryVoteType.votedUp ? ThumbsUpFilled : ThumbsUp}
         isActive={voteStatus === QueryVoteType.votedUp}
         loading={loading === QueryVoteType.votedUp}
         testId="up-vote-btn"
@@ -46,7 +51,9 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
         count={votes?.downVotes ?? 0}
         countTestId="down-vote-count"
         disabled={disabled}
-        icon={ThumbsDown}
+        icon={
+          voteStatus === QueryVoteType.votedDown ? ThumbsDownFilled : ThumbsDown
+        }
         isActive={voteStatus === QueryVoteType.votedDown}
         loading={loading === QueryVoteType.votedDown}
         testId="down-vote-btn"

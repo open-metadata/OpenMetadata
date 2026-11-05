@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   Database01,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
@@ -105,7 +105,7 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
           className="tw:text-error-primary"
           data-testid="incident-failure-summary"
           gap={1}>
-          <AlertTriangle className="tw:mt-0.5 tw:size-3.5 tw:shrink-0 tw:text-fg-error-primary" />
+          <Alert className="tw:mt-0.5 tw:size-3.5 tw:shrink-0 tw:text-fg-error-primary" />
           <Typography as="span" size="text-xs">
             {incident.failureSummary}
           </Typography>

@@ -23,13 +23,12 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Copy01, TestSuite } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -421,7 +420,7 @@ const TestSuiteDetail = () => {
                     'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                   )}
                   justify="center">
-                  <TestSuiteIcon className="tw:size-5" />
+                  <TestSuite size={20} />
                 </Box>
                 <Box
                   align="center"

@@ -131,10 +131,6 @@ jest.mock('../../../../../Database/SchemaEditor/SchemaEditor', () =>
   jest.fn(() => <div data-testid="schema-editor" />)
 );
 
-jest.mock('../../../../../../assets/svg/ic-filter-off.svg', () => ({
-  ReactComponent: jest.fn(() => <span>filter-off-icon</span>),
-}));
-
 jest.mock('../../../../../../constants/constants', () => ({
   PAGE_SIZE_BASE: 10,
   PAGE_SIZE_MEDIUM: 25,

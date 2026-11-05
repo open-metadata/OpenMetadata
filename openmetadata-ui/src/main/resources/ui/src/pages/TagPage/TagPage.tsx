@@ -18,7 +18,13 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Brush01,
+  Classification,
+  Edit01,
+  TagOff,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -27,9 +33,6 @@ import { cloneDeep, isEmpty } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
-import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
-import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
@@ -71,7 +74,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,
   CERTIFICATION_CATEGORY,
-  DE_ACTIVE_COLOR,
   ROUTES,
   TIER_CATEGORY,
 } from '../../constants/constants';
@@ -542,7 +544,7 @@ const TagPage = () => {
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={StyleIcon}
+                icon={Brush01}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -566,7 +568,7 @@ const TagPage = () => {
                     ? t('message.enable-tag-description')
                     : t('message.disable-tag-description')
                 }
-                icon={IconDisableTag}
+                icon={TagOff}
                 id="enable-disable-tag"
                 name={
                   tagItem?.disabled ? t('label.enable') : t('label.disable')
@@ -775,7 +777,7 @@ const TagPage = () => {
       );
     }
 
-    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
+    return <Classification className="tw:text-utility-gray-500" size={36} />;
   }, [tagItem]);
 
   const badge = useMemo(() => {

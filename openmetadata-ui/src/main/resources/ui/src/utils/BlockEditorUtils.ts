@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
+import {
+  Headphones01,
+  Image01,
+  TextEditorAttachment,
+  VideoRecorder,
+} from '@openmetadata/ui-core-components/icons';
 import { EditorState } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { isString } from 'lodash';
-import { ReactComponent as IconFormatAttachment } from '../assets/svg/ic-format-attachment.svg';
-import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio.svg';
-import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
-import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { SAFE_HREF_REGEX } from '../constants/regex.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
@@ -217,12 +219,12 @@ export const getFileTypeFromMimeType = (mimeType: string) => {
 export const getFileIcon = (fileType: FileType) => {
   switch (fileType) {
     case FileType.IMAGE:
-      return IconFormatImage;
+      return Image01;
     case FileType.VIDEO:
-      return IconFormatVideo;
+      return VideoRecorder;
     case FileType.AUDIO:
-      return IconFormatAudio;
+      return Headphones01;
     default:
-      return IconFormatAttachment;
+      return TextEditorAttachment;
   }
 };

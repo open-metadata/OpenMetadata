@@ -12,6 +12,7 @@
  */
 import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
 import {
+  Checklist,
   Collapse,
   Expand,
   RefreshCcw01,
@@ -22,7 +23,6 @@ import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -384,7 +384,10 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                       'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                     )}
                     justify="center">
-                    <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
+                    <Checklist
+                      className="tw:dark:[&>rect]:fill-transparent"
+                      size={20}
+                    />
                   </Box>
                   <TestCaseHeaderTitle
                     deleted={testCase.deleted}

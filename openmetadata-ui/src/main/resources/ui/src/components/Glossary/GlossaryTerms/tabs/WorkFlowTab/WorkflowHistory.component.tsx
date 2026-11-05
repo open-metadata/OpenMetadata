@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  CheckCircle02,
+  ClockRewind,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -23,8 +27,6 @@ import {
 } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -160,7 +162,7 @@ const WorkflowHistory = memo(
         case WorkflowStatus.Finished:
           return (
             <div className="completed-icon bedge-icon flex-center">
-              <CompletedIcon data-testid="completed-icon" width={10} />
+              <CheckCircle02 data-testid="completed-icon" size={10} />
             </div>
           );
         case WorkflowStatus.Running:
@@ -169,7 +171,7 @@ const WorkflowHistory = memo(
         default:
           return (
             <div className="pending-icon bedge-icon flex-center">
-              <PendingIcon data-testid="pending-icon" width={12} />
+              <ClockRewind data-testid="pending-icon" size={12} />
             </div>
           );
       }

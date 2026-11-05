@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Article,
+  TextEditorLink,
+} from '@openmetadata/ui-core-components/icons';
 import { lazy } from 'react';
-import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
-import { ReactComponent as LinkIcon } from '../assets/svg/ic-link.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type { KnowledgePage } from '../interface/knowledge-center.interface';
 import { PageType } from '../interface/knowledge-center.interface';
@@ -29,7 +31,11 @@ const KnowledgePageSummary = withSuspenseFallback(
 export const getPageIcon = (pageType: PageType) => {
   const isQuickLink = pageType === PageType.QUICK_LINK;
 
-  return isQuickLink ? <LinkIcon width={28} /> : <IconArticle width={28} />;
+  return isQuickLink ? (
+    <TextEditorLink className="tw:text-utility-gray-500" size={28} />
+  ) : (
+    <Article size={28} />
+  );
 };
 
 export const getPageSummaryComponent = (entity: KnowledgePage) => {

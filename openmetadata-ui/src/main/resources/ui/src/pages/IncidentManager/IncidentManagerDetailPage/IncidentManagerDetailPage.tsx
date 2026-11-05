@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Checklist,
+  RefreshCcw01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -350,7 +352,10 @@ const IncidentManagerDetailPage = ({
                   'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                 )}
                 justify="center">
-                <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
+                <Checklist
+                  className="tw:dark:[&>rect]:fill-transparent"
+                  size={20}
+                />
               </Box>
               <TestCaseHeaderTitle
                 deleted={testCase.deleted}

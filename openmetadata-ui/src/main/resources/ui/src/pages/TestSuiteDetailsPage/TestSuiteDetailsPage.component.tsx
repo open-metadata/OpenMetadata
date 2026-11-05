@@ -24,13 +24,12 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Copy01, TestSuite } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { useListSearchInput } from '../../components/common/atoms/navigation/useListSearchInput';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -463,7 +462,7 @@ const TestSuiteDetailsPage = () => {
                   'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                 )}
                 justify="center">
-                <TestSuiteIcon className="tw:size-5" />
+                <TestSuite size={20} />
               </Box>
               <TestSuiteHeaderTitle
                 displayName={testSuite?.displayName}

@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert as AlertIcon,
   CheckCircle,
   XCircle,
   Zap,
@@ -739,7 +739,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       return XCircle;
     }
     if (testStatus === 'Warning') {
-      return AlertTriangle;
+      return AlertIcon;
     }
 
     return Zap;

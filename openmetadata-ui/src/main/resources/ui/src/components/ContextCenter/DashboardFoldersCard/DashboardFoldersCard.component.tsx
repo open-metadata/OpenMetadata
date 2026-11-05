@@ -17,7 +17,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Documents, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -29,7 +29,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { FOLDER_CARD_CHILDREN_LIMIT } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { listContextFiles } from '../../../rest/assetAPI';
@@ -131,7 +130,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
           : undefined
       }
       emptyMessage={t('message.no-folders-yet-create-one')}
-      icon={FolderIcon}
+      icon={Documents}
       isEmpty={folders.length === 0}
       isLoading={isLoading}
       title={t('label.folder-plural')}>
@@ -170,7 +169,10 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                     onKeyDown={(e: KeyboardEvent) =>
                       handleToggleExpandKeyDown(e, folder.id)
                     }>
-                    <FolderIcon className="tw:size-4 tw:shrink-0 tw:text-quaternary" />
+                    <Documents
+                      className="tw:shrink-0 tw:text-quaternary"
+                      size={16}
+                    />
                     <div className="tw:min-w-0">
                       <Typography
                         ellipsis

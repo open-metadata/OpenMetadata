@@ -24,6 +24,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
+  Dimension,
   DotsVertical,
   File02,
   Trash01,
@@ -35,7 +36,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
 import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
 import { SORT_ORDER } from '../../../../enums/common.enum';
@@ -761,7 +761,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               <div
                 className="tw:flex tw:min-w-13 tw:items-center tw:gap-2 tw:rounded-md tw:bg-utility-blue-50 tw:p-2 tw:text-primary"
                 data-testid={`dimension-count-${record.name}`}>
-                <DimensionIcon height={12} width={12} />
+                <Dimension size={12} />
                 <span className="tw:text-xs tw:font-medium">
                   {dimensions.length}
                 </span>

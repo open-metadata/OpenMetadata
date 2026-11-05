@@ -21,12 +21,15 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Activity,
+  Alerts,
   Copy01,
   Edit01,
   File02,
+  LinkExternal01,
   RefreshCcw01,
   ThumbsDown,
   ThumbsUp,
+  Trigger,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -37,9 +40,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
-import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { DomainMismatchAlert } from '../../../components/common/DomainMismatchAlert/DomainMismatchAlert.component';
@@ -339,11 +339,7 @@ export const DataAssetsHeader = ({
               }),
             })
           }>
-          <RedAlertIcon
-            className="tw:text-fg-error-primary"
-            height={24}
-            width={24}
-          />
+          <Alerts className="tw:text-fg-error-primary" size={24} />
         </TooltipTrigger>
       </Tooltip>
     );
@@ -689,7 +685,7 @@ export const DataAssetsHeader = ({
           <Button
             color="primary"
             data-testid="trigger-auto-pilot-application-button"
-            iconLeading={TriggerIcon}
+            iconLeading={Trigger}
             isDisabled={disableRunAgentsButton}
             isLoading={isLoading}
             size="sm"
@@ -725,7 +721,7 @@ export const DataAssetsHeader = ({
             color="secondary"
             data-testid="source-url-button"
             href={sourceUrl}
-            iconLeading={IconExternalLink}
+            iconLeading={LinkExternal01}
             rel="noopener noreferrer"
             size="sm"
             target="_blank">
@@ -792,12 +788,7 @@ export const DataAssetsHeader = ({
       <div className="tw:flex tw:items-center tw:gap-4">
         {canShowFollowStat && onFollowClick && (
           <StatItem
-            iconNode={
-              <FollowStarIcon
-                className="tw:size-[29px]"
-                selected={isFollowing}
-              />
-            }
+            iconNode={<FollowStarIcon selected={isFollowing} />}
             loading={isFollowingLoading}
             srLabel={followLabel}
             testId="entity-follow-button"
@@ -833,7 +824,7 @@ export const DataAssetsHeader = ({
     // the header still shows a leading glyph next to the title.
     const entityIcon =
       !serviceLogoUrl && entityType === EntityType.METRIC ? (
-        <Activity aria-hidden="true" className="tw:size-5" />
+        <Activity aria-hidden="true" size={20} />
       ) : null;
 
     if (!serviceLogoUrl && !entityIcon) {

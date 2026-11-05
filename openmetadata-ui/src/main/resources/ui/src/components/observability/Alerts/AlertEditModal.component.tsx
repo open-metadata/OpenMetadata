@@ -12,7 +12,7 @@
  */
 
 import { Box, Button, SlideoutMenu } from '@openmetadata/ui-core-components';
-import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
+import { Alert } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -151,7 +151,7 @@ function AlertEditModal({
   const { drawerHeader } = useDrawerHeader({
     title,
     subtitle: t('message.alerts-description'),
-    icon: AlertTriangle,
+    icon: Alert,
     // The close button centres on the whole header box, so the padding above
     // and below the title row must match; the margin keeps the 24px top gap.
     className: 'tw:border-b tw:border-secondary tw:mt-2 tw:pt-4 tw:pb-4',

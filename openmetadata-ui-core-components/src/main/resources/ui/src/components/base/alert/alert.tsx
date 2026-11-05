@@ -14,12 +14,7 @@
 import { CloseButton } from '@/components/base/buttons/close-button';
 import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { cx } from '@/utils/cx';
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle,
-  InfoCircle,
-} from '../../../icons';
+import { AlertCircle, Alert as AlertIcon, CheckCircle, InfoCircle } from '../../../icons';
 import type { FC, HTMLAttributes, ReactNode } from 'react';
 
 export type AlertVariant = 'success' | 'warning' | 'error' | 'brand' | 'gray';
@@ -44,7 +39,7 @@ const variantStyles: Record<
   warning: {
     root: 'tw:border-warning-subtle tw:bg-warning-primary',
     iconColor: 'warning',
-    defaultIcon: AlertTriangle,
+    defaultIcon: AlertIcon,
   },
   error: {
     root: 'tw:border-error-subtle tw:bg-error-primary',

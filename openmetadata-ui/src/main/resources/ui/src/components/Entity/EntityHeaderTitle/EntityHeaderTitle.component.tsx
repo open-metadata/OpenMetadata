@@ -22,6 +22,7 @@ import {
   ExclamationCircleFilled,
   LinkExternal01,
   Star01,
+  StarFilled,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -192,7 +193,7 @@ const EntityHeaderTitle = ({
           className={FOLLOW_BUTTON_CLASS_NAME}
           color="tertiary"
           data-testid="entity-follow-button"
-          iconLeading={Star01}
+          iconLeading={isFollowing ? StarFilled : Star01}
           isDisabled={deleted}
           isLoading={isFollowingLoading}
           size="sm"
