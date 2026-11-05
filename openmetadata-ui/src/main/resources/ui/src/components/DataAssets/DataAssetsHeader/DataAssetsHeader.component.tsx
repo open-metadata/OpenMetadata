@@ -14,6 +14,7 @@ import {
   Button,
   ButtonUtility,
   ClassificationTag,
+  FeaturedIcon,
   Owner,
   Tooltip,
   TooltipTrigger,
@@ -831,35 +832,31 @@ export const DataAssetsHeader = ({
   const renderServiceLogo = () => {
     // Metrics have no owning service, so fall back to the metric entity icon so
     // the header still shows a leading glyph next to the title.
-    const entityIcon =
-      !serviceLogoUrl && entityType === EntityType.METRIC ? (
-        <Activity aria-hidden="true" className="tw:size-5" />
-      ) : null;
+    const isMetricWithoutService =
+      !serviceLogoUrl && entityType === EntityType.METRIC;
 
-    if (!serviceLogoUrl && !entityIcon) {
+    if (!serviceLogoUrl && !isMetricWithoutService) {
       return null;
     }
 
     return (
       <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
-        <div
-          className={classNames(
-            'tw:relative tw:flex tw:size-9 tw:shrink-0 tw:items-center',
-            'tw:justify-center tw:overflow-hidden tw:rounded-full',
-            'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-          )}>
-          {serviceLogoUrl ? (
-            <img
-              alt={get(dataAsset, 'service.displayName', '')}
-              className="tw:size-5 tw:object-contain"
-              src={serviceLogoUrl}
-            />
-          ) : (
-            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-utility-blue-700">
-              {entityIcon}
-            </span>
-          )}
-        </div>
+        <FeaturedIcon
+          color="brand"
+          icon={
+            serviceLogoUrl ? (
+              <img
+                alt={get(dataAsset, 'service.displayName', '')}
+                className="tw:size-5 tw:object-contain"
+                src={serviceLogoUrl}
+              />
+            ) : (
+              Activity
+            )
+          }
+          size="md"
+          theme="surface"
+        />
         {editStylePermission && (
           <ButtonUtility
             data-testid="edit-service-style"
