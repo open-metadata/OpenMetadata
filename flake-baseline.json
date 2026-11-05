@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-05T03:21:35Z",
+  "generatedAt": "2026-11-05T06:13:15Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "40440462393",
-      "sourceSha": "c226e1fa0129852bdbfa62568459efd107d56bb3",
-      "recordedAt": "2026-10-27T03:35:55Z"
-    },
     {
       "runId": "40622038880",
       "sourceSha": "3e14a88747128ecb043e28f981530cb415f55b51",
@@ -53,6 +48,11 @@
       "runId": "41956205227",
       "sourceSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
       "recordedAt": "2026-11-05T03:21:35Z"
+    },
+    {
+      "runId": "41974141457",
+      "sourceSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
+      "recordedAt": "2026-11-05T06:13:15Z"
     }
   ],
   "entries": {
@@ -198,13 +198,14 @@
     },
     "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format": {
       "observations": [
-        "41761758946"
+        "41761758946",
+        "41974141457"
       ],
       "project": "chromium",
       "file": "Features/Topic.spec.ts",
       "title": "Topic entity specific tests \u203a Copy field link should have valid URL format",
-      "lastSeenSha": "357983e01551781e9889821ff9c095009a26dcee",
-      "hardFailure": false
+      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
+      "hardFailure": true
     },
     "chromium :: Pages/AIProfile/ProfileMembers.spec.ts :: AI Profile Members - cross-surface navigation \u203a Should navigate from the users page to a role detail": {
       "observations": [
@@ -598,12 +599,13 @@
     },
     "chromium :: Pages/Entity.spec.ts :: Topic \u203a Description Add, Update and Remove for child entities": {
       "observations": [
-        "41956205227"
+        "41956205227",
+        "41974141457"
       ],
       "project": "chromium",
       "file": "Pages/Entity.spec.ts",
       "title": "Topic \u203a Description Add, Update and Remove for child entities",
-      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": false
     },
     "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Change glossary term hierarchy using menu options across glossary": {
@@ -618,22 +620,24 @@
     },
     "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Deny Permission": {
       "observations": [
-        "41956205227"
+        "41956205227",
+        "41974141457"
       ],
       "project": "chromium",
       "file": "Pages/Glossary.spec.ts",
       "title": "Glossary tests \u203a Verify Glossary Deny Permission",
-      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": true
     },
     "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Term Deny Permission": {
       "observations": [
-        "41956205227"
+        "41956205227",
+        "41974141457"
       ],
       "project": "chromium",
       "file": "Pages/Glossary.spec.ts",
       "title": "Glossary tests \u203a Verify Glossary Term Deny Permission",
-      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": true
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Database \u203a Certification Add Remove": {
@@ -649,23 +653,25 @@
     "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false": {
       "observations": [
         "41761758946",
-        "41956205227"
+        "41956205227",
+        "41974141457"
       ],
       "project": "chromium",
       "file": "Pages/TableSharding.spec.ts",
       "title": "BigQuery sharded table identity \u203a persists metadata grouping enabled=false",
-      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": true
     },
     "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true": {
       "observations": [
         "41761758946",
-        "41956205227"
+        "41956205227",
+        "41974141457"
       ],
       "project": "chromium",
       "file": "Pages/TableSharding.spec.ts",
       "title": "BigQuery sharded table identity \u203a persists metadata grouping enabled=true",
-      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": true
     },
     "chromium :: Pages/TestSuiteDetailsPage.spec.ts :: Search test cases inside a bundle suite (AI mode) \u203a finds a test case by an upper-cased part of its name": {
@@ -680,31 +686,44 @@
     },
     "chromium :: Pages/Users.spec.ts :: User with Data Consumer Roles \u203a Reset Password for Data Consumer": {
       "observations": [
-        "41956205227"
+        "41956205227",
+        "41974141457"
       ],
       "project": "chromium",
       "file": "Pages/Users.spec.ts",
       "title": "User with Data Consumer Roles \u203a Reset Password for Data Consumer",
-      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": true
     },
     "chromium :: Pages/Users.spec.ts :: User with Data Steward Roles \u203a Reset Password for Data Steward": {
       "observations": [
-        "41956205227"
+        "41956205227",
+        "41974141457"
       ],
       "project": "chromium",
       "file": "Pages/Users.spec.ts",
       "title": "User with Data Steward Roles \u203a Reset Password for Data Steward",
-      "lastSeenSha": "422a7503c49391b3319cbd4161292fa3a47a3a68",
+      "lastSeenSha": "c1a0f0002141d9f1b8951ced5df2d36136f19592",
       "hardFailure": true
     }
   },
   "stableIds": [
+    "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format",
+    "chromium :: Pages/Entity.spec.ts :: Topic \u203a Description Add, Update and Remove for child entities",
+    "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Deny Permission",
+    "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Term Deny Permission",
     "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false",
-    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true"
+    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true",
+    "chromium :: Pages/Users.spec.ts :: User with Data Consumer Roles \u203a Reset Password for Data Consumer",
+    "chromium :: Pages/Users.spec.ts :: User with Data Steward Roles \u203a Reset Password for Data Steward"
   ],
   "hardFailureStableIds": [
+    "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy field link should have valid URL format",
+    "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Deny Permission",
+    "chromium :: Pages/Glossary.spec.ts :: Glossary tests \u203a Verify Glossary Term Deny Permission",
     "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=false",
-    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true"
+    "chromium :: Pages/TableSharding.spec.ts :: BigQuery sharded table identity \u203a persists metadata grouping enabled=true",
+    "chromium :: Pages/Users.spec.ts :: User with Data Consumer Roles \u203a Reset Password for Data Consumer",
+    "chromium :: Pages/Users.spec.ts :: User with Data Steward Roles \u203a Reset Password for Data Steward"
   ]
 }
