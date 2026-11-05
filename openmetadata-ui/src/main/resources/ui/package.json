@@ -216,7 +216,7 @@
     "@babel/preset-react": "^7.10.4",
     "@eslint/js": "^9.18.0",
     "@estruyf/github-actions-reporter": "^1.14.0",
-    "@playwright/test": "1.64.1",
+    "@playwright/test": "1.57.0",
     "@swc/core": "^1.16.21",
     "@swc/jest": "^0.2.39",
     "@tailwindcss/node": "4.3.3",
