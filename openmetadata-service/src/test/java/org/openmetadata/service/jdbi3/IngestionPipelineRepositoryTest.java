@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
@@ -267,6 +269,43 @@ class IngestionPipelineRepositoryTest {
 
     assertFalse(wasRunnerCleanupSkipped);
     verify(airflow, never()).deletePipeline(any());
+  }
+
+  @Test
+  void hardDeleteOfADeployedNamesakeRedeploysTheSurvivorOverTheSharedDag() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+    IngestionPipeline survivor =
+        namesakeOfTheDeployedPipeline().withFullyQualifiedName(DEPLOYED_PIPELINE_FQN);
+    doReturn(survivor)
+        .when(namesakeRepository)
+        .findByNameOrNull(DEPLOYED_PIPELINE_FQN, Include.NON_DELETED);
+    doNothing().when(namesakeRepository).deployPipelineBeforeUpdate(survivor);
+
+    namesakeRepository.deleteDeployedPipeline(
+        namesakeOfTheDeployedPipeline().withDeployed(true), false);
+
+    verify(namesakeRepository).deployPipelineBeforeUpdate(survivor);
+    verify(airflow, never()).deletePipeline(any());
+  }
+
+  @Test
+  void hardDeleteOfADeployedNamesakeSurvivesAFailedRedeploy() {
+    PipelineServiceClientInterface airflow = runnerAddressingPipelinesByName(true);
+    IngestionPipelineRepository namesakeRepository = repositoryWithDeployedPipeline(airflow);
+    IngestionPipeline survivor =
+        namesakeOfTheDeployedPipeline().withFullyQualifiedName(DEPLOYED_PIPELINE_FQN);
+    doReturn(survivor)
+        .when(namesakeRepository)
+        .findByNameOrNull(DEPLOYED_PIPELINE_FQN, Include.NON_DELETED);
+    doThrow(new IngestionRunnerUnavailableException("runner unavailable"))
+        .when(namesakeRepository)
+        .deployPipelineBeforeUpdate(survivor);
+
+    assertDoesNotThrow(
+        () ->
+            namesakeRepository.deleteDeployedPipeline(
+                namesakeOfTheDeployedPipeline().withDeployed(true), false));
   }
 
   @Test

@@ -895,6 +895,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           "Not deleting '{}' from the ingestion runner: it is known there by the same name as the deployed pipeline '{}'",
           entity.getFullyQualifiedName(),
           deployedNamesake.get().getFullyQualifiedName());
+      redeployNamesakeOf(entity, deployedNamesake.get());
     } else if (pipelineServiceClient != null) {
       try {
         pipelineServiceClient.deletePipeline(entity);
@@ -913,6 +914,29 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           entity.getFullyQualifiedName());
     }
     return wasRunnerCleanupSkipped;
+  }
+
+  /**
+   * Two pipelines deployed under one runner name before the namesake guard overwrote each other's
+   * runner object, so it may still hold the deleted pipeline's config. Redeploying the survivor gives
+   * it back its own; a failure leaves it as it was, since the delete itself has already happened.
+   */
+  private void redeployNamesakeOf(IngestionPipeline deleted, EntityReference namesake) {
+    IngestionPipeline survivor =
+        Boolean.TRUE.equals(deleted.getDeployed())
+            ? findByNameOrNull(namesake.getFullyQualifiedName(), Include.NON_DELETED)
+            : null;
+    if (survivor != null) {
+      try {
+        deployPipelineBeforeUpdate(survivor);
+      } catch (PipelineServiceClientException | BadRequestException | IllegalStateException e) {
+        LOG.warn(
+            "Could not redeploy '{}' after deleting its namesake '{}'; redeploy it by hand: {}",
+            survivor.getFullyQualifiedName(),
+            deleted.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
   }
 
   private void deletePipelineStatuses(IngestionPipeline entity) {

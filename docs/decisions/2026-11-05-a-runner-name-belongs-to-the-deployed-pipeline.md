@@ -36,13 +36,18 @@ plus cleanup of the old DAGs, with the server and the Airflow plugin upgraded to
 - Never-deployed namesakes, the external-workflow case, keep working.
 - Two pipelines already deployed under one runner name, which were overwriting each other, are both
   refused until one is deleted; pipeline names cannot change, so it is recreated under another
-  name. The error names the other pipeline.
+  name. The error names the other pipeline. Deleting one skips the runner delete and redeploys the
+  survivor, since the shared runner object may still hold the deleted pipeline's config.
 - A per-service agent under a fixed name (Collate's `reverse_metadata`) already shared one runner
   object on a name-addressed runner; its deploy for a second service is now refused instead of
   overwriting the first. It is unaffected on Argo, which keeps the default.
 - Whichever of two same-named pipelines is deployed first keeps the runner name; the other's deploy
   is refused, and the error names the pipeline that holds it.
 - Kubernetes cuts names at 53 characters; names that differ only past that still collide there.
+- Each guarded call reads the name and FQN of every deployed pipeline; `deployed` lives in the JSON,
+  so it is a table scan. Measured at 20,000 pipelines (5,000 deployed): about 30 ms on MySQL 8 and
+  155 ms on Postgres 15, against a runner deploy that waits seconds for the DAG to parse. If it
+  shows up, index a stored runner-name column and match on it exactly.
 - Credentials stored under the old name-based secret id keep their reference until they are entered
   again; the old vault entries are not removed.
 - Revisit by deriving runner names from the pipeline id, which would make this guard unnecessary.
