@@ -40,7 +40,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -165,8 +165,8 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
-    // Same for the 2.0.9 data product domain containment repair. The repair only rewrites links
-    // that disagree, so running it after 2.0.9 already did changes nothing.
+    // Same for the 2.0.8 data product domain containment repair. The repair only rewrites links
+    // that disagree, so running it after 2.0.8 already did changes nothing.
     runOnce(
         migrationDAO,
         getVersion(),
