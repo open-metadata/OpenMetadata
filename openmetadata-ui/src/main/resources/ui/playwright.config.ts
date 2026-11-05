@@ -240,9 +240,9 @@ export default defineConfig({
   workers: process.env.CI
     ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
     : undefined,
-  // A zero limit disables failure-based stopping, so visual shards report every
-  // difference. Other lanes stop after 50 failures to bound broken runs.
-  maxFailures: process.env.PW_SHARD_LANE === 'visual' ? 0 : 50,
+  // Stop catastrophically broken shards after enough failures to establish
+  // that the run cannot be useful. Healthy runs never approach this limit.
+  maxFailures: 50,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: reporters,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
