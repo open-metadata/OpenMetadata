@@ -34,11 +34,7 @@ import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDat
 import Loader from '../../../components/common/Loader/Loader';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { DEFAULT_PERSONA_CONTEXT_DEFINITION } from '../../../constants/PersonaAIContext.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
@@ -361,11 +357,7 @@ const ContextCenterAIContextPage = () => {
                   minimal
                   page={currentPage}
                   pageSize={pageSize}
-                  pageSizeOptions={[
-                    PAGE_SIZE_BASE,
-                    PAGE_SIZE_MEDIUM,
-                    PAGE_SIZE_LARGE,
-                  ]}
+                  pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
                   total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
                   onPageChange={handlePageNavigation}
                   onPageSizeChange={handlePageSizeChange}

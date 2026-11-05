@@ -430,10 +430,13 @@ public class TopicRepository extends EntityRepository<Topic> {
     EntityUtil.mergeTags(allTags, topic.getTags());
     List<Field> schemaFields =
         topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
-    for (Field schemaField : listOrEmpty(schemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    EntityUtil.mergeFieldTags(allTags, schemaFields);
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,messageSchema");
   }
 
   public static Set<TagLabel> getAllFieldTags(Field field) {

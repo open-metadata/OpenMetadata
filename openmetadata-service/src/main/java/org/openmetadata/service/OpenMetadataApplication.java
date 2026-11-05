@@ -208,6 +208,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
+import org.openmetadata.service.security.saml.SamlLoginCompletionServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
 import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
@@ -903,6 +904,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Only register servlets if they don't already exist to prevent duplicate registration
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/login")) {
         contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
+      }
+      if (!isSamlServletRegistered(contextHandler, SamlLoginCompletionServlet.PATH)) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlLoginCompletionServlet()), SamlLoginCompletionServlet.PATH);
       }
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
         contextHandler.addServlet(
