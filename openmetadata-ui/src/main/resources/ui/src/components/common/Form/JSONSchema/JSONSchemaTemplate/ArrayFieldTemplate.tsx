@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { Fragment, FunctionComponent } from 'react';
-import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
+import { Fragment, FunctionComponent, MouseEvent } from 'react';
 import { t } from '../../../../../utils/i18next/LocalUtil';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
@@ -30,15 +29,12 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
       <div className="d-flex justify-between items-center">
         <Typography className="control-label">{title}</Typography>
         {canAdd && (
-          <Button
-            aria-label={t('label.add')}
+          <ButtonUtility
             color="primary"
             data-testid={`add-item-${title}`}
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="xs"
+            tooltip={t('label.add')}
             onClick={onAddClick}
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {
@@ -56,10 +52,12 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           key={element.key}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <Icon
-              className="w-7 h-0 m-l-sm"
-              component={DeleteIcon}
-              onClick={(event) => {
+            <ButtonUtility
+              className="tw:ml-3"
+              icon={Trash01}
+              size="sm"
+              tooltip={t('label.remove')}
+              onClick={(event: MouseEvent<HTMLButtonElement>) => {
                 element.onDropIndexClick(element.index)(event);
               }}
             />

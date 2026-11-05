@@ -26,6 +26,8 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.unboundid.ldap.listener.InMemoryDirectoryServer;
 import com.unboundid.ldap.listener.InMemoryDirectoryServerConfig;
 import com.unboundid.ldap.listener.InMemoryListenerConfig;
@@ -49,7 +51,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,7 +66,10 @@ import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -74,10 +81,12 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDefinition;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -90,26 +99,35 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.api.security.ResponseType;
+import org.openmetadata.schema.api.tasks.CreateTask;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.profiler.MetricType;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.TestLoginCredentialsRequest;
 import org.openmetadata.schema.system.TestLoginProtocol;
@@ -121,20 +139,27 @@ import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.TestLoginCallbackPage;
@@ -156,6 +181,83 @@ import org.openmetadata.service.util.EntityUtil;
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class SystemResourceIT {
+
+  /** A task takes its target's domains in prepare; a PATCH must not hide them from the rules. */
+  @Test
+  void test_taskPatchKeepsItsTargetsInheritedDomainsForTheRules(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("task_rule_domain"))
+                    .withDescription("task rule domain")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name(ns.prefix("task_rule_db"))
+            .in(service.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("task_rule_schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    Task task =
+        client
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("task_rule_task"))
+                    .withDescription("before")
+                    .withCategory(TaskCategory.MetadataUpdate)
+                    .withType(TaskEntityType.DescriptionUpdate)
+                    .withAbout(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+                    .withPayload(
+                        new DescriptionUpdatePayload()
+                            .withFieldPath("description")
+                            .withCurrentDescription(table.getDescription())
+                            .withNewDescription("proposed")));
+    // The generated with* setters mutate in place, so the original is kept as its own JSON copy.
+    String original = JsonUtils.pojoToJson(EntityRulesUtil.getEntityRulesSettings(client));
+    Settings withRule = JsonUtils.readValue(original, Settings.class);
+    EntityRulesSettings rules =
+        new ObjectMapper().convertValue(withRule.getConfigValue(), EntityRulesSettings.class);
+    List<SemanticsRule> withTaskRule = new ArrayList<>(rules.getEntitySemantics());
+    withTaskRule.add(
+        new SemanticsRule()
+            .withName(ns.prefix("tasksNeedADomain"))
+            .withDescription("Tasks must belong to a domain")
+            .withRule("{\"!!\":[{\"var\":\"domains\"}]}")
+            .withEntityType(Entity.TASK)
+            .withEnabled(true));
+    try {
+      EntityRulesUtil.updateSettings(
+          client, withRule.withConfigValue(rules.withEntitySemantics(withTaskRule)));
+
+      client
+          .tasks()
+          .patch(
+              task.getId().toString(),
+              new ObjectMapper()
+                  .readTree(
+                      "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"after\"}]"));
+
+      assertEquals("after", client.tasks().get(task.getId().toString()).getDescription());
+    } finally {
+      EntityRulesUtil.updateSettings(client, JsonUtils.readValue(original, Settings.class));
+    }
+    assertFalse(
+        JsonUtils.pojoToJson(EntityRulesUtil.getEntityRulesSettings(client))
+            .contains("tasksNeedADomain"),
+        "The temporary task rule must be gone after the test");
+  }
 
   @Test
   void testDisabledGlossaryPropagationStillValidatesConflicts(TestNamespace ns) throws Exception {
@@ -582,6 +684,9 @@ public class SystemResourceIT {
   }
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String SECURITY_CONFIG_PATH = "/v1/system/security/config";
+  private static final String ALLOWED_DOMAIN = "open-metadata.org";
+  private static final String OUT_OF_DOMAIN = "not-allowed.example";
   private static final String TEST_LOGIN_PATH = "/v1/system/security/test-login";
   private static final String ADMIN_EMAIL = "admin@open-metadata.org";
   // Mirrors TestLoginRoundTrip.MAX_CREDENTIAL_TESTS_PER_WINDOW, which is package-private.
@@ -2284,6 +2389,296 @@ public class SystemResourceIT {
   }
 
   @Test
+  void test_allowedEmailDomains_rejectsOutOfDomainUserCreation() throws Throwable {
+    String postRejected = uniqueUserName("postrejected");
+    String putRejected = uniqueUserName("putrejected");
+    String accepted = uniqueUserName("accepted");
+
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
+        () -> {
+          OpenMetadataException postRejection =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      SdkClients.adminClient()
+                          .users()
+                          .create(createUserRequest(postRejected, OUT_OF_DOMAIN)));
+          assertEquals(400, postRejection.getStatusCode(), postRejection.getMessage());
+          assertTrue(
+              postRejection.getMessage().contains(OUT_OF_DOMAIN), postRejection.getMessage());
+          assertTrue(
+              postRejection.getMessage().contains(ALLOWED_DOMAIN), postRejection.getMessage());
+
+          OpenMetadataException putRejection =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      SdkClients.adminClient()
+                          .getHttpClient()
+                          .executeForString(
+                              HttpMethod.PUT,
+                              "/v1/users",
+                              createUserRequest(putRejected, OUT_OF_DOMAIN)));
+          assertEquals(400, putRejection.getStatusCode(), putRejection.getMessage());
+
+          User created =
+              SdkClients.adminClient().users().create(createUserRequest(accepted, ALLOWED_DOMAIN));
+          assertEquals(accepted + "@" + ALLOWED_DOMAIN, created.getEmail());
+        });
+
+    assertUserAbsent(postRejected);
+    assertUserAbsent(putRejected);
+  }
+
+  @Test
+  void test_deprecatedEnforcePrincipalDomain_rejectsOutOfDomainUserCreation() throws Throwable {
+    String rejected = uniqueUserName("legacyrejected");
+    String accepted = uniqueUserName("legacyaccepted");
+
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          enforceDeprecatedPrincipalDomain(config);
+        },
+        () -> {
+          OpenMetadataException rejection =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      SdkClients.adminClient()
+                          .users()
+                          .create(createUserRequest(rejected, OUT_OF_DOMAIN)));
+          assertEquals(400, rejection.getStatusCode(), rejection.getMessage());
+
+          User created =
+              SdkClients.adminClient().users().create(createUserRequest(accepted, ALLOWED_DOMAIN));
+          assertEquals(accepted + "@" + ALLOWED_DOMAIN, created.getEmail());
+        });
+
+    assertUserAbsent(rejected);
+  }
+
+  @Test
+  void test_allowedEmailDomains_leavesCreationAloneUnderNativePasswordProvider() throws Throwable {
+    // Native-password sessions use OpenMetadata-issued tokens, which login never domain-checks, so
+    // creation does not check either. This server runs the openmetadata provider.
+    String outsider = uniqueUserName("nativeoutsider");
+
+    withSecurityConfig(
+        SystemResourceIT::restrictToAllowedEmailDomain,
+        () -> {
+          User created =
+              SdkClients.adminClient().users().create(createUserRequest(outsider, OUT_OF_DOMAIN));
+          assertEquals(outsider + "@" + OUT_OF_DOMAIN, created.getEmail());
+        });
+  }
+
+  @Test
+  void test_allowedEmailDomains_keepsExistingOutOfDomainUsersEditable() throws Throwable {
+    // Created before the restriction is switched on, as on a deployment that enables it later
+    User existing =
+        SdkClients.adminClient()
+            .users()
+            .create(createUserRequest(uniqueUserName("existing"), OUT_OF_DOMAIN));
+
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
+        () -> {
+          existing.setDescription("edited while the restriction is on");
+          User updated = SdkClients.adminClient().users().update(existing.getId(), existing);
+
+          assertEquals("edited while the restriction is on", updated.getDescription());
+          assertEquals(existing.getEmail(), updated.getEmail());
+        });
+  }
+
+  @Test
+  void test_allowedEmailDomains_failsOnlyOutOfDomainCsvRows() throws Throwable {
+    Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(uniqueUserName("csvteam"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    String allowed = uniqueUserName("csvallowed");
+    String rejected = uniqueUserName("csvrejected");
+
+    withSecurityConfig(
+        config -> {
+          signInThroughSso(config);
+          restrictToAllowedEmailDomain(config);
+        },
+        () -> {
+          String header = exportUserCsv(team.getName()).lines().findFirst().orElseThrow();
+          String csv =
+              String.join(
+                      "\n",
+                      header,
+                      userCsvRow(header, allowed, ALLOWED_DOMAIN, team.getName()),
+                      userCsvRow(header, rejected, OUT_OF_DOMAIN, team.getName()))
+                  + "\n";
+
+          // A dry run reports the row too, and writes nothing
+          CsvImportResult dryRun = importUserCsv(team.getName(), csv, true);
+          assertEquals(1, dryRun.getNumberOfRowsFailed(), dryRun.getImportResultsCsv());
+          assertTrue(
+              dryRun.getImportResultsCsv().contains(OUT_OF_DOMAIN), dryRun.getImportResultsCsv());
+          assertUserAbsent(allowed);
+
+          CsvImportResult result = importUserCsv(team.getName(), csv, false);
+          assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus(), result.getImportResultsCsv());
+          assertEquals(1, result.getNumberOfRowsFailed(), result.getImportResultsCsv());
+          assertTrue(
+              result.getImportResultsCsv().contains(OUT_OF_DOMAIN), result.getImportResultsCsv());
+        });
+
+    assertEquals(
+        allowed + "@" + ALLOWED_DOMAIN,
+        SdkClients.adminClient().users().getByName(allowed).getEmail());
+    assertUserAbsent(rejected);
+  }
+
+  // An SSO provider, so creation applies the sign-in domain rule. A public client needs no
+  // discovery round-trip, and the SDK's OpenMetadata-issued tokens keep validating under it
+  private static void signInThroughSso(ObjectNode securityConfig) {
+    ((ObjectNode) securityConfig.get("authenticationConfiguration"))
+        .put("provider", "custom-oidc")
+        .put("clientType", "public");
+  }
+
+  private static void restrictToAllowedEmailDomain(ObjectNode securityConfig) {
+    ObjectNode authorizer = (ObjectNode) securityConfig.get("authorizerConfiguration");
+    authorizer.put("enforcePrincipalDomain", false);
+    authorizer.putArray("allowedEmailDomains").add(ALLOWED_DOMAIN);
+  }
+
+  private static void enforceDeprecatedPrincipalDomain(ObjectNode securityConfig) {
+    // allowedEmailDomains takes precedence, so clear it for the deprecated settings to apply
+    ObjectNode authorizer = (ObjectNode) securityConfig.get("authorizerConfiguration");
+    authorizer.putArray("allowedEmailDomains");
+    authorizer.putArray("allowedDomains");
+    authorizer.put("enforcePrincipalDomain", true).put("principalDomain", ALLOWED_DOMAIN);
+  }
+
+  /**
+   * Applies {@code configure} to the security configuration for the duration of {@code body}, then
+   * restores the original. Safe for the rest of the suite: this class is @Isolated, and every
+   * SdkClients token is OpenMetadata-issued, which validates under any provider and which login
+   * exempts from domain restrictions, so authentication keeps working throughout.
+   */
+  private static void withSecurityConfig(Consumer<ObjectNode> configure, Executable body)
+      throws Throwable {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String original = getSecurityConfigJson(client);
+    ObjectNode updated = (ObjectNode) MAPPER.readTree(original);
+    configure.accept(updated);
+    try {
+      putSecurityConfigJson(client, MAPPER.writeValueAsString(updated));
+      JsonNode applied = MAPPER.readTree(getSecurityConfigJson(client));
+      JsonNode before = MAPPER.readTree(original);
+      for (String section : List.of("authenticationConfiguration", "authorizerConfiguration")) {
+        assertChangesApplied(before.get(section), updated.get(section), applied.get(section));
+      }
+      body.execute();
+    } finally {
+      putSecurityConfigJson(client, original);
+    }
+  }
+
+  // Guards against a change the server silently ignored, which would let the tests pass vacuously.
+  // Emptied lists are skipped because the server may return them as absent rather than [].
+  private static void assertChangesApplied(JsonNode before, JsonNode wanted, JsonNode actual) {
+    wanted
+        .fieldNames()
+        .forEachRemaining(
+            field -> {
+              JsonNode value = wanted.get(field);
+              boolean emptiedList = value.isArray() && value.isEmpty();
+              if (!value.equals(before.get(field)) && !emptiedList) {
+                assertEquals(value, actual.get(field), field + " did not take effect");
+              }
+            });
+  }
+
+  private static String getSecurityConfigJson(OpenMetadataClient client) throws Exception {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET, SECURITY_CONFIG_PATH, null, RequestOptions.builder().build());
+  }
+
+  private static void putSecurityConfigJson(OpenMetadataClient client, String json)
+      throws Exception {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, SECURITY_CONFIG_PATH, json, RequestOptions.builder().build());
+  }
+
+  private static String exportUserCsv(String teamName) throws Exception {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/users/export",
+            null,
+            RequestOptions.builder().queryParam("team", teamName).build());
+  }
+
+  // User import lives at /v1/users/import?team=..., not the /name/{name}/import path the SDK's
+  // generic importCsv targets
+  private static CsvImportResult importUserCsv(String teamName, String csv, boolean dryRun)
+      throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users/import",
+                csv,
+                RequestOptions.builder()
+                    .header("Content-Type", "text/plain; charset=UTF-8")
+                    .queryParam("team", teamName)
+                    .queryParam("dryRun", String.valueOf(dryRun))
+                    .build());
+    return JsonUtils.readValue(response, CsvImportResult.class);
+  }
+
+  private static String userCsvRow(String header, String userName, String domain, String team) {
+    Map<String, String> values =
+        Map.of(
+            "name", userName, "email", userName + "@" + domain, "teams", team, "isAdmin", "false");
+    return Arrays.stream(header.split(","))
+        .map(column -> values.getOrDefault(column.replace("*", "").trim(), ""))
+        .collect(Collectors.joining(","));
+  }
+
+  private static CreateUser createUserRequest(String userName, String domain) {
+    return new CreateUser().withName(userName).withEmail(userName + "@" + domain);
+  }
+
+  // Lowercase alphanumerics only: user CSV import requires the name to equal the email local part
+  private static String uniqueUserName(String purpose) {
+    return "pd" + purpose + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+  }
+
+  private static void assertUserAbsent(String userName) {
+    OpenMetadataException notFound =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().users().getByName(userName));
+    assertEquals(404, notFound.getStatusCode(), notFound.getMessage());
+  }
+
+  @Test
   void test_validateSecurityConfig_adminCanValidate() throws Exception {
     String securityConfigJson = MAPPER.writeValueAsString(buildBasicSecurityConfig());
 
@@ -2727,6 +3122,154 @@ public class SystemResourceIT {
   }
 
   @Test
+  void test_patchEntityRule_changesOneRuleAndPreservesOthers() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    List<SemanticsRule> originalRules = entityRules(original);
+    assertFalse(originalRules.isEmpty(), "Pre-condition: seed entity rules must exist");
+
+    try {
+      final SemanticsRule target = originalRules.getFirst();
+      final boolean isEnabled = !Boolean.TRUE.equals(target.getEnabled());
+
+      Settings response =
+          EntityRulesUtil.patchRule(client, target.getName(), replaceEnabled(isEnabled));
+
+      List<SemanticsRule> expected =
+          originalRules.stream()
+              .map(
+                  rule ->
+                      rule.getName().equals(target.getName()) ? copyWith(rule, isEnabled) : rule)
+              .toList();
+      assertEquals(expected, entityRules(response));
+      assertEquals(expected, entityRules(EntityRulesUtil.getEntityRulesSettings(client)));
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  /**
+   * #35639: toggling a rule used to send back the toggling client's copy of the whole list, which
+   * dropped a rule another writer added after that copy was read. The patch sends only the change.
+   */
+  @Test
+  void test_patchEntityRule_keepsARuleAddedByAnotherWriter() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    List<SemanticsRule> originalRules = entityRules(original);
+    final SemanticsRule target = originalRules.getFirst();
+    final SemanticsRule addedElsewhere =
+        copyWith(target, false).withName("it-concurrent-rule-" + UUID.randomUUID());
+
+    try {
+      Settings withAddedRule =
+          new Settings()
+              .withConfigType(SettingsType.ENTITY_RULES_SETTINGS)
+              .withConfigValue(
+                  new EntityRulesSettings()
+                      .withEntitySemantics(
+                          Stream.concat(originalRules.stream(), Stream.of(addedElsewhere))
+                              .toList()));
+      EntityRulesUtil.updateSettings(client, withAddedRule);
+
+      EntityRulesUtil.patchRule(
+          client, target.getName(), replaceEnabled(!Boolean.TRUE.equals(target.getEnabled())));
+
+      List<SemanticsRule> stored = entityRules(EntityRulesUtil.getEntityRulesSettings(client));
+      assertTrue(
+          stored.contains(addedElsewhere),
+          "A rule added by another writer must survive a patch on a different rule");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  @Test
+  void test_patchEntityRule_rejectsNonAdminsUnknownRulesAndPatchesThatBreakTheList()
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    final String ruleName = entityRules(original).getFirst().getName();
+
+    try {
+      assertPatchFails(SdkClients.user1Client(), ruleName, replaceEnabled(true), 403);
+      assertPatchFails(client, "no-such-rule-name", replaceEnabled(true), 404);
+      assertPatchFails(
+          client, ruleName, "[{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"renamed\"}]", 400);
+      assertPatchFails(client, ruleName, "[{\"op\":\"remove\",\"path\":\"\"}]", 400);
+      assertPatchFails(client, ruleName, "[{\"op\":\"remove\",\"path\":\"/rule\"}]", 400);
+      assertPatchFails(
+          client, ruleName, "[{\"op\":\"replace\",\"path\":\"enabled\",\"value\":true}]", 400);
+
+      assertEquals(
+          entityRules(original),
+          entityRules(EntityRulesUtil.getEntityRulesSettings(client)),
+          "A rejected patch must leave the stored rules unchanged");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  /**
+   * The rule patch writes through {@code replaceSettingIfCurrent} with the JSON it read; a write
+   * that lands in between must turn the stale write into a 412 and keep the newer row.
+   */
+  @Test
+  void test_entityRulesCompareAndSet_rejectsAStaleWriteWith412() {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SystemDAO dao = Entity.getCollectionDAO().systemDAO();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+
+    try {
+      final String expectedJson =
+          dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
+      final EntityRulesSettings concurrent =
+          JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
+      final SemanticsRule changed = concurrent.getEntitySemantics().getLast();
+      changed.setEnabled(!Boolean.TRUE.equals(changed.getEnabled()));
+      final String concurrentJson = JsonUtils.pojoToJson(concurrent);
+      dao.insertSettings(SettingsType.ENTITY_RULES_SETTINGS.value(), concurrentJson);
+
+      final Settings stale =
+          new Settings()
+              .withConfigType(SettingsType.ENTITY_RULES_SETTINGS)
+              .withConfigValue(JsonUtils.readValue(expectedJson, EntityRulesSettings.class));
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> Entity.getSystemRepository().replaceSettingIfCurrent(stale, expectedJson));
+      assertEquals(
+          JsonUtils.readTree(concurrentJson),
+          JsonUtils.readTree(dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value())),
+          "The newer row must survive the rejected stale write");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  private static void assertPatchFails(
+      OpenMetadataClient client, String ruleName, String jsonPatch, int expectedStatus) {
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> EntityRulesUtil.patchRule(client, ruleName, jsonPatch));
+    assertEquals(expectedStatus, error.getStatusCode(), jsonPatch);
+  }
+
+  private static String replaceEnabled(boolean isEnabled) {
+    return "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":" + isEnabled + "}]";
+  }
+
+  private static List<SemanticsRule> entityRules(Settings settings) {
+    return MAPPER
+        .convertValue(settings.getConfigValue(), EntityRulesSettings.class)
+        .getEntitySemantics();
+  }
+
+  private static SemanticsRule copyWith(SemanticsRule rule, boolean isEnabled) {
+    return MAPPER.convertValue(rule, SemanticsRule.class).withEnabled(isEnabled);
+  }
+
+  @Test
   void test_updateSecurityConfig_emailFirstFieldsRoundTrip() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String originalSecurityConfigJson =
@@ -2778,6 +3321,70 @@ public class SystemResourceIT {
               "/v1/system/security/config",
               originalSecurityConfigJson,
               RequestOptions.builder().build());
+    }
+  }
+
+  /**
+   * The SSO page's self-signup switch sends exactly this one-operation patch (#28379). Like a
+   * configuration seeded from the environment before field validation existed, the stored
+   * configuration fails full validation, here on an empty callback URL the test server's provider
+   * never uses. No check reads enableSelfSignup, so the patch must still be saved.
+   */
+  @Test
+  void test_patchSecurityConfig_savesSelfSignupDespiteErrorsTheStoredConfigAlreadyHas()
+      throws Exception {
+    SecurityConfiguration original = getSecurityConfig();
+    SecurityConfiguration failing = getSecurityConfig();
+    failing.getAuthenticationConfiguration().setCallbackUrl("");
+    boolean selfSignup = failing.getAuthenticationConfiguration().getEnableSelfSignup();
+
+    try {
+      putSecurityConfig(MAPPER.writeValueAsString(failing));
+      assertEquals(
+          SecurityValidationResponse.Status.FAILED,
+          validateSecurityConfig(getSecurityConfig()).getStatus(),
+          "The stored configuration must fail validation for this test to mean anything");
+
+      patchSecurityConfig("/authenticationConfiguration/enableSelfSignup", !selfSignup);
+
+      assertEquals(
+          !selfSignup, getSecurityConfig().getAuthenticationConfiguration().getEnableSelfSignup());
+    } finally {
+      putSecurityConfig(MAPPER.writeValueAsString(original));
+    }
+  }
+
+  /**
+   * A patch to a setting validation reads is validated in full. Validators stop at the first
+   * failure, so an error the stored configuration already has could hide one the patch introduces:
+   * the rejection lists the older errors too.
+   */
+  @Test
+  void test_patchSecurityConfig_rejectsAChangeToACheckedSettingWithEveryError() throws Exception {
+    SecurityConfiguration stored = getSecurityConfig();
+    List<FieldError> storedErrors = validateSecurityConfig(stored).getErrors();
+
+    try {
+      InvalidRequestException rejection =
+          assertThrows(
+              InvalidRequestException.class,
+              () -> patchSecurityConfig("/authenticationConfiguration/callbackUrl", ""));
+
+      List<FieldError> reported =
+          MAPPER
+              .readValue(rejection.getResponseBody(), SecurityValidationResponse.class)
+              .getErrors();
+      assertTrue(
+          reported.stream()
+              .anyMatch(
+                  error -> "authenticationConfiguration.callbackUrl".equals(error.getField())),
+          "The rejection must report the callback URL the patch cleared: " + reported);
+      assertTrue(
+          reported.containsAll(CommonUtil.listOrEmpty(storedErrors)),
+          "The rejection must also report the errors the stored configuration already had: "
+              + reported);
+    } finally {
+      putSecurityConfig(MAPPER.writeValueAsString(stored));
     }
   }
 
@@ -2862,6 +3469,18 @@ public class SystemResourceIT {
             "/v1/system/security/config",
             securityConfigJson,
             RequestOptions.builder().build());
+  }
+
+  private static void patchSecurityConfig(String path, Object value) {
+    ArrayNode patch = MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", path)
+        .set("value", MAPPER.valueToTree(value));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/system/security/config", patch);
   }
 
   private static SecurityValidationResponse validateSecurityConfig(

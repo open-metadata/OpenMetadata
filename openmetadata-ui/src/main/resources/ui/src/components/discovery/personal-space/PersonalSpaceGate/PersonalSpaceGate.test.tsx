@@ -32,10 +32,6 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({ currentUser: { id: 'user-id' } })),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
@@ -72,7 +68,11 @@ describe('PersonalSpaceGate permissions', () => {
 
     renderGate();
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(
       screen.queryByText('personal-space-children')
     ).not.toBeInTheDocument();
@@ -95,7 +95,11 @@ describe('PersonalSpaceGate permissions', () => {
     renderGate();
 
     await waitFor(() =>
-      expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument()
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument()
     );
   });
 });

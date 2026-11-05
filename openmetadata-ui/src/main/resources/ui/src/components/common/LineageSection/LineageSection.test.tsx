@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -198,6 +194,26 @@ describe('LineageSection', () => {
     expect(container.querySelector('hr')).toBeInTheDocument();
   });
 
+  // The summary panel clips overflow and both items are nowrap buttons, so the row must wrap
+  // for a narrow panel or a longer translation to keep "Downstream" visible.
+  it('lets the upstream/downstream row wrap so a narrow panel does not clip it', async () => {
+    (getLineagePagingData as jest.Mock).mockResolvedValue({
+      upstreamDepthInfo: [{ depth: 1, entityCount: 1 }],
+      downstreamDepthInfo: [{ depth: 1, entityCount: 1 }],
+    });
+
+    render(
+      <LineageSection
+        entityFqn="service.db.schema.table"
+        entityType={EntityType.TABLE}
+      />
+    );
+
+    const downstream = await screen.findByTestId('downstream-lineage');
+
+    expect(downstream.parentElement).toHaveClass('tw:flex-wrap');
+  });
+
   it('renders both sections even when one side is zero', async () => {
     (getLineagePagingData as jest.Mock).mockResolvedValue({
       upstreamDepthInfo: [{ depth: 1, entityCount: 15 }],
@@ -298,26 +314,5 @@ describe('LineageSection', () => {
         type: EntityType.TABLE,
       })
     );
-  });
-
-  it('does not fetch lineage for the tour mock entity', () => {
-    render(
-      <TourContext.Provider
-        value={
-          {
-            isTourPage: true,
-          } as Partial<TourProviderContextProps> as TourProviderContextProps
-        }>
-        <LineageSection
-          entityFqn="sample_data.ecommerce_db.shopify.dim_address"
-          entityType={EntityType.TABLE}
-        />
-      </TourContext.Provider>
-    );
-
-    expect(
-      screen.getByText('message.no-lineage-available')
-    ).toBeInTheDocument();
-    expect(getLineagePagingData).not.toHaveBeenCalled();
   });
 });

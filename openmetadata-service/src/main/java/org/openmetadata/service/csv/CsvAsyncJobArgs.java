@@ -31,6 +31,7 @@ public class CsvAsyncJobArgs {
   private Boolean recursive;
   private String csv;
   private String versioningEntityType;
+  private String impersonatedBy;
   // Present when the job exports search results instead of a single entity
   // tree; the handler streams matching documents straight into the buffer.
   private SearchExportArgs searchExport;
@@ -38,6 +39,8 @@ public class CsvAsyncJobArgs {
   private LineageExportArgs lineageExport;
   // Present when the job exports audit log events as JSON.
   private AuditExportArgs auditExport;
+  // Present when a test case export is narrowed by list filters or paginated.
+  private TestCaseExportArgs testCaseExport;
 
   @Getter
   @Setter
@@ -81,6 +84,9 @@ public class CsvAsyncJobArgs {
     private Integer nodeDepth;
     private Integer maxDepth;
     private String includeSourceFields;
+    // The bot that asked on the user's behalf, if any: policies that only hold for impersonated
+    // requests must still hold for the export, which runs after the request is gone.
+    private String impersonatedBy;
   }
 
   /** Filters for an audit-log export. The payload is JSON, not CSV. */
@@ -98,5 +104,35 @@ public class CsvAsyncJobArgs {
     private Long endTs;
     private String searchTerm;
     private Integer limit;
+    // Decided when the export is requested, as the job runs without the requester; an export
+    // queued without it masks user emails.
+    private Boolean readsUserEmails;
+  }
+
+  /**
+   * Filters and page for a test case export, already validated and resolved by the resource
+   * (statuses normalized, entity link reduced to its FQN, owner name resolved to ids) so the sync
+   * and async endpoints hand the repository the same input.
+   */
+  @Getter
+  @Setter
+  @NoArgsConstructor
+  @Accessors(chain = true)
+  public static class TestCaseExportArgs {
+    private String testCaseStatus;
+    private String testCaseType;
+    private String entityFQN;
+    private String tags;
+    private String tier;
+    private String ownerIds;
+    private String q;
+    private String testPlatforms;
+    private String dataQualityDimension;
+    private String serviceName;
+    private String dataProductFqn;
+    private Long startTimestamp;
+    private Long endTimestamp;
+    private Integer limit;
+    private Integer offset;
   }
 }

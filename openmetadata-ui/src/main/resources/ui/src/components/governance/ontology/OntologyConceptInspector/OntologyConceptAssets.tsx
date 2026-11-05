@@ -1,0 +1,401 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  Alert,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  ConfirmPopover,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { MouseEvent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { EntityReference } from '../../../../generated/type/entityReference';
+import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useAnchoredConfirm } from '../../../../hooks/popover/useAnchoredConfirm';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { NativeBindingBatchOutcome } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import {
+  getOntologyAssetPath,
+  getOntologyBindingWriteMessage,
+  NATIVE_BINDING_ASSET_TYPES,
+} from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
+import {
+  InspectorEmptyText,
+  InspectorSectionHeading,
+} from '../../../OntologyExplorer/OntologyInspectorSection';
+import { ConceptEmptyState, ConceptSection } from './OntologyConceptSection';
+
+interface OntologyConceptAssetsProps {
+  conceptId: string;
+  canEdit: boolean;
+  presentation: { kind: 'edit' } | { kind: 'view'; onOpenData: () => void };
+}
+
+const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
+  const { t } = useTranslation();
+  const path = getOntologyAssetPath(asset);
+  const { canViewSampleData } = useEntityPermissions(
+    ResourceEntity.TABLE,
+    { id: asset.id },
+    { enabled: asset.type === EntityType.TABLE, deleted: asset.deleted }
+  );
+
+  return (
+    <Box direction="col" gap={1}>
+      {path ? (
+        <Link to={path}>{getEntityName(asset)}</Link>
+      ) : (
+        <Typography size="text-sm">{getEntityName(asset)}</Typography>
+      )}
+      {asset.type === EntityType.TABLE &&
+      asset.fullyQualifiedName &&
+      canViewSampleData ? (
+        <Link
+          to={getEntityDetailsPath(
+            EntityType.TABLE,
+            asset.fullyQualifiedName,
+            EntityTabs.SAMPLE_DATA
+          )}>
+          {t('label.sample-data')}
+        </Link>
+      ) : null}
+    </Box>
+  );
+};
+
+const OntologyConceptAssets = ({
+  conceptId,
+  canEdit,
+  presentation,
+}: OntologyConceptAssetsProps) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const bindings = useOntologyConceptBindings(conceptId);
+  const unlink = useAnchoredConfirm<
+    Parameters<typeof bindings.removeAsset>[0] & {
+      conceptId: string;
+      name: string;
+    }
+  >();
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const batch = useRef<AbortController>();
+  useEffect(() => () => batch.current?.abort(), [conceptId]);
+  const assets = bindings.data?.assets ?? [];
+  const visiblePage = Math.min(
+    page,
+    Math.max(0, Math.ceil(assets.length / 10) - 1)
+  );
+  const saveAssets = async (
+    selected: EntityReference[]
+  ): Promise<NativeBindingBatchOutcome> => {
+    const run = new AbortController();
+    batch.current?.abort();
+    batch.current = run;
+    const completedIds: string[] = [];
+    let current = bindings.editableSnapshot;
+    for (const [index, asset] of selected.entries()) {
+      const assetType = NATIVE_BINDING_ASSET_TYPES.find(
+        (type) => type === asset.type
+      );
+      if (run.signal.aborted || !current || !assetType) {
+        return {
+          completedIds,
+          remaining: selected.slice(index),
+          stop: 'not-ready',
+        };
+      }
+      if (
+        current.assets.some(
+          (item) => item.assetId === asset.id && item.assetType === assetType
+        )
+      ) {
+        completedIds.push(asset.id);
+
+        continue;
+      }
+      const result = await bindings.replaceAsset({
+        expectedRevision: current.revision,
+        asset: { assetType, assetId: asset.id, columns: [] },
+      });
+      if (result.kind !== 'confirmed') {
+        return {
+          completedIds,
+          remaining: selected.slice(index),
+          stop: result.kind,
+        };
+      }
+      completedIds.push(asset.id);
+      if (result.read.kind === 'unavailable') {
+        return {
+          completedIds,
+          remaining: selected.slice(index + 1),
+          stop: 'read-unavailable',
+        };
+      }
+      current = result.read.snapshot;
+    }
+
+    return { completedIds, remaining: [], stop: 'none' };
+  };
+
+  const canLink = canEdit && bindings.isSuccess;
+
+  const renderPicker = () => {
+    if (!canEdit || (isAiMode && !isPickerOpen)) {
+      return null;
+    }
+
+    return isPickerOpen ? (
+      <OntologyDataAssetPicker
+        native={{
+          assetTypes: NATIVE_BINDING_ASSET_TYPES,
+          isDisabled: !bindings.editableSnapshot,
+          linkedIds: assets.map((asset) => asset.assetId),
+          saveAssets,
+        }}
+        onCancel={() => {
+          batch.current?.abort();
+          setIsPickerOpen(false);
+        }}
+        onSave={() => setIsPickerOpen(false)}
+      />
+    ) : (
+      <Button
+        color="secondary"
+        data-testid="ontology-native-link-assets"
+        iconLeading={Plus}
+        isDisabled={!bindings.editableSnapshot}
+        size="xs"
+        onPress={() => setIsPickerOpen(true)}>
+        {t('label.add-entity', { entity: t('label.data-asset-plural') })}
+      </Button>
+    );
+  };
+
+  const renderStatus = () => (
+    <>
+      {unlink.target && (
+        <ConfirmPopover
+          {...unlink.popoverProps}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.remove')}
+          data-testid="ontology-unlink"
+          isConfirmDisabled={
+            !canEdit ||
+            !bindings.editableSnapshot ||
+            unlink.target.conceptId !== conceptId
+          }
+          title={t('label.remove-entity', { entity: unlink.target.name })}
+          onConfirm={async () => {
+            if (
+              !canEdit ||
+              !bindings.editableSnapshot ||
+              !unlink.target ||
+              unlink.target.conceptId !== conceptId
+            ) {
+              return false;
+            }
+            const { assetId, assetType, expectedRevision } = unlink.target;
+            const result = await bindings.removeAsset({
+              assetId,
+              assetType,
+              expectedRevision,
+            });
+            const notify =
+              result.kind === 'confirmed' ? showSuccessToast : showErrorToast;
+            notify(t(getOntologyBindingWriteMessage(result)));
+
+            return result.kind === 'confirmed';
+          }}
+        />
+      )}
+      {bindings.isPending ? (
+        <Typography role="status">{t('label.loading')}</Typography>
+      ) : null}
+      {bindings.readState === 'unavailable' ? (
+        <Alert variant="error">
+          {t('message.ontology-binding-read-unavailable')}
+          <Button
+            color="link-color"
+            size="sm"
+            onPress={() => void bindings.retryRead().catch(() => undefined)}>
+            {t('label.retry')}
+          </Button>
+        </Alert>
+      ) : null}
+    </>
+  );
+
+  const visibleAssets =
+    presentation.kind === 'view'
+      ? assets.slice(0, 3)
+      : assets.slice(visiblePage * 10, (visiblePage + 1) * 10);
+
+  const renderAssetList = () =>
+    assets.length > 0 ? (
+      <Card className="tw:divide-y tw:divide-secondary">
+        {visibleAssets.map((binding) => {
+          return (
+            <Box
+              align="center"
+              className="tw:min-h-12 tw:px-3 tw:py-2"
+              gap={3}
+              key={`${binding.assetType}:${binding.assetId}`}>
+              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                <OntologyAssetLinks asset={binding.asset} />
+                <Typography ellipsis color="secondary" size="text-xs">
+                  {binding.asset.fullyQualifiedName}
+                </Typography>
+                <Typography color="secondary" size="text-xs">
+                  {binding.assetType} ·{' '}
+                  {t('label.ontology-column-binding-count', {
+                    count: binding.columns.length,
+                  })}
+                </Typography>
+              </Box>
+              {canEdit ? (
+                <ButtonUtility
+                  data-testid={`ontology-native-asset-remove-${binding.assetId}`}
+                  icon={Trash01}
+                  isDisabled={!bindings.editableSnapshot}
+                  size="xs"
+                  tooltip={t('label.remove-entity', {
+                    entity: getEntityName(binding.asset),
+                  })}
+                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                    if (bindings.editableSnapshot) {
+                      unlink.open(
+                        {
+                          assetType: binding.assetType,
+                          assetId: binding.assetId,
+                          expectedRevision: bindings.editableSnapshot.revision,
+                          conceptId,
+                          name: getEntityName(binding.asset),
+                        },
+                        event.currentTarget
+                      );
+                    }
+                  }}
+                />
+              ) : null}
+            </Box>
+          );
+        })}
+      </Card>
+    ) : null;
+
+  const renderPager = () =>
+    presentation.kind === 'edit' && assets.length > 10 ? (
+      <Box gap={2}>
+        <Button
+          color="secondary"
+          isDisabled={visiblePage === 0}
+          size="xs"
+          onPress={() => setPage(visiblePage - 1)}>
+          {t('label.previous')}
+        </Button>
+        <Button
+          color="secondary"
+          isDisabled={(visiblePage + 1) * 10 >= assets.length}
+          size="xs"
+          onPress={() => setPage(visiblePage + 1)}>
+          {t('label.next')}
+        </Button>
+      </Box>
+    ) : null;
+
+  const renderMoreAssets = () =>
+    presentation.kind === 'view' && assets.length > 3 ? (
+      <Button
+        color="link-color"
+        data-testid="ontology-assets-more"
+        size="sm"
+        onPress={presentation.onOpenData}>
+        {t('label.ontology-more-assets', { count: assets.length - 3 })}
+      </Button>
+    ) : null;
+
+  const renderAiSection = () => (
+    <ConceptSection
+      addLabel={t('label.link-entity', { entity: t('label.asset') })}
+      addTestId="ontology-native-link-assets"
+      count={assets.length}
+      testId="ontology-native-assets"
+      title={t('label.data-asset-plural')}
+      onAdd={
+        canLink && !isPickerOpen ? () => setIsPickerOpen(true) : undefined
+      }>
+      {renderPicker()}
+      {renderStatus()}
+      {assets.length === 0 && bindings.isSuccess ? (
+        <ConceptEmptyState
+          hint={t('message.ontology-current-catalog-links')}
+          title={t('label.no-entity', {
+            entity: t('label.data-asset-plural'),
+          })}
+        />
+      ) : (
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('message.ontology-current-catalog-links')}
+        </Typography>
+      )}
+      {renderAssetList()}
+      {renderMoreAssets()}
+      {renderPager()}
+    </ConceptSection>
+  );
+
+  if (isAiMode) {
+    return renderAiSection();
+  }
+
+  return (
+    <Box
+      className="tw:py-1"
+      data-testid="ontology-native-assets"
+      direction="col"
+      gap={2}>
+      <InspectorSectionHeading
+        count={assets.length}
+        label={t('label.data-asset-plural')}
+      />
+      <Typography color="secondary" size="text-xs">
+        {t('message.ontology-current-catalog-links')}
+      </Typography>
+      {renderStatus()}
+      {renderAssetList()}
+      {assets.length === 0 && bindings.isSuccess ? (
+        <InspectorEmptyText>
+          {t('message.no-data-available')}
+        </InspectorEmptyText>
+      ) : null}
+      {renderMoreAssets()}
+      {renderPager()}
+      {renderPicker()}
+    </Box>
+  );
+};
+
+export default OntologyConceptAssets;

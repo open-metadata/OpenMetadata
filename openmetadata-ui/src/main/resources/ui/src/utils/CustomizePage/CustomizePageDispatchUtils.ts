@@ -125,6 +125,15 @@ export const getGlossaryDefaultTabs = () => {
       editable: true,
     },
     {
+      id: EntityTabs.REVIEW,
+      name: EntityTabs.REVIEW,
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.REVIEW]),
+      layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
+        EntityTabs.REVIEW
+      ),
+      editable: false,
+    },
+    {
       id: EntityTabs.RELATIONS_GRAPH,
       name: EntityTabs.RELATIONS_GRAPH,
       displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.RELATIONS_GRAPH]),
@@ -145,10 +154,13 @@ export const getGlossaryDefaultTabs = () => {
   ];
 };
 
-const DEFAULT_TABS_BY_PAGE_TYPE: Partial<Record<PageType, () => Tab[]>> = {
+const DEFAULT_TABS_BY_PAGE_TYPE: Partial<
+  Record<PageType, (rdfEnabled: boolean) => Tab[]>
+> = {
   [PageType.GlossaryTerm]: getGlossaryTermDefaultTabs,
   [PageType.Glossary]: getGlossaryDefaultTabs,
-  [PageType.Table]: () => tableClassBase.getTableDetailPageTabsIds(),
+  [PageType.Table]: (rdfEnabled) =>
+    tableClassBase.getTableDetailPageTabsIds(rdfEnabled),
   [PageType.Topic]: () => topicClassBase.getTopicDetailPageTabsIds(),
   [PageType.StoredProcedure]: () =>
     storedProcedureClassBase.getStoredProcedureDetailPageTabsIds(),
@@ -185,11 +197,14 @@ const DEFAULT_TABS_BY_PAGE_TYPE: Partial<Record<PageType, () => Tab[]>> = {
     worksheetClassBase.getWorksheetDetailPageTabsIds(),
 };
 
-export const getDefaultTabs = (pageType?: string): Tab[] => {
+export const getDefaultTabs = (
+  pageType?: string,
+  rdfEnabled = false
+): Tab[] => {
   const getTabs = DEFAULT_TABS_BY_PAGE_TYPE[pageType as PageType];
 
   if (getTabs) {
-    return getTabs();
+    return getTabs(rdfEnabled);
   }
 
   return [
@@ -307,8 +322,7 @@ const DUMMY_DATA_BY_PAGE_TYPE = {
   [PageType.SearchIndex]: () => searchIndexClassBase.getDummyData(),
   [PageType.Dashboard]: () => dashboardDetailsClassBase.getDummyData(),
   [PageType.Domain]: () => domainClassBase.getDummyData(),
-  [PageType.DataMarketplace]: () =>
-    dataMarketplaceClassBase.getDummyData() as EntityUnion,
+  [PageType.DataMarketplace]: () => dataMarketplaceClassBase.getDummyData(),
   [PageType.DataProduct]: () => dataProductClassBase.getDummyData(),
   [PageType.APICollection]: () => apiCollectionClassBase.getDummyData(),
   [PageType.APIEndpoint]: () => apiEndpointClassBase.getDummyData(),

@@ -13,11 +13,16 @@
 package org.openmetadata.service.llm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 class AnthropicCompletionClientTest {
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final String RESPONSE =
       "{\"content\":[{\"type\":\"text\",\"text\":\"hi\"}],"
@@ -36,5 +41,24 @@ class AnthropicCompletionClientTest {
     String body = AnthropicCompletionClient.buildRequestBody("sys", "user", "claude-x", 256, 0.0);
     assertTrue(body.contains("\"model\":\"claude-x\""));
     assertTrue(body.contains("\"max_tokens\":256"));
+  }
+
+  @Test
+  void requestBodyOmitsTemperatureForModelThatRejectsIt() throws Exception {
+    JsonNode body =
+        MAPPER.readTree(
+            AnthropicCompletionClient.buildRequestBody(
+                "sys", "user", "claude-haiku-5-5", 256, 0.0));
+    assertFalse(body.has("temperature"));
+    assertEquals(256, body.get("max_tokens").asInt());
+  }
+
+  @Test
+  void requestBodyKeepsTemperatureForModelThatAcceptsIt() throws Exception {
+    JsonNode body =
+        MAPPER.readTree(
+            AnthropicCompletionClient.buildRequestBody(
+                "sys", "user", "claude-haiku-4-5-20251001", 256, 0.0));
+    assertEquals(0.0, body.get("temperature").asDouble(-1.0));
   }
 }

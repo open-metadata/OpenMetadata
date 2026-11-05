@@ -13,7 +13,10 @@
 
 import { render, screen } from '@testing-library/react';
 import { useEffect } from 'react';
-import type { ApplicationsViewProps } from './Applications.types';
+import type {
+  ApplicationsHeader,
+  ApplicationsViewProps,
+} from './Applications.types';
 import ApplicationsPanel from './ApplicationsPanel';
 
 jest.mock('react-i18next', () => {
@@ -38,12 +41,14 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => ({
   }),
 }));
 
+let mockSubPage: ApplicationsHeader['subPage'];
+
 // Each stub view reports a crumb so the panel's breadcrumb trail is exercised.
 // A function declaration so the hoisted jest.mock factories can call it.
 function mockStubView(testId: string, crumb?: string) {
   return function StubView({ onHeaderChange }: ApplicationsViewProps) {
     useEffect(() => {
-      onHeaderChange({ crumb });
+      onHeaderChange({ crumb, subPage: mockSubPage });
     }, [onHeaderChange]);
 
     return <div data-testid={testId} />;
@@ -75,6 +80,25 @@ describe('ApplicationsPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsAdmin = true;
+    mockSubPage = undefined;
+  });
+
+  it('adds a sub-page crumb whose parent crumb goes back', () => {
+    const onBack = jest.fn();
+    mockSubPage = { label: 'Run Configuration', onBack };
+    renderAt('SearchIndexingApplication');
+
+    expect(lastCrumbs()).toEqual([
+      'label.setting-plural',
+      'label.application-plural',
+      'Search Indexing',
+      'Run Configuration',
+    ]);
+
+    onHeaderChange.mock.calls.at(-1)[0].onBreadcrumbAction('sub-page-parent');
+
+    expect(onBack).toHaveBeenCalled();
+    expect(mockSetHash).not.toHaveBeenCalled();
   });
 
   it('shows the installed list by default', () => {

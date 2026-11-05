@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { Type } from '../../generated/api/rdf/sparqlResponse';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { useAuth } from '../../hooks/authHooks';
@@ -22,6 +28,7 @@ import {
   replaceSavedSparqlQueries,
   replaceSparqlQueryTemplates,
   runGlossarySparqlQuery,
+  runOntologySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
 } from '../../rest/rdfAPI';
@@ -67,6 +74,7 @@ jest.mock('../../rest/rdfAPI', () => ({
   replaceSavedSparqlQueries: jest.fn(),
   replaceSparqlQueryTemplates: jest.fn(),
   runGlossarySparqlQuery: jest.fn(),
+  runOntologySparqlQuery: jest.fn(),
   runSparqlQuery: jest.fn(),
 }));
 
@@ -213,7 +221,7 @@ describe('OntologyStudioQueryConsole', () => {
     renderConsole();
 
     expect(screen.getByTestId('ontology-query-sample-rail')).toHaveClass(
-      'tw:w-60'
+      'tw:w-70'
     );
     expect(
       (screen.getByTestId('schema-editor') as HTMLTextAreaElement).value
@@ -225,7 +233,7 @@ describe('OntologyStudioQueryConsole', () => {
       screen.queryByText('Concepts regulated by AML')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-query-read-only')).toHaveTextContent(
-      'label.read-only'
+      'label.shared-read-only'
     );
   });
 
@@ -319,6 +327,54 @@ describe('OntologyStudioQueryConsole', () => {
     expect(mockRunGlossarySparqlQuery).not.toHaveBeenCalled();
   });
 
+  it('runs a native ontology query for a non-admin without requiring a glossary', async () => {
+    const run = runOntologySparqlQuery as jest.MockedFunction<
+      typeof runOntologySparqlQuery
+    >;
+    run.mockResolvedValue({
+      format: 'json',
+      body: '{}',
+      contentType: 'application/sparql-results+json',
+      durationMs: 1,
+    });
+    render(
+      <OntologyStudioQueryConsole
+        graphData={GRAPH_DATA}
+        relationTypes={RELATION_TYPES}
+        selectedGlossaryIds={[]}
+        selectedOntologyId="native"
+      />
+    );
+    fireEvent.click(
+      screen.getByTestId('ontology-query-suggestion-ontology-relatedTo-target')
+    );
+    await waitFor(() =>
+      expect(run).toHaveBeenCalledWith(
+        'native',
+        expect.objectContaining({ format: 'json' })
+      )
+    );
+
+    expect(mockRunSparqlQuery).not.toHaveBeenCalled();
+    expect(mockRunGlossarySparqlQuery).not.toHaveBeenCalled();
+  });
+
+  it('opens a native ontology on a class query its active release can answer', () => {
+    render(
+      <OntologyStudioQueryConsole
+        graphData={null}
+        relationTypes={[]}
+        selectedGlossaryIds={[]}
+        selectedOntologyId="native"
+      />
+    );
+
+    const editor = screen.getByTestId('schema-editor') as HTMLTextAreaElement;
+
+    expect(editor.value).toContain('?concept a owl:Class .');
+    expect(editor.value).not.toContain('om:GlossaryTerm');
+  });
+
   it('toggles triple-shaped query results from a table to a subgraph', async () => {
     mockRunGlossarySparqlQuery.mockResolvedValueOnce({
       body: '',
@@ -359,10 +415,58 @@ describe('OntologyStudioQueryConsole', () => {
     );
   });
 
-  it('creates and persists a private user-authored query', async () => {
+  it('creates a new query under My queries, then saves edits and a rename in place', async () => {
     renderConsole();
 
     fireEvent.click(screen.getByTestId('ontology-query-new'));
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([
+        expect.objectContaining({ name: 'label.untitled-query' }),
+      ])
+    );
+
+    expect(screen.getByTestId('ontology-query-saved-list')).toHaveTextContent(
+      'label.untitled-query'
+    );
+    expect(await screen.findByTestId('ontology-query-update')).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId('schema-editor'), {
+      target: { value: 'SELECT ?concept WHERE { ?concept ?p ?o }' },
+    });
+
+    expect(screen.getByTestId('ontology-query-unsaved')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-query-update'));
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([
+        expect.objectContaining({
+          name: 'label.untitled-query',
+          query: 'SELECT ?concept WHERE { ?concept ?p ?o }',
+        }),
+      ])
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-query-rename'));
+    const renameInput = screen.getByTestId('ontology-query-rename-input');
+    fireEvent.change(renameInput, { target: { value: 'My ontology query' } });
+    fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([
+        expect.objectContaining({ name: 'My ontology query' }),
+      ])
+    );
+
+    expect(await screen.findByTestId('ontology-query-title')).toHaveTextContent(
+      'My ontology query'
+    );
+  });
+
+  it('saves a copy of a query under My queries', async () => {
+    renderConsole();
+
     fireEvent.change(screen.getByTestId('schema-editor'), {
       target: { value: 'SELECT ?concept WHERE { ?concept ?p ?o }' },
     });
@@ -424,5 +528,220 @@ describe('OntologyStudioQueryConsole', () => {
     await waitFor(() =>
       expect(mockReplaceQueryTemplates).toHaveBeenLastCalledWith([])
     );
+  });
+});
+
+describe('native owner query library projection', () => {
+  const seeds =
+    require('../../../../../../../../openmetadata-service/src/main/resources/json/data/settings/sparqlQuerySettings.json')
+      .queryTemplates as SavedSparqlQuery[];
+  const renderNative = (createQueryOnMount = false) =>
+    render(
+      <OntologyStudioQueryConsole
+        createQueryOnMount={createQueryOnMount}
+        graphData={null}
+        relationTypes={[]}
+        selectedGlossaryIds={[]}
+        selectedOntologyId="native"
+      />
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    window.localStorage.clear();
+    mockUseAuth.mockReturnValue({ isAdminUser: true, isFirstTimeUser: false });
+    mockGetSavedQueries.mockResolvedValue([]);
+    mockGetQueryTemplates.mockResolvedValue(seeds);
+    mockReplaceSavedQueries.mockImplementation(async (queries) => queries);
+    mockReplaceQueryTemplates.mockImplementation(async (queries) => queries);
+  });
+
+  it('does not show the three loaded service seeds in a native owner', async () => {
+    let resolveSaved!: (queries: SavedSparqlQuery[]) => void;
+    let resolveTemplates!: (queries: SavedSparqlQuery[]) => void;
+    mockGetSavedQueries.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSaved = resolve;
+      })
+    );
+    mockGetQueryTemplates.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTemplates = resolve;
+      })
+    );
+    renderNative();
+    await act(async () => {
+      resolveSaved([]);
+      resolveTemplates(seeds);
+    });
+    for (const seed of seeds) {
+      expect(
+        screen.queryByTestId(`ontology-query-template-${seed.id}`)
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it('waits for both library reads before projecting native Shared queries', async () => {
+    let resolveSaved!: (queries: SavedSparqlQuery[]) => void;
+    let resolveTemplates!: (queries: SavedSparqlQuery[]) => void;
+    mockGetSavedQueries.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSaved = resolve;
+      })
+    );
+    mockGetQueryTemplates.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTemplates = resolve;
+      })
+    );
+    renderNative();
+
+    expect(screen.getByTestId('ontology-query-sample-rail')).toHaveAttribute(
+      'data-library-state',
+      'loading'
+    );
+
+    await act(async () => resolveSaved([]));
+
+    expect(screen.getByTestId('ontology-query-sample-rail')).toHaveAttribute(
+      'data-library-state',
+      'loading'
+    );
+
+    await act(async () => resolveTemplates(seeds));
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-query-sample-rail')).toHaveAttribute(
+        'data-library-state',
+        'ready'
+      )
+    );
+    for (const seed of seeds) {
+      expect(
+        screen.queryByTestId(`ontology-query-template-${seed.id}`)
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it('omits only exact canonical records after the library is ready', async () => {
+    const changed = { ...seeds[0], name: 'My changed seed' };
+    const custom = { ...seeds[0], id: 'custom-copy', name: 'My copy' };
+    mockGetQueryTemplates.mockResolvedValue([
+      ...seeds.slice(1),
+      changed,
+      custom,
+    ]);
+    renderNative();
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-query-sample-rail')).toHaveAttribute(
+        'data-library-state',
+        'ready'
+      )
+    );
+
+    expect(screen.queryByText(seeds[1].name)).not.toBeInTheDocument();
+    expect(screen.queryByText(seeds[2].name)).not.toBeInTheDocument();
+    expect(screen.getByText('My changed seed')).toBeInTheDocument();
+    expect(screen.getByText('My copy')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['id', 'authored-id'],
+    ['name', 'Edited name'],
+    ['query', 'SELECT * WHERE {}'],
+    ['format', 'xml'],
+    ['inference', 'owl'],
+    ['savedAt', 1],
+  ])('keeps a same-seed template when %s changes', async (field, value) => {
+    const edited = { ...seeds[0], [field]: value };
+    mockGetQueryTemplates.mockResolvedValue([edited, ...seeds.slice(1)]);
+    renderNative();
+
+    expect(
+      await screen.findByTestId(`ontology-query-template-${edited.id}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`ontology-query-template-${seeds[1].id}`)
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps a personal copy of a canonical template', async () => {
+    const personal = { ...seeds[0], id: 'personal-copy' };
+    mockGetSavedQueries.mockResolvedValue([personal]);
+    renderNative();
+
+    expect(
+      await screen.findByTestId('ontology-query-saved-personal-copy')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`ontology-query-template-${seeds[0].id}`)
+    ).not.toBeInTheDocument();
+  });
+
+  it('preserves hidden canonical records when saving an authored template', async () => {
+    const authored = { ...seeds[0], id: 'authored', name: 'Authored' };
+    mockGetQueryTemplates.mockResolvedValue([...seeds, authored]);
+    renderNative();
+    fireEvent.click(
+      await screen.findByTestId('ontology-query-template-edit-authored')
+    );
+    fireEvent.change(screen.getByTestId('schema-editor'), {
+      target: { value: 'SELECT ?custom WHERE { ?custom ?p ?o }' },
+    });
+    fireEvent.click(screen.getByTestId('ontology-query-save-template'));
+    fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+    await waitFor(() =>
+      expect(mockReplaceQueryTemplates).toHaveBeenCalledWith([
+        ...seeds,
+        expect.objectContaining({
+          id: 'authored',
+          query: 'SELECT ?custom WHERE { ?custom ?p ?o }',
+        }),
+      ])
+    );
+  });
+
+  it('preserves hidden canonical records in authored template replacement writes', async () => {
+    const authored = { ...seeds[0], id: 'authored', name: 'Authored' };
+    mockGetQueryTemplates.mockResolvedValue([...seeds, authored]);
+    renderNative();
+    fireEvent.click(
+      await screen.findByTestId('ontology-query-template-delete-authored')
+    );
+    await waitFor(() =>
+      expect(mockReplaceQueryTemplates).toHaveBeenCalledWith(seeds)
+    );
+  });
+
+  it('never auto-creates when either library read fails', async () => {
+    mockGetQueryTemplates.mockRejectedValue(new Error('offline'));
+    renderNative(true);
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-query-sample-rail')).toHaveAttribute(
+        'data-library-state',
+        'error'
+      )
+    );
+
+    expect(mockReplaceSavedQueries).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'server.unexpected-error'
+    );
+    expect(
+      screen.queryByText('message.no-query-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps canonical records in the legacy console', async () => {
+    render(
+      <OntologyStudioQueryConsole
+        graphData={GRAPH_DATA}
+        relationTypes={RELATION_TYPES}
+        selectedGlossaryIds={['glossary-1']}
+      />
+    );
+
+    expect(await screen.findByText(seeds[0].name)).toBeInTheDocument();
+    expect(screen.getByText(seeds[1].name)).toBeInTheDocument();
+    expect(screen.getByText(seeds[2].name)).toBeInTheDocument();
   });
 });

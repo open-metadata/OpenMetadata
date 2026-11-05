@@ -27,6 +27,7 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.openmetadata.service.rdf.RdfWriteMode;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfPayloadTooLargeException;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
@@ -34,6 +35,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface.RelationshipData
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "operation")
 @JsonSubTypes({
+  @JsonSubTypes.Type(value = RdfMutation.GraphReplace.class, name = "replaceGraph"),
   @JsonSubTypes.Type(value = RdfMutation.EntityWrite.class, name = "entity"),
   @JsonSubTypes.Type(value = RdfMutation.EntityBatch.class, name = "entities"),
   @JsonSubTypes.Type(value = RdfMutation.EntityDelete.class, name = "delete"),
@@ -55,7 +57,12 @@ public sealed interface RdfMutation {
 
     @Override
     public void apply(final RdfStorageInterface storage) {
-      withModel(rdf, model -> storage.storeEntity(entityType, entityId, model));
+      // Replay replaces, as it did before entity writes sent differences: a difference would add a
+      // read, and the check after it, to every replayed write inside the promotion's replay budget.
+      withModel(
+          rdf,
+          model ->
+              storage.storeEntity(entityType, entityId, model, RdfEntityWriteStrategy.REPLACE));
     }
 
     EntityWriteRequest request(final Model model) {
@@ -170,6 +177,17 @@ public sealed interface RdfMutation {
     @Override
     public void apply(final RdfStorageInterface storage) {
       storage.clearGraph(graph);
+    }
+  }
+
+  record GraphReplace(String graph, byte[] rdf) implements RdfMutation {
+    public static GraphReplace capture(final String graph, final Model model) {
+      return new GraphReplace(graph, encode(model));
+    }
+
+    @Override
+    public void apply(final RdfStorageInterface storage) {
+      withModel(rdf, model -> storage.replaceGraph(graph, model));
     }
   }
 

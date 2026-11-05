@@ -25,7 +25,6 @@ import {
 } from '../../../../utils/AdvancedSearchUtils';
 import { getRuleFilterTree } from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import Loader from '../../../common/Loader/Loader';
 import QueryBuilder from '../../../common/QueryBuilder/QueryBuilder';
 import { PERSONA_BUTTON_PRESET } from '../../../common/QueryBuilder/QueryBuilderCanvas/QueryBuilderCanvas.constants';
@@ -109,27 +108,25 @@ export const RuleQueryBuilderField = ({
   );
 
   return (
-    <DrawerPopupContainerProvider>
-      <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
-        {/* Mounting before the fields arrive lets RAQB's sanitizer field-null any saved extension.<cp> rule. */}
-        {enrichedFields ? (
-          <QueryBuilder
-            buttonPreset={PERSONA_BUTTON_PRESET}
-            entityType={entityType as EntityType}
-            fields={enrichedFields}
-            groupMode="flat"
-            outputType={SearchOutputType.ElasticSearch}
-            readonly={readonly}
-            showCountPreview={false}
-            tree={tree}
-            value={queryFilter ?? ''}
-            onChange={handleChange}
-            onValidityChange={onValidityChange}
-          />
-        ) : (
-          <Loader size="small" />
-        )}
-      </div>
-    </DrawerPopupContainerProvider>
+    <div className="persona-context-rule-builder tw:rounded-lg tw:border tw:border-secondary tw:p-3">
+      {/* Mounting before the fields arrive lets RAQB's sanitizer field-null any saved extension.<cp> rule. */}
+      {enrichedFields ? (
+        <QueryBuilder
+          buttonPreset={PERSONA_BUTTON_PRESET}
+          entityType={entityType as EntityType}
+          fields={enrichedFields}
+          groupMode="flat"
+          outputType={SearchOutputType.ElasticSearch}
+          readonly={readonly}
+          showCountPreview={false}
+          tree={tree}
+          value={queryFilter ?? ''}
+          onChange={handleChange}
+          onValidityChange={onValidityChange}
+        />
+      ) : (
+        <Loader size="small" />
+      )}
+    </div>
   );
 };

@@ -19,7 +19,6 @@ import {
   Checkbox,
   Dot,
   Dropdown,
-  EmptyPlaceholder,
   FileIcon,
   Skeleton,
   Typography,
@@ -27,8 +26,10 @@ import {
 import {
   Check,
   ChevronRight,
+  Copy01,
   Eye,
   Share07,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -36,11 +37,9 @@ import { compare } from 'fast-json-patch';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
 import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
@@ -59,6 +58,8 @@ import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
@@ -297,10 +298,9 @@ const FileActions: FC<FileActionsProps> = ({
       <span className="tw:inline-flex">
         <Dropdown.Root>
           <ButtonUtility
-            color="tertiary"
             data-testid="manage-button"
-            icon={<DotsVerticalIcon height={20} width={20} />}
-            size="sm"
+            icon={DotsVerticalIcon}
+            size="lg"
             tooltip={t('label.manage-entity', { entity: t('label.document') })}
           />
           <Dropdown.Popover className="tw:w-46">
@@ -423,11 +423,10 @@ const FileActions: FC<FileActionsProps> = ({
               {canDelete && (
                 <Dropdown.Item data-testid="delete-btn" id="delete">
                   <Box align="center" gap={2}>
-                    <TrashIcon
+                    <Trash01
                       aria-hidden="true"
                       className="tw:shrink-0 tw:text-error-primary"
-                      height={20}
-                      width={20}
+                      size={20}
                     />
                     <Typography
                       ellipsis
@@ -531,7 +530,7 @@ const ListHeader: FC<ListHeaderProps> = ({
           className="tw:py-1.5"
           color="tertiary"
           data-testid="bulk-download-btn"
-          iconLeading={<DownloadIcon height={18} width={18} />}
+          iconLeading={DownloadIcon}
           size="sm"
           onClick={onBulkDownload}>
           {t('label.download')}
@@ -543,9 +542,7 @@ const ListHeader: FC<ListHeaderProps> = ({
               className="tw:py-1.5"
               color="tertiary"
               data-testid="bulk-move-btn"
-              iconLeading={
-                <FolderIcon height={18} strokeWidth={2} width={18} />
-              }
+              iconLeading={FolderIcon}
               size="sm">
               {t('label.move')}
             </Button>
@@ -566,7 +563,7 @@ const ListHeader: FC<ListHeaderProps> = ({
             className="tw:py-1.5"
             color="tertiary-destructive"
             data-testid="bulk-delete-btn"
-            iconLeading={<TrashIcon height={16} width={16} />}
+            iconLeading={Trash01}
             size="sm"
             onClick={onBulkDelete}>
             {t('label.delete')}
@@ -763,21 +760,21 @@ const FileRow: FC<FileRowProps> = ({
           className={`tw:ml-1.5${
             isPreviewSupported ? '' : ' tw:invisible tw:pointer-events-none'
           }`}
-          color="tertiary"
           data-testid="preview-btn"
-          icon={<Eye height={20} width={20} />}
+          icon={Eye}
+          size="lg"
           tooltip={t('label.preview')}
           onClick={isPreviewSupported ? () => onOpenPreview?.(file) : undefined}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="download-btn"
-          icon={<DownloadIcon height={20} width={20} />}
+          icon={DownloadIcon}
+          size="lg"
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton url={rowUrl}>
-          <CopyIcon aria-hidden="true" height={20} width={20} />
+        <CopyLinkButton size="lg" url={rowUrl}>
+          <Copy01 data-icon aria-hidden="true" />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
@@ -854,7 +851,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 
   const emptyStateContent = selectedFolderName ? (
     <div className="tw:relative tw:flex-1">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         actions={
           onUploadFile
             ? [
@@ -872,16 +869,14 @@ const DocumentsView: FC<DocumentsViewProps> = ({
         title={t('label.folder-name-is-empty', {
           folderName: selectedFolderName,
         })}
-        variant="blank"
       />
     </div>
   ) : (
     <div className="tw:relative tw:flex-1">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearchResultIcon />}
         title={t('label.no-matching-results')}
-        variant="blank"
       />
     </div>
   );

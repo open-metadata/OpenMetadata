@@ -24,7 +24,13 @@ describe('RadioButtons.stories', () => {
       .filter((key) => key !== 'default')
       .sort();
 
-    expect(named).toEqual(['Default', 'Sizes', 'WithDisabled', 'WithHints']);
+    expect(named).toEqual([
+      'Cards',
+      'Default',
+      'Sizes',
+      'WithDisabled',
+      'WithHints',
+    ]);
   });
 
   it('renders the Default story without throwing', () => {

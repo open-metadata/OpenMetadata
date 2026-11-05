@@ -94,7 +94,7 @@
         <dependency>
             <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator</artifactId>
-            <version>8.0.1.Final</version>
+            <version>8.0.6.Final</version>
         </dependency>
         
         <!-- Testing -->
@@ -131,6 +131,30 @@
             <artifactId>k3s</artifactId>
             <version>1.20.3</version>
             <scope>test</scope>
+        </dependency>
+
+        <!-- In-memory Kubernetes API (CRUD mode evaluates label selectors), so pod lookup
+             and cleanup are tested against real label matching instead of mocked clients -->
+        <dependency>
+            <groupId>io.fabric8</groupId>
+            <artifactId>kubernetes-server-mock</artifactId>
+            <version>6.12.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- kubernetes-server-mock brings an older mockwebserver. Declared here without a version,
+             the root okhttp-bom holds it on the same okhttp line as okhttp-jvm: a pinned 4.x
+             mockwebserver needs okhttp3.internal.Util, which okhttp 5 no longer ships. -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>junit</groupId>
+                    <artifactId>junit</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
     

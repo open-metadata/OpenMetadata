@@ -37,7 +37,7 @@ COCKROACH_GET_VIEW_NAMES = """
         pg_namespace n ON n.oid = c.relnamespace
     WHERE 
         n.nspname = :schema 
-        AND c.relkind IN ('v')
+        AND c.relkind IN ('v', 'm')
     ORDER BY 
         c.relname
 """  # noqa: W291
@@ -54,8 +54,8 @@ LEFT JOIN
     pg_description d 
 ON 
     n.oid = d.objoid
-WHERE 
-    d.objsubid = 0;
+    AND d.classoid = 'pg_namespace'::regclass
+    AND d.objsubid = 0;
 """  # noqa: W291
 
 
@@ -85,7 +85,8 @@ JOIN
     crdb_internal.table_indexes ON partitions.table_id = table_indexes.descriptor_id
         AND partitions.index_id = table_indexes.index_id
 WHERE
-    tables.name = :table_name
+    tables.database_name = current_database()
+    AND tables.name = :table_name
     AND tables.schema_name = :schema_name
     AND table_indexes.index_type = 'primary'
     AND partitions.parent_name IS NULL;

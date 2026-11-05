@@ -15,7 +15,6 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ComponentProps } from 'react';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Column } from '../../../generated/entity/data/table';
 import KnowledgeGraphDetails from './KnowledgeGraphDetails';
 
@@ -37,10 +36,7 @@ const props: ComponentProps<typeof KnowledgeGraphDetails> = {
     error: null,
     loadMore: jest.fn(),
   },
-  concepts: { terms: [], loading: false, error: null, partial: false },
   coverage: new Map(),
-  coverageMode: 'all',
-  onCoverageMode: jest.fn(),
   onDrawerChange: jest.fn(),
   onSelect: jest.fn(),
   onClose: jest.fn(),
@@ -55,6 +51,9 @@ const openDetails = (changes: Partial<typeof props> = {}) =>
 
 beforeEach(() => jest.useRealTimers());
 
+// TableV2's react-aria row materialisation is heavy for 300 rows in jsdom
+// (~15s) — the default 5s Jest timeout is enough in the browser but too tight
+// here. The real E2E path is covered by the KG Playwright suite.
 it('pages and searches all loaded columns without declaring uninspected columns unmapped', async () => {
   openDetails();
   const grid = screen.getByRole('grid');
@@ -79,7 +78,7 @@ it('pages and searches all loaded columns without declaring uninspected columns 
   expect(
     screen.queryByRole('button', { name: /label.kg-show-more/ })
   ).not.toBeInTheDocument();
-});
+}, 30_000);
 
 it('lists the gaps first, names what is missing and links to the asset to fix it', async () => {
   openDetails({
@@ -109,46 +108,62 @@ it('lists the gaps first, names what is missing and links to the asset to fix it
   const grid = screen.getByRole('grid');
 
   expect(within(grid).getByText('customers')).toBeVisible();
+  // Mapped assets ('orders') are hidden from the Gaps tab per the designer's
+  // review — they are not a gap and belong in Columns.
   expect(within(grid).queryByText('orders')).not.toBeInTheDocument();
   expect(within(grid).getByText('svc.db.sales · label.table')).toBeVisible();
-  expect(within(grid).getByText('label.kg-no-glossary-term')).toBeVisible();
+  expect(
+    within(grid).getByText('label.kg-missing-glossary-term')
+  ).toBeVisible();
   expect(
     within(grid).getByRole('link', { name: 'label.kg-map-glossary-term' })
   ).toHaveAttribute('href', '/test/entity/path');
-
-  await userEvent.click(screen.getByRole('button', { name: /label.all/ }));
-
-  expect(within(grid).getByText('orders')).toBeVisible();
-  expect(within(grid).getByText('label.kg-mapped')).toBeVisible();
+  // The chip row surfaces only Unmapped + Not explored; there is no All or
+  // Mapped chip on the Gaps tab anymore.
+  expect(
+    screen.queryByRole('button', { name: /label.all/ })
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /label.kg-mapped/ })
+  ).not.toBeInTheDocument();
 });
 
 it('shows actual property types and distinguishes functional declarations from unspecified cardinality', () => {
   openDetails({
     mode: 'ontology',
-    concepts: {
-      terms: [
+    data: {
+      nodes: [
+        { id: 'customer', label: 'Customer', type: 'ontologyConcept' },
         {
-          id: 'customer',
-          name: 'Customer',
-          attributes: [
-            {
-              id: 'id',
-              name: 'customerId',
-              dataType: 'STRING',
-              isIdentifier: true,
-            },
-            {
-              id: 'email',
-              name: 'emailAddress',
-              dataType: 'STRING',
-              datatypeIri: 'http://www.w3.org/2001/XMLSchema#string',
-            },
-          ],
+          id: 'id',
+          label: 'customerId',
+          type: 'property',
+          ontologyProperty: { range: 'STRING', functional: true },
         },
-      ] as GlossaryTerm[],
-      loading: false,
-      error: null,
-      partial: false,
+        {
+          id: 'email',
+          label: 'emailAddress',
+          type: 'property',
+          ontologyProperty: {
+            range: 'http://www.w3.org/2001/XMLSchema#string',
+            functional: false,
+          },
+        },
+      ],
+      edges: [
+        {
+          from: 'id',
+          to: 'customer',
+          label: 'domain',
+          relationType: 'http://www.w3.org/2000/01/rdf-schema#domain',
+        },
+        {
+          from: 'email',
+          to: 'customer',
+          label: 'domain',
+          relationType: 'http://www.w3.org/2000/01/rdf-schema#domain',
+        },
+      ],
     },
   });
   const grid = screen.getByRole('grid');
@@ -160,7 +175,7 @@ it('shows actual property types and distinguishes functional declarations from u
   expect(email).toHaveTextContent('label.kg-not-declared');
 });
 
-it('navigates an inherited property to the ancestor node that declares it', async () => {
+it('navigates to the property returned by the graph', async () => {
   const onSelect = jest.fn();
   openDetails({
     mode: 'ontology',
@@ -177,27 +192,6 @@ it('navigates an inherited property to the ancestor node that declares it', asyn
       ],
       edges: [],
     },
-    concepts: {
-      terms: [
-        {
-          id: 'customer',
-          name: 'Customer',
-          attributes: [],
-          effectiveAttributes: [
-            {
-              id: 'birthDate',
-              name: 'birthDate',
-              dataType: 'DATE',
-              inherited: true,
-              declaringTerm: { id: 'person', type: 'glossaryTerm' },
-            },
-          ],
-        },
-      ] as unknown as GlossaryTerm[],
-      loading: false,
-      error: null,
-      partial: false,
-    },
   });
   const grid = screen.getByRole('grid');
 
@@ -205,3 +199,119 @@ it('navigates an inherited property to the ancestor node that declares it', asyn
 
   expect(onSelect).toHaveBeenCalledWith('node', 'kg:property:person:birthDate');
 });
+
+it('shows tags and glossary terms as chips, five inline and the rest in a popover, without selecting the row', async () => {
+  const onSelect = jest.fn();
+  const terms = ['Account', 'Branch', 'Customer', 'Employee', 'Testing', 'CLV'];
+  openDetails({
+    onSelect,
+    data: {
+      nodes: [
+        {
+          id: 'col',
+          label: 'customer',
+          type: 'column',
+          fullyQualifiedName: 'svc.db.sales.orders.customer',
+        },
+      ],
+      edges: [],
+    },
+    columns: {
+      ...props.columns,
+      columns: [
+        {
+          name: 'customer',
+          fullyQualifiedName: 'svc.db.sales.orders.customer',
+          dataType: 'VARCHAR',
+          dataTypeDisplay: 'varchar',
+          tags: [
+            ...terms.map((name) => ({
+              tagFQN: 'Glossary.' + name,
+              name,
+              source: 'Glossary',
+            })),
+            {
+              tagFQN: 'PII.Sensitive',
+              name: 'Sensitive',
+              source: 'Classification',
+            },
+          ],
+        },
+      ] as Column[],
+      total: 1,
+    },
+  });
+  const grid = screen.getByRole('grid');
+
+  expect(within(grid).getByText('varchar')).toBeVisible();
+  expect(within(grid).getByText('Sensitive')).toBeVisible();
+  expect(within(grid).getByText('Testing')).toBeVisible();
+  expect(within(grid).queryByText('CLV')).not.toBeInTheDocument();
+
+  await userEvent.click(within(grid).getByTestId('plus-more-count'));
+
+  expect(await screen.findByText('CLV')).toBeVisible();
+  expect(onSelect).not.toHaveBeenCalled();
+});
+
+it('hides the paging footer when every row is already shown', () => {
+  openDetails({
+    columns: {
+      ...props.columns,
+      columns: props.columns.columns.slice(0, 3),
+      total: 3,
+    },
+  });
+
+  expect(screen.getByText('label.kg-list-count')).toHaveClass('tw:sr-only');
+  expect(
+    screen.queryByRole('button', { name: /label.kg-show-more/ })
+  ).not.toBeInTheDocument();
+});
+
+it('keeps same-named terms from different glossaries as separate chips', () => {
+  openDetails({
+    columns: {
+      ...props.columns,
+      columns: [
+        {
+          name: 'customer',
+          dataType: 'VARCHAR',
+          tags: [
+            { tagFQN: 'Sales.Customer', name: 'Customer', source: 'Glossary' },
+            {
+              tagFQN: 'Marketing.Customer',
+              name: 'Customer',
+              source: 'Glossary',
+            },
+            { tagFQN: 'Sales.Customer', name: 'Customer', source: 'Glossary' },
+          ],
+        },
+      ] as Column[],
+      total: 1,
+    },
+  });
+
+  expect(
+    within(screen.getByRole('grid')).getAllByText('Customer')
+  ).toHaveLength(2);
+});
+
+it('keeps one live count region while the search crosses the paging threshold', async () => {
+  openDetails();
+  const live = () =>
+    screen
+      .getAllByText('label.kg-list-count')
+      .find((element) => element.getAttribute('aria-live') === 'polite');
+  const before = live();
+
+  await userEvent.type(
+    screen.getByRole('textbox', { name: 'label.search' }),
+    'column_299'
+  );
+
+  expect(
+    screen.queryByRole('button', { name: /label.kg-show-more/ })
+  ).not.toBeInTheDocument();
+  expect(live()).toBe(before);
+}, 30_000);

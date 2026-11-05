@@ -302,7 +302,7 @@ test.describe(
         })
         .toEqual([]);
 
-      // The seed alone fills every bucket, so every chip is a live link.
+      // The seed alone fills every bucket, so every chip can be picked.
       await expect(card.getByTestId('topic-stat-failing')).toBeEnabled();
       await expect(card.getByTestId('topic-stat-healthy')).toBeEnabled();
       await expect(card.getByTestId('topic-stat-not-run')).toBeEnabled();
@@ -346,8 +346,8 @@ test.describe(
     });
 
     // Classic mode has no health-filtered listing -- only the Connections
-    // page reads `health` -- so the chips and "View all" open Settings >
-    // Services without a filter rather than promise one that is ignored.
+    // page reads `health` -- so "View all" opens Settings > Services without
+    // a filter rather than promise one that is ignored.
     test('View all opens the services list', async ({ page }) => {
       const widget = await openPlatformHealth(page);
 
@@ -357,18 +357,37 @@ test.describe(
       await expectServicesSettingsPage(page);
     });
 
+    // The chips filter the card's rows in place; they do not leave the page.
+    // The seeded services sort first by name, so each leads its bucket's rows.
     for (const chip of [
-      { id: 'failing' },
-      { id: 'healthy' },
-      { id: 'not-run' },
+      { id: 'healthy', seeded: () => healthy },
+      { id: 'not-run', seeded: () => notRun },
     ]) {
-      test(`the ${chip.id} chip opens the services list`, async ({ page }) => {
+      test(`the ${chip.id} chip lists its services in the card`, async ({
+        page,
+      }) => {
         const widget = await openPlatformHealth(page);
+        const url = page.url();
+        const chipButton = widget.getByTestId(`topic-stat-${chip.id}`);
+        const targetRow = widget.getByTestId(
+          `failing-service-${target.service.entityResponseData.id}`
+        );
 
-        await widget.getByTestId(`topic-stat-${chip.id}`).click();
+        await chipButton.click();
 
-        await expect(page).toHaveURL(new RegExp(`${SERVICES_SETTINGS_PATH}$`));
-        await expectServicesSettingsPage(page);
+        await expect(chipButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(
+          widget.getByTestId(
+            `bucket-service-${chip.seeded().service.entityResponseData.id}`
+          )
+        ).toBeVisible();
+        await expect(targetRow).toHaveCount(0);
+        expect(page.url()).toBe(url);
+
+        // And back to the failing rows.
+        await widget.getByTestId('topic-stat-failing').click();
+
+        await expect(targetRow).toBeVisible();
       });
     }
 

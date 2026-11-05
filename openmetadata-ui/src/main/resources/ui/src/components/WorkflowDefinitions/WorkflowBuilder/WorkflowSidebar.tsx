@@ -17,10 +17,10 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddIcon } from '../../../assets/svg/ic_add.svg';
 import { NODE_TYPE_MAPPINGS } from '../../../constants/WorkflowBuilder.constants';
 import { NodeSubType } from '../../../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
@@ -78,7 +78,7 @@ const TaskItem = ({
           {t('label.beta')}
         </Badge>
       )}
-      <AddIcon />
+      <Plus className="tw:shrink-0 tw:text-quaternary" size={20} />
     </Card>
   );
 };
@@ -107,8 +107,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
   const automatedTasks = Object.entries(NODE_TYPE_MAPPINGS)
     .filter(
       ([, mapping]) =>
-        mapping.type === NodeType.AutomatedTask &&
-        !('category' in mapping && mapping.category === 'sink')
+        mapping.type === NodeType.AutomatedTask && !('category' in mapping)
     )
     .map(([subType, mapping]) => ({
       icon: getNodeIcon(subType as NodeSubType, {

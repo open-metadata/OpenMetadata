@@ -13,77 +13,81 @@
 import { render } from '@testing-library/react';
 import FilterButton from './FilterButton';
 
-const mockFilterSelect = jest.fn();
+const mockSelect = jest.fn();
 
 // The control itself belongs to core; what this wrapper owns is how the
 // options and the selection are handed to it.
-jest.mock('@openmetadata/ui-core-components', () => ({
-  FilterSelect: (props: Record<string, unknown>) => {
-    mockFilterSelect(props);
+jest.mock('@openmetadata/ui-core-components', () => {
+  const Select = (props: Record<string, unknown>) => {
+    mockSelect(props);
 
     return <div data-testid={props['data-testid'] as string} />;
-  },
-}));
+  };
+  Select.Item = () => null;
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
+  return { Select };
+});
 
 const OPTIONS = [
   { label: 'Alpha', value: 'a' },
   { label: 'Beta', value: 'b' },
-  { label: 'Gamma', value: 'c' },
 ];
 
 const lastProps = () =>
-  mockFilterSelect.mock.calls[mockFilterSelect.mock.calls.length - 1][0];
+  mockSelect.mock.calls[mockSelect.mock.calls.length - 1][0];
 
 describe('FilterButton', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('puts the selected option first, keeping the rest in order', () => {
-    render(<FilterButton options={OPTIONS} value="c" onChange={jest.fn()} />);
-
-    expect(
-      lastProps().options.map((option: { value: string }) => option.value)
-    ).toEqual(['c', 'a', 'b']);
-    expect(lastProps().selectedValues).toEqual(['c']);
-    expect(lastProps().selectionMode).toBe('single');
-  });
-
-  it('hands a single selection back as a value, not an array', () => {
-    const onChange = jest.fn();
-    render(<FilterButton options={OPTIONS} value="a" onChange={onChange} />);
-
-    lastProps().onChange(['b']);
-
-    expect(onChange).toHaveBeenCalledWith('b');
-  });
-
-  it('hands a multiple selection back as the array', () => {
-    const onChange = jest.fn();
-    render(
-      <FilterButton multiple options={OPTIONS} value={[]} onChange={onChange} />
-    );
-
-    lastProps().onChange(['a', 'c']);
-
-    expect(onChange).toHaveBeenCalledWith(['a', 'c']);
-    expect(lastProps().selectionMode).toBe('multiple');
-  });
-
-  it('names the empty state after the list when told what it holds', () => {
+  it('renders the xs core Select with the options in their own order', () => {
     render(
       <FilterButton
-        emptyLabel="Owners"
-        options={[]}
-        testId="owner-filter"
-        value=""
+        label="Range"
+        options={OPTIONS}
+        testId="range-filter"
+        value="b"
         onChange={jest.fn()}
       />
     );
 
-    expect(lastProps().emptyState).toBe('label.no-entity');
-    expect(lastProps()['data-testid']).toBe('owner-filter');
+    expect(lastProps().size).toBe('xs');
+    expect(lastProps().selectedKey).toBe('b');
+    expect(lastProps()['aria-label']).toBe('Range');
+    expect(lastProps().items).toEqual([
+      { id: 'a', label: 'Alpha' },
+      { id: 'b', label: 'Beta' },
+    ]);
+  });
+
+  it('hands the chosen option back as its value', () => {
+    const onChange = jest.fn();
+    render(
+      <FilterButton
+        label="Range"
+        options={OPTIONS}
+        value="a"
+        onChange={onChange}
+      />
+    );
+
+    lastProps().onSelectionChange('b');
+
+    expect(onChange).toHaveBeenCalledWith('b');
+  });
+
+  it('ignores a cleared selection, since every card filter holds a value', () => {
+    const onChange = jest.fn();
+    render(
+      <FilterButton
+        label="Range"
+        options={OPTIONS}
+        value="a"
+        onChange={onChange}
+      />
+    );
+
+    lastProps().onSelectionChange(null);
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

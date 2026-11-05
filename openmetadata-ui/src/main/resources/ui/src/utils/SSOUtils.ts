@@ -1102,11 +1102,9 @@ export const createFormKeyDownHandler = () => {
     ) {
       const target = e.target as HTMLElement;
 
-      if (
-        target.tagName === 'INPUT' ||
-        target.classList.contains('ant-input')
-      ) {
-        const isInSelectTags = target.closest('.ant-select-selector');
+      if (target.tagName === 'INPUT') {
+        // Enter in a combobox picks or creates a value, so it must reach it.
+        const isInSelectTags = target.closest('[role="combobox"]');
         if (!isInSelectTags) {
           e.preventDefault();
           e.stopPropagation();

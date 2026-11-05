@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Skeleton, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Skeleton,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -26,18 +32,18 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -93,6 +99,7 @@ const APICollectionPage: FunctionComponent = () => {
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const queryClient = useQueryClient();
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -245,10 +252,17 @@ const APICollectionPage: FunctionComponent = () => {
             decodedAPICollectionFQN,
             apiCollectionPermission,
             apiCollection,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection, navigate]
+    [
+      apiCollectionPermission,
+      decodedAPICollectionFQN,
+      apiCollection,
+      navigate,
+      showModal,
+    ]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(
@@ -594,9 +608,11 @@ const APICollectionPage: FunctionComponent = () => {
   const expandButton = useMemo(
     () =>
       isExpandViewSupported && (
-        <AlignRightIconButton
-          className={isTabExpanded ? 'rotate-180' : ''}
-          title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+        <ButtonUtility
+          data-testid="tab-expand-button"
+          icon={isTabExpanded ? Collapse : Expand}
+          size="lg"
+          tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
           onClick={toggleTabExpanded}
         />
       ),
@@ -604,34 +620,38 @@ const APICollectionPage: FunctionComponent = () => {
   );
 
   if (isPageLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (!viewAPICollectionPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.api-collection'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.api-collection'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isError) {
     return (
-      <ErrorPlaceHolder className="m-0">
-        {getEntityMissingError(
-          EntityType.API_COLLECTION,
-          decodedAPICollectionFQN
-        )}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError(
+            EntityType.API_COLLECTION,
+            decodedAPICollectionFQN
+          )}
+        />
+      </div>
     );
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(apiCollection)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(apiCollection)}>
       <Box direction="col" gap={3}>
         <div>
           {isCollectionDataFetching || !apiCollection ? (

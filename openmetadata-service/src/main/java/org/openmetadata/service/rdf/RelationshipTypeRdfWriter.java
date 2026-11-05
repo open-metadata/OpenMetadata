@@ -77,22 +77,8 @@ final class RelationshipTypeRdfWriter {
   private static void addCharacteristics(
       final Resource property, final Set<RelationshipCharacteristic> characteristics) {
     for (final RelationshipCharacteristic characteristic : setOrEmpty(characteristics)) {
-      property.addProperty(RDF.type, characteristicResource(characteristic));
+      property.addProperty(RDF.type, OntologyRdfVocabulary.characteristic(characteristic));
     }
-  }
-
-  private static Resource characteristicResource(final RelationshipCharacteristic characteristic) {
-    final Resource resource =
-        switch (characteristic) {
-          case SYMMETRIC -> OWL2.SymmetricProperty;
-          case TRANSITIVE -> OWL2.TransitiveProperty;
-          case FUNCTIONAL -> OWL2.FunctionalProperty;
-          case INVERSE_FUNCTIONAL -> OWL2.InverseFunctionalProperty;
-          case REFLEXIVE -> OWL2.ReflexiveProperty;
-          case IRREFLEXIVE -> OWL2.IrreflexiveProperty;
-          case ASYMMETRIC -> OWL2.AsymmetricProperty;
-        };
-    return resource;
   }
 
   private static void addClassReferences(

@@ -15,7 +15,6 @@ import {
   Button,
   Checkbox,
   Divider,
-  EmptyPlaceholder,
   GridList,
   GridListItem,
   ListLayout,
@@ -26,6 +25,7 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
 import {
+  ReactNode,
   UIEventHandler,
   useCallback,
   useEffect,
@@ -68,6 +68,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import { replacePlus } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
@@ -156,6 +157,17 @@ const buildTestCaseSearchParams = ({
   return { ...testCaseParams, ...requestParams };
 };
 
+const renderDefaultLayout = (content: ReactNode, actions: ReactNode) => (
+  <Box direction="col" gap={2}>
+    {content}
+    {actions && (
+      <Box align="center" className="p-y-sm" gap={4} justify="end">
+        {actions}
+      </Box>
+    )}
+  </Box>
+);
+
 export const AddTestCaseList = ({
   onCancel,
   onSubmit,
@@ -166,6 +178,7 @@ export const AddTestCaseList = ({
   existingTest,
   onChange,
   showButton = true,
+  renderLayout = renderDefaultLayout,
   testCaseParams,
   hideTableFilter = false,
   getPopupContainer,
@@ -709,11 +722,10 @@ export const AddTestCaseList = ({
     if (!isLoading && isEmpty(source)) {
       return (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+          <NoFilteredResultsPlaceholder
             description={t('message.try-adjusting-filter')}
-            icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+            icon={<FilterOffIcon />}
             title={t('label.no-result-found')}
-            variant="blank"
           />
         </Box>
       );
@@ -899,8 +911,22 @@ export const AddTestCaseList = ({
     ]
   );
 
-  return (
-    <Box direction="col" gap={2}>
+  const actions = showButton ? (
+    <>
+      <Button color="secondary" data-testid="cancel" onPress={onCancel}>
+        {cancelText ?? t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="submit"
+        isLoading={isLoading}
+        onPress={handleSubmit}>
+        {submitText ?? t('label.create')}
+      </Button>
+    </>
+  ) : null;
+  const content = (
+    <>
       <Searchbar
         removeMargin
         showClearSearch
@@ -956,20 +982,8 @@ export const AddTestCaseList = ({
         </Box>
       )}
       {renderList}
-      {showButton && (
-        <Box align="center" className="p-y-sm" gap={4} justify="end">
-          <Button color="link-color" data-testid="cancel" onPress={onCancel}>
-            {cancelText ?? t('label.cancel')}
-          </Button>
-          <Button
-            color="primary"
-            data-testid="submit"
-            isLoading={isLoading}
-            onPress={handleSubmit}>
-            {submitText ?? t('label.create')}
-          </Button>
-        </Box>
-      )}
-    </Box>
+    </>
   );
+
+  return renderLayout(content, actions);
 };

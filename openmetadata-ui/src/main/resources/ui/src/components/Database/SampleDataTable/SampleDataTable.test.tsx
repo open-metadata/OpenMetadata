@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { TableType } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { getSampleDataByTableId } from '../../../rest/tableAPI';
 import SampleDataTable from './SampleDataTable.component';
@@ -41,14 +42,6 @@ jest.mock('../../../rest/tableAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
-    );
-});
-
 jest.mock('../../common/DeleteModal/DeleteModal', () => {
   return jest.fn().mockReturnValue(<p>DeleteModal</p>);
 });
@@ -63,7 +56,9 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const errorPlaceholder = screen.getByTestId('error-placeholder');
+    const errorPlaceholder = screen.getByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(errorPlaceholder).toBeInTheDocument();
   });
@@ -228,4 +223,56 @@ describe('Test SampleDataTable Component', () => {
       ).not.toBeInTheDocument();
     });
   });
+});
+
+it.each([TableType.Regular, TableType.Sharded])(
+  'shows missing sample provenance only for sharded tables (%s)',
+  async (tableType) => {
+    jest.mocked(getSampleDataByTableId).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableType,
+      sampleData: { columns: ['id'], rows: [[1]] },
+    });
+    await act(async () => {
+      render(<SampleDataTable {...mockProps} />);
+    });
+
+    expect(screen.getByTestId('sample-data-table')).toBeInTheDocument();
+
+    if (tableType === TableType.Sharded) {
+      expect(
+        screen.getByText('message.execution-source-unavailable')
+      ).toBeInTheDocument();
+    } else {
+      expect(
+        screen.queryByText('message.execution-source-unavailable')
+      ).not.toBeInTheDocument();
+    }
+  }
+);
+
+it('shows recorded sample provenance', async () => {
+  jest.mocked(getSampleDataByTableId).mockResolvedValueOnce({
+    ...MOCK_TABLE,
+    tableType: TableType.Sharded,
+    sampleData: {
+      columns: ['id'],
+      rows: [[1]],
+      executionSource: {
+        databaseName: 'my_db',
+        schemaName: 'my_schema',
+        tableName: 'events_20260101',
+      },
+    },
+  });
+  await act(async () => {
+    render(<SampleDataTable {...mockProps} />);
+  });
+
+  expect(
+    screen.getByText(/my_db.my_schema.events_20260101/)
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText('message.execution-source-unavailable')
+  ).not.toBeInTheDocument();
 });

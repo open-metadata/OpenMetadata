@@ -58,11 +58,11 @@ describe('DataAssetsVersionHeaderUtils', () => {
   });
 
   // The external-link icon rendered by the no-change branch is a sibling of
-  // the entity-name link inside `.d-flex.items-center.text-xs`. SVGR is mocked
-  // in jsdom (the inner element is `<svg-mock>`), so query the antd `Icon`
-  // wrapper span (`.anticon`) rather than the `<svg>`.
+  // the entity-name link inside `.d-flex.items-center.text-xs`. The svg asset
+  // is rendered directly now (no antd `.anticon` wrapper), and SVGR is mocked
+  // in jsdom, so the element is `<svg-mock>`.
   const querySourceUrlIcon = () =>
-    document.querySelector('.d-flex.items-center.text-xs > .anticon');
+    document.querySelector('.d-flex.items-center.text-xs > svg-mock');
 
   it.each([
     ['https://airflow.example.com/dag', true],

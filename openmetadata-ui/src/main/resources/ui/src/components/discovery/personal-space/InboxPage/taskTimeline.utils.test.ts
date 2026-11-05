@@ -180,6 +180,35 @@ describe('buildTaskTimeline', () => {
       expect(event?.timestamp).toBeUndefined();
     });
 
+    it('names the one holder alone', () => {
+      const event = buildTaskTimeline(assigned).find(
+        (entry) => entry.id === 'assigned-a1'
+      );
+
+      expect(event).toMatchObject({ actor: { id: 'a1' } });
+      expect(event).not.toHaveProperty('count', expect.anything());
+    });
+
+    // The detail's Assignee stack shows them all; naming only the first read
+    // as if the task were assigned to that person alone.
+    it('names the first of several holders and counts the rest', () => {
+      const event = buildTaskTimeline(
+        buildTask({
+          assignees: [
+            { id: 'a1', name: 'admin' },
+            { id: 'a2', name: 'ana' },
+            { id: 'a3', name: 'jo' },
+          ],
+        } as unknown as Partial<Task>)
+      ).find((entry) => entry.id === 'assigned-a1');
+
+      expect(event).toMatchObject({
+        actor: { id: 'a1' },
+        textKey: 'message.task-event-assigned-others',
+        count: 2,
+      });
+    });
+
     it('is omitted when nobody holds the task', () => {
       expect(
         buildTaskTimeline(buildTask()).some((entry) =>

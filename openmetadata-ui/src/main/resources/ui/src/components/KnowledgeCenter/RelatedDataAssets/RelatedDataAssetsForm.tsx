@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   BadgeWithButton,
   Box,
-  Button,
+  ButtonUtility,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -97,22 +97,19 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             className="layout-space layout-space-horizontal"
             gap={2}
             itemClassName="layout-space-item">
-            <Button
-              aria-label={t('label.cancel')}
-              color="secondary"
+            <ButtonUtility
               data-testid="cancelDataAssets"
-              iconLeading={<CloseOutlined size={12} />}
+              icon={XClose}
               isDisabled={isSubmitLoading}
-              size="xs"
+              tooltip={t('label.cancel')}
               onClick={onCancel}
             />
-            <Button
-              aria-label={t('label.save')}
+            <ButtonUtility
               color="primary"
               data-testid="saveDataAssets"
-              iconLeading={<CheckOutlined size={12} />}
+              icon={Check}
               isLoading={isSubmitLoading}
-              size="xs"
+              tooltip={t('label.save')}
               onClick={handleSubmit}
             />
           </Box>

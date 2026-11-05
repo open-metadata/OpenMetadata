@@ -19,11 +19,13 @@ import static org.openmetadata.csv.EntityCsv.ENTITY_UPDATED;
 import com.networknt.schema.Schema;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -70,7 +72,8 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
-import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.events.ChangeEvents;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
@@ -82,9 +85,11 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -118,6 +123,40 @@ public class EntityCsvTest {
     csvFile.withHeaders(CSV_HEADERS);
     String file = CsvUtil.formatCsv(csvFile);
     assertEquals(HEADER_STRING, file);
+  }
+
+  @Test
+  void test_exportNeutralizesFormulaCellsAndImportRestoresThem() throws IOException {
+    Map<String, String> exportedByValue = new LinkedHashMap<>();
+    exportedByValue.put("=HYPERLINK(\"http://x\",\"y\")", "'=HYPERLINK(\"http://x\",\"y\")");
+    exportedByValue.put("+1", "'+1");
+    exportedByValue.put("-staging.db", "'-staging.db");
+    exportedByValue.put("@SUM(A1)", "'@SUM(A1)");
+    exportedByValue.put("\tx", "'\tx");
+    exportedByValue.put("\rx", "'\rx");
+    exportedByValue.put("'=already quoted", "''=already quoted");
+    exportedByValue.put("\"local.mysql\".default", "\"local.mysql\".default");
+    exportedByValue.put(
+        "service.db.\"schema.with.dots\".table", "service.db.\"schema.with.dots\".table");
+    exportedByValue.put("'plain quote", "'plain quote");
+    exportedByValue.put("user:admin;team:data", "user:admin;team:data");
+    List<String> values = new ArrayList<>(exportedByValue.keySet());
+    List<List<String>> records = new ArrayList<>();
+    for (String value : values) {
+      records.add(List.of(value, "", ""));
+    }
+    String exported =
+        CsvUtil.formatCsv(new CsvFile().withHeaders(CSV_HEADERS).withRecords(records));
+
+    List<CSVRecord> exportedRows = CSVFormat.DEFAULT.parse(new StringReader(exported)).getRecords();
+    List<CSVRecord> imported = new TestCsv().parse(exported);
+    List<CSVRecord> importedRecursive = new TestCsv().parse(exported, true);
+    for (int i = 0; i < values.size(); i++) {
+      String value = values.get(i);
+      assertEquals(exportedByValue.get(value), exportedRows.get(i + 1).get(0));
+      assertEquals(value, imported.get(i + 1).get(0));
+      assertEquals(value, importedRecursive.get(i + 1).get(0));
+    }
   }
 
   @Test
@@ -797,6 +836,35 @@ public class EntityCsvTest {
   }
 
   @Test
+  void test_extensionEntityReferenceStoresOnlyTheTargetIdentity() throws IOException {
+    TestCsv testCsv = new TestCsv();
+    testCsv.enableProcessing();
+    User target = user("alice").withDisplayName("Alice Smith").withDescription("Payroll owner");
+    testCsv.addEntity(Entity.USER, "alice", target);
+
+    Schema schema = mock(Schema.class);
+    Mockito.when(schema.validate(Mockito.any())).thenReturn(List.of());
+    TypeRegistry registry = mock(TypeRegistry.class);
+    Mockito.when(registry.getSchema(Entity.TABLE, "steward")).thenReturn(schema);
+
+    try (MockedStatic<TypeRegistry> typeRegistry = Mockito.mockStatic(TypeRegistry.class)) {
+      typeRegistry.when(TypeRegistry::instance).thenReturn(registry);
+      typeRegistry
+          .when(() -> TypeRegistry.getCustomPropertyType(Entity.TABLE, "steward"))
+          .thenReturn("entityReference");
+
+      Map<String, Object> extension =
+          testCsv.parseExtension(singleRecord(testCsv, "", "steward:user:alice", ""), 1);
+
+      EntityReference stored = assertInstanceOf(EntityReference.class, extension.get("steward"));
+      assertEquals(target.getId(), stored.getId());
+      assertEquals("alice", stored.getFullyQualifiedName());
+      assertNull(stored.getDescription());
+      assertNull(stored.getDisplayName());
+    }
+  }
+
+  @Test
   void test_updateColumnsFromCsvRecursiveCreatesMissingParentHierarchyInDryRun() throws Exception {
     TestCsv testCsv = new TestCsv();
     testCsv.enableProcessing();
@@ -1074,7 +1142,7 @@ public class EntityCsvTest {
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       validatorUtil.when(() -> ValidatorUtil.validate(createdEntity)).thenReturn(null);
@@ -1082,13 +1150,13 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, createdEntity))
           .thenReturn(createdChangeEvent);
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_UPDATED, updatedEntity))
           .thenReturn(updatedChangeEvent);
 
@@ -1243,7 +1311,7 @@ public class EntityCsvTest {
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       validatorUtil.when(() -> ValidatorUtil.validate(firstEntity)).thenReturn(null);
@@ -1251,7 +1319,7 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, firstEntity))
           .thenReturn(createdChangeEvent);
       Mockito.when(repository.findMatchForImport(firstEntity)).thenReturn(null);
@@ -1407,7 +1475,7 @@ public class EntityCsvTest {
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
       validatorUtil.when(() -> ValidatorUtil.validate(firstEntity)).thenReturn(null);
@@ -1415,7 +1483,7 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, firstEntity))
           .thenReturn(createdChangeEvent);
       Mockito.when(repository.findMatchForImport(firstEntity)).thenReturn(null);
@@ -1441,6 +1509,54 @@ public class EntityCsvTest {
       assertEquals(1, testCsv.pendingChangeEvents.size());
       assertFalse(testCsv.pendingEntityFQNs.contains(firstEntity.getFullyQualifiedName()));
       assertTrue(testCsv.pendingEntityFQNs.contains(dependentEntity.getFullyQualifiedName()));
+    }
+  }
+
+  @Test
+  void test_authorizeRowRefusalFailsRowsWithoutReachingRulesOrPreparation() throws Exception {
+    TestCsv testCsv = new TestCsv();
+    testCsv.enableProcessing();
+    testCsv.setDryRun(true);
+    testCsv.refuseRows();
+
+    Table originalEntity =
+        tableEntity("updated_table", "service.db.schema.updated_table", "Original");
+    originalEntity.setId(UUID.randomUUID());
+    Table updatedEntity =
+        tableEntity("updated_table", "service.db.schema.updated_table", "Updated");
+    Table createdEntity =
+        tableEntity("created_table", "service.db.schema.created_table", "Created");
+    CSVRecord updateRecord = singleRecord(testCsv, updatedEntity.getFullyQualifiedName(), "", "");
+    CSVRecord createRecord = singleRecord(testCsv, createdEntity.getFullyQualifiedName(), "", "");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+    RuleEngine ruleEngine = mock(RuleEngine.class);
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
+        MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
+        MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      ruleEngineStatic.when(RuleEngine::getInstance).thenReturn(ruleEngine);
+      validatorUtil.when(() -> ValidatorUtil.validate(updatedEntity)).thenReturn(null);
+      validatorUtil.when(() -> ValidatorUtil.validate(createdEntity)).thenReturn(null);
+      Mockito.<EntityInterface<?>>when(repository.findMatchForImport(updatedEntity))
+          .thenReturn(originalEntity);
+      Mockito.when(repository.findMatchForImport(createdEntity)).thenReturn(null);
+
+      testCsv.queueEntity(updateRecord, updatedEntity);
+      testCsv.queueEntity(createRecord, createdEntity);
+
+      assertEquals(2, testCsv.importResult.getNumberOfRowsFailed());
+      assertEquals(0, testCsv.importResult.getNumberOfRowsPassed());
+      assertEquals(ApiStatus.FAILURE, testCsv.importResult.getStatus());
+      assertEquals("row denied by test policy", testCsv.pendingCsvResults.get(updateRecord));
+      assertEquals("row denied by test policy", testCsv.pendingCsvResults.get(createRecord));
+      assertTrue(testCsv.pendingEntityOperations.isEmpty());
+      Mockito.verify(ruleEngine, Mockito.never()).evaluateUpdate(Mockito.any(), Mockito.any());
+      Mockito.verify(ruleEngine, Mockito.never()).evaluate(Mockito.any());
+      Mockito.verify(repository, Mockito.never())
+          .prepareInternal(Mockito.any(), Mockito.anyBoolean());
     }
   }
 
@@ -1512,17 +1628,17 @@ public class EntityCsvTest {
             .withEntityType(Entity.TABLE)
             .withEntity(entity)
             .withEventType(EventType.ENTITY_UPDATED);
-    try (MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+    try (MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_UPDATED, entity))
           .thenReturn(changeEvent);
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, entity))
           .thenReturn(
               new ChangeEvent()
@@ -1563,6 +1679,14 @@ public class EntityCsvTest {
             "");
 
     TableRepository repository = mock(TableRepository.class);
+    Mockito.when(
+            repository.patch(
+                Mockito.isNull(), Mockito.eq(original.getId()), Mockito.eq("admin"), Mockito.any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(
+                jakarta.ws.rs.core.Response.Status.OK,
+                updated,
+                org.openmetadata.schema.type.EventType.ENTITY_UPDATED));
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
@@ -1576,6 +1700,53 @@ public class EntityCsvTest {
       assertTrue(testCsv.pendingTableUpdates.isEmpty());
       assertEquals(1, testCsv.importResult.getNumberOfRowsPassed());
       assertEquals(0, testCsv.importResult.getNumberOfRowsFailed());
+    }
+  }
+
+  @Test
+  void test_flushPendingTableUpdatesReportsHeldColumnRowsAsPendingApproval() {
+    TestCsv testCsv = new TestCsv();
+    testCsv.setDryRun(false);
+
+    Table original =
+        new Table().withId(UUID.randomUUID()).withFullyQualifiedName("service.db.schema.orders");
+    Table updated =
+        new Table().withId(original.getId()).withFullyQualifiedName("service.db.schema.orders");
+    CSVRecord record =
+        columnRecord(
+            testCsv,
+            "customer_id",
+            "",
+            "held description",
+            "service.db.schema.orders.customer_id",
+            "",
+            "INT",
+            "",
+            "");
+    UUID changeRequestId = UUID.randomUUID();
+    TableRepository repository = mock(TableRepository.class);
+    Mockito.when(
+            repository.patch(
+                Mockito.isNull(), Mockito.eq(original.getId()), Mockito.eq("admin"), Mockito.any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(
+                jakarta.ws.rs.core.Response.Status.OK,
+                original,
+                org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE,
+                changeRequestId));
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      testCsv.queuePendingTableUpdate("service.db.schema.orders", original, updated, record);
+
+      testCsv.flushPendingTableUpdates(mock(CSVPrinter.class));
+
+      assertEquals(1, testCsv.importResult.getNumberOfRowsPendingApproval());
+      assertEquals(1, testCsv.importResult.getNumberOfRowsPassed());
+      assertEquals(0, testCsv.importResult.getNumberOfRowsFailed());
+      assertEquals(
+          "Pending approval: change request " + changeRequestId,
+          testCsv.pendingCsvResults.get(record));
     }
   }
 
@@ -1680,7 +1851,7 @@ public class EntityCsvTest {
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<RuleEngine> ruleEngineStatic = Mockito.mockStatic(RuleEngine.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       entity
           .when(
@@ -1698,7 +1869,7 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, pendingEntity))
           .thenReturn(createdChangeEvent);
 
@@ -2449,7 +2620,7 @@ public class EntityCsvTest {
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
         MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
-        MockedStatic<FormatterUtil> formatterUtil = Mockito.mockStatic(FormatterUtil.class)) {
+        MockedStatic<ChangeEvents> formatterUtil = Mockito.mockStatic(ChangeEvents.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(repository);
       validatorUtil.when(() -> ValidatorUtil.validate(user)).thenReturn(null);
       validatorUtil
@@ -2458,7 +2629,7 @@ public class EntityCsvTest {
       formatterUtil
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       Mockito.eq("admin"),
                       Mockito.eq(EventType.ENTITY_CREATED),
                       Mockito.any(EntityInterface.class)))
@@ -2621,9 +2792,27 @@ public class EntityCsvTest {
 
   private static class TestCsv extends EntityCsv<EntityInterface<?>> {
     private final Map<String, EntityInterface<?>> entitiesByTypeAndName = new HashMap<>();
+    private boolean refuseRows;
 
     protected TestCsv() {
       super(Entity.TABLE, CSV_HEADERS, "admin");
+    }
+
+    // These tests exercise parsing and batching; row authorization is covered by the import ITs.
+    @Override
+    protected boolean checksRowWrites() {
+      return false;
+    }
+
+    @Override
+    protected void authorizeRow(EntityInterface<?> original, EntityInterface<?> entity) {
+      if (refuseRows) {
+        throw new AuthorizationException("row denied by test policy");
+      }
+    }
+
+    private void refuseRows() {
+      this.refuseRows = true;
     }
 
     private void addEntity(String entityType, String fqn, EntityInterface<?> entity) {
@@ -3110,7 +3299,13 @@ public class EntityCsvTest {
 
     try (MockedStatic<Entity> entityStatic = Mockito.mockStatic(Entity.class);
         MockedStatic<SettingsCache> settingsCache = Mockito.mockStatic(SettingsCache.class);
-        MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class)) {
+        MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class);
+        MockedStatic<GovernanceApprovalRegistry> approvalRegistry =
+            Mockito.mockStatic(GovernanceApprovalRegistry.class)) {
+      // No approval workflow gates the table in this scenario.
+      approvalRegistry
+          .when(() -> GovernanceApprovalRegistry.gatingRules(Entity.TABLE))
+          .thenReturn(List.of());
       entityStatic.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
       for (String ignoredType : List.of(Entity.USER, Entity.TEAM, Entity.PERSONA, Entity.BOT)) {
         EntityRepository<EntityInterface<?>> ignoredRepo = mock(EntityRepository.class);

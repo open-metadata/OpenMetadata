@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Dialog,
   Modal,
@@ -68,11 +67,7 @@ const DeployIngestionLoaderModal = ({
                         background: isActive(isIngestionCreated),
                       }}>
                       <Typography className="flex-center h-full">
-                        <Icon
-                          className="align-middle"
-                          component={IconCreateIngestion}
-                          style={{ fontSize: '26px' }}
-                        />
+                        <IconCreateIngestion className="align-middle tw:size-3.5 tw:shrink-0" />
                       </Typography>
                     </Typography>
                   </div>
@@ -87,11 +82,7 @@ const DeployIngestionLoaderModal = ({
                         background: isActive(isDeployed),
                       }}>
                       <Typography className="flex-center h-full">
-                        <Icon
-                          className="align-middle"
-                          component={IconDeployIngestion}
-                          style={{ fontSize: '26px' }}
-                        />
+                        <IconDeployIngestion className="align-middle tw:size-3.5 tw:shrink-0" />
                       </Typography>
                     </Typography>
                   </div>

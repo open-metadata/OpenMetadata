@@ -12,8 +12,10 @@
  */
 
 import {
+  act,
   findByTestId,
   findByText,
+  fireEvent,
   queryByTestId,
   queryByText,
   render,
@@ -24,6 +26,12 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
 
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({
@@ -209,5 +217,60 @@ describe('Test CreateUser component', () => {
     );
 
     expect(passwordGenerator).not.toBeInTheDocument();
+  });
+
+  it('should submit the user payload built from the form', async () => {
+    const onSave = jest.fn();
+    const { container } = render(
+      <CreateUser {...propsValue} onSave={onSave} />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.change(await findByTestId(container, 'email'), {
+      target: { value: 'jane.doe@example.com' },
+    });
+    fireEvent.change(await findByTestId(container, 'displayName'), {
+      target: { value: '  Jane Doe  ' },
+    });
+    await act(async () => {
+      fireEvent.click(await findByTestId(container, 'save-user'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'jane.doe',
+        email: 'jane.doe@example.com',
+        displayName: 'Jane Doe',
+        isAdmin: true,
+        roles: [],
+        personas: [],
+      })
+    );
+  });
+
+  it('should not submit an invalid email', async () => {
+    const onSave = jest.fn();
+    const { container } = render(
+      <CreateUser {...propsValue} onSave={onSave} />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.change(await findByTestId(container, 'email'), {
+      target: { value: 'not-an-email' },
+    });
+    await act(async () => {
+      fireEvent.click(await findByTestId(container, 'save-user'));
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('should render the token expiry field for a bot', async () => {
+    const { container } = render(<CreateUser {...propsValue} forceBot />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(await findByTestId(container, 'token-expiry')).toBeInTheDocument();
+    expect(queryByTestId(container, 'roles-dropdown')).not.toBeInTheDocument();
   });
 });

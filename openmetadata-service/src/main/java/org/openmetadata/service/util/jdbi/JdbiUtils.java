@@ -10,6 +10,7 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.resources.settings.SettingsSnapshotTransactionHandler;
 import org.openmetadata.service.util.RestUtil;
 
 public class JdbiUtils {
@@ -26,6 +27,8 @@ public class JdbiUtils {
 
     Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
     jdbiInstance.setSqlLogger(new OMSqlLogger());
+    LazySqlObjectFactory.install(jdbiInstance);
+    SettingsSnapshotTransactionHandler.install(jdbiInstance);
     // Set the Database type for choosing correct queries from annotations
     jdbiInstance
         .getConfig(SqlObjects.class)
@@ -47,10 +50,15 @@ public class JdbiUtils {
 
     Jdbi jdbiInstance = Jdbi.create(dbFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
     jdbiInstance.installPlugin(new SqlObjectPlugin());
+    LazySqlObjectFactory.install(jdbiInstance);
+    SettingsSnapshotTransactionHandler.install(jdbiInstance);
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
-    configureStatements(jdbiInstance, dbFactory);
+    // No query timeout here: it bounds API requests, while ops commands such as migrate run
+    // statements that legitimately take longer on large databases
+    // (ADR:2026-10-14-ops-commands-run-without-the-request-query-timeout).
+    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
 
     return jdbiInstance;
   }

@@ -15,11 +15,12 @@ import {
   createOrFetch,
   deleteFixtureEntity,
   okJson,
+  requireEntityIdentity,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
-type ResponseDataType = {
+type PersonaData = {
   name: string;
   displayName: string;
   description: string;
@@ -28,12 +29,17 @@ type ResponseDataType = {
   users?: string[];
 };
 
+type ResponseDataType = PersonaData & {
+  id: string;
+  fullyQualifiedName: string;
+};
+
 export class PersonaClass {
   id: string;
-  data: ResponseDataType;
+  data: PersonaData;
   responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(data?: ResponseDataType) {
+  constructor(data?: PersonaData) {
     this.id = uuid();
     this.data = data ?? {
       name: `PW%Persona-${this.id}`,
@@ -48,12 +54,15 @@ export class PersonaClass {
   }
 
   async create(apiContext: APIRequestContext, users?: string[]) {
-    const data = await createOrFetch(apiContext, {
-      label: 'PersonaClass.create',
-      createPath: '/api/v1/personas',
-      fqnSegments: [this.data.name],
-      data: { ...this.data, users },
-    });
+    const data = requireEntityIdentity(
+      await createOrFetch<PersonaData>(apiContext, {
+        label: 'PersonaClass.create',
+        createPath: '/api/v1/personas',
+        fqnSegments: [this.data.name],
+        data: { ...this.data, users },
+      }),
+      'PersonaClass.create'
+    );
     this.responseData = data;
 
     return data;
@@ -78,8 +87,11 @@ export class PersonaClass {
       })
     );
 
-    this.responseData = await okJson(response, 'PersonaClass.patch');
+    this.responseData = requireEntityIdentity(
+      await okJson<PersonaData>(response, 'PersonaClass.patch'),
+      'PersonaClass.patch'
+    );
 
-    return await okJson(response, 'PersonaClass.patch');
+    return this.responseData;
   }
 }

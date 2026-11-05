@@ -20,6 +20,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
 import {
   DataType,
@@ -141,6 +142,20 @@ const renderAndSave = async (
 
   return (putTableProfileConfig as jest.Mock).mock.calls[0][1];
 };
+
+const buildStaticSampleConfig = (
+  profileSample: number,
+  profileSampleType = ProfileSampleType.Percentage
+): TableProfilerConfig => ({
+  sampleDataCount: 500,
+  profileSampleConfig: {
+    sampleConfigType: SampleConfigType.Static,
+    config: {
+      profileSample,
+      profileSampleType,
+    },
+  },
+});
 
 describe('Test ProfilerSettingsModal component', () => {
   beforeEach(() => {
@@ -358,20 +373,28 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
 
     expect(payload.partitioning).toBeUndefined();
   });
-});
 
-const buildStaticSampleConfig = (
-  profileSample: number,
-  profileSampleType = ProfileSampleType.Percentage
-): TableProfilerConfig => ({
-  sampleDataCount: 500,
-  profileSampleConfig: {
-    sampleConfigType: SampleConfigType.Static,
-    config: {
-      profileSample,
-      profileSampleType,
-    },
-  },
+  it('keeps one clear control, so clearing the sample value leaves the sample type and columns', async () => {
+    const payload = await renderAndSave(
+      {
+        ...buildStaticSampleConfig(60),
+        excludeColumns: mockTableProfilerConfig.excludeColumns,
+      },
+      () => {
+        expect(
+          screen.getAllByRole('button', { name: /label.clear/ })
+        ).toHaveLength(1);
+
+        fireEvent.click(screen.getByTestId('clear-slider-input'));
+
+        expect(screen.getByTestId('percentage-input')).toBeInTheDocument();
+      }
+    );
+
+    expect(payload.excludeColumns).toEqual(
+      mockTableProfilerConfig.excludeColumns
+    );
+  });
 });
 
 describe('ProfilerSettingsModal profile-sample round-trip', () => {
@@ -402,11 +425,13 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
       render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('slider-input')).toHaveAttribute(
-      'aria-valuemin',
-      '1'
-    );
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuemin', '1');
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const input = await screen.findByTestId('slider-input');
+    await user.click(input);
+    await user.keyboard('{Home}{ArrowDown}');
+
+    expect(input).toHaveValue('1%');
+    expect(screen.getByRole('slider')).toHaveAttribute('min', '1');
   });
 
   it('should clamp a typed 0 percentage up to 1 on blur', async () => {
@@ -429,10 +454,12 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
       render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('metric-number-input')).toHaveAttribute(
-      'aria-valuemin',
-      '1'
-    );
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const input = await screen.findByTestId('metric-number-input');
+    await user.click(input);
+    await user.keyboard('{Home}{ArrowDown}');
+
+    expect(input).toHaveValue('1');
   });
 
   // Configs saved before the minimum existed may hold 0; saving the modal
@@ -455,6 +482,60 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
     }
   );
 
+  // Switching the type shows the other value field; saving it empty would
+  // drop profileSampleConfig and wipe the stored sampling config (#36612).
+  const renderAndSwitchSampleType = async (
+    config: TableProfilerConfig,
+    option: string
+  ) => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: config,
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.click(
+      within(await screen.findByTestId('profile-sample')).getByRole('button')
+    );
+    await user.click(await screen.findByRole('option', { name: option }));
+    await user.click(screen.getByRole('button', { name: /save/i }));
+  };
+
+  it('should seed the percentage when switching from rows to percentage', async () => {
+    await renderAndSwitchSampleType(
+      buildStaticSampleConfig(500, ProfileSampleType.Rows),
+      'label.percentage'
+    );
+
+    await waitFor(() => expect(putTableProfileConfig).toHaveBeenCalled());
+
+    expect(
+      (putTableProfileConfig as jest.Mock).mock.calls[0][1].profileSampleConfig
+    ).toEqual({
+      sampleConfigType: SampleConfigType.Static,
+      config: {
+        profileSample: 100,
+        profileSampleType: ProfileSampleType.Percentage,
+      },
+    });
+  });
+
+  it('should block the save when switching to rows without a row count', async () => {
+    await renderAndSwitchSampleType(
+      buildStaticSampleConfig(60),
+      'label.entity-count'
+    );
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(putTableProfileConfig).not.toHaveBeenCalled();
+  });
+
   it('should omit profileSampleConfig when the sample value is cleared', async () => {
     const payload = await renderAndSave(buildStaticSampleConfig(60), () => {
       fireEvent.click(screen.getByTestId('clear-slider-input'));
@@ -464,170 +545,210 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
   });
 });
 
-describe('ProfilerSettingsModal include-column dropdown popup container', () => {
-  // The include-column `Select` and metrics `TreeSelect` render inside a
-  // `h-max-40 overflow-y-auto` wrapper that becomes a 160px clip box once a
-  // second include row exists. Once the clip box is active, mounting their
-  // popups via `triggerNode.parentElement` (the helper used for every other
-  // dropdown) traps them inside that scroll wrapper, so the options get cut
-  // off at 160px and scroll with the tiny box. The popups must instead mount
-  // OUTSIDE the clip wrapper but still INSIDE the dialog, to preserve the
-  // react-aria focus/accessibility boundary. jsdom performs no layout, so the
-  // visual clipping cannot be asserted directly; DOM ancestry of the open
-  // popup is what produces the clip in a real browser — a popup whose nearest
-  // `[data-testid="include-column-container"]` ancestor is null can never be
-  // clipped by the 160px wrapper.
+describe('ProfilerSettingsModal include-column dropdowns', () => {
+  // Two include rows turn the include-column container into a 160px scroll
+  // box (tw:max-h-40 tw:overflow-y-auto). A dropdown rendered inside it would
+  // be clipped, so the row pickers must open outside it (#35369).
+  it('opens the include-column list outside the scroll clip box', async () => {
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
 
+    await waitFor(() =>
+      expect(screen.getByTestId('include-column-select')).toBeInTheDocument()
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.add-entity' }));
+    });
+
+    const container = screen.getByTestId('include-column-container');
+
+    await waitFor(() => {
+      expect(container).toHaveClass('tw:max-h-40', 'tw:overflow-y-auto');
+      expect(screen.getAllByTestId('include-column-select')).toHaveLength(2);
+    });
+
+    const [firstRow] = screen.getAllByTestId('include-column-select');
+    const [trigger] = within(firstRow).getAllByRole('button');
+
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+
+    const listbox = await screen.findByRole('listbox');
+
+    expect(container).not.toContainElement(listbox);
+  });
+});
+
+describe('ProfilerSettingsModal with an interval type the form does not offer', () => {
+  beforeEach(() => {
+    cleanup();
+    jest.clearAllMocks();
+  });
+
+  it.each([
+    PartitionIntervalTypes.Enum,
+    PartitionIntervalTypes.Injected,
+    PartitionIntervalTypes.Other,
+  ])(
+    'should render and save a stored %s partitioning untouched',
+    async (partitionIntervalType) => {
+      const partitioning = {
+        enablePartitioning: true,
+        partitionColumnName: 'column1',
+        partitionIntervalType,
+      };
+
+      const payload = await renderAndSave({
+        ...mockTableProfilerConfig,
+        partitioning,
+      } as TableProfilerConfig);
+
+      expect(screen.getByTestId('profiler-settings-modal')).toBeInTheDocument();
+      expect(payload.partitioning).toEqual(
+        expect.objectContaining(partitioning)
+      );
+    }
+  );
+});
+
+describe('ProfilerSettingsModal when the stored config fetch fails', () => {
   beforeEach(() => {
     cleanup();
     jest.clearAllMocks();
   });
 
   afterEach(() => {
-    cleanup();
-    // antd appends a scroll-lock placeholder and react-aria leaves focus-scope
-    // markers directly under <body> when a dropdown is open at unmount; these
-    // are not part of any React root so cleanup() cannot remove them, and they
-    // cross-contaminate later renders (the form never mounts). Reset <body>.
-    document.body.removeAttribute('style');
-    document.body.removeAttribute('class');
-    document
-      .querySelectorAll(
-        'body > [aria-hidden="true"], body > [data-focus-scope-start]'
-      )
-      .forEach((el) => el.remove());
+    jest.clearAllMocks();
   });
 
-  const renderModalWithTwoIncludeRows = async () => {
+  it('blocks the save, hides the defaults-filled form, and offers a retry', async () => {
+    (getTableProfilerConfig as jest.Mock).mockRejectedValueOnce(
+      new Error('Network Error')
+    );
+
     await act(async () => {
       render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    // Wait for the form to finish loading: `include-column-select` only
-    // renders once `isDataLoading` flips to false after the config fetch
-    // resolves. `profiler-settings-modal` (the dialog chrome) is present
-    // during load too, so it cannot gate this.
-    await waitFor(() => {
-      expect(screen.getByTestId('include-column-select')).toBeInTheDocument();
-    });
+    // The error placeholder replaces the defaults-filled form ...
+    const loadError = await screen.findByTestId('profiler-settings-load-error');
 
-    // DEFAULT_INCLUDE_PROFILE holds a single include row, so the clip box is
-    // inactive on first paint. Click the include-columns "+" button to add a
-    // second row: `handleIncludeColumnsProfiler` mirrors it into state, so
-    // `state.includeCol.length > 1` switches on the `h-max-40 overflow-y-auto`
-    // clip wrapper.
-    await act(async () => {
-      fireEvent.click(
-        within(screen.getByTestId('include-column-section')).getByRole(
-          'button',
-          { name: 'label.add' }
-        )
-      );
-    });
+    expect(loadError).toBeInTheDocument();
+    expect(loadError).toHaveTextContent(
+      'server.fetch-table-profiler-config-error'
+    );
 
-    await waitFor(() => {
-      const container = screen.getByTestId('include-column-container');
+    // ... so the misleading, defaults-filled form is not rendered for the
+    // user to edit and save.
+    expect(screen.queryByTestId('interval-type')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sample-data-count-input')
+    ).not.toBeInTheDocument();
 
-      expect(container.className).toMatch(/h-max-40/);
-      expect(screen.getAllByTestId('include-column-select')).toHaveLength(2);
-      expect(container.querySelectorAll('.ant-tree-select')).toHaveLength(2);
-    });
-  };
+    // The save action is gated and a retry is offered.
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
 
-  const openDropdown = (testid: string, rowIndex = 0) => {
-    const trigger = screen.getAllByTestId(testid)[rowIndex];
-    const combobox = within(trigger).getByRole('combobox');
-
-    fireEvent.mouseDown(combobox);
-  };
-
-  // Each include row holds two comboboxes: the column Select, then the metrics
-  // TreeSelect.
-  const openMetricsDropdown = (rowIndex = 0) => {
-    const comboboxes = within(
-      screen.getByTestId('include-column-container')
-    ).getAllByRole('combobox');
-
-    fireEvent.mouseDown(comboboxes[rowIndex * 2 + 1]);
-  };
-
-  // Dispatch an outside `mousedown` so rc-trigger closes any open antd
-  // dropdown. This lets antd's scroll-lock effect cleanup restore <body>
-  // before the next test renders, which a bare cleanup() does not flush.
-  const closeOpenDropdowns = async () => {
-    await act(async () => {
-      fireEvent.mouseDown(document.body);
-    });
-  };
-
-  // Wait for the dropdown matching `selector` to appear, assertion-check its
-  // ancestry, and always close it so an open dropdown never leaks into the
-  // next test. `waitFor` only gates on the dropdown *existing*; the ancestry
-  // assertions run once and fail fast (so a regression does not hold the
-  // dropdown open for the full `waitFor` timeout).
-  const assertDropdownInsideDialogOutsideClipBox = async (selector: string) => {
-    const dropdown = (await waitFor(() => {
-      const el = document.querySelector(
-        `${selector}:not(.ant-select-dropdown-hidden)`
-      ) as HTMLElement | null;
-
-      expect(el).toBeInTheDocument();
-
-      return el;
-    })) as HTMLElement;
-
-    try {
-      // Stays inside the dialog (focus/accessibility boundary preserved).
-      expect(dropdown.closest('[data-testid="profiler-settings-modal"]')).toBe(
-        screen.getByTestId('profiler-settings-modal')
-      );
-      // Is NOT nested inside the 160px include-column scroll clip box.
-      expect(
-        dropdown.closest('[data-testid="include-column-container"]')
-      ).toBeNull();
-    } finally {
-      await closeOpenDropdowns();
-    }
-  };
-
-  it('mounts the include-column Select dropdown outside the scroll clip box but inside the dialog', async () => {
-    await renderModalWithTwoIncludeRows();
-
-    await act(async () => {
-      openDropdown('include-column-select');
-    });
-
-    // The include-column Select popup must NOT be nested inside the 160px
-    // scroll clip box.
-    await assertDropdownInsideDialogOutsideClipBox('.ant-select-dropdown');
+    // The user is told why, and nothing is written to the backend -- the
+    // destructive defaults-only overwrite the bug would have produced does
+    // not happen.
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+    expect(putTableProfileConfig).not.toHaveBeenCalled();
   });
 
-  it('mounts the metrics TreeSelect dropdown outside the scroll clip box but inside the dialog', async () => {
-    await renderModalWithTwoIncludeRows();
+  it('does not write a defaults-only config even when save is attempted', async () => {
+    // Defence-in-depth for the disabled button: ensure no PUT is ever issued
+    // after a failed load, regardless of how the save is triggered.
+    (getTableProfilerConfig as jest.Mock).mockRejectedValueOnce(
+      new Error('Network Error')
+    );
 
     await act(async () => {
-      openMetricsDropdown();
+      render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    // The metrics TreeSelect popup must NOT be nested inside the 160px
-    // scroll clip box.
-    await assertDropdownInsideDialogOutsideClipBox('.ant-tree-select-dropdown');
+    await screen.findByTestId('profiler-settings-load-error');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    });
+
+    expect(putTableProfileConfig).not.toHaveBeenCalled();
   });
 
-  it('keeps the non-row dropdowns mounted inside the dialog (unchanged behavior)', async () => {
-    // Only the two pickers nested in the clip wrapper were moved to the dialog
-    // root. The other dropdowns keep using `triggerNode.parentElement`, which
-    // is correct because their trigger's parent is never the scroll clip box.
-    // This guards against a sloppy fix that ports *every* dropdown to
-    // document.body and re-opens the original focus-boundary regression.
-    await renderModalWithTwoIncludeRows();
+  it('reloads the stored config and re-enables save after a successful retry', async () => {
+    (getTableProfilerConfig as jest.Mock)
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValueOnce({
+        ...MOCK_TABLE,
+        tableProfilerConfig: mockTableProfilerConfig,
+      });
 
     await act(async () => {
-      openDropdown('profile-sample');
+      render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    // The profile-sample Select lives outside the include-column wrapper, so
-    // its popup is never in the clip box; it must still mount inside the dialog.
-    await assertDropdownInsideDialogOutsideClipBox('.ant-select-dropdown');
+    await screen.findByTestId('profiler-settings-load-error');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    });
+
+    // The real config loads, not the defaults (sampleDataCount 500 vs 50).
+    await waitFor(() => {
+      expect(screen.getByTestId('interval-type')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId('profiler-settings-load-error')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('sample-data-count-input')).toHaveAttribute(
+      'value',
+      '500'
+    );
+    expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    });
+
+    await waitFor(() => {
+      expect(putTableProfileConfig).toHaveBeenCalled();
+    });
+
+    // The stored config round-trips, not the defaults -- the destructive
+    // overwrite the bug would have produced does not happen.
+    const payload = (putTableProfileConfig as jest.Mock).mock.calls[0][1];
+
+    expect(payload.profileQuery).toBe(mockTableProfilerConfig.profileQuery);
+    expect(payload.excludeColumns).toEqual(
+      mockTableProfilerConfig.excludeColumns
+    );
+    expect(payload.partitioning).toEqual(
+      expect.objectContaining(mockTableProfilerConfig.partitioning)
+    );
+  });
+
+  it('keeps the save button enabled when the config loads successfully', async () => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: mockTableProfilerConfig,
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('interval-type')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId('profiler-settings-load-error')
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
   });
 });

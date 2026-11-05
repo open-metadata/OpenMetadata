@@ -17,10 +17,10 @@ import {
   Dropdown,
   Grid,
   Label,
-  Tooltip,
+  Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -28,13 +28,12 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
+  ENTITY_PATH,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -53,7 +52,9 @@ import {
   Constraint,
   Table as TableType,
 } from '../../../generated/entity/data/table';
+import { Type } from '../../../generated/entity/type';
 import { TestSummary } from '../../../generated/tests/testCase';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -63,6 +64,7 @@ import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTableFilters } from '../../../hooks/useTableFilters';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
@@ -85,6 +87,7 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
+  getCustomPropertyColumnKey,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   pruneEmptyChildren,
@@ -98,8 +101,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import {
   ColumnsType,
@@ -114,6 +117,7 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
+import { ColumnCustomPropertyCell } from './ColumnCustomPropertyCell';
 import { TableCellRendered } from './SchemaTable.interface';
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
@@ -122,6 +126,8 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
     )
   )
 );
+
+const NO_CONSTRAINT_KEY = 'none';
 
 const SchemaTable = () => {
   const { t } = useTranslation();
@@ -153,7 +159,7 @@ const SchemaTable = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const { filters, setFilters } = useTableFilters({
     columnSearch: undefined as string | undefined,
@@ -182,6 +188,7 @@ const SchemaTable = () => {
   const [editConstraint, setEditConstraint] = useState<
     Constraint | undefined
   >();
+  const [columnTypeDetail, setColumnTypeDetail] = useState<Type>();
 
   const {
     permissions: tablePermissions,
@@ -229,11 +236,43 @@ const SchemaTable = () => {
     canEditGlossaryTerms: editGlossaryTermsPermission,
     canEditDescription: editDescriptionPermission,
     canEditDisplayName: editDisplayNamePermission,
+    canEditCustomFields: editCustomFieldsPermission,
+    canViewCustomFields,
     canEditAll,
   } = useMemo(
     () => getDerivedPermissionFlags(tablePermissions, deleted),
     [tablePermissions, deleted]
   );
+
+  useEffect(() => {
+    if (!canViewCustomFields) {
+      setColumnTypeDetail(undefined);
+
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchColumnTypeDetail = async () => {
+      try {
+        const res = await getTypeByFQN(ENTITY_PATH.column);
+        if (!cancelled) {
+          setColumnTypeDetail(res);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setColumnTypeDetail(undefined);
+          showErrorToast(error as AxiosError);
+        }
+      }
+    };
+
+    void fetchColumnTypeDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canViewCustomFields]);
 
   const searchTableColumns = useCallback(
     async (
@@ -368,12 +407,12 @@ const SchemaTable = () => {
   };
 
   useEffect(() => {
-    fetchTestCaseSummary();
+    void fetchTestCaseSummary();
   }, [tableFqn]);
 
   useEffect(() => {
     if (searchText || hasTagFilter) {
-      searchTableColumns(searchText, currentPage, sortBy, sortOrder);
+      void searchTableColumns(searchText, currentPage, sortBy, sortOrder);
     }
   }, [
     searchText,
@@ -388,7 +427,7 @@ const SchemaTable = () => {
     if (searchText || hasTagFilter) {
       return;
     }
-    fetchTableColumns(currentPage, sortBy, sortOrder);
+    void fetchTableColumns(currentPage, sortBy, sortOrder);
   }, [
     tableFqn,
     pageSize,
@@ -489,24 +528,23 @@ const SchemaTable = () => {
     setEditColumn(undefined);
   };
 
-  const updateColumnDetails = async (
-    columnFqn: string,
-    column: Partial<Column>,
-    field: keyof Column
-  ) => {
-    const response = await updateTableColumn(columnFqn, column);
-    const cleanResponse = isEmpty(response.children)
-      ? omit(response, 'children')
-      : response;
+  const updateColumnDetails = useCallback(
+    async (columnFqn: string, column: Partial<Column>, field: keyof Column) => {
+      const response = await updateTableColumn(columnFqn, column);
+      const cleanResponse = isEmpty(response.children)
+        ? omit(response, 'children')
+        : response;
 
-    setTableColumns((prev) =>
-      pruneEmptyChildren(
-        updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
-      )
-    );
+      setTableColumns((prev) =>
+        pruneEmptyChildren(
+          updateColumnInNestedStructure(prev, columnFqn, cleanResponse, field)
+        )
+      );
 
-    return response;
-  };
+      return response;
+    },
+    []
+  );
 
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
@@ -528,24 +566,39 @@ const SchemaTable = () => {
     }
   };
 
-  const handleTagSelection = async (
-    selectedTags: EntityTags[],
-    editColumnTag: Column
-  ) => {
-    if (selectedTags && editColumnTag.fullyQualifiedName) {
-      try {
-        await updateColumnDetails(
-          editColumnTag.fullyQualifiedName,
-          {
-            tags: selectedTags,
-          },
-          'tags'
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+  const handleTagSelection = useCallback(
+    async (selectedTags: EntityTags[], editColumnTag: Column) => {
+      if (selectedTags && editColumnTag.fullyQualifiedName) {
+        try {
+          await updateColumnDetails(
+            editColumnTag.fullyQualifiedName,
+            {
+              tags: selectedTags,
+            },
+            'tags'
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
-    }
-  };
+    },
+    [updateColumnDetails]
+  );
+
+  const handleExtensionUpdate = useCallback(
+    async (record: Column, updatedExtension: Column['extension']) => {
+      if (!record.fullyQualifiedName) {
+        return;
+      }
+
+      await updateColumnDetails(
+        record.fullyQualifiedName,
+        { extension: updatedExtension ?? {} },
+        'extension'
+      );
+    },
+    [updateColumnDetails]
+  );
 
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> =
     useCallback(
@@ -715,18 +768,16 @@ const SchemaTable = () => {
                 {renderHighlightedText(highlightSearchText(name, searchText))}
               </Typography>
             </div>
-            <div className="d-flex items-center">
+            <div className="d-flex items-center gap-2">
               {editDisplayNamePermission && (
-                <Tooltip arrow placement="top" title={t('label.edit')}>
-                  <ButtonUtility
-                    className="hover-cell-icon"
-                    color="tertiary"
-                    data-testid="edit-displayName-button"
-                    icon={IconEdit}
-                    size="xs"
-                    onClick={() => handleEditDisplayNameClick(record)}
-                  />
-                </Tooltip>
+                <ButtonUtility
+                  className="hover-cell-icon"
+                  data-testid="edit-displayName-button"
+                  icon={Edit01}
+                  size="xs"
+                  tooltip={t('label.edit')}
+                  onClick={() => handleEditDisplayNameClick(record)}
+                />
               )}
               {record.fullyQualifiedName && (
                 <CopyLinkButton
@@ -768,29 +819,52 @@ const SchemaTable = () => {
     [testCaseCounts]
   );
 
+  const customPropertyColumns: ColumnsType<Column> = useMemo(
+    () =>
+      (columnTypeDetail?.customProperties ?? []).map(
+        (property: CustomProperty) => ({
+          title: getEntityName(property),
+          dataIndex: 'extension',
+          key: getCustomPropertyColumnKey(property.name),
+          width: 230,
+          render: (_: Column['extension'], record: Column) => (
+            <ColumnCustomPropertyCell
+              hasEditPermissions={editCustomFieldsPermission}
+              property={property}
+              record={record}
+              onExtensionUpdate={handleExtensionUpdate}
+            />
+          ),
+        })
+      ),
+    [columnTypeDetail, editCustomFieldsPermission, handleExtensionUpdate]
+  );
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
         title: (
           <Button
+            className={classNames(
+              sortBy === 'name' && 'tw:*:data-icon:text-utility-brand-600'
+            )}
             color="tertiary"
             data-testid="name-column-header"
+            iconTrailing={
+              <IconSortIndicator
+                className={classNames(
+                  'tw:transition-transform',
+                  sortOrder === 'desc' && 'tw:rotate-180'
+                )}
+                data-icon="trailing"
+                data-testid="sort-indicator"
+              />
+            }
             onClick={handleColumnHeaderSortToggle}>
             <Typography
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
             </Typography>
-            <IconSortIndicator
-              className="m-l-xss"
-              data-testid="sort-indicator"
-              height={12}
-              style={{
-                color: sortBy === 'name' ? 'var(--primary-color)' : '#6B7280',
-                transform: sortOrder === 'desc' ? 'rotate(180deg)' : 'none',
-                transition: 'transform 0.2s ease',
-              }}
-              width={8}
-            />
           </Button>
         ),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
@@ -874,6 +948,7 @@ const SchemaTable = () => {
         width: 120,
         render: renderDataQuality,
       },
+      ...customPropertyColumns,
     ],
     [
       tableFqn,
@@ -890,6 +965,7 @@ const SchemaTable = () => {
       sortBy,
       sortOrder,
       handleColumnHeaderSortToggle,
+      customPropertyColumns,
     ]
   );
 
@@ -910,23 +986,35 @@ const SchemaTable = () => {
         })}
       </Label>
       <Select
-        allowClear
+        aria-label={t('label.entity-type-plural', {
+          entity: t('label.constraint'),
+        })}
         data-testid="constraint-type-select"
-        getPopupContainer={(triggerNode) => triggerNode.parentElement}
-        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),
           }),
         })}
-        value={editConstraint}
-        onChange={(value) => setEditConstraint(value)}
-      />
+        value={editConstraint ?? null}
+        onChange={(key) =>
+          setEditConstraint(
+            key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
+          )
+        }>
+        <Select.Item id={NO_CONSTRAINT_KEY} label={t('label.none')} />
+        {constraintOptionsTranslated.map((option) => (
+          <Select.Item
+            id={option.value}
+            key={option.value}
+            label={option.label}
+          />
+        ))}
+      </Select>
     </div>
   );
 
   const handleEditTable = () => {
-    navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
+    void navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
   };
 
   useEffect(() => {
@@ -1001,7 +1089,7 @@ const SchemaTable = () => {
                 <Button
                   color="tertiary"
                   data-testid="sort-dropdown"
-                  iconLeading={<IconSort height={14} width={14} />}
+                  iconLeading={IconSort}
                   size="sm">
                   {t('label.sort')}
                 </Button>
@@ -1033,7 +1121,11 @@ const SchemaTable = () => {
           }
           loading={columnsLoading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowClassName={getRowClassName}

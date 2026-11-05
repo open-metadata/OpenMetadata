@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Box, Button } from '@openmetadata/ui-core-components';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  ButtonUtility,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -25,8 +31,6 @@ import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/Services.constant';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import './object-field-template.less';
-
-const { Panel } = Collapse;
 
 interface PropertyMap {
   advancedProperties: ObjectFieldTemplatePropertyType[];
@@ -103,15 +107,12 @@ export const ObjectFieldTemplate: FunctionComponent<
             {t('label.additional-property-plural')}
           </label>
 
-          <Button
-            aria-label={t('label.add')}
+          <ButtonUtility
             color="primary"
             data-testid={`add-item-${title}`}
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="xs"
+            tooltip={t('label.add')}
             onClick={() => {
               onAddClick(schema)();
             }}
@@ -139,22 +140,26 @@ export const ObjectFieldTemplate: FunctionComponent<
         </div>
       ))}
       {!isEmpty(advancedProperties) && (
-        <Collapse
-          destroyInactivePanel
-          className="advanced-properties-collapse m-t-sm"
-          expandIconPosition="end">
-          <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
-            {advancedProperties.map((element) => (
-              <div
-                className={classNames('property-wrapper', {
-                  'additional-fields': schema.additionalProperties,
-                })}
-                key={element.content.key}>
-                {element.content}
-              </div>
-            ))}
-          </Panel>
-        </Collapse>
+        <Accordion
+          allowsMultipleExpanded
+          className="advanced-properties-collapse m-t-sm">
+          <AccordionItem id="1" key="1">
+            <AccordionHeader>{`${title} ${t(
+              'label.advanced-config'
+            )}`}</AccordionHeader>
+            <AccordionPanel unmountOnCollapse>
+              {advancedProperties.map((element) => (
+                <div
+                  className={classNames('property-wrapper', {
+                    'additional-fields': schema.additionalProperties,
+                  })}
+                  key={element.content.key}>
+                  {element.content}
+                </div>
+              ))}
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
       )}
     </Fragment>
   );

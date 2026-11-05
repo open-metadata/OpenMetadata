@@ -18,7 +18,7 @@ import {
   AccordionPanel,
   Badge,
   BadgeWithButton,
-  Button,
+  ButtonUtility,
   Grid,
   Input,
   Label,
@@ -28,7 +28,7 @@ import {
   Select,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { useCallback, useState } from 'react';
 import {
   Controller,
@@ -48,6 +48,11 @@ import {
   Type,
 } from '../../../../../generated/events/eventSubscription';
 import { searchEntity } from '../../../../../utils/Alerts/AlertsUtil';
+import {
+  clearMaskedSecrets,
+  withAuthType,
+} from '../../../../../utils/Alerts/AlertsUtilPure';
+import type { ModifiedWebhookConfig } from '../../../../../utils/AlertsClassBase.interface';
 import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import TeamAndUserSelectItem from '../../TeamAndUserSelectItem/TeamAndUserSelectItem';
 import {
@@ -217,13 +222,11 @@ function KeyValueList({
             : t('label.query-parameter-plural')}
         </span>
         {!isDisabled && (
-          <Button
-            aria-label={t('label.add')}
-            color="secondary"
+          <ButtonUtility
             data-testid={`add-${testIdPrefix}-button-${fieldName}`}
-            iconLeading={Plus}
-            size="xs"
-            onPress={() => append({ key: '', value: '' } as never)}
+            icon={Plus}
+            tooltip={t('label.add')}
+            onClick={() => append({ key: '', value: '' } as never)}
           />
         )}
       </div>
@@ -280,13 +283,12 @@ function KeyValueList({
             />
           </div>
           {!isDisabled && (
-            <Button
-              aria-label={t('label.remove')}
-              color="secondary"
+            <ButtonUtility
               data-testid={`remove-${testIdPrefix}-button-${fieldName}-${index}`}
-              iconLeading={Trash01}
-              size="xs"
-              onPress={() => remove(index)}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove')}
+              onClick={() => remove(index)}
             />
           )}
         </div>
@@ -303,7 +305,7 @@ function DestinationConfigField({
   onConfigExpandedChange,
 }: Readonly<DestinationConfigFieldProps>) {
   const { t } = useTranslation();
-  const { control } = useFormContext();
+  const { control, getValues, setValue } = useFormContext();
 
   const selectedAuthType: string | undefined = useWatch({
     name: `destinations.${fieldName}.config.authType.type`,
@@ -315,6 +317,43 @@ function DestinationConfigField({
     type === SubscriptionType.MSTeams ||
     type === SubscriptionType.GChat ||
     type === SubscriptionType.Webhook;
+
+  const configPath = `destinations.${fieldName}.config`;
+
+  // A new URL or token URL sends the secrets somewhere else, so the hidden ones are emptied
+  // and the advanced configuration opens on them, where the form asks for each one again.
+  const askAgainForHiddenValues = (
+    config: ModifiedWebhookConfig | undefined,
+    cleared: ModifiedWebhookConfig | undefined
+  ) => {
+    if (!isEqual(cleared, config)) {
+      setValue(`${configPath}.endpoint`, cleared?.endpoint);
+      cleared?.headers?.forEach((header, index) => {
+        setValue(`${configPath}.headers.${index}.value`, header.value);
+      });
+      Object.entries(cleared?.authType ?? {}).forEach(([key, secret]) => {
+        setValue(`${configPath}.authType.${key}`, secret);
+      });
+      onConfigExpandedChange?.(true);
+    }
+  };
+
+  const changeWhereItSends =
+    (onChange: (value: string) => void) => (value: string) => {
+      onChange(value);
+      const config = getValues(configPath);
+      askAgainForHiddenValues(config, clearMaskedSecrets(config));
+    };
+
+  const changeAuthType = (authType: Type) => {
+    const config = getValues(configPath);
+    const switched = withAuthType(config, authType);
+    setValue(`${configPath}.authType`, switched.authType);
+    askAgainForHiddenValues(
+      { ...config, authType: switched.authType },
+      switched
+    );
+  };
 
   if (isWebhookType) {
     const advancedConfigId = `advanced-config-${fieldName}`;
@@ -335,7 +374,7 @@ function DestinationConfigField({
                   ref={field.ref}
                   value={field.value ?? ''}
                   onBlur={() => field.onBlur()}
-                  onChange={(val) => field.onChange(val)}
+                  onChange={changeWhereItSends(field.onChange)}
                 />
                 <FieldError message={fieldState.error?.message} />
               </div>
@@ -377,7 +416,9 @@ function DestinationConfigField({
                           label={`${t('label.authentication-type')}:`}
                           placeholder={t('label.authentication-type')}
                           selectedKey={field.value ?? null}
-                          onSelectionChange={(key) => field.onChange(key)}>
+                          onSelectionChange={(key) =>
+                            changeAuthType((key ?? Type.None) as Type)
+                          }>
                           <Select.Item id={Type.None}>
                             {t('label.no-authentication')}
                           </Select.Item>
@@ -438,7 +479,7 @@ function DestinationConfigField({
                                 ref={field.ref}
                                 value={field.value ?? ''}
                                 onBlur={() => field.onBlur()}
-                                onChange={(val) => field.onChange(val)}
+                                onChange={changeWhereItSends(field.onChange)}
                               />
                               <FieldError message={fieldState.error?.message} />
                             </div>

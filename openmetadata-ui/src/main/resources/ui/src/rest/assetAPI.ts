@@ -18,6 +18,7 @@ import { Asset, AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
+import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './axiosClient';
 
@@ -131,10 +132,13 @@ export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   return response.data;
 };
 
-export const getContextFileById = async (id: string): Promise<ContextFile> => {
+export const getContextFileById = async (
+  id: string,
+  include?: Include
+): Promise<ContextFile> => {
   const response = await APIClient.get<ContextFile>(
     `/contextCenter/drive/files/${id}`,
-    { params: { fields: 'folder,memoryCount' } }
+    { params: { fields: 'folder,memoryCount', include } }
   );
 
   return response.data;
@@ -184,13 +188,18 @@ export const moveFileToRoot = async (driveFileId: string): Promise<void> => {
 
 export const uploadDriveFile = async (
   file: File,
-  folderFqn?: string
+  folderFqn?: string,
+  domainFqn?: string
 ): Promise<ContextFile> => {
   const formData = new FormData();
   formData.append('file', file);
 
   if (folderFqn) {
     formData.append('folder', folderFqn);
+  }
+
+  if (domainFqn) {
+    formData.append('domain', domainFqn);
   }
 
   const response = await APIClient.post<FormData, AxiosResponse<ContextFile>>(

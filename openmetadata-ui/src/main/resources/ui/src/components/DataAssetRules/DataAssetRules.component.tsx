@@ -11,30 +11,32 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
+  FormField,
   Grid,
+  HintText,
+  HookForm,
+  Input,
   SimpleModal,
+  TextArea,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Form, Input, Table } from 'antd';
-import { FormInstance } from 'antd/es/form/Form';
+import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Registry } from '@rjsf/utils';
 import { AxiosError } from 'axios';
+import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useForm, UseFormReturn } from 'react-hook-form';
 import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
-import {
-  SemanticsRule,
-  Settings,
-  SettingType,
-} from '../../generated/settings/settings';
+import { SemanticsRule, SettingType } from '../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
+  patchEntityRule,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
@@ -42,11 +44,11 @@ import jsonLogicSearchClassBase from '../../utils/JSONLogicSearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import QueryBuilderWidget from '../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import RichTextEditorPreviewerNew from '../common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../common/Table/TableV2';
 import { SearchOutputType } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './DataAssetRules.less';
 
 export const useSemanticsRulesState = () => {
-  const { t } = useTranslation();
   const [semanticsRules, setSemanticsRules] = useState<SemanticsRule[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
@@ -70,23 +72,17 @@ export const useSemanticsRulesState = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [setSemanticsRules]);
+  }, []);
 
   useEffect(() => {
     fetchSemanticsRules();
-  }, []);
+  }, [fetchSemanticsRules]);
 
-  const updateSemanticsRules = useCallback(
-    async (configValues: SemanticsRule[]) => {
+  const saveSemanticsRules = useCallback(
+    async (save: () => Promise<unknown>) => {
       try {
         setIsSaveLoading(true);
-        const settingsConfigData: Settings = {
-          config_type: SettingType.EntityRulesSettings,
-          config_value: {
-            entitySemantics: configValues,
-          },
-        };
-        await updateSettingsConfig(settingsConfigData);
+        await save();
         fetchSemanticsRules();
 
         showSuccessToast(
@@ -109,7 +105,28 @@ export const useSemanticsRulesState = () => {
         setIsSaveLoading(false);
       }
     },
-    []
+    [fetchSemanticsRules]
+  );
+
+  const updateSemanticsRules = useCallback(
+    (configValues: SemanticsRule[]) =>
+      saveSemanticsRules(() =>
+        updateSettingsConfig({
+          config_type: SettingType.EntityRulesSettings,
+          config_value: { entitySemantics: configValues },
+        })
+      ),
+    [saveSemanticsRules]
+  );
+
+  const toggleRuleEnabled = useCallback(
+    (ruleName: string, enabled: boolean) =>
+      saveSemanticsRules(() =>
+        patchEntityRule(ruleName, [
+          { op: 'replace', path: '/enabled', value: enabled },
+        ])
+      ),
+    [saveSemanticsRules]
   );
 
   return {
@@ -118,17 +135,18 @@ export const useSemanticsRulesState = () => {
     isLoading,
     isSaveLoading,
     updateSemanticsRules,
+    toggleRuleEnabled,
   };
 };
 
 export const SemanticsRuleForm: React.FC<{
   semanticsRule: SemanticsRule;
   otherSemanticsRules: SemanticsRule[];
-  form: FormInstance<SemanticsRule>;
+  form: UseFormReturn<SemanticsRule>;
 }> = ({ semanticsRule, otherSemanticsRules, form }) => {
   useEffect(() => {
-    form.setFieldsValue(semanticsRule);
-  }, [semanticsRule]);
+    form.reset(semanticsRule);
+  }, [semanticsRule, form]);
 
   const queryBuilderFields = useMemo(() => {
     const fields = jsonLogicSearchClassBase.getMapFields();
@@ -142,57 +160,82 @@ export const SemanticsRuleForm: React.FC<{
     };
   }, []);
 
-  return (
-    <Form form={form} layout="vertical">
-      <Form.Item
-        label={t('label.name')}
-        name="name"
-        rules={[
-          {
-            required: true,
-            // Do not allow name if already exists
-            validator: (_, value) => {
-              if (otherSemanticsRules.some((rule) => rule.name === value)) {
-                return Promise.reject(
-                  new Error(t('message.name-already-exists'))
-                );
-              }
+  const requiredRule = (field: string) => ({
+    required: t('label.field-required', { field }),
+  });
 
-              return Promise.resolve();
-            },
-          },
-        ]}>
-        <Input placeholder={t('label.name')} />
-      </Form.Item>
-      <Form.Item
-        label={t('label.description')}
+  return (
+    <HookForm className="tw:flex tw:flex-col tw:gap-4" form={form}>
+      <FormField
+        control={form.control}
+        name="name"
+        rules={{
+          ...requiredRule(t('label.name')),
+          validate: (value) =>
+            !otherSemanticsRules.some((rule) => rule.name === value) ||
+            t('message.name-already-exists'),
+        }}>
+        {({ field, fieldState }) => (
+          <Input
+            isRequired
+            hint={fieldState.error?.message}
+            isInvalid={fieldState.invalid}
+            label={t('label.name')}
+            placeholder={t('label.name')}
+            value={field.value}
+            onBlur={field.onBlur}
+            onChange={field.onChange}
+          />
+        )}
+      </FormField>
+      <FormField
+        control={form.control}
         name="description"
-        rules={[
-          {
-            required: true,
-          },
-        ]}>
-        <Input.TextArea placeholder={t('label.description')} rows={2} />
-      </Form.Item>
-      <Form.Item
+        rules={requiredRule(t('label.description'))}>
+        {({ field, fieldState }) => (
+          <TextArea
+            isRequired
+            hint={fieldState.error?.message}
+            isInvalid={fieldState.invalid}
+            label={t('label.description')}
+            placeholder={t('label.description')}
+            rows={2}
+            value={field.value}
+            onBlur={field.onBlur}
+            onChange={field.onChange}
+          />
+        )}
+      </FormField>
+      <FormField
+        control={form.control}
         name="rule"
-        rules={[
-          {
-            required: true,
-          },
-        ]}>
-        {/* @ts-expect-error because Form.Item will provide value and onChange */}
-        <QueryBuilderWidget
-          defaultField={EntityReferenceFields.TAG}
-          fields={queryBuilderFields}
-          label={t('label.rule')}
-          schema={{
-            outputType: SearchOutputType.JSONLogic,
-          }}
-          subField="tagFQN"
-        />
-      </Form.Item>
-    </Form>
+        rules={requiredRule(t('label.rule'))}>
+        {({ field, fieldState }) => (
+          <Box direction="col" gap={1}>
+            <QueryBuilderWidget
+              defaultField={EntityReferenceFields.TAG}
+              fields={queryBuilderFields}
+              id="semantics-rule"
+              label={t('label.rule')}
+              name="rule"
+              options={{}}
+              registry={{} as Registry}
+              schema={{
+                outputType: SearchOutputType.JSONLogic,
+              }}
+              subField="tagFQN"
+              value={field.value}
+              onBlur={noop}
+              onChange={field.onChange}
+              onFocus={noop}
+            />
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </Box>
+        )}
+      </FormField>
+    </HookForm>
   );
 };
 
@@ -209,13 +252,11 @@ export const AddEditSemanticsRuleModal: React.FC<{
   isSaveLoading,
   otherSemanticsRules,
 }) => {
-  const [form] = Form.useForm();
+  const form = useForm<SemanticsRule>({ defaultValues: semanticsRule });
 
-  const handleSave = () => {
-    form.validateFields().then((values) => {
-      onSave(values, semanticsRule.name);
-    });
-  };
+  const handleSave = form.handleSubmit((values) =>
+    onSave(values, semanticsRule.name)
+  );
 
   return (
     <SimpleModal
@@ -267,6 +308,7 @@ export const DeleteSemanticsRuleConfirmationModal: React.FC<{
 export const useSemanticsRuleList = ({
   semanticsRules,
   onSemanticsRuleChange,
+  onToggleRuleEnabled,
   isSaveLoading,
   isLoading,
 }: {
@@ -274,6 +316,7 @@ export const useSemanticsRuleList = ({
   onSemanticsRuleChange: (
     updatedSemanticsRules: SemanticsRule[]
   ) => Promise<void>;
+  onToggleRuleEnabled: (ruleName: string, enabled: boolean) => Promise<void>;
   isSaveLoading?: boolean;
   isLoading?: boolean;
 }) => {
@@ -353,13 +396,13 @@ export const useSemanticsRuleList = ({
             isSelected={enabled}
             size="sm"
             onChange={() => {
-              handleSave({ ...record, enabled: !enabled });
+              onToggleRuleEnabled(record.name, !enabled);
             }}
           />
         ),
       },
     ],
-    [t, handleSave]
+    [onToggleRuleEnabled]
   );
 
   const dataAssetRuleList = useMemo(() => {
@@ -379,7 +422,14 @@ export const useSemanticsRuleList = ({
         </Grid.Item>
       </Grid>
     );
-  }, [semanticsRules, isLoading, isSaveLoading, columns]);
+  }, [
+    semanticsRules,
+    isLoading,
+    isSaveLoading,
+    columns,
+    addEditSemanticsRule,
+    deleteSemanticsRule,
+  ]);
 
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (
     <Box
@@ -408,7 +458,7 @@ export const useSemanticsRuleList = ({
           <Button
             color="secondary-brand"
             data-testid="add-widget-button"
-            iconLeading={<PlusOutlined />}
+            iconLeading={Plus}
             onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>

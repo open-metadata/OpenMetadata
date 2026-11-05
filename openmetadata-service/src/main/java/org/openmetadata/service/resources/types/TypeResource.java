@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -67,6 +68,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.EntityLifecycle;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -165,6 +167,31 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               + "applicable to every entity type and a per-entity map of additional fields.")
   public WorkflowTriggerFieldsRegistry.WorkflowTriggerFieldsConfig getWorkflowTriggerFields() {
     return WorkflowTriggerFieldsRegistry.getConfig();
+  }
+
+  @GET
+  @Path("/workflows/approvalEnforcedEntityTypes")
+  @Operation(
+      operationId = "getApprovalEnforcedEntityTypes",
+      summary = "Get entity types whose edits are held for approval",
+      description =
+          "Get the entity types targeted by a governance workflow whose eventBasedEntity "
+              + "trigger runs in Enforce approval mode. Edits to the fields such a workflow watches "
+              + "are held as change requests until a reviewer approves them. A suspended workflow "
+              + "counts, since the requests it holds stay open until it resumes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of entity types",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string"))))
+      })
+  public List<String> getApprovalEnforcedEntityTypes() {
+    // Not authorized beyond authentication: anyone whose edit can be held needs to know it can,
+    // and a held edit's 202 response reveals the same entity type anyway.
+    return GovernanceApprovalRegistry.enforcedEntityTypes();
   }
 
   @GET
@@ -615,7 +642,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @PathParam("entityType") String entityType,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-
+    authorizeTypeRead(securityContext);
     try {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
@@ -640,6 +667,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Produces(MediaType.APPLICATION_JSON)
   public Response getAllCustomPropertiesByEntityType(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizeTypeRead(securityContext);
     try {
       SchemaFieldExtractor extractor = new SchemaFieldExtractor();
       Map<String, List<SchemaFieldExtractor.FieldDefinition>> customPropertiesMap =
@@ -686,6 +714,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    authorizeTypeRead(securityContext);
     try {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
@@ -697,5 +726,15 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           .entity("Entity type '" + entityType + "' not found or has no custom properties")
           .build();
     }
+  }
+
+  // Types describe the shape of every entity, custom properties included, so reading them takes
+  // what listing types takes
+  // (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+  private void authorizeTypeRead(SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
   }
 }

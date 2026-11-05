@@ -68,7 +68,6 @@
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "securityConfig": {
-      "mask": true,
       "description": "OpenMetadata Client security configuration.",
       "$ref": "../../../../security/client/openMetadataJWTClientConfig.json"
     },

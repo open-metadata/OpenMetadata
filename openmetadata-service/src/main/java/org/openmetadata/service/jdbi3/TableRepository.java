@@ -29,6 +29,7 @@ import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
@@ -126,6 +127,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.AsyncService;
@@ -144,10 +146,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
   public static final String PATCH_FIELDS =
-      "tableConstraints,tablePartition,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
-      "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,dataModel,sourceUrl,columns,schemaDefinition";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -301,6 +303,7 @@ public class TableRepository extends EntityRepository<Table> {
   private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
     if (fields.contains(COLUMN_FIELD)) {
       bulkPopulateEntityFieldTags(tables, Table::getColumns);
+      inheritEntityTermsOnFields(tables, Table::getColumns);
     }
   }
 
@@ -1461,6 +1464,9 @@ public class TableRepository extends EntityRepository<Table> {
     EntityRepository.invalidateCacheForEntity(
         entityType, table.getId(), table.getFullyQualifiedName());
     RdfUpdater.updateEntity(table);
+    // Skipping postUpdate skips the search update as well: rebuild the table's document from the
+    // merged row, so that its tags, owners and column tags show the model.
+    searchRepository.updateEntity(table.getEntityReference());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1468,12 +1474,22 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table, boolean update) {
+    DatabaseUtil.validateTableSharding(table);
     var schema = (DatabaseSchema) getCachedParentOrLoad(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+
+    if (table.getTableSharding() != null) {
+      var source = table.getTableSharding().getRepresentative();
+      if (!source.getDatabaseName().equals(table.getDatabase().getName())
+          || !source.getSchemaName().equals(schema.getName())) {
+        throw new IllegalArgumentException(
+            "Shard representative must belong to the table database and schema");
+      }
+    }
 
     // For create operations (update=false), validate constraints immediately.
     // For update operations (PATCH/PUT), constraint validation happens in updateTableConstraints()
@@ -1819,14 +1835,19 @@ public class TableRepository extends EntityRepository<Table> {
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
     List<PropagationDescriptor> descriptors =
         new ArrayList<>(super.getSearchPropagationDescriptors());
+    // A column entry carries what ColumnSearchIndex builds: its own tags and the glossary terms it
+    // inherits from the table, and no data products. Propagating more is how table tags leaked onto
+    // columns. ADR:2026-10-08-column-entries-carry-only-their-own-tags
     descriptors.add(
         new PropagationDescriptor(
-            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+                FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null)
+            .inheritedTermsOnlyFor(TABLE_COLUMN));
     descriptors.add(
         new PropagationDescriptor(
-            FIELD_DATA_PRODUCTS,
-            PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
-            null));
+                FIELD_DATA_PRODUCTS,
+                PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
+                null)
+            .skipping(TABLE_COLUMN));
     // Required so SearchRepository.requiresPropagation opens the gate on a cert-only PATCH;
     // the actual cascade onto child docs (test_case, test_case_result, test_case_resolution_status,
     // test_suite, column) is handled by SearchRepository.cascadeCertificationToChildren, not by
@@ -1862,16 +1883,23 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,columns,dataModel");
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    return allTags((Table) entity);
+  }
+
+  /** The tags a tag condition on a table reads: its own, its columns' and its data model's. */
+  public static List<TagLabel> allTags(Table table) {
     List<TagLabel> allTags = new ArrayList<>();
-    Table table = (Table) entity;
     EntityUtil.mergeTags(allTags, table.getTags());
-    table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
+    EntityUtil.mergeColumnTags(allTags, table.getColumns());
     if (table.getDataModel() != null) {
       EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
-      for (Column column : listOrEmpty(table.getDataModel().getColumns())) {
-        EntityUtil.mergeTags(allTags, column.getTags());
-      }
+      EntityUtil.mergeColumnTags(allTags, table.getDataModel().getColumns());
     }
     return allTags;
   }
@@ -2269,6 +2297,11 @@ public class TableRepository extends EntityRepository<Table> {
           "tableType",
           () -> recordChange("tableType", origTable.getTableType(), updatedTable.getTableType()));
       compareAndUpdate(
+          "tableSharding",
+          () ->
+              recordChange(
+                  "tableSharding", origTable.getTableSharding(), updatedTable.getTableSharding()));
+      compareAndUpdate(
           "dataModel",
           () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
@@ -2397,18 +2430,10 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
-      origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      origConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      origConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
-      updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      updatedConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      updatedConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
@@ -2541,13 +2566,16 @@ public class TableRepository extends EntityRepository<Table> {
         CSVRecord csvRecord = getNextRecord(printer, csvRecords);
         if (csvRecord != null) {
           updateColumnsFromCsv(printer, csvRecord);
-          String violations = ValidatorUtil.validate(table);
-          if (violations != null) {
-            // JSON schema based validation failed for the entity
-            importFailure(printer, violations, csvRecord);
-            return;
-          }
         }
+      }
+
+      // Validate the whole table once, after every row is applied, rather than re-walking all of
+      // its
+      // columns on each row — which made a large import quadratic in the number of columns.
+      String violations = ValidatorUtil.validate(table);
+      if (violations != null) {
+        importFailure(printer, violations, csvRecords.get(csvRecords.size() - 1));
+        return;
       }
 
       if (processRecord) {
@@ -2560,10 +2588,15 @@ public class TableRepository extends EntityRepository<Table> {
         throws IOException {
       EntityRepository<Table> repository =
           (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
+      String result = ENTITY_UPDATED;
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, table);
-          repository.patch(null, table.getId(), importedBy, jsonPatch);
+          UUID pendingChangeRequestId =
+              repository.patch(null, table.getId(), importedBy, jsonPatch).pendingChangeRequestId();
+          if (pendingChangeRequestId != null) {
+            result = pendingApprovalDetail(pendingChangeRequestId);
+          }
         } catch (Exception ex) {
           for (int i = 1; i < records.size(); i++) {
             importFailure(resultsPrinter, ex.getMessage(), records.get(i));
@@ -2579,10 +2612,19 @@ public class TableRepository extends EntityRepository<Table> {
         // created
         // during import
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
+        if (wouldBeHeld(repository, originalTable, table)) {
+          result = ENTITY_PENDING_APPROVAL;
+        }
       }
 
+      // The columns are written as one patch; when it is held, every row reports the pending
+      // change request instead of an update.
+      boolean pending = !ENTITY_UPDATED.equals(result);
       for (int i = 1; i < records.size(); i++) {
-        importSuccess(resultsPrinter, records.get(i), ENTITY_UPDATED);
+        importSuccess(resultsPrinter, records.get(i), result);
+        if (pending) {
+          countPendingApproval();
+        }
       }
     }
 
@@ -2639,6 +2681,9 @@ public class TableRepository extends EntityRepository<Table> {
                 printer,
                 "Parent Column not found. Check the order of the columns in the CSV file.",
                 csvRecord);
+            // Without the parent there is nowhere to attach the column; going on would dereference
+            // a null parent below.
+            return;
           }
 
           // Update Name And Ordinal position in the parent column
@@ -2974,17 +3019,54 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);
-      if (!fieldsParam.contains("tags")) {
-        populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
-      }
-      if (piiOwners != null) {
-        PIIMasker.getTableProfile(piiOwners, singleton, authorizer, securityContext);
-      } else {
-        PIIMasker.getTableProfile(
-            table.getFullyQualifiedName(), singleton, authorizer, securityContext);
-      }
+      maskSingleColumnProfile(table, column, singleton, piiOwners, authorizer, securityContext);
     }
     return column;
+  }
+
+  /**
+   * Masking walks only the columns it is handed: a nested child alone cannot carry the
+   * {@code PII.Sensitive} tag an ancestor column above it holds, so the ancestors are resolved out
+   * of the table's columns and their tags hydrated for the decision.
+   */
+  private void maskSingleColumnProfile(
+      Table table,
+      Column column,
+      List<Column> singleton,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    List<Column> ancestors = columnAncestors(table, column);
+    // Hydrating the ancestors flattens to the child's own subtree, so no second pass is needed;
+    // with none resolved, only the column itself has to be hydrated before the masker decides.
+    populateEntityFieldTags(
+        entityType,
+        nullOrEmpty(ancestors) ? singleton : ancestors,
+        table.getFullyQualifiedName(),
+        true);
+    if (piiOwners != null) {
+      PIIMasker.getSingleColumnProfile(piiOwners, ancestors, column, authorizer, securityContext);
+    } else {
+      PIIMasker.getSingleColumnProfile(
+          table.getFullyQualifiedName(), ancestors, column, authorizer, securityContext);
+    }
+  }
+
+  /** The columns a nested child hangs beneath, resolved out of the table's columns. */
+  private List<Column> columnAncestors(Table table, Column column) {
+    String tableFqn = FullyQualifiedName.getTableFQN(column.getFullyQualifiedName());
+    if (tableFqn.equals(column.getFullyQualifiedName())) {
+      return List.of();
+    }
+    List<Column> columnChain =
+        ColumnUtil.resolveColumnChainByPath(
+            table.getColumns(), column.getFullyQualifiedName().substring(tableFqn.length() + 1));
+    if (columnChain.size() > 1 && columnChain.getLast() == column) {
+      return new ArrayList<>(columnChain.subList(0, columnChain.size() - 1));
+    }
+    // A single-element resolution names the column itself (no chain above it); anything whose leaf
+    // is not the requested column matched a different node, and both leave no ancestor context.
+    return List.of();
   }
 
   private static void validateTableColumns(List<Column> columns) {
@@ -3488,6 +3570,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     doc.put("deleted", false);
     doc.put("entityType", "pipelineStatus");
+    // The run index is searched under the pipeline's access rules, so the document carries the
+    // pipeline's access fields; one whose pipeline does not resolve is not written.
+    doc.putAll(
+        PipelineExecutionIndex.accessFields(
+            PipelineExecutionIndex.withAccessFields(observability.getPipeline())));
 
     String docId = pipelineFqn + "_" + table.getId().toString();
     String docJson = JsonUtils.pojoToJson(doc);

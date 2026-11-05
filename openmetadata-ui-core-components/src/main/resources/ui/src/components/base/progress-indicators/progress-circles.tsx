@@ -6,11 +6,33 @@ interface ProgressBarProps {
   max?: number;
   size: 'xxs' | 'xs' | 'sm' | 'md' | 'lg';
   label?: string;
+  /** Status colors belong to the data, independently of the default brand treatment. */
+  color?: 'brand' | 'success' | 'error' | 'warning' | 'purple';
   valueFormatter?: (
     value: number,
     valueInPercentage: number
   ) => string | number;
 }
+
+const colors = sortCx({
+  brand: { stroke: 'tw:stroke-fg-brand-primary', text: 'tw:text-primary' },
+  success: {
+    stroke: 'tw:stroke-fg-success-primary',
+    text: 'tw:text-success-primary',
+  },
+  error: {
+    stroke: 'tw:stroke-fg-error-primary',
+    text: 'tw:text-error-primary',
+  },
+  warning: {
+    stroke: 'tw:stroke-fg-warning-primary',
+    text: 'tw:text-warning-primary',
+  },
+  purple: {
+    stroke: 'tw:stroke-utility-purple-500',
+    text: 'tw:text-utility-purple-500',
+  },
+});
 
 const sizes = sortCx({
   xxs: {
@@ -57,6 +79,7 @@ export const ProgressBarCircle = ({
   size,
   label,
   valueFormatter,
+  color = 'brand',
 }: ProgressBarProps) => {
   const percentage = Math.round(((value - min) * 100) / (max - min));
 
@@ -71,7 +94,9 @@ export const ProgressBarCircle = ({
   const cx = diameter / 2;
   const cy = diameter / 2;
 
-  const textPosition = label ? 'absolute text-center' : 'absolute text-primary';
+  const textPosition = label
+    ? 'tw:absolute tw:text-center'
+    : 'tw:absolute tw:text-primary';
   const strokeDashoffset = 100 - percentage;
 
   return (
@@ -102,7 +127,7 @@ export const ProgressBarCircle = ({
 
           {/* Foreground circle */}
           <circle
-            className="tw:stroke-fg-brand-primary"
+            className={colors[color].stroke}
             cx={cx}
             cy={cy}
             fill="none"
@@ -117,14 +142,14 @@ export const ProgressBarCircle = ({
         {label && size !== 'xxs' ? (
           <div className="tw:absolute tw:text-center">
             <div className={labelClass}>{label}</div>
-            <div className={valueClass}>
+            <div className={clx(valueClass, colors[color].text)}>
               {valueFormatter
                 ? valueFormatter(value, percentage)
                 : `${percentage}%`}
             </div>
           </div>
         ) : (
-          <span className={clx(textPosition, valueClass)}>
+          <span className={clx(textPosition, valueClass, colors[color].text)}>
             {valueFormatter
               ? valueFormatter(value, percentage)
               : `${percentage}%`}
@@ -139,6 +164,7 @@ export const ProgressBarCircle = ({
 
 export const ProgressBarHalfCircle = ({
   value,
+  color = 'brand',
   min = 0,
   max = 100,
   size,
@@ -190,7 +216,10 @@ export const ProgressBarHalfCircle = ({
 
           {/* Foreground half-circle */}
           <circle
-            className="tw:origin-center tw:-scale-x-100 tw:stroke-fg-brand-primary"
+            className={clx(
+              'tw:origin-center tw:-scale-x-100',
+              colors[color].stroke
+            )}
             cx={cx}
             cy={cy}
             fill="none"
@@ -206,7 +235,7 @@ export const ProgressBarHalfCircle = ({
         {label && size !== 'xxs' ? (
           <div className={halfCircleTextPosition}>
             <div className={labelClass}>{label}</div>
-            <div className={valueClass}>
+            <div className={clx(valueClass, colors[color].text)}>
               {valueFormatter
                 ? valueFormatter(value, percentage)
                 : `${percentage}%`}

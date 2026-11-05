@@ -86,14 +86,23 @@
   --ask-selected-surface,
   var(--tw-color-utility-gray-blue-100)
 );
-@ask-bg-hover: var(--ask-hover, var(--tw-background-color-secondary_hover));
+// Light hover is a 4 percent black wash (the 2.0 value), so the blue sidebar
+// tint shows through; solid secondary_hover (gray-100) read as a flat neutral
+// grey on it. Dark sets --ask-hover below.
+@ask-light-hover: color-mix(
+  in srgb,
+  var(--tw-color-alpha-black) 4%,
+  transparent
+);
+@ask-bg-hover: var(--ask-hover, @ask-light-hover);
 @ask-text-primary: var(--tw-text-color-primary);
 @ask-text-secondary: var(--tw-text-color-secondary);
 @ask-text-tertiary: var(--tw-text-color-tertiary);
 @ask-text-quaternary: var(--tw-text-color-quaternary);
-// Rest-state nav/list icons: quaternary (gray-400) in light, gray-600 in dark to
-// match the recording — quaternary reads a step too bright on the dark surface.
-@ask-icon-rest: var(--ask-rest-icon, var(--tw-text-color-quaternary));
+// Rest-state nav/list icons: quaternary in both themes, the same colour as the
+// list icons in page widgets (Context Center), so the nav does not read dimmer
+// (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel).
+@ask-icon-rest: var(--tw-text-color-quaternary);
 @ask-brand: var(--tw-color-brand-600);
 @ask-brand-active: var(--ask-selected-fg, var(--tw-color-utility-brand-800));
 @ask-brand-50: var(--tw-color-utility-brand-50);
@@ -113,7 +122,6 @@
 //    dark palette); a solid gray-blue-900 was invisible against the panel.
 //  - selected label/icon -> brand-400 (#53b1fd); the utility-brand-800 scale lands
 //    on brand-200 in dark, one step too pale.
-//  - rest nav/list icons -> gray-600; quaternary (gray-400) is a step too bright.
 //  - hover fill -> white @6% (secondary_hover), per the devrel dark palette.
 //  - border/divider -> gray-700; the PageShell nav/card edges sit on gray-700.
 .dark-mode {
@@ -123,7 +131,6 @@
     transparent
   );
   --ask-selected-fg: var(--tw-color-brand-400);
-  --ask-rest-icon: var(--color-gray-600);
   --ask-hover: var(--tw-background-color-secondary_hover);
   --ask-border: var(--om-color-gray-700);
 }
@@ -175,6 +182,17 @@
         stroke: var(--om-color-bg-surface);
       }
     }
+  }
+}
+
+// Dark: rest-state nav SVGs that hardcode the light rest grey (#717680) would sit
+// a step off the currentColor icons beside them; let them follow the item's colour.
+.dark-mode .ask-sidebar svg {
+  [stroke='#717680' i] {
+    stroke: currentColor;
+  }
+  [fill='#717680' i] {
+    fill: currentColor;
   }
 }
 
@@ -302,7 +320,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 32px;
+    height: calc(var(--tw-spacing) * 8);
     flex-shrink: 0;
     gap: 8px;
   }
@@ -320,7 +338,7 @@
     // Height-constrain the wordmark; width follows its own aspect (works for
     // any brand logo) and is capped so a very wide mark can't overflow.
     svg {
-      height: 24px;
+      height: calc(var(--tw-spacing) * 6);
       width: auto;
       max-width: 100%;
     }
@@ -947,26 +965,8 @@
   &__expand-btn {
     position: absolute;
     inset: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: @ask-rail-item-size;
-    height: @ask-rail-item-size;
-    background: transparent;
-    border: 0;
-    border-radius: @ask-nav-item-radius;
-    padding: 0;
-    cursor: pointer;
-    // Same rest weight as the nav icons it sits above, so the rail header does
-    // not read a shade paler than the list below it.
-    color: @ask-icon-rest;
     opacity: 0;
-    transition: opacity 150ms @ask-transition-ease,
-      background-color 150ms @ask-transition-ease;
-
-    &:hover {
-      background: @ask-bg-hover;
-    }
+    transition: opacity 150ms @ask-transition-ease;
   }
 
   &:hover &__logo-btn {
@@ -1017,7 +1017,7 @@
     background: transparent;
     border: 0;
     border-radius: @ask-nav-item-radius;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     cursor: pointer;
     transition: background-color 150ms @ask-transition-ease,
       color 150ms @ask-transition-ease;
@@ -1100,7 +1100,7 @@
       background: transparent;
       border: 0;
       border-radius: @ask-nav-item-radius;
-      color: @ask-text-quaternary;
+      color: @ask-icon-rest;
       cursor: pointer;
       transition: background-color 150ms @ask-transition-ease,
         color 150ms @ask-transition-ease;
@@ -1150,8 +1150,7 @@
       // on both the wrapper and the inner Avatar. Inline beats selector
       // specificity. Drop the !important once UserProfileIcon accepts a
       // size prop, or once we stop reusing it here.
-      .app-bar-user-profile-pic,
-      .ant-avatar {
+      .app-bar-user-profile-pic {
         width: 24px !important;
         height: 24px !important;
         min-width: 24px !important;
@@ -1347,6 +1346,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
+    // Flex items default to min-width: auto, which stops the ellipsis and lets
+    // long names push the panel into horizontal scroll.
+    min-width: 0;
   }
 
   // Trailing count pill — Figma 3405:13544.
@@ -1387,26 +1389,6 @@
     flex-shrink: 0;
   }
 
-  &__expand-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: @ask-rail-item-size;
-    height: @ask-rail-item-size;
-    background: transparent;
-    border: 0;
-    border-radius: @ask-nav-item-radius;
-    padding: 0;
-    cursor: pointer;
-    color: @ask-icon-rest;
-    transition: background-color 150ms @ask-transition-ease;
-
-    &:hover {
-      background: @ask-bg-hover;
-    }
-  }
-
   &__nav {
     position: relative;
     display: flex;
@@ -1426,7 +1408,7 @@
     background: transparent;
     border: 0;
     border-radius: @ask-nav-item-radius;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     cursor: pointer;
     transition: background-color 150ms @ask-transition-ease,
       color 150ms @ask-transition-ease;

@@ -9,6 +9,7 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.get
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
@@ -18,6 +19,7 @@ import com.unboundid.util.ssl.SSLUtil;
 import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -29,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -63,11 +66,13 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMGoogleConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
+import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -101,7 +106,6 @@ import org.openmetadata.service.config.source.SettingsChangeAnnouncer;
 import org.openmetadata.service.config.source.SettingsChangeWatcher;
 import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.config.source.SettingsWriteGuard;
-import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -111,9 +115,11 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO.SecuritySettingsUpdate;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
+import org.openmetadata.service.monitoring.ServicesStatusJobHandler;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
@@ -165,6 +171,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
   private static final String SYSTEM_BOTS_VALIDATION_KEY = "System Bots";
+  private static final String LLM_PROVIDER_VALIDATION_KEY = "LLM Provider";
+  private static final String LLM_PROVIDER_DESCRIPTION =
+      "LLM Provider is used to power Context Center memory extraction and Ontology AI";
   private static final Set<String> SYSTEM_BOT_TYPES = Set.of(Entity.BOT, Entity.USER);
   private static final String UNUSABLE_TOKEN_LINE = "Token not usable: bot %s (%s)";
   private static final String LDAP_VALIDATION_KEY = "LDAP";
@@ -202,6 +211,13 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   private static final String INDEX_NAME = "table_search_index";
+
+  /**
+   * Login switches that no validation check reads, so changing only these cannot make a security
+   * configuration fail validation. Add a setting here only if no check reads it.
+   */
+  private static final Set<String> UNCHECKED_LOGIN_SWITCHES =
+      Set.of("enableSelfSignup", "enableAutoRedirect", "forceSecureSessionCookie");
 
   public SystemRepository() {
     this.dao = Entity.getCollectionDAO().systemDAO();
@@ -484,6 +500,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   public Response createNewSetting(Settings setting) {
+    OpenMetadataBaseUrlValidator.validate(setting);
     try {
       updateSetting(setting);
     } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
@@ -531,6 +548,55 @@ public class SystemRepository implements DeploymentSettingPreparer {
     updateSettingIfCurrent(original, expectedJson);
     prepareFetchedSettings(original);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  /**
+   * Patches one item of a list inside a setting, found by its {@code name}, so a caller changes
+   * that item without sending (and overwriting) the rest of the list. The patch paths are relative
+   * to the item. The item's position and the compare-and-set expectation come from one read, so a
+   * concurrent change to the setting fails with {@link PreconditionFailedException} (HTTP 412).
+   *
+   * @throws EntityNotFoundException when the setting or the named item does not exist
+   * @throws BadRequestException when the patch is invalid, renames, adds or removes items, or
+   *     leaves the setting invalid
+   */
+  public Response patchSettingItem(
+      final SettingsType type,
+      final String listPointer,
+      final String itemName,
+      final JsonPatch itemPatch) {
+    final String expectedJson = dao.getConfigJsonWithKey(type.value());
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(type.value());
+    }
+    final SystemSettingItemPatch item =
+        SystemSettingItemPatch.locate(JsonUtils.readJson(expectedJson), listPointer, itemName);
+    final JsonValue patched = applyItemPatch(expectedJson, item.rebase(itemPatch));
+    item.assertItemKept(patched);
+    final Settings updated = readPatchedSettings(type, patched.toString());
+    replaceSettingIfCurrent(updated, expectedJson);
+    prepareFetchedSettings(updated);
+    return (new RestUtil.PutResponse<>(Response.Status.OK, updated, ENTITY_UPDATED)).toResponse();
+  }
+
+  private static JsonValue applyItemPatch(final String storedJson, final JsonPatch patch) {
+    try {
+      return JsonUtils.applyPatch(JsonUtils.readValue(storedJson, Object.class), patch);
+    } catch (JsonException | IllegalArgumentException exception) {
+      throw new BadRequestException("Invalid JSON Patch: " + exception.getMessage(), exception);
+    }
+  }
+
+  private static Settings readPatchedSettings(final SettingsType type, final String patchedJson) {
+    try {
+      final Settings settings = CollectionDAO.SettingsRowMapper.getSettings(type, patchedJson);
+      JsonUtils.validateJsonSchema(settings.getConfigValue(), settings.getConfigValue().getClass());
+      return settings;
+    } catch (JsonParsingException | ConstraintViolationException exception) {
+      throw new BadRequestException(
+          String.format("The patched %s is invalid: %s", type.value(), exception.getMessage()),
+          exception);
+    }
   }
 
   private void preserveEmailSettings(Settings updated, Settings stored) {
@@ -979,6 +1045,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
           "Semantic Search", getEmbeddingsValidation(applicationConfig));
     }
 
+    addLlmProviderValidation(validation, applicationConfig.getLlmConfiguration());
+
     validation.setAdditionalProperty(
         "Object Storage", getObjectStorageValidation(applicationConfig));
     validation.setAdditionalProperty(REINDEX_STATUS_VALIDATION_KEY, getReindexStatusValidation());
@@ -988,6 +1056,43 @@ public class SystemRepository implements DeploymentSettingPreparer {
     addExtraValidations(applicationConfig, validation);
 
     return validation;
+  }
+
+  /** Shown only when LLM is enabled, so deployments without LLM features get no failing card. */
+  private void addLlmProviderValidation(
+      ValidationResponse validation, LLMConfiguration llmConfiguration) {
+    if (llmConfiguration != null && Boolean.TRUE.equals(llmConfiguration.getEnabled())) {
+      validation.setAdditionalProperty(
+          LLM_PROVIDER_VALIDATION_KEY, getLlmProviderValidation(llmConfiguration));
+    }
+  }
+
+  /** Reports whether the LLM client was built at startup; makes no model call. */
+  @VisibleForTesting
+  static StepValidation getLlmProviderValidation(LLMConfiguration llmConfiguration) {
+    final String provider =
+        Optional.ofNullable(llmConfiguration.getProvider()).orElse(LLMProvider.NOOP).value();
+    final StepValidation validation =
+        new StepValidation().withDescription(LLM_PROVIDER_DESCRIPTION);
+    return LLMClientHolder.getUnavailableReason()
+        .map(
+            reason ->
+                validation
+                    .withPassed(false)
+                    .withMessage(
+                        String.format(
+                            "LLM is enabled but the %s client could not be built: %s",
+                            provider, reason)))
+        .orElseGet(
+            () ->
+                validation
+                    .withPassed(true)
+                    .withMessage(
+                        String.format(
+                            "Provider: %s, model: %s. Memory extraction: %s",
+                            provider,
+                            LLMClientHolder.get().getModelId(),
+                            LLMClientHolder.isMemoryExtractionEnabled() ? "on" : "off")));
   }
 
   private static final String OBJECT_STORAGE_DESCRIPTION =
@@ -1738,7 +1843,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
       OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
     StepValidation result;
     try {
-      jwtFilter.validateJwtAndGetClaims(
+      jwtFilter.verifySignatureOnly(
           BotTokenCheck.decryptedToken(applicationConfig, Entity.INGESTION_BOT_NAME));
       result =
           new StepValidation()
@@ -1746,8 +1851,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
               .withPassed(Boolean.TRUE)
               .withMessage("Ingestion Bot token has been validated");
     } catch (Exception e) {
-      // validateJwtAndGetClaims is @SneakyThrows: a JWKS key lookup throws the checked
-      // JwkException through it.
+      // A JWKS key lookup throws the checked JwkException through verifySignatureOnly, which does
+      // not declare it.
       result =
           new StepValidation()
               .withDescription(ValidationStepDescription.JWT_TOKEN.key)
@@ -1955,6 +2060,41 @@ public class SystemRepository implements DeploymentSettingPreparer {
     }
   }
 
+  /**
+   * Validates an update to the stored security configuration. An update that changes nothing but
+   * {@link #UNCHECKED_LOGIN_SWITCHES} (the SSO page's self-signup switch, say) is not validated: no
+   * check reads what it changed, and a configuration stored before field validation existed can
+   * fail checks such an update never touches (#28379). Any other update is validated in full and
+   * rejected on any error, an older one included, because validators stop at the first failure and
+   * an older error can hide one the update introduces.
+   */
+  public SecurityValidationResponse validateSecurityConfigurationChange(
+      SecurityConfiguration storedConfig,
+      SecurityConfiguration updatedConfig,
+      OpenMetadataApplicationConfig applicationConfig,
+      String currentUsername) {
+    return changesOnlyUncheckedLoginSwitches(storedConfig, updatedConfig)
+        ? new SecurityValidationResponse().withStatus(SecurityValidationResponse.Status.SUCCESS)
+        : validateSecurityConfiguration(updatedConfig, applicationConfig, currentUsername);
+  }
+
+  private static boolean changesOnlyUncheckedLoginSwitches(
+      SecurityConfiguration storedConfig, SecurityConfiguration updatedConfig) {
+    return Objects.equals(
+            storedConfig.getAuthorizerConfiguration(), updatedConfig.getAuthorizerConfiguration())
+        && Objects.equals(
+            checkedAuthenticationSettings(storedConfig),
+            checkedAuthenticationSettings(updatedConfig));
+  }
+
+  private static JsonNode checkedAuthenticationSettings(SecurityConfiguration config) {
+    JsonNode settings = JsonUtils.valueToTree(config.getAuthenticationConfiguration());
+    if (settings instanceof ObjectNode fields) {
+      fields.remove(UNCHECKED_LOGIN_SWITCHES);
+    }
+    return settings;
+  }
+
   private FieldError validateAuthenticationConfigurationBaseFields(
       AuthenticationConfiguration authConfig) {
     try {
@@ -1963,7 +2103,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
             FieldPaths.AUTH_PROVIDER, "Provider is required");
       }
 
-      if (nullOrEmpty(authConfig.getProviderName())) {
+      // openmetadata.yaml defines providerName for custom OIDC only and leaves it empty otherwise.
+      if (authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
+          && nullOrEmpty(authConfig.getProviderName())) {
         return ValidationErrorBuilder.createFieldError(
             "authenticationConfiguration.providerName", "Provider name is required");
       }
@@ -2134,9 +2276,10 @@ public class SystemRepository implements DeploymentSettingPreparer {
         return providerValidation;
       }
 
-      // Use existing validation method to test actual connectivity only for confidential clients
-      // or when oidcConfiguration is present (some custom OIDC setups)
-      if ("confidential".equals(clientType) || authConfig.getOidcConfiguration() != null) {
+      // Only a confidential client runs the code flow on the server. A public client signs in from
+      // the browser and never builds an OIDC client from its oidcConfiguration, which is often the
+      // yaml's placeholder with no client id or secret.
+      if ("confidential".equals(clientType)) {
         try {
           AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
         } catch (Exception e) {
@@ -2146,8 +2289,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
               "OIDC flow validation failed: " + e.getMessage());
         }
       } else {
-        LOG.debug(
-            "Skipping AuthenticationCodeFlowHandler validation for public client without oidcConfiguration");
+        LOG.debug("Skipping AuthenticationCodeFlowHandler validation for public client");
       }
 
       return null; // No errors - validation passed

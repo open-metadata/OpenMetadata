@@ -26,6 +26,7 @@ import {
   ContractAllResult,
   ContractResultFilter,
 } from '../interface/data-contract/contract.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/dataContracts';
@@ -70,7 +71,7 @@ export const searchContracts = async (
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/dataContracts/name/${fqn}`
+    `/dataContracts/name/${getEncodedFqn(fqn)}`
   );
 
   return response.data;
