@@ -62,9 +62,9 @@ def _continues_identifier(char: str) -> bool:
 
 
 def _blank_line_comment(text: str, i: int, n: int, out: list[str]) -> int:
-    """Blank a `--` or `#` line comment to end of line (the newline survives)."""
+    """Blank a `--` or `#` comment up to CR or LF, preserving the line ending."""
     j = i
-    while j < n and text[j] != "\n":
+    while j < n and text[j] not in "\r\n":
         j += 1
     out.append(" " * (j - i))
     return j
@@ -205,8 +205,8 @@ def _sanitize(query_text: str) -> str:
     A single linear scan (no backtracking regex) handles every form so repeated
     unmatched `q'`-like prefixes in comment text stay linear in input size:
 
-    * `--` / `#` line and `/* ... */` block comments are blanked (the newline after a
-      `--` / `#` comment survives). An unterminated `/*` runs to end of text, so the
+    * `--` / `#` line and `/* ... */` block comments are blanked. CR, LF and CRLF
+      endings of line comments survive. An unterminated `/*` runs to end of text, so the
       tail is truncated at its opener -- a `CALL` inside it never executed.
     * `"..."` (Snowflake/Oracle) and `` `...` `` (BigQuery) delimited
       identifiers are preserved verbatim; a delimited name may hold any
@@ -214,7 +214,7 @@ def _sanitize(query_text: str) -> str:
       recognition is suppressed inside them.
     * PostgreSQL dollar-quoted `$tag$...$tag$` strings (empty tag `$$` allowed)
       are blanked like ordinary literals; an unterminated dollar-quote truncates.
-      The opener is recognized only at a token boundary (no word char, `$` or `#`
+      The opener is recognized only at a token boundary (no Unicode word char, `$` or `#`
       just before), so a `$` that continues an unquoted identifier -- Oracle's
       `my$proc` / `my$proc$archive`, Snowflake's `$1`, or a name like `a$$` --
       is preserved verbatim instead of being read as a dollar-quote opener.
@@ -225,11 +225,9 @@ def _sanitize(query_text: str) -> str:
       its meaning. Bracket delimiters pair `()`/`[]`/`{}`/`<>`; any other single
       non-whitespace character is its own closer. An unterminated q-quote
       truncates at its opener.
-    * Ordinary `'...'` strings are blanked with proper SQL semantics -- a
-      backslash is a literal character (Oracle and Postgres do not escape with
-      a backslash) and `''` is an escaped apostrophe -- so `sqlparse`'s backslash mispair
-      (which leaves a spurious lone `'` as `Token.Error`) can no longer cut off
-      a real `CALL`/`BEGIN` that ran after a valid literal. An unterminated `'`
+    * Ordinary `'...'` strings use Oracle-style escaping: a backslash is a
+      literal character and `''` is an escaped apostrophe. This preserves a
+      real `CALL`/`BEGIN` after a valid literal ending in a backslash. An unterminated `'`
       truncates at its opener, the same source as `gv$sql.sql_text`'s 1000-char
       cut.
     """
@@ -274,7 +272,7 @@ def _sanitize(query_text: str) -> str:
         # A `$` that does not open a dollar-quote is preserved verbatim: Oracle's
         # `my$proc` / `my$proc$archive` and Snowflake's `$1` are unquoted
         # identifiers, so a dollar-quote opener is recognized only at a token
-        # boundary -- no word char, `$` or `#` just before, which keeps a
+        # boundary -- no Unicode word char, `$` or `#` just before, which keeps a
         # `$` that continues an identifier (`my$`, `a$$`) from being read as a
         # dollar-quote opener that would truncate a real `CALL`/`BEGIN`.
         # An unterminated dollar-quote truncates.
@@ -299,12 +297,9 @@ def _sanitize(query_text: str) -> str:
             i = new_i
             continue
 
-        # Ordinary `'...'` string. A backslash is a literal character (Oracle /
-        # Postgres do not escape with a backslash), and `''` is an escaped
-        # apostrophe, so `sqlparse`'s backslash mispair can no longer drop a
-        # real `CALL`/`BEGIN` after a valid literal. An unterminated `'`
-        # truncates at its opener -- the same source as `gv$sql.sql_text`'s
-        # 1000-char cut.
+        # Oracle's backslashes are literal; only doubled apostrophes escape a
+        # quote. An unclosed literal can be a query-history cut, so discard its
+        # tail without losing invocations before it.
         if c == "'":
             new_i = _blank_ordinary_string(query_text, i, out, n)
             if new_i is None:

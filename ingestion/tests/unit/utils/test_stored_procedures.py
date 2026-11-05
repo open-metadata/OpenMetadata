@@ -30,10 +30,8 @@ from metadata.utils.stored_procedures import get_procedure_name_from_call
         ("SELECT $body$BEGIN old(); END;$body$; CALL nightly_load()", "nightly_load"),
         ("CALL/* prior CALL legacy() */nightly_load()", "nightly_load"),
         ('/* prior */ CALL db."My Schema"."My Proc"(\'has -- inside\')', "my proc"),
-        # An unpaired `'` (statement truncated mid-literal) leaves the string
-        # body tokenized as ordinary code, so a `CALL` inside it must not win
-        # the match -- regression for the unterminated single-quote gap left by
-        # the comment sanitizer added in baec43e (#35087).
+        # Query history can end mid-literal; its remaining body must not
+        # fabricate an invocation.
         ("SELECT 'CALL nightly_load()", None),
         ("SELECT 'call fake(); CALL real_proc(1)", None),
     ],
@@ -66,6 +64,18 @@ def test_get_procedure_name_preserves_dollars_after_hash_in_identifiers(query_te
 )
 def test_get_procedure_name_ignores_hash_comments(query_text: str) -> None:
     assert get_procedure_name_from_call(query_text) == "nightly_load"
+
+
+@pytest.mark.parametrize("line_ending", ["\r", "\n", "\r\n"], ids=["cr", "lf", "crlf"])
+@pytest.mark.parametrize("comment", ["--", "#"])
+def test_get_procedure_name_preserves_call_after_line_comment(comment: str, line_ending: str) -> None:
+    query_text = f"CALL {comment} operator note{line_ending} dataset.nightly_load('x')"
+    assert get_procedure_name_from_call(query_text) == "nightly_load"
+
+
+@pytest.mark.parametrize("comment", ["--", "#"])
+def test_get_procedure_name_ignores_comment_to_end_of_text(comment: str) -> None:
+    assert get_procedure_name_from_call(f"CALL {comment} CALL hidden('x')") is None
 
 
 @pytest.mark.parametrize(
@@ -292,18 +302,9 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="/* begin schema.proc(); end; */") is None
 
     def test_get_procedure_name_ignores_unterminated_block_comment(self):
-        """`sqlparse.lexer.tokenize` only recognizes a block comment as a
-        `tokens.Comment` when its `/*` has a matching `*/`. A statement that ends
-        inside an open `/*` -- e.g. Oracle's `gv$sql.sql_text`, which carries
-        only the first 1000 chars of a statement -- leaves the would-be comment
-        text intact, so the leftmost `re.search` matches a `CALL`/`BEGIN`
-        written inside it instead of the statement that actually executed,
-        fabricating lineage for a commented-out procedure (or dropping the real
-        row when the commented name resolves to nothing).
-
-        Regression test for the unterminated `/*` gap left by the comment
-        sanitizer added in baec43e (#35087): the closed form `/* ... */` was
-        handled, but an unterminated `/*` running to end-of-text was not.
+        """Truncated block comments cannot fabricate lineage. Oracle's
+        `gv$sql.sql_text` can cut a statement at 1000 characters, so the scanner
+        discards an unclosed comment tail while preserving earlier calls.
         """
         # The terse reproduction: a closed comment is stripped (real call wins),
         # while the same text with the `*/` removed is a single unterminated
@@ -331,31 +332,15 @@ class TestStoredProcedures:
         # Oracle's 1000-char SQL_TEXT cap cutting a long leading block comment:
         # the surviving fragment holds only the commented interior, so no real
         # invocation is fabricated; intact, the same statement resolves to the
-        # executed call. (The closed comment is blanked by the token pass.)
+        # executed call.
         long_comment = "/* " + "CALL legacy_load(); " * 80  # ~1.5KB, no closing */
         assert get_procedure_name_from_call(query_text=long_comment) is None
         assert get_procedure_name_from_call(query_text=long_comment + " */\nCALL daily_etl_v2();") == "daily_etl_v2"
 
     def test_get_procedure_name_ignores_unterminated_string_literal(self):
-        """`sqlparse.lexer.tokenize` only labels a single-quoted string as a
-        `tokens.Literal.String.Single` when its opening `'` has a matching
-        closing `'`. An unpaired `'` is emitted as `Token.Error` and the string
-        body is tokenized as ordinary code, so the sanitizer never blanks it and
-        a `CALL`/`BEGIN` written inside it wins the leftmost `re.search` match,
-        fabricating lineage for a procedure that never executed (or, when the
-        fabricated name resolves to a real one, dropping the real edge that
-        ran before the truncated string).
-
-        The same truncation source and tokenizer gap feed the unterminated
-        `/*` case (Oracle's `gv$sql.sql_text` carries only the first 1000 chars
-        of a statement), and the fix mirrors it: track `'` as a quote-open
-        character and, if it is never closed, truncate at its position.
-
-        Regression test for the unterminated single-quote gap left by the
-        comment/string sanitizer added in baec43e (#35087): closed `'...'`
-        literals were blanked, but an unterminated `'` running to end-of-text
-        was not -- and `Token.Error` was never blanked either, so the lone
-        quote and its body both survived.
+        """A query-history cut inside a string must not expose its body as SQL.
+        The scanner discards the unclosed literal tail and preserves calls
+        before it, including when the cut falls inside an escaped apostrophe.
         """
         # The terse reproduction: a closed string is blanked (real call wins),
         # while the same text with the closing `'` removed is a single
@@ -394,11 +379,8 @@ class TestStoredProcedures:
             get_procedure_name_from_call(query_text="SELECT 'escaped ''CALL old()'''; CALL nightly_load()")
             == "nightly_load"
         )
-        # ...but Oracle's 1000-char cut can land between the two escape quotes,
-        # leaving a lone trailing `'` (emitted as `Token.Error`). That lone
-        # quote opens a never-closed string, so the tail is truncated and no
-        # fabrication survives -- while a real call before the literal keeps
-        # its lineage.
+        # A cut can leave an escaped apostrophe without a closing delimiter;
+        # the entire unclosed literal is discarded while an earlier call survives.
         assert get_procedure_name_from_call(query_text="SELECT 'it''") is None
         assert get_procedure_name_from_call(query_text="CALL real(); SELECT 'it''") == "real"
 
@@ -409,22 +391,15 @@ class TestStoredProcedures:
         # Oracle's 1000-char SQL_TEXT cap cutting a long string literal: the
         # surviving fragment holds only the literal interior, so no real
         # invocation is fabricated; intact, the same statement resolves to the
-        # executed call. (The closed literal is blanked by the token pass.)
+        # executed call.
         long_string = "SELECT '" + "call legacy_load(); " * 90  # ~1.5KB, no closing '
         assert get_procedure_name_from_call(query_text=long_string) is None
         assert get_procedure_name_from_call(query_text=long_string + "' ; CALL daily_etl_v2();") == "daily_etl_v2"
 
     def test_get_procedure_name_handles_oracle_alternative_quoting(self):
-        """Oracle's alternative quoting `q'<delim>...<delim>'` lets a string
-        hold an apostrophe without `''` escaping, so `q'[it's done]'` is a
-        well-formed literal. `sqlparse` does not recognize the form: it pairs
-        the opening `'` with the apostrophe inside `it's` (emitting that much
-        as `Literal.String.Single`) and leaves the real closing `'` as
-        `Token.Error`. Without pre-blanking, the unterminated-`'` truncation
-        treats that lone `Token.Error` `'` as a truncated literal and cuts off
-        a real `CALL`/`BEGIN` that ran after it -- a regression flagged in
-        review of the unterminated-string fix (#36023). The q-quote is blanked
-        up front so neither its interior nor its closing `'` survives.
+        """Oracle q/nq literals may contain unescaped apostrophes. The scanner
+        consumes their paired delimiter and closing quote together so their
+        contents cannot fabricate calls or hide a following real invocation.
         """
         # The reviewer reproduction: a real PL/SQL block AFTER a valid Oracle
         # q-quoted literal that contains an apostrophe must still resolve.
@@ -435,9 +410,7 @@ class TestStoredProcedures:
             == "notify"
         )
 
-        # A real invocation that runs AFTER a q-quoted literal keeps its
-        # lineage -- the literal is blanked, so the lone closing `'` never
-        # reaches the truncation pass.
+        # A complete q-quoted literal must not hide a following invocation.
         assert get_procedure_name_from_call(query_text="q'[note]'; CALL real_proc(1)") == "real_proc"
         assert get_procedure_name_from_call(query_text="CALL real(); q'[it's done]'") == "real"
 
@@ -453,22 +426,14 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="q'[call fake(); BEGIN ghost(); END;]'") is None
 
         # `q'` inside an identifier (e.g. `seq'...`) is NOT a q-quote, so the
-        # pre-blank regex must not touch it. The unterminated `'` here is a
+        # scanner must not treat it as alternative quoting. The unclosed `'` is a
         # genuine truncated literal and must still truncate to `None`.
         assert get_procedure_name_from_call(query_text="SELECT seq'CALL fake()") is None
 
     def test_get_procedure_name_preserves_real_call_after_backslash_string(self):
-        """Oracle treats a backslash as a literal character inside an ordinary
-        `'...'` string (it does not escape with a backslash), so `'D:\\exp\\'`
-        is a complete literal and `'o.csv'` is another. `sqlparse` instead
-        treats `\\'` as an escape and mispairs the quotes, leaving a spurious
-        lone `'` as `Token.Error`. The sanitizer must use correct SQL semantics
-        rather than rely on `sqlparse`'s mispair, so a real `BEGIN`/`CALL` that
-        runs after such literals keeps resolving -- regression for the second
-        case flagged in review of #36038 (the q-quote case is covered above).
+        """Oracle backslashes do not escape ordinary string delimiters, so a
+        path ending in a backslash must not hide a later CALL or PL/SQL block.
         """
-        # The reviewer reproduction: two ordinary literals whose backslashes
-        # sqlparse would mispair, followed by a real PL/SQL block.
         assert (
             get_procedure_name_from_call(
                 query_text=(
@@ -505,14 +470,9 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text="-- note\nq'[call fake()]'; CALL real()") == "real"
 
     def test_get_procedure_name_preserves_dollar_signs_in_unquoted_identifiers(self):
-        """A `$` that continues an unquoted identifier (Oracle / Snowflake allow
-        `$` inside identifiers) is not a dollar-quote opener. Before this fix
-        the sanitizer read `my$proc$` as a `$proc$` dollar-quote and truncated,
-        dropping a real `CALL`/`BEGIN`; `a$$` was read as a `$$` opener and
-        swallowed a later real call. The dollar-quote opener is now recognized
-        only at a token boundary (no word char or `$` just before), so dollars
-        inside an identifier keep their meaning while genuine dollar-quotes
-        still blank -- regression flagged in review of #36038.
+        """Dollars continuing identifiers are not literal openers. Unicode
+        word characters, `$` and `#` continue a name; genuine dollar-quoted
+        literals at a boundary still hide their contents from name matching.
         """
         # The reviewer reproduction: a `$` that continues an unquoted
         # identifier must not be read as a dollar-quote opener that truncates.
@@ -568,10 +528,10 @@ class TestStoredProcedures:
         assert get_procedure_name_from_call(query_text=query_text) == "real"
 
     def test_get_procedure_name_strips_comments_without_corrupting_quoted_identifiers(self):
-        """`sqlparse` is a SQL-aware tokenizer, so stripping comments must preserve quoted
-        identifiers (backtick and `"..."` forms) and string literals that a naive regex would
-        corrupt. A `--` or `/*` that appears inside a string literal is not a comment and must
-        survive, while a real comment ahead of a quoted-name invocation is still stripped."""
+        """Comment markers inside quoted identifiers belong to the name.
+        Markers inside literals must not change where those literals end;
+        real comments before an invocation must not hide its quoted name.
+        """
         # Comment ahead of a quoted-name invocation still allows the quoted name to parse.
         assert (
             get_procedure_name_from_call(query_text="-- prior run\nCALL `my-project.my_dataset.my_proc`()") == "my_proc"
