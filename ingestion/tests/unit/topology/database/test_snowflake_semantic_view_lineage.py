@@ -406,6 +406,70 @@ def test_build_view_lineage_preserves_object_values_and_excludes_path_members(ex
     ]
 
 
+@pytest.mark.parametrize(
+    "expression, source_columns",
+    [
+        ("o.DATE_KEY + INTERVAL '1' MONTH", ["DATE_KEY"]),
+        ("o.DATE_KEY + INTERVAL '3' DAYS", ["DATE_KEY"]),
+        ("o.DATE_KEY + INTERVAL '1-1' YEAR TO MONTH", ["DATE_KEY"]),
+        ("CAST(o.DURATION AS INTERVAL DAY TO SECOND)", ["DURATION"]),
+        ("o.DURATION::INTERVAL YEAR TO MONTH", ["DURATION"]),
+        ("DATE_KEY + INTERVAL '1' MONTH + MONTH", ["DATE_KEY", "MONTH"]),
+        ("DATE_KEY + INTERVAL '1' MONTH + YEAR", ["DATE_KEY", "YEAR"]),
+    ]
+    + [
+        (f"o.DATE_KEY + {reference}", ["DATE_KEY", unit])
+        for unit in ("YEAR", "MONTH", "DAY", "DAYS", "SECOND", "TO")
+        for reference in (unit, f'"{unit}"', f"o.{unit}")
+    ]
+    + [
+        (f"{reference} {negation}{operator} 'OPEN.*'", ["STATUS"])
+        for operator in ("RLIKE", "REGEXP", "ILIKE")
+        for negation in ("", "NOT ")
+        for reference in ("o.STATUS", "STATUS")
+    ]
+    + [
+        (reference, [operator])
+        for operator in ("RLIKE", "REGEXP", "ILIKE")
+        for reference in (f'"{operator}"', f"o.{operator}", f'o."{operator}"')
+    ],
+)
+def test_build_view_lineage_excludes_interval_qualifiers_and_infix_operators(expression, source_columns):
+    """Real collision columns expose syntax tokens that would otherwise resolve as sources."""
+    base = _table(
+        "ORDERS_TBL",
+        ["DATE_KEY", "DURATION", "STATUS", "YEAR", "MONTH", "DAY", "DAYS", "SECOND", "TO", "RLIKE", "REGEXP", "ILIKE"],
+    )
+    base.columns[0].dataType = DataType.DATE
+    view = _table("SALES_ANALYSIS", ["NEXT_VALUE"])
+    entities = {table.fullyQualifiedName.root: table for table in (base, view)}
+    extractor = SnowflakeSemanticViewLineage(
+        service_name="snow",
+        engine=None,
+        database_filter_pattern=None,
+        resolve_table_by_fqn=entities.get,
+        resolve_metric_by_name=lambda _name: None,
+    )
+    columns = {("O", "NEXT_VALUE"): {"logical_table": "O", "expression": expression}}
+
+    (request,) = extractor._build_view_lineage("DB", "PUBLIC", "SALES_ANALYSIS", {"O": ORDERS_TBL}, columns)
+
+    edge = request.right.edge
+    assert edge.fromEntity.id == base.id
+    assert edge.fromEntity.type == "table"
+    assert edge.toEntity.id == view.id
+    assert edge.toEntity.type == "table"
+    assert [
+        (entry.toColumn.root, [source.root for source in entry.fromColumns])
+        for entry in edge.lineageDetails.columnsLineage or []
+    ] == [
+        (
+            "snow.DB.PUBLIC.SALES_ANALYSIS.NEXT_VALUE",
+            [f"snow.DB.PUBLIC.ORDERS_TBL.{column}" for column in source_columns],
+        )
+    ]
+
+
 @pytest.mark.parametrize("type_name", ["DATE", "TIME", "TIMESTAMP"])
 @pytest.mark.parametrize("reference", ["{type_name}", "o.{type_name}", '"{type_name}"', "TO_CHAR({type_name})"])
 def test_extract_column_refs_preserves_type_named_columns(type_name, reference):

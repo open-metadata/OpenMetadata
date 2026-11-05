@@ -82,6 +82,13 @@ _DATE_PART_RE = re.compile(
     rf"(?:{_IDENTIFIER})",
     re.IGNORECASE,
 )
+# Mask interval units before generic casts remove INTERVAL, retaining genuine
+# unit-named columns elsewhere in the expression.
+_INTERVAL_QUALIFIER_RE = re.compile(
+    r"\b(INTERVAL)\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b"
+    r"(?:\s+TO\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b)?",
+    re.IGNORECASE,
+)
 # A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DOUBLE PRECISION)``) or a
 # semi-structured path (``payload:a.b[0]``). A path needs a left operand; a masked
 # string key in an OBJECT constant leaves only whitespace before its separator.
@@ -125,6 +132,7 @@ def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
         return quoted[int(segment.strip("\x00"))] if segment.startswith("\x00") else segment
 
     text = _LITERAL_OR_QUOTED_RE.sub(mask, expression or "")
+    text = _INTERVAL_QUALIFIER_RE.sub(r"\1", text)
     text = _CAST_OR_PATH_RE.sub(" ", text)
     text = _DATE_PART_RE.sub(r"\1", text)
     text = _FUNCTION_HEAD_RE.sub("(", text)
@@ -133,7 +141,9 @@ def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
         segments = _SEGMENT_RE.findall(chain)
         refs.append((name(segments[-2]), name(segments[-1])))
     for identifier in _SEGMENT_RE.findall(_COLUMN_REF_RE.sub(" ", text)):
-        if not identifier.startswith("\x00") and identifier.lower() in SQL_KEYWORDS:
+        if not identifier.startswith("\x00") and (
+            identifier.lower() in SQL_KEYWORDS or identifier.lower() in {"rlike", "regexp", "ilike"}
+        ):
             continue
         refs.append((None, name(identifier)))
     return refs
