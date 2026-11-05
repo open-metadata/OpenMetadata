@@ -49,6 +49,7 @@ public final class ODCSFieldCoverage {
     DESCRIPTION,
     SCHEMA_OBJECT,
     PROPERTY,
+    ARRAY_ITEM,
     LOGICAL_TYPE_OPTIONS,
     TEAM,
     TEAM_MEMBER,
@@ -263,6 +264,16 @@ public final class ODCSFieldCoverage {
     catalogue.put(Section.DESCRIPTION, descriptionFields());
     catalogue.put(Section.SCHEMA_OBJECT, schemaObjectFields());
     catalogue.put(Section.PROPERTY, propertyFields());
+    catalogue.put(
+        Section.ARRAY_ITEM,
+        Map.of(
+            LOGICAL_TYPE,
+            FieldRule.mapped(),
+            PROPERTIES,
+            FieldRule.nested(Section.PROPERTY),
+            "quality",
+            FieldRule.dropped(
+                "Rules on array item nodes are not applied as OpenMetadata test cases.")));
     catalogue.put(Section.LOGICAL_TYPE_OPTIONS, Map.of("maxLength", FieldRule.mapped()));
     catalogue.put(Section.TEAM, teamFields());
     catalogue.put(Section.TEAM_MEMBER, teamMemberFields());
@@ -383,7 +394,7 @@ public final class ODCSFieldCoverage {
             "quality")) {
       fields.put(key, FieldRule.mapped());
     }
-    fields.put("items", FieldRule.nested(Section.PROPERTY));
+    fields.put("items", FieldRule.nested(Section.ARRAY_ITEM));
     fields.put("logicalTypeOptions", FieldRule.nested(Section.LOGICAL_TYPE_OPTIONS));
     fields.put(PROPERTIES, FieldRule.nested(Section.PROPERTY));
     fields.put("authoritativeDefinitions", FieldRule.stored());
