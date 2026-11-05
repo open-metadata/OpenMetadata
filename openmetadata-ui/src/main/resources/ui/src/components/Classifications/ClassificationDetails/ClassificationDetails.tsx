@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  FeaturedIcon,
   Owner,
   PageHeader,
   Tooltip,
@@ -99,7 +100,6 @@ import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { EntityHeaderIcon } from '../../Entity/EntityHeaderIcon/EntityHeaderIcon';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
@@ -668,9 +668,12 @@ const ClassificationDetails = forwardRef(
               displayName={displayName}
               displayNameClassName="text-xl"
               icon={
-                <EntityHeaderIcon>
-                  <ClassificationIcon size={20} />
-                </EntityHeaderIcon>
+                <FeaturedIcon
+                  color="brand"
+                  icon={ClassificationIcon}
+                  size="md"
+                  theme="surface"
+                />
               }
               isDisabled={isClassificationDisabled}
               name={name ?? classification.name}

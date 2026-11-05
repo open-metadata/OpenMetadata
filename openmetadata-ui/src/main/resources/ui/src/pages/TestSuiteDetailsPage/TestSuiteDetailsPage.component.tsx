@@ -17,6 +17,7 @@ import {
   ButtonUtility,
   Dialog,
   DialogTrigger,
+  FeaturedIcon,
   Input,
   Modal,
   ModalOverlay,
@@ -455,16 +456,12 @@ const TestSuiteDetailsPage = () => {
             gap={4}
             wrap="wrap">
             <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-              <Box
-                align="center"
-                className={classNames(
-                  'tw:relative tw:size-9 tw:shrink-0',
-                  'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}
-                justify="center">
-                <TestSuiteIcon className="tw:size-5" />
-              </Box>
+              <FeaturedIcon
+                color="brand"
+                icon={TestSuiteIcon}
+                size="md"
+                theme="surface"
+              />
               <TestSuiteHeaderTitle
                 displayName={testSuite?.displayName}
                 hasCopied={hasCopied}

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
 import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
@@ -342,16 +342,14 @@ const IncidentManagerDetailPage = ({
             gap={4}
             wrap="wrap">
             <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-              <Box
-                align="center"
-                className={classNames(
-                  'tw:relative tw:size-9 tw:shrink-0',
-                  'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}
-                justify="center">
-                <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
-              </Box>
+              <FeaturedIcon
+                color="brand"
+                icon={
+                  <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
+                }
+                size="md"
+                theme="surface"
+              />
               <TestCaseHeaderTitle
                 deleted={testCase.deleted}
                 displayName={displayName}

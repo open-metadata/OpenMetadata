@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, PageHeader } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  FeaturedIcon,
+  PageHeader,
+} from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   ChevronDown,
@@ -87,7 +92,6 @@ import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.c
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import { EntityHeaderIcon } from '../../Entity/EntityHeaderIcon/EntityHeaderIcon';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -620,18 +624,23 @@ const GlossaryHeader = ({
 
   const icon = useMemo(
     () => (
-      <EntityHeaderIcon>
-        {isGlossary ? (
-          <GlossaryIcon size={20} />
-        ) : (
-          <EntityStyleIcon
-            fallback={<GlossaryTermIcon size={20} />}
-            iconValue={selectedData.style?.iconURL}
-            imageClassName="tw:object-contain"
-            size={20}
-          />
-        )}
-      </EntityHeaderIcon>
+      <FeaturedIcon
+        color="brand"
+        icon={
+          isGlossary ? (
+            GlossaryIcon
+          ) : (
+            <EntityStyleIcon
+              fallback={<GlossaryTermIcon size={20} />}
+              iconValue={selectedData.style?.iconURL}
+              imageClassName="tw:object-contain"
+              size={20}
+            />
+          )
+        }
+        size="md"
+        theme="surface"
+      />
     ),
     [selectedData, isGlossary]
   );
