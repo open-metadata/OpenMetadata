@@ -13,6 +13,13 @@ DROP TABLE IF EXISTS rdf_index_server_stats;
 -- extension usable in the composite primary key; MySQL cannot fully index a TEXT value.
 -- The column keeps its character set and collation: changing either makes MySQL copy the whole
 -- table and block writes to it, while widening alone is done in place.
+-- This block replaces the statement 2.0.3 first shipped, which also switched the column to
+-- ascii_bin. Its new text makes it run again where the runner reprocesses 2.0.3; there the column
+-- is already 512, so it does nothing and the column stays ascii_bin until #37180 aligns it with
+-- its table. The guard stays in SQL, as an exception to
+-- ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration, because it replaces this
+-- file's statement. The runner retries a guarded block as one unit, per
+-- ADR:2026-10-22-mysql-guarded-blocks-run-as-one-migration-unit.
 SET @entity_extension_widen_ddl = (
   SELECT IF(
     c.CHARACTER_MAXIMUM_LENGTH < 512,
