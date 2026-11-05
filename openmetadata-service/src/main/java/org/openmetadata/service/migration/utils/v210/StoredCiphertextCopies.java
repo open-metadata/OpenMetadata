@@ -28,26 +28,32 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.alerting.channel.WebhookSecrets;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.secrets.OwnedCiphertext;
 
 /**
  * The Fernet tokens held by alert destinations that are also stored somewhere else. Fernet
  * encryption is randomized, so a token the server wrote for one destination field is stored at that
- * field only, and in the history of the alert that holds it: its versions, its change descriptions
- * and the change events recorded for it. A token found at a second field, in another alert, or in
- * any other row of any table with a {@code json} column is reported. Read before any webhook secret
- * is rewritten.
+ * field only, and in the versions of the alert that holds it. A token found at a second field, in
+ * another alert, or in a row of a table that holds secrets ({@link #isOtherStore}) is reported.
+ * Event logs and time series are not read: they only copy rows of those tables, and some of them
+ * are large. Read before any webhook secret is rewritten.
  */
 @Slf4j
 final class StoredCiphertextCopies {
   private static final String ALERTS = "event_subscription_entity";
   private static final String VERSIONS = "entity_extension";
-  private static final String ALERT_ENTITY_TYPE = "eventsubscription";
-  private static final List<String> EVENT_FIELDS = List.of("", "/changeEvent");
-  private static final Pattern TOKEN = Pattern.compile(Fernet.FERNET_PREFIX + "[A-Za-z0-9_=-]+");
+  // The tables that hold secrets without being named for an entity, as release 2.1 names them.
+  private static final List<String> OTHER_SECRET_STORES =
+      List.of(
+          "installed_apps",
+          "apps_marketplace",
+          "automations_workflow",
+          "openmetadata_settings",
+          "test_suite",
+          "user_session",
+          "user_tokens");
+  private static final Pattern TOKEN =
+      Pattern.compile(StoredWebhookSecrets.FERNET_PREFIX + "[A-Za-z0-9_=-]+");
 
   private final ConnectionType connectionType;
   // Each token a destination field holds, and the alert of every field that holds it.
@@ -91,28 +97,12 @@ final class StoredCiphertextCopies {
     try (Stream<Map<String, Object>> rows = rowsHoldingTokens(handle, table, idColumn)) {
       rows.forEach(
           row -> {
-            String json = String.valueOf(row.get("json"));
-            List<String> held = tokensIn(json).filter(heldBy::containsKey).toList();
-            if (!held.isEmpty()) {
-              String place =
-                  idColumn == null ? placeOf(json, table) : String.valueOf(row.get(idColumn));
-              held.forEach(token -> storedIn(token, place));
-            }
+            String place = idColumn == null ? table : String.valueOf(row.get(idColumn));
+            tokensIn(String.valueOf(row.get("json")))
+                .filter(heldBy::containsKey)
+                .forEach(token -> storedIn(token, place));
           });
     }
-  }
-
-  // A change event recorded for an alert, as stored or inside a failed event, is that alert's own
-  // history; any other row is a place of its own.
-  private static String placeOf(String json, String table) {
-    JsonNode row = JsonUtils.readTree(json);
-    return EVENT_FIELDS.stream()
-        .map(field -> field.isEmpty() ? row : row.at(field))
-        .filter(event -> ALERT_ENTITY_TYPE.equalsIgnoreCase(event.path("entityType").asText()))
-        .map(event -> event.path("entityId").asText())
-        .filter(entityId -> !entityId.isEmpty())
-        .findFirst()
-        .orElse(table);
   }
 
   private Set<String> storedElsewhere() {
@@ -137,9 +127,9 @@ final class StoredCiphertextCopies {
     Stream.Builder<String> tokens = Stream.builder();
     for (JsonNode destination : alert.path("destinations")) {
       JsonNode config = destination.path("config");
-      WebhookSecrets.fieldsIn(config).stream()
+      StoredWebhookSecrets.destinationFields(destination).stream()
           .map(field -> config.at(field).asText())
-          .filter(value -> Fernet.isTokenized(value) && !OwnedCiphertext.isOwned(value))
+          .filter(StoredWebhookSecrets::isLegacyCiphertext)
           .forEach(tokens::add);
     }
     return tokens.build();
@@ -154,7 +144,7 @@ final class StoredCiphertextCopies {
     return tokens.build();
   }
 
-  // Every table with a json column, as this database names them, but the alerts and the versions.
+  // The tables of this database that hold secrets, but the alerts and the versions.
   private List<String> otherStores(Handle handle) {
     String schema = isMySql() ? "DATABASE()" : "current_schema()";
     return handle
@@ -169,8 +159,10 @@ final class StoredCiphertextCopies {
         .toList();
   }
 
-  private static boolean isOtherStore(String table) {
-    return !ALERTS.equals(table) && !VERSIONS.equals(table);
+  /** Every entity table, as each entity's table is named for it, and the other secret stores. */
+  static boolean isOtherStore(String table) {
+    return !ALERTS.equals(table)
+        && (table.endsWith("_entity") || OTHER_SECRET_STORES.contains(table));
   }
 
   private Stream<Map<String, Object>> rowsHoldingTokens(
@@ -187,7 +179,7 @@ final class StoredCiphertextCopies {
                 + " WHERE "
                 + jsonText
                 + " LIKE '%"
-                + Fernet.FERNET_PREFIX
+                + StoredWebhookSecrets.FERNET_PREFIX
                 + "%'")
         .mapToMap()
         .stream();

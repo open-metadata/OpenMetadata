@@ -18,18 +18,14 @@ import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSW
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.macasaet.fernet.TokenValidationException;
 import jakarta.ws.rs.BadRequestException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.OwnedCiphertext;
+import org.openmetadata.service.secrets.BoundCiphertext;
 import org.openmetadata.service.secrets.SecretOwner;
 
 /**
@@ -37,7 +33,7 @@ import org.openmetadata.service.secrets.SecretOwner;
  * that owner before the configuration is stored, decrypted where a message is sent, masked in a
  * response, and restored from the stored configuration when a request sends back what it read. An
  * alert's destinations and the webhooks on a user's or a team's profile keep their secrets this one
- * way. A secret opens only for the owner and field it was written for ({@link OwnedCiphertext}).
+ * way. A secret opens only for the owner and field it was written for ({@link BoundCiphertext}).
  */
 @Slf4j
 public final class ConfigSecrets {
@@ -107,27 +103,6 @@ public final class ConfigSecrets {
         || !receiverTexts(stored).equals(receiverTexts(sent));
   }
 
-  /**
-   * Binds to {@code owner}, in place, the secrets of a configuration stored before they were bound.
-   * Plaintext is encrypted for the owner. Ciphertext is encrypted for the owner again where {@code
-   * carriedOver} accepts it; anywhere else it stays as stored, opens for no owner, and is refused
-   * where it would be used until it is entered again. Ciphertext already bound is kept, so running
-   * it again changes nothing. Returns the fields left to enter again.
-   */
-  public static List<JsonPointer> bindStored(
-      SecretOwner owner,
-      JsonNode config,
-      List<JsonPointer> fields,
-      BiPredicate<JsonPointer, String> carriedOver) {
-    List<JsonPointer> toEnterAgain = new ArrayList<>();
-    for (JsonPointer field : fields) {
-      if (!boundWhereStored(owner, config, field, carriedOver)) {
-        toEnterAgain.add(field);
-      }
-    }
-    return List.copyOf(toEnterAgain);
-  }
-
   public static boolean isMask(String value) {
     return PASSWORD_MASK.equals(value);
   }
@@ -181,57 +156,23 @@ public final class ConfigSecrets {
       SecretOwner owner, JsonPointer field, String incoming, String stored) {
     return incoming != null
         && !Fernet.isTokenized(incoming)
-        && OwnedCiphertext.isOwned(stored)
+        && BoundCiphertext.isBound(stored)
         && Fernet.getInstance().isKeyDefined()
-        && OwnedCiphertext.decryptWithPrimaryKey(owner, field.toString(), stored)
+        && BoundCiphertext.decryptWithPrimaryKey(owner, field.toString(), stored)
             .filter(incoming::equals)
             .isPresent();
-  }
-
-  /** Whether the field holds, once bound, a value that opens for {@code owner}. */
-  private static boolean boundWhereStored(
-      SecretOwner owner,
-      JsonNode config,
-      JsonPointer field,
-      BiPredicate<JsonPointer, String> carriedOver) {
-    String value = config.at(field).asText();
-    boolean alreadyBound = value.isEmpty() || OwnedCiphertext.isOwned(value);
-    Optional<String> secret =
-        alreadyBound ? Optional.empty() : secretToBind(field, value, carriedOver);
-    secret.ifPresent(
-        it -> set(config, field, OwnedCiphertext.encrypt(owner, field.toString(), it)));
-    return alreadyBound || secret.isPresent();
-  }
-
-  private static Optional<String> secretToBind(
-      JsonPointer field, String value, BiPredicate<JsonPointer, String> carriedOver) {
-    Optional<String> secret = Optional.of(value);
-    if (Fernet.isTokenized(value)) {
-      secret = carriedOver.test(field, value) ? decryptedOrEmpty(value) : Optional.empty();
-    }
-    return secret;
-  }
-
-  private static Optional<String> decryptedOrEmpty(String ciphertext) {
-    Optional<String> plaintext = Optional.empty();
-    try {
-      plaintext = Optional.of(Fernet.getInstance().decrypt(ciphertext));
-    } catch (TokenValidationException | IllegalArgumentException e) {
-      LOG.debug("A stored secret does not decrypt with the configured Fernet keys", e);
-    }
-    return plaintext;
   }
 
   private static String encrypted(SecretOwner owner, JsonPointer field, String value) {
     boolean keptAsIs =
         value.isEmpty() || !Fernet.getInstance().isKeyDefined() || Fernet.isTokenized(value);
-    return keptAsIs ? value : OwnedCiphertext.encrypt(owner, field.toString(), value);
+    return keptAsIs ? value : BoundCiphertext.encrypt(owner, field.toString(), value);
   }
 
   private static String decrypted(SecretOwner owner, JsonPointer field, String value) {
     boolean ciphertext = Fernet.getInstance().isKeyDefined() && Fernet.isTokenized(value);
     return ciphertext
-        ? OwnedCiphertext.decrypt(owner, field.toString(), value)
+        ? BoundCiphertext.decrypt(owner, field.toString(), value)
             .orElseThrow(() -> new BadRequestException(ENTER_AGAIN.formatted(field)))
         : value;
   }

@@ -33,9 +33,6 @@ public final class WebhookSecrets {
           JsonPointer.compile("/authType/clientId"),
           JsonPointer.compile("/authType/clientSecret"));
 
-  /** The secrets releases before 2.1 stored encrypted: the bearer and OAuth2 credentials. */
-  public static final List<JsonPointer> ENCRYPTED_BEFORE_2_1 = AUTHENTICATION;
-
   private WebhookSecrets() {}
 
   /** The locations of secrets, including scalar values the webhook parser coerces to strings. */

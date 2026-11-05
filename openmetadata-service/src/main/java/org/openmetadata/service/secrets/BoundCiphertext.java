@@ -42,11 +42,11 @@ import org.openmetadata.service.fernet.Fernet;
  * derived key with them. ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
  */
 @Slf4j
-public final class OwnedCiphertext {
-  public static final String PREFIX = Fernet.FERNET_PREFIX + "owned:";
+public final class BoundCiphertext {
+  public static final String PREFIX = Fernet.FERNET_PREFIX + "bound:";
 
   private static final byte[] SALT =
-      "openmetadata/owned-ciphertext/v1".getBytes(StandardCharsets.UTF_8);
+      "openmetadata/bound-ciphertext/v1".getBytes(StandardCharsets.UTF_8);
   // A Fernet key is a 16-byte signing key followed by a 16-byte encryption key.
   private static final int FERNET_KEY_LENGTH = 32;
   private static final char SEPARATOR = '\u0000';
@@ -59,9 +59,9 @@ public final class OwnedCiphertext {
         }
       };
 
-  private OwnedCiphertext() {}
+  private BoundCiphertext() {}
 
-  public static boolean isOwned(String value) {
+  public static boolean isBound(String value) {
     return value != null && value.startsWith(PREFIX);
   }
 
@@ -84,7 +84,7 @@ public final class OwnedCiphertext {
 
   private static Optional<String> open(String value, List<Key> keys) {
     Optional<String> secret = Optional.empty();
-    if (isOwned(value)) {
+    if (isBound(value)) {
       try {
         Token token = Token.fromString(value.substring(PREFIX.length()));
         secret = Optional.of(token.validateAndDecrypt(keys, NEVER_EXPIRES));

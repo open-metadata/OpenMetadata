@@ -45,7 +45,7 @@ import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.TeamDAO;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
-import org.openmetadata.service.secrets.OwnedCiphertext;
+import org.openmetadata.service.secrets.BoundCiphertext;
 
 /**
  * The webhooks a user or a team keeps on its profile carry the secrets of an alert destination's
@@ -309,7 +309,7 @@ class ProfileWebhookSecretsIT {
   /** The value a stored user or team keeps at {@code field} of one profile webhook, opened for it. */
   private static String opened(String entityType, JsonNode row, String slot, String field) {
     String value = row.at("/profile/subscription/" + slot + field).asText();
-    assertTrue(OwnedCiphertext.isOwned(value), "not bound to its webhook: " + value);
+    assertTrue(BoundCiphertext.isBound(value), "not bound to its webhook: " + value);
     UUID id = UUID.fromString(row.path("id").asText());
     Profile profile = JsonUtils.treeToValue(row.path("profile"), Profile.class);
     Profile sendable =

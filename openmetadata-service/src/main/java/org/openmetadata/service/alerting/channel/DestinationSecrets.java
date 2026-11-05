@@ -28,7 +28,6 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +48,6 @@ import org.openmetadata.service.secrets.SecretOwner;
 public final class DestinationSecrets {
   private static final String DESTINATIONS = "destinations";
   private static final String CONFIG = "config";
-  private static final String ID = "id";
   private static final String NAME = "name";
   private static final String OWNER_KIND = "alertdestination";
   private static final List<String> CHANGE_DESCRIPTIONS =
@@ -248,57 +246,12 @@ public final class DestinationSecrets {
   }
 
   /**
-   * Binds, in place, the secrets of an alert row stored before they were bound to their
-   * destination ({@link ConfigSecrets#bindStored}); its change descriptions keep the mask.
-   * Ciphertext is carried over only where releases before 2.1 stored it encrypted, and only when
-   * {@code storedElsewhere} says it is stored nowhere else; any other value is entered again before
-   * its destination sends. Running it again changes nothing. Returns whether anything changed.
-   */
-  public static boolean bindStoredAlert(JsonNode alert, Predicate<String> storedElsewhere) {
-    BiPredicate<JsonPointer, String> carriedOver =
-        (field, value) ->
-            WebhookSecrets.ENCRYPTED_BEFORE_2_1.contains(field) && !storedElsewhere.test(value);
-    boolean changed = false;
-    for (JsonNode destination : alert.path(DESTINATIONS)) {
-      if (destination instanceof ObjectNode stored) {
-        changed |= bindStoredDestination(alert, stored, carriedOver);
-      }
-    }
-    for (String name : CHANGE_DESCRIPTIONS) {
-      changed |= transformChangeDescription(alert.path(name), ConfigSecrets::mask);
-    }
-    return changed;
-  }
-
-  /**
    * Masks, in place, the secrets of an alert as JSON, in its destinations and in the destination
    * lists its change descriptions record: a version, which nothing sends from. Returns whether
    * anything changed.
    */
-  public static boolean maskAlertTree(JsonNode alert) {
+  private static boolean maskAlertTree(JsonNode alert) {
     return transformAlert(alert, ConfigSecrets::mask);
-  }
-
-  private static boolean bindStoredDestination(
-      JsonNode alert, ObjectNode destination, BiPredicate<JsonPointer, String> carriedOver) {
-    JsonNode before = destination.deepCopy();
-    if (destination.path(ID).asText().isEmpty()) {
-      destination.put(ID, UUID.randomUUID().toString());
-    }
-    SubscriptionDestination typed =
-        JsonUtils.treeToValue(destination, SubscriptionDestination.class);
-    JsonNode config = destination.path(CONFIG);
-    List<JsonPointer> toEnterAgain =
-        ConfigSecrets.bindStored(
-            ownerOf(typed), config, secretFieldsOf(typed, config), carriedOver);
-    if (!toEnterAgain.isEmpty()) {
-      LOG.warn(
-          "Destination {} of alert {}: the values at {} must be entered again before it sends",
-          typed.getId(),
-          alert.path(NAME).asText(),
-          toEnterAgain);
-    }
-    return !destination.equals(before);
   }
 
   private static boolean transformAlert(

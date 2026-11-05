@@ -14,7 +14,6 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,9 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.alerting.channel.DestinationSecrets;
-import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
@@ -33,51 +29,51 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * Brings stored webhook configurations, on alert destinations and on user and team profiles, to the
  * form new writes store: in the entity row, each secret encrypted for the destination or profile
  * webhook that holds it, and in its versions, the change descriptions recorded with them and the
- * stored change events of users and teams, the mask, since nothing sends from those. Plaintext is
- * encrypted for its webhook. Ciphertext is carried over where releases before 2.1 stored it
- * encrypted, the bearer and OAuth2 credentials of an alert destination, when it is stored nowhere
- * else ({@link StoredCiphertextCopies}); any other value stays as stored and is entered again
- * before its webhook sends. Values already in that form are kept, so running it again changes
- * nothing.
+ * stored change events, the mask, since nothing sends from those. Plaintext is encrypted for its
+ * webhook. Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and
+ * OAuth2 credentials of an alert destination, when it is stored nowhere else ({@link
+ * StoredCiphertextCopies}); any other value stays as stored and is entered again before its
+ * webhook sends. Values already in that form are kept, so running it again changes nothing. The
+ * rules it applies are frozen in {@link StoredWebhookSecrets}; a row it cannot read stops the step
+ * with an error that names the row.
  */
 @Slf4j
 public final class WebhookSecretsMigration {
   public static final String PROFILE_STEP_NAME = "bindProfileWebhookSecrets";
   public static final String ALERT_STEP_NAME = "bindAlertDestinationSecrets";
   private static final int PAGE_SIZE = 500;
+  private static final String USER = "user";
+  private static final String TEAM = "team";
+  private static final String ALERT = "eventsubscription";
 
   private WebhookSecretsMigration() {}
 
   public static void bindProfileWebhookSecrets(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
-      rewriteById(
-          handle,
-          sql,
-          "user_entity",
-          row -> ProfileWebhookSecrets.bindStoredEntity(Entity.USER, row));
-      rewriteById(
-          handle,
-          sql,
-          "team_entity",
-          row -> ProfileWebhookSecrets.bindStoredEntity(Entity.TEAM, row));
-      for (String entityType : List.of(Entity.USER, Entity.TEAM)) {
-        rewriteVersions(handle, sql, entityType, ProfileWebhookSecrets::maskEntityTree);
+      StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
+      rewriteById(handle, sql, "user_entity", row -> secrets.bindProfileEntity(USER, row));
+      rewriteById(handle, sql, "team_entity", row -> secrets.bindProfileEntity(TEAM, row));
+      for (String entityType : List.of(USER, TEAM)) {
+        rewriteVersions(handle, sql, entityType, StoredWebhookSecrets::maskProfileEntity);
       }
-      rewriteChangeEvents(handle, sql);
+      rewriteChangeEvents(
+          handle, sql, List.of(USER, TEAM), StoredWebhookSecrets::maskProfileEntity);
     }
   }
 
   public static void bindAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
+      StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
       Set<String> storedElsewhere = StoredCiphertextCopies.find(handle, connectionType);
       rewriteById(
           handle,
           sql,
           "event_subscription_entity",
-          row -> DestinationSecrets.bindStoredAlert(row, storedElsewhere::contains));
-      rewriteVersions(handle, sql, Entity.EVENT_SUBSCRIPTION, DestinationSecrets::maskAlertTree);
+          row -> secrets.bindAlert(row, storedElsewhere::contains));
+      rewriteVersions(handle, sql, ALERT, StoredWebhookSecrets::maskAlert);
+      rewriteChangeEvents(handle, sql, List.of(ALERT), StoredWebhookSecrets::maskAlert);
     }
   }
 
@@ -105,7 +101,7 @@ public final class WebhookSecretsMigration {
       PreparedBatch batch = handle.prepareBatch(sql.updateById(table));
       for (Map<String, Object> row : rows) {
         cursor = String.valueOf(row.get("id"));
-        String json = rewritten(row, transform);
+        String json = rewritten(row, transform, table + " row " + cursor);
         if (json != null) {
           batch.bind("id", cursor).bind("json", json).add();
         }
@@ -135,7 +131,7 @@ public final class WebhookSecretsMigration {
       for (Map<String, Object> row : rows) {
         cursorId = String.valueOf(row.get("id"));
         cursorExtension = String.valueOf(row.get("extension"));
-        String json = rewritten(row, transform);
+        String json = rewritten(row, transform, "version " + cursorExtension + " of " + cursorId);
         if (json != null) {
           batch.bind("id", cursorId).bind("extension", cursorExtension).bind("json", json).add();
         }
@@ -145,9 +141,10 @@ public final class WebhookSecretsMigration {
     LOG.info("Masked the webhook secrets of {} versions of {}", rewritten, entityType);
   }
 
-  // A change event carries the entity as written and its change description; delivery reads the
-  // profile from the user or the team, never from an event, so the event keeps the mask.
-  private static void rewriteChangeEvents(Handle handle, Sql sql) {
+  // A change event carries the entity as written and its change description; nothing sends from an
+  // event, so it keeps the mask.
+  private static void rewriteChangeEvents(
+      Handle handle, Sql sql, List<String> entityTypes, Predicate<JsonNode> maskEntity) {
     long cursor = 0;
     int rewritten = 0;
     List<Map<String, Object>> rows;
@@ -155,6 +152,7 @@ public final class WebhookSecretsMigration {
       rows =
           handle
               .createQuery(sql.selectChangeEvents())
+              .bindList("entityTypes", entityTypes)
               .bind("offset", cursor)
               .bind("pageSize", PAGE_SIZE)
               .mapToMap()
@@ -162,43 +160,33 @@ public final class WebhookSecretsMigration {
       PreparedBatch batch = handle.prepareBatch(sql.updateChangeEvent());
       for (Map<String, Object> row : rows) {
         cursor = ((Number) row.get("event_offset")).longValue();
-        String json = rewritten(row, WebhookSecretsMigration::maskChangeEvent);
+        String json =
+            rewritten(
+                row,
+                event -> StoredWebhookSecrets.maskChangeEvent(event, maskEntity),
+                "change event " + cursor);
         if (json != null) {
           batch.bind("offset", cursor).bind("json", json).add();
         }
       }
       rewritten += execute(batch);
     } while (rows.size() == PAGE_SIZE);
-    LOG.info("Masked the profile webhook secrets of {} change events", rewritten);
+    LOG.info("Masked the webhook secrets of {} change events of {}", rewritten, entityTypes);
   }
 
-  private static boolean maskChangeEvent(JsonNode event) {
-    boolean changed = ProfileWebhookSecrets.maskEntityTree(event);
-    JsonNode entity = event.path("entity");
-    if (entity.isTextual() && entity.textValue().startsWith("{")) {
-      JsonNode entityTree = JsonUtils.readTree(entity.textValue());
-      if (ProfileWebhookSecrets.maskEntityTree(entityTree)) {
-        ((ObjectNode) event).put("entity", JsonUtils.pojoToJson(entityTree));
-        changed = true;
-      }
-    } else if (entity.isObject()) {
-      changed |= ProfileWebhookSecrets.maskEntityTree(entity);
-    }
-    return changed;
-  }
-
-  /** The row's JSON once transformed, or null when it stays as stored or cannot be read. */
-  private static String rewritten(Map<String, Object> row, Predicate<JsonNode> transform) {
-    String json = null;
+  /**
+   * The row's JSON once transformed, or null when it stays as stored. A row that cannot be read or
+   * rewritten stops the step, naming the row, rather than being left as it is.
+   */
+  private static String rewritten(
+      Map<String, Object> row, Predicate<JsonNode> transform, String rowName) {
     try {
       JsonNode tree = JsonUtils.readTree(String.valueOf(row.get("json")));
-      if (transform.test(tree)) {
-        json = JsonUtils.pojoToJson(tree);
-      }
+      return transform.test(tree) ? JsonUtils.pojoToJson(tree) : null;
     } catch (RuntimeException e) {
-      LOG.warn("Skipping a row whose webhook secrets could not be bound: {}", e.getMessage());
+      throw new IllegalStateException(
+          "The webhook secrets of " + rowName + " could not be brought to the 2.1 form", e);
     }
-    return json;
   }
 
   private static int execute(PreparedBatch batch) {
@@ -258,7 +246,7 @@ public final class WebhookSecretsMigration {
           + offset
           + " AS event_offset, "
           + jsonText()
-          + " AS json FROM change_event WHERE entityType IN ('user', 'team') AND "
+          + " AS json FROM change_event WHERE entityType IN (<entityTypes>) AND "
           + offset
           + " > :offset AND "
           + jsonText()

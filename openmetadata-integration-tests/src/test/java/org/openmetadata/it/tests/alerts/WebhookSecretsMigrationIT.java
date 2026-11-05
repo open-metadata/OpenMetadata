@@ -43,7 +43,7 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.TeamDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
-import org.openmetadata.service.secrets.OwnedCiphertext;
+import org.openmetadata.service.secrets.BoundCiphertext;
 
 /**
  * The 2.1.0 migration brings stored webhook configurations to the form new writes store, and a
@@ -151,9 +151,9 @@ class WebhookSecretsMigrationIT {
 
   /**
    * Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and OAuth2
-   * credentials, unless it is stored somewhere else too, the alert's own change events aside;
-   * anywhere else it stays as stored, is refused when the destination sends, and the destination
-   * stays enabled.
+   * credentials, unless it is stored somewhere else too, such as another entity's version; the
+   * alert's own change events do not count. Anywhere else it stays as stored, is refused when the
+   * destination sends, and the destination stays enabled.
    */
   @Test
   void earlierCredentialsAreCarriedOverAndAnyOtherCiphertextIsEnteredAgain(TestNamespace ns) {
@@ -161,7 +161,7 @@ class WebhookSecretsMigrationIT {
     String clientSecret = ns.prefix("client-secret");
     String storedTwice = Fernet.getInstance().encrypt(ns.prefix("a value stored twice"));
     String header = Fernet.getInstance().encrypt(ns.prefix("a header value"));
-    String inAnotherEvent = Fernet.getInstance().encrypt(ns.prefix("a value in another event"));
+    String inAnotherEvent = Fernet.getInstance().encrypt(ns.prefix("a value in another version"));
     EventSubscription alert =
         AlertFixtures.tableAlert(
             ns,
@@ -195,10 +195,13 @@ class WebhookSecretsMigrationIT {
     destinations.get(4).withConfig(legacyConfig("event", oauth2(inAnotherEvent)));
     AlertFixtures.writeBehindTheServer(alert);
     insertChangeEvent(Entity.EVENT_SUBSCRIPTION, alert.getId(), JsonUtils.pojoToJson(alert));
-    insertChangeEvent(
-        Entity.DATABASE_SERVICE,
-        UUID.randomUUID(),
-        JsonUtils.pojoToJson(Map.of("password", inAnotherEvent)));
+    Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .insert(
+            UUID.randomUUID(),
+            "databaseService.version.0.1",
+            Entity.DATABASE_SERVICE,
+            JsonUtils.pojoToJson(Map.of("password", inAnotherEvent)));
     EventSubscription another =
         AlertFixtures.tableAlert(
             ns,
@@ -362,7 +365,7 @@ class WebhookSecretsMigrationIT {
 
   private static String openedDestinationValue(SubscriptionDestination stored, String field) {
     String value = JsonUtils.valueToTree(stored.getConfig()).at(field).asText();
-    assertTrue(OwnedCiphertext.isOwned(value), "not bound to its destination: " + value);
+    assertTrue(BoundCiphertext.isBound(value), "not bound to its destination: " + value);
     return JsonUtils.valueToTree(DestinationSecrets.decrypted(stored).getConfig())
         .at(field)
         .asText();
@@ -370,7 +373,7 @@ class WebhookSecretsMigrationIT {
 
   private static String openedProfileValue(JsonNode teamRow, String field) {
     String value = teamRow.at("/profile/subscription/generic" + field).asText();
-    assertTrue(OwnedCiphertext.isOwned(value), "not bound to its webhook: " + value);
+    assertTrue(BoundCiphertext.isBound(value), "not bound to its webhook: " + value);
     ProfileWebhookSecrets.Holder holder =
         new ProfileWebhookSecrets.Holder(Entity.TEAM, UUID.fromString(teamRow.path("id").asText()));
     Profile profile = JsonUtils.treeToValue(teamRow.path("profile"), Profile.class);

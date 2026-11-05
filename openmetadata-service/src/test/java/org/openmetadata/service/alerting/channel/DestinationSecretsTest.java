@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -29,7 +28,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.channel.webhook.WebhookConfigRules;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.OwnedCiphertext;
+import org.openmetadata.service.secrets.BoundCiphertext;
 
 class DestinationSecretsTest {
 
@@ -242,52 +241,6 @@ class DestinationSecretsTest {
       assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
       assertThrows(BadRequestException.class, () -> WebhookConfigRules.stored(destination));
     }
-  }
-
-  @Test
-  void bindStoredAlert_carriesOverEarlierCredentialsAndLeavesAnyOtherCiphertextToEnterAgain() {
-    String elsewhere = Fernet.getInstance().encrypt("a value stored elsewhere");
-    SubscriptionDestination entered = incomingWebhook(SubscriptionType.SLACK);
-    SubscriptionDestination signed =
-        buildBearerDestination(SubscriptionType.WEBHOOK, Fernet.getInstance().encrypt("hmac-key"));
-    SubscriptionDestination oauth =
-        buildOAuth2Destination(
-            Fernet.getInstance().encrypt("client"), Fernet.getInstance().encrypt("oauth-secret"));
-    SubscriptionDestination storedTwice = buildOAuth2Destination("client", elsewhere);
-    SubscriptionDestination withHeader = incomingWebhook(SubscriptionType.WEBHOOK);
-    withHeader.withConfig(
-        withHeader(configOf(withHeader), Fernet.getInstance().encrypt("a header value")));
-    EventSubscription alert =
-        new EventSubscription()
-            .withId(UUID.randomUUID())
-            .withName("legacy")
-            .withDestinations(List.of(entered, signed, oauth, storedTwice, withHeader))
-            .withChangeDescription(destinationsChange(List.of(storedTwice)));
-    JsonNode row = JsonUtils.valueToTree(alert);
-
-    assertTrue(DestinationSecrets.bindStoredAlert(row, elsewhere::equals));
-    String once = JsonUtils.pojoToJson(row);
-    assertFalse(DestinationSecrets.bindStoredAlert(row, elsewhere::equals));
-    assertEquals(once, JsonUtils.pojoToJson(row));
-
-    List<SubscriptionDestination> bound =
-        JsonUtils.treeToValue(row, EventSubscription.class).getDestinations();
-    assertEquals(ENDPOINT, configOf(DestinationSecrets.decrypted(bound.get(0))).get("endpoint"));
-    assertEquals(
-        "hmac-key", authTypeOf(DestinationSecrets.decrypted(bound.get(1))).get("secretKey"));
-    Map<String, Object> oauthUsed = authTypeOf(DestinationSecrets.decrypted(bound.get(2)));
-    assertEquals("client", oauthUsed.get("clientId"));
-    assertEquals("oauth-secret", oauthUsed.get("clientSecret"));
-    for (SubscriptionDestination toEnterAgain : List.of(bound.get(3), bound.get(4))) {
-      BadRequestException refused =
-          assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(toEnterAgain));
-      assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
-    }
-    assertEquals(elsewhere, authTypeOf(bound.get(3)).get("clientSecret"));
-    assertEquals(List.of(true, true, true, true, true), enabledOf(bound));
-    assertTrue(
-        row.at("/changeDescription/fieldsUpdated/0/newValue").asText().contains(PASSWORD_MASK),
-        "history keeps the mask");
   }
 
   @Test
@@ -517,18 +470,8 @@ class DestinationSecretsTest {
     return new ChangeDescription().withFieldsUpdated(List.of(change));
   }
 
-  private static Map<String, Object> withHeader(Map<String, Object> config, String value) {
-    Map<String, Object> withHeader = new LinkedHashMap<>(config);
-    withHeader.put("headers", new LinkedHashMap<>(Map.of("Authorization", value)));
-    return withHeader;
-  }
-
-  private static List<Boolean> enabledOf(List<SubscriptionDestination> destinations) {
-    return destinations.stream().map(SubscriptionDestination::getEnabled).toList();
-  }
-
   private static String opened(SubscriptionDestination destination, String field, String value) {
-    return OwnedCiphertext.decrypt(DestinationSecrets.ownerOf(destination), field, value)
+    return BoundCiphertext.decrypt(DestinationSecrets.ownerOf(destination), field, value)
         .orElseThrow();
   }
 

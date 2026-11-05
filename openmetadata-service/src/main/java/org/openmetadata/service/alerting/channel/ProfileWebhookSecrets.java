@@ -52,8 +52,6 @@ public final class ProfileWebhookSecrets {
   private static final String SUBSCRIPTION = "subscription";
   private static final String PROFILE = "profile";
   private static final JsonPointer SUBSCRIPTIONS = JsonPointer.compile("/profile/subscription");
-  private static final List<String> CHANGE_DESCRIPTIONS =
-      List.of("changeDescription", "incrementalChangeDescription");
   private static final List<String> FIELD_CHANGE_LISTS =
       List.of("fieldsAdded", "fieldsUpdated", "fieldsDeleted");
   private static final List<String> FIELD_CHANGE_VALUES = List.of("oldValue", "newValue");
@@ -75,9 +73,20 @@ public final class ProfileWebhookSecrets {
   /**
    * The user or team a profile belongs to, by its entity type and id. Each of its webhooks owns its
    * secrets: a secret written for one opens for no other, in this profile or another. A holder
-   * without an id has nothing stored for it, so it owns nothing a stored secret opens for.
+   * without an id has nothing stored for it, so it owns nothing a stored secret opens for, and
+   * nothing is encrypted for it.
    */
   public record Holder(String entityType, UUID id) {
+    // A user or a team has its id before its profile is stored; a secret encrypted for a holder
+    // without one could never be decrypted.
+    Holder requireId() {
+      if (id == null) {
+        throw new IllegalStateException(
+            "The " + entityType + " has no id, so its profile webhook secrets have no owner");
+      }
+      return this;
+    }
+
     SecretOwner ownerOf(String slot) {
       return SecretOwner.builder(entityType)
           .id(id == null ? UUID.randomUUID() : id)
@@ -100,7 +109,7 @@ public final class ProfileWebhookSecrets {
               field ->
                   requireEntered(
                       slot, field, config.at(field).asText(), MissingNode.getInstance()));
-          ConfigSecrets.encrypt(holder.ownerOf(slot), config, fields);
+          ConfigSecrets.encrypt(holder.requireId().ownerOf(slot), config, fields);
         });
   }
 
@@ -116,7 +125,8 @@ public final class ProfileWebhookSecrets {
     return transformWebhooks(
         sent,
         (slot, config) ->
-            updateWebhook(holder.ownerOf(slot), slot, storedSubscriptions.path(slot), config));
+            updateWebhook(
+                holder.requireId().ownerOf(slot), slot, storedSubscriptions.path(slot), config));
   }
 
   /**
@@ -245,61 +255,6 @@ public final class ProfileWebhookSecrets {
     JsonNode tree = JsonUtils.valueToTree(changeDescription);
     transformChangeDescription(tree, ConfigSecrets::mask);
     return JsonUtils.treeToValue(tree, ChangeDescription.class);
-  }
-
-  /**
-   * Masks, in place, the profile webhook secrets of a user or a team as JSON: a stored row or one of
-   * its versions. Returns whether anything changed.
-   */
-  public static boolean maskEntityTree(JsonNode entity) {
-    return transformEntityTree(entity, ConfigSecrets::mask);
-  }
-
-  /**
-   * Binds, in place, the profile webhook secrets of a stored user or team row written before they
-   * were bound to their webhook ({@link ConfigSecrets#bindStored}); its change descriptions keep the
-   * mask. Releases before 2.1 stored profile webhooks in plain text, so no ciphertext is carried
-   * over: a webhook holding one is left out of every send until the value is entered again. Running
-   * it again changes nothing. Returns whether anything changed.
-   */
-  public static boolean bindStoredEntity(String entityType, JsonNode entity) {
-    Holder holder = new Holder(entityType, UUID.fromString(entity.path("id").asText()));
-    JsonNode before = entity.deepCopy();
-    entity
-        .at(SUBSCRIPTIONS)
-        .properties()
-        .forEach(webhook -> bindStoredWebhook(holder, webhook.getKey(), webhook.getValue()));
-    CHANGE_DESCRIPTIONS.forEach(
-        name -> transformChangeDescription(entity.path(name), ConfigSecrets::mask));
-    return !entity.equals(before);
-  }
-
-  private static void bindStoredWebhook(Holder holder, String slot, JsonNode config) {
-    List<JsonPointer> toEnterAgain =
-        config.isObject()
-            ? ConfigSecrets.bindStored(
-                holder.ownerOf(slot),
-                config,
-                WebhookSecrets.fieldsIn(config),
-                (field, value) -> false)
-            : List.of();
-    if (!toEnterAgain.isEmpty()) {
-      LOG.warn(
-          "The {} webhook of {} {}: the values at {} must be entered again before it sends",
-          slot,
-          holder.entityType(),
-          holder.id(),
-          toEnterAgain);
-    }
-  }
-
-  private static boolean transformEntityTree(
-      JsonNode entity, BiPredicate<JsonNode, List<JsonPointer>> transform) {
-    boolean changed = transformSubscriptions(entity.at(SUBSCRIPTIONS), transform);
-    for (String name : CHANGE_DESCRIPTIONS) {
-      changed |= transformChangeDescription(entity.path(name), transform);
-    }
-    return changed;
   }
 
   private static boolean transformSubscriptions(

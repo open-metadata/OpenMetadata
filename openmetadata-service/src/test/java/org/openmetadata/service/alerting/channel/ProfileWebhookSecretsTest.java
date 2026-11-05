@@ -40,7 +40,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.OwnedCiphertext;
+import org.openmetadata.service.secrets.BoundCiphertext;
 
 class ProfileWebhookSecretsTest {
   private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
@@ -303,43 +303,6 @@ class ProfileWebhookSecretsTest {
   }
 
   @Test
-  void bindingAStoredRowEncryptsWhatWasEnteredAndCarriesNoCiphertextOver() {
-    String foreign = Fernet.getInstance().encrypt("a value held elsewhere");
-    Profile legacy =
-        new Profile()
-            .withSubscription(
-                new SubscriptionConfig()
-                    .withGeneric(oauth2("entered in the clear"))
-                    .withSlack(oauth2(foreign)));
-    JsonNode row =
-        JsonUtils.valueToTree(
-            new User()
-                .withId(HOLDER.id())
-                .withName("u")
-                .withProfile(legacy)
-                .withChangeDescription(profileChange(legacy)));
-
-    assertTrue(ProfileWebhookSecrets.bindStoredEntity("user", row));
-    String once = JsonUtils.pojoToJson(row);
-    assertFalse(ProfileWebhookSecrets.bindStoredEntity("user", row));
-    assertEquals(once, JsonUtils.pojoToJson(row));
-
-    JsonNode subscriptions = row.at("/profile/subscription");
-    assertEncrypted(
-        GENERIC, "/authType/clientSecret", subscriptions.path(GENERIC), "entered in the clear");
-    assertEquals(foreign, subscriptions.at("/slack/authType/clientSecret").asText());
-    SubscriptionConfig sendable =
-        ProfileWebhookSecrets.decrypted(
-                HOLDER, JsonUtils.treeToValue(row.path("profile"), Profile.class))
-            .getSubscription();
-    assertNull(sendable.getSlack(), "left out until it is entered again");
-    assertEquals("entered in the clear", clientSecretOf(sendable.getGeneric()));
-    assertTrue(
-        row.at("/changeDescription/fieldsUpdated/0/newValue").asText().contains(PASSWORD_MASK),
-        "history keeps the mask");
-  }
-
-  @Test
   void aProfileWithoutWebhooksIsLeftAlone() {
     Profile images = new Profile();
 
@@ -351,9 +314,9 @@ class ProfileWebhookSecretsTest {
   private static void assertEncrypted(
       String slot, String field, JsonNode webhook, String plaintext) {
     String value = webhook.at(field).asText();
-    assertTrue(OwnedCiphertext.isOwned(value), "not bound to its webhook: " + value);
+    assertTrue(BoundCiphertext.isBound(value), "not bound to its webhook: " + value);
     assertEquals(
-        plaintext, OwnedCiphertext.decrypt(HOLDER.ownerOf(slot), field, value).orElseThrow());
+        plaintext, BoundCiphertext.decrypt(HOLDER.ownerOf(slot), field, value).orElseThrow());
   }
 
   private static String opened(String field, JsonNode value) {
@@ -361,17 +324,7 @@ class ProfileWebhookSecretsTest {
   }
 
   private static String opened(String field, String value) {
-    return OwnedCiphertext.decrypt(HOLDER.ownerOf(GENERIC), field, value).orElseThrow();
-  }
-
-  private static ChangeDescription profileChange(Profile profile) {
-    return new ChangeDescription()
-        .withFieldsUpdated(
-            List.of(
-                new FieldChange()
-                    .withName("profile")
-                    .withOldValue(JsonUtils.pojoToJson(new Profile()))
-                    .withNewValue(JsonUtils.pojoToJson(profile))));
+    return BoundCiphertext.decrypt(HOLDER.ownerOf(GENERIC), field, value).orElseThrow();
   }
 
   private static void assertRefused(Runnable call, String reason) {

@@ -75,7 +75,7 @@ import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
-import org.openmetadata.service.secrets.OwnedCiphertext;
+import org.openmetadata.service.secrets.BoundCiphertext;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
@@ -2954,7 +2954,7 @@ public class EventSubscriptionResourceIT
   private static String opened(UUID alertId, String field) {
     SubscriptionDestination stored = AlertFixtures.stored(alertId).getDestinations().getFirst();
     String value = JsonUtils.valueToTree(stored.getConfig()).at(field).asText();
-    assertTrue(OwnedCiphertext.isOwned(value), "not bound to its destination: " + value);
+    assertTrue(BoundCiphertext.isBound(value), "not bound to its destination: " + value);
     return JsonUtils.valueToTree(DestinationSecrets.decrypted(stored).getConfig())
         .at(field)
         .asText();
