@@ -507,6 +507,7 @@ const AuditLogsPage = () => {
                 className="tw:shrink-0"
                 data-testid="audit-log-search-container">
                 <Input
+                  autoComplete="off"
                   className="tw:max-w-86"
                   icon={Search}
                   inputDataTestId="audit-log-search"

@@ -604,6 +604,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           direction="row"
           justify="between">
           <Input
+            autoComplete="off"
             className="tw:max-w-xs"
             data-testid="searchbar"
             icon={Search}
