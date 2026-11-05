@@ -14,6 +14,7 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,9 +55,8 @@ public final class WebhookSecretsMigration {
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
       rewriteById(handle, sql, "user_entity", row -> secrets.bindProfileEntity(USER, row));
       rewriteById(handle, sql, "team_entity", row -> secrets.bindProfileEntity(TEAM, row));
-      for (String entityType : List.of(USER, TEAM)) {
-        rewriteVersions(handle, sql, entityType, StoredWebhookSecrets::maskProfileEntity);
-      }
+      rewriteVersions(handle, sql, "user_entity", USER, StoredWebhookSecrets::maskProfileEntity);
+      rewriteVersions(handle, sql, "team_entity", TEAM, StoredWebhookSecrets::maskProfileEntity);
       rewriteChangeEvents(
           handle, sql, List.of(USER, TEAM), StoredWebhookSecrets::maskProfileEntity);
     }
@@ -72,7 +72,8 @@ public final class WebhookSecretsMigration {
           sql,
           "event_subscription_entity",
           row -> secrets.bindAlert(row, storedElsewhere::contains));
-      rewriteVersions(handle, sql, ALERT, StoredWebhookSecrets::maskAlert);
+      rewriteVersions(
+          handle, sql, "event_subscription_entity", ALERT, StoredWebhookSecrets::maskAlert);
       rewriteChangeEvents(handle, sql, List.of(ALERT), StoredWebhookSecrets::maskAlert);
     }
   }
@@ -111,33 +112,34 @@ public final class WebhookSecretsMigration {
     LOG.info("Bound the webhook secrets of {} rows of {}", rewritten, table);
   }
 
+  /**
+   * Masks the versions of every row of {@code table}. Versions are found by their entity's id,
+   * through the primary key of the versions table, so no other entity's versions are read, on any
+   * database and collation.
+   */
   private static void rewriteVersions(
-      Handle handle, Sql sql, String entityType, Predicate<JsonNode> transform) {
-    String cursorId = "";
-    String cursorExtension = "";
+      Handle handle, Sql sql, String table, String entityType, Predicate<JsonNode> transform) {
+    List<String> ids = handle.createQuery("SELECT id FROM " + table).mapTo(String.class).list();
     int rewritten = 0;
-    List<Map<String, Object>> rows;
-    do {
-      rows =
+    for (List<String> batch : Lists.partition(ids, PAGE_SIZE)) {
+      List<Map<String, Object>> rows =
           handle
               .createQuery(sql.selectVersions())
+              .bindList("ids", batch)
               .bind("prefix", entityType + ".version.%")
-              .bind("id", cursorId)
-              .bind("extension", cursorExtension)
-              .bind("pageSize", PAGE_SIZE)
               .mapToMap()
               .list();
-      PreparedBatch batch = handle.prepareBatch(sql.updateVersion());
+      PreparedBatch update = handle.prepareBatch(sql.updateVersion());
       for (Map<String, Object> row : rows) {
-        cursorId = String.valueOf(row.get("id"));
-        cursorExtension = String.valueOf(row.get("extension"));
-        String json = rewritten(row, transform, "version " + cursorExtension + " of " + cursorId);
+        String id = String.valueOf(row.get("id"));
+        String extension = String.valueOf(row.get("extension"));
+        String json = rewritten(row, transform, "version " + extension + " of " + id);
         if (json != null) {
-          batch.bind("id", cursorId).bind("extension", cursorExtension).bind("json", json).add();
+          update.bind("id", id).bind("extension", extension).bind("json", json).add();
         }
       }
-      rewritten += execute(batch);
-    } while (rows.size() == PAGE_SIZE);
+      rewritten += execute(update);
+    }
     LOG.info("Masked the webhook secrets of {} versions of {}", rewritten, entityType);
   }
 
@@ -228,10 +230,9 @@ public final class WebhookSecretsMigration {
     String selectVersions() {
       return "SELECT id, extension, "
           + jsonText()
-          + " AS json FROM entity_extension WHERE extension LIKE :prefix AND "
+          + " AS json FROM entity_extension WHERE id IN (<ids>) AND extension LIKE :prefix AND "
           + jsonText()
-          + " LIKE '%endpoint%' AND (id > :id OR (id = :id AND extension > :extension))"
-          + " ORDER BY id, extension LIMIT :pageSize";
+          + " LIKE '%endpoint%'";
     }
 
     String updateVersion() {

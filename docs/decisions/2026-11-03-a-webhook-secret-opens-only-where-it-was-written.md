@@ -39,12 +39,14 @@ so they can have keys of their own and open only there.
   - plaintext is encrypted for its owner;
   - ciphertext at the fields releases before 2.1 stored encrypted, an alert destination's bearer
     signing key and OAuth2 client id and secret, is encrypted for its owner again, unless the same
-    ciphertext is stored anywhere else (`StoredCiphertextCopies`: another field or alert, any entity
-    table, any version of another entity, or the other tables that hold secrets, such as installed
-    apps, connection test workflows, settings, sessions and tokens). Fernet encryption is
-    randomized, so a value the server wrote for one field is stored at that field only, and in the
-    versions of the alert that holds it. Event logs and time series are not read: they only copy
-    rows of those tables, and some of them are large;
+    ciphertext is stored anywhere else (`StoredCiphertextCopies`: another field or alert, a table
+    that holds secrets, such as services, ingestion pipelines, users, teams, bots, workflow
+    definitions, test suites, apps, connection test workflows, settings, sessions and tokens, or a
+    version of one of those entities). Fernet encryption is randomized, so a value the server wrote
+    for one field is stored at that field only, and in the versions of the alert that holds it.
+    Versions are found by their entity's id, through the primary key of the versions table, so the
+    step reads only the rows that can hold a secret, never data assets, their versions or event
+    logs, and its cost follows the number of services, pipelines, users and apps;
   - any other ciphertext stays as stored. It opens for no owner, so the destination stays enabled
     and reports the field to enter again, and a profile webhook is left out of the send, until the
     value is entered again.
@@ -61,6 +63,9 @@ so they can have keys of their own and open only there.
   text, so only a server that ran a pre-release build after
   ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored has endpoints and
   header values saved there in that time to enter again.
+- A value whose only other copy belongs to an entity that was hard-deleted, or is kept in a store
+  the step does not read, such as a store a distribution adds, cannot be told apart from a value
+  the server wrote, and is carried over.
 - Destination ids must stay unique and stable, because they own their secrets. A destination given
   a new id has its secrets entered again.
 - Webhooks are the first secrets bound to their owner. The intended end state is one shared secret

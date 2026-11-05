@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -161,7 +162,7 @@ class WebhookSecretsMigrationIT {
     String clientSecret = ns.prefix("client-secret");
     String storedTwice = Fernet.getInstance().encrypt(ns.prefix("a value stored twice"));
     String header = Fernet.getInstance().encrypt(ns.prefix("a header value"));
-    String inAnotherEvent = Fernet.getInstance().encrypt(ns.prefix("a value in another version"));
+    String inAnotherVersion = Fernet.getInstance().encrypt(ns.prefix("a value in another version"));
     EventSubscription alert =
         AlertFixtures.tableAlert(
             ns,
@@ -192,16 +193,16 @@ class WebhookSecretsMigrationIT {
                 "https://hooks.example.com/header",
                 "headers",
                 Map.of("Authorization", header)));
-    destinations.get(4).withConfig(legacyConfig("event", oauth2(inAnotherEvent)));
+    destinations.get(4).withConfig(legacyConfig("event", oauth2(inAnotherVersion)));
     AlertFixtures.writeBehindTheServer(alert);
     insertChangeEvent(Entity.EVENT_SUBSCRIPTION, alert.getId(), JsonUtils.pojoToJson(alert));
     Entity.getCollectionDAO()
         .entityExtensionDAO()
         .insert(
-            UUID.randomUUID(),
+            DatabaseServiceTestFactory.createPostgres(ns).getId(),
             "databaseService.version.0.1",
             Entity.DATABASE_SERVICE,
-            JsonUtils.pojoToJson(Map.of("password", inAnotherEvent)));
+            JsonUtils.pojoToJson(Map.of("password", inAnotherVersion)));
     EventSubscription another =
         AlertFixtures.tableAlert(
             ns,
@@ -222,7 +223,7 @@ class WebhookSecretsMigrationIT {
     assertEquals(clientSecret, openedDestinationValue(bound.get(1), "/authType/clientSecret"));
     assertEquals(storedTwice, storedValue(bound.get(2), "/authType/clientSecret"));
     assertEquals(header, storedValue(bound.get(3), "/headers/Authorization"));
-    assertEquals(inAnotherEvent, storedValue(bound.get(4), "/authType/clientSecret"));
+    assertEquals(inAnotherVersion, storedValue(bound.get(4), "/authType/clientSecret"));
     for (SubscriptionDestination toEnterAgain : bound.subList(2, 5)) {
       BadRequestException refused =
           assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(toEnterAgain));
