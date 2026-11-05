@@ -54,18 +54,24 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
 
   private static void legacyQuality(
       ObjectNode element, String path, ObjectNode table, ODCSLegacyQuality converter) {
-    ArrayNode converted = ODCSExportModelWriter.JSON.createArrayNode();
-    for (JsonNode rule : element.path("quality")) converted.add(converter.v22(rule, path));
-    element.remove("quality");
-    if (!converted.isEmpty()) table.withArray("quality").addAll(converted);
-    for (JsonNode child : element.path("properties"))
-      legacyQuality(
-          (ObjectNode) child,
-          path.isEmpty()
-              ? FullyQualifiedName.quoteName(child.path("name").asText())
-              : FullyQualifiedName.add(path, child.path("name").asText()),
-          table,
-          converter);
+    if (element.path("quality").isArray()) {
+      ArrayNode converted = ODCSExportModelWriter.JSON.createArrayNode();
+      for (JsonNode rule : element.path("quality"))
+        converted.add(rule.isObject() ? converter.v22(rule, path) : rule.deepCopy());
+      element.remove("quality");
+      if (!converted.isEmpty() && (!table.has("quality") || table.path("quality").isArray()))
+        table.withArray("quality").addAll(converted);
+    }
+    for (JsonNode child : element.path("properties")) {
+      if (child.isObject())
+        legacyQuality(
+            (ObjectNode) child,
+            path.isEmpty()
+                ? FullyQualifiedName.quoteName(child.path("name").asText())
+                : FullyQualifiedName.add(path, child.path("name").asText()),
+            table,
+            converter);
+    }
     if (element.path("items").isObject())
       legacyQuality((ObjectNode) element.path("items"), path, table, converter);
   }
@@ -114,8 +120,13 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
   }
 
   @Override
-  public JsonNode materialize(JsonNode view) {
-    return toLegacy(view);
+  public JsonNode materialize(JsonNode view, DataContract contract) {
+    ObjectNode document = view.deepCopy();
+    ODCSLegacyQuality quality = new ODCSLegacyQuality(schema, contract);
+    for (JsonNode table : document.path("schema")) {
+      if (table.isObject()) legacyQuality((ObjectNode) table, "", (ObjectNode) table, quality);
+    }
+    return toLegacy(document);
   }
 
   private ObjectNode toLegacy(JsonNode source) {
@@ -154,6 +165,7 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
     for (JsonNode entry : document.path("schema")) {
       ObjectNode table = entry.deepCopy();
       rename(table, "name", "table");
+      legacyDescription(table);
       rename(table, "dataGranularityDescription", "dataGranularity");
       ArrayNode columns = ODCSExportModelWriter.JSON.createArrayNode();
       for (JsonNode column : table.path("properties")) flatten((ObjectNode) column, "", columns);
@@ -164,6 +176,17 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
     document.remove("schema");
     document.set("dataset", datasets);
     return document;
+  }
+
+  private void legacyDescription(ObjectNode table) {
+    JsonNode descriptionSchema =
+        schema.path("$defs").path("Dataset").path("properties").path("description");
+    if ("array".equals(descriptionSchema.path("type").asText())
+        && table.path("description").isTextual()) {
+      table.set(
+          "description",
+          ODCSExportModelWriter.JSON.createArrayNode().add(table.get("description")));
+    }
   }
 
   private static void flatten(ObjectNode value, String parent, ArrayNode output) {

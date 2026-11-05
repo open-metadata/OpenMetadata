@@ -59,16 +59,19 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
     if (logicalType.equals("time")) element.put("logicalType", "string");
     if (element.path("quality").isArray()) {
       var rules = ODCSExportModelWriter.JSON.createArrayNode();
-      for (JsonNode rule : element.path("quality")) rules.add(quality.v30(rule, path));
+      for (JsonNode rule : element.path("quality"))
+        rules.add(rule.isObject() ? quality.v30(rule, path) : rule.deepCopy());
       element.set("quality", rules);
     }
-    for (JsonNode child : element.path("properties"))
-      convertElement(
-          (ObjectNode) child,
-          path.isEmpty()
-              ? FullyQualifiedName.quoteName(child.path("name").asText())
-              : FullyQualifiedName.add(path, child.path("name").asText()),
-          quality);
+    for (JsonNode child : element.path("properties")) {
+      if (child.isObject())
+        convertElement(
+            (ObjectNode) child,
+            path.isEmpty()
+                ? FullyQualifiedName.quoteName(child.path("name").asText())
+                : FullyQualifiedName.add(path, child.path("name").asText()),
+            quality);
+    }
     if (element.path("items").isObject())
       convertElement((ObjectNode) element.path("items"), path, quality);
   }
@@ -85,8 +88,13 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
   }
 
   @Override
-  public JsonNode materialize(JsonNode view) {
+  public JsonNode materialize(JsonNode view, DataContract contract) {
     ObjectNode document = view.deepCopy();
+    ODCSLegacyQuality quality = new ODCSLegacyQuality(schema, contract);
+    // Preserved rules can still use the source version after the metadata overlay.
+    for (JsonNode table : document.path("schema")) {
+      if (table.isObject()) convertElement((ObjectNode) table, "", quality);
+    }
     JsonNode team = document.path("team");
     if (team.isObject() && team.size() == 1 && team.path("members").isArray())
       document.set("team", team.path("members"));

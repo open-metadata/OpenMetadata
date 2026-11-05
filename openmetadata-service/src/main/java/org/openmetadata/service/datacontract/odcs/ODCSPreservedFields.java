@@ -382,6 +382,12 @@ public final class ODCSPreservedFields {
     return false;
   }
 
+  static String sourceSchemaName(JsonNode payload) {
+    JsonNode tables =
+        payload == null ? JSON.missingNode() : preservedDocument(payload).path(SCHEMA);
+    return tables.isArray() && tables.size() == 1 ? tables.get(0).path(NAME).asText(null) : null;
+  }
+
   private static JsonNode preservedDocument(JsonNode payload) {
     JsonNode document = payload.has(DOCUMENT) ? payload.path(DOCUMENT) : payload;
     if (!document.isTextual()) {

@@ -82,7 +82,7 @@ public final class ODCSExportService {
     JsonNode nativeDocument = adapter.write(contract, qualityRules.apply(contract));
     JsonNode restored =
         ODCSMetadataOverlay.apply(contract, adapter.preservationView(nativeDocument), Set.of());
-    JsonNode document = adapter.materialize(restored);
+    JsonNode document = adapter.materialize(restored, contract);
     List<String> issues =
         SCHEMAS.get(version).validate(document).stream().map(Object::toString).toList();
     return new Result(version, document, issues);

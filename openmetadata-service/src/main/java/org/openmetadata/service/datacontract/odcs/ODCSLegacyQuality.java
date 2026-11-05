@@ -99,6 +99,8 @@ final class ODCSLegacyQuality {
   }
 
   ObjectNode v22(JsonNode source, String column) {
+    if (source.has("templateName") && source.has("toolName") && source.has("code"))
+      return source.deepCopy();
     Optional<TestCaseOutcome> nativeRule = nativeRule(source, column);
     String template =
         nativeRule

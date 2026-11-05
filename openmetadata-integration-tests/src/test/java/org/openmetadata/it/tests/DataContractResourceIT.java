@@ -3230,6 +3230,87 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testImportedContractExportsAcrossVersionsWithRenamedTargetAndDescriptions(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: 1.0.0
+        status: active
+        schema:
+          - name: customers
+            logicalType: object
+            description: Imported customer dataset description
+            properties:
+              - name: id
+                logicalType: integer
+                physicalType: BIGINT
+                quality:
+                  - type: library
+                    name: id_not_null
+                    metric: nullValues
+                    mustBe: 0
+            quality:
+              - type: library
+                name: customers_table_not_empty
+                metric: rowCount
+                mustBeGreaterOrEqualTo: 1
+                customProperties:
+                  - property: testCaseLabel
+                    value: retained source metadata
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("imported_export"));
+    DataContract imported =
+        client
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table", "merge", true);
+    JsonNode preserved = imported.getOdcsPreservedFields().deepCopy();
+    YAMLMapper mapper = new YAMLMapper();
+    for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1")) {
+      for (String route :
+          List.of(
+              "/v1/dataContracts/" + imported.getId() + "/odcs",
+              "/v1/dataContracts/" + imported.getId() + "/odcs/yaml",
+              "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs",
+              "/v1/dataContracts/name/" + imported.getFullyQualifiedName() + "/odcs/yaml")) {
+        JsonNode document =
+            mapper.readTree(
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, route + "?odcsVersion=" + version, null));
+        assertEquals(version, document.path("apiVersion").asText());
+        assertTrue(document.toString().contains("retained source metadata"));
+        if (version.startsWith("v2")) {
+          assertEquals(table.getName(), document.at("/dataset/0/table").asText());
+          assertEquals(1, document.at("/dataset/0/columns").size());
+          assertEquals(2, document.at("/dataset/0/quality").size());
+          JsonNode description = document.at("/dataset/0/description");
+          assertEquals(version.equals("v2.2.1"), description.isArray());
+          assertEquals(
+              "Imported customer dataset description",
+              description.isArray() ? description.get(0).asText() : description.asText());
+        } else {
+          assertEquals(table.getName(), document.at("/schema/0/name").asText());
+          assertEquals(1, document.at("/schema/0/properties").size());
+          assertEquals(1, document.at("/schema/0/quality").size());
+          assertEquals(1, document.at("/schema/0/properties/0/quality").size());
+          assertEquals(
+              version.equals("v3.1.0") ? "metric" : "rule",
+              document.at("/schema/0/quality/0").has("metric") ? "metric" : "rule");
+        }
+      }
+    }
+    assertEquals(
+        preserved,
+        client.dataContracts().get(imported.getId().toString()).getOdcsPreservedFields());
+  }
+
+  @Test
   void testNativeCustomPropertiesExportAsValidOdcsAcrossAllRoutes(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();

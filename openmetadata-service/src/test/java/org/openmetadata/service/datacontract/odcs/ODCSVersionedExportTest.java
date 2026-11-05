@@ -369,6 +369,91 @@ class ODCSVersionedExportTest {
     assertEquals("text", doc.at("/schema/0/quality/0/type").asText());
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1"})
+  void importedTableRulesFollowTheTargetTableAfterARename(String version) {
+    DataContract contract = contract();
+    ObjectNode source = (ObjectNode) ODCSExportService.nativeDocument(contract, List.of());
+    ((ObjectNode) source.at("/schema/0"))
+        .withArray("quality")
+        .add(JSON.valueToTree(rowCountRule()));
+    contract.setOdcsQualityRules(List.of(rowCountRule().withColumn("customers")));
+    contract.getEntity().setName("customer");
+    contract.getEntity().setFullyQualifiedName("sample_data.ecommerce_db.shopify.customer");
+    contract.setOdcsPreservedFields(
+        ODCSPreservedFields.capture(
+            source, ODCSExportService.nativeDocument(contract, List.of()), "customers"));
+
+    JsonNode doc = exporter.export(contract, version).requireValid();
+    String table = version.startsWith("v2") ? "/dataset/0" : "/schema/0";
+    assertEquals(2, doc.at(table + (version.startsWith("v2") ? "/columns" : "/properties")).size());
+    assertEquals(1, doc.at(table + "/quality").size());
+    assertEquals("customers", contract.getOdcsQualityRules().getFirst().getColumn());
+    assertTrue(contract.getOdcsPreservedFields().path("document").asText().contains("rowCount"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1"})
+  void preservedOnlyLibraryRulesAreConvertedAfterMetadataRestoration(String version) {
+    DataContract contract = contract();
+    ObjectNode baseline = (ObjectNode) ODCSExportService.nativeDocument(contract, List.of());
+    ObjectNode source = baseline.deepCopy();
+    ((ObjectNode) source.at("/schema/0"))
+        .withArray("quality")
+        .add(JSON.valueToTree(rowCountRule()));
+    contract.setOdcsPreservedFields(ODCSPreservedFields.capture(source, baseline, "customers"));
+
+    JsonNode doc = exporter.export(contract, version).requireValid();
+    JsonNode quality =
+        doc.at(version.startsWith("v2") ? "/dataset/0/quality" : "/schema/0/quality");
+    assertEquals(1, quality.size());
+    JsonNode rule = quality.get(0);
+    if (version.startsWith("v2")) {
+      assertEquals("tableRowCountToBeBetween", rule.path("templateName").asText());
+      assertEquals("rowCount", rule.at("/customProperties/0/value/metric").asText());
+    } else {
+      assertEquals("rowCount", rule.path("rule").asText());
+      assertEquals(1, rule.path("mustBeGreaterOrEqualTo").asInt());
+      assertFalse(rule.has("metric"));
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v2.2.2", "v2.2.1"})
+  void datasetDescriptionsUseTheShapeOfTheirPublishedPatchVersion(String version) {
+    DataContract contract = contract();
+    contract.getEntity().setDescription("Native table description");
+    JsonNode nativeDocument = exporter.export(contract, version).requireValid();
+    JsonNode nativeDescription = nativeDocument.at("/dataset/0/description");
+    assertEquals(version.equals("v2.2.1"), nativeDescription.isArray());
+    assertEquals(
+        "Native table description",
+        nativeDescription.isArray()
+            ? nativeDescription.get(0).asText()
+            : nativeDescription.asText());
+
+    ObjectNode baseline = (ObjectNode) ODCSExportService.nativeDocument(contract, List.of());
+    ObjectNode source = baseline.deepCopy();
+    ((ObjectNode) source.at("/schema/0")).put("description", "Imported table description");
+    contract.setOdcsPreservedFields(ODCSPreservedFields.capture(source, baseline, "customers"));
+    JsonNode preservedDescription =
+        exporter.export(contract, version).requireValid().at("/dataset/0/description");
+    assertEquals(version.equals("v2.2.1"), preservedDescription.isArray());
+    assertEquals(
+        "Imported table description",
+        preservedDescription.isArray()
+            ? preservedDescription.get(0).asText()
+            : preservedDescription.asText());
+  }
+
+  private static ODCSQualityRule rowCountRule() {
+    return new ODCSQualityRule()
+        .withName("customers_table_not_empty")
+        .withType(ODCSQualityRule.Type.LIBRARY)
+        .withMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT)
+        .withMustBeGreaterOrEqualTo(1.0);
+  }
+
   @Test
   void malformedRequiredSchemaRetainsItsResourcePathAndOriginalCause() {
     IllegalArgumentException error =

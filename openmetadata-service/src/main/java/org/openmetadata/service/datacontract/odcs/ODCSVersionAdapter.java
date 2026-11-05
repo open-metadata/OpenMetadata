@@ -30,7 +30,7 @@ public interface ODCSVersionAdapter {
     return document;
   }
 
-  default JsonNode materialize(JsonNode document) {
+  default JsonNode materialize(JsonNode document, DataContract contract) {
     return document;
   }
 }
