@@ -44,6 +44,11 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Dialog: jest.requireActual('@openmetadata/ui-core-components').Dialog,
+  Modal: jest.requireActual('@openmetadata/ui-core-components').Modal,
+  ModalOverlay: jest.requireActual('@openmetadata/ui-core-components')
+    .ModalOverlay,
+  Select: jest.requireActual('@openmetadata/ui-core-components').Select,
   EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
     .EmptyPlaceholder,
   Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
@@ -72,14 +77,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       children,
       isDisabled,
       onClick,
+      onPress,
+      isLoading,
       ...rest
     }: {
       children: React.ReactNode;
       isDisabled?: boolean;
       onClick?: () => void;
+      onPress?: () => void;
+      isLoading?: boolean;
       [key: string]: unknown;
     }) => (
-      <button disabled={isDisabled} onClick={onClick} {...rest}>
+      <button
+        disabled={isDisabled || isLoading}
+        onClick={onPress ?? onClick}
+        {...rest}>
         {children}
       </button>
     )
@@ -808,6 +820,25 @@ describe('ContractDetail', () => {
       expect(downloadContractYamlFile).toHaveBeenCalledWith(mockContract);
     });
 
+    it('opens the ODCS export dialog before downloading', async () => {
+      render(
+        <ContractDetail
+          contract={mockContract}
+          entityId="test-entity-id"
+          entityType="table"
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+      fireEvent.click(screen.getByTestId('export-odcs-contract-button'));
+
+      expect(await screen.findByRole('dialog')).toBeVisible();
+      expect(exportContractToODCSYaml).not.toHaveBeenCalled();
+    });
+
     it('should export contract to ODCS successfully', async () => {
       (exportContractToODCSYaml as jest.Mock).mockResolvedValue('yaml-content');
 
@@ -831,8 +862,14 @@ describe('ContractDetail', () => {
         fireEvent.click(exportOdcsButton);
       });
 
+      fireEvent.click(await screen.findByTestId('confirm-odcs-export'));
+
       await waitFor(() => {
-        expect(exportContractToODCSYaml).toHaveBeenCalledWith('contract-1');
+        expect(exportContractToODCSYaml).toHaveBeenCalledWith(
+          'contract-1',
+          undefined,
+          'v3.1.0'
+        );
         expect(downloadContractAsODCSYaml).toHaveBeenCalledWith(
           'yaml-content',
           'Test Contract'
@@ -864,6 +901,8 @@ describe('ContractDetail', () => {
       await act(async () => {
         fireEvent.click(exportOdcsButton);
       });
+
+      fireEvent.click(await screen.findByTestId('confirm-odcs-export'));
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(error);

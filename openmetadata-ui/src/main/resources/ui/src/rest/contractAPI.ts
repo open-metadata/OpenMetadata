@@ -13,6 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { ODCSExportVersion } from '../constants/DataContract.constants';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import {
@@ -344,16 +345,17 @@ export const exportContractToODCS = async (
 };
 
 /**
- * Export a data contract to ODCS v3.1.0 YAML format
+ * Export YAML for the selected ODCS version, or the server default when omitted.
  */
 export const exportContractToODCSYaml = async (
   contractId: string,
-  fields?: string
+  fields?: string,
+  odcsVersion?: ODCSExportVersion
 ): Promise<string> => {
   const response = await APIClient.get<string>(
     `${BASE_URL}/${contractId}/odcs/yaml`,
     {
-      params: { fields },
+      params: { fields, odcsVersion },
       headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
       responseType: 'text',
     }
