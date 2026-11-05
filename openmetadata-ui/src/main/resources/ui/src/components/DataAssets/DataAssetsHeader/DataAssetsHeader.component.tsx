@@ -110,6 +110,7 @@ import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadc
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
+import { EntityHeaderIcon } from '../../Entity/EntityHeaderIcon/EntityHeaderIcon';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -842,12 +843,7 @@ export const DataAssetsHeader = ({
 
     return (
       <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
-        <div
-          className={classNames(
-            'tw:relative tw:flex tw:size-9 tw:shrink-0 tw:items-center',
-            'tw:justify-center tw:overflow-hidden tw:rounded-full',
-            'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-          )}>
+        <EntityHeaderIcon>
           {serviceLogoUrl ? (
             <img
               alt={get(dataAsset, 'service.displayName', '')}
@@ -855,11 +851,9 @@ export const DataAssetsHeader = ({
               src={serviceLogoUrl}
             />
           ) : (
-            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-utility-blue-700">
-              {entityIcon}
-            </span>
+            entityIcon
           )}
-        </div>
+        </EntityHeaderIcon>
         {editStylePermission && (
           <ButtonUtility
             data-testid="edit-service-style"

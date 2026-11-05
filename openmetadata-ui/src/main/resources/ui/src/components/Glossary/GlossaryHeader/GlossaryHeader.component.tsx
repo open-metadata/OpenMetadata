@@ -87,6 +87,7 @@ import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.c
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
+import { EntityHeaderIcon } from '../../Entity/EntityHeaderIcon/EntityHeaderIcon';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -617,28 +618,23 @@ const GlossaryHeader = ({
     [selectedData.votes, currentUser]
   );
 
-  const icon = useMemo(() => {
-    if (isGlossary) {
-      return (
-        <GlossaryIcon className="align-middle tw:text-quaternary" size={36} />
-      );
-    }
-
-    return (
-      <EntityStyleIcon
-        className="align-middle"
-        fallback={
-          <GlossaryTermIcon
-            className="align-middle tw:text-quaternary"
-            size={36}
+  const icon = useMemo(
+    () => (
+      <EntityHeaderIcon>
+        {isGlossary ? (
+          <GlossaryIcon size={20} />
+        ) : (
+          <EntityStyleIcon
+            fallback={<GlossaryTermIcon size={20} />}
+            iconValue={selectedData.style?.iconURL}
+            imageClassName="tw:object-contain"
+            size={20}
           />
-        }
-        iconValue={selectedData.style?.iconURL}
-        imageClassName="align-middle object-contain"
-        size={36}
-      />
-    );
-  }, [selectedData, isGlossary]);
+        )}
+      </EntityHeaderIcon>
+    ),
+    [selectedData, isGlossary]
+  );
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? selectedData : undefined);

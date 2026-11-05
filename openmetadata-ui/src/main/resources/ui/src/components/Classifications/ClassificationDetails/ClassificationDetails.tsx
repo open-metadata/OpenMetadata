@@ -99,6 +99,7 @@ import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { EntityHeaderIcon } from '../../Entity/EntityHeaderIcon/EntityHeaderIcon';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
@@ -667,7 +668,9 @@ const ClassificationDetails = forwardRef(
               displayName={displayName}
               displayNameClassName="text-xl"
               icon={
-                <ClassificationIcon className="tw:text-quaternary" size={36} />
+                <EntityHeaderIcon>
+                  <ClassificationIcon size={20} />
+                </EntityHeaderIcon>
               }
               isDisabled={isClassificationDisabled}
               name={name ?? classification.name}
