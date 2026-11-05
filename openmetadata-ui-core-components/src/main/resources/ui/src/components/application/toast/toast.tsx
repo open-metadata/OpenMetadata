@@ -12,7 +12,13 @@
  */
 
 import type { FC, ReactNode } from 'react';
-import { AlertCircle, Alert, CheckCircle, InfoCircle, XClose } from '../../../icons';
+import {
+  AlertCircle,
+  Alert,
+  CheckCircle,
+  InfoCircle,
+  XClose,
+} from '../../../icons';
 import {
   Button,
   UNSTABLE_Toast as AriaToast,
