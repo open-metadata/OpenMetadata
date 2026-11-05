@@ -167,7 +167,7 @@ const OntologyConceptLiveData = ({
       return (
         <Box align="center" gap={2} wrap="wrap">
           <InspectorEmptyText>
-            {t('message.ontology-binding-read-unavailable')}
+            {t('message.ontology-live-data-bindings-unavailable')}
           </InspectorEmptyText>
           <Button
             color="link-color"

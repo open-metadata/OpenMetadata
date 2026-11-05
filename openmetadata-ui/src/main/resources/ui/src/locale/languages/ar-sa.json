@@ -5840,6 +5840,7 @@
     "ontology-library-description": "أنطولوجيات جاهزة ومتوافقة مع المعايير. ثبّتها كما هي، أو اختر الوحدات أولاً.",
     "ontology-library-load-error": "تعذّر تحميل مكتبة الأنطولوجيا.",
     "ontology-link-table-before-binding": "Link a table to this concept before binding a column.",
+    "ontology-live-data-bindings-unavailable": "Bindings could not load. Retry to generate the query.",
     "ontology-live-data-needs-binding": "Bind this concept to a table to generate its query.",
     "ontology-live-data-unavailable": "تعذر إنشاء SQL لهذا المفهوم.",
     "ontology-name-duplicate": "An ontology named {{name}} already exists.",

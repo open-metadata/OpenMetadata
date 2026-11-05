@@ -5840,6 +5840,7 @@
     "ontology-library-description": "표준에 맞춘 사전 구축 온톨로지입니다. 그대로 설치하거나 먼저 모듈을 선택하세요.",
     "ontology-library-load-error": "온톨로지 라이브러리를 불러올 수 없습니다.",
     "ontology-link-table-before-binding": "Link a table to this concept before binding a column.",
+    "ontology-live-data-bindings-unavailable": "Bindings could not load. Retry to generate the query.",
     "ontology-live-data-needs-binding": "Bind this concept to a table to generate its query.",
     "ontology-live-data-unavailable": "이 개념에 대한 SQL을 생성할 수 없습니다.",
     "ontology-name-duplicate": "An ontology named {{name}} already exists.",
