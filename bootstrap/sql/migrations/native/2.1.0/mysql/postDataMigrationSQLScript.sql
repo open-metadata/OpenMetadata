@@ -2,7 +2,10 @@
 -- first/last timestamps, pick the latest record (MAX(id) tie-break, matching the read
 -- query this table replaces), and upsert one summary row per incident. Idempotent.
 -- Incidents whose test case was hard-deleted lost their parentOf row (relation 9) and are skipped.
-INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, assignee, severity, createdAt, updatedAt, latestRecordId)
+-- test_case_resolution_status_time_series pins utf8mb4_0900_ai_ci and entity_relationship keeps the
+-- database default, so t.id takes toId's collation, read at run time, to compare on any database.
+SET @test_case_incident_backfill_sql = CONCAT(
+  'INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, assignee, severity, createdAt, updatedAt, latestRecordId)
 WITH chain AS (
   SELECT stateId, MIN(timestamp) AS createdAt, MAX(timestamp) AS updatedAt
   FROM test_case_resolution_status_time_series
@@ -16,14 +19,16 @@ latestRecord AS (
   GROUP BY c.stateId, c.createdAt, c.updatedAt
 )
 SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
-       JSON_UNQUOTE(JSON_EXTRACT(t.json, '$.severity')), l.createdAt, l.updatedAt, t.id
+       JSON_UNQUOTE(JSON_EXTRACT(t.json, ''$.severity'')), l.createdAt, l.updatedAt, t.id
 FROM latestRecord l
 INNER JOIN test_case_resolution_status_time_series t ON t.id = l.latestId
 WHERE t.entityFQNHash IS NOT NULL
   AND EXISTS (
     SELECT 1 FROM entity_relationship er
-    WHERE er.toId = t.id AND er.relation = 9
-      AND er.fromEntity = 'testCase' AND er.toEntity = 'testCaseResolutionStatus'
+    WHERE er.toId = t.id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'toId'),
+  ' AND er.relation = 9
+      AND er.fromEntity = ''testCase'' AND er.toEntity = ''testCaseResolutionStatus''
   )
 ON DUPLICATE KEY UPDATE
   testCaseResolutionStatusType = VALUES(testCaseResolutionStatusType),
@@ -31,7 +36,11 @@ ON DUPLICATE KEY UPDATE
   severity = VALUES(severity),
   test_case_incident.createdAt = LEAST(test_case_incident.createdAt, VALUES(createdAt)),
   updatedAt = VALUES(updatedAt),
-  latestRecordId = VALUES(latestRecordId);
+  latestRecordId = VALUES(latestRecordId)'
+);
+PREPARE test_case_incident_backfill_stmt FROM @test_case_incident_backfill_sql;
+EXECUTE test_case_incident_backfill_stmt;
+DEALLOCATE PREPARE test_case_incident_backfill_stmt;
 
 -- Existing metrics predate the approval workflow and must remain usable. Explicit
 -- workflow statuses are preserved, and this update is idempotent.

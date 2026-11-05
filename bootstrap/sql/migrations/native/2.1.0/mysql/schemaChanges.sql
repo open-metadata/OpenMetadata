@@ -1092,10 +1092,27 @@ CREATE TABLE IF NOT EXISTS ontology_release_event (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Studio axioms are unreleased; discard glossary-owned definitions without changing glossaries.
-DELETE FROM entity_relationship WHERE
-  (fromEntity = 'ontologyAxiom' AND fromId IN (SELECT id FROM ontology_axiom_entity WHERE json_extract(json, '$.ontology.id') IS NULL)) OR
-  (toEntity = 'ontologyAxiom' AND toId IN (SELECT id FROM ontology_axiom_entity WHERE json_extract(json, '$.ontology.id') IS NULL));
-DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_axiom_entity WHERE json_extract(json, '$.ontology.id') IS NULL);
+-- The ontology tables pin utf8mb4_0900_ai_ci; entity_relationship and entity_extension keep the
+-- database default. Each subquery takes the collation of the column it is compared with, read at
+-- run time, so the comparison works on any database collation and keeps that column's index.
+SET @ontology_axiom_relationship_cleanup_sql = CONCAT(
+  'DELETE FROM entity_relationship WHERE (fromEntity = ''ontologyAxiom'' AND fromId IN (SELECT id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'fromId'),
+  ' FROM ontology_axiom_entity WHERE json_extract(json, ''$.ontology.id'') IS NULL)) OR (toEntity = ''ontologyAxiom'' AND toId IN (SELECT id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'toId'),
+  ' FROM ontology_axiom_entity WHERE json_extract(json, ''$.ontology.id'') IS NULL))'
+);
+PREPARE ontology_axiom_relationship_cleanup_stmt FROM @ontology_axiom_relationship_cleanup_sql;
+EXECUTE ontology_axiom_relationship_cleanup_stmt;
+DEALLOCATE PREPARE ontology_axiom_relationship_cleanup_stmt;
+SET @ontology_axiom_extension_cleanup_sql = CONCAT(
+  'DELETE FROM entity_extension WHERE id IN (SELECT id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_extension' AND column_name = 'id'),
+  ' FROM ontology_axiom_entity WHERE json_extract(json, ''$.ontology.id'') IS NULL)'
+);
+PREPARE ontology_axiom_extension_cleanup_stmt FROM @ontology_axiom_extension_cleanup_sql;
+EXECUTE ontology_axiom_extension_cleanup_stmt;
+DEALLOCATE PREPARE ontology_axiom_extension_cleanup_stmt;
 DELETE FROM ontology_axiom_entity WHERE json_extract(json, '$.ontology.id') IS NULL;
 
 SET @ontology_axiom_owner_ddl = (
@@ -1183,10 +1200,24 @@ EXECUTE ontology_axiom_release_only_review_stmt;
 DEALLOCATE PREPARE ontology_axiom_release_only_review_stmt;
 
 -- Unreleased glossary axiom drafts cannot be applied to the independent ontology model.
-DELETE FROM entity_relationship WHERE
-  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations')))) OR
-  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations'))));
-DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations')));
+SET @ontology_axiom_draft_relationship_cleanup_sql = CONCAT(
+  'DELETE FROM entity_relationship WHERE (fromEntity = ''ontologyChangeSet'' AND fromId IN (SELECT id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'fromId'),
+  ' FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, ''$.ontology.id'') IS NULL AND (JSON_CONTAINS(json, ''{"operationType":"UPSERT_AXIOM"}'', ''$.operations'') OR JSON_CONTAINS(json, ''{"operationType":"DELETE_AXIOM"}'', ''$.operations'')))) OR (toEntity = ''ontologyChangeSet'' AND toId IN (SELECT id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'toId'),
+  ' FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, ''$.ontology.id'') IS NULL AND (JSON_CONTAINS(json, ''{"operationType":"UPSERT_AXIOM"}'', ''$.operations'') OR JSON_CONTAINS(json, ''{"operationType":"DELETE_AXIOM"}'', ''$.operations''))))'
+);
+PREPARE ontology_axiom_draft_relationship_cleanup_stmt FROM @ontology_axiom_draft_relationship_cleanup_sql;
+EXECUTE ontology_axiom_draft_relationship_cleanup_stmt;
+DEALLOCATE PREPARE ontology_axiom_draft_relationship_cleanup_stmt;
+SET @ontology_axiom_draft_extension_cleanup_sql = CONCAT(
+  'DELETE FROM entity_extension WHERE id IN (SELECT id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_extension' AND column_name = 'id'),
+  ' FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, ''$.ontology.id'') IS NULL AND (JSON_CONTAINS(json, ''{"operationType":"UPSERT_AXIOM"}'', ''$.operations'') OR JSON_CONTAINS(json, ''{"operationType":"DELETE_AXIOM"}'', ''$.operations'')))'
+);
+PREPARE ontology_axiom_draft_extension_cleanup_stmt FROM @ontology_axiom_draft_extension_cleanup_sql;
+EXECUTE ontology_axiom_draft_extension_cleanup_stmt;
+DEALLOCATE PREPARE ontology_axiom_draft_extension_cleanup_stmt;
 DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations'));
 
 -- Retire unreleased glossary ontology fields without changing released term relations or identity.
@@ -1198,9 +1229,16 @@ DELETE FROM entity_relationship WHERE fromEntity = 'glossaryTerm'
   AND (relation = 26 OR (relation = 27 AND toEntity = 'contextMemory'));
 
 -- Reset incompatible, unreleased glossary authoring drafts and their history. Native drafts remain.
-DELETE FROM entity_relationship WHERE
-  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS_PATH(json, 'one', '$.operations[*].term.attributes', '$.operations[*].term.effectiveAttributes', '$.operations[*].term.realizedIn', '$.operations[*].term.conceptType', '$.operations[*].term.ontologySource', '$.operations[*].term.sourceMemoryIds', '$.operations[*].glossary.ontologyConfiguration')))) OR
-  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS_PATH(json, 'one', '$.operations[*].term.attributes', '$.operations[*].term.effectiveAttributes', '$.operations[*].term.realizedIn', '$.operations[*].term.conceptType', '$.operations[*].term.ontologySource', '$.operations[*].term.sourceMemoryIds', '$.operations[*].glossary.ontologyConfiguration'))));
+SET @ontology_attribute_draft_relationship_cleanup_sql = CONCAT(
+  'DELETE FROM entity_relationship WHERE (fromEntity = ''ontologyChangeSet'' AND fromId IN (SELECT id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'fromId'),
+  ' FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, ''$.ontology.id'') IS NULL AND (JSON_CONTAINS(json, ''{"operationType":"UPSERT_ATTRIBUTE"}'', ''$.operations'') OR JSON_CONTAINS(json, ''{"operationType":"DELETE_ATTRIBUTE"}'', ''$.operations'') OR JSON_CONTAINS_PATH(json, ''one'', ''$.operations[*].term.attributes'', ''$.operations[*].term.effectiveAttributes'', ''$.operations[*].term.realizedIn'', ''$.operations[*].term.conceptType'', ''$.operations[*].term.ontologySource'', ''$.operations[*].term.sourceMemoryIds'', ''$.operations[*].glossary.ontologyConfiguration'')))) OR (toEntity = ''ontologyChangeSet'' AND toId IN (SELECT id COLLATE ',
+  (SELECT COLLATION_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'entity_relationship' AND column_name = 'toId'),
+  ' FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, ''$.ontology.id'') IS NULL AND (JSON_CONTAINS(json, ''{"operationType":"UPSERT_ATTRIBUTE"}'', ''$.operations'') OR JSON_CONTAINS(json, ''{"operationType":"DELETE_ATTRIBUTE"}'', ''$.operations'') OR JSON_CONTAINS_PATH(json, ''one'', ''$.operations[*].term.attributes'', ''$.operations[*].term.effectiveAttributes'', ''$.operations[*].term.realizedIn'', ''$.operations[*].term.conceptType'', ''$.operations[*].term.ontologySource'', ''$.operations[*].term.sourceMemoryIds'', ''$.operations[*].glossary.ontologyConfiguration''))))'
+);
+PREPARE ontology_attribute_draft_relationship_cleanup_stmt FROM @ontology_attribute_draft_relationship_cleanup_sql;
+EXECUTE ontology_attribute_draft_relationship_cleanup_stmt;
+DEALLOCATE PREPARE ontology_attribute_draft_relationship_cleanup_stmt;
 DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS_PATH(json, 'one', '$.operations[*].term.attributes', '$.operations[*].term.effectiveAttributes', '$.operations[*].term.realizedIn', '$.operations[*].term.conceptType', '$.operations[*].term.ontologySource', '$.operations[*].term.sourceMemoryIds', '$.operations[*].glossary.ontologyConfiguration')));
 DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS_PATH(json, 'one', '$.operations[*].term.attributes', '$.operations[*].term.effectiveAttributes', '$.operations[*].term.realizedIn', '$.operations[*].term.conceptType', '$.operations[*].term.ontologySource', '$.operations[*].term.sourceMemoryIds', '$.operations[*].glossary.ontologyConfiguration'));
 
