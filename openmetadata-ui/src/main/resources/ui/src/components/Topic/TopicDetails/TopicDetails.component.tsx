@@ -423,7 +423,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <QueryViewer
           isActive={activeTab === EntityTabs.CONFIG}
           sqlQuery={JSON.stringify(topicDetails.topicConfig)}
-          title={t('label.config')}
         />
       ),
       lineageTab: (
