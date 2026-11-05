@@ -5925,6 +5925,7 @@
     "pipeline-service-disabled-agent-actions": "O servizo de pipelines está desactivado nesta instalación. Os axentes móstranse no seu último estado rexistrado, e despregalos ou executalos non terá ningún efecto ata que se active.",
     "pipeline-service-unreachable-agent-actions": "Non se pode acceder ao servizo de pipelines. Os axentes e o seu historial de execucións móstranse no seu último estado rexistrado, e as accións sobre os axentes seguirán non dispoñibles ata que o servizo volva responder.",
     "pipeline-status-empty-description": "As execucións aparecen aquí despois de que conectes un servizo de pipelines como Airflow e se complete a súa primeira execución.",
+    "pipeline-tree-view-truncated": "Este pipeline ten máis camiños de tarefas dos que pode amosar a vista de árbore. Detense en {{limit}} filas; as tarefas posteriores amósanse sen as súas tarefas descendentes.",
     "pipeline-type-pipeline-failed": "O pipeline de {{pipelineType}} fallou",
     "pipeline-type-pipeline-partially-failed": "O pipeline de {{pipelineType}} fallou parcialmente",
     "pipeline-will-trigger-manually": "O pipeline só se activará manualmente.",

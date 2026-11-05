@@ -5925,6 +5925,7 @@
     "pipeline-service-disabled-agent-actions": "此部署中流水线服务已停用。代理按最后记录的状态显示，在启用该服务之前，部署或运行代理不会产生任何效果。",
     "pipeline-service-unreachable-agent-actions": "无法连接到流水线服务。代理及其运行历史按最后记录的状态显示，在服务恢复响应之前，代理操作将不可用。",
     "pipeline-status-empty-description": "连接 Airflow 等管道服务且其首次运行完成后，运行记录将显示在此处。",
+    "pipeline-tree-view-truncated": "此管道的任务路径超出了树视图可显示的数量。树视图最多显示 {{limit}} 行，之后的任务将不显示其下游任务。",
     "pipeline-type-pipeline-failed": "{{pipelineType}} 管道失败",
     "pipeline-type-pipeline-partially-failed": "{{pipelineType}} 管道部分失败",
     "pipeline-will-trigger-manually": "工作流仅能手动触发",

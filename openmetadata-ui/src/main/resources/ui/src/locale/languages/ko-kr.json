@@ -5925,6 +5925,7 @@
     "pipeline-service-disabled-agent-actions": "이 배포에서는 파이프라인 서비스가 비활성화되어 있습니다. 에이전트는 마지막으로 기록된 상태로 표시되며, 활성화하기 전까지 배포하거나 실행해도 아무 일도 일어나지 않습니다.",
     "pipeline-service-unreachable-agent-actions": "파이프라인 서비스에 연결할 수 없습니다. 에이전트와 실행 기록은 마지막으로 기록된 상태로 표시되며, 서비스가 다시 응답할 때까지 에이전트 작업을 사용할 수 없습니다.",
     "pipeline-status-empty-description": "Airflow 같은 파이프라인 서비스를 연결하고 첫 실행이 완료되면 여기에 실행 내역이 표시됩니다.",
+    "pipeline-tree-view-truncated": "이 파이프라인에는 트리 보기에서 표시할 수 있는 것보다 많은 작업 경로가 있습니다. {{limit}}개 행에서 표시가 중단되며, 그 이후의 작업은 다운스트림 작업 없이 표시됩니다.",
     "pipeline-type-pipeline-failed": "{{pipelineType}} 파이프라인 실패",
     "pipeline-type-pipeline-partially-failed": "{{pipelineType}} 파이프라인 부분 실패",
     "pipeline-will-trigger-manually": "파이프라인은 수동으로만 트리거됩니다.",

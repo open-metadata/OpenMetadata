@@ -5925,6 +5925,7 @@
     "pipeline-service-disabled-agent-actions": "Pipelinetjänsten är avaktiverad i den här installationen. Agenter visas i sitt senast registrerade tillstånd, och att distribuera eller köra dem har ingen effekt förrän tjänsten aktiveras.",
     "pipeline-service-unreachable-agent-actions": "Det går inte att nå pipelinetjänsten. Agenter och deras körhistorik visas i sitt senast registrerade tillstånd, och agentåtgärder förblir otillgängliga tills tjänsten svarar igen.",
     "pipeline-status-empty-description": "Körningar visas här när du har anslutit en pipeline-tjänst som Airflow och dess första körning har slutförts.",
+    "pipeline-tree-view-truncated": "Den här pipelinen har fler uppgiftsvägar än trädvyn kan visa. Den stannar vid {{limit}} rader; uppgifter efter det visas utan sina nedströmsuppgifter.",
     "pipeline-type-pipeline-failed": "{{pipelineType}}-pipeline misslyckades",
     "pipeline-type-pipeline-partially-failed": "{{pipelineType}}-pipeline misslyckades delvis",
     "pipeline-will-trigger-manually": "Pipelinen utlöses endast manuellt.",

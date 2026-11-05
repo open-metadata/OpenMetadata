@@ -5925,6 +5925,7 @@
     "pipeline-service-disabled-agent-actions": "Bu kurulumda pipeline hizmeti devre dışı. Aracılar son kaydedilen durumlarıyla listeleniyor ve hizmet etkinleştirilene kadar onları dağıtmanın veya çalıştırmanın hiçbir etkisi olmayacak.",
     "pipeline-service-unreachable-agent-actions": "Pipeline hizmetine ulaşılamıyor. Aracılar ve çalıştırma geçmişleri son kaydedilen durumlarıyla gösteriliyor ve hizmet yeniden yanıt verene kadar aracı işlemleri kullanılamayacak.",
     "pipeline-status-empty-description": "Airflow gibi bir iş akışı servisini bağladıktan ve ilk çalıştırması tamamlandıktan sonra çalıştırmalar burada görünür.",
+    "pipeline-tree-view-truncated": "Bu işlem hattında ağaç görünümünün gösterebileceğinden daha fazla görev yolu var. Görünüm {{limit}} satırda durur; bu noktadan sonraki görevler aşağı akış görevleri olmadan gösterilir.",
     "pipeline-type-pipeline-failed": "{{pipelineType}} iş akışı başarısız oldu",
     "pipeline-type-pipeline-partially-failed": "{{pipelineType}} iş akışı kısmen başarısız oldu",
     "pipeline-will-trigger-manually": "İş akışı yalnızca manuel olarak tetiklenecektir.",

@@ -15,6 +15,7 @@ import { Task } from '../generated/entity/data/pipeline';
 import { TreeNode } from '../interface/tree.interface';
 import {
   buildCompleteTree,
+  createTreeBuildState,
   getTreeData,
   MAX_TREE_NODES,
   ViewDataInterface,
@@ -41,6 +42,13 @@ const collectKeys = (nodes: TreeNode[]): string[] =>
     String(node.key),
     ...collectKeys(node.children ?? []),
   ]);
+
+const makeCompleteGraph = (names: string[]): Record<string, string[]> =>
+  Object.fromEntries(
+    names.map((name) => [name, names.filter((other) => other !== name)])
+  );
+
+const ALL_TO_ALL = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
 
 const makeViewData = (names: string[]): Record<string, ViewDataInterface[]> =>
   names.reduce<Record<string, ViewDataInterface[]>>((acc, name, idx) => {
@@ -204,8 +212,7 @@ describe('executionUtils', () => {
         null,
         'A',
         'root',
-        new Set(),
-        { remaining: 3 }
+        createTreeBuildState(3)
       );
 
       // Every task appears at least once; no task is silently dropped.
@@ -241,11 +248,12 @@ describe('executionUtils', () => {
         D: ['E'],
         E: [],
       });
-      const { treeDataList, treeLabelList } = getTreeData(
+      const { treeDataList, treeLabelList, isTruncated } = getTreeData(
         tasks,
         makeViewData(['A', 'B', 'C', 'D', 'E'])
       );
 
+      expect(isTruncated).toBe(false);
       expect(treeLabelList.map((node) => String(node.title))).toEqual([
         'A',
         'D',
@@ -305,22 +313,16 @@ describe('executionUtils', () => {
     });
 
     it('renders a disconnected cycle alongside a separate acyclic component', () => {
-      // A -> B is a normal acyclic component; C <-> D is a disconnected
-      // cycle. Both components must be visible: A as the detected root and
-      // C, D as unreached roots.
       const tasks = makeTasks({ A: ['B'], B: [], C: ['D'], D: ['C'] });
       const { treeLabelList, treeDataList } = getTreeData(
         tasks,
         makeViewData(['A', 'B', 'C', 'D'])
       );
 
-      expect(treeLabelList.length).toBe(3);
       expect(treeLabelList.map((node) => String(node.title))).toEqual([
         'A',
         'C',
-        'D',
       ]);
-      // Every task shows up somewhere in the combined tree.
       expect(new Set(collectTitles(treeLabelList))).toEqual(
         new Set(['A', 'B', 'C', 'D'])
       );
@@ -333,12 +335,13 @@ describe('executionUtils', () => {
       for (const name of names) {
         graph[name] = names.filter((other) => other !== name);
       }
-      const { treeDataList, treeLabelList } = getTreeData(
+      const { treeDataList, treeLabelList, isTruncated } = getTreeData(
         makeTasks(graph),
         makeViewData(names)
       );
 
-      expect(treeLabelList).toHaveLength(names.length);
+      expect(treeLabelList).toHaveLength(1);
+      expect(isTruncated).toBe(true);
 
       const labelKeys = collectKeys(treeLabelList);
 
@@ -346,6 +349,63 @@ describe('executionUtils', () => {
         MAX_TREE_NODES + 2 * names.length * names.length
       );
       expect(collectKeys(treeDataList)).toEqual(labelKeys);
+    });
+
+    it('draws a disconnected ring once instead of once per member', () => {
+      const tasks = makeTasks({ A: ['B'], B: ['C'], C: ['A'] });
+      const { treeLabelList } = getTreeData(
+        tasks,
+        makeViewData(['A', 'B', 'C'])
+      );
+
+      expect(treeLabelList.map((node) => String(node.title))).toEqual(['A']);
+      expect(collectTitles(treeLabelList)).toEqual(['A', 'B', 'C', 'A']);
+    });
+
+    it('keeps a task whose parent became a budget leaf', () => {
+      const graph = {
+        ...makeCompleteGraph(ALL_TO_ALL),
+        R: ['P1', 'Z'],
+        Z: ['Y'],
+        Y: [],
+      };
+      const names = Object.keys(graph);
+      const { treeDataList, treeLabelList, isTruncated } = getTreeData(
+        makeTasks(graph),
+        makeViewData(names)
+      );
+
+      expect(isTruncated).toBe(true);
+      expect(new Set(collectTitles(treeLabelList))).toEqual(new Set(names));
+      expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
+    });
+
+    it('keeps the subtree of a later root after an earlier root spends the budget', () => {
+      const graph = {
+        R1: ['P1'],
+        ...makeCompleteGraph(ALL_TO_ALL),
+        R2: ['X'],
+        X: ['Y'],
+        Y: [],
+      };
+      const names = Object.keys(graph);
+      const { treeDataList, treeLabelList } = getTreeData(
+        makeTasks(graph),
+        makeViewData(names)
+      );
+
+      expect(new Set(collectTitles(treeLabelList))).toEqual(new Set(names));
+      expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
+    });
+
+    it('collapses duplicate downstream entries so tree keys stay unique', () => {
+      const { treeLabelList } = getTreeData(
+        makeTasks({ A: ['B', 'B'], B: [] }),
+        makeViewData(['A', 'B'])
+      );
+      const keys = collectKeys(treeLabelList);
+
+      expect(keys).toEqual(['root-A', 'root-A-B']);
     });
 
     it('returns empty lists for empty tasks', () => {

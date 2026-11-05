@@ -12,7 +12,7 @@
  */
 
 import { Box, Tooltip } from '@openmetadata/ui-core-components';
-import { groupBy, isUndefined, map, toLower } from 'lodash';
+import { groupBy, isEmpty, isUndefined, map, toLower, uniq } from 'lodash';
 import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
 import {
@@ -154,23 +154,32 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
     taskData.downstreamTasks?.includes(currentTask.name)
   );
 
-// Upper bound on the number of tree nodes one Tree View tree can produce
-// across all of its roots. The backtracking `visited` set in
-// `buildCompleteTree` is what keeps cycles terminating, but it also lets a
-// branching cycle expand every distinct path through it (e.g. a complete
-// graph of 10 tasks yields ~10! nodes per root). Tree View renders every
-// node expanded, so the cap must hold for the whole tree, not per root.
 export const MAX_TREE_NODES = 5000;
 
 type ViewElement = { key: string; value: React.ReactNode };
-type Budget = { remaining: number };
+
+export type TreeBuildState = {
+  visited: Set<string>;
+  rendered: Set<string>;
+  remaining: number;
+  truncated: boolean;
+};
+
 type TreeBuildContext = {
   data: Task[];
   viewElements: ViewElement[];
   icon: React.ReactNode | null;
-  visited: Set<string>;
-  budget: Budget;
+  state: TreeBuildState;
 };
+
+export const createTreeBuildState = (
+  remaining = MAX_TREE_NODES
+): TreeBuildState => ({
+  visited: new Set(),
+  rendered: new Set(),
+  remaining,
+  truncated: false,
+});
 
 const createNode = (
   nodeKey: string,
@@ -184,17 +193,16 @@ const createNode = (
   return { key: nodeKey, title, children: [] };
 };
 
-// Render a child as a leaf (no recursion) without charging the budget.
-// Used when the node budget is exhausted so tasks still appear in Tree
-// View instead of being silently dropped. Leaf creation is bounded by
-// the input graph (no recursion), so it can't blow up the way a
-// branching cycle does.
 const makeLeafNode = (
   parentNodeKey: string,
   childKey: string,
-  viewElements: ViewElement[],
-  icon: React.ReactNode | null
+  { data, viewElements, icon, state }: TreeBuildContext
 ): TreeNode => {
+  state.rendered.add(childKey);
+  if (!isEmpty(data.find((item) => item.name === childKey)?.downstreamTasks)) {
+    state.truncated = true;
+  }
+
   const leaf: TreeNode = {
     key: parentNodeKey + '-' + childKey,
     title: viewElements.find((item) => item.key === childKey)?.value ?? null,
@@ -206,72 +214,41 @@ const makeLeafNode = (
   return leaf;
 };
 
-// Expand the children of a node. While the budget remains, children are
-// expanded recursively; once the budget is exhausted, remaining children
-// (and children of a node whose own expansion was stopped) are rendered
-// as leaves so no task silently disappears from Tree View.
 function expandNodeChildren(
   node: TreeNode,
   entry: Task | undefined,
   nodeKey: string,
   context: TreeBuildContext
 ): void {
-  const { data, viewElements, icon, visited, budget } = context;
-  if (!entry || visited.has(entry.name)) {
+  const { data, viewElements, icon, state } = context;
+  if (!entry || state.visited.has(entry.name)) {
     return;
   }
 
-  const childrenKeys = entry.downstreamTasks ?? [];
-
-  if (budget.remaining > 0) {
-    visited.add(entry.name);
-    for (const childKey of childrenKeys) {
-      if (budget.remaining > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutual recursion with buildCompleteTree
-        const childNode = buildCompleteTree(
-          data,
-          viewElements,
-          icon,
-          childKey,
-          nodeKey,
-          visited,
-          budget
-        );
-        node.children?.push(childNode);
-      } else {
-        node.children?.push(
-          makeLeafNode(nodeKey, childKey, viewElements, icon)
-        );
-      }
-    }
-    // Backtrack so a shared task (e.g. a diamond merge node) is still
-    // expanded under a different parent branch. This keeps cycle
-    // termination (a node is only visited once per path) while not
-    // pruning valid acyclic paths that converge on the same task.
-    visited.delete(entry.name);
-  } else {
-    for (const childKey of childrenKeys) {
-      node.children?.push(makeLeafNode(nodeKey, childKey, viewElements, icon));
-    }
+  state.visited.add(entry.name);
+  for (const childKey of uniq(entry.downstreamTasks ?? [])) {
+    node.children?.push(
+      state.remaining > 0
+        ? // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutual recursion with buildCompleteTree
+          buildCompleteTree(data, viewElements, icon, childKey, nodeKey, state)
+        : makeLeafNode(nodeKey, childKey, context)
+    );
   }
+  state.visited.delete(entry.name);
 }
 
-// Function to build a tree for all nodes
 export function buildCompleteTree(
   data: Task[],
   viewElements: ViewElement[],
   icon: React.ReactNode | null,
   key: string,
   parentKey: string,
-  visited: Set<string> = new Set(),
-  budget?: Budget
+  state?: TreeBuildState
 ) {
   const nodeKey: string = parentKey + '-' + key;
-  const nodeBudget = budget ?? { remaining: MAX_TREE_NODES };
-
-  // Charge every created node against the shared budget so the total
-  // expansion is bounded regardless of graph shape.
-  nodeBudget.remaining -= 1;
+  const buildState = state ?? createTreeBuildState();
+  buildState.remaining -= 1;
+  buildState.rendered.add(key);
 
   const title = viewElements.find((item) => item.key === key)?.value ?? null;
   const node = createNode(nodeKey, title, icon);
@@ -281,8 +258,7 @@ export function buildCompleteTree(
     data,
     viewElements,
     icon,
-    visited,
-    budget: nodeBudget,
+    state: buildState,
   });
 
   if (node.children?.length === 0) {
@@ -366,55 +342,17 @@ export const getTreeData = (
     labelElements.push(object);
   });
 
-  const roots: string[] = [];
+  const roots = uniq(
+    tasks
+      .filter((task) => !checkIsDownStreamTask(task, tasks))
+      .map((task) => task.name)
+  );
+  const dataState = createTreeBuildState();
+  const labelState = createTreeBuildState();
 
-  for (const task of tasks) {
-    if (!checkIsDownStreamTask(task, tasks)) {
-      roots.push(task.name);
-    }
-  }
-
-  // Compute the set of tasks reachable from the detected roots so that
-  // disconnected components (e.g. a cycle C<->D alongside A->B) are still
-  // shown. When roots is empty (a pure cycle), nothing is reachable yet and
-  // every task becomes a root — matching the previous fallback behaviour.
-  const reached = new Set<string>();
-  const reachQueue: string[] = [...roots];
-  while (reachQueue.length > 0) {
-    const name = reachQueue.shift() as string;
-    if (reached.has(name)) {
-      continue;
-    }
-    reached.add(name);
-    const task = tasks.find((t) => t.name === name);
-    for (const child of task?.downstreamTasks ?? []) {
-      if (!reached.has(child)) {
-        reachQueue.push(child);
-      }
-    }
-  }
-
-  // Any task not reached from the detected roots (a disconnected cycle or
-  // any other disconnected component) gets its own root so it is visible.
-  const unreachedRoots = tasks
-    .map((task) => task.name)
-    .filter((name) => !reached.has(name));
-
-  const effectiveRoots = [...roots, ...unreachedRoots];
-  const dataBudget: Budget = { remaining: MAX_TREE_NODES };
-  const labelBudget: Budget = { remaining: MAX_TREE_NODES };
-
-  effectiveRoots.forEach((taskName) => {
+  const addRoot = (taskName: string) => {
     treeDataList.push(
-      buildCompleteTree(
-        tasks,
-        viewElements,
-        null,
-        taskName,
-        'root',
-        new Set(),
-        dataBudget
-      )
+      buildCompleteTree(tasks, viewElements, null, taskName, 'root', dataState)
     );
     treeLabelList.push(
       buildCompleteTree(
@@ -423,11 +361,17 @@ export const getTreeData = (
         icon,
         taskName,
         'root',
-        new Set(),
-        labelBudget
+        labelState
       )
     );
+  };
+
+  roots.forEach(addRoot);
+  tasks.forEach((task) => {
+    if (!labelState.rendered.has(task.name)) {
+      addRoot(task.name);
+    }
   });
 
-  return { treeDataList, treeLabelList };
+  return { treeDataList, treeLabelList, isTruncated: labelState.truncated };
 };

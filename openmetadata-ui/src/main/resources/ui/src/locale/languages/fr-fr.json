@@ -5925,6 +5925,7 @@
     "pipeline-service-disabled-agent-actions": "Le service de pipelines est désactivé sur ce déploiement. Les agents sont affichés dans leur dernier état enregistré, et les déployer ou les exécuter n'aura aucun effet jusqu'à ce qu'il soit activé.",
     "pipeline-service-unreachable-agent-actions": "Le service de pipelines est injoignable. Les agents et leur historique d'exécution sont affichés dans leur dernier état enregistré, et les actions sur les agents restent indisponibles jusqu'à ce que le service réponde de nouveau.",
     "pipeline-status-empty-description": "Les exécutions apparaissent ici une fois que vous avez connecté un service de pipelines tel qu'Airflow et que sa première exécution est terminée.",
+    "pipeline-tree-view-truncated": "Ce pipeline comporte plus de chemins de tâches que la vue arborescente ne peut en afficher. Elle s'arrête à {{limit}} lignes ; les tâches au-delà sont affichées sans leurs tâches en aval.",
     "pipeline-type-pipeline-failed": "Échec du pipeline {{pipelineType}}",
     "pipeline-type-pipeline-partially-failed": "Échec partiel du pipeline {{pipelineType}}",
     "pipeline-will-trigger-manually": "La pipeline ne sera déclenchée manuellement que.",
