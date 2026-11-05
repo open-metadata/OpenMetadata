@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -1123,6 +1124,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       promptUserForDelete();
       parseConfig();
+      verifyMySqlCollation(MySqlCollationCheck::verifyDatabaseDefault);
       LOG.info("Deleting all the OpenMetadata tables.");
       dropAllTables();
       LOG.info("Running the Native Migrations.");
@@ -1318,6 +1320,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Migrating the OpenMetadata Schema.");
       parseConfig();
+      verifyMySqlCollation(MySqlCollationCheck::verify);
       validateAndRunSystemDataMigrations(force);
       LOG.info("Running Flowable schema upgrade.");
       WorkflowHandler.initialize(config, true);
@@ -3601,11 +3604,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private void validateAndRunSystemDataMigrations(boolean force) {
+  private void verifyMySqlCollation(Consumer<Jdbi> collationCheck) {
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
     if (connType == ConnectionType.MYSQL) {
-      MySqlCollationCheck.verify(jdbi);
+      collationCheck.accept(jdbi);
     }
+  }
+
+  private void validateAndRunSystemDataMigrations(boolean force) {
+    ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
