@@ -291,7 +291,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     Classification classification = getByName(null, name, Fields.EMPTY_FIELDS);
     validateNotSystemClassification(classification);
     return new ClassificationCsv(classification, user)
-        .exportCsv(listTagsForCsv(classification), callback);
+        .exportCsv(listTagsForCsv(classification, user), callback);
   }
 
   /** Import tags into a classification from CSV */
@@ -321,12 +321,13 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
   }
 
-  private List<Tag> listTagsForCsv(Classification classification) {
+  private List<Tag> listTagsForCsv(Classification classification, String user) {
     TagRepository repository = (TagRepository) Entity.getEntityRepository(TAG);
     List<Tag> tags =
         repository.listAllForCSV(
             repository.getFields("owners,reviewers,parent,domains"),
-            classification.getFullyQualifiedName());
+            classification.getFullyQualifiedName(),
+            user);
     tags.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return tags;
   }

@@ -44,6 +44,12 @@ const MAX_HTML_BOOTSTRAP_JS_FILES = 9;
 // it when the bootstrap shrinks; raising it means something new loads on every
 // page, which scripts/bundle-boot-packages.json will also have flagged.
 const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 900 * 1024;
+// The /silent-callback iframe runs on every token refresh and should load only
+// oidc-client and the token storage it shares with the app (292290 bytes in the
+// reference build). A chunk-group change that lets the app shell capture those
+// shared modules pulls the whole shell into the iframe; this catches it.
+// ADR:2026-11-02-ui-bundle-groups-the-entry-graph-and-isolates-silent-callback
+const MAX_SILENT_CALLBACK_JS_BYTES = 320 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
 // First view of a route: the index.html bootstrap plus the route chunk and its
@@ -90,14 +96,20 @@ const smallJsFiles = jsFileSizes.filter(({ size }) => size < SMALL_JS_BYTES);
 const largestJsFile = jsFileSizes.reduce((largestFile, currentFile) =>
   currentFile.size > largestFile.size ? currentFile : largestFile
 );
-const indexHtml = readFileSync(indexPath, 'utf8');
-const htmlBootstrapJsFiles = [
+const htmlJsFiles = (html) => [
   ...new Set(
-    [...indexHtml.matchAll(/assets\/([^"']+\.js)/g)].map(
-      ([, fileName]) => fileName
-    )
+    [...html.matchAll(/assets\/([^"']+\.js)/g)].map(([, fileName]) => fileName)
   ),
 ];
+const htmlBootstrapJsFiles = htmlJsFiles(readFileSync(indexPath, 'utf8'));
+const silentCallbackPath = path.join(distDirectory, 'silent-callback.html');
+const silentCallbackJsBytes = existsSync(silentCallbackPath)
+  ? htmlJsFiles(readFileSync(silentCallbackPath, 'utf8')).reduce(
+      (totalBytes, fileName) =>
+        totalBytes + statSync(path.join(assetsDirectory, fileName)).size,
+      0
+    )
+  : 0;
 // Brotli-compress the ~8 bootstrap JS files in-memory rather than reading `.br`
 // artifacts. The Vite build no longer runs brotli over every chunk (it added
 // 1-3 minutes to every production build); the deployed server/CDN handles
@@ -140,6 +152,11 @@ if (smallJsFiles.length > MAX_SMALL_JS_FILES) {
 if (htmlBootstrapJsFiles.length > MAX_HTML_BOOTSTRAP_JS_FILES) {
   failures.push(
     `index.html references ${htmlBootstrapJsFiles.length} JavaScript files (maximum ${MAX_HTML_BOOTSTRAP_JS_FILES})`
+  );
+}
+if (silentCallbackJsBytes > MAX_SILENT_CALLBACK_JS_BYTES) {
+  failures.push(
+    `silent-callback.html JavaScript is ${silentCallbackJsBytes} bytes (maximum ${MAX_SILENT_CALLBACK_JS_BYTES})`
   );
 }
 if (htmlBootstrapJsBrotliBytes > MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES) {

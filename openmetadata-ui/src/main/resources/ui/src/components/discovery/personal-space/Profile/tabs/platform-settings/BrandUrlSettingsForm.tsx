@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { SettingType } from '../../../../../../generated/settings/settings';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { updateSettingsConfig } from '../../../../../../rest/settingConfigAPI';
 import { getHyperlinkUrlValidationErrorKey } from '../../../../../../utils/CustomProperty.utils';
 import {
@@ -33,7 +34,6 @@ import SettingsFormLayout, {
   SettingsSkeleton,
 } from './SettingsFormLayout';
 import { useDeploymentManagedFields } from './useDeploymentManagedFields';
-import { useFormFieldDocs } from './useFormFieldDocs';
 import { useSettingsFetch } from './useSettingsFetch';
 
 interface BrandUrlFormValues {

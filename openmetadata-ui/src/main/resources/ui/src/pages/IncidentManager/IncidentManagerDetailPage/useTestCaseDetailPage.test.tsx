@@ -521,6 +521,34 @@ describe('useTestCaseDetailPage', () => {
     expect(showSuccessToast).toHaveBeenCalled();
   });
 
+  it('should keep the last run result when the restore response omits it', async () => {
+    const { testCaseResult, ...restoreResponse } = MOCK_TEST_CASE_DATA;
+    const restoredAt = 1_800_000_000_000;
+    (restoreTestCase as jest.Mock).mockResolvedValueOnce({
+      ...restoreResponse,
+      deleted: false,
+      updatedAt: restoredAt,
+    });
+    mockUseTestCase.testCase = { ...MOCK_TEST_CASE_DATA, deleted: true };
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleRestore();
+    });
+
+    await waitFor(() =>
+      expect(mockUseTestCase.setTestCase).toHaveBeenCalledWith(
+        expect.objectContaining({ updatedAt: restoredAt })
+      )
+    );
+
+    expect(mockUseTestCase.setTestCase).toHaveBeenLastCalledWith(
+      expect.objectContaining({ testCaseResult, updatedAt: restoredAt })
+    );
+  });
+
   it('should report restore failures without showing a success toast', async () => {
     const error = new Error('Restore failed');
     (restoreTestCase as jest.Mock).mockRejectedValueOnce(error);

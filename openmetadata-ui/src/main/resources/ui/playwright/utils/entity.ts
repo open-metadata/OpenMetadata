@@ -727,7 +727,10 @@ export const searchCertification = async (page: Page, name: string) => {
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
     .fill(name);
-  expect((await searchResponse).status()).toBe(200);
+  const response = await searchResponse;
+  expect(response.status()).toBe(200);
+
+  return response;
 };
 
 export const assignCertification = async (
@@ -747,7 +750,20 @@ export const assignCertification = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
-  await searchCertification(page, certification.responseData.name);
+  const searchResponse = await searchCertification(
+    page,
+    certification.responseData.name
+  );
+  const hits: { _source: { fullyQualifiedName: string } }[] = (
+    await searchResponse.json()
+  ).hits.hits;
+  // The picker only lists tags of an enabled Certification classification; an
+  // empty result means a concurrent spec disabled it, so fail here instead of
+  // timing out on a click that can never land.
+  expect(
+    hits.map((hit) => hit._source.fullyQualifiedName),
+    'Certification tag missing from search — Certification classification disabled by a concurrent spec?'
+  ).toContain(certification.responseData.fullyQualifiedName);
 
   const patchRequest = page.waitForResponse(
     (response) =>

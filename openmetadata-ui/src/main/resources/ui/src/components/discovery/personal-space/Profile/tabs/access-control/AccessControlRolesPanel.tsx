@@ -34,11 +34,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -53,6 +49,7 @@ import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -79,12 +76,12 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,10 +91,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   );
   const fetchRequestIdRef = useRef(0);
 
-  const showPagination = useMemo(
-    () => Boolean(paging.before || paging.after) || paging.total > pageSize,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(roles);
 
   const { permissions } = usePermissionProvider();
 
@@ -264,6 +258,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -303,6 +298,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         color="link-color"
         key={key}
         size="sm"
+        tooltip={getEntityName(policy)}
+        tooltipPlacement="top"
         onPress={() =>
           onNavigate({
             type: 'policies-detail',
@@ -386,11 +383,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
             entityName={getEntityName(role)}
             entityType={EntityType.ROLE}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`delete-action-${getEntityName(role)}`}
               icon={Trash01}
               isDisabled={!deleteRolePermission}
-              size="xs"
+              size="lg"
               tooltip={
                 deleteRolePermission
                   ? t('label.delete-entity', { entity: t('label.role') })
@@ -481,11 +477,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}
