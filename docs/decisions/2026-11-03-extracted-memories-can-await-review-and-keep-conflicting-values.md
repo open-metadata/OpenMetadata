@@ -48,7 +48,8 @@ survived.
   without being its own question's rewording starts Unprocessed, so a value a reviewer rejected or
   replaced never returns to grounding unreviewed. A pill a person decided is a Manual correction or
   one a review moved out of `Approved` or `Unprocessed`, and its review decides it; a value
-  resembles it when it clears the similarity bar without a conflicting number.
+  resembles it when it clears the similarity bar without a conflicting number, or with one
+  beside a correction, whose look-alike may be the very value the person replaced.
 - Extracted memories stay owned by their writer. A conflict review over one is also assigned to
   whoever owns its source when the review opens; owning the memory would keep it readable after
   the source changes hands.

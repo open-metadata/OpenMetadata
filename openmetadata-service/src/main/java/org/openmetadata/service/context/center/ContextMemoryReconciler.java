@@ -165,10 +165,15 @@ public class ContextMemoryReconciler {
       ContextMemory pill, Map<String, ContextMemory> derivedByQuestion, ReconciliationPlan plan) {
     List<Candidate> clearing = candidatesClearingTheBar(derivedByQuestion, pill);
     clearing.stream()
-        .filter(Candidate::isLookalike)
+        .filter(candidate -> resemblesTheDecision(pill, candidate))
         .map(Candidate::key)
         .forEach(plan.heldForReview::add);
     removeMostSimilar(derivedByQuestion, pill, clearing);
+  }
+
+  /** Beside a correction, even a different number may be the very value the person replaced. */
+  private static boolean resemblesTheDecision(ContextMemory pill, Candidate candidate) {
+    return candidate.isLookalike() || isHumanOwned(pill);
   }
 
   private void planNewMemories(

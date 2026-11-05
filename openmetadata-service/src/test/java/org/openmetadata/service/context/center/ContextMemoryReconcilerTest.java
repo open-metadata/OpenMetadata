@@ -643,6 +643,23 @@ class ContextMemoryReconcilerTest {
     assertCreatedAwaitingReview(WINDOW_FOR_REFUNDS);
   }
 
+  /** The document's original value under a reworded question must not return beside a correction. */
+  @Test
+  void theValueACorrectionReplacedAwaitsReviewWhenItsQuestionIsReworded() {
+    existing(
+        pill(
+            REFUND_WINDOW,
+            "45 days",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED));
+
+    reconcile(List.of(derived(WINDOW_FOR_REFUNDS, "30 days")));
+
+    verify(memoryRepository, never()).releaseExtractedMemory(any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
+    assertCreatedAwaitingReview(WINDOW_FOR_REFUNDS);
+  }
+
   /**
    * The trade-off of holding look-alikes: "UK" and "US" are two questions, so the Rejected UK rate
    * never claims the US one, but it cannot tell the equal US rate from its own reworded either.
