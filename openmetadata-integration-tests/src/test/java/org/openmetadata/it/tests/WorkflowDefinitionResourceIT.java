@@ -12131,6 +12131,111 @@ public class WorkflowDefinitionResourceIT {
     return instances.get(0);
   }
 
+  @Test
+  void test_patchingTheWorkflowGraphNeedsEditAll(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient nonAdmin = SdkClients.user3Client();
+    String workflowPath = createWorkflowFor(admin, buildMinimalWorkflowRequest(ns.prefix("graph")));
+
+    for (String path :
+        List.of(
+            "/trigger/config/batchSize",
+            "/nodes/1/description",
+            "/edges/0/from",
+            "/config/storeStageStatus")) {
+      JsonNode patch =
+          MAPPER.readTree(
+              """
+              [{"op": "add", "path": "%s", "value": "edited by a non-admin user"}]
+              """
+                  .formatted(path));
+      OpenMetadataException forbidden =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> executeWorkflowRequest(nonAdmin, HttpMethod.PATCH, workflowPath, patch));
+      assertEquals(403, forbidden.getStatusCode(), path);
+    }
+
+    String described =
+        executeWorkflowRequest(
+            nonAdmin,
+            HttpMethod.PATCH,
+            workflowPath,
+            MAPPER.readTree(
+                """
+                [{"op": "replace", "path": "/description", "value": "edited by a non-admin user"}]
+                """));
+    assertEquals(
+        "edited by a non-admin user", MAPPER.readTree(described).get("description").asText());
+  }
+
+  @Test
+  void test_triggerFilterEntriesMustBeStrings(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Map<String, Object> request = buildMinimalWorkflowRequest(ns.prefix("filterEntries"));
+    request.put("type", "eventBasedEntity");
+    request.put(
+        "trigger",
+        Map.of(
+            "type",
+            "eventBasedEntity",
+            "config",
+            Map.of(
+                "entityTypes",
+                List.of("table"),
+                "events",
+                List.of("Created"),
+                "filter",
+                Map.of("table", "{\"==\":[1,1]}")),
+            "output",
+            List.of("relatedEntity")));
+    String workflowPath = createWorkflowFor(admin, request);
+
+    for (String value : List.of("{\"nested\": \"value\"}", "[\"value\"]")) {
+      JsonNode patch =
+          MAPPER.readTree(
+              """
+              [{"op": "add", "path": "/trigger/config/filter/dashboard", "value": %s}]
+              """
+                  .formatted(value));
+      OpenMetadataException rejected =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> executeWorkflowRequest(admin, HttpMethod.PATCH, workflowPath, patch));
+      assertEquals(400, rejected.getStatusCode(), value);
+    }
+
+    JsonNode stored =
+        MAPPER.readTree(executeWorkflowRequest(admin, HttpMethod.GET, workflowPath, null));
+    assertTrue(stored.at("/trigger/config/filter/dashboard").isMissingNode());
+  }
+
+  @Test
+  void test_redeployNeedsEditAll(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String workflowPath =
+        createWorkflowFor(admin, buildMinimalWorkflowRequest(ns.prefix("redeployRights")));
+
+    OpenMetadataException forbidden =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                executeWorkflowRequest(
+                    SdkClients.user3Client(), HttpMethod.POST, workflowPath + "/redeploy", null));
+    assertEquals(403, forbidden.getStatusCode());
+    assertTrue(
+        executeWorkflowRequest(admin, HttpMethod.POST, workflowPath + "/redeploy", null)
+            .contains("Redeployed"));
+  }
+
+  private String createWorkflowFor(OpenMetadataClient client, Map<String, Object> request)
+      throws Exception {
+    JsonNode created =
+        MAPPER.readTree(executeWorkflowRequest(client, HttpMethod.POST, BASE_PATH, request));
+    trackWorkflowFromJson(created);
+    return "%s/%s".formatted(BASE_PATH, created.get("id").asText());
+  }
+
   private String executeWorkflowRequest(
       OpenMetadataClient client, HttpMethod method, String path, Object body) {
     return client

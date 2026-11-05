@@ -109,6 +109,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.tasks.TaskTargetOperations;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -1292,8 +1293,15 @@ public class FeedRepository {
     return new PatchResponse<>(Status.OK, updatedHref, change);
   }
 
+  /**
+   * @param newValue the value a resolution applies, or {@code null} when the task is closed
+   */
   public void checkPermissionsForResolveTask(
-      Authorizer authorizer, Thread thread, boolean closeTask, SecurityContext securityContext) {
+      Authorizer authorizer,
+      Thread thread,
+      boolean closeTask,
+      SecurityContext securityContext,
+      String newValue) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
     EntityLink about = EntityLink.parse(thread.getAbout());
@@ -1317,43 +1325,28 @@ public class FeedRepository {
     }
 
     // Allow if user is an assignee of the task and if the assignee has permissions to update the
-    // entity. Accept either the specific permission OR EDIT_ALL (which encompasses all edit perms)
+    // entity. Accept each operation the entity's own PATCH requires for the change OR EDIT_ALL
+    // (which encompasses all edit perms)
+    Set<MetadataOperation> assigneeOperations =
+        assigneeOperations(threadContext, aboutRef, userName, newValue);
     if (assignees.stream().anyMatch(assignee -> assignee.getName().equals(userName))) {
-      ResourceContext resourceContext =
-          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
-      OperationContext editAllOpContext =
-          new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_ALL);
-      if (EntityUtil.isDescriptionTask(threadContext.getTaskWorkflow().getTaskType())) {
-        OperationContext specificOpContext =
-            new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_DESCRIPTION);
-        authorizer.authorizeRequests(
-            securityContext,
-            List.of(
-                new AuthRequest(specificOpContext, resourceContext),
-                new AuthRequest(editAllOpContext, resourceContext)),
-            AuthorizationLogic.ANY);
-      } else if (EntityUtil.isTagTask(threadContext.getTaskWorkflow().getTaskType())) {
-        OperationContext specificOpContext =
-            new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_TAGS);
-        authorizer.authorizeRequests(
-            securityContext,
-            List.of(
-                new AuthRequest(specificOpContext, resourceContext),
-                new AuthRequest(editAllOpContext, resourceContext)),
-            AuthorizationLogic.ANY);
-      }
+      authorizeAssigneeEdit(authorizer, securityContext, aboutRef, assigneeOperations);
       return;
     }
 
-    // Allow if user belongs to a team that has task assigned to it
     // Allow if user belongs to a team if owner of the resource against which task is created
     List<EntityReference> teams = user.getTeams();
     List<String> teamNames = teams.stream().map(EntityReference::getName).toList();
-    if (assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))
-        || (!nullOrEmpty(owners)
-            && teamNames.stream()
-                .anyMatch(
-                    team -> owners.stream().anyMatch(owner -> team.equals(owner.getName()))))) {
+    if (!nullOrEmpty(owners)
+        && teamNames.stream()
+            .anyMatch(team -> owners.stream().anyMatch(owner -> team.equals(owner.getName())))) {
+      return;
+    }
+
+    // Allow if user belongs to a team that has task assigned to it, with the same permissions an
+    // assignee needs
+    if (assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))) {
+      authorizeAssigneeEdit(authorizer, securityContext, aboutRef, assigneeOperations);
       return;
     }
 
@@ -1361,6 +1354,53 @@ public class FeedRepository {
     throw new AuthorizationException(
         CatalogExceptionMessage.taskOperationNotAllowed(
             userName, closeTask ? "closeTask" : "resolveTask"));
+  }
+
+  private static MetadataOperation assigneeTaskOperation(TaskType taskType) {
+    MetadataOperation operation = null;
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      operation = MetadataOperation.EDIT_DESCRIPTION;
+    } else if (EntityUtil.isTagTask(taskType)) {
+      operation = MetadataOperation.EDIT_TAGS;
+    }
+    return operation;
+  }
+
+  // A tag task replaces the field's labels with the new value, so the labels it removes are among
+  // those the task was filed with; every label of either list needs its own operation.
+  private static Set<MetadataOperation> assigneeOperations(
+      ThreadContext threadContext, EntityReference aboutRef, String userName, String newValue) {
+    TaskType taskType = threadContext.getTaskWorkflow().getTaskType();
+    MetadataOperation taskOperation = assigneeTaskOperation(taskType);
+    Set<MetadataOperation> operations = new LinkedHashSet<>();
+    if (taskOperation != null) {
+      operations.add(TaskTargetOperations.forTarget(aboutRef, taskOperation, userName));
+    }
+    if (EntityUtil.isTagTask(taskType) && newValue != null) {
+      List<String> labelLists = new ArrayList<>();
+      labelLists.add(threadContext.getThread().getTask().getOldValue());
+      labelLists.add(newValue);
+      operations.addAll(TaskTargetOperations.forEncodedTagLabels(labelLists));
+    }
+    return operations;
+  }
+
+  private static void authorizeAssigneeEdit(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      EntityReference aboutRef,
+      Set<MetadataOperation> operations) {
+    ResourceContext<?> resourceContext =
+        new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+    OperationContext editAll = new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_ALL);
+    for (MetadataOperation operation : operations) {
+      authorizer.authorizeRequests(
+          securityContext,
+          List.of(
+              new AuthRequest(new OperationContext(aboutRef.getType(), operation), resourceContext),
+              new AuthRequest(editAll, resourceContext)),
+          AuthorizationLogic.ANY);
+    }
   }
 
   private void validateAnnouncement(Thread thread) {

@@ -1,7 +1,9 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -20,6 +22,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.util.FieldChangeValueExtractor;
@@ -43,7 +46,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
           new BatchEntities.NodeExecution(
               batchExecutionExpr, execution, varHandler, inputNamespaces),
           batchContinuingOutcomeExpr,
-          entityLink -> checkChangeDescription(changeRules, entityLink),
+          entityLink -> checkChangeDescription(changeRules, entityLink, null),
           () -> checkRelatedEntity(varHandler, inputNamespaces, changeRules));
     } catch (Exception exc) {
       LOG.error(
@@ -61,7 +64,10 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
         (String)
             varHandler.getNamespacedVariable(
                 inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
-    return checkChangeDescription(changeRules, entityLinkStr);
+    return checkChangeDescription(
+        changeRules,
+        entityLinkStr,
+        varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE));
   }
 
   /** The node's condition and rules, read from the execution on the job thread. */
@@ -79,13 +85,15 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     return new ChangeRules(condition, rules);
   }
 
-  private boolean checkChangeDescription(ChangeRules changeRules, String entityLinkStr) {
+  private boolean checkChangeDescription(
+      ChangeRules changeRules, String entityLinkStr, Object triggeringVersion) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
 
-    // No changeDescription means it's a create event - return true
-    ChangeDescription changeDescription = entity.getChangeDescription();
+    // The change of the version the triggering event produced; no change description means a
+    // create event -> true.
+    ChangeDescription changeDescription = TriggeringChange.of(entity, triggeringVersion);
     if (changeDescription == null) {
       LOG.debug("No changeDescription found (likely a create event), returning true");
       return true;
