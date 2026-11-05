@@ -33,6 +33,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v208.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
@@ -45,8 +46,10 @@ class WorkflowRedeployEntryPointTest {
       String database, Function<MigrationFile, MigrationProcessImpl> createMigration)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
-    setField(migration, "handle", mock(Handle.class));
-    setField(migration, "collectionDAO", mock(CollectionDAO.class));
+    Handle handle = mock(Handle.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    setField(migration, "handle", handle);
+    setField(migration, "collectionDAO", collectionDAO);
     setField(migration, "migrationDAO", mock(MigrationDAO.class));
 
     try (MockedStatic<ConnectionSecretsEncryptionMigration> secretsEncryption =
@@ -56,13 +59,17 @@ class WorkflowRedeployEntryPointTest {
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
             mockStatic(WorkflowRedeployMigration.class);
-        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class)) {
+        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<DataProductDomainContainmentRepair> containmentRepair =
+            mockStatic(DataProductDomainContainmentRepair.class)) {
       migration.runDataMigration();
 
       migrationUtil.verify(MigrationUtil::rewriteWorkflowRules);
       // `migrate` runs before Flowable starts, so the steps that deploy workflows start it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
+      containmentRepair.verify(
+          () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
     }
   }
 
