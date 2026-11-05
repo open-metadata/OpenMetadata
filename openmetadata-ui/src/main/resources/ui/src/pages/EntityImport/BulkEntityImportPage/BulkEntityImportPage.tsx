@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Dialog,
   Modal,
@@ -111,6 +112,7 @@ import {
   getCSVStringFromColumnsAndDataSource,
   getFailedImportRowIds,
   normalizeCsvLineBreaks,
+  restoreFormula,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import entityBulkEditConfigClassBase, {
@@ -846,7 +848,7 @@ const BulkEntityImportPage = () => {
       // results.data is returning data with unknown type
       const cellEditable = true;
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
-        results.data as string[][],
+        (results.data as string[][]).map((row) => row.map(restoreFormula)),
         importedEntityType,
         {
           user: entityRules.canAddMultipleUserOwners,
@@ -1649,13 +1651,13 @@ const BulkEntityImportPage = () => {
             )}`}
           </span>
         </div>
-        <button
-          aria-label={t('label.remove')}
-          className="csv-selected-file-remove"
-          type="button"
-          onClick={() => setSelectedCsvFile(undefined)}>
-          <XClose size={18} />
-        </button>
+        <ButtonUtility
+          className="tw:shrink-0"
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.remove')}
+          onClick={() => setSelectedCsvFile(undefined)}
+        />
       </div>
     );
   };

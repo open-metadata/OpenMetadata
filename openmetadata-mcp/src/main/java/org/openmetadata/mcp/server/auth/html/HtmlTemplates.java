@@ -2,6 +2,8 @@ package org.openmetadata.mcp.server.auth.html;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 public class HtmlTemplates {
 
   private static final String LOGIN_FORM_TEMPLATE =
@@ -149,7 +151,9 @@ public class HtmlTemplates {
                   </svg>
               </div>
               <h1>Welcome to OpenMetadata</h1>
-              <p class="subtitle">%s is requesting access to your account</p>
+              <p class="subtitle">%s is requesting access to your account. If you sign in, it can act
+                 on your behalf and you will be sent to <strong>%s</strong>. Do not sign in if you
+                 did not start this request.</p>
               %s
               <form method="POST" action="login">
                   <input type="hidden" name="csrf_token" value="%s">
@@ -251,7 +255,71 @@ public class HtmlTemplates {
       </html>
       """;
 
-  public static String generateLoginForm(String clientName, String errorMessage, String csrfToken) {
+  // No meta refresh and no script: the user decides whether to follow the link.
+  private static final String ERROR_RETURN_TEMPLATE =
+      """
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>%s - OpenMetadata</title>
+          <style>
+              body {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                  background: #f8f9fc; color: #333; margin: 0; min-height: 100vh;
+                  display: flex; align-items: center; justify-content: center;
+              }
+              .card {
+                  background: #fff; border-radius: 12px; padding: 48px; max-width: 480px;
+                  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); text-align: center;
+              }
+              h1 { color: #c62828; margin: 0 0 12px; }
+              p { margin: 4px 0; color: #666; }
+              a { display: inline-block; margin-top: 20px; color: #1570ef; }
+          </style>
+      </head>
+      <body>
+          <div class="card">
+              <h1>%s</h1>
+              <p>%s</p>
+              <a href="%s" rel="noreferrer">Return to %s</a>
+          </div>
+      </body>
+      </html>
+      """;
+
+  /** An error page with one link back to the client, for a callback that is not trusted. */
+  public static String generateErrorReturnPage(
+      String title, String message, String returnUrl, String destination) {
+    String safeTitle = escapeHtml(title);
+    return String.format(
+        ERROR_RETURN_TEMPLATE,
+        safeTitle,
+        safeTitle,
+        escapeHtml(message),
+        escapeHtml(returnUrl),
+        escapeHtml(destination));
+  }
+
+  /**
+   * Sets the headers every MCP sign-in page carries: never cached, and never framed, so another
+   * site cannot show the page under its own address or cover the line naming where access goes.
+   */
+  public static void setSignInPageHeaders(HttpServletResponse response) {
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("X-Frame-Options", "DENY");
+    // Added next to any policy the web security headers set; browsers enforce both.
+    response.addHeader("Content-Security-Policy", "frame-ancestors 'none'");
+  }
+
+  /**
+   * The password sign-in page. It names where the code goes before the user types a password, so
+   * signing in is the approval the SSO flow asks for on its consent page.
+   * ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+   */
+  public static String generateLoginForm(
+      String clientName, String redirectTarget, String errorMessage, String csrfToken) {
 
     String errorHtml =
         errorMessage != null && !errorMessage.isEmpty()
@@ -261,7 +329,8 @@ public class HtmlTemplates {
     String safeClientName = escapeHtml(clientName != null ? clientName : "An application");
     String safeCsrfToken = escapeHtml(csrfToken != null ? csrfToken : "");
 
-    return String.format(LOGIN_FORM_TEMPLATE, safeClientName, errorHtml, safeCsrfToken);
+    return String.format(
+        LOGIN_FORM_TEMPLATE, safeClientName, escapeHtml(redirectTarget), errorHtml, safeCsrfToken);
   }
 
   public static String generateConsentForm(

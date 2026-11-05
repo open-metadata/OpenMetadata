@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -21,31 +22,50 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.api.data.MetricHierarchyItem;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.NoopAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 class MetricRepositoryTest {
@@ -161,6 +181,35 @@ class MetricRepositoryTest {
           EntityStatus.DRAFT,
           fixture.repository().initialEntityStatus(askingToSkipReview),
           "a metric with reviewers cannot be created already approved");
+    }
+  }
+
+  @Test
+  void groupInDomainPickScansEachGroupsMembersOncePerRequest() {
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity =
+            mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      MetricGroupRepository groups = mock(MetricGroupRepository.class);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC_GROUP)).thenReturn(groups);
+      UUID groupId = UUID.randomUUID();
+      when(groups.hasVisibleMemberMatching(
+              org.mockito.ArgumentMatchers.eq(groupId),
+              org.mockito.ArgumentMatchers.isNull(),
+              org.mockito.ArgumentMatchers.any()))
+          .thenReturn(true);
+      EntityReference group = new EntityReference().withId(groupId).withType(Entity.METRIC_GROUP);
+
+      java.util.function.Predicate<EntityReference> inPick =
+          fixture.repository().groupInDomainPick(java.util.Optional.empty(), metric -> true);
+
+      // The hierarchy tests a group for its own row and again for each of its metrics.
+      assertTrue(inPick.test(group));
+      assertTrue(inPick.test(group));
+      verify(groups, org.mockito.Mockito.times(1))
+          .hasVisibleMemberMatching(
+              org.mockito.ArgumentMatchers.eq(groupId),
+              org.mockito.ArgumentMatchers.isNull(),
+              org.mockito.ArgumentMatchers.any());
     }
   }
 
@@ -309,6 +358,213 @@ class MetricRepositoryTest {
     assertNull(sanitized.getMetricGroup());
     assertNotNull(source.getParent());
     assertNotNull(source.getMetricGroup());
+  }
+
+  @Test
+  void relationSanitizationFiltersChildrenRelatedMetricsAndStoredChangeDescriptions() {
+    EntityReference hiddenParent = metricReference(UUID.randomUUID(), "restricted_parent");
+    EntityReference visibleChild = metricReference(UUID.randomUUID(), "visible_child");
+    EntityReference hiddenChild = metricReference(UUID.randomUUID(), "restricted_child");
+    EntityReference visibleRelated = metricReference(UUID.randomUUID(), "visible_related");
+    EntityReference hiddenRelated = metricReference(UUID.randomUUID(), "restricted_related");
+    EntityReference visibleGroup = groupReference(UUID.randomUUID(), "visible_group");
+    Metric source =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("visible_metric")
+            .withParent(hiddenParent)
+            .withMetricGroup(visibleGroup)
+            .withChildren(new ArrayList<>(List.of(visibleChild, hiddenChild)))
+            .withRelatedMetrics(new ArrayList<>(List.of(visibleRelated, hiddenRelated)))
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(
+                        List.of(
+                            new FieldChange()
+                                .withName("parent")
+                                .withNewValue(JsonUtils.pojoToJson(hiddenParent)),
+                            new FieldChange()
+                                .withName("relatedMetrics")
+                                .withNewValue(JsonUtils.pojoToJson(List.of(visibleRelated))),
+                            new FieldChange()
+                                .withName("description")
+                                .withNewValue("a description"))))
+            .withIncrementalChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("parent")
+                                .withOldValue(JsonUtils.pojoToJson(hiddenParent))
+                                .withNewValue(JsonUtils.pojoToJson(visibleChild)))));
+
+    Set<UUID> hidden = Set.of(hiddenParent.getId(), hiddenChild.getId(), hiddenRelated.getId());
+    Metric sanitized =
+        MetricRepository.sanitizeHierarchyMetric(
+            source,
+            reference -> !hidden.contains(reference.getId()),
+            reference -> !hidden.contains(reference.getId()));
+
+    assertNull(sanitized.getParent());
+    assertEquals(visibleGroup, sanitized.getMetricGroup());
+    assertEquals(List.of(visibleChild), sanitized.getChildren());
+    assertEquals(List.of(visibleRelated), sanitized.getRelatedMetrics());
+    assertEquals(
+        List.of("relatedMetrics", "description"),
+        sanitized.getChangeDescription().getFieldsAdded().stream()
+            .map(FieldChange::getName)
+            .toList());
+    assertEquals(List.of(), sanitized.getIncrementalChangeDescription().getFieldsUpdated());
+    // the source entity is left untouched
+    assertEquals(hiddenParent, source.getParent());
+    assertEquals(
+        List.of("parent", "relatedMetrics", "description"),
+        source.getChangeDescription().getFieldsAdded().stream().map(FieldChange::getName).toList());
+  }
+
+  @Test
+  void storedChangeValuesAreVisibleOnlyWhenEveryReferencedEntityIsVisible() {
+    EntityReference visible = metricReference(UUID.randomUUID(), "visible_metric");
+    EntityReference hidden = metricReference(UUID.randomUUID(), "restricted_metric");
+    Predicate<EntityReference> canView = reference -> visible.getId().equals(reference.getId());
+
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities(null, canView));
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities("", canView));
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities("plain text", canView));
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities(42, canView));
+    assertTrue(MetricRepository.referencesOnlyVisibleEntities("[unclosed", canView));
+    assertTrue(
+        MetricRepository.referencesOnlyVisibleEntities(JsonUtils.pojoToJson(visible), canView));
+    assertFalse(
+        MetricRepository.referencesOnlyVisibleEntities(JsonUtils.pojoToJson(hidden), canView));
+    assertTrue(
+        MetricRepository.referencesOnlyVisibleEntities(
+            JsonUtils.pojoToJson(List.of(visible)), canView));
+    assertFalse(
+        MetricRepository.referencesOnlyVisibleEntities(
+            JsonUtils.pojoToJson(List.of(visible, hidden)), canView));
+  }
+
+  @Test
+  void aFailingVisibilityCheckPropagatesInsteadOfShowingTheChange() {
+    EntityReference reference = metricReference(UUID.randomUUID(), "unchecked_metric");
+    Predicate<EntityReference> failingCheck =
+        ignored -> {
+          throw new IllegalStateException("policy evaluation failed");
+        };
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            MetricRepository.referencesOnlyVisibleEntities(
+                JsonUtils.pojoToJson(reference), failingCheck));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            MetricRepository.referencesOnlyVisibleEntities(
+                JsonUtils.pojoToJson(List.of(reference)), failingCheck));
+  }
+
+  @Test
+  void relationSanitizationRecountsChildrenCountWithOnlyVisibleChildren() {
+    Metric metric = new Metric().withId(UUID.randomUUID()).withName("parent").withChildrenCount(2);
+    UUID visibleChildId = UUID.randomUUID();
+    UUID hiddenChildId = UUID.randomUUID();
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture
+              .metricDAO()
+              .listChildIds(metric.getId(), Relationship.CONTAINS.ordinal(), 200, 0))
+          .thenReturn(List.of(visibleChildId.toString(), hiddenChildId.toString()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      Entity.METRIC, List.of(visibleChildId, hiddenChildId), NON_DELETED))
+          .thenReturn(
+              List.of(
+                  metricReference(visibleChildId, "visible_child"),
+                  metricReference(hiddenChildId, "restricted_child")));
+
+      Metric sanitized =
+          fixture
+              .repository()
+              .sanitizeMetricRelations(
+                  metric, reference -> visibleChildId.equals(reference.getId()), ignored -> true);
+
+      assertEquals(1, sanitized.getChildrenCount());
+      assertEquals(2, metric.getChildrenCount());
+    }
+  }
+
+  @Test
+  void pageSanitizationRecountsChildrenCountsWithOneBatchQuery() {
+    Metric first = new Metric().withId(UUID.randomUUID()).withName("first").withChildrenCount(2);
+    Metric second = new Metric().withId(UUID.randomUUID()).withName("second").withChildrenCount(1);
+    UUID visibleChildId = UUID.randomUUID();
+    UUID hiddenChildId = UUID.randomUUID();
+    UUID secondChildId = UUID.randomUUID();
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(fixture
+              .relationshipDAO()
+              .findToBatch(
+                  List.of(first.getId().toString(), second.getId().toString()),
+                  Relationship.CONTAINS.ordinal(),
+                  Entity.METRIC,
+                  Entity.METRIC))
+          .thenReturn(
+              List.of(
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(first.getId().toString())
+                      .toId(visibleChildId.toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(first.getId().toString())
+                      .toId(hiddenChildId.toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(second.getId().toString())
+                      .toId(secondChildId.toString())
+                      .build()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      eq(Entity.METRIC),
+                      argThat(
+                          ids ->
+                              ids.containsAll(
+                                  List.of(visibleChildId, hiddenChildId, secondChildId))),
+                      eq(NON_DELETED)))
+          .thenReturn(
+              List.of(
+                  metricReference(visibleChildId, "visible_child"),
+                  metricReference(hiddenChildId, "restricted_child"),
+                  metricReference(secondChildId, "second_child")));
+
+      List<Metric> sanitized =
+          fixture
+              .repository()
+              .sanitizeMetricRelations(
+                  List.of(first, second),
+                  reference -> !hiddenChildId.equals(reference.getId()),
+                  ignored -> true);
+
+      assertEquals(1, sanitized.get(0).getChildrenCount());
+      assertEquals(1, sanitized.get(1).getChildrenCount());
+      verify(fixture.relationshipDAO(), times(1))
+          .findToBatch(
+              anyList(), eq(Relationship.CONTAINS.ordinal()), eq(Entity.METRIC), eq(Entity.METRIC));
+    }
+  }
+
+  private static EntityReference metricReference(UUID id, String name) {
+    return new EntityReference().withId(id).withType(Entity.METRIC).withName(name);
+  }
+
+  private static EntityReference groupReference(UUID id, String name) {
+    return new EntityReference().withId(id).withType(Entity.METRIC_GROUP).withName(name);
   }
 
   @Test
@@ -535,6 +791,196 @@ class MetricRepositoryTest {
           () -> assertSame(transactionMetricDAO, fixture.repository().entityDAOForWrite()));
       assertSame(fixture.metricDAO(), fixture.repository().entityDAOForWrite());
     }
+  }
+
+  @Test
+  void platformWideExportAppliesViewPermissionsAndDomainIsolation() throws IOException {
+    Metric own = exportedMetric("campaign_clicks", "Marketing", "Clicks per campaign");
+    Metric foreign =
+        exportedMetric(
+            "ceo_bonus_pool", "Finance", "Bonus pool of the executive board, 4.2M in FY26");
+    Metric denied = exportedMetric("restricted_campaign", "Marketing", "Restricted campaign");
+    SubjectContext erin = domainRestrictedSubject("Marketing");
+    SubjectContext admin = adminSubject();
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<SubjectContext> subjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      MetricRepository repository = Mockito.spy(fixture.repository());
+      Authorizer authorizer = mockAuthorizer(entity);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      Mockito.doReturn(List.of(own, foreign, denied))
+          .when(repository)
+          .get(any(), anyList(), any(Fields.class), eq(Include.ALL));
+      doThrow(new AuthorizationException("ViewAll denied"))
+          .when(authorizer)
+          .authorizeActor(
+              any(), any(), argThat(context -> denied.getId().equals(context.getEntity().getId())));
+      Mockito.doReturn(List.of(own, foreign, denied))
+          .when(repository)
+          .listAll(any(Fields.class), any(ListFilter.class));
+      subjectContext.when(() -> SubjectContext.getSubjectContext("erin")).thenReturn(erin);
+      subjectContext.when(() -> SubjectContext.getSubjectContext("admin")).thenReturn(admin);
+
+      String restrictedCsv = repository.exportToCsv("*", "erin", false);
+      assertTrue(restrictedCsv.contains("campaign_clicks"));
+      assertFalse(
+          restrictedCsv.contains("ceo_bonus_pool"),
+          "a domain-confined subject must not see other domains' metrics in the export");
+      assertFalse(restrictedCsv.contains("Bonus pool of the executive board"));
+      assertFalse(restrictedCsv.contains("restricted_campaign"));
+
+      String adminCsv = repository.exportToCsv("*", "admin", false);
+      assertTrue(adminCsv.contains("campaign_clicks"));
+      assertTrue(adminCsv.contains("ceo_bonus_pool"));
+      assertTrue(adminCsv.contains("restricted_campaign"));
+      assertTrue(adminCsv.contains("Bonus pool of the executive board, 4.2M in FY26"));
+    }
+  }
+
+  @Test
+  void platformWideExportKeepsEveryRowForASubjectWithoutTheDomainRole() throws IOException {
+    Metric metric = exportedMetric("campaign_clicks", "Marketing", "Clicks per campaign");
+    SubjectContext plain = unrestrictedSubject();
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<SubjectContext> subjectContext = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      MetricRepository repository = Mockito.spy(fixture.repository());
+      mockAuthorizer(entity);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      Mockito.doReturn(List.of(metric))
+          .when(repository)
+          .get(any(), anyList(), any(Fields.class), eq(Include.ALL));
+      Mockito.doReturn(List.of(metric))
+          .when(repository)
+          .listAll(any(Fields.class), any(ListFilter.class));
+      subjectContext.when(() -> SubjectContext.getSubjectContext("plain")).thenReturn(plain);
+
+      String csv = repository.exportToCsv("*", "plain", false);
+
+      assertTrue(csv.contains("campaign_clicks"));
+      assertTrue(csv.contains("Clicks per campaign"));
+    }
+  }
+
+  @Test
+  void adminImportSkipsHierarchyAuthorizationAndLookups() {
+    SubjectContext admin = adminSubject();
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      subjects.when(() -> SubjectContext.getSubjectContext("admin")).thenReturn(admin);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenThrow(new AssertionError("An admin row must not load hierarchy authorization data"));
+      assertDoesNotThrow(
+          () ->
+              new MetricRepository.MetricCsv("admin")
+                  .authorizeRow(
+                      new Metric().withId(UUID.randomUUID()),
+                      new Metric().withParent(new EntityReference())));
+    }
+  }
+
+  @Test
+  void importRowDefersToTheConfiguredAuthorizer() {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      MetricRepository repository = mock(MetricRepository.class);
+      entity.when(() -> Entity.getEntityRepository(Entity.METRIC)).thenReturn(repository);
+      entity.when(Entity::getAuthorizer).thenReturn(new NoopAuthorizer());
+      Metric stored = new Metric().withId(UUID.randomUUID()).withName("m_hank");
+      stubStoredHierarchy(repository, stored);
+      EntityReference parent =
+          new EntityReference()
+              .withId(UUID.randomUUID())
+              .withType(Entity.METRIC)
+              .withFullyQualifiedName("revenue");
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.METRIC, "revenue", "metricGroup", Include.NON_DELETED))
+          .thenReturn(
+              new Metric()
+                  .withId(parent.getId())
+                  .withName("revenue")
+                  .withFullyQualifiedName("revenue"));
+
+      assertDoesNotThrow(
+          () ->
+              nonAdminMetricCsv("anonymous")
+                  .authorizeRow(stored, new Metric().withName("m_hank").withParent(parent)));
+      assertDoesNotThrow(
+          () ->
+              nonAdminMetricCsv("anonymous")
+                  .authorizeRow(null, new Metric().withName("new_metric")));
+    }
+  }
+
+  private MetricRepository.MetricCsv nonAdminMetricCsv(String user) {
+    return new MetricRepository.MetricCsv(user) {
+      @Override
+      protected boolean checksRowWrites() {
+        return true;
+      }
+    };
+  }
+
+  private static Authorizer mockAuthorizer(MockedStatic<Entity> entity) {
+    Authorizer authorizer = mock(Authorizer.class);
+    entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+    return authorizer;
+  }
+
+  private void stubStoredHierarchy(MetricRepository repository, Metric stored) {
+    // getFields on the mock returns null, so match the fields argument with the null-tolerant any()
+    when(repository.get(any(), eq(stored.getId()), any(), any(Include.class), anyBoolean()))
+        .thenReturn(stored);
+  }
+
+  private Metric exportedMetric(String name, String domain, String description) {
+    return new Metric()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withDescription(description)
+        .withDomains(List.of(domainRef(domain)));
+  }
+
+  /**
+   * A subject narrowed to {@code visibleDomains}: the role predicate a real DomainOnlyAccessRole
+   * subject answers true to and the domain hierarchy check answered from the given FQNs. Built as
+   * a mock because the static SubjectContext mock in these tests also intercepts the private
+   * static role lookup a real subject would use.
+   */
+  private SubjectContext domainRestrictedSubject(String... visibleDomains) {
+    SubjectContext subject = mock(SubjectContext.class);
+    when(subject.isAdmin()).thenReturn(false);
+    when(subject.hasDomainOnlyAccessRole()).thenReturn(true);
+    when(subject.hasDomains(any()))
+        .thenAnswer(invocation -> hasAnyDomain(invocation.getArgument(0), visibleDomains));
+    return subject;
+  }
+
+  private SubjectContext unrestrictedSubject() {
+    SubjectContext subject = mock(SubjectContext.class);
+    when(subject.isAdmin()).thenReturn(false);
+    when(subject.hasDomainOnlyAccessRole()).thenReturn(false);
+    return subject;
+  }
+
+  private SubjectContext adminSubject() {
+    SubjectContext subject = mock(SubjectContext.class);
+    when(subject.isAdmin()).thenReturn(true);
+    return subject;
+  }
+
+  private boolean hasAnyDomain(List<EntityReference> domains, String... visibleDomains) {
+    return domains != null
+        && domains.stream()
+            .anyMatch(domain -> List.of(visibleDomains).contains(domain.getFullyQualifiedName()));
+  }
+
+  private static EntityReference domainRef(String fqn) {
+    return new EntityReference().withFullyQualifiedName(fqn).withType(Entity.DOMAIN);
   }
 
   private RepositoryFixture repositoryFixture() {

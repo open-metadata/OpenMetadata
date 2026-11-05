@@ -22,7 +22,8 @@
     <quartz.version>2.5.0-rc2</quartz.version>
     <pac4j.version>6.5.6</pac4j.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
-    <json-smart.version>2.5.2</json-smart.version>
+    <!-- 2.6.1 clears CVE-2026-113602 (strict-mode trailing data check). -->
+    <json-smart.version>2.6.1</json-smart.version>
     <jetty.version>12.1.14</jetty.version>
     <logback-core.version>1.5.38</logback-core.version>
     <logback-classic.version>1.5.38</logback-classic.version>
@@ -1159,17 +1160,17 @@
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-scratchpad</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
   </dependencies>
 

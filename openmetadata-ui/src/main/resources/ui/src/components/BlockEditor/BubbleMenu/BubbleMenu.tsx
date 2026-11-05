@@ -15,7 +15,7 @@ import { isNodeSelection, type Editor } from '@tiptap/core';
 import {
   BubbleMenu as CoreBubbleMenu,
   BubbleMenuProps as CoreBubbleMenuProps,
-} from '@tiptap/react';
+} from '@tiptap/react/menus';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { FC, MouseEvent, useMemo } from 'react';
@@ -137,7 +137,6 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
             className={classNames('p-0 tw:h-8', className, {
               'is-format-active': isActive(),
             })}
-            color="tertiary"
             icon={
               isString(Icon) ? (
                 <Typography as="article" className="format-label">

@@ -717,17 +717,26 @@ export const removeTier = async (page: Page, endpoint: string) => {
 
 // The certification picker loads 50 at a time; searching reaches any certification.
 export const searchCertification = async (page: Page, name: string) => {
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=tag&') &&
-      !response.url().includes('q=&')
-  );
+  // A previous debounced query can finish after fill(). URLSearchParams has
+  // already decoded URI encoding, leaving the query's Elasticsearch escapes.
+  const query = `*${escapeESReservedCharacters(name)}*`;
+  const searchResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'tag' &&
+      url.searchParams.get('q') === query
+    );
+  });
   await page
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
     .fill(name);
-  expect((await searchResponse).status()).toBe(200);
+  const response = await searchResponse;
+  expect(response.status()).toBe(200);
+
+  return response;
 };
 
 export const assignCertification = async (
@@ -747,7 +756,17 @@ export const assignCertification = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
-  await searchCertification(page, certification.responseData.name);
+  const searchResponse = await searchCertification(
+    page,
+    certification.responseData.name
+  );
+  const hits: { _source: { fullyQualifiedName: string } }[] = (
+    await searchResponse.json()
+  ).hits.hits;
+  expect(
+    hits.map((hit) => hit._source.fullyQualifiedName),
+    'Certification search did not return the requested tag'
+  ).toContain(certification.responseData.fullyQualifiedName);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -932,11 +951,9 @@ export const updateDescriptionForChildren = async (
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
     ).toContainText('No Description', { timeout: 10000 });
   } else {
+    // Compact schema rows can render plain text instead of a Markdown paragraph.
     await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('viewer-container')
-        .getByRole('paragraph')
+      page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
     ).toContainText(description);
   }
 };

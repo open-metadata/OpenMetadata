@@ -64,6 +64,14 @@ describe('UserAssetCard', () => {
     expect(card).toHaveTextContent('Bob');
   });
 
+  it('shows -- for an asset with no owners', () => {
+    renderCard(table({ owners: [] }));
+
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveTextContent(
+      /^--$/
+    );
+  });
+
   it('links the parent schema under the description', () => {
     renderCard(table());
 

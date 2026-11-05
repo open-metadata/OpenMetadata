@@ -279,6 +279,20 @@ public final class ContextMemoryVisibility {
   }
 
   /**
+   * The {@code snapshots} whose memory, among {@code current}, the caller may read now. A snapshot
+   * carries the sharing it was written with, so deciding on it would keep showing what was shared
+   * before the memory was made private.
+   */
+  public static List<ContextMemory> retainVisibleNow(
+      List<ContextMemory> snapshots, List<ContextMemory> current, SecurityContext securityContext) {
+    Set<UUID> visible =
+        filterByVisibility(current, securityContext).stream()
+            .map(ContextMemory::getId)
+            .collect(Collectors.toSet());
+    return snapshots.stream().filter(snapshot -> visible.contains(snapshot.getId())).toList();
+  }
+
+  /**
    * An anonymous caller matches no owner, shared principal or anchor reader, so it keeps only the
    * unanchored ENTITY memories; search's unresolvable-subject fallback keeps every ENTITY memory.
    */

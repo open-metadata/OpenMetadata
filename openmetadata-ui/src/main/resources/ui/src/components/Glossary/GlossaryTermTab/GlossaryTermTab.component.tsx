@@ -33,6 +33,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  Edit01,
+  Plus,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -61,10 +63,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
-import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   NO_DATA_PLACEHOLDER,
@@ -357,8 +357,7 @@ const renderGlossaryExpandIcon = (
         <ButtonUtility
           aria-expanded={expanded}
           aria-label={t(expanded ? 'label.collapse' : 'label.expand')}
-          className="tw:mr-1 tw:p-0.5"
-          color="tertiary"
+          className="tw:mr-1"
           data-testid="expand-icon"
           icon={expanded ? ChevronDown : ChevronRight}
           size="xs"
@@ -544,9 +543,15 @@ const GlossaryTermStatusCell = ({
           <StatusBadge label={status} status={EntityStatusClass[status]} />
         )}
       </AriaButton>
-      <Popover isNonModal placement="top start">
+      {/* The flex chain hands react-aria's max-height down to the timeline, so
+          only the steps scroll and the header stays in view. */}
+      <Popover
+        isNonModal
+        className="tw:flex tw:flex-col"
+        containerClassName="tw:flex tw:min-h-0 tw:flex-col"
+        placement="top start">
         <div
-          className="tw:min-w-65 tw:p-3"
+          className="tw:flex tw:min-h-0 tw:min-w-65 tw:flex-col tw:p-3"
           data-testid="workflow-history-popover"
           ref={popoverContentRef}
           {...popoverHoverProps}>
@@ -660,7 +665,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
-  const { paging, handlePagingChange, pageSize } = usePaging(PAGE_SIZE_LARGE);
+  const { paging, handlePagingChange, pageSize, handlePageSizeChange } =
+    usePaging();
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
@@ -1131,7 +1137,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
         const isPendingFurtherApproval =
           isTaskPendingFurtherApproval(updatedTask);
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: GLOSSARY_PROPOSALS_QUERY_KEY,
         });
 
@@ -1359,6 +1365,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return (
             <Owner
               isCompactView={false}
+              labelVariant="cell"
               owners={reviewers ?? []}
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
@@ -1424,10 +1431,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             <div className="tw:flex tw:items-center tw:gap-1">
               {allowAddTerm && (
                 <ButtonUtility
-                  color="tertiary"
                   data-testid="add-classification"
-                  icon={PlusOutlinedIcon}
-                  size="xs"
+                  icon={Plus}
+                  size="lg"
                   tooltip={t('label.add-entity', {
                     entity: t('label.glossary-term'),
                   })}
@@ -1436,10 +1442,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               )}
 
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-button"
-                icon={EditIcon}
-                size="xs"
+                icon={Edit01}
+                size="lg"
                 tooltip={t('label.edit-entity', {
                   entity: t('label.glossary-term'),
                 })}
@@ -1567,6 +1572,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return (
       <>
         <Input
+          autoComplete="off"
           // min-w-0: w-80 is a hard floor otherwise, pushing Customize out of the row.
           className="tw:mr-auto tw:w-80 tw:min-w-0"
           inputDataTestId="search-glossary-terms-input"
@@ -2002,8 +2008,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   }, [isDraggingTerm, moveDraggedGlossaryTermToRoot]);
 
-  // Trigger new fetch when search term or status filter changes. Both reset
-  // pagination back to the first page.
+  // Trigger new fetch when the search term, status filter or page size
+  // changes. Each resets pagination back to the first page.
   useEffect(() => {
     if (
       activeGlossary &&
@@ -2017,7 +2023,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }));
       fetchAllTerms();
     }
-  }, [searchTerm, selectedStatus]);
+  }, [searchTerm, selectedStatus, pageSize]);
 
   // Check if this is due to search or filter returning no results
   const isSearchActive = hasActiveSearchTerm(searchTerm);
@@ -2138,6 +2144,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleGlossaryTermPageChange}
+              onShowSizeChange={handlePageSizeChange}
             />
           </div>
         )}
