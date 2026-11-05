@@ -40,6 +40,7 @@ def test_yield_table_includes_aliases_from_hook():
 
     # Create a mock source with get_table_aliases returning the expected aliases
     source = MagicMock(spec=CommonDbSourceService)
+    source.prepare_table_request = CommonDbSourceService.prepare_table_request.__get__(source)
     source.get_table_aliases.return_value = expected_aliases
     source.metadata = MagicMock()  # Need to mock metadata for fqn.build
 
@@ -79,6 +80,7 @@ def test_yield_table_includes_aliases_from_hook():
     # Result should be a right-hand Either (successful case)
     assert result.right is not None
     request = result.right
+    assert isinstance(request, CreateTableRequest)
 
     # Verify that the aliases from the hook are in the request
     # Schema wraps aliases in FullyQualifiedEntityName, so we use model_str to extract the values

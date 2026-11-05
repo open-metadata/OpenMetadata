@@ -24,6 +24,7 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.context.ContextMemoryEvidenceAccess;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.resources.feeds.AnnouncementVisibility;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -51,20 +52,22 @@ public class CommonUtils {
         Entity.getEntityByName(
             entityType, fqn, ContextMemoryVisibility.guardFields(entityType, fields), include);
     ContextMemoryVisibility.enforceVisibility(entity, securityContext);
+    AnnouncementVisibility.enforceVisibility(entity, securityContext);
     return McpResponseUtils.maskSecrets(entity);
   }
 
   /**
    * Returns {@code entity} as the caller may read it: a context memory's references to Queries the
    * caller cannot view keep only their id and type, as in every REST memory response ({@link
-   * ContextMemoryEvidenceAccess}); every other entity type is returned as is. Applied where a tool
-   * answers with the entity, not on reads it only checks.
+   * ContextMemoryEvidenceAccess}); a metric's or metric group's relations keep only the entities
+   * the caller may view ({@link MetricRelationVisibility}); every other entity type is returned as
+   * is. Applied where a tool answers with the entity, not on reads it only checks.
    */
   public static EntityInterface<?> withVisibleEvidence(
       EntityInterface<?> entity, Authorizer authorizer, SecurityContext securityContext) {
     return entity instanceof ContextMemory memory
         ? ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext)
-        : entity;
+        : MetricRelationVisibility.visibleTo(entity, authorizer, securityContext);
   }
 
   /**
@@ -74,7 +77,8 @@ public class CommonUtils {
    */
   public static void enforceEntityVisibility(
       String entityType, String fqn, SecurityContext securityContext) {
-    if (ContextMemoryVisibility.hasVisibilityRules(entityType)) {
+    if (ContextMemoryVisibility.hasVisibilityRules(entityType)
+        || Entity.ANNOUNCEMENT.equals(entityType)) {
       readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     }
   }

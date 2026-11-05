@@ -42,7 +42,8 @@ if curl -sf "${FUSEKI_URL}/\$/ping" > /dev/null 2>&1; then
         fail "dataset '${FUSEKI_DATASET}' not found"
     fi
 
-    if curl -sf -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/sparql" \
+    # The published image refuses anonymous queries, so the probe authenticates.
+    if curl -sf -u "${FUSEKI_USER}:${FUSEKI_PASSWORD}" -X POST "${FUSEKI_URL}/${FUSEKI_DATASET}/sparql" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d 'query=SELECT ?s WHERE { ?s ?p ?o } LIMIT 1' 2>&1 | grep -q "results"; then
         pass "SPARQL query endpoint"

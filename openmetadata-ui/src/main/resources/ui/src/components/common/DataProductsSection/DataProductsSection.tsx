@@ -10,21 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  DataProductTag,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
+import { useDomainStyles } from '../../../hooks/governance/domain/useDomainStyles';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
+import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
 import DataProductsSelectList from '../../DataProducts/DataProductsSelectList/DataProductsSelectList';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { DataProductsSectionProps } from './DataProductsSection.interface';
 import './DataProductsSection.less';
@@ -40,6 +45,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   maxVisibleDataProducts = 3,
 }) => {
   const { t } = useTranslation();
+  const entityStyles = useDomainStyles();
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
   const [displayActiveDomains, setDisplayActiveDomains] =
     useState<EntityReference[]>(activeDomains);
@@ -187,19 +193,17 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
             ? displayDataProducts
             : displayDataProducts.slice(0, maxVisibleDataProducts)
           ).map((dataProduct) => (
-            <div
-              className="data-product-item"
+            <DataProductTag
+              color={entityStyles.get(dataProduct.id)?.color}
               data-testid="data-product-item"
-              key={dataProduct.id || dataProduct.fullyQualifiedName}>
-              <div className="data-product-card-bar">
-                <div className="data-product-card-content">
-                  <DataProductIcon className="data-product-icon" />
-                  <span className="data-product-name">
-                    {getEntityName(dataProduct)}
-                  </span>
-                </div>
-              </div>
-            </div>
+              href={getDataProductDetailsPath(
+                dataProduct.fullyQualifiedName ?? ''
+              )}
+              icon={entityStyles.get(dataProduct.id)?.iconURL}
+              key={dataProduct.id || dataProduct.fullyQualifiedName}
+              label={getEntityName(dataProduct)}
+              size="sm"
+            />
           ))}
           {displayDataProducts.length > maxVisibleDataProducts && (
             <button
@@ -216,7 +220,13 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         </div>
       </div>
     ),
-    [showAllDataProducts, displayDataProducts, maxVisibleDataProducts, t]
+    [
+      showAllDataProducts,
+      displayDataProducts,
+      maxVisibleDataProducts,
+      entityStyles,
+      t,
+    ]
   );
 
   const dataProductsContent = useMemo(() => {
@@ -242,12 +252,10 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       selectedDataProducts={displayDataProducts}
       onOpenChange={handlePopoverOpenChange}
       onSubmit={handleSaveWithDataProducts}>
-      <EditIconButton
-        newLook
+      <ButtonUtility
         data-testid="edit-data-products"
-        disabled={false}
-        size="small"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.data-product-plural'),
         })}
       />

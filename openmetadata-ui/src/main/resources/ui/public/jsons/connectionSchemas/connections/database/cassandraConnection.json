@@ -177,6 +177,18 @@
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^system$",
+          "^system_auth$",
+          "^system_schema$",
+          "^system_distributed$",
+          "^system_traces$",
+          "^system_views$",
+          "^system_virtual_schema$"
+        ]
+      },
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
       "properties": {

@@ -2,14 +2,17 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.time.Clock;
 import java.util.UUID;
 import java.util.function.Consumer;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.OntologyDefinition;
@@ -19,19 +22,134 @@ import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyDefinitionStatus;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyPublicationStage;
 import org.openmetadata.schema.type.OntologyPublicationStatus;
+import org.openmetadata.schema.type.OntologyReviewLock;
+import org.openmetadata.schema.type.OntologyReviewLockRelease;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.OntologyCaptureFixture.Fixture;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RequestEntityCache;
 
+@Isolated
 class OntologyDerivedStatusStorageTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void reviewLocksNeverReachStorageOrVersionHistory(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final OntologyPublicationStatus supplied =
+              new OntologyPublicationStatus()
+                  .withUnpublishedChanges(0)
+                  .withReviewLock(
+                      new OntologyReviewLock()
+                          .withInReview(
+                              new OntologyReviewLockRelease()
+                                  .withReleaseId(UUID.randomUUID())
+                                  .withReleaseRevision(4L)));
+          final Ontology created =
+              fixture.ontologies.create(
+                  null,
+                  new Ontology()
+                      .withId(UUID.randomUUID())
+                      .withName("SuppliedLock")
+                      .withIri(URI.create("urn:supplied:lock"))
+                      .withNamespace(URI.create("urn:supplied:"))
+                      .withVersion(0.1)
+                      .withUpdatedAt(1L)
+                      .withUpdatedBy("admin")
+                      .withPublicationStatus(supplied));
+          assertNull(created.getPublicationStatus());
+          final Ontology original =
+              fixture
+                  .ontologies
+                  .get(null, created.getId(), fixture.ontologies.getFields(""))
+                  .withPublicationStatus(supplied);
+          fixture.ontologies.update(
+              null,
+              original,
+              JsonUtils.deepCopy(original, Ontology.class).withDescription("Changed"),
+              "admin");
+          final CollectionDAO dao = fixture.handle.attach(CollectionDAO.class);
+          final JsonNode row =
+              JsonUtils.readTree(
+                  dao.ontologyEntityDAO().findJsonByIdForUpdate(created.getId(), Include.ALL));
+          final JsonNode version =
+              JsonUtils.readTree(
+                  dao.entityExtensionDAO()
+                      .getExtension(
+                          created.getId(), EntityUtil.getVersionExtension(Entity.ONTOLOGY, 0.1)));
+          assertEquals("Changed", row.path("description").asText());
+          assertFalse(row.has("publicationStatus"), row.toString());
+          assertEquals(0.1, version.path("version").asDouble());
+          assertFalse(version.has("publicationStatus"), version.toString());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void capturesPersistDisjointConceptAndPropertyDeprecationCounts(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final OntologyConcept concept = concept(fixture, "Deprecated");
+          final OntologyPropertyRepository properties = new OntologyPropertyRepository();
+          final OntologyProperty property =
+              properties.create(
+                  null,
+                  new OntologyProperty()
+                      .withId(UUID.randomUUID())
+                      .withName("deprecatedProperty")
+                      .withOntology(fixture.ontology.getEntityReference())
+                      .withKind(OntologyPropertyKind.OBJECT)
+                      .withVersion(0.1)
+                      .withUpdatedAt(1L)
+                      .withUpdatedBy("admin"));
+          final OntologyRelease base = fixture.capture(ignored -> {});
+          setStatus(fixture, base, EntityStatus.APPROVED);
+          activate(fixture, base);
+          fixture.concepts.update(
+              null,
+              concept,
+              JsonUtils.deepCopy(concept, OntologyConcept.class)
+                  .withDeprecated(true)
+                  .withDescription("Retired"),
+              "admin");
+          properties.update(
+              null,
+              property,
+              JsonUtils.deepCopy(property, OntologyProperty.class).withDeprecated(true),
+              "admin");
+          final OntologyRelease captured = fixture.capture(ignored -> {});
+          final OntologyRelease stored = fixture.releases.getDao().findEntityById(captured.getId());
+          final var summary = stored.getChangeSummary();
+          assertEquals(0, summary.getAdded());
+          assertEquals(0, summary.getChanged());
+          assertEquals(0, summary.getRemoved());
+          assertEquals(2, summary.getDeprecated());
+          assertEquals(
+              2,
+              new OntologyReleaseComparison(fixture.releases)
+                  .compare(stored, base, 1000, null, ignored -> {})
+                  .getPaging()
+                  .getTotal());
+          assertEquals(2, publication(fixture).getUnpublishedChanges());
+        });
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,

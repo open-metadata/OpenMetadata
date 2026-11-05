@@ -13,22 +13,20 @@
 
 package org.openmetadata.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.json.Json;
-import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonReader;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.MessageBodyReader;
 import jakarta.ws.rs.ext.Provider;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import org.openmetadata.service.util.BoundedJsonPatch;
 
 @Provider
 @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -50,18 +48,11 @@ public class JsonPatchMessageBodyReader implements MessageBodyReader<JsonPatch> 
       InputStream entityStream)
       throws WebApplicationException {
     try {
-      // Use Jackson to read the JSON content first to avoid JsonStructure deserialization issues
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode jsonNode = mapper.readTree(entityStream);
-      String jsonString = jsonNode.toString();
-
-      // Now parse using Jakarta JSON API
-      try (JsonReader reader = Json.createReader(new StringReader(jsonString))) {
-        JsonArray jsonArray = reader.readArray();
-        return Json.createPatch(jsonArray);
-      }
-    } catch (Exception e) {
-      throw new WebApplicationException("Failed to parse JsonPatch", e);
+      return BoundedJsonPatch.read(entityStream);
+    } catch (BoundedJsonPatch.PatchTooLargeException e) {
+      throw new ClientErrorException(e.getMessage(), Response.Status.REQUEST_ENTITY_TOO_LARGE);
+    } catch (BoundedJsonPatch.InvalidPatchException e) {
+      throw new BadRequestException(e.getMessage());
     }
   }
 }

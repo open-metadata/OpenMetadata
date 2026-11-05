@@ -44,7 +44,9 @@ const getLatestIncident = async (
     return undefined;
   }
 
-  const { data } = await getListTestCaseIncidentByStateId(stateId);
+  const { data } = await getListTestCaseIncidentByStateId(stateId, {
+    limit: 1,
+  });
 
   return data?.[0];
 };

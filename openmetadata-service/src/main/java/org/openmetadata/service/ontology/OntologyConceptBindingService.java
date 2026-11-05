@@ -203,7 +203,7 @@ public final class OntologyConceptBindingService {
           || !(target instanceof Table table)
           || OntologyBindingRules.resolveColumn(table, binding.getColumnPath()) == null) {
         throw new BadRequestException(
-            "Bindings require an applicable same-ontology DATA property and an existing exact column path");
+            "Bindings require an applicable same-ontology DATA or OBJECT property and an existing exact column path");
       }
     }
   }
@@ -288,9 +288,7 @@ public final class OntologyConceptBindingService {
     }
     final List<T> entities =
         repository.get(access.uriInfo(), ids, fields(repository), Include.NON_DELETED);
-    final var tags =
-        new BulkFieldHydrator(
-            Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
+    final var tags = BulkFieldHydrator.forTags(repository, entities);
     for (final T entity : entities) {
       try {
         authorizer.authorize(

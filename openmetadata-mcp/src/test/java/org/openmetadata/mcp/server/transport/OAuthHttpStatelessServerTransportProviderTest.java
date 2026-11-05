@@ -18,9 +18,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
@@ -30,6 +34,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,6 +46,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
+import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
+import org.openmetadata.mcp.server.auth.model.AuthorizationErrorResponse;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
@@ -259,6 +268,95 @@ class OAuthHttpStatelessServerTransportProviderTest {
     return transport;
   }
 
+  @Test
+  void authorizeErrorForRemoteWebCallback_isAPageWithALinkNotARedirect() throws Exception {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+
+    authorizeAnswering("https://attacker.example/cb?error=invalid_scope&state=s1", false, response);
+
+    verify(response, never()).sendRedirect(anyString());
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    assertThat(body.toString())
+        .contains("href=\"https://attacker.example/cb?error=invalid_scope&amp;state=s1\"")
+        .contains("Return to https://attacker.example")
+        .doesNotContain("http-equiv")
+        .doesNotContain("<script");
+  }
+
+  @Test
+  void authorizeErrorForLoopbackCallback_isStillARedirect() throws Exception {
+    String errorUrl = "http://127.0.0.1:33418/cb?error=invalid_scope&state=s1";
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    authorizeAnswering(errorUrl, true, response);
+
+    verify(response).sendRedirect(errorUrl);
+  }
+
+  /** Runs GET /mcp/authorize with the handler answering an invalid_scope error at this URL. */
+  private static void authorizeAnswering(
+      String errorUrl, boolean isRedirect, HttpServletResponse response) throws Exception {
+    AuthorizationHandler authorizationHandler = mock(AuthorizationHandler.class);
+    when(authorizationHandler.handle(any()))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new AuthorizationHandler.AuthorizationResponse(
+                    errorUrl,
+                    isRedirect,
+                    new AuthorizationErrorResponse("invalid_scope", "Not allowed", "s1"))));
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    sun.misc.Unsafe unsafe = unsafe();
+    unsafe.putObject(
+        transport,
+        unsafe.objectFieldOffset(
+            OAuthHttpStatelessServerTransportProvider.class.getDeclaredField(
+                "authorizationHandler")),
+        authorizationHandler);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/authorize");
+    when(request.getParameterMap()).thenReturn(Map.of());
+
+    transport.doGet(request, response);
+  }
+
+  // ── registration body limit ───────────────────────────────────────────────
+
+  @Test
+  void doPost_oversizedRegistration_answers413WithoutRegistering() throws Exception {
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    RegistrationHandler registrationHandler = mock(RegistrationHandler.class);
+    putField(transport, "registrationHandler", registrationHandler);
+    putField(transport, "registrationAttempts", new ConcurrentHashMap<>());
+    putField(transport, "objectMapper", new ObjectMapper());
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/register");
+    when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+    byte[] oversized =
+        new byte[OAuthHttpStatelessServerTransportProvider.MAX_REGISTRATION_BODY_BYTES + 1];
+    when(request.getInputStream())
+        .thenReturn(
+            HttpServletStatelessServerTransportTest.bodyOf(new ByteArrayInputStream(oversized)));
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+
+    transport.doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
+    verifyNoInteractions(registrationHandler);
+  }
+
+  private static void putField(Object target, String fieldName, Object value) throws Exception {
+    sun.misc.Unsafe unsafe = unsafe();
+    Field field = OAuthHttpStatelessServerTransportProvider.class.getDeclaredField(fieldName);
+    unsafe.putObject(target, unsafe.objectFieldOffset(field), value);
+  }
+
   private static sun.misc.Unsafe unsafe() throws Exception {
     Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
     unsafeField.setAccessible(true);
@@ -358,9 +456,8 @@ class OAuthHttpStatelessServerTransportProviderTest {
     when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
     when(authConfig.getEmailClaim()).thenReturn("email");
     JwtFilter jwtFilter = spy(new JwtFilter(authConfig, mock(AuthorizerConfiguration.class)));
-    Claim emailClaim = mock(Claim.class);
-    when(emailClaim.asString()).thenReturn("mcp.user@company.com");
-    doReturn(Map.of("email", emailClaim)).when(jwtFilter).verifySignatureOnly("token");
+    String token = JWT.create().withClaim("email", "mcp.user@company.com").sign(Algorithm.none());
+    doReturn(JWT.decode(token).getClaims()).when(jwtFilter).verifySignatureOnly(token);
     doNothing().when(jwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
     OAuthHttpStatelessServerTransportProvider transport =
         transportWith(mock(UserSSOOAuthProvider.class));
@@ -369,7 +466,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
     when(userRepository.getActiveUserByEmailForAuth(eq("mcp.user@company.com"), any()))
         .thenReturn(new User().withName("mcp.user_q9z1"));
     HttpServletRequest request = mock(HttpServletRequest.class);
-    when(request.getHeader("Authorization")).thenReturn("Bearer token");
+    when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
     HttpServletResponse response = mock(HttpServletResponse.class);
 
     boolean authenticated;
@@ -380,7 +477,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
 
     assertThat(authenticated).isTrue();
     verify(response, never()).setStatus(anyInt());
-    verify(jwtFilter).checkValidationsForToken(any(), eq("token"), eq("mcp.user_q9z1"), isNull());
+    verify(jwtFilter).checkValidationsForToken(any(), eq(token), eq("mcp.user_q9z1"), isNull());
   }
 
   /** The real {@link JwtFilter} reads the local signing key from the generator at construction. */

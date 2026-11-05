@@ -26,6 +26,7 @@ import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -42,7 +43,9 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
@@ -358,8 +361,8 @@ public class JWTTokenGenerator {
    * <p>{@code preferred_username} carries the email because that is what identity providers put
    * there (Okta login, Azure UPN); a bare name there resolved to an empty domain under enforcement
    * and to a synthesized {@code name@principalDomain} email that contradicted the user's real one
-   * (#29142). {@code sub} and {@code username} stay the bare name - the stable subject - unless the
-   * deployment's claim order reads one of them first, see {@link #putConfiguredPrincipalClaims}.
+   * (#29142). {@code sub} and {@code username} stay the bare name - the stable subject. Configured
+   * claim-order handling is described in {@link #putConfiguredPrincipalClaims}.
    */
   private Map<String, String> identityClaims(String userName, String email) {
     String principal = nullOrEmpty(email) ? userName : email;
@@ -379,9 +382,9 @@ public class JWTTokenGenerator {
    * A deployment may resolve principals from claims we do not otherwise mint ({@code upn}, {@code
    * mail}, ...). With a mapping, the username claim gets the bare name and the email claim the
    * email - the email wins if both map to one claim, which is how the provider's token looks too.
-   * With an order, the first claim gets the email - even {@code sub} or {@code username}: a
-   * deployment that resolves principals from that claim first has an identity provider whose value
-   * there is the email-shaped login, and the first-match lookup must land on a value with a domain.
+   * With an order, only an {@code email} claim gets the email. Other claims carry the stored
+   * OpenMetadata username so email-local-part collisions cannot resolve an internally issued token
+   * to a different account.
    */
   private void putConfiguredPrincipalClaims(
       Map<String, String> claims, String userName, String principal) {
@@ -395,7 +398,9 @@ public class JWTTokenGenerator {
         claims.put(emailClaim, principal);
       }
     } else if (!principalClaims.isEmpty()) {
-      claims.put(principalClaims.getFirst(), principal);
+      String firstPrincipalClaim = principalClaims.getFirst();
+      claims.put(
+          firstPrincipalClaim, EMAIL_CLAIM.equals(firstPrincipalClaim) ? principal : userName);
     }
   }
 
@@ -408,6 +413,26 @@ public class JWTTokenGenerator {
     if (principalClaimsMapping.isEmpty() && !nullOrEmpty(emailClaim) && !nullOrEmpty(email)) {
       claims.put(emailClaim, email);
     }
+  }
+
+  /**
+   * The stored user name a token we minted names, read back from {@link #identityClaims}: {@code
+   * sub}, or {@code username} when the configured claims put the email into {@code sub}. Empty when
+   * the token carries neither, so the caller falls back to the configured principal claims.
+   */
+  public static Optional<String> mintedUserName(Map<String, Claim> claims) {
+    String subject = claimValue(claims, SUBJECT_CLAIM);
+    String userName =
+        subject == null || subject.equalsIgnoreCase(claimValue(claims, EMAIL_CLAIM))
+            ? claimValue(claims, USERNAME)
+            : subject;
+    return Optional.ofNullable(userName).map(name -> name.toLowerCase(Locale.ROOT));
+  }
+
+  private static String claimValue(Map<String, Claim> claims, String claimName) {
+    Claim claim = claims.get(claimName);
+    String value = claim == null ? null : claim.asString();
+    return nullOrEmpty(value) ? null : value;
   }
 
   public static Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {

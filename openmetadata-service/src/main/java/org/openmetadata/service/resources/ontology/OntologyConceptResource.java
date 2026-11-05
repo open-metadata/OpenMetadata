@@ -37,6 +37,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.OntologyConceptQuery;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateOntologyConceptBinding;
 import org.openmetadata.schema.entity.data.OntologyConcept;
@@ -53,6 +54,7 @@ import org.openmetadata.service.jdbi3.OntologyConceptRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.ontology.OntologyConceptBindingService;
 import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
+import org.openmetadata.service.ontology.OntologyConceptQueryService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -69,16 +71,16 @@ public class OntologyConceptResource
   public static final String COLLECTION_PATH = "/v1/ontologyConcepts/";
   private final OntologyConceptMapper mapper = new OntologyConceptMapper();
   private final OntologyConceptBindingService bindings;
+  private final OntologyConceptQueryService queries;
 
   public OntologyConceptResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY_CONCEPT, authorizer, limits);
     addViewOperation("lifecycleStatus", MetadataOperation.VIEW_BASIC);
-    bindings =
-        new OntologyConceptBindingService(
-            new OntologyConceptBindingStore(
-                Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables()),
-            authorizer,
-            Entity::getEntityRepository);
+    final var store =
+        new OntologyConceptBindingStore(
+            Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables());
+    bindings = new OntologyConceptBindingService(store, authorizer, Entity::getEntityRepository);
+    queries = new OntologyConceptQueryService(store, authorizer, Entity::getEntityRepository);
   }
 
   public static class OntologyConceptList extends ResultList<OntologyConcept> {}
@@ -161,6 +163,22 @@ public class OntologyConceptResource
       @QueryParam("expectedRevision") @Min(0) final Long expectedRevision) {
     return bindings.remove(
         new Access(uriInfo, securityContext), id, assetType, assetId, expectedRevision);
+  }
+
+  @POST
+  @Path("/{id}/query")
+  @Operation(
+      operationId = "generateOntologyConceptQuery",
+      summary = "Generate SQL over the concept's bound tables, joined along search-around hops",
+      description =
+          "Reads bindings and table metadata the caller may view and returns a SELECT with LIMIT 50."
+              + " Nothing runs and nothing is stored.")
+  public OntologyConceptQuery generateQuery(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @Valid final OntologyConceptQuery request) {
+    return queries.generate(new Access(uriInfo, securityContext), id, request);
   }
 
   @GET

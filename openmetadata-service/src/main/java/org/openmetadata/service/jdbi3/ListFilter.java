@@ -24,6 +24,8 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -70,7 +72,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   public ListFilter(Include include) {
-    this.include = include;
+    this.include = include == null ? Include.ALL : include;
   }
 
   public String getConditionForEntity(String tableName) {
@@ -171,6 +173,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
+    conditions.add(getAgentIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
     conditions.add(getSourceEntityCondition());
@@ -265,13 +268,23 @@ public class ListFilter extends Filter<ListFilter> {
    * This is used for authorization checks on the parent entity (e.g., checking VIEW_QUERIES
    * permission on a table when listing queries for that table).
    *
+   * <p>Resolve the parent before authorization so a mismatched type cannot produce an empty context
+   * that skips entity-based policy conditions.
+   *
    * @return ResourceContext for the parent entity, or null if entityId/entityType not specified
+   * @throws EntityNotFoundException if the id does not identify an entity of the requested type
    */
   public ResourceContext<?> getParentResourceContext() {
     String entityId = queryParams.get("entityId");
     String parentEntityType = queryParams.get("entityType");
     if (!nullOrEmpty(entityId) && !nullOrEmpty(parentEntityType)) {
-      return new ResourceContext<>(parentEntityType, java.util.UUID.fromString(entityId), null);
+      ResourceContext<?> parentResourceContext =
+          new ResourceContext<>(parentEntityType, UUID.fromString(entityId), null);
+      if (parentResourceContext.getEntity() == null) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(parentEntityType, entityId));
+      }
+      return parentResourceContext;
     }
     return null;
   }
@@ -1042,10 +1055,13 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == Include.NON_DELETED || include == Include.DELETED) {
-      return columnName + String.format(" = %s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
-    }
-    return "";
+    // Exhaustive on purpose: ALL must stay a named "" and not a siloed fall-through that a
+    // refactor could turn back into a deleted clause (invalid on time-series tables).
+    return switch (include) {
+      case NON_DELETED -> columnName + " = FALSE";
+      case DELETED -> columnName + " = TRUE";
+      case ALL -> "";
+    };
   }
 
   public String getDatabaseCondition(String tableName) {
@@ -1133,7 +1149,7 @@ public class ListFilter extends Filter<ListFilter> {
     return testSuiteName == null ? "" : getFqnPrefixCondition(null, testSuiteName, "testSuite");
   }
 
-  private String getDomainCondition(String tableName) {
+  String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
     String domainAccessControl = getQueryParam("domainAccessControl");
@@ -1408,6 +1424,11 @@ public class ListFilter extends Filter<ListFilter> {
     return serverId == null ? "" : "serverId = :serverId";
   }
 
+  private String getAgentIdCondition() {
+    String agentId = queryParams.get("agentId");
+    return agentId == null ? "" : "agentId = :agentId";
+  }
+
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
     return entityFQN == null ? "" : "entityFQNHash = :entityFQNHash";
@@ -1677,15 +1698,16 @@ public class ListFilter extends Filter<ListFilter> {
           tableName == null
               ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s'))", fieldPath)
               : String.format("JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.%s'))", tableName, fieldPath);
-      String operator = exclude ? "NOT REGEXP" : "REGEXP";
-      return String.format("%s %s :%s", expr, operator, paramName + "Regex");
+      // Explicit flags keep filtering independent of the database's default collation.
+      return String.format(
+          "%sREGEXP_LIKE(%s, :%s, 'i')", exclude ? "NOT " : "", expr, paramName + "Regex");
     } else {
       String pgPath = "{" + fieldPath.replace(".", ",") + "}";
       String expr =
           tableName == null
               ? String.format("json #>> '%s'", pgPath)
               : String.format("%s.json #>> '%s'", tableName, pgPath);
-      String operator = exclude ? "!~" : "~";
+      String operator = exclude ? "!~*" : "~*";
       return String.format("%s %s :%s", expr, operator, paramName + "Regex");
     }
   }
@@ -1801,31 +1823,17 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
-   * Escape a string for use as the <em>replacement</em> argument to MySQL's
-   * {@code REGEXP_REPLACE}. Two layers of escaping are needed:
-   * <ol>
-   *   <li>Regex replacement layer: {@code REGEXP_REPLACE} treats {@code \} as the start of a
-   *       backreference / escape sequence (e.g. {@code \1} resolves to capture group 1).
-   *       Each literal backslash in the input needs to become {@code \\} for the regex
-   *       engine to emit a single {@code \}.</li>
-   *   <li>SQL string-literal layer: the regex-escaped value is then embedded inside a
-   *       single-quoted SQL string, so each remaining {@code \} doubles again
-   *       ({@code \\} → {@code \\\\}) and apostrophes double ({@code '} → {@code ''}).</li>
-   * </ol>
-   * Net effect: one input backslash → four backslashes in the SQL statement text, which
-   * the SQL parser folds to two backslashes for the regex engine, which the regex engine
-   * folds to one literal backslash in the replacement output. Apostrophes just double
-   * once (regex replacement doesn't reserve apostrophes, only the SQL layer does).
+   * Escapes a name for the replacement argument of a {@code REGEXP_REPLACE} rendered into MySQL
+   * statement text: backslashes double for the regex layer, then backslashes and apostrophes
+   * double again for the string literal.
    *
-   * <p>Compose with {@link #escapeApostrophe} rather than {@link #escapeBackslashAndApostrophe}
-   * for the second pass — applying {@code escapeBackslashAndApostrophe} twice would
-   * re-escape the apostrophes we already doubled.
+   * @deprecated the server's own statements bind these values
+   *     (ADR:2026-11-03-dao-statements-bind-every-value); kept for extensions that still render
+   *     them, until they move to bound parameters.
    */
+  @Deprecated(forRemoval = true)
   public static String escapeForMySqlRegexReplacement(String name) {
-    // Step 1: double backslashes for the regex replacement layer.
-    String regexEscaped = name.replace("\\", "\\\\");
-    // Step 2: double backslashes (again) + apostrophes for the SQL string-literal layer.
-    return escapeBackslashAndApostrophe(regexEscaped);
+    return escapeBackslashAndApostrophe(name.replace("\\", "\\\\"));
   }
 
   /**

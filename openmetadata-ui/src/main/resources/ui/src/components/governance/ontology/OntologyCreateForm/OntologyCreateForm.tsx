@@ -19,7 +19,6 @@ import {
   getField,
   HookForm,
   Tabs,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
 import { keyBy } from 'lodash';
@@ -28,8 +27,9 @@ import { RegisterOptions, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Layer } from '../../../../generated/api/data/createOntology';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
-import { createOntology, patchOntology } from '../../../../rest/ontologyAPI';
+import { patchOntology } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import {
@@ -37,7 +37,6 @@ import {
   ontologyFormValues,
   OntologyFormValues,
   ontologyPatch,
-  ontologyRequest,
 } from './OntologyCreateForm.utils';
 
 const AI_FIELD_ORDER = [
@@ -77,16 +76,14 @@ const unlabelled = (field: FieldProp): FieldProp => ({
 });
 
 interface OntologyCreateFormProps {
-  canCreate: boolean;
-  ontology?: Ontology;
-  currentUserId?: string;
+  canEdit: boolean;
+  ontology: Ontology;
   onSaved: (ontology: Ontology) => void;
 }
 
 const OntologyCreateForm = ({
-  canCreate,
+  canEdit,
   ontology,
-  currentUserId,
   onSaved,
 }: OntologyCreateFormProps) => {
   const { t } = useTranslation();
@@ -96,18 +93,21 @@ const OntologyCreateForm = ({
   const form = useForm<OntologyFormValues>({
     defaultValues: ontologyFormValues(ontology),
   });
+  const markSaved = useOntologyDirtyForm(form.formState.isDirty);
   const [isSaving, setIsSaving] = useState(false);
   const save = async (values: OntologyFormValues) => {
-    if (!canCreate) {
+    if (!canEdit) {
       return;
     }
     setIsSaving(true);
     try {
-      onSaved(
-        ontology
-          ? await patchOntology(ontology.id, ontologyPatch(ontology, values))
-          : await createOntology(ontologyRequest(values, currentUserId))
+      const saved = await patchOntology(
+        ontology.id,
+        ontologyPatch(ontology, values)
       );
+      form.reset(ontologyFormValues(saved));
+      markSaved();
+      onSaved(saved);
     } catch (error) {
       showErrorToast(
         isAxiosError(error) ? error : t('server.unexpected-error')
@@ -147,13 +147,7 @@ const OntologyCreateForm = ({
 
   const renderAiForm = () => {
     const fields = keyBy(
-      ontologyFormFields(
-        t,
-        owners,
-        reviewers,
-        !canCreate || isSaving,
-        Boolean(ontology)
-      ),
+      ontologyFormFields(t, owners, reviewers, !canEdit || isSaving, true),
       'name'
     );
 
@@ -163,15 +157,6 @@ const OntologyCreateForm = ({
         form={form}
         onSubmit={form.handleSubmit(save)}>
         <Box direction="col">
-          {ontology ? null : (
-            <Typography
-              as="h2"
-              className="not-prose tw:m-0 tw:pb-3"
-              size="text-lg"
-              weight="semibold">
-              {t('label.new-entity', { entity: t('label.ontology') })}
-            </Typography>
-          )}
           {AI_FIELD_ORDER.map((name) => (
             <SettingsRow
               key={name}
@@ -187,7 +172,7 @@ const OntologyCreateForm = ({
             justify="end">
             <Button
               color="primary"
-              isDisabled={!canCreate}
+              isDisabled={!canEdit}
               isLoading={isSaving}
               size="sm"
               type="submit">
@@ -213,12 +198,12 @@ const OntologyCreateForm = ({
           t,
           owners,
           reviewers,
-          !canCreate || isSaving,
-          Boolean(ontology)
+          !canEdit || isSaving,
+          true
         ).map((field) => (
           <Fragment key={field.name}>{getField(field)}</Fragment>
         ))}
-        <Button isDisabled={!canCreate} isLoading={isSaving} type="submit">
+        <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">
           {t('label.save')}
         </Button>
       </Box>

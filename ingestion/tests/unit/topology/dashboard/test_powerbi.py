@@ -17,10 +17,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
@@ -1814,9 +1814,10 @@ class PowerBIUnitTest(TestCase):
         assert result is None
 
     @pytest.mark.order(40)
-    def test_extract_tables_from_sql_with_line_comments(self):
+    def test_extract_tables_from_sql_line_comment_ends_at_its_line(self):
         """
-        A `--` comment only comments out its own line, so the tables after it are kept
+        A -- comment must only comment out its own #(lf)-separated line,
+        not every table referenced after it.
         """
         result = self.powerbi._extract_tables_from_sql(
             "SELECT yr.res_id,--some comment#(lf)  yr.res_periodTo#(lf)"
@@ -1828,6 +1829,17 @@ class PowerBIUnitTest(TestCase):
         assert result is not None
         tables = {t["table"] for t in result}
         assert tables == {"yachtReservation", "V_reservationSubCategory"}
+
+        result = self.powerbi._extract_tables_from_sql(
+            "WITH cte AS (SELECT id FROM dbo.first_table) -- first CTE#(lf)"
+            "SELECT * FROM cte#(lf)"
+            "JOIN dbo.second_table s ON s.id = cte.id",
+            "MyDb",
+            "server",
+        )
+        assert result is not None
+        tables = {t["table"] for t in result}
+        assert tables == {"first_table", "second_table"}
 
     @pytest.mark.order(40)
     def test_extract_tables_from_sql_keeps_dashes_in_string_literals(self):

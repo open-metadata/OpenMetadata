@@ -37,6 +37,38 @@
       "required": ["releaseId", "releaseRevision"],
       "additionalProperties": false
     },
+    "reviewLockRelease": {
+      "description": "The newest currently open review, as a representative when multiple releases are in review. This owner-scoped hint exposes only release identity and version metadata.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyReviewLockRelease",
+      "properties": {
+        "releaseId": {
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "releaseRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "semanticVersion": {
+          "description": "Absent on releases captured without a version bump.",
+          "type": "string"
+        }
+      },
+      "required": ["releaseId", "releaseRevision"],
+      "additionalProperties": false
+    },
+    "reviewLock": {
+      "description": "A present empty object confirms no open review. A missing or null envelope means the lock state is unavailable, including responses from older servers.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyReviewLock",
+      "properties": {
+        "inReview": {
+          "$ref": "#/definitions/reviewLockRelease"
+        }
+      },
+      "additionalProperties": false
+    },
     "latestRelease": {
       "description": "The newest sealed release, whatever its stage.",
       "type": "object",
@@ -62,6 +94,11 @@
     }
   },
   "properties": {
+    "reviewLock": {
+      "description": "Server-derived lock on reviewer and approval-rule edits. Always present when a new server successfully resolves publicationStatus.",
+      "$ref": "#/definitions/reviewLock",
+      "readOnly": true
+    },
     "active": {
       "$ref": "#/definitions/activeRelease"
     },

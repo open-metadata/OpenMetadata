@@ -21,9 +21,9 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -68,6 +68,10 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   static final String SSE_LINE_TERMINATOR = "\n";
 
   static final String SSE_EVENT_TERMINATOR = "\n\n";
+
+  // Largest JSON-RPC message /mcp reads; a bigger body is refused before it is parsed.
+  // ADR:2026-11-02-mcp-request-bodies-are-bounded-before-parsing
+  static final int MAX_MESSAGE_BODY_BYTES = 4 * 1024 * 1024;
 
   private final ObjectMapper objectMapper;
 
@@ -177,15 +181,20 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     }
 
     try {
-      BufferedReader reader = request.getReader();
-      StringBuilder body = new StringBuilder();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        body.append(line);
+      byte[] body = readBody(request, MAX_MESSAGE_BODY_BYTES);
+      if (body == null) {
+        responseError(
+            response,
+            HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
+            null,
+            McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
+                .message("Message exceeds " + MAX_MESSAGE_BODY_BYTES + " bytes")
+                .build());
+        return;
       }
 
       McpSchema.JSONRPCMessage message =
-          McpSchema.deserializeJsonRpcMessage(jsonMapper, body.toString());
+          McpSchema.deserializeJsonRpcMessage(jsonMapper, new String(body, StandardCharsets.UTF_8));
 
       if (message instanceof McpSchema.JSONRPCRequest jsonrpcRequest) {
         try {
@@ -265,6 +274,18 @@ public class HttpServletStatelessServerTransport extends HttpServlet
               .message("Internal server error")
               .build());
     }
+  }
+
+  /**
+   * Reads the request body, stopping one byte past {@code maxBytes}. The count is taken after a
+   * gzip body is inflated, so it holds whatever the size on the wire, and it runs before parsing
+   * because a limit on the parsed value only applies once Jackson has built the whole document.
+   *
+   * @return the body, or null when it is longer than {@code maxBytes}
+   */
+  static byte[] readBody(HttpServletRequest request, int maxBytes) throws IOException {
+    byte[] body = request.getInputStream().readNBytes(maxBytes + 1);
+    return body.length > maxBytes ? null : body;
   }
 
   /**

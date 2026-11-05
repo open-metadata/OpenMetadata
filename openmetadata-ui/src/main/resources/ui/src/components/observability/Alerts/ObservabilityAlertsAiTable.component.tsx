@@ -32,11 +32,7 @@ import { Link } from 'react-router-dom';
 import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { CursorType } from '../../../enums/pagination.enum';
@@ -62,7 +58,6 @@ interface ObservabilityAlertsAiPageChangeParams {
   currentPage: number;
 }
 
-const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 // max-width: 0 lets the link truncate inside the fixed table layout instead
 // of forcing the name column wider than its 30% allocation.
 const ALERT_NAME_COLUMN_LAYOUT_CLASS = 'tw:w-[30%]! tw:max-w-0';
@@ -343,7 +338,7 @@ function ObservabilityAlertsAiTable({
               )}
               page={currentPage}
               pageSize={pageSize}
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
               total={displayTotalPages}
               onPageChange={handlePageChange}
               onPageSizeChange={onPageSizeChange}
