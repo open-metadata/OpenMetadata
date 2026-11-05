@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -48,14 +53,18 @@ export const EntityPageTitle = ({
   const nameNode = renderHighlightedText(name);
 
   return (
-    <div
-      className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3"
-      data-testid={testId}>
+    <Box
+      align="center"
+      className="tw:min-w-0 tw:flex-1"
+      data-testid={testId}
+      gap={3}>
       {icon}
-      <div
-        className="tw:flex tw:min-w-0 tw:items-start tw:gap-3"
-        data-testid="entity-header-title">
-        <div className="tw:flex tw:min-w-0 tw:flex-col">
+      <Box
+        align="start"
+        className="tw:min-w-0"
+        data-testid="entity-header-title"
+        gap={3}>
+        <Box className="tw:min-w-0" direction="col">
           {hasDisplayName && (
             <Typography
               as="h2"
@@ -79,14 +88,18 @@ export const EntityPageTitle = ({
             weight={hasDisplayName ? 'medium' : 'bold'}>
             {nameNode}
           </Typography>
-        </div>
+        </Box>
         {/* h-8 = the title line, so the actions stay level with the title
             rather than centring across title + name. */}
-        <div className="tw:flex tw:h-8 tw:shrink-0 tw:items-center tw:gap-3">
+        <Box align="center" className="tw:h-8 tw:shrink-0" gap={3}>
           {deleted && (
-            <span className="deleted-badge-button" data-testid="deleted-badge">
+            <Badge
+              color="error"
+              data-testid="deleted-badge"
+              size="sm"
+              type="pill-color">
               {t('label.deleted')}
-            </span>
+            </Badge>
           )}
           <ButtonUtility
             data-testid="entity-header-copy-button"
@@ -100,11 +113,11 @@ export const EntityPageTitle = ({
             onClick={() => onCopyToClipBoard(globalThis.location.href)}
           />
           {actions}
-        </div>
-      </div>
-      <div className="tw:flex tw:h-8 tw:shrink-0 tw:items-center tw:gap-3 tw:self-start">
+        </Box>
+      </Box>
+      <Box align="center" className="tw:h-8 tw:shrink-0 tw:self-start" gap={3}>
         {badges}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };

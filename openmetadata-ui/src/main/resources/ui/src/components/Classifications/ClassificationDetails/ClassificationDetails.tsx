@@ -666,13 +666,13 @@ const ClassificationDetails = forwardRef(
                   )}
                   {headerBadge}
                   {classification.mutuallyExclusive && (
-                    <div data-testid="mutually-exclusive-container">
+                    <Box data-testid="mutually-exclusive-container">
                       <AppBadge
                         bgColor={theme.primaryColor}
                         className="whitespace-nowrap"
                         label={t('label.mutually-exclusive')}
                       />
-                    </div>
+                    </Box>
                   )}
                 </>
               }

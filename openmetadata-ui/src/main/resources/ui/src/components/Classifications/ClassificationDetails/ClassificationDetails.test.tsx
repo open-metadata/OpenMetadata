@@ -69,7 +69,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
-  Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Box: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={testId}>{children}</div>,
   EmptyPlaceholder: ({ title }: { title?: string }) => (
     <div data-testid="empty-tags-placeholder">{title}</div>
   ),
