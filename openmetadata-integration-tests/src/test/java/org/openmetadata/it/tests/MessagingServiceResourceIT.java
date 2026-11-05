@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTopic;
@@ -20,13 +21,16 @@ import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
@@ -480,5 +484,35 @@ public class MessagingServiceResourceIT
     assertNotNull(found, "Service should appear in list results");
 
     assertNull(found.getConnection(), "Regular user LIST must not expose the connection");
+  }
+
+  @Test
+  void natsPasswordIsEncryptedAndMasked(TestNamespace ns) {
+    String secret = "nats-secret-" + UUID.randomUUID();
+    NatsConnection connection =
+        new NatsConnection()
+            .withNatsServers("nats://localhost:4222")
+            .withAuthType(new NatsBasicAuth().withUsername("user").withPassword(secret));
+    MessagingService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withServiceType(MessagingServiceType.Nats)
+                .withConnection(new MessagingConnection().withConfig(connection)));
+
+    String stored =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT json FROM messaging_service_entity WHERE id = :id")
+                        .bind("id", service.getId().toString())
+                        .mapTo(String.class)
+                        .one());
+    assertFalse(stored.contains(secret));
+    assertTrue(stored.contains(Fernet.FERNET_PREFIX));
+
+    String response = JsonUtils.pojoToJson(getEntity(service.getId().toString()));
+    assertFalse(response.contains(secret));
+    assertTrue(response.contains(PasswordEntityMasker.PASSWORD_MASK));
   }
 }

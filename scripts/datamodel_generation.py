@@ -190,7 +190,10 @@ for file_path in DATETIME_AWARE_FILE_PATHS:
             "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
             "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel",
         )
-        content = content.replace("from datetime import date, time", "from datetime import date, time, datetime")
+        content = content.replace(
+            "from datetime import date, time",
+            "from datetime import date, time, datetime",
+        )
         content = content.replace("AwareDatetime", "datetime")
     with Path(file_path).open("w", encoding=UTF_8) as f:
         f.write(content)
@@ -238,5 +241,29 @@ if applied != 1:
 
 with Path(UNION_MODE_FILE).open("w", encoding=UTF_8) as f:
     f.write(content)
+
+# Preserve imports that were available when these branches were inline definitions.
+COMPATIBILITY_ALIASES = {
+    "entity/services/connections/messaging/natsConnection.py": (
+        "BasicAuth = basicAuth.NatsBasicAuth",
+        "NkeyAuth = nkeyAuth.NatsNkeyAuth",
+        "TokenAuth = tokenAuth.NatsTokenAuth",
+    ),
+    "entity/services/connections/dashboard/qlikSenseConnection.py": (
+        "QlikCertificatePath = certificatePath.QlikCertificatePath",
+        "QlikCertificateValues = certificateValues.QlikCertificateValues",
+    ),
+    "entity/services/connections/dashboard/sapS4HanaConnection.py": (
+        "SapS4HanaBasicAuthType = basicAuth.SapS4HanaBasicAuth",
+        "SapS4HanaOAuthType = oAuth.SapS4HanaOAuthCredentials",
+    ),
+    "entity/services/connections/dashboard/powerBIConnection.py": ("LocalConfig = localConfig.PowerBILocalConfig",),
+    "metadataIngestion/storageServiceMetadataPipeline.py": (
+        "NoMetadataConfigurationSource = storageMetadataNoConfig.StorageMetadataNoConfig",
+    ),
+}
+for relative_path, aliases in COMPATIBILITY_ALIASES.items():
+    with (output_root / relative_path).open("a", encoding=UTF_8) as generated_file:
+        generated_file.write("\n\n" + "\n".join(aliases) + "\n")
 
 sys.stdout.write("Model generation and post-processing completed successfully.\n")

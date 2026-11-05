@@ -24,10 +24,15 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 
 /**
  * A caller who sees a connection's secrets masked keeps them while the connection points where it
@@ -221,6 +226,216 @@ class ConnectionSecretsGuardTest {
             ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
                 storageManifest("https://elsewhere.example", PASSWORD_MASK),
                 storageManifest("https://s3.amazonaws.com", STORED_TOKEN)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"serviceConnections", "appConfig", "appPrivateConfig"})
+  void aPipelineSourcePointedElsewhereCannotKeepItsMaskedSecret(String source) {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                pipeline(source, "https://elsewhere.example", PASSWORD_MASK),
+                pipeline(source, "https://original.example", STORED_TOKEN)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"serviceConnections", "appConfig", "appPrivateConfig"})
+  void aPipelineSourcePointedElsewhereCannotKeepItsStoredSecret(String source) {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                pipeline(source, "https://elsewhere.example", STORED_TOKEN),
+                pipeline(source, "https://original.example", STORED_TOKEN)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"serviceConnections", "appConfig", "appPrivateConfig"})
+  void aPipelineSourcePointedElsewhereAcceptsAReenteredSecret(String source) {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                pipeline(source, "https://elsewhere.example", "entered-again"),
+                pipeline(source, "https://original.example", STORED_TOKEN)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"serviceConnections", "appConfig", "appPrivateConfig"})
+  void anUnchangedPipelineSourceKeepsItsMaskedSecret(String source) {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                pipeline(source, "https://original.example", PASSWORD_MASK),
+                pipeline(source, "https://original.example", STORED_TOKEN)));
+  }
+
+  @Test
+  void onlyTheRetargetedServiceConnectionRequiresAReenteredSecret() {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite(
+                    List.of(
+                        serviceConnection("first", "elsewhere:3306", "entered-again"),
+                        serviceConnection("second", "second:3306", PASSWORD_MASK))),
+                storedTestSuite()));
+  }
+
+  @Test
+  void reenteringAnotherConnectionsSecretDoesNotPermitRetargeting() {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite(
+                    List.of(
+                        serviceConnection("first", "elsewhere:3306", PASSWORD_MASK),
+                        serviceConnection("second", "second:3306", "entered-again"))),
+                storedTestSuite()));
+  }
+
+  @Test
+  void reorderedServiceConnectionsCannotKeepMaskedSecrets() {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite(
+                    List.of(
+                        serviceConnection("second", "second:3306", PASSWORD_MASK),
+                        serviceConnection("first", "first:3306", PASSWORD_MASK))),
+                storedTestSuite()));
+  }
+
+  @Test
+  void removingAConnectionCannotMoveAnotherConnectionsMaskedSecret() {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite(List.of(serviceConnection("second", "second:3306", PASSWORD_MASK))),
+                storedTestSuite()));
+  }
+
+  @Test
+  void removingTheLastConnectionKeepsTheFirstConnectionsMaskedSecret() {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite(List.of(serviceConnection("first", "first:3306", PASSWORD_MASK))),
+                storedTestSuite()));
+  }
+
+  @Test
+  void anAddedServiceConnectionCannotUseAMaskedSecret() {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                testSuite(
+                    List.of(
+                        serviceConnection("first", "first:3306", PASSWORD_MASK),
+                        serviceConnection("second", "second:3306", PASSWORD_MASK),
+                        serviceConnection("third", "third:3306", PASSWORD_MASK))),
+                storedTestSuite()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void retargetingWithinOneConnectionStillRequiresItsNestedSecrets(boolean keepsMaskedSecret) {
+    Executable update =
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                mcp(
+                    "https://elsewhere.example",
+                    "entered-first",
+                    keepsMaskedSecret ? PASSWORD_MASK : "entered-second"),
+                mcp("https://original.example", STORED_TOKEN, STORED_TOKEN),
+                "Mcp",
+                ServiceType.MCP);
+    if (keepsMaskedSecret) {
+      assertThrows(BadRequestException.class, update);
+    } else {
+      assertDoesNotThrow(update);
+    }
+  }
+
+  @Test
+  void unchangedNestedServersKeepTheirMaskedSecrets() {
+    assertDoesNotThrow(
+        () ->
+            ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+                mcp("https://original.example", PASSWORD_MASK, PASSWORD_MASK),
+                mcp("https://original.example", STORED_TOKEN, STORED_TOKEN),
+                "Mcp",
+                ServiceType.MCP));
+  }
+
+  private static McpConnection mcp(String firstUrl, String firstSecret, String secondSecret) {
+    return new McpConnection()
+        .withServers(
+            List.of(
+                new McpServerConfig().withName("first").withUrl(firstUrl).withApiKey(firstSecret),
+                new McpServerConfig()
+                    .withName("second")
+                    .withUrl("https://second.example")
+                    .withApiKey(secondSecret)));
+  }
+
+  private static IngestionPipeline storedTestSuite() {
+    return testSuite(
+        List.of(
+            serviceConnection("first", "first:3306", STORED_TOKEN),
+            serviceConnection("second", "second:3306", "fernet:second-password-token")));
+  }
+
+  private static IngestionPipeline testSuite(List<Map<String, Object>> connections) {
+    return new IngestionPipeline()
+        .withName("guard")
+        .withPipelineType(PipelineType.TEST_SUITE)
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(Map.of("type", "TestSuite", "serviceConnections", connections)));
+  }
+
+  private static Map<String, Object> serviceConnection(String name, String target, String secret) {
+    return Map.of(
+        "serviceName", name, "serviceConnection", Map.of("config", mysql(target, secret)));
+  }
+
+  private static IngestionPipeline pipeline(String source, String target, String secret) {
+    Object config =
+        switch (source) {
+          case "serviceConnections" -> List.of(serviceConnection("mysql", target, secret));
+          case "appConfig" -> Map.of(
+              "clientId",
+              target,
+              "clientSecret",
+              "client-secret",
+              "signingSecret",
+              "signing-secret",
+              "botToken",
+              secret);
+          case "appPrivateConfig" -> Map.of(
+              "waiiInstance",
+              target,
+              "collateURL",
+              "https://collate.example",
+              "token",
+              secret,
+              "limits",
+              Map.of("actions", Map.of()));
+          default -> throw new IllegalArgumentException(source);
+        };
+    boolean testSuite = "serviceConnections".equals(source);
+    return new IngestionPipeline()
+        .withName("guard")
+        .withPipelineType(testSuite ? PipelineType.TEST_SUITE : PipelineType.APPLICATION)
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(
+                    Map.of("type", testSuite ? "TestSuite" : "Application", source, config)));
   }
 
   private static IngestionPipeline dbt(String url, String token, boolean updateDescriptions) {

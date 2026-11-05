@@ -57,16 +57,16 @@ public final class IngestionPipelineBuilder {
   }
 
   private static void addDefinedConfig(IngestionPipeline ingestionPipeline, boolean forRead) {
-    if (DBT.equals(ingestionPipeline.getPipelineType())
-        && ingestionPipeline.getSourceConfig() != null) {
-      ingestionPipeline
-          .getSourceConfig()
-          .setConfig(
-              ClassConverterFactory.getConverter(DbtPipeline.class)
-                  .convert(ingestionPipeline.getSourceConfig().getConfig()));
-    } else if (ingestionPipeline.getSourceConfig() != null
-        && isStorageMetadata(ingestionPipeline)) {
+    SourceConfig sourceConfig = ingestionPipeline.getSourceConfig();
+    if (sourceConfig != null && isStorageMetadata(ingestionPipeline)) {
       typeStorageMetadata(ingestionPipeline, forRead);
+    } else if (sourceConfig != null && DBT.equals(ingestionPipeline.getPipelineType())) {
+      sourceConfig.setConfig(
+          ClassConverterFactory.getConverter(DbtPipeline.class).convert(sourceConfig.getConfig()));
+    } else if (sourceConfig != null && hasDeclaredConfigType(sourceConfig.getConfig())) {
+      sourceConfig.setConfig(
+          ClassConverterFactory.convertProperty(
+              SourceConfig.class, "config", sourceConfig.getConfig()));
     }
     if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
       ingestionPipeline.setOpenMetadataServerConnection(
@@ -121,5 +121,12 @@ public final class IngestionPipelineBuilder {
       kept.remove(MANIFEST_SOURCE_FIELD);
       sourceConfig.setConfig(kept);
     }
+  }
+
+  private static boolean hasDeclaredConfigType(Object config) {
+    if (!(config instanceof Map<?, ?> map)) {
+      return config != null;
+    }
+    return map.get(CONFIG_TYPE_FIELD) instanceof String type && !type.isBlank();
   }
 }

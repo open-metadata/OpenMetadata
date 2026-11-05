@@ -77,9 +77,8 @@ public final class ConnectionSecretsGuard {
   }
 
   /**
-   * The same guard for an ingestion pipeline, whose secrets live in the source it reads from: a dbt
-   * project or a storage manifest. Only that source is compared, so a change to the pipeline's
-   * other settings never asks for the secrets again.
+   * The same guard for an ingestion pipeline. Only its credential-bearing sources are compared,
+   * so a change to the pipeline's other settings never asks for the secrets again.
    */
   public static void requireSecretsReenteredOnRetarget(
       IngestionPipeline incoming, IngestionPipeline stored) {
@@ -132,10 +131,24 @@ public final class ConnectionSecretsGuard {
   }
 
   private static final List<String> PIPELINE_SECRET_SOURCES =
-      List.of("dbtConfigSource", "storageMetadataConfigSource");
+      List.of(
+          "dbtConfigSource",
+          "storageMetadataConfigSource",
+          "serviceConnections",
+          "appConfig",
+          "appPrivateConfig");
 
   private static boolean retargetsWithStoredSecret(
       JsonNode incoming, JsonNode stored, JsonNode maskedIncoming, JsonNode maskedStored) {
+    if (incoming.isArray() || stored.isArray()) {
+      for (int i = 0; i < Math.max(incoming.size(), stored.size()); i++) {
+        if (retargetsWithStoredSecret(
+            incoming.path(i), stored.path(i), maskedIncoming.path(i), maskedStored.path(i))) {
+          return true;
+        }
+      }
+      return false;
+    }
     return nonExemptFieldChanged(maskedIncoming, maskedStored)
         && keepsStoredSecret(maskedIncoming, incoming, stored);
   }

@@ -126,6 +126,9 @@ public class ReflectionUtil {
 
   /** The name an element reports, or null when it has none - see {@link #getCollectionElementKeys}. */
   private static String readName(Object element) {
+    if (element == null) {
+      return null;
+    }
     try {
       Method getName = element.getClass().getMethod("getName");
       if (String.class.equals(getName.getReturnType())) {

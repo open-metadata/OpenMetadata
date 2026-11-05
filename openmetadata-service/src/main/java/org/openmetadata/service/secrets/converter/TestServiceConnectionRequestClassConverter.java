@@ -13,17 +13,23 @@
 
 package org.openmetadata.service.secrets.converter;
 
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.services.MetadataConnection;
+import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.type.DriveConnection;
+import org.openmetadata.schema.type.LLMConnection;
+import org.openmetadata.schema.type.McpConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.schema.type.SearchConnection;
+import org.openmetadata.schema.type.SecurityConnection;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
@@ -32,16 +38,6 @@ import org.openmetadata.service.util.ReflectionUtil;
 /** Converter class to get an `TestServiceConnectionRequest` object. */
 @Slf4j
 public class TestServiceConnectionRequestClassConverter extends ClassConverter {
-
-  private static final List<Class<?>> CONNECTION_CLASSES =
-      List.of(
-          DatabaseConnection.class,
-          DashboardConnection.class,
-          MessagingConnection.class,
-          PipelineConnection.class,
-          MlModelConnection.class,
-          MetadataConnection.class,
-          StorageConnection.class);
 
   public TestServiceConnectionRequestClassConverter() {
     super(TestServiceConnectionRequest.class);
@@ -64,12 +60,31 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
     Class<?> configClass =
         ReflectionUtil.createConnectionConfigClass(
             request.getConnectionType(), request.getServiceType());
-    tryToConvertOrFail(request.getConnection(), CONNECTION_CLASSES)
-        .ifPresent(request::setConnection);
+    request.setConnection(convertWrapper(request.getConnection(), request.getServiceType()));
     ServiceConnectionEntityInterface connection =
         (ServiceConnectionEntityInterface) request.getConnection();
     connection.setConfig(
         ClassConverterFactory.getConverter(configClass).convert(connection.getConfig()));
+  }
+
+  private Object convertWrapper(Object object, ServiceType serviceType) {
+    Class<?> wrapperClass =
+        switch (serviceType) {
+          case DATABASE -> DatabaseConnection.class;
+          case DASHBOARD -> DashboardConnection.class;
+          case MESSAGING -> MessagingConnection.class;
+          case PIPELINE -> PipelineConnection.class;
+          case ML_MODEL -> MlModelConnection.class;
+          case METADATA -> MetadataConnection.class;
+          case STORAGE -> StorageConnection.class;
+          case SEARCH -> SearchConnection.class;
+          case API -> ApiConnection.class;
+          case SECURITY -> SecurityConnection.class;
+          case DRIVE -> DriveConnection.class;
+          case LLM -> LLMConnection.class;
+          case MCP -> McpConnection.class;
+        };
+    return JsonUtils.convertValue(object, wrapperClass);
   }
 
   /**

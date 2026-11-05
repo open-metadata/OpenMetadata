@@ -13,7 +13,10 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
@@ -21,13 +24,22 @@ import static org.openmetadata.schema.api.services.CreateMlModelService.MlModelS
 import static org.openmetadata.schema.entity.services.ServiceType.ML_MODEL;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
@@ -35,6 +47,7 @@ import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
@@ -140,5 +153,135 @@ public class DBSecretsManagerTest {
         JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class)
             .getPassword());
     assertNotSame(mysqlConnection, actualConfig);
+  }
+
+  @Test
+  void testEncryptPowerBiGcsPrivateKey() {
+    Map<String, Object> connection =
+        JsonUtils.readValue(
+            """
+            {"type":"PowerBI","clientId":"client","clientSecret":"secret-value","tenantId":"tenant",
+             "pbitFilesSource":{"pbitFileConfigType":"gcs","securityConfig":{"gcpConfig":{"privateKey":"secret-value"}}}}
+            """,
+            Map.class);
+
+    Object encrypted =
+        secretsManager.encryptServiceConnectionConfig(
+            connection, "PowerBI", "test", ServiceType.DASHBOARD);
+
+    assertSecretIsEncrypted(JsonUtils.pojoToJson(encrypted));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("nestedSecretPipelines")
+  void testEncryptNestedPipelineSecrets(String name, PipelineType pipelineType, String json) {
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withName("test")
+            .withPipelineType(pipelineType)
+            .withSourceConfig(new SourceConfig().withConfig(JsonUtils.readValue(json, Map.class)));
+
+    secretsManager.encryptIngestionPipeline(pipeline);
+
+    assertSecretIsEncrypted(JsonUtils.pojoToJson(pipeline.getSourceConfig().getConfig()));
+  }
+
+  private static Stream<Arguments> nestedSecretPipelines() {
+    return Stream.of(
+        Arguments.of(
+            "Storage S3 manifest credentials",
+            PipelineType.METADATA,
+            """
+            {"type":"StorageMetadata","storageMetadataConfigSource":{"prefixConfig":{"containerName":"bucket"},
+             "securityConfig":{"awsAccessKeyId":"key","awsSecretAccessKey":"secret-value"}}}
+            """),
+        Arguments.of(
+            "Storage GCS manifest credentials",
+            PipelineType.METADATA,
+            """
+            {"type":"StorageMetadata","storageMetadataConfigSource":{"prefixConfig":{"containerName":"bucket"},
+             "securityConfig":{"gcpConfig":{"privateKey":"secret-value"}}}}
+            """),
+        Arguments.of(
+            "Application Slack tokens",
+            PipelineType.APPLICATION,
+            """
+            {"type":"Application","appConfig":{"clientId":"client","clientSecret":"client-secret",
+             "signingSecret":"signing-secret","botToken":"secret-value","userToken":"secret-value"}}
+            """),
+        Arguments.of(
+            "Application private token",
+            PipelineType.APPLICATION,
+            """
+            {"type":"Application","appPrivateConfig":{"waiiInstance":"https://waii.example.com",
+             "collateURL":"https://collate.example.com","token":"secret-value","limits":{"actions":{}}}}
+            """),
+        Arguments.of(
+            "Test suite service password",
+            PipelineType.TEST_SUITE,
+            """
+            {"type":"TestSuite","serviceConnections":[{"serviceName":"mysql","serviceConnection":{"config":
+             {"type":"Mysql","username":"user","authType":{"password":"secret-value"}}}}]}
+            """),
+        Arguments.of(
+            "dbt HTTP TLS key",
+            PipelineType.DBT,
+            """
+            {"type":"DBT","dbtConfigSource":{"dbtConfigType":"http","dbtManifestHttpPath":"https://example.com/manifest.json",
+             "dbtSSLConfig":{"sslKey":"secret-value"}}}
+            """));
+  }
+
+  @ParameterizedTest
+  @MethodSource("typedApplicationConfigs")
+  void testEncryptTypedApplicationConfigWithNestedMaps(ApplicationPipeline config) {
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withName("test")
+            .withPipelineType(PipelineType.APPLICATION)
+            .withSourceConfig(new SourceConfig().withConfig(config));
+
+    secretsManager.encryptIngestionPipeline(pipeline);
+
+    assertSecretIsEncrypted(JsonUtils.pojoToJson(pipeline.getSourceConfig().getConfig()));
+  }
+
+  private static Stream<ApplicationPipeline> typedApplicationConfigs() {
+    return Stream.of(
+        new ApplicationPipeline()
+            .withAppConfig(
+                Map.of(
+                    "clientId", "client",
+                    "clientSecret", "client-secret",
+                    "signingSecret", "signing-secret",
+                    "botToken", "secret-value",
+                    "userToken", "secret-value")),
+        new ApplicationPipeline()
+            .withAppPrivateConfig(
+                Map.of(
+                    "waiiInstance", "https://waii.example.com",
+                    "collateURL", "https://collate.example.com",
+                    "token", "secret-value",
+                    "limits", Map.of("actions", Map.of()))));
+  }
+
+  @Test
+  void testEncryptRejectsMisspelledRequiredSecret() {
+    Map<String, Object> connection =
+        Map.of(
+            "type", "Nats",
+            "natsServers", "nats://localhost:4222",
+            "authType", Map.of("username", "user", "pasword", "secret-value"));
+
+    assertThrows(
+        InvalidServiceConnectionException.class,
+        () ->
+            secretsManager.encryptServiceConnectionConfig(
+                connection, "Nats", "test", ServiceType.MESSAGING));
+  }
+
+  private static void assertSecretIsEncrypted(String serialized) {
+    assertFalse(serialized.contains("secret-value"), serialized);
+    assertTrue(serialized.contains(ENCRYPTED_VALUE), serialized);
   }
 }
