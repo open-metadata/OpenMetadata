@@ -147,7 +147,7 @@
     "html-react-parser": "^3.0.16",
     "html-to-image": "1.11.13",
     "https-browserify": "^1.0.0",
-    "i18next": "^25.6.0",
+    "i18next": "^26.7.1",
     "i18next-browser-languagedetector": "^8.3.0",
     "input-otp": "^1.4.2",
     "js-yaml": "^5.4.3",
@@ -346,6 +346,7 @@
     "undici": "^6.29.1",
     "follow-redirects": "^1.16.2",
     "@codemirror/state": "^6",
-    "@codemirror/view": "^6"
+    "@codemirror/view": "^6",
+    "i18next": "26.7.1"
   }
 }
