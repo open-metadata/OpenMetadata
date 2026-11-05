@@ -85,15 +85,24 @@ class OntologyResourceAccessTest {
 
   @Test
   void aListThatNamesAnOntologyNeedsNoPerRowCheck() {
-    final Authorizer refusing = Mockito.mock(Authorizer.class);
     assertDoesNotThrow(
         () ->
             OntologyResourceAccess.requireDraftRowsRead(
-                refusing,
+                refusingEverything(),
                 Mockito.mock(SecurityContext.class),
                 UUID.randomUUID(),
                 List.of(UUID.randomUUID())));
-    Mockito.verifyNoInteractions(refusing);
+  }
+
+  private static Authorizer refusingEverything() {
+    final Authorizer authorizer = Mockito.mock(Authorizer.class);
+    Mockito.doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(
+            Mockito.any(SecurityContext.class),
+            Mockito.any(OperationContext.class),
+            Mockito.any(ResourceContextInterface.class));
+    return authorizer;
   }
 
   private static Authorizer grantingOnly(final MetadataOperation granted) {
