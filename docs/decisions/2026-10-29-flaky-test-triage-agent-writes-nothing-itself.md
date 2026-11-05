@@ -30,6 +30,9 @@ trigger CI needs a PAT, and replying needs the Slack bot token.
 - A fix for the same spec from the last 7 days is reused instead of opening another PR.
 - Scheduled runs look back 7 hours: the 300-minute triage timeout plus the hourly cron. A queued run then
   misses no alert, and the marker prevents double replies.
+- The Collate bot starts a run per alert with a `flaky-test-alert` `repository_dispatch`; the cron is the
+  backstop. The dispatch payload is ignored: runs share one concurrency group, GitHub keeps only the newest
+  queued run, and that run re-reads the channel, so a burst of alerts costs one extra run, not one each.
 
 ## Consequences
 The agent cannot push, open PRs, post to Slack, or change anything but Playwright test code, whatever text

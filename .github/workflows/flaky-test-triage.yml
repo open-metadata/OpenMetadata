@@ -23,6 +23,11 @@
 name: Flaky Test Triage
 
 on:
+  # The Collate bot fires this when an alert lands in #pw-health; the hourly
+  # cron catches any alert whose dispatch was missed. The payload is ignored:
+  # collect re-reads the channel, so one run handles every pending alert.
+  repository_dispatch:
+    types: [flaky-test-alert]
   schedule:
     - cron: "20 * * * *"
   workflow_dispatch:
@@ -70,6 +75,20 @@ jobs:
     outputs:
       count: ${{ steps.collect.outputs.count }}
     steps:
+      # Report every missing secret in one run, before the stack spends ~30 minutes
+      # starting only for the agent step to fail on the first one.
+      - name: Check required secrets
+        env:
+          HAS_CLAUDE: ${{ secrets.ANTHROPIC_API_KEY != '' || secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          HAS_SLACK: ${{ secrets.COLLATE_BOT_SLACK_TOKEN != '' }}
+          HAS_PAT: ${{ secrets.COLLATE_PAT != '' }}
+        run: |
+          missing=0
+          [[ "$HAS_CLAUDE" == true ]] || { echo "::error::Set repo secret ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN"; missing=1; }
+          [[ "$HAS_SLACK" == true ]] || { echo "::error::Set repo secret COLLATE_BOT_SLACK_TOKEN"; missing=1; }
+          [[ "$HAS_PAT" == true ]] || { echo "::error::Set repo secret COLLATE_PAT"; missing=1; }
+          exit "$missing"
+
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
