@@ -11,7 +11,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.migration.utils.v209;
+package org.openmetadata.service.migration.utils.v208;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import org.openmetadata.service.util.EntityUtil;
 /**
  * Event-triggered workflows pass the entity version their event produced to the main workflow, so
  * a change check judges that edit's change rather than a later one. The trigger BPMN carries the
- * pass-through, and a deployed workflow keeps its old BPMN until it is redeployed, so the 2.0.9
+ * pass-through, and a deployed workflow keeps its old BPMN until it is redeployed, so the 2.0.8
  * migration redeploys every governance workflow once. A workflow that fails to redeploy is logged
  * and the rest still run, so one undeployable workflow does not block the upgrade; saving it again
  * redeploys it.
@@ -44,7 +44,7 @@ public final class WorkflowRedeployMigration {
         repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
     int redeployed = redeployEach(WorkflowHandler.getInstance(), workflows);
     LOG.info(
-        "[v209] Redeployed {} of {} governance workflow definition(s)",
+        "[v208] Redeployed {} of {} governance workflow definition(s)",
         redeployed,
         workflows.size());
   }
@@ -58,7 +58,7 @@ public final class WorkflowRedeployMigration {
       } catch (RuntimeException e) {
         // Flowable reports a failed deploy with its own unchecked exceptions.
         LOG.error(
-            "[v209] Failed to redeploy workflow '{}'; save it again to redeploy it",
+            "[v208] Failed to redeploy workflow '{}'; save it again to redeploy it",
             workflow.getFullyQualifiedName(),
             e);
       }

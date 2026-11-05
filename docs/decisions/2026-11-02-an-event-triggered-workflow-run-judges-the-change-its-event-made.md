@@ -1,10 +1,11 @@
 # An event-triggered workflow run judges the change its event made
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-04 (the redeploy runs in the 2.0.9 migration)
+- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-05 (the redeploy runs in the 2.0.8 migration)
 - **Deciders:** yan-3005
-- **Guard:** `FilterEntityImplTest#eventPath_judgesTheChangeOfTheVersionTheEventProduced`, `WorkflowRedeployEntryPointTest`, `MigrationWorkflowReprocessingTest#testNewPatchVersionBelowTheRecordedMaxIsAppliedAsNew`
-- **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v209)
+- **Guard:** `FilterEntityImplTest#eventPath_judgesTheChangeOfTheVersionTheEventProduced`,
+  `WorkflowRedeployEntryPointTest`
+- **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v208)
 
 ## Context
 
@@ -23,7 +24,7 @@ own change while it is still at that version, otherwise the change stored with t
 entity's history. A run that carries no version, or whose version is no longer in the history, reads
 the entity's current change as before. Change-request runs keep judging the revision they review.
 
-Deployed workflows keep the BPMN they were deployed with, so the 2.0.9 migration redeploys every
+Deployed workflows keep the BPMN they were deployed with, so the 2.0.8 migration redeploys every
 governance workflow once (`WorkflowRedeployMigration`).
 
 ## Consequences
@@ -36,11 +37,12 @@ governance workflow once (`WorkflowRedeployMigration`).
 
 ## Amendment
 
-v2 2026-11-04: the 2.0 line carries the same change, so the redeploy step moves from the 2.1.0
-migration to a 2.0.9 migration that holds only this step, the same file on `main` and `2.0`. A
-version a database has never recorded is applied with its data migration, so a database on 2.0.x
-and one already on a 2.1.0 build both run it once, and 2.1.0 does not repeat it. The step runs at
-the 2.0.9 stage of an upgrade, before the 2.1.0 migrations, as the 2.0.8 negated-list step that
-redeploys rewritten workflows already does; it reads workflow definitions and deploys to Flowable,
-and touches nothing the 2.1.0 schema changes add. A workflow that fails to redeploy is logged at
-error and keeps its deployment until it is saved again.
+v2 2026-11-05: the 2.0 line carries the same change, so the redeploy step moves from the 2.1.0
+migration to the 2.0.8 migration, the same step on `main` and `2.0`, and runs after the 2.0.8
+negated-list step that redeploys rewritten workflows. An upgrade from 2.0.7 or earlier runs it once.
+Two kinds of database do not: one on the 2.0 line that recorded 2.0.8 before the step was added,
+whose 2.0.8 is replayed only for new SQL, and one already on a 2.1.0 pre-release, which replays the
+previous release train for SQL only. Their workflows keep their deployment until they are saved
+again, and the trigger filter uses the event's version meanwhile. The step reads workflow
+definitions and deploys to Flowable, and touches nothing the 2.1.0 schema changes add. A workflow
+that fails to redeploy is logged at error and keeps its deployment until it is saved again.

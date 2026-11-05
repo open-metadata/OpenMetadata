@@ -11,43 +11,57 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.migration.v209;
+package org.openmetadata.service.migration.v208;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 import java.lang.reflect.Field;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v209.WorkflowRedeployMigration;
+import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v208.LifeCycleCreatedSentinelMigration;
+import org.openmetadata.service.migration.utils.v208.MigrationUtil;
+import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
 
 class WorkflowRedeployEntryPointTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("migrationEntryPoints")
-  void runDataMigrationStartsFlowableAndRedeploysTheWorkflows(
+  void runDataMigrationRewritesThenRedeploysTheWorkflows(
       String database, Function<MigrationFile, MigrationProcessImpl> createMigration)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
+    setField(migration, "handle", mock(Handle.class));
+    setField(migration, "collectionDAO", mock(CollectionDAO.class));
     setField(migration, "migrationDAO", mock(MigrationDAO.class));
 
-    try (MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
+    try (MockedStatic<ConnectionSecretsEncryptionMigration> secretsEncryption =
+            mockStatic(ConnectionSecretsEncryptionMigration.class);
+        MockedStatic<LifeCycleCreatedSentinelMigration> createdSentinel =
+            mockStatic(LifeCycleCreatedSentinelMigration.class);
+        MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
+        MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
             mockStatic(WorkflowRedeployMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class)) {
       migration.runDataMigration();
 
-      // `migrate` runs before Flowable starts, so the step that deploys workflows starts it.
-      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
+      migrationUtil.verify(MigrationUtil::rewriteWorkflowRules);
+      // `migrate` runs before Flowable starts, so the steps that deploy workflows start it.
+      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
     }
   }
@@ -57,11 +71,11 @@ class WorkflowRedeployEntryPointTest {
         Arguments.of(
             "MySQL",
             (Function<MigrationFile, MigrationProcessImpl>)
-                org.openmetadata.service.migration.mysql.v209.Migration::new),
+                org.openmetadata.service.migration.mysql.v208.Migration::new),
         Arguments.of(
             "PostgreSQL",
             (Function<MigrationFile, MigrationProcessImpl>)
-                org.openmetadata.service.migration.postgres.v209.Migration::new));
+                org.openmetadata.service.migration.postgres.v208.Migration::new));
   }
 
   private static void setField(MigrationProcessImpl migration, String fieldName, Object value)
