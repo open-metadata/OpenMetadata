@@ -201,6 +201,16 @@ It **warns, never blocks** (promote to a gate only with maintainer sign-off) whe
 - **generated-doc freshness** — `docs/generated/**` out of date with its source;
 - **decision records** — a malformed record or a dangling `ADR:` citation (also a pre-commit hook).
 
+## Task completion and resource use
+
+Follow ADR:2026-11-05-agent-work-stops-at-the-requested-outcome: select verification once and
+reuse applicable evidence across skills. Implementation/push/PR creation uses focused checks;
+merge readiness includes full coverage. Report pending checks honestly and finish after confirming
+the requested deliverable. Monitoring CI or dispatching extra workflows requires that task scope.
+Expand checks for changed behavior, relevant failures or a named risk; retry infrastructure only
+after addressing its cause. Read instructions once, batch independent reads, use compact tool
+summaries, and let runners wait instead of repeatedly inspecting unchanged logs.
+
 ## Git commit conventions
 - Never add "Co-Authored-By" lines or any AI-attribution trailers to commit messages. 
 - The commit is authored by me; you are a tool, not a co-author.
