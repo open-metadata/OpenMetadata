@@ -6616,29 +6616,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * so the catch only logs and the inner enqueue stands.
    */
   private void runSearchWriteClosures(List<SearchRepository.DeferredSearchWrite> closures) {
-    for (SearchRepository.DeferredSearchWrite closure : closures) {
-      try {
-        closure.run();
-      } catch (Exception e) {
-        enqueueSearchWriteRetry(closure, e);
-      }
-    }
-  }
-
-  private void enqueueSearchWriteRetry(
-      SearchRepository.DeferredSearchWrite closure, Exception failure) {
-    LOG.warn(
-        "Deferred search-index cascade {} failed for {}; enqueuing retry",
-        closure.operation(),
-        entityType,
-        failure);
-    if (closure.entityId() != null || !nullOrEmpty(closure.entityFqn())) {
-      SearchIndexRetryQueue.enqueue(
-          closure.entityId(),
-          closure.entityFqn(),
-          closure.entityType() == null ? "" : closure.entityType(),
-          SearchIndexRetryQueue.failureReason(closure.operation(), failure));
-    }
+    closures.forEach(SearchRepository.DeferredSearchWrite::runOrEnqueueRetry);
   }
 
   private void runLineageEsClosures(List<LineageUtil.DeferredLineageEsWrite> closures) {

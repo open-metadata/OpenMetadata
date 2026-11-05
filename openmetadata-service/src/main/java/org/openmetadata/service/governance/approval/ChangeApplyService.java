@@ -42,6 +42,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FreshReadScope;
 
 /**
@@ -74,7 +75,9 @@ public final class ChangeApplyService {
     ChangeRequest request = ChangeRequestService.get(changeRequestId);
     EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
     try (FreshReadScope.Handle fresh = FreshReadScope.enter()) {
-      return repository.executeInTransaction(() -> applyBypassingCache(repository, request));
+      return SearchRepository.withSearchWritesInBackground(
+          changeRequestId.toString(),
+          () -> repository.executeInTransaction(() -> applyBypassingCache(repository, request)));
     } catch (IllegalArgumentException | EntityNotFoundException | WebApplicationException e) {
       return ChangeRequestService.flagConflicts(
           changeRequestId, new Applicability(List.of(), notApplicable(e)));

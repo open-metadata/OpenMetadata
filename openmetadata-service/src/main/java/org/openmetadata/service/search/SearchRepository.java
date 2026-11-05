@@ -102,9 +102,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
@@ -190,6 +192,8 @@ import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -261,6 +265,29 @@ public class SearchRepository {
       Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
     public void run() {
       esWrite.run();
+    }
+
+    public void runOrEnqueueRetry() {
+      try {
+        esWrite.run();
+      } catch (RuntimeException e) {
+        enqueueRetry(e);
+      }
+    }
+
+    public void enqueueRetry(Throwable failure) {
+      LOG.warn(
+          "Deferred search-index cascade {} failed for {}; enqueuing retry",
+          operation,
+          entityType,
+          failure);
+      if (entityId != null || !nullOrEmpty(entityFqn)) {
+        SearchIndexRetryQueue.enqueue(
+            entityId,
+            entityFqn,
+            entityType == null ? "" : entityType,
+            SearchIndexRetryQueue.failureReason(operation, failure));
+      }
     }
   }
 
@@ -421,6 +448,52 @@ public class SearchRepository {
   /** Discard captured closures and close the scope without running them (failed transaction). */
   public static void clearSearchWriteDeferred() {
     DEFERRED_SEARCH_WRITES.remove();
+  }
+
+  /**
+   * Runs {@code work} with the cascade search rewrites it makes captured, and once it returns hands
+   * them to the async executor instead of draining them on this thread. For a caller that needs no
+   * read-your-write search: publishing an approved change runs on the reviewer's request, and the
+   * rewrite a rename or move makes across every index held that request past a minute on a busy
+   * cluster. A rewrite that fails or never runs is enqueued to the durable retry outbox. Under an
+   * already-open scope the outer owner drains the rewrites as before
+   * (ADR:2026-11-05-publishing-an-approved-change-rewrites-search-in-the-background).
+   */
+  public static <R> R withSearchWritesInBackground(String context, Supplier<R> work) {
+    boolean ownsScope = beginSearchWriteDeferral();
+    boolean completed = false;
+    try {
+      R result = work.get();
+      completed = true;
+      return result;
+    } finally {
+      if (ownsScope) {
+        List<DeferredSearchWrite> writes = drainSearchWriteDeferred();
+        if (completed && !writes.isEmpty()) {
+          runInBackground(context, writes);
+        }
+      }
+    }
+  }
+
+  private static void runInBackground(String context, List<DeferredSearchWrite> writes) {
+    try {
+      AsyncService.getInstance()
+          .submitDatabaseTask(
+              DatabaseOperation.SEARCH_OPERATION,
+              context,
+              () -> {
+                writes.forEach(DeferredSearchWrite::runOrEnqueueRetry);
+                return null;
+              })
+          .exceptionally(
+              failure -> {
+                writes.forEach(write -> write.enqueueRetry(failure));
+                return null;
+              });
+    } catch (RejectedExecutionException e) {
+      writes.forEach(write -> write.enqueueRetry(e));
+    }
   }
 
   /** {@code true} while a flush has opened a search-write deferral scope on the current thread. */
