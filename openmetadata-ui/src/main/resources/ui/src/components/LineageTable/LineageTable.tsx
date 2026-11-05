@@ -806,7 +806,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <Owner isCompactView={false} owners={owners} showLabel={false} />
+          <Owner
+            isCompactView={false}
+            labelVariant="cell"
+            owners={owners}
+            showLabel={false}
+          />
         ),
       },
       {

@@ -723,9 +723,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               avatarSize={24}
               isCompactView={false}
               owners={(source as TableColumnSearchSource)?.owners ?? []}
-              placeHolder={t('label.no-entity', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           ),
@@ -793,9 +790,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 avatarSize={24}
                 isCompactView={false}
                 owners={(source?.owners as EntityReference[]) ?? []}
-                placeHolder={t('label.no-entity', {
-                  entity: t('label.owner-plural'),
-                })}
                 showLabel={false}
               />
             ),

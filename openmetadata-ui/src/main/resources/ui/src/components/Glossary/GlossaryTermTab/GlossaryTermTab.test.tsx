@@ -561,6 +561,13 @@ describe('Test GlossaryTermTab component', () => {
 
         expect(ownerLabels.length).toBeGreaterThan(0);
       });
+
+      expect(
+        jest.requireMock('@openmetadata/ui-core-components').Owner
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ labelVariant: 'cell' }),
+        expect.anything()
+      );
     });
 
     it('should render action buttons when user has create permissions', async () => {

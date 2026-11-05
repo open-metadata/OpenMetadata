@@ -117,6 +117,7 @@ function DataAssetsVersionHeader({
               )}
               <Owner
                 isCompactView={false}
+                labelVariant="header"
                 ownerDisplayName={ownerDisplayName}
                 owners={currentVersionData?.owners ?? ownerRef}
                 showLabel={false}

@@ -82,6 +82,7 @@ export const ownerTableObject = <
     render: (owners: EntityReference[]) => (
       <Owner
         isCompactView={false}
+        labelVariant="cell"
         maxVisibleOwners={4}
         owners={owners ?? []}
         showLabel={false}

@@ -391,23 +391,15 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             </TooltipTrigger>
           </Tooltip>
 
-          {owners.length > 0 ? (
-            <div className="article-detail-owner-label">
-              <Owner
-                hasPermission={false}
-                isCompactView={false}
-                owners={owners}
-                showLabel={false}
-              />
-            </div>
-          ) : (
-            <Typography
-              className="tw:text-quaternary"
-              size="text-sm"
-              weight="regular">
-              {t('label.no-entity', { entity: t('label.owner') })}
-            </Typography>
-          )}
+          <div className="article-detail-owner-label">
+            <Owner
+              hasPermission={false}
+              isCompactView={false}
+              labelVariant="cell"
+              owners={owners}
+              showLabel={false}
+            />
+          </div>
           {canEditOwners && (
             <UserTeamSelectableList
               hasPermission={canEditOwners}

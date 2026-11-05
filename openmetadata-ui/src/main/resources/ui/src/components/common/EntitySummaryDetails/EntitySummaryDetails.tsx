@@ -24,6 +24,7 @@ import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/TeamUtils';
@@ -71,7 +72,7 @@ function OwnerRetVal({
   if (!displayVal || displayVal === '--') {
     return (
       <span className="d-flex gap-1 items-center" data-testid="owner-link">
-        {t('label.no-entity', { entity: t('label.owner-plural') })}
+        {NO_DATA_PLACEHOLDER}
       </span>
     );
   }
