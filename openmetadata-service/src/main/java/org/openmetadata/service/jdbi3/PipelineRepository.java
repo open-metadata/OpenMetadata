@@ -343,17 +343,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     Map<Long, PipelineStatus> stored = loadStoredStatuses(pipeline, incoming);
     List<PipelineStatus> written = new ArrayList<>();
-    List<String> changeEvents = new ArrayList<>();
-
-    // incoming is ordered oldest first, so change events are emitted chronologically.
     for (PipelineStatus status : incoming) {
       StatusChange statusChange = resolveStatusChange(stored.get(status.getTimestamp()), status);
-      if (statusChange.outcome() == StatusOutcome.UNCHANGED) {
-        continue;
+      if (statusChange.outcome() != StatusOutcome.UNCHANGED) {
+        written.add(status);
       }
-      written.add(status);
-      buildStatusChangeEvent(pipeline, status, statusChange.previous(), updatedBy)
-          .ifPresent(changeEvents::add);
     }
 
     PipelineStatus latestStatus = incoming.getLast();
@@ -374,7 +368,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // This endpoint emits one change event per status, which the response filter cannot do, so the
     // repository owns emission and ENTITY_NO_CHANGE stops the filter adding a duplicate.
-    insertChangeEventsInChunks(changeEvents);
+    insertStatusChangeEvents(pipeline, written, stored, updatedBy);
 
     return new RestUtil.PutResponse<>(
         Response.Status.OK, pipeline.withPipelineStatus(latestStatus), ENTITY_NO_CHANGE);
@@ -427,10 +421,42 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return buildChangeEventJsonForBulkOperation(snapshot, ENTITY_UPDATED, updatedBy);
   }
 
-  private void insertChangeEventsInChunks(List<String> changeEvents) {
-    for (int i = 0; i < changeEvents.size(); i += CHANGE_EVENT_CHUNK_SIZE) {
-      insertChangeEventsBatch(
-          changeEvents.subList(i, Math.min(i + CHANGE_EVENT_CHUNK_SIZE, changeEvents.size())));
+  /**
+   * Inserts one change event per written status. Every event embeds the whole pipeline, so each
+   * chunk is inserted before the next is built: a request holds one chunk of events, not one event
+   * per status.
+   */
+  void insertStatusChangeEvents(
+      Pipeline pipeline,
+      List<PipelineStatus> written,
+      Map<Long, PipelineStatus> stored,
+      String updatedBy) {
+    ChangeEventChunk chunk = new ChangeEventChunk();
+    // written is ordered oldest first, so change events are emitted chronologically.
+    for (PipelineStatus status : written) {
+      buildStatusChangeEvent(pipeline, status, stored.get(status.getTimestamp()), updatedBy)
+          .ifPresent(chunk::add);
+    }
+    chunk.flush();
+  }
+
+  /** Change events waiting to be inserted, flushed once they reach a count or a size. */
+  private final class ChangeEventChunk {
+    private List<String> events = new ArrayList<>();
+    private long chars;
+
+    void add(String event) {
+      events.add(event);
+      chars += event.length();
+      if (events.size() >= CHANGE_EVENT_CHUNK_SIZE || chars >= MAX_CHANGE_EVENT_CHUNK_CHARS) {
+        flush();
+      }
+    }
+
+    void flush() {
+      insertChangeEventsBatch(events);
+      events = new ArrayList<>();
+      chars = 0;
     }
   }
 
@@ -455,6 +481,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   record StatusChange(StatusOutcome outcome, PipelineStatus previous) {}
 
   private static final int CHANGE_EVENT_CHUNK_SIZE = 100;
+
+  /**
+   * About 8 MB of change-event JSON per insert, so a large pipeline's events go out a few at a time
+   * (ADR:2026-11-05-bulk-status-change-events-are-inserted-a-chunk-at-a-time).
+   */
+  static final long MAX_CHANGE_EVENT_CHUNK_CHARS = 8L * 1024 * 1024;
 
   private static final Comparator<Status> BY_TASK_NAME =
       Comparator.comparing(Status::getName, Comparator.nullsFirst(String::compareTo));
