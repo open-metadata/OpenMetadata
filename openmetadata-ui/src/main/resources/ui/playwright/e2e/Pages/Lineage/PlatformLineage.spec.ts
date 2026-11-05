@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { get } from 'lodash';
+import { escapeRegExp, get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DatabaseClass } from '../../../support/entity/DatabaseClass';
@@ -143,6 +143,13 @@ test.describe('Entity Lineage tab', () => {
       ).toBeVisible();
       await expectLineageNodeVisible(page, nodeFqn);
 
+      // The tab title names the entity the page is centred on.
+      const tableName =
+        table.entityResponseData.displayName ?? table.entityResponseData.name;
+      await expect(page).toHaveTitle(
+        new RegExp(`^${escapeRegExp(`${tableName} Lineage`)} \\|`)
+      );
+
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.LINEAGE);
       await entitySearch.fill(db);
@@ -273,6 +280,11 @@ test.describe('Platform Lineage page (/lineage)', () => {
     expect((await lineageRes).ok()).toBeTruthy();
     await dismissLineageMapOnboarding(page);
 
+    const pageHeading = page
+      .getByTestId('page-header-container')
+      .getByTestId('heading');
+    await expect(pageHeading).toHaveText('Service Lineage');
+
     // Verify PNG export
     await verifyExportLineagePNG(page, true);
 
@@ -288,6 +300,7 @@ test.describe('Platform Lineage page (/lineage)', () => {
     );
     await domainButton.click();
     expect((await domainRes).ok()).toBeTruthy();
+    await expect(pageHeading).toHaveText('Domain Lineage');
 
     await page.getByTestId('lineage-layer-btn').click();
     const dataProductRes = page.waitForResponse(
@@ -297,6 +310,7 @@ test.describe('Platform Lineage page (/lineage)', () => {
     );
     await page.getByTestId('lineage-layer-lens-dataProduct').click();
     expect((await dataProductRes).ok()).toBeTruthy();
+    await expect(pageHeading).toHaveText('Data Product Lineage');
   });
 
   test('Settings depth change refetches platform lineage', async ({ page }) => {
