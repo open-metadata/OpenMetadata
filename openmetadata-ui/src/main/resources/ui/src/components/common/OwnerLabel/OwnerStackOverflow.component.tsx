@@ -35,6 +35,7 @@ import {
 } from '../OwnerUserTeamList/OwnerUserTeamList.constants';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerStackOverflowProps } from './OwnerAvatarStack.interface';
+import { OwnerInheritedBadge } from './OwnerInheritedBadge.component';
 
 const POPOVER_AVATAR_SIZE = '24';
 
@@ -70,24 +71,26 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         data-testid="owner-link"
         key={owner.id}
         to={getOwnerPath(owner)}>
-        {isTeam ? (
-          <span
-            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-brand-100 tw:text-brand-600"
-            data-testid={entityName}>
-            <TeamsIcon className="tw:w-3.5 tw:h-3.5" />
-          </span>
-        ) : (
-          <span
-            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0"
-            data-testid={entityName}>
-            <ProfilePicture
-              displayName={entityName}
-              name={owner.name ?? ''}
-              type="circle"
-              width={POPOVER_AVATAR_SIZE}
-            />
-          </span>
-        )}
+        <OwnerInheritedBadge owner={owner}>
+          {isTeam ? (
+            <span
+              className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-brand-100 tw:text-brand-600"
+              data-testid={entityName}>
+              <TeamsIcon className="tw:w-3.5 tw:h-3.5" />
+            </span>
+          ) : (
+            <span
+              className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0"
+              data-testid={entityName}>
+              <ProfilePicture
+                displayName={entityName}
+                name={owner.name ?? ''}
+                type="circle"
+                width={POPOVER_AVATAR_SIZE}
+              />
+            </span>
+          )}
+        </OwnerInheritedBadge>
         <Typography
           ellipsis
           as="span"
