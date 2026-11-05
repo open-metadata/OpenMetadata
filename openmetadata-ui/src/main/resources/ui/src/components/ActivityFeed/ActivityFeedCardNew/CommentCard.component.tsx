@@ -15,7 +15,10 @@ import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../enums/reactions.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -82,10 +85,7 @@ interface CommentCardProps {
    * outside the activity feed have no second editor to close.
    */
   closeFeedEditor?: () => void;
-  /**
-   * In the activity thread panels: Edit / Delete sit in a menu, and the reply
-   * is edited in the comment edit form.
-   */
+  /** In the activity thread panels the reply is edited in the comment edit form. */
   isThreadPanel?: boolean;
 }
 
@@ -263,7 +263,6 @@ const CommentCard = ({
           </div>
           <ActivityFeedActions
             isReply
-            asMenu={isThreadPanel}
             canDelete={canDelete}
             canEdit={canEdit}
             onDelete={onDelete}
@@ -273,15 +272,13 @@ const CommentCard = ({
         {feedBodyRender}
 
         {onReaction && (
-          <div className={layout.reactions}>
-            <div className="w-full" data-testid="feed-card-footer">
-              <div className="d-flex items-center gap-2 w-full">
-                <Reactions
-                  reactions={reactions ?? []}
-                  variant={layout.reactionsVariant}
-                  onReactionSelect={onReaction}
-                />
-              </div>
+          <div className="w-full" data-testid="feed-card-footer">
+            <div className="d-flex items-center gap-2 w-full">
+              <Reactions
+                reactions={reactions ?? []}
+                variant={ReactionsVariant.Pill}
+                onReactionSelect={onReaction}
+              />
             </div>
           </div>
         )}

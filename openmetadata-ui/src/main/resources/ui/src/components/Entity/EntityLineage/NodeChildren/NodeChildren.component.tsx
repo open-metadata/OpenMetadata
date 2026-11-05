@@ -176,6 +176,7 @@ const NodeChildren = ({
             aria-label={t('label.search-entity', {
               entity: childrenHeading,
             })}
+            autoComplete="off"
             icon={Search}
             inputDataTestId="search-column-input"
             placeholder={t('label.search-entity', {

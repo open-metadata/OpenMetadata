@@ -24,6 +24,10 @@
     },
     "author": {
       "type": "string"
+    },
+    "approvalRule": {
+      "description": "Approval rule frozen when the review was requested. Reviews requested before the rule existed decide on the first approval.",
+      "$ref": "ontologyApprovalRule.json"
     }
   },
   "required": [

@@ -372,7 +372,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
           className="tw:font-semibold"
           color="primary"
           data-testid="diagnose-button"
-          iconLeading={<AlertTriangle size={15} />}
+          iconLeading={AlertTriangle}
           size="sm"
           onClick={() => onRunDetails(agent)}>
           {t('label.diagnose')}
@@ -396,7 +396,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
               className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="logs-button"
-              iconLeading={<AlignLeft size={15} />}
+              iconLeading={AlignLeft}
               isDisabled={isUnavailable}
               size="sm"
               onClick={() => onLogs(agent)}>
@@ -408,7 +408,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
               className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="run-agent-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
+              iconLeading={PlayIcon}
               isDisabled={isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>
@@ -451,7 +451,7 @@ const AgentCard: FC<AgentCardProps> = ({
 
   return (
     <Card
-      className={`tw:relative tw:overflow-hidden tw:rounded-2xl tw:border tw:bg-primary tw:px-4.5 tw:py-4 tw:shadow-xs ${
+      className={`tw:relative tw:overflow-hidden tw:rounded-2xl tw:border tw:bg-surface tw:px-4.5 tw:py-4 tw:shadow-xs ${
         isFailed ? 'tw:border-utility-error-200' : 'tw:border-secondary'
       }`}
       data-testid={`agent-card-${agent.fqn}`}

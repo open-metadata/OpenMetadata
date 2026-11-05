@@ -124,8 +124,7 @@ export const transformImgTagsToFileAttachment = (
     return htmlString;
   }
 
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlString;
+  const tempDiv = new DOMParser().parseFromString(htmlString, 'text/html').body;
 
   const imgTags = tempDiv.querySelectorAll('img[src]');
 
@@ -156,7 +155,9 @@ export const transformImgTagsToFileAttachment = (
 
 export const setEditorContent = (editor: Editor, newContent: string) => {
   // Convert the markdown string to an HTML string
-  let htmlString = getHtmlStringFromMarkdownString(newContent);
+  let htmlString = getSanitizeContent(
+    getHtmlStringFromMarkdownString(newContent)
+  );
 
   // Transform img tags to file-attachment divs before Tiptap processes them
   htmlString = transformImgTagsToFileAttachment(htmlString);
@@ -165,7 +166,8 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
   htmlString =
     blockEditorExtensionsClassBase.parseContentFromBackend(htmlString);
 
-  editor.commands.setContent(htmlString);
+  // v3 emits an update on setContent by default; loading content is not an edit.
+  editor.commands.setContent(htmlString, { emitUpdate: false });
 
   // Update the editor state to reflect the new content
   const newEditorState = EditorState.create({

@@ -31,6 +31,7 @@ import {
 import { okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { removeCustomPropertyViaApi } from '../../../utils/customProperty';
+import { dragAndDropElement } from '../../../utils/dragDrop';
 import { waitForOwnedAssetCount } from '../../../utils/polling';
 import { expect, test } from '../../fixtures/pages';
 
@@ -154,15 +155,28 @@ test.describe('AI Profile Team Detail', () => {
     const searchInput = page
       .getByTestId('team-detail')
       .getByTestId('searchbar');
+    const teamLink = page.getByTestId(`team-link-${team.responseData.name}`);
+    const teamLinks = page
+      .getByTestId('sub-teams-table')
+      .locator('[data-testid^="team-link-"]');
+
+    // The search filters the loaded teams in the browser (no request to
+    // await). It is debounced, and applying it writes the term back into the
+    // input, so a term typed before that write-back is overwritten by it. Wait
+    // for each step to show in the table — the render that applies the term —
+    // before typing the next one.
     await searchInput.fill(team.responseData.displayName);
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeVisible();
+    await expect(teamLinks).toHaveCount(1);
+    await expect(teamLink).toBeVisible();
+
+    await searchInput.clear();
+    await expect(searchInput).toHaveValue('');
+    // The full list is back once the cleared term has been applied.
+    await expect(teamLinks).not.toHaveCount(1);
 
     await searchInput.fill('non-existent-team-xyz');
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeHidden();
+    await expect(searchInput).toHaveValue('non-existent-team-xyz');
+    await expect(teamLink).toBeHidden();
   });
 
   test('Should rename a team inline', async ({ browser, page }) => {
@@ -221,13 +235,17 @@ test.describe('AI Profile Team Detail', () => {
   }) => {
     const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
-    await openCreatedTeam(page, team);
-
-    const teamUsers = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/users?')
+    // A Group team has no Teams tab, so the detail opens on Users and fetches
+    // them on mount — listen before navigating or the response is missed.
+    const teamUsers = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users?') &&
+        new URL(response.url()).searchParams.get('team') ===
+          team.responseData.name
     );
-    await openTeamTab(page, /Users/);
+    await openCreatedTeam(page, team);
     await teamUsers;
+    await expect(page.getByTestId('team-users-table')).toBeVisible();
 
     await addUserToTeam(
       page,
@@ -251,6 +269,58 @@ test.describe('AI Profile Team Detail', () => {
     await expect(
       page.getByTestId('team-users-table').getByText(member.responseData.name)
     ).toBeHidden();
+  });
+
+  test('Should confirm a team move in a popover, not a modal', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const parent = await makeTeam(apiContext, { teamType: 'Department' });
+    const target = await makeTeam(apiContext, {
+      teamType: 'Department',
+      parents: [parent.responseData.id ?? ''],
+    });
+    const moved = await makeTeam(apiContext, {
+      teamType: 'Department',
+      parents: [parent.responseData.id ?? ''],
+    });
+    await openCreatedTeam(page, parent);
+
+    const subTeams = page.getByTestId('sub-teams-table');
+    await expect(
+      subTeams.locator(`[data-row-key="${target.responseData.name}"]`)
+    ).toBeVisible();
+    await expect(
+      subTeams.locator(`[data-row-key="${moved.responseData.name}"]`)
+    ).toBeVisible();
+
+    await dragAndDropElement(
+      page,
+      moved.responseData.name,
+      target.responseData.name
+    );
+
+    await expect(page.getByTestId('move-team-popover')).toBeVisible();
+
+    const patchResponse = waitForTeamPatch(page, moved.responseData.id ?? '');
+    await page.getByTestId('move-team-popover-confirm').click();
+    const patch = await patchResponse;
+
+    await expect(page.getByTestId('move-team-popover')).toBeHidden();
+    expect(JSON.stringify(patch.request().postDataJSON())).toContain(
+      target.responseData.id ?? ''
+    );
+
+    const movedTeam = await okJson<{ parents?: { id: string }[] }>(
+      await apiContext.get(
+        `/api/v1/teams/${moved.responseData.id}?fields=parents`
+      ),
+      'Read the moved team'
+    );
+    expect(movedTeam.parents?.map(({ id }) => id)).toEqual([
+      target.responseData.id,
+    ]);
   });
 
   test('Should render and update the team user count', async ({
@@ -592,7 +662,9 @@ test.describe('AI Profile Team Detail', () => {
       const team = await makeTeam(apiContext);
       await openCreatedTeam(page, team);
 
-      const tab = page.getByRole('tab', { name: /Custom Properties/ });
+      const tab = page
+        .getByTestId('team-detail')
+        .getByRole('tab', { name: /Custom Properties/ });
 
       await expect(tab).toBeVisible();
 

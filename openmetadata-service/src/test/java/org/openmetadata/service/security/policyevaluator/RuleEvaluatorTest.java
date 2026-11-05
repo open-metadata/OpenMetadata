@@ -823,6 +823,20 @@ class RuleEvaluatorTest {
   }
 
   /**
+   * Case-insensitive matching must not also fold distinct letters: {@code equalsIgnoreCase} equates
+   * a dotless {@code ı} with {@code i}, so a bot named with one would satisfy a rule naming another.
+   */
+  @Test
+  void test_impersonatedByDoesNotFoldDistinctLetters() {
+    try {
+      ImpersonationContext.setImpersonatedBy("mcpappl\u0131cationbot");
+      assertFalse(evaluateExpression("impersonatedBy('McpApplicationBot')"));
+    } finally {
+      ImpersonationContext.clear();
+    }
+  }
+
+  /**
    * Policy authoring runs the same expression with no request behind it. The attribution must not
    * leak into validation, otherwise saving a policy from an impersonated session evaluates
    * differently than saving it from a normal one.
@@ -1209,6 +1223,39 @@ class RuleEvaluatorTest {
     assertTrue(
         evaluateExpression("hasDomain() || noOwner()"),
         "hasDomain should work correctly in OR expressions");
+  }
+
+  @Test
+  void test_hasDomain_onCreate_needsTheContainersDomainAndEveryRequestedDomain() {
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("Finance")
+            .withFullyQualifiedName("Finance");
+    EntityReference marketing =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("Marketing")
+            .withFullyQualifiedName("Marketing");
+    SubjectContext marketer =
+        new SubjectContext(new User().withName("marketer").withDomains(List.of(marketing)), null);
+
+    assertFalse(hasDomainOnCreate(marketer, List.of(finance), List.of(marketing)));
+    assertFalse(hasDomainOnCreate(marketer, List.of(marketing), List.of(finance)));
+    assertFalse(hasDomainOnCreate(marketer, List.of(), List.of(finance)));
+    assertTrue(hasDomainOnCreate(marketer, List.of(marketing), List.of(marketing)));
+    assertTrue(hasDomainOnCreate(marketer, List.of(marketing), List.of()));
+    assertTrue(hasDomainOnCreate(marketer, List.of(), List.of()));
+  }
+
+  private static boolean hasDomainOnCreate(
+      SubjectContext subject, List<EntityReference> container, List<EntityReference> requested) {
+    CreateResourceContext<?> create = mock(CreateResourceContext.class);
+    Mockito.when(create.getContainerDomains()).thenReturn(container);
+    Mockito.when(create.getRequestedDomains()).thenReturn(requested);
+    return new RuleEvaluator(null, subject, create).hasDomain();
   }
 
   @Test

@@ -431,15 +431,23 @@ async function init() {
 
   // Signs an ID token for a seeded account with the key published at /jwks,
   // without a browser login. For fixtures that mock the IdP's browser SDK
-  // (msal-mock) but still need a token the OM server verifies.
+  // (msal-mock) but still need a token the OM server verifies. `tenantId`
+  // adds the `tid` claim every Entra ID token carries; the server checks it
+  // against a public client's configured tenant.
   app.post('/test/id-token', async (req, res) => {
-    const { account = DEFAULT_LOGIN_ACCOUNT, expiresInSeconds = 300, audience } =
-      req.body || {};
+    const {
+      account = DEFAULT_LOGIN_ACCOUNT,
+      expiresInSeconds = 300,
+      audience,
+      tenantId,
+    } = req.body || {};
     const claims = TEST_ACCOUNTS.get(account);
     if (!claims) {
       return res.status(404).json({ error: `unknown account ${account}` });
     }
-    const idToken = await new SignJWT(claims)
+    const idToken = await new SignJWT(
+      tenantId ? { ...claims, tid: tenantId } : claims
+    )
       .setProtectedHeader({ alg: 'RS256', kid: privateJwk.kid })
       .setIssuer(ISSUER)
       .setAudience(audience || 'msal-mock-client')
@@ -558,8 +566,9 @@ async function init() {
   app.all('/v2/logout', rewriteTo('/session/end'));
   app.get('/.well-known/jwks.json', rewriteTo('/jwks'));
 
-  // Auth0 SPA SDK posts /oauth/token as `Content-Type: application/json`
-  // (Auth0-specific — the spec-standard body is
+  // auth0-spa-js v1 posts /oauth/token as `Content-Type: application/json`;
+  // v2 defaults to form-urlencoded (`useFormData: true`), parsed by the
+  // route-level `express.urlencoded()` below. Accept both (the spec-standard body is
   // `application/x-www-form-urlencoded`, which is what oidc-provider
   // accepts and errors on anything else). A simple URL rewrite would fail:
   //  1. oidc-provider looks at Content-Type before parsing and rejects
@@ -571,7 +580,7 @@ async function init() {
   // /token endpoint with the correct headers and body, and stream the
   // upstream response straight back to the SDK. Downstream cares only
   // about the JSON body oidc-provider returns, which is identical.
-  app.post('/oauth/token', (req, res) => {
+  app.post('/oauth/token', express.urlencoded({ extended: false }), (req, res) => {
     let form;
     if (req.is('application/json') && req.body && typeof req.body === 'object') {
       const params = new URLSearchParams();

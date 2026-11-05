@@ -12,6 +12,9 @@ public final class SsoServer {
   public static final String REFRESH_PATH = "/api/v1/auth/refresh";
   public static final String LOGOUT_PATH = "/api/v1/auth/logout";
   public static final String LOGGED_IN_USER_PATH = "/api/v1/users/loggedInUser";
+  public static final String SAML_LOGIN_PATH = "/api/v1/saml/login";
+  public static final String SAML_ACS_PATH = "/api/v1/saml/acs";
+  public static final String SAML_COMPLETE_PATH = "/api/v1/saml/complete";
   private static final String REDIRECT_URI = "redirectUri";
 
   private SsoServer() {}

@@ -29,11 +29,17 @@ and Docker infrastructure.
 
 ## Environment setup (every session)
 
-- **Python venv is REQUIRED before any Python work, `make generate`, or `make install_dev*`:**
+- **Local Python commands synchronize locked profiles; application profiles reuse `env/`:**
   ```bash
   source env/bin/activate          # first time: python3.11 -m venv env
   python --version                 # expect 3.10.x/3.11.x
   ```
+  `make install_test` bootstraps pinned uv and Nox; sessions in `ingestion/noxfile.py`
+  synchronize dependencies from the lock before execution. Style, generation and coverage
+  tools use separate `ingestion/.nox/` environments. `make install_dev_env` remains an alias
+  for `make install_test`; published extras remain available. Use
+  `make generate ARGS=--python-only` for Python-only generation and
+  `python3 scripts/check_generated_models.py --check` to validate freshness.
   In a Claude Code **worktree** the venv is NOT copied — create one
   (`python3.11 -m venv env && source env/bin/activate && cd ingestion && make install_dev`) or
   symlink the main repo's (`ln -s /path/to/main-repo/env env`).

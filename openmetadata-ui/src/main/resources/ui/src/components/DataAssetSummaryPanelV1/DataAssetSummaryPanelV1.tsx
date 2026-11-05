@@ -660,9 +660,6 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           </div>
@@ -771,9 +768,6 @@ export const DataAssetSummaryPanelV1 = ({
             hasPermission={editOwnerPermission}
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-plural'),
-            })}
             showLabel={false}
           />
         </div>
@@ -841,9 +835,6 @@ export const DataAssetSummaryPanelV1 = ({
             hasPermission={editOwnerPermission}
             isCompactView={false}
             owners={dataAsset.owners as EntityReference[]}
-            placeHolder={t('label.no-entity-assigned', {
-              entity: t('label.owner-plural'),
-            })}
             showLabel={false}
           />
         </div>
@@ -933,9 +924,6 @@ export const DataAssetSummaryPanelV1 = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               owners={dataAsset.owners as EntityReference[]}
-              placeHolder={t('label.no-entity-assigned', {
-                entity: t('label.owner-plural'),
-              })}
               showLabel={false}
             />
           </div>

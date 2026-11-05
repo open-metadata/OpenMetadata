@@ -56,10 +56,17 @@ export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
-export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+// ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
+export const LIST_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+];
+export const GRID_PAGE_SIZE_BASE = 12;
+export const GRID_PAGE_SIZE_OPTIONS = [GRID_PAGE_SIZE_BASE, 24, 48];
 export const PAGE_SIZE_EXTRA_LARGE = 100;
 export const AGGREGATE_PAGE_SIZE_LARGE = 1000;
 export const ES_MAX_PAGE_SIZE = 10000;
@@ -213,7 +220,6 @@ export const ROUTES = {
   ENTITY_VERSION_DETAILS: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   ENTITY_VERSION_DETAILS_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
 
-  USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
   USER_PROFILE: `/users/${PLACEHOLDER_ROUTE_FQN}`,
@@ -419,9 +425,6 @@ export const ENTITY_PATH = {
   teams: 'team',
   users: 'user',
 };
-
-export const CUSTOM_PROPERTIES_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/admin-guide/custom-properties';
 
 export const SUPPORTED_FORMAT_MAP = {
   date: ['yyyy-MM-dd', 'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy/MM/dd', 'dd/MM/yyyy'],

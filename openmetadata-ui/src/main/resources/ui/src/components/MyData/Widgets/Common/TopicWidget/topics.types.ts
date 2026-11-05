@@ -88,6 +88,3 @@ export interface TopicEmptyStateFooter {
 export type TopicIconTone =
   | { icon: FC<IconProps>; color: ComponentProps<typeof FeaturedIcon>['color'] }
   | { icon: FC<IconProps>; tile: string };
-
-/** One size for every icon-button affordance in a topic card's header. */
-export const TOGGLE_ICON_CLASS = 'tw:*:data-icon:size-3.5';

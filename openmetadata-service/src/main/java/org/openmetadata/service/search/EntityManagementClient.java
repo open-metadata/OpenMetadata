@@ -140,6 +140,39 @@ public interface EntityManagementClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException;
 
+  /** What a background child update reported, read without waiting for it to finish. */
+  record ChildUpdateStatus(boolean finished, String failure) {
+    public static ChildUpdateStatus running() {
+      return new ChildUpdateStatus(false, null);
+    }
+
+    public static ChildUpdateStatus succeeded() {
+      return new ChildUpdateStatus(true, null);
+    }
+
+    public boolean failed() {
+      return finished && failure != null;
+    }
+  }
+
+  /**
+   * Same as {@link #updateChildren(List, Pair, Pair)}, returning the id of the background task the
+   * engine runs the update as, or null when it is not tracked.
+   */
+  default String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    updateChildren(indexNames, fieldAndValue, updates);
+    return null;
+  }
+
+  /** The status of a task started by {@link #updateChildrenInBackground}. */
+  default ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return ChildUpdateStatus.succeeded();
+  }
+
   /**
    * Updates child entities whose {@code field} matches ANY of {@code values} with a script across
    * multiple indices, in a single update-by-query. Lets a caller fan a change out to the children of

@@ -29,13 +29,18 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { EntityReference } from '../generated/entity/type';
+import type { TagLabel } from '../generated/type/tagLabel';
 import {
   getComputeRowCountDiffDisplay,
   getOwnerVersionLabel,
   getParameterValueDiffRows,
   getSummary,
 } from './EntityVersionUtils';
-import { getStringEntityDiff, getSummaryText } from './EntityVersionUtilsPure';
+import {
+  getCommonExtraInfoForVersionDetails,
+  getStringEntityDiff,
+  getSummaryText,
+} from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 // Mock data for testing
 const createMockTableColumn = (
@@ -808,5 +813,30 @@ describe('EntityVersionUtils', () => {
 
       expect(container).toHaveTextContent(NO_DATA_PLACEHOLDER);
     });
+  });
+});
+
+describe('getCommonExtraInfoForVersionDetails tier label', () => {
+  it('shows a custom tier by its display name, not its FQN slug', () => {
+    const { tierDisplayName } = getCommonExtraInfoForVersionDetails(
+      {} as ChangeDescription,
+      [],
+      {
+        tagFQN: 'Tier.pw-tier-Deer0cb6dc1c',
+        displayName: 'PW Tier Deer',
+      } as TagLabel
+    );
+
+    expect(tierDisplayName).toBe('PW Tier Deer');
+  });
+
+  it('falls back to the FQN segment when the tier has no display name', () => {
+    const { tierDisplayName } = getCommonExtraInfoForVersionDetails(
+      {} as ChangeDescription,
+      [],
+      { tagFQN: 'Tier.Tier1' } as TagLabel
+    );
+
+    expect(tierDisplayName).toBe('Tier1');
   });
 });

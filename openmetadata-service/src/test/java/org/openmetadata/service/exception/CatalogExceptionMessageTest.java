@@ -27,6 +27,18 @@ import org.openmetadata.service.Entity;
 class CatalogExceptionMessageTest {
 
   @Test
+  void unknownEntityTypeNamesTheTypeSpelledWithAnotherCase() {
+    List<String> knownTypes = List.of("table", "eventsubscription");
+
+    assertEquals(
+        "Unknown entity type 'eventSubscription'. Did you mean 'eventsubscription'?",
+        CatalogExceptionMessage.entityRepositoryNotFound("eventSubscription", knownTypes));
+    assertEquals(
+        "Unknown entity type 'dashbord'.",
+        CatalogExceptionMessage.entityRepositoryNotFound("dashbord", knownTypes));
+  }
+
+  @Test
   void testMutuallyExclusiveLabels_glossarySource() {
     TagLabel tag1 =
         new TagLabel()

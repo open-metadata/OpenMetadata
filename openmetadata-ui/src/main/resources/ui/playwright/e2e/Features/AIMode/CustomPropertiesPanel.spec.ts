@@ -57,6 +57,9 @@ import { enableAiAppMode } from '../../Utils/appMode';
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const TABLE_FQN = 'table';
+// No other spec adds, edits or removes worksheet custom properties, so an edit
+// made here cannot be overwritten by a parallel write to the same type.
+const WORKSHEET_FQN = 'worksheet';
 
 // ── Navigation helpers ─────────────────────────────────────────────────────────
 
@@ -67,7 +70,10 @@ const TABLE_FQN = 'table';
  * panel, click the "Custom Properties" nav item, and select the Table entity
  * card.  Leaves the page on the detail view with custom-property-table visible.
  */
-const navigateToTableCustomProperties = async (page: Page): Promise<void> => {
+const navigateToTypeCustomProperties = async (
+  page: Page,
+  typeFqn = TABLE_FQN
+): Promise<void> => {
   await enableAiAppMode(page);
   await redirectToHomePage(page);
 
@@ -91,10 +97,10 @@ const navigateToTableCustomProperties = async (page: Page): Promise<void> => {
   // Click the Table entity-type card and wait for the detail fetch.
   const typeResponse = page.waitForResponse(
     (res) =>
-      res.url().includes(`/api/v1/metadata/types/name/${TABLE_FQN}`) &&
+      res.url().includes(`/api/v1/metadata/types/name/${typeFqn}`) &&
       res.request().method() === 'GET'
   );
-  await page.getByTestId(`entity-type-card-${TABLE_FQN}`).click();
+  await page.getByTestId(`entity-type-card-${typeFqn}`).click();
   await typeResponse;
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('custom-property-table').waitFor();
@@ -161,11 +167,12 @@ const submitAddForm = async (page: Page): Promise<void> => {
  */
 const deletePropertyViaApi = async (
   page: Page,
-  propertyName: string
+  propertyName: string,
+  typeFqn = TABLE_FQN
 ): Promise<void> => {
   const { apiContext, afterAction } = await getApiContext(page);
   try {
-    await removeCustomPropertyViaApi(apiContext, TABLE_FQN, propertyName);
+    await removeCustomPropertyViaApi(apiContext, typeFqn, propertyName);
   } finally {
     await afterAction();
   }
@@ -203,7 +210,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
   test('adds a String custom property', async ({ page }) => {
     const name = `cp_string_${uuid()}`;
 
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -231,7 +238,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
   test('adds a Date custom property with format config', async ({ page }) => {
     const name = `cp_date_${uuid()}`;
 
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -261,7 +268,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
   test('adds an Entity Reference List custom property', async ({ page }) => {
     const name = `cp_erl_${uuid()}`;
 
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -302,7 +309,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const updatedDisplayName = `${name} (edited)`;
 
     // Create via UI to exercise the add path end-to-end.
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page, WORKSHEET_FQN);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -355,7 +362,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
         return (
           patched &&
           res.request().method() === 'GET' &&
-          res.url().includes(`/api/v1/metadata/types/name/${TABLE_FQN}`)
+          res.url().includes(`/api/v1/metadata/types/name/${WORKSHEET_FQN}`)
         );
       },
       200
@@ -370,7 +377,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await saves.expectSaved();
 
     // Cleanup (property name key is unchanged; display name is cosmetic).
-    await deletePropertyViaApi(page, name);
+    await deletePropertyViaApi(page, name, WORKSHEET_FQN);
   });
 
   // ── Delete ────────────────────────────────────────────────────────────────────
@@ -381,7 +388,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const name = `cp_del_${uuid()}`;
 
     // Create via UI.
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');

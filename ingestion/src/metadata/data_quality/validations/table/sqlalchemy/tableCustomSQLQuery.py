@@ -14,6 +14,7 @@ Validator for table custom SQL Query test case
 """
 
 import traceback
+from decimal import Decimal
 from typing import Any, cast
 
 import sqlparse
@@ -287,6 +288,9 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             )
             if strategy == Strategy.COUNT:
                 result = cursor.scalar()
+                # Some dialects (e.g. Snowflake) return COUNT(*) as a whole-number Decimal
+                if isinstance(result, Decimal) and result.is_finite() and result == result.to_integral_value():
+                    result = int(result)
                 if not isinstance(result, int):
                     raise ValueError(  # noqa: TRY301
                         f"When using COUNT strategy, the result must be an integer. Received: {type(result)}\n"

@@ -190,7 +190,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components/icons'),
-  Edit03: () => null,
+  Edit01: () => null,
   RefreshCw04: () => null,
   Trash01: () => null,
 }));
