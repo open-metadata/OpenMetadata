@@ -669,7 +669,7 @@ const ClassificationDetails = forwardRef(
               displayNameClassName="text-xl"
               icon={
                 <FeaturedIcon
-                  color="brand"
+                  color="gray"
                   icon={ClassificationIcon}
                   size="md"
                   theme="surface"

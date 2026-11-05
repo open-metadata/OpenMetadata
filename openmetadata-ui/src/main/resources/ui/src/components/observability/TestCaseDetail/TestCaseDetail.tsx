@@ -382,7 +382,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 wrap="wrap">
                 <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
                   <FeaturedIcon
-                    color="brand"
+                    color="gray"
                     icon={TestCaseIcon}
                     size="md"
                     theme="surface"

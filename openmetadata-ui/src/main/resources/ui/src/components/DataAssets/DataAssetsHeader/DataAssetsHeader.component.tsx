@@ -842,7 +842,7 @@ export const DataAssetsHeader = ({
     return (
       <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
         <FeaturedIcon
-          color="brand"
+          color="gray"
           icon={
             serviceLogoUrl ? (
               <img

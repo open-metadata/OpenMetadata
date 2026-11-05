@@ -625,7 +625,7 @@ const GlossaryHeader = ({
   const icon = useMemo(
     () => (
       <FeaturedIcon
-        color="brand"
+        color="gray"
         icon={
           isGlossary ? (
             GlossaryIcon
