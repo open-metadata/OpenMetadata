@@ -460,6 +460,45 @@ class TestStoredProcedures:
         # comment, so a `CALL` inside it does not fabricate lineage.
         assert get_procedure_name_from_call(query_text="-- note\nq'[call fake()]'; CALL real()") == "real"
 
+    def test_get_procedure_name_preserves_dollar_signs_in_unquoted_identifiers(self):
+        """A `$` that continues an unquoted identifier (Oracle / Snowflake allow
+        `$` inside identifiers) is not a dollar-quote opener. Before this fix
+        the sanitizer read `my$proc$` as a `$proc$` dollar-quote and truncated,
+        dropping a real `CALL`/`BEGIN`; `a$$` was read as a `$$` opener and
+        swallowed a later real call. The dollar-quote opener is now recognized
+        only at a token boundary (no word char or `$` just before), so dollars
+        inside an identifier keep their meaning while genuine dollar-quotes
+        still blank -- regression flagged in review of #36038.
+        """
+        # The reviewer reproduction: a `$` that continues an unquoted
+        # identifier must not be read as a dollar-quote opener that truncates.
+        assert get_procedure_name_from_call(query_text="CALL etl.my$proc$archive()") == "my$proc$archive"
+
+        # A name made entirely of word chars and `$` (e.g. `a$$`) is an
+        # identifier, not a `$$` dollar-quote opener; a later real call keeps
+        # resolving.
+        assert get_procedure_name_from_call(query_text="BEGIN etl.a$$(); etl.b$$(); END;") == "a$$"
+
+        # A single `$$` inside a longer identifier is preserved the same way.
+        assert get_procedure_name_from_call(query_text="CALL a$$foo$$(1)") == "a$$foo$$"
+
+        # The genuine dollar-quote cases must still blank, so a `CALL` written
+        # inside one does not fabricate lineage.
+        assert get_procedure_name_from_call(query_text="SELECT $$CALL old()$$; CALL nightly_load()") == "nightly_load"
+        assert (
+            get_procedure_name_from_call(query_text="SELECT $body$BEGIN old(); END;$body$; CALL nightly_load()")
+            == "nightly_load"
+        )
+
+        # A dollar-quote at a token boundary (after `(`) still blanks, while a
+        # `$1` parameter that continues no identifier is preserved verbatim.
+        assert get_procedure_name_from_call(query_text=r"CALL real(($tag$ x $tag$))") == "real"
+        assert get_procedure_name_from_call(query_text="CALL proc($1, $2)") == "proc"
+
+        # An unterminated dollar-quote at a token boundary truncates the tail,
+        # so a `CALL` written after the opener does not resolve.
+        assert get_procedure_name_from_call(query_text="$tag$ broken; CALL real()") is None
+
     def test_get_procedure_name_stays_linear_on_repeated_unmatched_q_prefixes(self):
         """Repeated unmatched `q'`-like prefixes must not make the sanitizer
         rescan the remaining suffix for each opener. A backtracking regex would
