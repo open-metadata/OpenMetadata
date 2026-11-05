@@ -12,8 +12,9 @@
 """Unit tests for Snowflake semantic view lineage (issue #23680)."""
 
 from unittest.mock import MagicMock, patch
-from uuid import UUID
+from uuid import NAMESPACE_DNS, UUID, uuid5
 
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.ingestion.source.database import semantic_metric_lineage as sml
 from metadata.ingestion.source.database.snowflake import semantic_view_lineage as svl
@@ -98,6 +99,16 @@ def test_extract_column_refs_returns_unqualified_names_without_a_table():
         (None, "event_at"),
         (None, "d"),
         (None, "year"),
+    ]
+    # $$ inside a name, multi-word type names and comments
+    assert extract_column_refs("o.A$$B + o.C$$D") == [("o", "A$$B"), ("o", "C$$D")]
+    assert extract_column_refs("CAST(o.AMOUNT AS DOUBLE PRECISION) + x::TIMESTAMP WITH LOCAL TIME ZONE") == [
+        ("o", "AMOUNT"),
+        (None, "x"),
+    ]
+    assert extract_column_refs("o.AMOUNT /* COMMENTCOL */ + 1 -- COMMENTCOL\n + '--keep' || o.B") == [
+        ("o", "AMOUNT"),
+        ("o", "B"),
     ]
 
 
@@ -317,6 +328,45 @@ def test_iter_database_lineage_attaches_column_lineage_for_unqualified_expressio
         ("TOTAL_REVENUE", ("O_TOTALPRICE",)),
     }
     assert lineage[customers_entity.id.root] == {("CUSTOMER_NAME", ("C_NAME",))}
+
+
+def _table(name: str, columns: list[str]) -> Table:
+    table_fqn = f"snow.DB.PUBLIC.{name}"
+    return Table(
+        id=uuid5(NAMESPACE_DNS, table_fqn),
+        name=name,
+        fullyQualifiedName=table_fqn,
+        columns=[
+            Column(name=column, dataType=DataType.STRING, fullyQualifiedName=f"{table_fqn}.{column}")
+            for column in columns
+        ],
+    )
+
+
+def test_column_lineage_ignores_names_that_are_not_column_references():
+    """Each trap names a column that really exists on the base table, so only the
+    extractor stands between it and a wrong lineage entry."""
+    base = _table("ORDERS_TBL", ["AMOUNT", "A$$B", "C$$D", "A", "D", "PRECISION", "COMMENTCOL"])
+    view = _table("SALES_ANALYSIS", ["DOLLAR_NAMES", "AMOUNT_DP", "COMMENTED"])
+    columns = {
+        ("O", "DOLLAR_NAMES"): {"logical_table": "O", "expression": "o.A$$B + o.C$$D"},
+        ("O", "AMOUNT_DP"): {"logical_table": "O", "expression": "CAST(o.AMOUNT AS DOUBLE PRECISION)"},
+        ("O", "COMMENTED"): {"logical_table": "O", "expression": "o.AMOUNT /* COMMENTCOL */ -- COMMENTCOL"},
+    }
+    extractor = _extractor()
+    extractor.resolve_table_by_fqn = MagicMock(
+        side_effect=lambda table_fqn: next((t for t in (base, view) if table_fqn.endswith(t.name.root)), None)
+    )
+    extractor._fetch_table_maps = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): {"O": ORDERS_TBL}})
+    extractor._fetch_columns = MagicMock(return_value={("PUBLIC", "SALES_ANALYSIS"): columns})
+
+    (request,) = extractor._iter_database_lineage("DB")
+
+    lineage = {
+        c.toColumn.root.split(".")[-1]: sorted(f.root.split(".")[-1] for f in c.fromColumns)
+        for c in request.right.edge.lineageDetails.columnsLineage
+    }
+    assert lineage == {"DOLLAR_NAMES": ["A$$B", "C$$D"], "AMOUNT_DP": ["AMOUNT"], "COMMENTED": ["AMOUNT"]}
 
 
 def test_iter_database_lineage_emits_table_level_edge_without_columns():

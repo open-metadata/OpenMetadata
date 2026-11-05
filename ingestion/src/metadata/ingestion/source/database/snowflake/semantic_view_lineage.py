@@ -58,9 +58,12 @@ ViewKey = tuple[str, str]
 # is not unique -- Snowflake declares every object as ``<table_alias>.<name>``.
 SemanticKey = tuple[str, str]
 
-# A string literal (``'...'`` with ``''`` or ``\'`` escapes, or ``$$...$$``) or a
-# double-quoted identifier, scanned together so neither is read inside the other.
-_LITERAL_OR_QUOTED_RE = re.compile(r"'(?:[^'\\]|\\.|'')*'|\$\$.*?\$\$|\"(?:[^\"]|\"\")*\"", re.DOTALL)
+# A comment, a string literal or a double-quoted identifier, scanned together so none
+# is read inside another. ``$$`` inside a name such as ``A$$B`` does not open a string.
+_LITERAL_OR_QUOTED_RE = re.compile(
+    r"/\*.*?\*/|--[^\n]*|'(?:[^'\\]|\\.|'')*'|(?<![\w$])\$\$.*?\$\$|\"(?:[^\"]|\"\")*\"",
+    re.DOTALL,
+)
 # A single identifier segment once each quoted identifier is masked as ``\0<n>\0``.
 # A bare name never starts inside a number, so ``1e5`` offers no ``e5``.
 _IDENTIFIER = r"\x00\d+\x00|(?<![\w$])[A-Za-z_][\w$]*"
@@ -77,10 +80,12 @@ _DATE_PART_RE = re.compile(
     rf"(?:{_IDENTIFIER})",
     re.IGNORECASE,
 )
-# A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DATE)``) or a semi-structured path
-# (``payload:a.b[0]``).
+# A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DOUBLE PRECISION)``) or a
+# semi-structured path (``payload:a.b[0]``). Snowflake's multi-word type names are listed.
 _CAST_OR_PATH_RE = re.compile(
-    rf"(?:::|\bAS\b)\s*(?:{_IDENTIFIER})(?:\s*\([^)]*\))?"
+    rf"(?:::|\bAS\b)\s*(?:{_IDENTIFIER})"
+    r"(?:\s+PRECISION\b|\s+VARYING\b|\s+WITH(?:OUT)?(?:\s+LOCAL)?\s+TIME\s+ZONE\b)?"
+    r"(?:\s*\([^)]*\))?"
     rf"|:\s*(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER})|\[[^\]]*\])*",
     re.IGNORECASE,
 )
