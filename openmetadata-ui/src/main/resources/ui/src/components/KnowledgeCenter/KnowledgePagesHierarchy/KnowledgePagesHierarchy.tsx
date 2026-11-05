@@ -24,6 +24,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   File06 as Articles,
+  DotsGrid,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -728,6 +729,13 @@ const KnowledgePagesHierarchy = forwardRef<
             align="center"
             className="tw:min-w-0 tw:flex-1 tw:cursor-pointer"
             gap={2}>
+            {canEditAll && (
+              <DotsGrid
+                aria-hidden="true"
+                className="tw:size-3.5 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary tw:opacity-0 tw:group-hover/tree-item:opacity-100"
+                data-testid="drag-handle-icon"
+              />
+            )}
             {isQuickLink ? (
               <QuickLinkIcon
                 className="tw:shrink-0 tw:text-quaternary"
@@ -755,7 +763,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
         const deleteButton = canDelete ? (
           <ButtonUtility
-            className="tw:opacity-0 group-hover-opacity-100"
+            className="tw:opacity-0 tw:group-hover/tree-item:opacity-100 tw:focus-visible:opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
             size="lg"
@@ -773,7 +781,10 @@ const KnowledgePagesHierarchy = forwardRef<
             id={node.fullyQualifiedName}
             key={node.fullyQualifiedName}
             textValue={displayName}>
-            <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
+            <Tree.ItemContent
+              showGuideLines
+              hasChildItems={hasChildren}
+              indentPerLevel={16}>
               {() =>
                 isQuickLink && onQuickLinkClick ? (
                   <div className="custom-group tw:flex tw:items-center tw:justify-between tw:flex-1 tw:min-w-0">
@@ -804,7 +815,7 @@ const KnowledgePagesHierarchy = forwardRef<
           </Tree.Item>
         );
       },
-      [activeKey, onQuickLinkClick, canDelete, handleDeletePage, t]
+      [activeKey, onQuickLinkClick, canDelete, canEditAll, handleDeletePage, t]
     );
 
     useImperativeHandle(ref, () => ({
@@ -1005,7 +1016,7 @@ const KnowledgePagesHierarchy = forwardRef<
         <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:h-full">
           <Box
             align="center"
-            className="tw:pb-5 tw:shrink-0 tw:px-5"
+            className="tw:pb-5 tw:shrink-0 tw:px-2"
             justify="between">
             <Box align="center" gap={3}>
               <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
@@ -1030,7 +1041,7 @@ const KnowledgePagesHierarchy = forwardRef<
           </Box>
 
           <div
-            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-5"
+            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-2"
             data-testid="article-list-container"
             onScroll={handleScroll}>
             {renderArticleListBody()}
