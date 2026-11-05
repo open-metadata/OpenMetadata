@@ -12,7 +12,6 @@
  */
 import {
   Alert,
-  Avatar,
   Badge,
   Box,
   Button,
@@ -42,6 +41,7 @@ import {
   METRIC_TYPE_BADGE_CLASS_NAME,
 } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useMetricCreateDrawer } from '../AddMetric/useMetricCreateDrawer';
 import { useMetricHierarchyCard } from './useMetricHierarchyCard';
@@ -76,24 +76,14 @@ const INDENT_CLASS_BY_DEPTH = [
 const getIndentClass = (depth: number) =>
   INDENT_CLASS_BY_DEPTH[Math.min(depth, INDENT_CLASS_BY_DEPTH.length - 1)];
 
-const getOwnerInitials = (owner: NonNullable<Metric['owners']>[number]) => {
-  const ownerName = getEntityName(owner).trim();
-  const words = ownerName
-    .replaceAll('-', ' ')
-    .replaceAll('_', ' ')
-    .split(/\s+/)
-    .filter(Boolean);
-
-  return (
-    words.length > 1 ? `${words[0][0]}${words[1][0]}` : ownerName.slice(0, 2)
-  ).toUpperCase();
-};
-
 const MetricTreeMetadata = ({
   metric,
   testId,
 }: Pick<MetricTreeRowProps, 'metric' | 'testId'>) => {
   const { t } = useTranslation();
+  const statusLabel = metric.deleted
+    ? t('label.deleted')
+    : metric.entityStatus && getMetricEnumLabel(t, metric.entityStatus);
 
   return (
     <Box align="center" className="tw:mt-1 tw:flex-wrap" gap={2}>
@@ -125,7 +115,7 @@ const MetricTreeMetadata = ({
           </Typography>
         </>
       )}
-      {metric.entityStatus && (
+      {statusLabel && (
         <>
           {(metric.metricType || metric.granularity) && (
             <span
@@ -139,7 +129,7 @@ const MetricTreeMetadata = ({
             className="tw:text-tertiary"
             data-testid={`${testId}-status`}
             size="text-xs">
-            {getMetricEnumLabel(t, metric.entityStatus)}
+            {statusLabel}
           </Typography>
         </>
       )}
@@ -172,7 +162,12 @@ const MetricTreeRowTrailing = ({
           data-testid={`metric-tree-owner-${metric.id}-${owner.id}`}
           key={owner.id}
           role="img">
-          <Avatar initials={getOwnerInitials(owner)} size="xs" />
+          <ProfilePicture
+            displayName={owner.displayName}
+            isTeam={owner.type === EntityType.TEAM}
+            name={owner.name ?? ''}
+            size="xs"
+          />
         </span>
       ))}
       {metric.owners.length > 3 && (
@@ -315,27 +310,7 @@ const MetricHierarchyTree = ({
           testId={`metric-tree-ancestor-${ancestor.id}`}
         />
       ))}
-      {hierarchy.siblings.map((sibling) => (
-        <MetricTreeRow
-          depth={currentDepth}
-          key={sibling.id}
-          metric={sibling}
-          testId={`metric-tree-peer-${sibling.id}`}
-        />
-      ))}
-      {hierarchy.hasMoreSiblings && (
-        <Button
-          className="tw:self-start tw:ml-8"
-          color="link-color"
-          data-testid="metric-tree-more-peers"
-          isDisabled={hierarchy.isLoadingSiblings}
-          size="sm"
-          onPress={hierarchy.loadMoreSiblings}>
-          {t('label.show-more-entity', {
-            entity: t('label.metric-plural'),
-          })}
-        </Button>
-      )}
+      {/* The current metric leads its level so it stays put as more siblings load. */}
       <MetricTreeRow
         isCurrent
         depth={currentDepth}
@@ -363,6 +338,27 @@ const MetricHierarchyTree = ({
           })}
         </Button>
       )}
+      {hierarchy.siblings.map((sibling) => (
+        <MetricTreeRow
+          depth={currentDepth}
+          key={sibling.id}
+          metric={sibling}
+          testId={`metric-tree-peer-${sibling.id}`}
+        />
+      ))}
+      {hierarchy.hasMoreSiblings && (
+        <Button
+          className="tw:self-start tw:ml-8"
+          color="link-color"
+          data-testid="metric-tree-more-peers"
+          isDisabled={hierarchy.isLoadingSiblings}
+          size="sm"
+          onPress={hierarchy.loadMoreSiblings}>
+          {t('label.show-more-entity', {
+            entity: t('label.metric-plural'),
+          })}
+        </Button>
+      )}
     </Box>
   );
 };
@@ -372,6 +368,12 @@ const MetricHierarchyContent = ({
   metric,
 }: MetricHierarchyContentProps) => {
   const { t } = useTranslation();
+  if (metric.deleted) {
+    return (
+      <MetricTreeRow isCurrent metric={metric} testId="metric-tree-current" />
+    );
+  }
+
   if (hierarchy.isPending) {
     return (
       <Box
@@ -418,7 +420,8 @@ const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({
   } = useGenericContext<Metric>();
   const metric = metricProp ?? contextMetric;
   const allowAddChild =
-    canAddChild ?? Boolean(permissions.Create && !isVersionView);
+    canAddChild ??
+    Boolean(permissions.Create && !isVersionView && !metric.deleted);
   const hierarchy = useMetricHierarchyCard(metric);
   const { formDrawer, openDrawer } = useMetricCreateDrawer();
 
@@ -452,7 +455,7 @@ const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({
           </Box>
         }
       />
-      <Card.Content className="tw:p-2">
+      <Card.Content className="tw:max-h-120 tw:overflow-y-auto tw:p-2">
         <MetricHierarchyContent hierarchy={hierarchy} metric={metric} />
       </Card.Content>
     </Card>

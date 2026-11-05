@@ -186,10 +186,11 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
           return (
             <Box direction="col">
               {isPercentage ? (
-                <Grid className="tw:items-center" colGap="8">
+                <Grid className="tw:items-center" colGap="2">
                   <Grid.Item span={20}>
                     <Slider
                       aria-label={t('label.metric-value')}
+                      className="tw:mx-3"
                       maxValue={100}
                       minValue={0}
                       value={Number.isNaN(field.value) ? 0 : field.value}

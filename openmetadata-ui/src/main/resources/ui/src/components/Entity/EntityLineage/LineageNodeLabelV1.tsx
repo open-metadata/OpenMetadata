@@ -22,9 +22,10 @@ import {
 import {
   Dataflow01,
   Table as TableIcon,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { capitalize, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import {
   memo,
   ReactNode,
@@ -35,7 +36,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
 import {
@@ -48,9 +48,13 @@ import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
 import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  getEntityName,
+  getEntityNameLabel,
+} from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { NODE_INSET_FILL_CLASS } from './CustomNode.constants';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
@@ -177,7 +181,7 @@ const EntityLabel = ({
               <Button
                 ellipsis
                 className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0"
-                color="link-gray"
+                color="link-primary"
                 size="sm"
                 onClick={onEntityClick}>
                 {entityName}
@@ -215,7 +219,7 @@ const EntityLabel = ({
         {showDeletedIcon && (
           <div className="flex-center p-xss custom-node-deleted-icon">
             <div className="d-flex text-danger" data-testid="node-deleted-icon">
-              <DeleteIcon height={16} width={16} />
+              <Trash01 size={16} />
             </div>
           </div>
         )}
@@ -332,14 +336,18 @@ const EntityFooter = ({
   }
 
   return (
-    <div className="entity-footer">
+    <div
+      className={classNames(
+        'entity-footer',
+        isChildrenListExpanded && NODE_INSET_FILL_CLASS
+      )}>
       <div className="entity-footer__entity-type-and-dropdown">
         <BadgeWithIcon
           color="gray"
           iconLeading={renderEntityTypeIcon}
           size="md"
           type="color">
-          {capitalize(node.entityType)}
+          {getEntityNameLabel(node.entityType)}
         </BadgeWithIcon>
         <Button
           className={classNames(
@@ -360,9 +368,9 @@ const EntityFooter = ({
             'only-show-columns-with-lineage-filter-button',
             isOnlyShowColumnsWithLineageFilterActive && 'active'
           )}
-          color="tertiary"
           data-testid="lineage-filter-button"
           icon={Dataflow01}
+          size="sm"
           tooltip={t('message.only-show-columns-with-lineage')}
           tooltipPlacement="right"
           onClick={handleOnlyShowColumnsWithLineage}

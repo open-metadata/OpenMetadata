@@ -14,10 +14,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
+import PermissionPlaceholder from '../common/EmptyPlaceholder/PermissionPlaceholder';
 
 type AdminProtectedRouteProps = {
   hasPermission?: boolean;
@@ -36,11 +35,12 @@ const AdminProtectedRoute = ({
     return <>{children}</>;
   } else if (!hasPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view')}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view')}
+        />
+      </div>
     );
   }
 

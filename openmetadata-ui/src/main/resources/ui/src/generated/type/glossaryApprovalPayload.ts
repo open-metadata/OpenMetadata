@@ -17,7 +17,7 @@ export interface GlossaryApprovalPayload {
     /**
      * Action being approved.
      */
-    action: Action;
+    action?: Action;
     /**
      * Current state of the term before changes.
      */
@@ -25,7 +25,17 @@ export interface GlossaryApprovalPayload {
     /**
      * Reference to the glossary term being approved.
      */
-    glossaryTerm: EntityReference;
+    glossaryTerm?: EntityReference;
+    /**
+     * Set on the request that decides a term an automation proposed; absent on every other
+     * review of the term.
+     */
+    proposal?: AutomationProposal;
+    /**
+     * The term's changes awaiting review, by field name, each with the values it adds and
+     * removes. Set by the approval workflow.
+     */
+    proposedChanges?: { [key: string]: any };
     /**
      * Proposed state of the term after changes.
      */
@@ -90,4 +100,46 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Set on the request that decides a term an automation proposed; absent on every other
+ * review of the term.
+ *
+ * What an approval request says about the entity an automation, such as an AI agent,
+ * proposed. Every user may read tasks while the memories an agent derives from may be
+ * Private or Shared, so it names its sources by id and type only and carries none of the
+ * agent's reasons: the memory derivations API serves those to whoever may read the memories.
+ */
+export interface AutomationProposal {
+    /**
+     * Display name of the agent that proposed the entity, when it recorded one.
+     */
+    agent?: string;
+    /**
+     * The agent's confidence in the proposal, from 0 to 1, when it recorded one.
+     */
+    confidence?: number;
+    /**
+     * The context memories the agent derived the entity from, by id and type only.
+     */
+    derivedFrom?: EntityReference[];
+    /**
+     * Provider of the proposed entity.
+     */
+    provider: ProviderType;
+}
+
+/**
+ * Provider of the proposed entity.
+ *
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
+ */
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
 }

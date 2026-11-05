@@ -40,6 +40,7 @@ let mockActivityEvents: { id: string; timestamp: number }[] = [];
 let mockConversationCount = 0;
 let mockActivityCount = 0;
 let mockLoading = false;
+let mockListError: { response?: { status: number } } | undefined;
 let mockTasks: { id: string }[] = [];
 let mockEntityPaging: { after?: string } = {};
 let mockIsInView = false;
@@ -91,6 +92,7 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
     getFeedData: mockGetFeedData,
     getTaskData: mockGetTaskData,
     loading: mockLoading,
+    listError: mockListError,
     entityPaging: mockEntityPaging,
     tasks: mockTasks,
     selectedTask: null,
@@ -165,10 +167,6 @@ jest.mock('../../Entity/Task/TaskTab/TaskTabNew.component', () => ({
   TaskTabNew: jest.fn().mockReturnValue(<div data-testid="task-tab-new" />),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () =>
-  jest.fn().mockReturnValue(<div data-testid="error-placeholder" />)
-);
-
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader" />)
 );
@@ -213,6 +211,7 @@ describe('ActivityFeedTab', () => {
     mockConversationCount = 0;
     mockActivityCount = 0;
     mockLoading = false;
+    mockListError = undefined;
     mockTasks = [];
     mockEntityPaging = {};
     mockIsInView = false;
@@ -512,6 +511,66 @@ describe('ActivityFeedTab', () => {
           'true'
         )
       );
+    });
+  });
+
+  // A failed list fetch leaves the list empty; it must not read as "no tasks".
+  describe('a failed list fetch is not an empty list', () => {
+    it('shows an error with a retry instead of the no-open-tasks message', async () => {
+      mockListError = { response: { status: 500 } };
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() =>
+        expect(
+          screen.getByText('message.something-went-wrong')
+        ).toBeInTheDocument()
+      );
+
+      expect(
+        screen.queryByText('message.no-open-tasks-title')
+      ).not.toBeInTheDocument();
+      // The error takes the whole card: no list and no right-hand panel.
+      expect(screen.queryByTestId('task-list')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+
+      mockGetTaskData.mockClear();
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+      // A table's feed has no feed filter; the retry re-reads the first page.
+      expect(mockGetTaskData).toHaveBeenCalledWith(
+        undefined,
+        undefined,
+        EntityType.TABLE,
+        'test.db.table',
+        'open'
+      );
+    });
+
+    it('keeps the loaded rows when a later page fails', async () => {
+      mockTasks = [{ id: 'loaded-task' }];
+      mockListError = { response: { status: 500 } };
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      expect(await screen.findByTestId('task-list')).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.something-went-wrong')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows a permission message without a retry for a 403', async () => {
+      mockListError = { response: { status: 403 } };
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() =>
+        expect(screen.getByText('label.access-denied')).toBeInTheDocument()
+      );
+
+      expect(
+        screen.queryByText('message.no-open-tasks-title')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'label.reload' })
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -26,12 +26,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestCaseFormDrawer from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import BundleSuiteFormDrawer from '../../components/DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useTabSearchMemory } from '../../hooks/observability/data-quality/useTabSearchMemory';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import './data-quality-page.less';
@@ -43,8 +46,10 @@ const DataQualityPage = () => {
   const { tab: routeTab = DataQualityClassBase.getDefaultActiveTab() } =
     useParams<{ tab?: DataQualityPageTabs }>();
   const navigate = useNavigate();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { showModal } = useEntityExportModalProvider();
   const { testSuite: testSuitePermission, testCase: testCasePermission } =
     permissions;
 
@@ -123,17 +128,25 @@ const DataQualityPage = () => {
   );
 
   const exportDataQualityDashboardButton = useMemo(
-    () => DataQualityClassBase.getExportDataQualityDashboardButton(activeTab),
-    [activeTab]
+    () =>
+      DataQualityClassBase.getExportDataQualityDashboardButton(
+        activeTab,
+        showModal
+      ),
+    [activeTab, showModal]
   );
+
+  const getTabSearch = useTabSearchMemory(activeTab, location.search);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      navigate(
-        observabilityRouterClassBase.getDataQualityPagePath(
-          activeKey as DataQualityPageTabs
-        )
-      );
+      const targetTab = activeKey as DataQualityPageTabs;
+
+      void navigate({
+        pathname:
+          observabilityRouterClassBase.getDataQualityPagePath(targetTab),
+        search: getTabSearch(targetTab),
+      });
     }
   };
 

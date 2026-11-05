@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { withPageLayout } from '../../hoc/withPageLayout';
 
 const ForbiddenPage = () => {
   return (
-    <ErrorPlaceHolder
-      className="border-none"
-      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-    />
+    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <PermissionPlaceholder data-testid="permission-error-placeholder" />
+    </div>
   );
 };
 

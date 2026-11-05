@@ -64,7 +64,6 @@ import org.openmetadata.it.search.SearchClient;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.OssTestServer;
-import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.playwright.ui.UiSession;
 import org.openmetadata.playwright.ui.UiSessionExtension;
@@ -73,7 +72,6 @@ import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageLens;
 import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.api.lineage.LineageSceneNode;
-import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -159,7 +157,6 @@ class LineageScenePerformanceScaleIT {
   private static final String LAYER_BAND = LineageBand.LAYER.value();
   private static final String ASSET_BAND = LineageBand.ASSET.value();
   private static final String FIELD_BAND = LineageBand.FIELD.value();
-  private static final int ROOT_BREADCRUMB_INDEX = 0;
   private static final int TABLE_LEVEL = 3;
   private static final String FQN_FIELD = "fullyQualifiedName";
   private static final String UPSTREAM_ENTRY_FIELD =
@@ -176,7 +173,7 @@ class LineageScenePerformanceScaleIT {
   private final Map<String, String> scenarioFailures = new LinkedHashMap<>();
 
   private LineageGraphSpec spec;
-  private OpenMetadataClient client;
+  private ServerHandle server;
   private TestNamespace namespace;
   private LineageGraphSummary graph;
   private boolean attached;
@@ -184,7 +181,10 @@ class LineageScenePerformanceScaleIT {
   @BeforeAll
   void seedLineageGraph() {
     spec = LineageGraphSpec.fromSystemProperties();
-    client = SdkClients.adminClient();
+    // In external mode the handle also starts the admin-token refresher, so it has to exist before
+    // seeding: the default cohort takes longer to seed than a login token lives. Calls go through
+    // server.sdk(), which follows each refresh; a client captured here would keep the old token.
+    server = OssTestServer.defaultHandle();
     final Optional<Path> manifest = SeededLineageGraph.manifest();
     if (manifest.isPresent()) {
       attachToSeededGraph(manifest.get());
@@ -322,7 +322,7 @@ class LineageScenePerformanceScaleIT {
     measureInteraction(
         "breadcrumb-pop-to-layer",
         iteration -> openDrilled(ui, 1),
-        map -> map.popBreadcrumb(ROOT_BREADCRUMB_INDEX, LAYER_BAND));
+        map -> map.popToRootBreadcrumb(LAYER_BAND));
   }
 
   /** A settled map and the node its timed drill clicks, picked during the untimed setup. */
@@ -409,15 +409,16 @@ class LineageScenePerformanceScaleIT {
   }
 
   /**
-   * Semantic zoom. Note what zoom-in actually does: it drills into the expandable node nearest the
-   * viewport centre, so it changes focus as well as band. The suppression window is waited out in
-   * setup, outside the timed region — it is the map's own cooldown, not its latency.
+   * Semantic zoom. Zoom-in drills into the node under the pointer, so it wheels over the benchmark
+   * graph's own service, picked in setup the way the first drill picks it, and changes the focus as
+   * well as the band. The suppression window is waited out in setup, outside the timed region — it
+   * is the map's own cooldown, not its latency.
    */
   private void measureZoomInteractions(final UiSession ui) throws InterruptedException {
     measureInteraction(
         "semantic-zoom-in",
-        iteration -> LineageMapPage.openPlatformScene(ui, LAYER_BAND).settle(),
-        map -> map.semanticZoomIn(ASSET_BAND));
+        iteration -> drillStart(ui, 0),
+        start -> start.map().semanticZoomInto(start.targetFqn(), ASSET_BAND));
     measureInteraction(
         "semantic-zoom-out",
         iteration -> openDrilled(ui, 1).settle(),
@@ -644,7 +645,8 @@ class LineageScenePerformanceScaleIT {
   private String firstDownstreamTableOf(final String fqn) {
     final JsonNode lineage =
         readTree(
-            client
+            server
+                .sdk()
                 .getHttpClient()
                 .executeForString(HttpMethod.GET, ENTITY_LINEAGE_PATH + fqn, null, depths(0, 1)));
     final Map<String, JsonNode> nodesById = new HashMap<>();
@@ -752,12 +754,12 @@ class LineageScenePerformanceScaleIT {
 
   private LineageScene requestScene(final RequestOptions options) throws IOException {
     final String response =
-        client.getHttpClient().executeForString(HttpMethod.GET, SCENE_PATH, null, options);
+        server.sdk().getHttpClient().executeForString(HttpMethod.GET, SCENE_PATH, null, options);
     return MAPPER.readValue(response, LineageScene.class);
   }
 
   private void requestGet(final String path, final RequestOptions options) {
-    client.getHttpClient().executeForString(HttpMethod.GET, path, null, options);
+    server.sdk().getHttpClient().executeForString(HttpMethod.GET, path, null, options);
   }
 
   private void renderScene(final UiSession ui, final LineageFocusPoints focus) {
@@ -795,7 +797,6 @@ class LineageScenePerformanceScaleIT {
    * an entry in the downstream table's {@code upstreamLineage}.
    */
   private void awaitIndexed() {
-    final ServerHandle server = OssTestServer.defaultHandle();
     final SearchClient search = new SearchClient(server);
     final String tableAlias = new IndexAliasInspector(server).indexNameFor(Entity.TABLE);
     final String prefix = graph.cohortFqnPrefix();
@@ -913,7 +914,7 @@ class LineageScenePerformanceScaleIT {
     recordSceneShape();
     recordFailures();
     BenchmarkMetrics.publish(
-        BenchmarkMetrics.report(client, "lineage-scene-scale", params(), latencies, counters),
+        BenchmarkMetrics.report(server.sdk(), "lineage-scene-scale", params(), latencies, counters),
         "lineage-scene-scale-" + cohortTables() + ".json");
   }
 

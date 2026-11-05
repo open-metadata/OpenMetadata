@@ -138,34 +138,18 @@ jest.mock('../../../utils/EntityStatusUtils', () => ({
     Approved: 'success',
     Deprecated: 'warning',
   },
-  getEntityStatusClass: jest.fn((status) => {
-    const statusMap = {
-      Draft: 'warning',
-      InReview: 'info',
-      Rejected: 'error',
-      Approved: 'success',
-      Deprecated: 'warning',
+  getEntityStatusClass: jest.fn((status: EntityStatus) => {
+    const statusMap: Partial<Record<EntityStatus, string>> = {
+      [EntityStatus.Draft]: 'warning',
+      [EntityStatus.InReview]: 'info',
+      [EntityStatus.Rejected]: 'error',
+      [EntityStatus.Approved]: 'success',
+      [EntityStatus.Deprecated]: 'warning',
     };
 
     return statusMap[status] || 'warning';
   }),
 }));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ onClick }) => (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          onClick?.(e);
-        }
-      }}>
-      ErrorPlaceHolder
-    </div>
-  ))
-);
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
@@ -200,11 +184,6 @@ jest.mock('../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder', () => ({
     .mockImplementation(({ description }: { description?: ReactNode }) => (
       <div>{description}</div>
     )),
-}));
-
-jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => <div />),
 }));
 
 jest.mock('../../common/Loader/Loader', () =>
@@ -582,6 +561,13 @@ describe('Test GlossaryTermTab component', () => {
 
         expect(ownerLabels.length).toBeGreaterThan(0);
       });
+
+      expect(
+        jest.requireMock('@openmetadata/ui-core-components').Owner
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ labelVariant: 'cell' }),
+        expect.anything()
+      );
     });
 
     it('should render action buttons when user has create permissions', async () => {
@@ -1058,7 +1044,7 @@ describe('Test GlossaryTermTab component', () => {
       const termWithInReviewStatus = [
         {
           ...mockedGlossaryTerms[0],
-          entityStatus: 'In Review',
+          entityStatus: EntityStatus.InReview,
         },
       ];
       mockUseGlossaryStore.glossaryChildTerms = termWithInReviewStatus;
@@ -1080,7 +1066,7 @@ describe('Test GlossaryTermTab component', () => {
     it('should keep the term in review when an approval vote is recorded but the task stays open', async () => {
       const term = {
         ...mockedGlossaryTerms[0],
-        entityStatus: 'In Review',
+        entityStatus: EntityStatus.InReview,
       };
 
       mockUseGlossaryStore.glossaryChildTerms = [term];
@@ -1137,7 +1123,7 @@ describe('Test GlossaryTermTab component', () => {
     it('should require and submit a comment when rejecting from the glossary list', async () => {
       const term = {
         ...mockedGlossaryTerms[0],
-        entityStatus: 'In Review',
+        entityStatus: EntityStatus.InReview,
       };
       mockUseGlossaryStore.glossaryChildTerms = [term];
       mockListTasks.mockResolvedValue({
@@ -1202,6 +1188,39 @@ describe('Test GlossaryTermTab component', () => {
 
       await waitFor(() => {
         expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled();
+      });
+    });
+
+    it('reloads the terms with the page size picked in the pager', async () => {
+      mockUseGlossaryStore.glossaryChildTerms = mockedGlossaryTerms;
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: mockedGlossaryTerms,
+        paging: { after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const pageSizeButton = await screen.findByTestId(
+        'page-size-selection-dropdown'
+      );
+      fireEvent.keyDown(pageSizeButton, { key: 'Enter' });
+      fireEvent.keyUp(pageSizeButton, { key: 'Enter' });
+      fireEvent.click(
+        await screen.findByRole('menuitem', { name: '50 / label.page' })
+      );
+
+      await waitFor(() => {
+        expect(
+          mockGetFirstLevelGlossaryTermsPaginated
+        ).toHaveBeenLastCalledWith(
+          expect.anything(),
+          50,
+          undefined,
+          expect.anything(),
+          undefined
+        );
       });
     });
 
@@ -1499,7 +1518,9 @@ describe('Test GlossaryTermTab component', () => {
           // Missing other required fields
         },
       ];
-      mockUseGlossaryStore.glossaryChildTerms = incompleteTerms;
+      Object.assign(mockUseGlossaryStore, {
+        glossaryChildTerms: incompleteTerms,
+      });
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
@@ -1519,7 +1540,9 @@ describe('Test GlossaryTermTab component', () => {
           description: undefined,
         },
       ];
-      mockUseGlossaryStore.glossaryChildTerms = termsWithUndefinedDescription;
+      Object.assign(mockUseGlossaryStore, {
+        glossaryChildTerms: termsWithUndefinedDescription,
+      });
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
@@ -1542,7 +1565,9 @@ describe('Test GlossaryTermTab component', () => {
           description: null,
         },
       ];
-      mockUseGlossaryStore.glossaryChildTerms = termsWithNullDescription;
+      Object.assign(mockUseGlossaryStore, {
+        glossaryChildTerms: termsWithNullDescription,
+      });
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,

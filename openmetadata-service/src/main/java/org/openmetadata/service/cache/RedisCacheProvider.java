@@ -67,7 +67,6 @@ public class RedisCacheProvider implements CacheProvider {
   private volatile boolean evictsPerSlot;
 
   private final CacheConfig config;
-  private final CacheKeys keys;
   private RedisClient redisClient;
   private StatefulRedisConnection<String, String> connection;
   private RedisCommands<String, String> syncCommands;
@@ -108,7 +107,6 @@ public class RedisCacheProvider implements CacheProvider {
 
   public RedisCacheProvider(CacheConfig config) {
     this.config = config;
-    this.keys = new CacheKeys(config.redis.keyspace);
     initialize();
   }
 
@@ -117,7 +115,6 @@ public class RedisCacheProvider implements CacheProvider {
   // Lettuce client is opened, no health-checker is started.
   RedisCacheProvider() {
     this.config = null;
-    this.keys = null;
   }
 
   private void initialize() {
@@ -180,10 +177,7 @@ public class RedisCacheProvider implements CacheProvider {
     // One UNLINK per key, pipelined: a multi-key UNLINK fails with CROSSSLOT on a clustered
     // endpoint, the same reason mget issues per-key GETs.
     List<RedisFuture<?>> deletes = new ArrayList<>(batch.size());
-    // Credential barriers must survive cleanup during mutations on other nodes.
-    batch.keySet().stream()
-        .filter(key -> !key.startsWith(keys.ns + ":credential:"))
-        .forEach(key -> deletes.add(asyncCommands.unlink(key)));
+    batch.keySet().forEach(key -> deletes.add(asyncCommands.unlink(key)));
     awaitAll(deletes);
     unconfirmedWrites.forget(batch);
     logDeletedUnconfirmedWrites(deletes.size(), unconfirmedWrites.takeUntrackedCount());

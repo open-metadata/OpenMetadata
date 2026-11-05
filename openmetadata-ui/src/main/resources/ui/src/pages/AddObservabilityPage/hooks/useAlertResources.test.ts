@@ -12,85 +12,88 @@
  */
 
 import { renderHook, waitFor } from '@testing-library/react';
+import { AlertType as CapabilitiesAlertType } from '../../../generated/events/api/alertCapabilitiesRequest';
 import { AlertType } from '../../../generated/events/eventSubscription';
+import { getAlertCapabilities } from '../../../rest/alertsAPI';
 import { useAlertResources } from './useAlertResources';
 
-const mockObservabilityResources = jest.fn();
-const mockNotificationResources = jest.fn();
-
-jest.mock('../../../rest/observabilityAPI', () => ({
-  getResourceFunctions: () => mockObservabilityResources(),
-}));
-
 jest.mock('../../../rest/alertsAPI', () => ({
-  getResourceFunctions: () => mockNotificationResources(),
-}));
-
-// Stable like the real react-i18next `t`, which the fetch callback depends on.
-const mockT = (key: string) => key;
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: mockT }),
+  getAlertCapabilities: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../../utils/AlertsClassBase', () => ({
+  __esModule: true,
+  default: { getSourceNameSearch: jest.fn().mockReturnValue({}) },
+}));
+
+const mockGetAlertCapabilities = getAlertCapabilities as jest.Mock;
+
 // One array, as a form hands the same sources back on every render.
 const TABLE = ['table'];
+const SAVED_RULES = {
+  filters: [{ name: 'filterByFqn' }],
+  actions: [{ name: 'GetTableSchemaChanges' }],
+};
 
-const renderResources = (alertType?: AlertType, sources?: string[]) =>
-  renderHook(() => useAlertResources(alertType, sources));
+const answer = ({ sources }: { sources: string[] }) =>
+  Promise.resolve({
+    alertType: CapabilitiesAlertType.Observability,
+    sources: [{ name: 'table', kind: 'entity', selected: true }],
+    filters: sources.length
+      ? [{ condition: { name: 'filterByFqn' }, sources }]
+      : [],
+    triggers: [],
+  });
+
+const renderResources = (
+  alertType?: AlertType,
+  sources?: string[],
+  chosenSoFar?: typeof SAVED_RULES
+) => renderHook(() => useAlertResources(alertType, sources, chosenSoFar));
 
 describe('useAlertResources', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockObservabilityResources.mockResolvedValue({
-      data: [{ name: 'testCase' }],
-    });
-    mockNotificationResources.mockResolvedValue({
-      data: [{ name: 'all' }, { name: 'table' }],
-    });
+    mockGetAlertCapabilities.mockReset();
+    mockGetAlertCapabilities.mockImplementation(answer);
   });
 
-  it('loads observability resources by default', async () => {
+  it('asks the server about observability alerts by default', async () => {
     const { result } = renderResources();
 
-    await waitFor(() =>
-      expect(result.current.filterResources.map((r) => r.name)).toEqual([
-        'testCase',
-      ])
-    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(mockNotificationResources).not.toHaveBeenCalled();
+    expect(mockGetAlertCapabilities).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alertType: CapabilitiesAlertType.Observability,
+      })
+    );
   });
 
-  it('loads notification resources for notification alerts', async () => {
+  it('asks the server about notification alerts for notification alerts', async () => {
     const { result } = renderResources(AlertType.Notification);
 
-    await waitFor(() =>
-      expect(result.current.filterResources.map((r) => r.name)).toEqual([
-        'all',
-        'table',
-      ])
-    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(mockObservabilityResources).not.toHaveBeenCalled();
+    expect(mockGetAlertCapabilities).toHaveBeenCalledWith(
+      expect.objectContaining({
+        alertType: CapabilitiesAlertType.Notification,
+      })
+    );
   });
 
-  it('narrows filters and triggers to the selected source until the server answers', async () => {
-    mockObservabilityResources.mockResolvedValue({
-      data: [
-        {
-          name: 'table',
-          supportedFilters: [{ name: 'filterByFqn' }],
-          supportedActions: [],
-        },
-        { name: 'testCase', supportedFilters: [], supportedActions: [] },
-      ],
-    });
+  it('is loading until the server has answered for the first time', async () => {
+    const { result } = renderResources();
 
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+  });
+
+  it('shows the sections the selected sources support once the server answers', async () => {
     const { result } = renderResources(AlertType.Observability, TABLE);
 
     await waitFor(() =>
@@ -101,6 +104,20 @@ describe('useAlertResources', () => {
 
     expect(result.current.shouldShowFiltersSection).toBe(true);
     expect(result.current.shouldShowActionsSection).toBe(false);
+  });
+
+  it("keeps a saved alert's rules while the server cannot say what its sources support", async () => {
+    mockGetAlertCapabilities.mockRejectedValue(new Error('boom'));
+    const { result } = renderResources(
+      AlertType.Observability,
+      TABLE,
+      SAVED_RULES
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.shouldShowFiltersSection).toBe(true);
+    expect(result.current.shouldShowActionsSection).toBe(true);
   });
 
   it('shows both sections until a source is selected', async () => {

@@ -128,6 +128,7 @@ export const useWorkflowActions = ({
       );
     } catch {
       // testWorkflow / buildWorkflowForSave already show a toast on validation failure
+      return undefined;
     }
   }, [nodes, edges, workflowDefinition, workflowMetadata]);
 

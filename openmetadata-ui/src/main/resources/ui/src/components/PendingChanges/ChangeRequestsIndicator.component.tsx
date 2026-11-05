@@ -92,23 +92,24 @@ const ChangeRequestsIndicator = ({
     return null;
   }
 
+  // Nothing to review leaves no button; an open modal stays while its last request is decided.
   return (
     <>
-      <Button
-        className="tw:shrink-0 tw:whitespace-nowrap"
-        color="secondary"
-        data-testid="pending-change-requests"
-        iconTrailing={
-          requests.length > 0 ? (
+      {requests.length > 0 && (
+        <Button
+          className="tw:shrink-0 tw:whitespace-nowrap"
+          color="secondary"
+          data-testid="pending-change-requests"
+          iconTrailing={
             <Badge color="brand" size="sm">
               {requests.length}
             </Badge>
-          ) : undefined
-        }
-        size="sm"
-        onClick={() => setIsOpen(true)}>
-        {t('label.pending-changes')}
-      </Button>
+          }
+          size="sm"
+          onClick={() => setIsOpen(true)}>
+          {t('label.pending-changes')}
+        </Button>
+      )}
       {isOpen && (
         <ReviewPendingChangesModal
           requests={ordered}

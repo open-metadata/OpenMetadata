@@ -19,10 +19,10 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { AppScreenshots } from './AppScreenshots';
 
-import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

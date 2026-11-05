@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  Button as CoreButton,
-  EmptyPlaceholder,
-} from '@openmetadata/ui-core-components';
+import { Button as CoreButton } from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@openmetadata/ui-core-components/icons';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { GlossaryTermEmptyPlaceholderProps } from './GlossaryTermTab.interface';
 
 // A top-level glossary always allows adding terms; for a glossary term,
@@ -45,7 +43,7 @@ const GlossaryTermEmptyPlaceholder = ({
     <div
       className="tw:relative tw:flex tw:items-center tw:justify-center glossary-terms-empty-container"
       ref={containerRef}>
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid={`create-error-placeholder-${t('label.glossary-term')}`}
         description={t('message.glossary-term-empty-description')}
         footer={
@@ -62,7 +60,6 @@ const GlossaryTermEmptyPlaceholder = ({
         }
         icon={<File02 className="tw:text-fg-warning-primary" />}
         title={t('message.add-the-first-term')}
-        variant="blank"
       />
     </div>
   );

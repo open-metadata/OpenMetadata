@@ -62,7 +62,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
         </div>
       );
     });
-  }, [layout, type]);
+  }, [layout, type, handleHeightChange]);
 
   // For default tabs we have rigid layout where we are not applying any bg to container
   // So we need to check if left panel is present to apply bg to container
@@ -83,12 +83,9 @@ export const GenericTab = ({ type }: GenericTabProps) => {
       autoSize
       useCSSTransforms
       verticalCompact
-      className={classNames('grid-container flat-left-panel', {
+      className={classNames('grid-container', {
         'custom-tab': !leftSideWidgetPresent,
         'height-auto': type === PageType.Glossary,
-        // The glossary's Terms tab keeps the page height, so widgets that outgrow it, such as a
-        // long review queue in the right column, scroll within the tab instead of being clipped.
-        'tw:overflow-x-hidden tw:overflow-y-auto': type === PageType.Glossary,
       })}
       cols={8}
       // react-grid-layout rounds each item's `left` and `width` independently, so

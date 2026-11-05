@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Card,
-  EmptyPlaceholder,
-  Input,
-} from '@openmetadata/ui-core-components';
+import { Box, Card, Input } from '@openmetadata/ui-core-components';
 import {
   Globe01,
   NoSearch,
@@ -31,9 +26,11 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
@@ -43,6 +40,8 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -60,7 +59,26 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const domainListing = useDomainListingData({ enableNlq: isAiMode });
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    listingPageSizeOptions
+  );
+  const domainListing = useDomainListingData({
+    enableNlq: isAiMode,
+    pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
+  });
+  const { resetPaging } = domainListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      resetPaging?.();
+    },
+    [resetPaging]
+  );
   const { permissions } = usePermissionProvider();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
@@ -153,9 +171,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const isTreeView = view === PageViewMode.Tree;
   const listCardStyle = getDomainListCardStyle(isAiMode, isTreeView);
   const { renderDomainCard } = useDomainCardTemplates();
@@ -208,7 +223,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       if (isSearchOrFilterActive()) {
         return (
           <div className="tw:relative tw:min-h-70 tw:h-full">
-            <EmptyPlaceholder
+            <NoSearchResultsPlaceholder
               actions={[
                 {
                   color: 'primary',
@@ -218,7 +233,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
                 },
               ]}
               description={t('message.check-spelling-or-try-different-term')}
-              icon={<NoSearch className="tw:text-quaternary" />}
+              icon={<NoSearch />}
               title={t('label.no-matching-results')}
             />
           </div>
@@ -227,7 +242,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
       return (
         <div className="tw:relative tw:min-h-70">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               permissions.domain?.Create
                 ? [
@@ -246,7 +261,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             description={t('label.no-domains-yet-description')}
             icon={<Globe01 className="tw:text-fg-brand-primary" />}
             title={t('label.no-domains-yet')}
-            variant="blank"
           />
         </div>
       );
@@ -368,7 +382,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             <ViewToggle
               value={view}
               views={[PageViewMode.Table, PageViewMode.Card, PageViewMode.Tree]}
-              onChange={setView}
+              onChange={handleViewChange}
             />
             {deleteIconButton}
           </Box>

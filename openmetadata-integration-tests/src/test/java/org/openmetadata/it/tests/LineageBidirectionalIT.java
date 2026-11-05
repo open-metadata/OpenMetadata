@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,6 +33,7 @@ import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 
 /**
@@ -59,6 +61,28 @@ public class LineageBidirectionalIT {
   private Table downstreamA;
   private Table downstreamB;
   private Table downstreamC;
+
+  @Test
+  void testMissingLineageRootReturns404() {
+    for (String direction : List.of("Upstream", "Downstream")) {
+      ApiException error =
+          assertThrows(
+              ApiException.class,
+              () ->
+                  client
+                      .lineage()
+                      .getLineageByEntityCount(
+                          namespace.prefix("missing_dashboard"),
+                          direction,
+                          0,
+                          1,
+                          0,
+                          false,
+                          null,
+                          null));
+      assertEquals(404, error.getStatusCode());
+    }
+  }
 
   @BeforeAll
   void setUp() throws Exception {

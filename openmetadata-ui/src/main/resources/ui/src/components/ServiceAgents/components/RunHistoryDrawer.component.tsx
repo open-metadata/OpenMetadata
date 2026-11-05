@@ -16,7 +16,6 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -29,6 +28,7 @@ import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   Agent,
   AgentActionPermissions,
@@ -265,10 +265,7 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
           <div
             className="tw:relative tw:min-h-[120px]"
             data-testid="run-steps-empty">
-            <EmptyPlaceholder
-              title={t('message.no-steps-available')}
-              variant="blank"
-            />
+            <NoDataPlaceholder title={t('message.no-steps-available')} />
           </div>
         ) : (
           run.steps.map((s, idx) => (
@@ -379,7 +376,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               color="link-color"
               data-testid="agent-link-button"
               href={agentLinkProps.href}
-              iconTrailing={<LinkExternal02 size={12} />}
+              iconTrailing={LinkExternal02}
               target="_blank">
               {agentLinkProps.label}
             </Button>
@@ -392,7 +389,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               agent.status === 'failed' ? 'secondary-destructive' : 'secondary'
             }
             data-testid="raw-logs-button"
-            iconLeading={<AlignLeft size={15} />}
+            iconLeading={AlignLeft}
             isDisabled={isPending || isUnavailable}
             size="sm"
             onClick={() => onOpenLogs(agent)}>
@@ -403,7 +400,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               className="tw:font-semibold"
               color="primary"
               data-testid="drawer-run-now-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
+              iconLeading={PlayIcon}
               isDisabled={isPending || isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>

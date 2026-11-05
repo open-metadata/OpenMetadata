@@ -18,6 +18,7 @@ import {
   Card,
   Dialog,
   Dropdown,
+  FeaturedIcon,
   Input,
   Modal,
   ModalOverlay,
@@ -26,7 +27,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@openmetadata/ui-core-components/icons';
+import { DotsVertical, Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +35,6 @@ import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeaderProps } from '../../../interface/workflow-builder-components.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { WorkflowControls } from './WorkflowControls';
 
 const getInitialDisplayName = (title?: string) => title ?? '';
@@ -62,10 +62,9 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
   return (
     <Dropdown.Root>
       <ButtonUtility
-        color="tertiary"
         data-testid="workflow-manage-button"
         icon={DotsVertical}
-        size="sm"
+        size="lg"
         tooltip={t('label.more-action-plural')}
       />
       <Dropdown.Popover className="tw:w-min">
@@ -252,21 +251,19 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     () =>
       !isViewMode &&
       !isNoOp && (
-        <EditIconButton
-          newLook
+        <ButtonUtility
           data-testid="edit-workflow-title-button"
-          size="small"
-          title={t('label.edit-entity', { entity: t('label.workflow') })}
-          onClick={handleOpenEditModal}
+          icon={Edit01}
+          size="lg"
+          tooltip={t('label.edit-entity', { entity: t('label.workflow') })}
+          onPress={handleOpenEditModal}
         />
       ),
     [isViewMode, isNoOp, handleOpenEditModal, t]
   );
 
   const workflowIcon = (
-    <div className="tw:flex tw:items-center tw:justify-center tw:size-8 tw:rounded-md tw:bg-brand-solid">
-      <WorkflowIcon className="tw:size-4 tw:text-white" />
-    </div>
+    <FeaturedIcon color="brand" icon={WorkflowIcon} size="sm" theme="dark" />
   );
 
   // The host page shows the title, so only the controls that act on the workflow remain.
@@ -287,6 +284,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
         <PageLayout.PageHeader
           actions={
             <>
+              {editTitleButton}
               {workflowControls}
               {editWorkflowButton}
               {manageMenu}
@@ -296,7 +294,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
             <>
               {suspendedBadge}
               {systemBadge}
-              {editTitleButton}
             </>
           }
           breadcrumb={breadcrumb}
@@ -317,10 +314,10 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           }
           title={
             <Typography
-              ellipsis
               as="h3"
               className="tw:m-0 tw:text-primary"
               data-testid="workflow-title"
+              ellipsis={{ tooltip: true }}
               size="text-xl"
               weight="semibold">
               {title}
@@ -330,23 +327,22 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
         />
       ) : (
         <Card className="tw:px-6 tw:py-4" data-testid="workflow-header">
-          <div className="tw:flex tw:items-center tw:justify-between">
-            <div className="tw:flex tw:items-center tw:gap-3">
+          <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
+            <div className="tw:flex tw:items-center tw:gap-3 tw:min-w-0">
               {workflowIcon}
-              <div data-testid="workflow-title-section">
+              <div className="tw:min-w-0" data-testid="workflow-title-section">
                 <div className="tw:flex tw:items-center tw:gap-2">
                   <Typography
-                    ellipsis
                     as="p"
                     className="tw:m-0 tw:mb-1 tw:text-primary"
                     data-testid="workflow-title"
+                    ellipsis={{ tooltip: true }}
                     size="text-md"
                     weight="semibold">
                     {title}
                   </Typography>
                   {suspendedBadge}
                   {systemBadge}
-                  {editTitleButton}
                 </div>
                 {workflowName && (
                   <Typography
@@ -361,7 +357,8 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
               </div>
             </div>
 
-            <div className="tw:flex tw:gap-3 tw:items-center">
+            <div className="tw:flex tw:shrink-0 tw:gap-3 tw:items-center">
+              {editTitleButton}
               {workflowControls}
               {editWorkflowButton}
               {manageMenu}

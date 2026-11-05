@@ -15,10 +15,6 @@ import { render, screen } from '@testing-library/react';
 import { mockVersionTableProps } from '../../../mocks/VersionTable.mock';
 import VersionTable from './VersionTable.component';
 
-jest.mock('../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>FilterTablePlaceHolder</div>)
-);
-
 jest.mock('../../Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );

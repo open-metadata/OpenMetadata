@@ -16,6 +16,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Input,
   Tabs,
   Typography,
@@ -598,7 +599,7 @@ const KnowledgeGraphDetails = ({
           className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:py-2"
           gap={3}
           wrap="wrap">
-          <Box className="kg-details-tabs tw:shrink-0">
+          <Box className="tw:shrink-0">
             <Tabs.List
               aria-label={t('label.kg-details')}
               size="sm"
@@ -636,12 +637,11 @@ const KnowledgeGraphDetails = ({
               }}
             />
           )}
-          <Button
-            aria-label={t('label.close')}
-            color="tertiary"
-            iconLeading={XClose}
-            size="sm"
-            onPress={close}
+          <ButtonUtility
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={close}
           />
         </Box>
         <Tabs.Panel

@@ -13,6 +13,7 @@ Snowflake models
 """
 
 import urllib
+from collections.abc import Generator
 from datetime import datetime
 from typing import Any
 
@@ -32,6 +33,8 @@ from metadata.ingestion.source.database.snowflake.identifiers import (
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_DYNAMIC_TABLE_REFRESH_HISTORY_QUERY,
     SNOWFLAKE_QUERY_LOG_QUERY,
+    build_batched_dynamic_table_refresh_history_query,
+    build_batched_query_log_query,
 )
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
 from metadata.utils.dict import ExtendedDict
@@ -161,6 +164,29 @@ class SnowflakeQueryLogEntry(BaseModel):
             [ExtendedDict(r._asdict()).lower_case_keys() for r in rows]
         )
 
+    @staticmethod
+    def stream_for_tables(
+        session: Session,
+        table_names: list[str],
+        service_connection_config: SnowflakeConnection,
+    ) -> Generator["SnowflakeQueryLogEntry", None, None]:
+        """Yield the DML of any of `table_names` one row at a time. A busy account logs
+        millions of DML per day with arbitrarily long QUERY_TEXT, so the rows are never
+        materialized together: the connector downloads result chunks as they are consumed."""
+        rows = session.execute(
+            text(
+                build_batched_query_log_query(
+                    account_usage_schema=quote_account_usage_schema(service_connection_config.accountUsageSchema),
+                    table_names=table_names,
+                )
+            )
+        )
+        try:
+            for row in rows:
+                yield SnowflakeQueryLogEntry.model_validate(ExtendedDict(row._asdict()).lower_case_keys())
+        finally:
+            rows.close()
+
 
 class SnowflakeQueryResult(QueryResult):
     """Snowflake system metric query result"""
@@ -198,6 +224,8 @@ class SnowflakeDynamicTableRefreshEntry(BaseModel):
     More info at: https://docs.snowflake.com/en/sql-reference/functions/dynamic_table_refresh_history
     """
 
+    database_name: str | None = None
+    schema_name: str | None = None
     table_name: str
     start_time: datetime
     rows_inserted: int | None = None
@@ -217,3 +245,24 @@ class SnowflakeDynamicTableRefreshEntry(BaseModel):
         return TypeAdapter(list[SnowflakeDynamicTableRefreshEntry]).validate_python(
             [ExtendedDict(r._asdict()).lower_case_keys() for r in rows]
         )
+
+    @staticmethod
+    def stream_for_tables(
+        session: Session,
+        table_names: list[str],
+        service_connection_config: SnowflakeConnection,
+    ) -> Generator["SnowflakeDynamicTableRefreshEntry", None, None]:
+        """Yield the refreshes of any of the dynamic tables named in `table_names`."""
+        rows = session.execute(
+            text(
+                build_batched_dynamic_table_refresh_history_query(
+                    account_usage_schema=quote_account_usage_schema(service_connection_config.accountUsageSchema),
+                    table_names=table_names,
+                )
+            )
+        )
+        try:
+            for row in rows:
+                yield SnowflakeDynamicTableRefreshEntry.model_validate(ExtendedDict(row._asdict()).lower_case_keys())
+        finally:
+            rows.close()

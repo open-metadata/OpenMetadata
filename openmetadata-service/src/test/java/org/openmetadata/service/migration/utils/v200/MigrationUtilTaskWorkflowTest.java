@@ -52,6 +52,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -64,9 +65,13 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 
 class MigrationUtilTaskWorkflowTest {
+  private static final String INCIDENT_TEST_CASE =
+      "sample_data.ecommerce_db.shopify.orders.order_id_not_null";
+
   private Handle handle;
   private Connection connection;
   private DatabaseMetaData metadata;
@@ -270,6 +275,69 @@ class MigrationUtilTaskWorkflowTest {
     verify(workflowDefinitionRepository).createOrUpdate(null, dataQualityWorkflow, "admin");
     verify(workflowDefinitionRepository).createOrUpdate(null, recognizerWorkflow, "admin");
     verify(workflowDefinitionRepository, never()).createOrUpdate(null, unrelatedWorkflow, "admin");
+  }
+
+  @Test
+  void runTaskWorkflowCutoverMigrationKeepsSeedingAfterOneWorkflowFails() throws Exception {
+    stubTables(Set.of());
+    WorkflowDefinition failingWorkflow =
+        new WorkflowDefinition().withName("RecognizerFeedbackReviewWorkflow");
+    WorkflowDefinition incidentWorkflow =
+        new WorkflowDefinition().withName("TestCaseResolutionTaskWorkflow");
+    when(workflowDefinitionRepository.getEntitiesFromSeedData())
+        .thenReturn(List.of(failingWorkflow, incidentWorkflow));
+    when(workflowDefinitionRepository.createOrUpdate(null, failingWorkflow, "admin"))
+        .thenThrow(new IllegalStateException("Table 'change_request' doesn't exist"));
+
+    newMigrationUtil().runTaskWorkflowCutoverMigration();
+
+    verify(workflowDefinitionRepository).createOrUpdate(null, incidentWorkflow, "admin");
+  }
+
+  @Test
+  void incidentStateIsNotReplayedOntoATaskWithoutAWorkflow() throws Exception {
+    stubTables(Set.of());
+    UUID taskId = UUID.randomUUID();
+    UUID stateId = UUID.randomUUID();
+    Task incident = incidentTask(taskId, stateId);
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(incident));
+    when(taskRepository.find(taskId, Include.NON_DELETED)).thenReturn(incident);
+    TestCaseResolutionStatusRepository incidentRepository =
+        mock(TestCaseResolutionStatusRepository.class);
+    when(incidentRepository.getLatestRecordForStateId(stateId))
+        .thenReturn(new TestCaseResolutionStatus().withStateId(stateId));
+
+    runCutoverWithIncidentRepository(incidentRepository);
+
+    verify(incidentRepository, never()).applyLegacyStatusToIncidentTask(any(), any());
+  }
+
+  @Test
+  void incidentStateIsReplayedOntoATaskWhoseWorkflowStarted() throws Exception {
+    stubTables(Set.of());
+    UUID taskId = UUID.randomUUID();
+    UUID stateId = UUID.randomUUID();
+    Task incident = incidentTask(taskId, stateId);
+    Task bound = incidentTask(taskId, stateId).withWorkflowInstanceId(UUID.randomUUID());
+    TestCaseResolutionStatus assigned = new TestCaseResolutionStatus().withStateId(stateId);
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(incident));
+    when(taskRepository.find(taskId, Include.NON_DELETED)).thenReturn(bound);
+    when(workflowDefinitionRepository.findByNameOrNull(
+            eq("TestCaseResolutionTaskWorkflow"), eq(Include.NON_DELETED)))
+        .thenReturn(
+            new WorkflowDefinition()
+                .withId(UUID.randomUUID())
+                .withName("TestCaseResolutionTaskWorkflow")
+                .withFullyQualifiedName("TestCaseResolutionTaskWorkflow"));
+    TestCaseResolutionStatusRepository incidentRepository =
+        mock(TestCaseResolutionStatusRepository.class);
+    when(incidentRepository.getLatestRecordForStateId(stateId)).thenReturn(assigned);
+
+    runCutoverWithIncidentRepository(incidentRepository);
+
+    verify(workflowHandler)
+        .triggerByKey(eq("TestCaseResolutionTaskWorkflowTrigger"), eq(taskId.toString()), any());
+    verify(incidentRepository).applyLegacyStatusToIncidentTask(assigned, INCIDENT_TEST_CASE);
   }
 
   @Test
@@ -733,6 +801,39 @@ class MigrationUtilTaskWorkflowTest {
 
   private List<String> triggerExclude(WorkflowDefinition workflow) {
     return ((EventBasedEntityTriggerDefinition) workflow.getTrigger()).getConfig().getExclude();
+  }
+
+  private void runCutoverWithIncidentRepository(
+      TestCaseResolutionStatusRepository incidentRepository) {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(taskFormSchemaRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(workflowDefinitionRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS))
+          .thenReturn(incidentRepository);
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+
+      new MigrationUtil.TaskWorkflow(handle).runTaskWorkflowCutoverMigration();
+    }
+  }
+
+  private Task incidentTask(UUID taskId, UUID stateId) {
+    return new Task()
+        .withId(taskId)
+        .withName("TASK-00010")
+        .withType(TaskEntityType.TestCaseResolution)
+        .withCategory(TaskCategory.Incident)
+        .withStatus(TaskEntityStatus.Open)
+        .withAbout(
+            new EntityReference().withType("testCase").withFullyQualifiedName(INCIDENT_TEST_CASE))
+        .withUpdatedBy("alice")
+        .withPayload(Map.of("testCaseResolutionStatusId", stateId.toString()));
   }
 
   private MigrationUtil.TaskWorkflow newMigrationUtil() {

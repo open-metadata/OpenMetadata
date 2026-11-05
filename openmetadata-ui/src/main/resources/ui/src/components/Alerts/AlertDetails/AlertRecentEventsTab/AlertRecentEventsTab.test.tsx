@@ -62,10 +62,6 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../../common/NextPreviousWithOffset/NextPreviousWithOffset', () =>
   jest
     .fn()

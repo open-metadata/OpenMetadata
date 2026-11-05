@@ -37,14 +37,15 @@ import {
   waitForGlossaryListRefetch,
 } from '../../utils/asyncDelete';
 import {
+  clickIgnoringToasts,
   clickOutside,
+  expectNoErrorToast,
   getAuthContext,
   getRandomLastName,
   getToken,
   redirectToHomePage,
   uuid,
   visitGlossaryPage,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import { switchNavbarDomain } from '../../utils/domain';
 import {
@@ -657,7 +658,7 @@ test.describe('Glossary tests', () => {
         await openGlossaryPicker(
           page,
           page.locator(
-            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
+            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="add-tag"]'
           )
         );
 
@@ -1146,8 +1147,8 @@ test.describe('Glossary tests', () => {
         await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary2.data.displayName);
 
-        // check .ant-alert-error is not visible
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+        // Other workers' success toasts reach this page too; only an error means a broken relation.
+        await expectNoErrorToast(page);
       });
     } finally {
       await glossary2.delete(apiContext);
@@ -1231,7 +1232,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossary1);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await clickIgnoringToasts(page.getByTestId('approve-button').first());
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1274,7 +1275,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await clickIgnoringToasts(page.getByTestId('approve-button').first());
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1920,22 +1921,18 @@ test.describe('Glossary tests', () => {
       await performUserLogin(browser, dataConsumerUser);
 
     try {
-      await redirectToHomePage(dataConsumerPage);
-      await dataConsumerPage.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(
-        dataConsumerPage,
-        glossary1.data.displayName,
-        false
+      // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read),
+      // so the denied glossary is reachable only by its URL.
+      await dataConsumerPage.goto(
+        `/glossary/${encodeURIComponent(
+          glossary1.responseData.fullyQualifiedName
+        )}`
       );
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toBeVisible();
-
-      await expect(
-        dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
-        "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
+      ).toContainText(
+        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
       );
     } finally {
       await consumerAfterAction();
@@ -1951,25 +1948,35 @@ test.describe('Glossary tests', () => {
       await setupGlossaryDenyPermissionTest(apiContext, false);
     glossary1.data.terms = [glossaryTerm1];
 
-    const { page: dataConsumerPage, afterAction: consumerAfterAction } =
-      await performUserLogin(browser, dataConsumerUser);
+    const {
+      page: dataConsumerPage,
+      apiContext: dataConsumerApiContext,
+      afterAction: consumerAfterAction,
+    } = await performUserLogin(browser, dataConsumerUser);
 
     try {
-      await redirectToHomePage(dataConsumerPage);
-      await dataConsumerPage.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(dataConsumerPage, glossary1.data.displayName);
-      await dataConsumerPage
-        .getByTestId(glossaryTerm1.data.displayName)
-        .click();
+      // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
+      const termList = await okJson<{ data: { id: string }[] }>(
+        await dataConsumerApiContext.get(
+          `/api/v1/glossaryTerms?glossary=${glossary1.responseData.id}&limit=50`
+        ),
+        'glossaryTerms list as data consumer'
+      );
+
+      expect(termList.data.map((term) => term.id)).not.toContain(
+        glossaryTerm1.responseData.id
+      );
+
+      await dataConsumerPage.goto(
+        `/glossary/${encodeURIComponent(
+          glossaryTerm1.responseData.fullyQualifiedName
+        )}`
+      );
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toBeVisible();
-
-      await expect(
-        dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
-        "You don't have necessary permissions. Please check with the admin to get the  permission."
+      ).toContainText(
+        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
       );
     } finally {
       await consumerAfterAction();
@@ -2707,7 +2714,6 @@ test.describe('Glossary tests', () => {
         .getByRole('menuitem')
         .filter({ has: page.getByTestId('rename-button') });
       await expect(renameItem).toBeVisible();
-      await waitForAntdPopupToSettle(page);
       await renameItem.click();
 
       const renameModal = page.getByRole('dialog');

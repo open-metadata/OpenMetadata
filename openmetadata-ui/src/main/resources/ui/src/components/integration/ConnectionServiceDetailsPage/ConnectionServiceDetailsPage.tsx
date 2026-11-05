@@ -474,8 +474,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   );
 
   const onUpdateDomain = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      const domains = Array.isArray(domain) ? domain : [domain];
+    async (domain: EntityReference | EntityReference[] | undefined) => {
+      const selectedDomains = domain ?? [];
+      const domains = Array.isArray(selectedDomains)
+        ? selectedDomains
+        : [selectedDomains];
       await saveUpdatedServiceData({
         ...serviceDetails,
         domains: domains as unknown as typeof serviceDetails.domains,
@@ -1059,7 +1062,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       <PageLayout.Content className="tw:relative tw:flex tw:flex-1 tw:flex-col tw:overflow-hidden! tw:p-0!">
         {/* Tab Content */}
         <div
-          className="tw:relative tw:flex-1 tw:overflow-y-auto tw:overflow-x-hidden tw:p-4"
+          className="tw:relative tw:flex-1 tw:overflow-y-auto tw:overflow-x-hidden tw:py-3"
           data-testid="service-details-scroll-container"
           ref={contentScrollRef}
           // Reserve the contributed footer's height so the last of a tab's content can be scrolled

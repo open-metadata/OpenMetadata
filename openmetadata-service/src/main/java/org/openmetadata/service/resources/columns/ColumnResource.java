@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.jdbi3.ColumnRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.ColumnAggregator;
@@ -58,6 +59,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.CSVImportResponse;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -400,7 +402,7 @@ public class ColumnResource {
     }
     request.setDatabaseName(databaseName);
     request.setSchemaName(schemaName);
-    request.setDomainId(domainId);
+    request.setDomainId(domainId == null ? navbarDomainIds(securityContext) : domainId);
     request.setHasConflicts(hasConflicts);
     request.setHasMissingMetadata(hasMissingMetadata);
     request.setMetadataStatus(metadataStatus);
@@ -414,6 +416,14 @@ public class ColumnResource {
     ColumnGridResponse response = repository.getColumnGridPaginated(securityContext, request);
 
     return Response.ok(response).build();
+  }
+
+  // The grid is a search aggregation, so the navbar domain pick is applied here (e.g. a bulk edit
+  // of
+  // a column picked from the grid then only reaches the picked domain's tables).
+  private static String navbarDomainIds(SecurityContext securityContext) {
+    List<String> ids = EntityUtil.navbarDomainIds(securityContext, Entity.TABLE);
+    return ids.isEmpty() ? null : String.join(",", ids);
   }
 
   @POST
@@ -592,6 +602,9 @@ public class ColumnResource {
       @Parameter(description = "Filter by domain ID") @QueryParam("domainId") String domainId,
       String csv) {
 
+    // Refuse oversized payloads before queueing; the repository re-validates inside the job.
+    CsvAsyncJobManager.validateImportPayload(csv);
+
     String jobId = UUID.randomUUID().toString();
     CSVImportResponse responseEntity =
         new CSVImportResponse(jobId, "CSV column import is in progress.");
@@ -616,7 +629,8 @@ public class ColumnResource {
                         serviceName,
                         databaseName,
                         schemaName,
-                        domainId);
+                        domainId,
+                        Integer.MAX_VALUE);
                 WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                     jobId, securityContext, result);
               } catch (Exception e) {
