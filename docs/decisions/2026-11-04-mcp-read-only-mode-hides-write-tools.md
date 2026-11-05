@@ -1,7 +1,7 @@
 # MCP read-only mode hides every tool not annotated readOnlyHint, for every caller including admins
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-04 (initial)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-05 (single tools can be disabled)
 - **Deciders:** Vishnu Jain
 - **Guard:** `McpReadOnlyModeTest`
 - **Related:** #36577, #33323, #36579
@@ -32,3 +32,9 @@ A new write tool must carry `readOnlyHint: false` (or no annotation) to stay hid
 tool `readOnlyHint: true` exposes it in read-only mode. A per-tool allowlist was considered and left
 out: nobody asked to hide individual read tools, and a name list goes stale on upgrade. Updating
 `tools/list` without a restart would mean re-registering tools on a config change on every server.
+
+## Amendment
+
+**v2 2026-11-05.** Admins asked to turn off single tools (#37161), so the per-tool list left out above now
+exists as a denylist of tool names, applied the same two ways. See
+ADR:2026-11-05-mcp-admins-can-disable-single-tools. Read-only mode is unchanged.

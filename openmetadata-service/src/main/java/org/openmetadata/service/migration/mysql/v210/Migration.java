@@ -44,7 +44,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
-import org.openmetadata.service.migration.utils.v209.McpGrantUserNameIndexes;
+import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -185,7 +185,7 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         MCP_CONSENT_COLUMNS_STEP,
         () -> addMcpConsentColumnsOnMySql(handle));
-    // Same for the 2.0.9 MCP user-name indexes, on a database that recorded 2.0.9 before they were
+    // Same for the 2.0.8 MCP user-name indexes, on a database that recorded 2.0.8 before they were
     // added to it.
     runOnce(
         migrationDAO,
