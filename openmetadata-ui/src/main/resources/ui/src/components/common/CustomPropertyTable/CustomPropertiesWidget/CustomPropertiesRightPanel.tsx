@@ -152,6 +152,7 @@ export const CustomPropertiesRightPanel = ({
     <div className="tw:w-full" ref={searchWrapperRef}>
       <Input
         aria-label={searchLabel}
+        autoComplete="off"
         className="tw:w-full"
         icon={Search}
         inputDataTestId="custom-properties-widget-search"

@@ -19,6 +19,7 @@ import com.unboundid.util.ssl.SSLUtil;
 import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -71,6 +72,7 @@ import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -546,6 +548,55 @@ public class SystemRepository implements DeploymentSettingPreparer {
     updateSettingIfCurrent(original, expectedJson);
     prepareFetchedSettings(original);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  /**
+   * Patches one item of a list inside a setting, found by its {@code name}, so a caller changes
+   * that item without sending (and overwriting) the rest of the list. The patch paths are relative
+   * to the item. The item's position and the compare-and-set expectation come from one read, so a
+   * concurrent change to the setting fails with {@link PreconditionFailedException} (HTTP 412).
+   *
+   * @throws EntityNotFoundException when the setting or the named item does not exist
+   * @throws BadRequestException when the patch is invalid, renames, adds or removes items, or
+   *     leaves the setting invalid
+   */
+  public Response patchSettingItem(
+      final SettingsType type,
+      final String listPointer,
+      final String itemName,
+      final JsonPatch itemPatch) {
+    final String expectedJson = dao.getConfigJsonWithKey(type.value());
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(type.value());
+    }
+    final SystemSettingItemPatch item =
+        SystemSettingItemPatch.locate(JsonUtils.readJson(expectedJson), listPointer, itemName);
+    final JsonValue patched = applyItemPatch(expectedJson, item.rebase(itemPatch));
+    item.assertItemKept(patched);
+    final Settings updated = readPatchedSettings(type, patched.toString());
+    replaceSettingIfCurrent(updated, expectedJson);
+    prepareFetchedSettings(updated);
+    return (new RestUtil.PutResponse<>(Response.Status.OK, updated, ENTITY_UPDATED)).toResponse();
+  }
+
+  private static JsonValue applyItemPatch(final String storedJson, final JsonPatch patch) {
+    try {
+      return JsonUtils.applyPatch(JsonUtils.readValue(storedJson, Object.class), patch);
+    } catch (JsonException | IllegalArgumentException exception) {
+      throw new BadRequestException("Invalid JSON Patch: " + exception.getMessage(), exception);
+    }
+  }
+
+  private static Settings readPatchedSettings(final SettingsType type, final String patchedJson) {
+    try {
+      final Settings settings = CollectionDAO.SettingsRowMapper.getSettings(type, patchedJson);
+      JsonUtils.validateJsonSchema(settings.getConfigValue(), settings.getConfigValue().getClass());
+      return settings;
+    } catch (JsonParsingException | ConstraintViolationException exception) {
+      throw new BadRequestException(
+          String.format("The patched %s is invalid: %s", type.value(), exception.getMessage()),
+          exception);
+    }
   }
 
   private void preserveEmailSettings(Settings updated, Settings stored) {

@@ -1,7 +1,8 @@
 # Search applies the same access rules as entity reads
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-04 (a script is refused)
+- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-04 (a script is refused); v3 2026-11-04
+  (query-string field names are read as the engine reads them)
 - **Deciders:** Mohit Yadav
 - **Guard:** `SearchAccessRulesIT`, `McpSearchEmailIT`, `PrivateFieldReferencesTest`,
   `PrivateSearchFieldsTest`, `ElasticSearchPrivateFieldsTest`, `OpenSearchPrivateFieldsTest`,
@@ -43,7 +44,8 @@ entity reads, a user's email, is masked in search and in the event listings too.
   by name or alias, or a wildcard matching it) returns `email` in no hit, top hit or sort value and
   matches on it nowhere: free text searches the user index without its email fields, and a query,
   filter, sort, field query or aggregation that names an email field (`email`, a sub-field, or a
-  field pattern matching one), searches every field, runs a script (which can build a field name
+  field pattern matching one, with a query string's escapes resolved as the engine resolves them),
+  searches every field, runs a script (which can build a field name
   at run time), or carries a filter that is not plain JSON is refused with 400 on every search
   endpoint. An NLQ translation that names one runs as keyword
   search instead. Values are not references: a filter on a column called `email` or on the tag

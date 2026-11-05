@@ -231,8 +231,8 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
   }
 
   /**
-   * Views, creates and describes across the catalog, except that the metrics and metric groups
-   * tagged as restricted are hidden from it.
+   * Views and creates across the catalog and edits metric hierarchies, except that the metrics and
+   * metric groups tagged as restricted are hidden from it.
    */
   private static User createRestrictedUser(String suffix) throws Exception {
     List<MetadataOperation> viewOperations =
@@ -255,12 +255,18 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
             .withOperations(viewOperations)
             .withCondition("matchAnyTag('%s')".formatted(RESTRICTED_TAG))
             .withEffect(Rule.Effect.DENY);
+    Rule allowHierarchyWrites =
+        new Rule()
+            .withName("AllowMetricHierarchyWrites")
+            .withResources(List.of(Entity.METRIC, Entity.METRIC_GROUP))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withEffect(Rule.Effect.ALLOW);
     Policy policy =
         post(
             "policies",
             new CreatePolicy()
                 .withName("mcp_rel_policy_" + suffix)
-                .withRules(List.of(allowCatalog, denyRestricted)),
+                .withRules(List.of(allowCatalog, allowHierarchyWrites, denyRestricted)),
             Policy.class);
     Role role =
         post(
