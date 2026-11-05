@@ -126,6 +126,10 @@
       <artifactId>json-smart</artifactId>
       <version>${json-smart.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+    </dependency>
     <!-- Google OAuth Client Library -->
     <dependency>
       <groupId>com.google.api-client</groupId>

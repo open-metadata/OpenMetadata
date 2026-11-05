@@ -22,16 +22,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
 import java.util.List;
 import java.util.Optional;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
+import org.bouncycastle.crypto.params.HKDFParameters;
 import org.openmetadata.service.fernet.Fernet;
 
 /**
@@ -45,10 +45,10 @@ import org.openmetadata.service.fernet.Fernet;
 public final class OwnedCiphertext {
   public static final String PREFIX = Fernet.FERNET_PREFIX + "owned:";
 
-  private static final String HMAC = "HmacSHA256";
   private static final byte[] SALT =
       "openmetadata/owned-ciphertext/v1".getBytes(StandardCharsets.UTF_8);
-  private static final byte FIRST_BLOCK = 1;
+  // A Fernet key is a 16-byte signing key followed by a 16-byte encryption key.
+  private static final int FERNET_KEY_LENGTH = 32;
   private static final char SEPARATOR = '\u0000';
   private static final SecureRandom RANDOM = new SecureRandom();
   private static final Validator<String> NEVER_EXPIRES =
@@ -104,17 +104,16 @@ public final class OwnedCiphertext {
   }
 
   private static Key derive(Key key, SecretOwner owner, String field) {
-    try {
-      Mac mac = Mac.getInstance(HMAC);
-      mac.init(new SecretKeySpec(SALT, HMAC));
-      byte[] pseudoRandomKey = mac.doFinal(material(key));
-      mac.init(new SecretKeySpec(pseudoRandomKey, HMAC));
-      mac.update(context(owner, field));
-      mac.update(FIRST_BLOCK);
-      return new Key(mac.doFinal());
-    } catch (GeneralSecurityException e) {
-      throw new IllegalStateException(HMAC + " is required of every Java runtime", e);
-    }
+    return new Key(hkdfSha256(material(key), SALT, context(owner, field), FERNET_KEY_LENGTH));
+  }
+
+  /** HKDF-SHA256 (RFC 5869): {@code length} bytes derived from {@code inputKey}. */
+  static byte[] hkdfSha256(byte[] inputKey, byte[] salt, byte[] info, int length) {
+    HKDFBytesGenerator hkdf = new HKDFBytesGenerator(SHA256Digest.newInstance());
+    hkdf.init(new HKDFParameters(inputKey, salt, info));
+    byte[] derived = new byte[length];
+    hkdf.generateBytes(derived, 0, length);
+    return derived;
   }
 
   private static byte[] material(Key key) {
