@@ -45,6 +45,7 @@ PUBLIC_SCHEMA = "public"
 # Extra view lineage a connector contributes on top of what the parsers report, called
 # with (metadata, view, view_entity, service_names, masked_query) as keyword arguments.
 ViewLineageExtension = Callable[..., Iterable[Either[LineageRequest]]]
+ViewLineageParserFactory = Callable[..., LineageParser]
 
 
 def get_host_from_host_port(uri: str) -> str:
@@ -64,6 +65,7 @@ def get_view_lineage(
     timeout_seconds: int,
     parser_type: QueryParserType,
     extension: ViewLineageExtension | None = None,
+    parser_factory: ViewLineageParserFactory | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     Method to generate view lineage
@@ -71,6 +73,7 @@ def get_view_lineage(
 
     `extension` lets a connector contribute the edges its dialect expresses outside of
     the query the parsers see -- see `LineageSource.get_view_lineage_extension`.
+    `parser_factory` lets the connector adapt its DDL while preserving original query metadata.
     """
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -101,7 +104,7 @@ def get_view_lineage(
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         start_time = time.time()
         logger.debug(f"Processing view lineage for: {table_fqn}")
-        lineage_parser = LineageParser(
+        lineage_parser = (parser_factory or LineageParser)(
             view_definition,
             dialect,
             timeout_seconds=timeout_seconds,
