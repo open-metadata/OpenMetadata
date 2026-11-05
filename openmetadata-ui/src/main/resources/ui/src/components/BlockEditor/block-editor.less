@@ -294,7 +294,10 @@
   justify-content: center;
   border: @global-border;
   border-radius: @border-rad-base;
-  width: 100%;
+  // v3 positions this element itself; there is no tippy box to size or stack it.
+  width: max-content;
+  max-width: 400px;
+  z-index: 1000;
 }
 
 .slash-menu-wrapper {
