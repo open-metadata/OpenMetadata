@@ -7,18 +7,25 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
+import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider.AuthFailure;
 
 class OAuthHttpStatelessServerTransportProviderTest {
@@ -256,5 +263,57 @@ class OAuthHttpStatelessServerTransportProviderTest {
             "sanitizeRedirectUrlForLogging", String.class);
     m.setAccessible(true);
     return (String) m.invoke(null, url);
+  }
+
+  // ── registration body limit ───────────────────────────────────────────────
+
+  @Test
+  void doPost_oversizedRegistration_answers413WithoutRegistering() throws Exception {
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    RegistrationHandler registrationHandler = mock(RegistrationHandler.class);
+    putField(transport, "registrationHandler", registrationHandler);
+    putField(transport, "registrationAttempts", new ConcurrentHashMap<>());
+    putField(transport, "objectMapper", new ObjectMapper());
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/register");
+    when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+    byte[] oversized =
+        new byte[OAuthHttpStatelessServerTransportProvider.MAX_REGISTRATION_BODY_BYTES + 1];
+    when(request.getInputStream())
+        .thenReturn(
+            HttpServletStatelessServerTransportTest.bodyOf(new ByteArrayInputStream(oversized)));
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+
+    transport.doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
+    verifyNoInteractions(registrationHandler);
+  }
+
+  private static OAuthHttpStatelessServerTransportProvider transportWith(
+      UserSSOOAuthProvider ssoProvider) throws Exception {
+    sun.misc.Unsafe unsafe = unsafe();
+    OAuthHttpStatelessServerTransportProvider transport =
+        (OAuthHttpStatelessServerTransportProvider)
+            unsafe.allocateInstance(OAuthHttpStatelessServerTransportProvider.class);
+    Field authProvider =
+        OAuthHttpStatelessServerTransportProvider.class.getDeclaredField("authProvider");
+    unsafe.putObject(transport, unsafe.objectFieldOffset(authProvider), ssoProvider);
+    return transport;
+  }
+
+  private static void putField(Object target, String fieldName, Object value) throws Exception {
+    sun.misc.Unsafe unsafe = unsafe();
+    Field field = OAuthHttpStatelessServerTransportProvider.class.getDeclaredField(fieldName);
+    unsafe.putObject(target, unsafe.objectFieldOffset(field), value);
+  }
+
+  private static sun.misc.Unsafe unsafe() throws Exception {
+    Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+    unsafeField.setAccessible(true);
+    return (sun.misc.Unsafe) unsafeField.get(null);
   }
 }

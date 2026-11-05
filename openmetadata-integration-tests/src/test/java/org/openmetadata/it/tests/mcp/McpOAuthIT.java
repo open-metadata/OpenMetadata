@@ -3,15 +3,18 @@ package org.openmetadata.it.tests.mcp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -188,6 +191,42 @@ public class McpOAuthIT extends McpTestBase {
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
     assertThat(response.statusCode()).isEqualTo(400);
+  }
+
+  @Test
+  @Order(5)
+  void registrationOverTheBodyLimitIsRefused() throws Exception {
+    byte[] oversized =
+        ("{\"client_name\":\"Big Client\",\"jwks\":{\"pad\":\"" + "x".repeat(70_000) + "\"}}")
+            .getBytes(StandardCharsets.UTF_8);
+    ByteArrayOutputStream gzipped = new ByteArrayOutputStream();
+    try (GZIPOutputStream gzip = new GZIPOutputStream(gzipped)) {
+      gzip.write(oversized);
+    }
+
+    // The gzip body is a few hundred bytes on the wire; the limit applies to what it inflates to.
+    for (HttpResponse<String> response :
+        List.of(
+            sendRegistration(oversized, Map.of()),
+            sendRegistration(gzipped.toByteArray(), Map.of("Content-Encoding", "gzip")))) {
+      assertThat(response.statusCode()).isEqualTo(413);
+      assertThat(OBJECT_MAPPER.readTree(response.body()).get("error").asText())
+          .isEqualTo("invalid_client_metadata");
+    }
+  }
+
+  private HttpResponse<String> sendRegistration(byte[] body, Map<String, String> headers)
+      throws Exception {
+    HttpRequest.Builder request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl("/mcp/register")))
+            .header("Content-Type", "application/json")
+            // Its own rate-limit bucket, so these requests never use up the other tests' quota.
+            .header("X-Forwarded-For", "198.51.100.13")
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+            .timeout(Duration.ofSeconds(30));
+    headers.forEach(request::header);
+    return HTTP_CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString());
   }
 
   @Test
