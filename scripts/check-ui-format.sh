@@ -11,7 +11,11 @@ if [ ! -x "$PRETTIER" ]; then
   exit 0
 fi
 
-"$PRETTIER" --config "$UI/.prettierrc.yaml" --check "$@"
+# --ignore-path is not optional: .prettierignore excludes src/jsons/, the
+# dereferenced schemas parseSchemas.js writes verbatim, and src/generated/.
+# Without it this hook is stricter than the CI check it claims to match, and
+# demands reformatting of files that the next `yarn parse-schema` would undo.
+"$PRETTIER" --config "$UI/.prettierrc.yaml" --ignore-path "$UI/.prettierignore" --check "$@"
 rc=$?
 [ "$rc" -eq 0 ] || echo "UI files are not prettier-formatted. Fix: yarn --cwd $UI ui-checkstyle:changed"
 exit "$rc"
