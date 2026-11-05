@@ -25,10 +25,12 @@ import { SearchIndex } from '../../../../../../enums/search.enum';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
+  deleteUserFromTeam,
   getTeams,
   getTeamsAssetCounts,
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
+import { updateUserDetail } from '../../../../../../rest/userAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
@@ -130,6 +132,7 @@ jest.mock('../../../../../../rest/teamsAPI', () => ({
 
 jest.mock('../../../../../../rest/userAPI', () => ({
   getUsers: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
+  updateUserDetail: jest.fn().mockResolvedValue({ id: 'me', teams: [] }),
 }));
 
 jest.mock('../../../../../../rest/searchAPI', () => ({
@@ -139,8 +142,16 @@ jest.mock('../../../../../../rest/searchAPI', () => ({
     .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
 }));
 
+let mockCurrentUser: { id: string; teams: { id: string; type: string }[] } = {
+  id: 'me',
+  teams: [],
+};
+const mockUpdateCurrentUser = jest.fn();
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'me', teams: [] } }),
+  useApplicationStore: () => ({
+    currentUser: mockCurrentUser,
+    updateCurrentUser: mockUpdateCurrentUser,
+  }),
 }));
 
 jest.mock(
@@ -281,6 +292,50 @@ describe('MembersTeamDetail', () => {
     jest.clearAllMocks();
     mockGetContributions.mockReturnValue([]);
     mockGlobalPermissions = {};
+  });
+
+  describe('leave team', () => {
+    afterEach(() => {
+      mockCurrentUser = { id: 'me', teams: [] };
+    });
+
+    it('leaves a joinable team by patching the user and keeps the stored user in step', async () => {
+      mockCurrentUser = {
+        id: 'me',
+        teams: [
+          { id: 'org', type: 'team' },
+          { id: '1', type: 'team' },
+        ],
+      };
+      mockGetTeamByName.mockResolvedValueOnce({
+        id: '1',
+        name: 'engineering',
+        fullyQualifiedName: 'engineering',
+        teamType: 'Group',
+        isJoinable: true,
+        users: [{ id: 'me', type: 'user' }],
+        children: [],
+        defaultRoles: [],
+        policies: [],
+        domains: [],
+        owners: [],
+      });
+      renderWithRouter(<HeaderHarness onNavigate={jest.fn()} />);
+
+      press(await screen.findByTestId('leave-team-button'));
+
+      await waitFor(() =>
+        expect(updateUserDetail).toHaveBeenCalledWith('me', [
+          { op: 'remove', path: '/teams/1' },
+        ])
+      );
+
+      expect(deleteUserFromTeam).not.toHaveBeenCalled();
+      expect(mockUpdateCurrentUser).toHaveBeenCalledWith({
+        id: 'me',
+        teams: [],
+      });
+    });
   });
 
   describe('delete from the team menu', () => {

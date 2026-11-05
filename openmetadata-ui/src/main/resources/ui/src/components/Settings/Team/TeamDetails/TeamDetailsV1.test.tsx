@@ -459,23 +459,29 @@ describe('TeamDetailsV1 leave team', () => {
     expect(await screen.findByTestId('leave-team-button')).toBeInTheDocument();
   });
 
-  it('does not offer a member who is not an admin to leave a team that is not joinable', async () => {
-    const closedTeam = {
-      ...NON_ORG_TEAM,
-      teamType: TeamType.Group,
-      isJoinable: false,
-    } as unknown as Team;
-    mockIsAdminUser = false;
-    mockCurrentUser = { id: 'member-id', teams: [{ id: closedTeam.id }] };
+  it.each([
+    ['a member', [{ id: NON_ORG_TEAM.id }]],
+    ['someone outside it', []],
+  ])(
+    'offers %s who is not an admin neither join nor leave on a team that is not joinable',
+    async (_, teams) => {
+      const closedTeam = {
+        ...NON_ORG_TEAM,
+        teamType: TeamType.Group,
+        isJoinable: false,
+      } as unknown as Team;
+      mockIsAdminUser = false;
+      mockCurrentUser = { id: 'member-id', teams };
 
-    renderComponent({ currentTeam: closedTeam });
+      renderComponent({ currentTeam: closedTeam });
 
-    expect(
-      await screen.findByTestId('team-details-collapse')
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId('leave-team-button')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('join-teams')).not.toBeInTheDocument();
-  });
+      expect(
+        await screen.findByTestId('team-details-collapse')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('leave-team-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('join-teams')).not.toBeInTheDocument();
+    }
+  );
 
   it('opens the leave confirmation before the team users have loaded', async () => {
     const groupTeam = {
