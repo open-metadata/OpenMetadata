@@ -33,6 +33,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.WebhookRecipient;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 
 /**
  * Webhook addresses of one channel: the webhook a user or a team keeps on their profile for it,
@@ -48,12 +49,14 @@ public final class WebhookAddresses implements AddressDirectory {
 
   @Override
   public Recipient ofUser(User user) {
-    return WebhookRecipient.ofProfile(user.getName(), user.getProfile(), onProfile);
+    return WebhookRecipient.ofProfile(
+        user.getName(), ProfileWebhookSecrets.decrypted(user.getProfile()), onProfile);
   }
 
   @Override
   public Recipient ofTeam(Team team) {
-    return WebhookRecipient.ofProfile(team.getName(), team.getProfile(), onProfile);
+    return WebhookRecipient.ofProfile(
+        team.getName(), ProfileWebhookSecrets.decrypted(team.getProfile()), onProfile);
   }
 
   @Override

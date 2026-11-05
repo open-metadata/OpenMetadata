@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -193,7 +194,8 @@ final class AIGovernanceWorkflowService {
 
     EntityRepository<? extends EntityInterface<?>> repository =
         Entity.getEntityRepository(entityType);
-    return repository.patch(null, entity.getId(), user, patch).entity();
+    final EntityInterface<?> updated = repository.patch(null, entity.getId(), user, patch).entity();
+    return updated instanceof McpServer server ? McpServerMasker.mask(server) : updated;
   }
 
   private void authorizeViewByFqn(SecurityContext securityContext, String entityType, String fqn) {

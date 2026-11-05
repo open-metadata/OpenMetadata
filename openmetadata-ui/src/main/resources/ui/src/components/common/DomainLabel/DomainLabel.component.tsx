@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -28,10 +34,6 @@ import DomainSelect from '../DomainSelect/DomainSelect';
 import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import DomainTags from '../DomainTags/DomainTags';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
@@ -168,14 +170,16 @@ export const DomainLabel = ({
     const renderTrigger = ({ toggle }: { toggle: () => void }) => (
       <DomainSelectTrigger toggle={toggle}>
         {isEmpty(activeDomain) ? (
-          <WidgetPlusButton
+          <ButtonUtility
             data-testid="add-domain"
-            title={t('label.add-entity', { entity: widgetTitle })}
+            icon={Plus}
+            tooltip={t('label.add-entity', { entity: widgetTitle })}
           />
         ) : (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-domain"
-            title={t('label.edit-entity', { entity: widgetTitle })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', { entity: widgetTitle })}
           />
         )}
       </DomainSelectTrigger>

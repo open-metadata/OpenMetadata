@@ -11,7 +11,10 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,6 +58,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -95,6 +99,7 @@ import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
@@ -1125,6 +1130,19 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
           assertNull(
               admin.metrics().get(source.getId().toString(), "metricGroup").getMetricGroup());
 
+          Metric rootDocument =
+              admin.metrics().get(source.getId().toString(), "parent,metricGroup");
+          rootDocument.setParent(restrictedParent.getEntityReference());
+          JsonNode rootReplacePatch =
+              JSON.createArrayNode()
+                  .add(
+                      JSON.createObjectNode()
+                          .put("op", "replace")
+                          .put("path", "")
+                          .set("value", JSON.valueToTree(rootDocument)));
+          assertApiStatus(403, () -> editor.metrics().patch(source.getId(), rootReplacePatch));
+          assertNull(admin.metrics().get(source.getId().toString(), "parent").getParent());
+
           assertApiStatus(
               403,
               () ->
@@ -1278,6 +1296,68 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void list_includeAllResolvesASoftDeletedParent(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("soft_del_parent"), ns));
+    Metric child = createChild(ns, "soft_del_child", parent);
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    params.put("hardDelete", "false");
+    SdkClients.adminClient().metrics().delete(parent.getId().toString(), params);
+
+    // The list endpoint, not GET /{id}: only the list's batch parent hydration used to 404 here.
+    JsonNode row = findListedMetric("fields=parent&include=all", child.getId());
+
+    assertNotNull(row, "A child whose parent was soft-deleted must be listed with include=all");
+    assertEquals(parent.getId().toString(), row.get("parent").get("id").asText());
+    assertTrue(row.get("parent").get("deleted").asBoolean());
+  }
+
+  @Test
+  void list_childrenOmitsASoftDeletedChild(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("live_children_parent"), ns));
+    Metric liveChild = createChild(ns, "live_child", parent);
+    Metric deletedChild = createChild(ns, "deleted_child", parent);
+    deleteEntity(deletedChild.getId().toString());
+
+    JsonNode row = findListedMetric("fields=children", parent.getId());
+
+    assertNotNull(row, "A parent with a soft-deleted child must still be listed");
+    JsonNode children = row.get("children");
+    assertEquals(1, children.size(), "Only the live child is returned");
+    assertEquals(liveChild.getId().toString(), children.get(0).get("id").asText());
+  }
+
+  /**
+   * Pages through GET /v1/metrics, which runs the batch field hydration that GET /{id} skips. The
+   * `parent` filter can't narrow it: it rejects deleted parents.
+   */
+  private static JsonNode findListedMetric(String query, UUID id) {
+    String after = null;
+    do {
+      JsonNode page =
+          JSON.valueToTree(
+              SdkClients.adminClient()
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.GET,
+                      "/v1/metrics?limit=1000&"
+                          + query
+                          + (after == null
+                              ? ""
+                              : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8)),
+                      null,
+                      Object.class));
+      for (JsonNode metric : page.get("data")) {
+        if (id.toString().equals(metric.get("id").asText())) {
+          return metric;
+        }
+      }
+      after = page.get("paging").path("after").asText(null);
+    } while (after != null);
+    return null;
+  }
+
+  @Test
   void get_softDeletedChildExcludedFromChildrenCount(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("soft_parent"), ns));
     Metric child = createChild(ns, "soft_child", parent);
@@ -1287,6 +1367,75 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     assertEquals(
         0, getWithHierarchy(parent).getChildrenCount(), "A soft-deleted child must not be counted");
+  }
+
+  @Test
+  void restore_parentWithChildren_bringsTheSubtreeBack(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("restore_parent"), ns));
+    Metric child = createChild(ns, "restore_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    restoreEntity(parent.getId().toString());
+
+    Metric restored = getWithHierarchy(parent);
+    assertEquals(1, restored.getChildrenCount(), "The restored child must count again");
+    assertEquals(child.getId(), restored.getChildren().get(0).getId());
+  }
+
+  @Test
+  void restore_childOfDeletedParent_isRejectedUntilTheParentIsRestored(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("orphan_parent"), ns));
+    Metric child = createChild(ns, "orphan_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    OpenMetadataException rejected =
+        assertThrows(OpenMetadataException.class, () -> restoreEntity(child.getId().toString()));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), rejected.getStatusCode());
+    OpenMetadataException rejectedAsync =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/metrics/restore?async=true",
+                        Map.of("id", child.getId().toString()),
+                        Object.class));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), rejectedAsync.getStatusCode());
+    assertTrue(
+        getEntityIncludeDeleted(child.getId().toString()).getDeleted(),
+        "A rejected restore must leave the child deleted");
+
+    restoreEntity(parent.getId().toString());
+
+    assertFalse(getEntity(child.getId().toString()).getDeleted());
+    assertEquals(1, getWithHierarchy(parent).getChildrenCount());
+  }
+
+  @Test
+  void put_childOfDeletedParent_withoutParent_restoresItAsARoot(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("put_orphan_parent"), ns));
+    Metric child = createChild(ns, "put_orphan_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    Metric restored =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/metrics",
+                new CreateMetric().withName(child.getName()).withDescription("Child metric"),
+                Metric.class);
+
+    assertFalse(restored.getDeleted());
+    assertNull(getWithHierarchy(child).getParent(), "A PUT without a parent restores a root");
   }
 
   @Test
@@ -1755,6 +1904,170 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                   .get(allowedBulkRoot.getId().toString(), "metricGroup")
                   .getMetricGroup()
                   .getId());
+
+          // The generic reads must withhold the same references as the hierarchy endpoints.
+          JsonNode genericMetric =
+              JSON.valueToTree(
+                  restricted
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          "/v1/metrics/name/"
+                              + current.getFullyQualifiedName()
+                              + "?fields=parent,children,childrenCount,relatedMetrics,metricGroup",
+                          null,
+                          Object.class));
+          assertTrue(
+              genericMetric.path("parent").isMissingNode()
+                  || genericMetric.path("parent").isNull());
+          assertEquals(1, genericMetric.get("childrenCount").asInt());
+          assertEquals(1, genericMetric.get("children").size());
+          assertEquals(
+              visibleChild.getId().toString(),
+              genericMetric.get("children").get(0).get("id").asText());
+          assertEquals(
+              visibleGroup.getId().toString(), genericMetric.get("metricGroup").get("id").asText());
+          assertRestrictedNamesAbsent(
+              genericMetric, restrictedParent, restrictedSibling, restrictedChild, restrictedGroup);
+
+          JsonNode metricVersions =
+              JSON.valueToTree(
+                  restricted
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          "/v1/metrics/" + current.getId() + "/versions",
+                          null,
+                          Object.class));
+          assertRestrictedNamesAbsent(
+              metricVersions,
+              restrictedParent,
+              restrictedSibling,
+              restrictedChild,
+              restrictedGroup);
+          JsonNode metricVersion1 =
+              JSON.valueToTree(
+                  restricted
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          "/v1/metrics/" + current.getId() + "/versions/0.1",
+                          null,
+                          Object.class));
+          assertRestrictedNamesAbsent(
+              metricVersion1,
+              restrictedParent,
+              restrictedSibling,
+              restrictedChild,
+              restrictedGroup);
+
+          // Re-parenting by an admin records the hidden parent in the stored change descriptions;
+          // the restricted reader must not see it there or in the version history either.
+          JsonNode reparentPatch =
+              JSON.createArrayNode()
+                  .add(
+                      JSON.createObjectNode()
+                          .put("op", "add")
+                          .put("path", "/parent")
+                          .set("value", JSON.valueToTree(allowedBulkRoot.getEntityReference())));
+          SdkClients.adminClient().metrics().patch(current.getId(), reparentPatch);
+
+          JsonNode movedMetric =
+              JSON.valueToTree(
+                  restricted
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          "/v1/metrics/" + current.getId() + "?fields=parent",
+                          null,
+                          Object.class));
+          assertEquals(
+              allowedBulkRoot.getId().toString(), movedMetric.path("parent").path("id").asText());
+          assertRestrictedNamesAbsent(
+              movedMetric, restrictedParent, restrictedSibling, restrictedChild, restrictedGroup);
+
+          JsonNode movedHierarchy =
+              JSON.valueToTree(
+                  restricted
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          "/v1/metrics/"
+                              + current.getId()
+                              + "/hierarchy?childLimit=10&childOffset=0&siblingLimit=10&siblingOffset=0",
+                          null,
+                          Object.class));
+          assertEquals(1, movedHierarchy.get("ancestors").size());
+          assertEquals(
+              allowedBulkRoot.getId().toString(),
+              movedHierarchy.get("ancestors").get(0).get("id").asText());
+          assertEquals(1, movedHierarchy.get("childrenPaging").get("total").asInt());
+          assertEquals(
+              visibleChild.getId().toString(),
+              movedHierarchy.get("children").get(0).get("id").asText());
+          assertRestrictedNamesAbsent(
+              movedHierarchy,
+              restrictedParent,
+              restrictedSibling,
+              restrictedChild,
+              restrictedGroup);
+
+          // Shrinking the group records the removed hidden members in the group's stored change
+          // description and leaves them in its version history; both are filtered for the
+          // restricted reader.
+          JsonNode groupPatch =
+              JSON.createArrayNode()
+                  .add(
+                      JSON.createObjectNode()
+                          .put("op", "replace")
+                          .put("path", "/metrics")
+                          .set(
+                              "value",
+                              JSON.createArrayNode()
+                                  .add(JSON.valueToTree(allowedBulkRoot.getEntityReference()))));
+          admin
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.PATCH,
+                  "/v1/metricGroups/" + visibleGroup.getId(),
+                  groupPatch.toString(),
+                  RequestOptions.builder()
+                      .header("Content-Type", MediaType.APPLICATION_JSON_PATCH_JSON)
+                      .build());
+
+          JsonNode shrunkGroup =
+              JSON.valueToTree(
+                  restricted
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          "/v1/metricGroups/" + visibleGroup.getId(),
+                          null,
+                          Object.class));
+          assertRestrictedNamesAbsent(
+              shrunkGroup, restrictedParent, restrictedSibling, restrictedChild);
+          JsonNode groupVersions =
+              JSON.valueToTree(
+                  restricted
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          "/v1/metricGroups/" + visibleGroup.getId() + "/versions",
+                          null,
+                          Object.class));
+          assertRestrictedNamesAbsent(
+              groupVersions, restrictedParent, restrictedSibling, restrictedChild);
+          JsonNode groupVersion1 =
+              JSON.valueToTree(
+                  restricted
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.GET,
+                          "/v1/metricGroups/" + visibleGroup.getId() + "/versions/0.1",
+                          null,
+                          Object.class));
+          assertRestrictedNamesAbsent(
+              groupVersion1, restrictedParent, restrictedSibling, restrictedChild);
         } finally {
           admin.users().delete(user.getId());
         }
@@ -2131,7 +2444,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         .create(
             new CreateEventSubscription()
                 .withName(ns.prefix("metric_approval_notification"))
-                .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+                .withAlertType(AlertType.NOTIFICATION)
                 .withResources(List.of("task"))
                 .withEnabled(true)
                 .withBatchSize(10)

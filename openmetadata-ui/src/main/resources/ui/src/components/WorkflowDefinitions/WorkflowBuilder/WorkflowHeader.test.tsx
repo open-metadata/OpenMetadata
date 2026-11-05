@@ -46,12 +46,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </button>
   ),
   ButtonUtility: ({
+    onClick,
     tooltip,
     'data-testid': dataTestId,
   }: {
+    onClick?: () => void;
     tooltip?: string;
     'data-testid'?: string;
-  }) => <button aria-label={tooltip} data-testid={dataTestId} />,
+  }) => (
+    <button aria-label={tooltip} data-testid={dataTestId} onClick={onClick} />
+  ),
   Card: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-header">{children}</div>
   ),
@@ -157,10 +161,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   DotsVertical: () => null,
-}));
-
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => null,
+  Edit01: () => null,
 }));
 
 jest.mock('../../../assets/svg/workflow.svg', () => ({
@@ -324,9 +325,10 @@ describe('WorkflowHeader — System badge', () => {
 
     render(<WorkflowHeader {...defaultProps} />);
 
+    // Sits in the centred actions row, not the title row, so it lines up with the buttons.
     expect(
-      screen.getByTestId('edit-workflow-title-button')
-    ).toBeInTheDocument();
+      screen.getByTestId('edit-workflow-title-button').parentElement
+    ).toHaveClass('tw:shrink-0', 'tw:items-center');
   });
 
   it('hides the title-edit button in view mode even when isNoOp is false', () => {

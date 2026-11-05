@@ -22,6 +22,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -191,7 +192,7 @@ public class EventSubscriptionBatchProcessingIT {
         new CreateEventSubscription()
             .withName(ns.prefix("table_resource_sub"))
             .withDescription("Subscription filtering table events")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"))
             .withEnabled(false)
             .withBatchSize(50)
@@ -213,7 +214,7 @@ public class EventSubscriptionBatchProcessingIT {
         new CreateEventSubscription()
             .withName(ns.prefix("batch_config_sub"))
             .withDescription("Subscription with custom batch size")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withBatchSize(100)
@@ -257,7 +258,7 @@ public class EventSubscriptionBatchProcessingIT {
         new CreateEventSubscription()
             .withName(ns.prefix("batch_proc_" + suffix))
             .withDescription("Test subscription for batch processing validation")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withBatchSize(10)

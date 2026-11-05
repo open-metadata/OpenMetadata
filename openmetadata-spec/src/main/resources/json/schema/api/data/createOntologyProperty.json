@@ -58,6 +58,12 @@
     "disjointWith": {
       "$ref": "../../entity/data/ontologyProperty.json#/properties/disjointWith"
     },
+    "deprecated": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/deprecated"
+    },
+    "replacedBy": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/replacedBy"
+    },
     "ontology": {
       "description": "Fully qualified name of the owning ontology.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"

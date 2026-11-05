@@ -464,6 +464,8 @@ export interface ThresholdPreviewInput {
   /** Column name for column-level tests, table name for table-level ones. */
   target?: string;
   profilerConfig?: TableProfilerConfig;
+  /** True when the form's Dynamic Assertion switch is on. */
+  useDynamicAssertion?: boolean;
 }
 
 export interface ThresholdSampling {
@@ -488,6 +490,8 @@ export interface ThresholdPreviewData {
   bound?: string;
   /** Statistical only: the bound after the deviation. Absent when there is none. */
   effectiveRange?: string;
+  /** Statistical only: the bound is learned at run time, not configured. */
+  isBoundLearned: boolean;
   /** Custom SQL only: the raw comparison operator id. */
   operator?: string;
   /** Custom SQL only: sentence key for `operator`, absent for an unknown id. */
@@ -630,7 +634,9 @@ const getCustomSqlPreview = (
  * Builds the data behind the live preview of what the configured threshold
  * actually does. Returns `undefined` when the selected test has no
  * `thresholdUnit` param, or when a statistical test has no bound yet — in both
- * cases there is nothing truthful to say.
+ * cases there is nothing truthful to say. A dynamic statistical assertion
+ * always has something to say: its bounds are learned, so the sentence
+ * describes the tolerance without quoting configured values.
  */
 export const getThresholdPreviewData = (
   input: ThresholdPreviewInput
@@ -657,6 +663,7 @@ export const getThresholdPreviewData = (
     target: input.target,
     sampling: getThresholdSampling(input.profilerConfig),
     hasZeroBound: false,
+    isBoundLearned: false,
     needsMatchEnum,
     // The match-enum case has its own, more specific warning.
     isThresholdIgnored:
@@ -664,6 +671,13 @@ export const getThresholdPreviewData = (
   };
 
   if (semantic === ThresholdTestSemantic.Statistical) {
+    // A dynamic assertion learns its bounds, so the static ones the form still
+    // holds are not what the run judges against — the sentence describes the
+    // tolerance around the learned bounds and quotes no configured values.
+    if (input.useDynamicAssertion) {
+      return { ...common, isBoundLearned: true };
+    }
+
     const statistical = getStatisticalPreview(input, threshold, unit);
 
     return statistical ? { ...common, ...statistical } : undefined;

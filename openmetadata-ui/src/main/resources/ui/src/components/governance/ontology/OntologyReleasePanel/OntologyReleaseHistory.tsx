@@ -25,10 +25,12 @@ import { useOntologyPublication } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import OntologyReleaseExport from './OntologyReleaseExport';
+import { releaseChangeCount } from './OntologyReleasePanel.utils';
 
 interface OntologyReleaseHistoryProps {
   history: ReturnType<typeof useOntologyPublication>['history'];
   activeReleaseId?: string;
+  latestReleaseId?: string;
   selectedReleaseId?: string;
   onSelect: (id: string) => void;
 }
@@ -36,6 +38,7 @@ interface OntologyReleaseHistoryProps {
 const OntologyReleaseHistory = ({
   history,
   activeReleaseId,
+  latestReleaseId,
   selectedReleaseId,
   onSelect,
 }: OntologyReleaseHistoryProps) => {
@@ -57,12 +60,14 @@ const OntologyReleaseHistory = ({
     </Button>
   );
 
-  const renderBadges = (release: OntologyRelease, index: number) => (
+  const renderBadges = (release: OntologyRelease) => (
     <>
       {release.id === activeReleaseId && (
         <Badge color="success">{t('label.active')}</Badge>
       )}
-      {index === 0 && <Badge color="blue">{t('label.latest')}</Badge>}
+      {release.id === latestReleaseId && (
+        <Badge color="blue">{t('label.latest')}</Badge>
+      )}
       <Badge>
         {t(`label.${release.entityStatus.toLowerCase().replaceAll(' ', '-')}`)}
       </Badge>
@@ -84,7 +89,7 @@ const OntologyReleaseHistory = ({
             </div>
             <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
               <Box align="center" gap={2} wrap="wrap">
-                {renderBadges(release, index)}
+                {renderBadges(release)}
               </Box>
               {release.releaseNotes && (
                 <Typography
@@ -131,18 +136,28 @@ const OntologyReleaseHistory = ({
         renderAiReleases()
       ) : (
         <ol className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
-          {releases.map((release, index) => (
+          {releases.map((release) => (
             <li key={release.id}>
               <Box align="start" gap={3} justify="between">
                 <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
                   <Box align="center" gap={2} wrap="wrap">
                     {renderVersionButton(release)}
-                    {renderBadges(release, index)}
+                    {renderBadges(release)}
                     <Typography color="secondary" size="text-xs">
                       {formatDateTimeLong(release.sealedAt)} ·{' '}
                       {release.sealedBy}
                     </Typography>
                   </Box>
+                  <Typography
+                    color="secondary"
+                    data-testid={`ontology-release-count-${release.id}`}
+                    size="text-xs">
+                    {releaseChangeCount(release) === undefined
+                      ? t('message.ontology-change-summary-unavailable')
+                      : `${releaseChangeCount(release)} ${t(
+                          'label.change-plural'
+                        )}`}
+                  </Typography>
                   {release.releaseNotes && (
                     <Typography
                       className="tw:whitespace-pre-wrap tw:break-words"

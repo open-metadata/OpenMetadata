@@ -223,8 +223,8 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    // Names share no token: n-gram matching pulled a shared `catalog` in.
     const dataProduct1 = new DataProduct([domain], `revenue${uuid()}`);
+    // A near miss: its hex id can fuzzy-match the search, but must rank lower.
     const dataProduct2 = new DataProduct([domain], `shipyard${uuid()}`);
 
     await test.step('Create test data products', async () => {
@@ -256,13 +256,14 @@ test.describe('Data Products', () => {
         .getByRole('main')
         .getByPlaceholder('Search')
         .fill(dataProduct1.data.name);
-      expect((await searchResponse).status()).toBe(200);
+      const response = await searchResponse;
+      expect(response.status()).toBe(200);
+      // Search is fuzzy, so other names may follow; the exact name ranks first.
+      const { hits } = await response.json();
+      expect(hits.hits[0]?._source.name).toBe(dataProduct1.data.name);
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText(dataProduct1.data.displayName)).toBeVisible();
-      await expect(
-        page.getByText(dataProduct2.data.displayName)
-      ).not.toBeVisible();
     });
 
     await test.step('Clear search', async () => {

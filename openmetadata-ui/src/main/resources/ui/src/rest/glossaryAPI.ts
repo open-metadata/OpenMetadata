@@ -36,7 +36,7 @@ import { TermRelation } from '../generated/type/termRelation';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
 import { CSVExportResponse } from '../interface/entity/csv.interface';
 import { VotingDataProps } from '../interface/entity/vote.interface';
-import { MoveGlossaryTermWebsocketResponse } from '../interface/governance/glossary.interface';
+import { MoveGlossaryTermResponse } from '../interface/governance/glossary.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
@@ -194,7 +194,7 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
 export const moveGlossaryTerm = async (id: string, parent: EntityReference) => {
   const response = await APIClient.put<
     MoveGlossaryTermRequest,
-    AxiosResponse<MoveGlossaryTermWebsocketResponse>
+    AxiosResponse<MoveGlossaryTermResponse>
   >(`/glossaryTerms/${id}/moveAsync`, {
     parent,
   });

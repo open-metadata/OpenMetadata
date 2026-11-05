@@ -236,8 +236,8 @@ class McpServerRequestContextTest {
     server.jwtFilter = jwtFilterFor("alice");
     McpStatelessServerFeatures.SyncPromptSpecification spec = server.getPrompt(promptNamed("p"));
 
-    onWorker(() -> spec.promptHandler().apply(transportContext(Map.of()), promptRequest()));
-    onWorker(() -> spec.promptHandler().apply(transportContext(Map.of()), promptRequest()));
+    onWorker(() -> spec.promptHandler().apply(tokenContext("token"), promptRequest()));
+    onWorker(() -> spec.promptHandler().apply(tokenContext("token"), promptRequest()));
 
     assertThat(cachedAtEntry).containsExactly(false, false);
     assertThat(onWorker(this::isPolicyCached)).isFalse();
@@ -253,15 +253,37 @@ class McpServerRequestContextTest {
               throw new IllegalStateException("prompt failed");
             });
     McpServer server = new McpServer(mock(DefaultToolContext.class), promptsContext);
+    server.jwtFilter = jwtFilterFor("alice");
     McpStatelessServerFeatures.SyncPromptSpecification spec = server.getPrompt(promptNamed("p"));
 
     assertThatThrownBy(
             () ->
-                onWorker(
-                    () -> spec.promptHandler().apply(transportContext(Map.of()), promptRequest())))
+                onWorker(() -> spec.promptHandler().apply(tokenContext("token"), promptRequest())))
         .hasRootCauseMessage("prompt failed");
 
     assertThat(onWorker(this::isPolicyCached)).isFalse();
+  }
+
+  @Test
+  void promptAuthenticatesWithTheHeaderNotTheArguments() {
+    JwtFilter jwtFilter = mock(JwtFilter.class);
+    CatalogSecurityContext alice = securityContextFor("alice");
+    when(jwtFilter.getCatalogSecurityContext("token-alice")).thenReturn(alice);
+    when(jwtFilter.getCatalogSecurityContext("token-bob"))
+        .thenThrow(new IllegalArgumentException("body token used"));
+    McpServer server = new McpServer(mock(DefaultToolContext.class), new DefaultPromptsContext());
+    server.jwtFilter = jwtFilter;
+    McpSchema.GetPromptRequest request =
+        new McpSchema.GetPromptRequest(
+            "search_metadata", Map.of("query", "customer", "Authorization", "token-bob"));
+
+    McpSchema.GetPromptResult result =
+        server
+            .getPrompt(promptNamed("search_metadata"))
+            .promptHandler()
+            .apply(tokenContext("token-alice"), request);
+
+    assertThat(result.messages()).hasSize(1);
   }
 
   private DefaultToolContext toolContextObservingAndCaching() {
@@ -341,12 +363,16 @@ class McpServerRequestContextTest {
     return McpTransportContext.create(values);
   }
 
+  private static McpTransportContext tokenContext(String token) {
+    return transportContext(Map.of(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER, token));
+  }
+
   private static McpSchema.Prompt promptNamed(String name) {
     return new McpSchema.Prompt(name, "desc", List.of());
   }
 
   private static McpSchema.GetPromptRequest promptRequest() {
-    return new McpSchema.GetPromptRequest("p", Map.of("Authorization", "token"));
+    return new McpSchema.GetPromptRequest("p", Map.of());
   }
 
   private <T> T onWorker(Callable<T> action) throws Exception {
