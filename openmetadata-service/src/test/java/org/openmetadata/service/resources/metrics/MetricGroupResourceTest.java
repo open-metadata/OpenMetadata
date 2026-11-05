@@ -282,6 +282,7 @@ class MetricGroupResourceTest {
       SecurityContext securityContext = securityContext("alice");
       when(fixture.authorizer().getPermission(securityContext, "alice", Entity.METRIC))
           .thenReturn(metricViewPermission(Permission.Access.CONDITIONAL_ALLOW));
+      when(fixture.repository().get(any(), eq(groupId), any())).thenReturn(original);
       when(fixture.repository().getWithMembers(groupId, Include.NON_DELETED)).thenReturn(original);
       when(fixture.repository().patch(any(), eq(groupId), anyString(), any(), any(), any(), any()))
           .thenReturn(new PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED));
