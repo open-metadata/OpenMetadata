@@ -154,14 +154,13 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
     taskData.downstreamTasks?.includes(currentTask.name)
   );
 
-// Upper bound on the number of tree nodes a single root expansion can
-// produce. The backtracking `visited` set in `buildCompleteTree` is what
-// keeps cycles terminating, but it also lets a branching cycle expand every
-// distinct path through it (e.g. a complete graph of 10 tasks yields ~10!
-// nodes per root). Real pipeline task graphs are far smaller than this, so
-// the cap is invisible to them while preventing Tree View from freezing or
-// exhausting memory on a pathological cyclic graph.
-const MAX_TREE_NODES = 10000;
+// Upper bound on the number of tree nodes one Tree View tree can produce
+// across all of its roots. The backtracking `visited` set in
+// `buildCompleteTree` is what keeps cycles terminating, but it also lets a
+// branching cycle expand every distinct path through it (e.g. a complete
+// graph of 10 tasks yields ~10! nodes per root). Tree View renders every
+// node expanded, so the cap must hold for the whole tree, not per root.
+export const MAX_TREE_NODES = 5000;
 
 type ViewElement = { key: string; value: React.ReactNode };
 type Budget = { remaining: number };
@@ -403,13 +402,31 @@ export const getTreeData = (
     .filter((name) => !reached.has(name));
 
   const effectiveRoots = [...roots, ...unreachedRoots];
+  const dataBudget: Budget = { remaining: MAX_TREE_NODES };
+  const labelBudget: Budget = { remaining: MAX_TREE_NODES };
 
   effectiveRoots.forEach((taskName) => {
     treeDataList.push(
-      buildCompleteTree(tasks, viewElements, null, taskName, 'root')
+      buildCompleteTree(
+        tasks,
+        viewElements,
+        null,
+        taskName,
+        'root',
+        new Set(),
+        dataBudget
+      )
     );
     treeLabelList.push(
-      buildCompleteTree(tasks, labelElements, icon, taskName, 'root')
+      buildCompleteTree(
+        tasks,
+        labelElements,
+        icon,
+        taskName,
+        'root',
+        new Set(),
+        labelBudget
+      )
     );
   });
 

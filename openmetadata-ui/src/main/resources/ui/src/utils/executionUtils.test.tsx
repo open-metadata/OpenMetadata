@@ -16,6 +16,7 @@ import { TreeNode } from '../interface/tree.interface';
 import {
   buildCompleteTree,
   getTreeData,
+  MAX_TREE_NODES,
   ViewDataInterface,
 } from './executionUtils';
 
@@ -173,12 +174,12 @@ describe('executionUtils', () => {
 
       // Renders something (the root and at least its first children), but
       // never millions of nodes — the recursive expansion is bounded by
-      // MAX_TREE_NODES (10000). Leaf preservation for tasks that fall
-      // outside the budget can add at most O(tasks × fan-out) extra leaf
-      // nodes on top, which stays tiny for real graphs.
+      // MAX_TREE_NODES. Leaf preservation for tasks that fall outside the
+      // budget can add at most O(tasks × fan-out) extra leaf nodes on top,
+      // which stays tiny for real graphs.
       expect(totalNodes).toBeGreaterThan(0);
       expect(totalNodes).toBeLessThanOrEqual(
-        10000 + names.length * names.length
+        MAX_TREE_NODES + names.length * names.length
       );
     });
 
@@ -324,6 +325,27 @@ describe('executionUtils', () => {
         new Set(['A', 'B', 'C', 'D'])
       );
       expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
+    });
+
+    it('bounds the node count across all roots of a pure branching cycle', () => {
+      const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      const graph: Record<string, string[]> = {};
+      for (const name of names) {
+        graph[name] = names.filter((other) => other !== name);
+      }
+      const { treeDataList, treeLabelList } = getTreeData(
+        makeTasks(graph),
+        makeViewData(names)
+      );
+
+      expect(treeLabelList).toHaveLength(names.length);
+
+      const labelKeys = collectKeys(treeLabelList);
+
+      expect(labelKeys.length).toBeLessThanOrEqual(
+        MAX_TREE_NODES + 2 * names.length * names.length
+      );
+      expect(collectKeys(treeDataList)).toEqual(labelKeys);
     });
 
     it('returns empty lists for empty tasks', () => {
